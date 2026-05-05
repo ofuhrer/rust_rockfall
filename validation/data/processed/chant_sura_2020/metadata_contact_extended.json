@@ -1,0 +1,73 @@
+{
+  "contact_event_count": 11,
+  "contact_event_definition": "Adjacent segment boundaries are treated as contact/rebound proxy events. They are not direct instrumented impact measurements.",
+  "dataset_id": "chant_sura_2020",
+  "dem_crop_extent": {
+    "cellsize_m": 0.05,
+    "ncols": 94.0,
+    "nrows": 154.0,
+    "x_max_m": 2793265.1281435904,
+    "x_min_m": 2793260.42814359,
+    "y_max_m": 1180276.17680251,
+    "y_min_m": 1180268.47680251
+  },
+  "doi": "https://doi.org/10.16904/envidat.174",
+  "experiment_id": "chant_sura_2020_contact_extended",
+  "limitations": [
+    "Small multi-trajectory fixture constrained to the RF16 DEM crop.",
+    "The extended subset improves contact-event count but still uses segment-boundary proxies.",
+    "No calibration data are mixed into this validation fixture.",
+    "The current sphere model cannot represent EOTA rock shape."
+  ],
+  "segment_count": 16,
+  "segment_detection": "Local time resets split reconstructed output into flight segments; only segments with at least 90% of samples inside the RF16 DEM crop are included.",
+  "source_files": [
+    "Output/txt/RF16W200r1.txt",
+    "Output/txt/RF16W200r3.txt",
+    "Output/txt/RF18W200r1.txt",
+    "Output/txt/RF18W800r6.txt",
+    "Output/txt/RF20e200r1.txt",
+    "terrain_rf16_contact.asc derived from the public RF16 UAS DEM"
+  ],
+  "terrain_crs": "EPSG:2056 / CH1903+ LV95 inherited from the RF16 UAS DEM crop; heights are metres from the source DEM.",
+  "terrain_fixture": "terrain_rf16_contact_extended.asc",
+  "trajectory_sample_count": 816,
+  "trajectory_selection": [
+    {
+      "contact_event_count": 2,
+      "equivalent_sphere_radius_m": 0.2657907165771256,
+      "mass_kg": 209.9999999999999,
+      "segment_count": 3,
+      "source_trajectory_id": "RF16W200r1"
+    },
+    {
+      "contact_event_count": 2,
+      "equivalent_sphere_radius_m": 0.26579071657712533,
+      "mass_kg": 209.99999999999923,
+      "segment_count": 3,
+      "source_trajectory_id": "RF16W200r3"
+    },
+    {
+      "contact_event_count": 2,
+      "equivalent_sphere_radius_m": 0.2657907165771256,
+      "mass_kg": 209.9999999999999,
+      "segment_count": 3,
+      "source_trajectory_id": "RF18W200r1"
+    },
+    {
+      "contact_event_count": 2,
+      "equivalent_sphere_radius_m": 0.4116216829806377,
+      "mass_kg": 780.0000000000007,
+      "segment_count": 3,
+      "source_trajectory_id": "RF18W800r6"
+    },
+    {
+      "contact_event_count": 3,
+      "equivalent_sphere_radius_m": 0.2816955886563169,
+      "mass_kg": 250.00000000000009,
+      "segment_count": 4,
+      "source_trajectory_id": "RF20e200r1"
+    }
+  ],
+  "z_alignment": "raw_z_m preserves the public reconstructed z value; z_m is raw_z_m plus the equivalent sphere radius for the simulator centre-of-mass convention."
+}

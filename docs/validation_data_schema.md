@@ -210,7 +210,12 @@ Observed contact-event CSV required fields:
 
 Optional contact-event fields include `raw_z_m`, `incoming_speed_mps`,
 `outgoing_speed_mps`, `pre_impact_kinetic_j`, `post_impact_kinetic_j`,
-`mass_kg`, and `radius_m`. When `observations.contact_events_csv` is present,
+`mass_kg`, `radius_m`, `source_trajectory_id`,
+`velocity_deflection_angle_deg`, and `event_role`. Optional trajectory/release
+metadata fields such as `source_trajectory_id`, `segment_id`, `segment_index`,
+`phase_label`, and `inside_dem_fraction` may be used to document segmented
+validation fixtures; the current validator ignores these fields except for
+human traceability. When `observations.contact_events_csv` is present,
 validation simulates each `source_segment_id` from the matching release row,
 uses the first significant simulated impact event, and reports impact timing,
 rebound-velocity, and post-impact kinetic-energy-change errors. This is a

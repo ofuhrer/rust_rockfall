@@ -607,6 +607,38 @@ def check_chant_sura_validation_metadata() -> list[str]:
             if metric not in metrics:
                 errors.append(f"chant_sura_contact omits contact metric {metric}")
 
+    extended_case_path = ROOT / "validation/cases/chant_sura_contact_extended.yaml"
+    if not extended_case_path.exists():
+        errors.append("validation/cases/chant_sura_contact_extended.yaml is missing")
+    else:
+        case = yaml.safe_load(extended_case_path.read_text()) or {}
+        if (case.get("references") or {}).get("dataset") != "chant_sura_2020":
+            errors.append("chant_sura_contact_extended does not reference dataset chant_sura_2020")
+        terrain = case.get("terrain") or {}
+        terrain_path = terrain.get("path")
+        if not terrain_path or not (ROOT / terrain_path).exists():
+            errors.append("chant_sura_contact_extended references missing DEM fixture")
+        observations = case.get("observations") or {}
+        for key in ("release_points_csv", "trajectory_csv", "contact_events_csv"):
+            path = observations.get(key)
+            if not path:
+                errors.append(f"chant_sura_contact_extended omits observations.{key}")
+            elif not (ROOT / path).exists():
+                errors.append(
+                    f"chant_sura_contact_extended references missing observations.{key}: {path}"
+                )
+        metrics = (case.get("expected") or {}).get("metrics", []) or []
+        for metric in (
+            "impact_timing_mean_error_s",
+            "rebound_velocity_mean_error_mps",
+            "post_impact_energy_change_mean_error_j",
+        ):
+            if metric not in metrics:
+                errors.append(f"chant_sura_contact_extended omits contact metric {metric}")
+        values = (case.get("expected") or {}).get("values", {}) or {}
+        if values.get("observed_contact_event_count") != 11.0:
+            errors.append("chant_sura_contact_extended should declare 11 observed contact events")
+
     strategy = ROOT / "docs/dataset_strategy.md"
     if not strategy.exists():
         errors.append("docs/dataset_strategy.md is missing")
@@ -620,7 +652,7 @@ def check_chant_sura_validation_metadata() -> list[str]:
         errors.append("docs/chant_sura_contact_validation.md is missing")
     else:
         text = contact_doc.read_text()
-        for term in ("DEM-backed", "segment", "impact timing", "rebound velocity"):
+        for term in ("DEM-backed", "segment", "impact timing", "rebound velocity", "extended fixture"):
             if term not in text:
                 errors.append(f"docs/chant_sura_contact_validation.md omits {term!r}")
     return errors

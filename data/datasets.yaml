@@ -132,7 +132,7 @@ datasets:
       - Adrian Ringenbach
       - Marc Christen
       - Perry Bartelt
-    coordinate_system: "Output trajectories use Swiss projected coordinates consistent with LV95-scale eastings/northings; input archive CRS metadata still needs explicit extraction before DEM-based validation."
+    coordinate_system: "Output trajectories use Swiss projected coordinates consistent with LV95-scale eastings/northings; the RF16 UAS DEM crop used by contact fixtures reports EPSG:2056 / CH1903+ LV95."
     data_types:
       - DEM and orthophoto
       - deposition points
@@ -147,7 +147,7 @@ datasets:
       - geospatial files
       - sensor streams
       - xlsx
-    download_status: small_processed_trajectory_and_contact_subset_checked_in
+    download_status: small_processed_trajectory_and_extended_contact_subsets_checked_in
     local_path: data/raw/chant_sura_2020
     processed_path: data/processed/chant_sura_2020
     intended_validation_use:
@@ -162,6 +162,7 @@ datasets:
       - Current checked-in first-flight subset uses Output/txt reconstructed trajectories RF16W200r1, RF16W800r1, and RF18W200r1.
       - Only the first monotonic time segment is used because the public output text files concatenate jump segments with local time resets.
       - Current checked-in contact subset uses the first three RF16W200r1 local-time-reset segments and a small ASCII-grid crop from the public RF16 UAS DEM in Input.7z.
+      - Extended checked-in contact subset uses five selected trajectories, 16 local-time-reset segments, and 11 segment-boundary contact/rebound proxies that remain inside the same RF16 DEM crop.
       - The large Input.7z archive remains ignored raw data; only the tiny derived DEM crop is committed as a validation fixture.
       - EOTA shape files are summarized as metadata for future non-spherical model development; v0.5.0 still uses equivalent spheres.
     resources:

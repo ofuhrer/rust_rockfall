@@ -13,6 +13,7 @@ Use this document to decide how to work. Use the docs to decide what to build.
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`
 - Long-term hazard-mapping roadmap: `docs/roadmap_hazard_mapping.md`
+- Scalability and output-format roadmap: `docs/scalability_and_data_formats_review.md`
 - Dataset roles and validation boundaries: `docs/dataset_strategy.md`
 - Required validation approach: `docs/validation_plan.md`
 - Source material: `background/`
@@ -55,6 +56,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Treat hazard-layer generation as post-processing of simulation outputs, not core physics; document whether a layer comes from full trajectory ensembles, representative trajectories, deposition summaries, or impact-event logs.
 - Treat swisstopo datasets as operational input geodata for future Swiss pilot and hazard-map workflows, not as model-validation evidence by themselves.
 - Preserve CRS, vertical datum, resolution, extent, source-tile ids, and provenance for all geospatial outputs.
+- Treat CSV/JSON/ASCII/GeoJSON/PNG/HTML outputs as debug and small-review formats unless a document explicitly defines a production-scale use; prefer manifest-backed chunking, columnar trajectory/event storage, and CRS-aware raster exports for future large workflows.
 - Do not commit large swissALTI3D, swissSURFACE3D, SWISSIMAGE, swissTLM3D, or swissBUILDINGS3D raw products; use metadata records and small intentional fixtures only.
 
 ## Code Expectations
@@ -85,6 +87,7 @@ If the toolchain is unavailable, state that clearly and still validate any chang
 - Keep computation, orchestration, and output writing separate.
 - Preserve reproducibility independent of trajectory execution order.
 - Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
+- For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, and deterministic reducer merge rules before adding new execution frameworks.
 - Do not add MPI, GPU, distributed execution, or heavy parallel frameworks without an explicit phase change.
 
 ## Versioning Rules

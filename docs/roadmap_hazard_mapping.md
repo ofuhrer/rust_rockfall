@@ -12,6 +12,11 @@ The current `v0.5.0` codebase is still a trajectory-scale research core. It supp
 
 Recent impact-level work is important because spatial hazard mapping is only credible if the underlying contact, energy, and calibration behaviour can be inspected and challenged. The proxy and Chant Sura single-impact calibration experiments are therefore not a side path; they build the traceability needed before running large ensembles over Alpine terrain.
 
+The current CSV/JSON/ASCII/GeoJSON hazard workflow is a development and
+diagnostic workflow. The scaling and data-format migration path toward
+large-ensemble and Swiss-scale products is reviewed in
+`docs/scalability_and_data_formats_review.md`.
+
 ## Hazard Versus Risk
 
 This project currently targets hazard modelling, not risk modelling.
@@ -89,6 +94,10 @@ Needed work:
 - stable per-trajectory seeds independent of execution order;
 - resumable outputs;
 - summary reducers for hazard layers;
+- run and chunk manifests that record configuration hashes, terrain provenance,
+  seed policy, output completeness, row counts, file sizes, and reducer inputs;
+- optional columnar trajectory/event archives for full-fidelity analysis when
+  debug CSV output is too file-heavy;
 - later optional parallel, HPC, or cloud orchestration.
 
 Current status: architecture is HPC-ready by design, but MPI, GPU, distributed execution, and production schedulers are deliberately absent.
@@ -115,9 +124,13 @@ Future raster/vector outputs should include:
 
 Candidate export formats:
 
-- GeoTIFF for raster hazard layers;
-- GeoPackage or GeoJSON for release zones, deposits, trajectories, and contours;
-- CSV/JSON summaries for reproducibility and audit.
+- CSV/JSON/ASCII/GeoJSON for debug, verification, and small review artifacts;
+- Parquet or GeoParquet for optional large tabular trajectory, impact, and
+  deposition archives;
+- GeoTIFF or Cloud-Optimized GeoTIFF for CRS-aware raster hazard layers;
+- GeoPackage, FlatGeobuf, or GeoJSON for release zones, deposits, trajectories,
+  and contours depending on size and exchange needs;
+- JSON/YAML manifests for reproducibility, chunk status, and audit.
 
 ### 6. Calibration and Validation
 

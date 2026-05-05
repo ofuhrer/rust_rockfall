@@ -8,6 +8,11 @@ Alpine or Switzerland-wide use. The work is restricted to post-processing and
 orchestration. No simulation physics, validation semantics, or calibration
 semantics were changed.
 
+For the broader end-to-end bottleneck and data-format decision review, see
+`docs/scalability_and_data_formats_review.md`. This document records measured
+small-workflow stress tests; the scalability review generalizes those results
+into a staged architecture and storage migration plan.
+
 ## Stress-Test Setup
 
 All timings were measured locally on May 5, 2026 using `/usr/bin/time -lp`.
@@ -222,6 +227,11 @@ Candidate future formats:
 - **Zarr**: possible future format for chunked multidimensional scenario
   products, but likely premature for the next step.
 
+The current recommendation is hybrid: keep CSV/JSON/ASCII/GeoJSON for debug and
+small review artifacts, add JSON/YAML run manifests first, use Parquet or
+GeoParquet for optional large trajectory/event/deposition tables, and use
+GeoTIFF/COG for final CRS-aware hazard rasters.
+
 ## Swiss-Scale Requirements
 
 Minimum requirements before Switzerland-wide mapping:
@@ -248,6 +258,10 @@ scope.
 
 ## Prioritized Next Steps
 
+0. Define a run/chunk manifest schema before introducing new storage formats.
+   The manifest should record model version, git hash, config fingerprint,
+   terrain CRS/provenance, calibration status, seed policy, trajectory ID range,
+   output row counts, file sizes, checksums, and reducer inputs.
 1. Refactor the hazard builder into a streaming/tiled accumulator that can merge
    partial rasters.
 2. Evolve `ensemble_trajectories_dir` and `ensemble_impact_events_dir` toward

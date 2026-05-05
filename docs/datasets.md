@@ -125,6 +125,12 @@ This writes `calibration/data/scarring_single_impact/chant_sura_esurf_2019_impac
 
 The current simulator is not yet physically rich enough for full calibrated comparison against shape-sensitive field experiments. Chant Sura trajectory results, Lu/ESurf scarring calibration, and Tschamut deposition results should be interpreted as complementary plausibility and deficiency checks, not as operational validation.
 
+The Chant Sura contact-validation fixtures now include both the original
+two-event RF16W200r1 subset and an extended multi-trajectory subset with 16
+segments and 11 segment-boundary contact/rebound proxies inside the small RF16
+DEM crop. The extended subset is intended for contact-model comparison only; it
+does not change the separation between validation and calibration.
+
 ## Rules
 
 - Use only public datasets.

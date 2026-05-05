@@ -59,6 +59,10 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 - `validation_chant_sura_contact_rotational`: same DEM-backed contact fixture with opt-in `sphere_rotational_v1`.
 - `validation_chant_sura_contact_roughness`: same DEM-backed contact fixture with deterministic opt-in `stochastic_contact_v1`; roughness is not calibrated.
 - `validation_chant_sura_contact_scarring`: same DEM-backed contact fixture with opt-in `scarring_contact_v1` using the current impact-level calibration parameter set for exploratory model comparison only.
+- `validation_chant_sura_contact_extended`: extended DEM-backed Chant Sura contact fixture using five source trajectories, 16 local-time-reset trajectory segments, and 11 segment-boundary contact/rebound proxies that remain inside the RF16 DEM crop.
+- `validation_chant_sura_contact_extended_rotational`: same extended fixture with opt-in `sphere_rotational_v1`.
+- `validation_chant_sura_contact_extended_roughness`: same extended fixture with deterministic opt-in `stochastic_contact_v1`; roughness is not calibrated.
+- `validation_chant_sura_contact_extended_scarring`: same extended fixture with opt-in `scarring_contact_v1` using current impact-level calibration parameters for exploratory comparison only.
 - `validation_tschamut_proxy_plane`: limited public-data terrain comparison case using the earlier fitted-plane terrain proxy for the Tschamut 2014 subset.
 - `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations and the `idw_residual_dem_from_lps` clamped DEM proxy. It reports distribution-level runout and deposition-cloud mismatch only.
 

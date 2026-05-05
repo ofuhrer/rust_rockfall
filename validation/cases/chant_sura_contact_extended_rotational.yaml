@@ -1,0 +1,51 @@
+case_id: validation_chant_sura_contact_extended_rotational
+title: Chant Sura extended contact with sphere_rotational_v1
+level: 5
+description: Same extended DEM-backed Chant Sura contact subset as validation_chant_sura_contact_extended, with opt-in sphere_rotational_v1 enabled for model-comparison diagnostics.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact_extended.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [1.17599999905, -4.33600000013, -4.23375]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  contact_model: sphere_rotational_v1
+simulation: { dt: 0.005, t_max: 1.55, max_steps: 310, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: trajectory-contact-level
+  note: "Model-comparison case only; uses the extended Chant Sura contact observations with rotational sphere contact enabled."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points_contact_extended.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories_contact_extended.csv
+  contact_events_csv: validation/data/processed/chant_sura_2020/observed_contact_events_extended.csv
+expected:
+  metrics:
+    - trajectory_shape_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_jump_height_envelope_error_m
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - rebound_velocity_mean_error_mps
+  values:
+    observed_contact_event_count: 11.0
+    contact_event_compared_count: 11.0
+  maximums:
+    trajectory_shape_mean_error_m: 12.0
+    trajectory_energy_mean_relative_error: 12.0
+    trajectory_jump_height_envelope_error_m: 10.0
+    impact_timing_mean_error_s: 1.2
+    rebound_velocity_mean_error_mps: 30.0
+outputs:
+  diagnostics_json: validation/results/chant_sura_contact_extended_rotational_metrics.json
+  trajectory_csv: validation/results/chant_sura_contact_extended_rotational_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  notes:
+    - "Experimental model-comparison case; not a calibrated or operational validation."

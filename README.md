@@ -93,7 +93,7 @@ The repository separates:
 - validation: real-world and synthetic validation cases under `validation/`
 - calibration: future explicit parameter-fitting experiments only
 
-Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes small public-derived validation fixtures for Tschamut 2014 and Chant Sura 2020. Tschamut is used for deposition/runout distribution diagnostics on a lightweight terrain proxy. Chant Sura includes both a first-flight kinematic subset and a small RF16 DEM-backed segmented-contact subset. These fixtures are research validation diagnostics, not calibrated field validation or operational hazard assessment.
+Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes small public-derived validation fixtures for Tschamut 2014 and Chant Sura 2020. Tschamut is used for deposition/runout distribution diagnostics on a lightweight terrain proxy. Chant Sura includes a first-flight kinematic subset, a small RF16 DEM-backed segmented-contact subset, and an extended multi-trajectory RF16 contact subset for contact-model comparison. These fixtures are research validation diagnostics, not calibrated field validation or operational hazard assessment.
 
 The default CI/local suite should run:
 

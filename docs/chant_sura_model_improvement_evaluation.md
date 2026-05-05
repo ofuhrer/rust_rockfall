@@ -61,16 +61,17 @@ trajectory realism.
 ## Candidate Ranking
 
 1. **DEM-backed Chant Sura trajectory/contact validation.** This recommendation
-   has been implemented as a small RF16W200r1 experiment in
-   `validation/cases/chant_sura_contact.yaml` and documented in
-   `docs/chant_sura_contact_validation.md`. The fixture exposes the model to
-   real terrain-contact timing, but remains a small qualitative subset rather
-   than full-campaign validation.
-2. **Trajectory segment stitching and observed impact-event alignment.** The
-   public trajectory text files concatenate jump segments with local time resets.
-   A preprocessing layer that preserves segment IDs and identifies observed
-   flight/contact transitions would let `sphere_rotational_v1`, roughness, and
-   scarring be evaluated against the right observations.
+   has been implemented as both a small RF16W200r1 experiment in
+   `validation/cases/chant_sura_contact.yaml` and an extended multi-trajectory
+   experiment in `validation/cases/chant_sura_contact_extended.yaml`. Both are
+   documented in `docs/chant_sura_contact_validation.md`. The fixtures expose
+   the model to real terrain-contact timing, but remain qualitative subsets
+   rather than full-campaign validation.
+2. **Observed impact-event alignment beyond segment-boundary proxies.** The
+   public trajectory text files concatenate jump segments with local time resets,
+   and the current preprocessing preserves segment IDs. The remaining
+   observational need is to align those proxy events with direct impact or
+   sensor timing where public data support it.
 3. **Non-spherical shape representation.** Chant Sura includes rock-shape data
    and is scientifically suited to shape-effect validation, but this should
    follow DEM/contact alignment so shape effects are not confounded with terrain
@@ -81,8 +82,9 @@ trajectory realism.
    impact-level or deposition-level datasets until richer Chant Sura contact
    observations are integrated.
 5. **`sphere_rotational_v1` as a trajectory improvement.** It is important for
-   future rolling/contact behaviour, but it does not improve the current
-   first-flight trajectory metrics.
+   future rolling/contact behaviour and improves DEM-backed contact-fixture
+   shape and energy metrics, but it does not improve all contact metrics and
+   should remain opt-in until broader validation supports a default change.
 
 ## Recommendation
 

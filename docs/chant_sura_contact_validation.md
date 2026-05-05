@@ -12,8 +12,12 @@ The new contact experiment adds a small real-terrain fixture:
 - `validation/cases/chant_sura_contact_rotational.yaml`
 - `validation/cases/chant_sura_contact_roughness.yaml`
 - `validation/cases/chant_sura_contact_scarring.yaml`
+- `validation/cases/chant_sura_contact_extended.yaml`
+- `validation/cases/chant_sura_contact_extended_rotational.yaml`
+- `validation/cases/chant_sura_contact_extended_roughness.yaml`
+- `validation/cases/chant_sura_contact_extended_scarring.yaml`
 
-These cases keep the first-flight subset unchanged and use a separate RF16W200r1 segmented fixture. The core contact diagnostics are impact timing, rebound velocity, and post-impact energy change.
+These cases keep the first-flight subset unchanged. The original contact fixture uses a separate RF16W200r1 segmented fixture; the extended fixture uses five source trajectories whose early segments remain inside the RF16 DEM crop. The core contact diagnostics are impact timing, rebound velocity, and post-impact energy change.
 
 ## Data And Terrain
 
@@ -31,6 +35,11 @@ Checked-in derived fixture:
 - `validation/data/processed/chant_sura_2020/observed_trajectories_contact.csv`
 - `validation/data/processed/chant_sura_2020/observed_contact_events.csv`
 - `validation/data/processed/chant_sura_2020/metadata_contact.json`
+- `validation/data/processed/chant_sura_2020/terrain_rf16_contact_extended.asc`
+- `validation/data/processed/chant_sura_2020/release_points_contact_extended.csv`
+- `validation/data/processed/chant_sura_2020/observed_trajectories_contact_extended.csv`
+- `validation/data/processed/chant_sura_2020/observed_contact_events_extended.csv`
+- `validation/data/processed/chant_sura_2020/metadata_contact_extended.json`
 
 The terrain crop is a small ESRI ASCII grid derived with `gdal_translate` from the public RF16 UAS DEM. The source GeoTIFF reports EPSG:2056 / CH1903+ LV95. Heights are in metres and are treated as source DEM elevations without vertical transformation. The fixture uses the trajectory coordinates directly because both the DEM and reconstructed trajectory use LV95-scale coordinates.
 
@@ -58,6 +67,16 @@ The two boundaries are recorded as observed contact/rebound proxies:
 - `RF16W200r1_impact_01`: segment 01 to segment 02
 
 These are not exact instrumented impact events. They are reconstructed segment transitions suitable for model-comparison diagnostics.
+
+The extended fixture adds segments selected from:
+
+- `RF16W200r1`
+- `RF16W200r3`
+- `RF18W200r1`
+- `RF18W800r6`
+- `RF20e200r1`
+
+It includes 16 reconstructed flight segments, 816 trajectory samples, and 11 segment-boundary contact/rebound proxies. Segment detection still uses local time resets, but segments are retained only when at least 90% of samples fall within the small RF16 DEM crop. This gives more impact-angle, velocity, and mass variation while keeping the fixture small enough for regular validation runs.
 
 ## Metrics
 
@@ -96,6 +115,17 @@ The following values were produced by `cargo run -- validate --case ...` during 
 
 The rotational sphere model improves the mean trajectory-shape and energy metrics in this small subset, while roughness and scarring do not improve the same metrics. Scarring slightly lowers the jump-height envelope error, consistent with its dissipative role, but this should not be overinterpreted because the fixture has only two contact proxies and no shape-aware dynamics.
 
+Extended fixture results:
+
+| Case | Contact / soil option | Shape mean error (m) | Energy relative error | Jump envelope error (m) | Impact timing mean error (s) | Rebound velocity mean error (m/s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `validation_chant_sura_contact_extended` | `translational_v0` | 0.563 | 0.498 | 0.713 | 0.683 | 4.281 |
+| `validation_chant_sura_contact_extended_rotational` | `sphere_rotational_v1` | 0.529 | 0.427 | 0.742 | 0.683 | 4.355 |
+| `validation_chant_sura_contact_extended_roughness` | `stochastic_contact_v1` | 0.564 | 0.502 | 0.700 | 0.690 | 4.241 |
+| `validation_chant_sura_contact_extended_scarring` | `scarring_contact_v1` | 0.576 | 0.514 | 0.746 | 0.683 | 4.263 |
+
+The extended fixture preserves the main conclusion: `sphere_rotational_v1` improves trajectory shape and kinetic-energy evolution, but it does not improve rebound velocity or jump-height envelope. Roughness and scarring affect individual contact metrics but do not improve shape or energy in this uncalibrated comparison. The larger event count makes this ranking less dependent on the original two contact proxies, but it is still not a formal statistical significance test.
+
 ## Interpretation
 
 This fixture answers a narrower question than full field validation:
@@ -103,6 +133,8 @@ This fixture answers a narrower question than full field validation:
 > Given a real DEM patch and reconstructed segment boundaries, which currently implemented model options materially change trajectory/contact metrics?
 
 The current answer is that contact-model choice now affects the reported Chant Sura trajectory metrics. That is a useful change from the first-flight subset, where contact options were mostly invisible.
+
+Across the extended fixture, the clearest trajectory-level improvement comes from `sphere_rotational_v1`; the strongest contact-level improvements are mixed and metric-specific. This supports using rotational contact as the recommended opt-in model for trajectory/contact experiments while retaining `translational_v0` as the stable default.
 
 The remaining errors are scientifically meaningful:
 
@@ -112,7 +144,8 @@ The remaining errors are scientifically meaningful:
 
 ## Limitations
 
-- Only one RF16 trajectory and two segment-boundary contact proxies are included.
+- The original RF16W200r1 contact fixture includes only one trajectory and two segment-boundary contact proxies.
+- The extended fixture improves coverage to five trajectories and 11 contact proxies, but remains a small subset constrained to one DEM crop.
 - Segment boundaries are inferred from local time resets, not from a direct impact sensor event table.
 - The fixture uses an equivalent sphere and cannot represent EOTA rock shape.
 - The full public Input archive is large and remains ignored raw data.
