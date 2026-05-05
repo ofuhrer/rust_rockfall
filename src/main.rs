@@ -128,7 +128,7 @@ fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(),
 fn collect_yaml_cases(root: &Path) -> Result<Vec<PathBuf>, CliError> {
     let mut cases = Vec::new();
     collect_yaml_cases_recursive(root, &mut cases)?;
-    cases.sort();
+    cases.sort_by_key(|path| case_sort_key(path));
     Ok(cases)
 }
 
@@ -149,4 +149,76 @@ fn collect_yaml_cases_recursive(root: &Path, cases: &mut Vec<PathBuf>) -> Result
         }
     }
     Ok(())
+}
+
+fn case_sort_key(path: &Path) -> (u8, u8, u16, String) {
+    let case = validation::load_case(path).ok();
+    let case_id = case
+        .as_ref()
+        .map(|case| case.case_id.as_str())
+        .unwrap_or_else(|| {
+            path.file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or("")
+        });
+    let level = case.as_ref().and_then(|case| case.level).unwrap_or(99);
+    (
+        level,
+        family_order(path, case_id),
+        case_order(case_id),
+        path.to_string_lossy().to_string(),
+    )
+}
+
+fn family_order(path: &Path, case_id: &str) -> u8 {
+    let path_text = path.to_string_lossy();
+    if path_text.contains("/analytic/") {
+        0
+    } else if path_text.contains("/synthetic/") && !case_id.starts_with("regime_") {
+        1
+    } else if case_id.starts_with("regime_") {
+        2
+    } else if path_text.contains("/stochastic/") {
+        3
+    } else if path_text.contains("validation/cases") {
+        4
+    } else {
+        9
+    }
+}
+
+fn case_order(case_id: &str) -> u16 {
+    match case_id {
+        "analytic_free_fall" => 10,
+        "analytic_projectile_motion" => 20,
+        "analytic_energy_conservation_no_dissipation" => 30,
+        "analytic_vertical_rebound" => 40,
+        "analytic_repeated_bounce" => 50,
+        "analytic_oblique_rebound_flat_plane" => 60,
+        "analytic_inclined_slide_stop" => 70,
+        "analytic_no_motion_threshold" => 80,
+        "analytic_rolling_incline_solid_sphere" => 90,
+        "analytic_rolling_resistance_stop" => 100,
+        "analytic_rolling_energy_monotonic" => 110,
+        "analytic_insufficient_static_friction_slides" => 120,
+        "synthetic_flat_plane_rebound" => 210,
+        "synthetic_inclined_plane_bounce_runout" => 220,
+        "synthetic_paraboloid_basin_capture" => 230,
+        "synthetic_step_terrain_single_drop" => 240,
+        "synthetic_step_terrain_multi_bounce" => 250,
+        "synthetic_ascii_dem_fixture" => 260,
+        "synthetic_contact_roughness_energy_stability" => 270,
+        "regime_bounce_to_slide_transition" => 310,
+        "regime_slide_to_stop_transition" => 320,
+        "regime_repeated_low_energy_impacts" => 330,
+        "stochastic_seeded_release_reproducibility" => 410,
+        "stochastic_different_seed_spread" => 420,
+        "stochastic_ensemble_runout_statistics" => 430,
+        "stochastic_contact_roughness_zero_consistency" => 440,
+        "stochastic_contact_roughness_reproducibility" => 450,
+        "stochastic_contact_roughness_ensemble_spread" => 460,
+        "validation_synthetic_plane_basic" => 510,
+        "validation_tschamut_basic" => 590,
+        _ => 1000,
+    }
 }

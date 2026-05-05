@@ -149,11 +149,69 @@ def main() -> int:
 
 def discover_cases(explicit_cases: list[Path]) -> list[Path]:
     if explicit_cases:
-        return sorted(resolve_path(path) for path in explicit_cases)
+        return sorted((resolve_path(path) for path in explicit_cases), key=case_sort_key)
     cases: list[Path] = []
     for pattern in STANDARD_CASE_GLOBS:
         cases.extend(ROOT.glob(pattern))
-    return sorted(cases)
+    return sorted(cases, key=case_sort_key)
+
+
+def case_sort_key(path: Path) -> tuple[int, int, int, str]:
+    data = load_yaml(path)
+    case_id = str(data.get("case_id") or path.stem)
+    level = int(data.get("level", 99))
+    return (level, family_order(path, case_id), case_order(case_id), str(path))
+
+
+def family_order(path: Path, case_id: str) -> int:
+    text = str(path)
+    if "/analytic/" in text:
+        return 0
+    if "/synthetic/" in text and not case_id.startswith("regime_"):
+        return 1
+    if case_id.startswith("regime_"):
+        return 2
+    if "/stochastic/" in text:
+        return 3
+    if "validation/cases" in text:
+        return 4
+    return 9
+
+
+def case_order(case_id: str) -> int:
+    orders = {
+        "analytic_free_fall": 10,
+        "analytic_projectile_motion": 20,
+        "analytic_energy_conservation_no_dissipation": 30,
+        "analytic_vertical_rebound": 40,
+        "analytic_repeated_bounce": 50,
+        "analytic_oblique_rebound_flat_plane": 60,
+        "analytic_inclined_slide_stop": 70,
+        "analytic_no_motion_threshold": 80,
+        "analytic_rolling_incline_solid_sphere": 90,
+        "analytic_rolling_resistance_stop": 100,
+        "analytic_rolling_energy_monotonic": 110,
+        "analytic_insufficient_static_friction_slides": 120,
+        "synthetic_flat_plane_rebound": 210,
+        "synthetic_inclined_plane_bounce_runout": 220,
+        "synthetic_paraboloid_basin_capture": 230,
+        "synthetic_step_terrain_single_drop": 240,
+        "synthetic_step_terrain_multi_bounce": 250,
+        "synthetic_ascii_dem_fixture": 260,
+        "synthetic_contact_roughness_energy_stability": 270,
+        "regime_bounce_to_slide_transition": 310,
+        "regime_slide_to_stop_transition": 320,
+        "regime_repeated_low_energy_impacts": 330,
+        "stochastic_seeded_release_reproducibility": 410,
+        "stochastic_different_seed_spread": 420,
+        "stochastic_ensemble_runout_statistics": 430,
+        "stochastic_contact_roughness_zero_consistency": 440,
+        "stochastic_contact_roughness_reproducibility": 450,
+        "stochastic_contact_roughness_ensemble_spread": 460,
+        "validation_synthetic_plane_basic": 510,
+        "validation_tschamut_basic": 590,
+    }
+    return orders.get(case_id, 1000)
 
 
 def render_plots(case_paths: list[Path], plot_root: Path) -> None:
