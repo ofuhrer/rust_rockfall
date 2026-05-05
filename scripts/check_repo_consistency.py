@@ -400,6 +400,13 @@ def check_calibration_metadata() -> list[str]:
         ROOT / "calibration/experiments/tschamut_v0_3/selected_parameters.yaml",
         ROOT / "calibration/experiments/tschamut_v0_3/summary.json",
         ROOT / "docs/tschamut_calibration.md",
+        ROOT / "calibration/data/scarring_single_impact/reference_impacts.csv",
+        ROOT / "calibration/experiments/scarring_single_impact_v0_4/config.yaml",
+        ROOT / "calibration/experiments/scarring_single_impact_v0_4/candidate_results.csv",
+        ROOT / "calibration/experiments/scarring_single_impact_v0_4/selected_parameters.yaml",
+        ROOT / "calibration/experiments/scarring_single_impact_v0_4/summary.json",
+        ROOT / "docs/scarring_single_impact_calibration.md",
+        ROOT / "scripts/calibrate_scarring_impact.py",
     ]
     for path in required_paths:
         if not path.exists():
@@ -430,6 +437,23 @@ def check_calibration_metadata() -> list[str]:
     for term in ("calibration", "holdout", "objective", "not operational"):
         if term not in docs:
             errors.append(f"calibration docs omit {term!r}")
+
+    scarring_selected_path = (
+        ROOT / "calibration/experiments/scarring_single_impact_v0_4/selected_parameters.yaml"
+    )
+    if scarring_selected_path.exists():
+        selected = yaml.safe_load(scarring_selected_path.read_text()) or {}
+        if selected.get("dataset_id") != "scarring_single_impact_proxy_v0_4":
+            errors.append("single-impact scarring calibration selected parameters reference wrong dataset")
+        if not selected.get("parameters"):
+            errors.append("single-impact scarring calibration omits parameter values")
+
+    scarring_docs = (
+        ROOT / "docs/scarring_single_impact_calibration.md"
+    ).read_text()
+    for term in ("single-impact", "proxy", "not validation", "not operational"):
+        if term not in scarring_docs:
+            errors.append(f"single-impact scarring calibration docs omit {term!r}")
     return errors
 
 

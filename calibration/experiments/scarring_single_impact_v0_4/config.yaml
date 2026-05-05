@@ -1,0 +1,42 @@
+experiment_id: scarring_single_impact_v0_4
+title: "Scarring single-impact calibration (experimental)"
+model_version: "0.4.0"
+dataset:
+  id: scarring_single_impact_proxy_v0_4
+  path: calibration/data/scarring_single_impact/reference_impacts.csv
+  source: "Semi-empirical proxy targets derived from the documented v0.4.0 scarring depth and drag-work equations."
+  license: "Repository documentation/test data; not observational field data."
+  note: "Use only for workflow and sensitivity analysis. This is not real-world validation."
+simulation:
+  dt: 0.001
+  t_max: 0.004
+  stop_velocity: 0.0
+random:
+  seed: 4104
+fixed_parameters:
+  gravity: 9.81
+  normal_restitution: 0.4
+  tangential_restitution: 0.85
+  friction_coefficient: 0.4
+  contact_model: translational_v0
+  soil_interaction_model: scarring_contact_v1
+parameter_grid:
+  soil_strength_pa: [250000.0, 500000.0, 1000000.0]
+  scarring_drag_coefficient: [0.005, 0.01, 0.02]
+  scarring_layer_density_kgpm3: [1200.0, 1600.0, 2000.0]
+objective:
+  description: "Weighted mean relative error over impact-level scar depth and scarring energy loss."
+  weights:
+    mean_relative_depth_error: 0.55
+    mean_relative_energy_loss_error: 0.45
+  epsilon: 1.0e-9
+outputs:
+  generated_results_dir: calibration/results/scarring_single_impact_v0_4
+  candidate_results_csv: calibration/experiments/scarring_single_impact_v0_4/candidate_results.csv
+  selected_parameters_yaml: calibration/experiments/scarring_single_impact_v0_4/selected_parameters.yaml
+  summary_json: calibration/experiments/scarring_single_impact_v0_4/summary.json
+  report_html: calibration/experiments/scarring_single_impact_v0_4/report.html
+notes:
+  - "This is single-impact calibration only, not trajectory calibration."
+  - "The proxy targets are semi-empirical and are not observational scar measurements."
+  - "Do not use the selected parameters in Tschamut validation without a separate decision."

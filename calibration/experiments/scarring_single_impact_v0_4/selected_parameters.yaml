@@ -1,0 +1,13 @@
+experiment_id: scarring_single_impact_v0_4
+model_version: 0.4.0
+dataset_id: scarring_single_impact_proxy_v0_4
+selection: minimum weighted mean relative impact-level objective
+objective: 2.982566886157311e-17
+parameters:
+  soil_strength_pa: 500000.0
+  scarring_drag_coefficient: 0.01
+  scarring_layer_density_kgpm3: 1600.0
+limitations:
+- single-impact proxy calibration only
+- not observational field validation
+- not a trajectory-level parameter set

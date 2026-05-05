@@ -22,5 +22,6 @@ Core documents:
 - `model_gap_analysis_v0_3.md`: theory-informed rationale for the minimal opt-in scarring model.
 - `scarring_contact_v1_review.md`: calibration-readiness review for the minimal scarring model.
 - `scarring_impact_inspection.md`: manual reconstruction of representative synthetic scarring impacts.
+- `scarring_single_impact_calibration.md`: first controlled single-impact scarring calibration workflow.
 
 Version notes are tracked in `../CHANGELOG.md`.

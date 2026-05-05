@@ -138,8 +138,8 @@ Only after that instrumentation exists should calibration be considered. A first
 
 ## Bottom Line
 
-`scarring_contact_v1` is a reasonable v0.4 research scaffold, but it is not calibration-ready. The next scientifically useful increment is an auditable impact-event log. If a single impact cannot be explained from the output, fitting scarring parameters would not be defensible.
+`scarring_contact_v1` is a reasonable v0.4 research scaffold, but it is not field-calibration-ready. The next scientifically useful increment is an auditable impact-event log. If a single impact cannot be explained from the output, fitting scarring parameters would not be defensible.
 
 ## Implementation Follow-Up
 
-The recommended impact-event log has been added as optional diagnostics through `outputs.impact_events_csv` and `outputs.impact_events_json`. This improves traceability, but it does not by itself make `scarring_contact_v1` calibrated or field-valid. Calibration should still begin with impact-level datasets and explicit objective functions, not hidden tuning against runout.
+The recommended impact-event log has been added as optional diagnostics through `outputs.impact_events_csv` and `outputs.impact_events_json`. A first single-impact proxy calibration workflow is documented in `scarring_single_impact_calibration.md`. This improves traceability and workflow reproducibility, but it does not by itself make `scarring_contact_v1` field-calibrated or field-valid. Real calibration should still begin with public impact-level measurements and explicit objective functions, not hidden tuning against runout.

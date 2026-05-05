@@ -1,0 +1,4 @@
+impact_id,mass_kg,radius_m,incoming_normal_speed_mps,incoming_tangent_speed_mps,impact_angle_deg,observed_scarring_depth_m,observed_scarring_energy_loss_j,notes
+low,50.0,0.5,3.0,0.75,14.036243467926479,0.085304410436116,1.5996717100420443,Semi-empirical proxy target; not field data.
+moderate,50.0,0.5,5.5,1.5,15.255118703057777,0.13853663468514138,13.504835583870411,Semi-empirical proxy target; not field data.
+high,50.0,0.5,8.0,2.5,17.35402463626132,0.18695904096033866,50.175482367074366,Semi-empirical proxy target; not field data.
