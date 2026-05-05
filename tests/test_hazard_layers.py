@@ -36,11 +36,17 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(status, 0)
 
             metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertTrue(metadata["hazard_only"])
             self.assertFalse(metadata["risk_modeling_included"])
             self.assertEqual(metadata["inputs"]["trajectory_count"], 2)
             self.assertEqual(metadata["inputs"]["deposition_point_count"], 2)
             self.assertEqual(metadata["inputs"]["impact_event_count"], 2)
+            self.assertEqual(manifest["schema_version"], "run_manifest_v1")
+            self.assertEqual(manifest["completion_status"], "completed")
+            self.assertEqual(manifest["grid"]["source"], "auto")
+            self.assertEqual(manifest["inputs"]["trajectory_sample_count"], 6)
+            self.assertTrue(any(output["kind"] == "hazard_layer" for output in manifest["outputs"]))
             reach_summary = next(
                 layer["summary"] for layer in metadata["layers"] if layer["key"] == "reach_probability"
             )
@@ -73,6 +79,42 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("not operational risk", html)
             self.assertIn("How to Read Hazard Layers", html)
             self.assertIn("Reach probability", html)
+
+    def test_explicit_grid_mode_records_reference_grid_in_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(FIXTURE / "plane_case.yaml"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "99.0",
+                    "--grid-xmin",
+                    "-1.0",
+                    "--grid-ymin",
+                    "-1.0",
+                    "--grid-ncols",
+                    "6",
+                    "--grid-nrows",
+                    "4",
+                    "--grid-cell-size",
+                    "1.0",
+                    "--no-plots",
+                ]
+            )
+            self.assertEqual(status, 0)
+
+            metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertEqual(metadata["grid"]["source"], "explicit")
+            self.assertEqual(metadata["grid"]["ncols"], 6)
+            self.assertEqual(metadata["grid"]["nrows"], 4)
+            self.assertEqual(manifest["grid"]["source"], "explicit")
+            asc_header = (output_dir / "hazard_fixture_plane_reach_probability.asc").read_text().splitlines()[:6]
+            self.assertEqual(asc_header[0], "ncols 6")
+            self.assertEqual(asc_header[1], "nrows 4")
 
     def test_nonfinite_coordinate_rows_are_dropped_with_warning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

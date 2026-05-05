@@ -34,7 +34,7 @@ only reduced hazard layers are needed.
 | Block parameters | YAML `block` and optional release CSV mass/radius | Small scenario inputs |
 | Contact/scarring/roughness parameters | YAML case parameters | Explicit and reproducible, but not spatial fields |
 | Calibration parameters | Committed experiment summaries, not defaults | Research diagnostics only |
-| Scenario metadata | Case YAML plus diagnostics JSON | Partial; no standard run manifest yet |
+| Scenario metadata | Case YAML plus diagnostics JSON plus optional `run_manifest_v1` sidecars | Partial; chunk manifests are still future work |
 
 ### Simulation Execution
 
@@ -61,7 +61,8 @@ designed for national job arrays or for streaming samples directly into reducers
 
 ### Post-Processing
 
-`scripts/build_hazard_layers.py` consumes existing outputs and builds:
+`scripts/build_hazard_layers.py` consumes existing outputs with streaming CSV
+passes and builds:
 
 - `reach_probability` from supplied trajectory CSVs;
 - `deposition_density` from ensemble deposition CSV;
@@ -69,8 +70,11 @@ designed for national job arrays or for streaming samples directly into reducers
 - `max_jump_height` from trajectory CSVs plus terrain evaluation;
 - `significant_impact_density` from impact-event CSVs.
 
-The builder currently reads CSV rows into Python memory, allocates complete
-in-memory raster arrays, then writes development products. It can prefer
+The builder now avoids retaining full trajectory and impact rows while
+rasterizing. In auto-grid mode it scans once for bounds and then streams rows
+into accumulators; in explicit-grid mode it streams directly into the supplied
+reference grid. It still allocates complete in-memory raster arrays and retains
+deposition points for the small GeoJSON debug export. It can prefer
 `ensemble_trajectories_dir` and `ensemble_impact_events_dir` when those exist,
 which makes small-to-medium ensemble layers scientifically more meaningful than
 representative-trajectory layers.
@@ -98,14 +102,14 @@ not a production-scale data layout.
 | Many small trajectory files | `ensemble_trajectories_dir`, one CSV per trajectory | Creates high metadata overhead, slow directory scans, poor HPC filesystem behavior, and expensive post-processing discovery | Tens of thousands to millions of trajectories | High | Urgent before large ensembles |
 | Many small impact-event files | `ensemble_impact_events_dir`, one CSV per trajectory with impacts | Contact-rich trajectories can produce large event logs and many files; empty files are skipped, complicating completeness checks | Large contact-rich ensembles | High | Urgent before impact-density production |
 | Text CSV parse/write cost | Rust/validation output and Python hazard input | CPU and I/O cost scale with text formatting, repeated headers, and string parsing | Millions of samples or repeated runs | High | Near-term |
-| In-memory hazard rasterization | `build_hazard_layers.py` | All rows and full raster arrays are held in memory; no streaming or tile merge | Large rasters, many trajectories, high-resolution Swiss tiles | High | Near-term for pilot scaling |
+| In-memory hazard raster arrays | `build_hazard_layers.py` | Full raster arrays are still held in memory; there is no tiled reducer or tile merge | Large rasters and high-resolution Swiss tiles | High | Near-term for pilot scaling |
 | Representative trajectory defaults | Validation writes one full trajectory plus ensemble deposition by default | Reach, energy, jump-height layers can silently represent only one path unless full ensemble outputs are enabled | Any scientific ensemble interpretation | Medium | Already documented; keep warnings visible |
 | Full trajectory storage volume | Per-sample outputs for every ensemble member | Full trajectories are often unnecessary once reduced hazard layers are available | Large ensembles or long run durations | High | Near-term design issue |
 | Impact-event storage volume | Raw event ledger includes low-energy chatter | Raw logs are valuable for audit but too large for routine map production | Rough/contact-rich slopes, small time steps | Medium to high | Future for national scale; near-term for dense diagnostics |
 | Repeated DEM loading | Current APIs can reuse terrain within local loops, but workflows rebuild by case/script boundary | Large DEMs will be expensive to parse repeatedly; ASCII DEM is not tiled or indexed | Large DEM tiles or many worker processes | Medium | Future after real terrain ingestion |
 | ESRI ASCII terrain format | DEM fixtures and hazard grids | No CRS, inefficient text format, no tiling/compression | Pilot geodata exchange and large rasters | High | Near-term for Swiss pilot outputs |
 | Lack of CRS/reference-grid metadata | Hazard outputs and some case metadata | Products cannot be safely aligned or exchanged as Swiss geodata | Any LV95/LN02 pilot product | High | Urgent before Swiss pilot |
-| No output manifest | Verification, validation, hazard, calibration outputs | Hard to track completeness, config hash, terrain source, chunk IDs, seed ranges, file sizes, and calibration state | Multiple chunks/jobs/scenarios | High | Immediate low-risk task |
+| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; calibration and chunk manifests are still absent | Hard to track chunk IDs, partial completion, seed ranges across jobs, and reducer merge state | Multiple chunks/jobs/scenarios | High | Near-term |
 | No restart/resume model | Validation and hazard scripts | Failed large jobs require manual inspection and rerun; partial outputs lack a formal completion record | Long ensembles and job arrays | High | Near-term |
 | Serial local ensemble orchestration | `simulate_ensemble` and validation loops | Deterministic but local; no chunk IDs, job partitions, or merge contracts | Many release zones or national domains | Medium to high | Future after manifest/chunk schema |
 | Python row-oriented processing | Hazard builder | Simple and flexible, but pure-Python loops and dict rows are slow for very large tables | Millions to billions of rows | Medium to high | Future after streaming design |
@@ -161,11 +165,13 @@ not a production-scale data layout.
   trajectory/event directories.
 - Full ensemble storage is represented as one CSV per trajectory, not as a
   chunked dataset.
-- The hazard builder expects existing files, then rereads them into memory
-  rather than receiving samples/events as a stream.
-- There is no formal run manifest describing chunk status, file sizes, row
-  counts, trajectory ID ranges, config hashes, terrain provenance, CRS, or
-  calibration state.
+- The hazard builder streams CSV rows into one complete in-memory raster, but
+  does not yet receive samples/events directly from the simulator or emit tiled
+  partial reducer states.
+- `run_manifest_v1` sidecars now describe run outputs, file sizes, row counts,
+  config hashes, terrain source, warnings, and completion status, but there is
+  not yet a formal chunk manifest describing tile/job status, trajectory ID
+  ranges, reducer checksums, CRS, or calibration state.
 - There is no deterministic partial-reducer contract for merging hazard rasters
   from many jobs.
 - Debug/report artifacts and production artifacts are not yet separated by

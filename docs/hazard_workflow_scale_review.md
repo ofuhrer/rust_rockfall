@@ -75,9 +75,10 @@ inclined-plane trajectory CSV was supplied 50 times to the hazard builder.
 - grid: `7 x 2` cells at `1 m`
 
 Observation: repeated trajectory loading is fast for tens of thousands of
-samples. It is still implemented as in-memory CSV loading, so the first serious
-bottleneck for large realistic ensembles will be memory and repeated text-CSV
-parsing rather than raster math.
+samples. The current builder streams CSV rows into accumulators, so it no longer
+retains all trajectory and impact rows. The first serious bottlenecks for large
+realistic ensembles are now full-raster memory, repeated text-CSV parsing, and
+the absence of chunked tile reducers rather than raster math.
 
 ## DEM and Terrain Robustness
 
@@ -154,10 +155,10 @@ What breaks or degrades first:
    write one CSV per trajectory and are not Swiss-scale storage solutions.
 2. **Text CSV I/O.** CSV is transparent and adequate for small cases, but large
    ensembles will spend time parsing text and writing large repeated grids.
-3. **In-memory rasterization.** The current script loads all supplied CSV rows
-   and all raster layers into memory. This is fine for small tests but not for
-   Swiss-wide tiles or millions of trajectories.
-4. **No streaming or tiling.** There is no tile-by-tile accumulator, no chunked
+3. **Full-raster accumulation.** The current script streams supplied CSV rows
+   into accumulators, but still keeps complete raster arrays in memory. This is
+   fine for small tests but not for Swiss-wide tiles or millions of trajectories.
+4. **No tiling.** There is no tile-by-tile accumulator, no chunked
    partial reduction, and no resumable merge operation.
 5. **No CRS or georeferencing metadata.** ASCII grids carry origin and cell size
    but not projection, vertical datum, or Swiss LV95 metadata.
@@ -258,12 +259,12 @@ scope.
 
 ## Prioritized Next Steps
 
-0. Define a run/chunk manifest schema before introducing new storage formats.
-   The manifest should record model version, git hash, config fingerprint,
-   terrain CRS/provenance, calibration status, seed policy, trajectory ID range,
-   output row counts, file sizes, checksums, and reducer inputs.
-1. Refactor the hazard builder into a streaming/tiled accumulator that can merge
-   partial rasters.
+0. Extend the new `run_manifest_v1` sidecars into chunk manifests before
+   introducing new storage formats. Chunk manifests should add terrain CRS,
+   tile ids, calibration status, trajectory ID ranges, checksums, reducer state
+   summaries, and partial completion status.
+1. Refactor the hazard builder from one full in-memory raster into tiled
+   accumulators that can merge partial rasters.
 2. Evolve `ensemble_trajectories_dir` and `ensemble_impact_events_dir` toward
    chunked full-ensemble trajectory and event outputs while preserving
    deterministic trajectory IDs.

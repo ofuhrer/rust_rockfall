@@ -1,0 +1,51 @@
+case_id: validation_chant_sura_contact_heldout_rotational
+title: Chant Sura held-out contact with sphere_rotational_v1
+level: 5
+description: Same held-out DEM-backed Chant Sura contact subset as validation_chant_sura_contact_heldout, with opt-in sphere_rotational_v1 enabled to test whether the trajectory-shape and energy improvements generalize beyond the model-selection subset.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact_heldout.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [0.992105262795, -3.37105263147, -1.99925789473]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  contact_model: sphere_rotational_v1
+simulation: { dt: 0.005, t_max: 1.55, max_steps: 310, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: held-out-trajectory-contact-level
+  note: "Held-out model-comparison case only; uses the same observations as validation_chant_sura_contact_heldout with rotational sphere contact enabled."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points_contact_heldout.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv
+  contact_events_csv: validation/data/processed/chant_sura_2020/observed_contact_events_heldout.csv
+expected:
+  metrics:
+    - trajectory_shape_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_jump_height_envelope_error_m
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - rebound_velocity_mean_error_mps
+  values:
+    observed_contact_event_count: 9.0
+    contact_event_compared_count: 9.0
+  maximums:
+    trajectory_shape_mean_error_m: 12.0
+    trajectory_energy_mean_relative_error: 12.0
+    trajectory_jump_height_envelope_error_m: 10.0
+    impact_timing_mean_error_s: 1.2
+    rebound_velocity_mean_error_mps: 30.0
+outputs:
+  diagnostics_json: validation/results/chant_sura_contact_heldout_rotational_metrics.json
+  trajectory_csv: validation/results/chant_sura_contact_heldout_rotational_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  notes:
+    - "Held-out model-comparison case; not calibrated and not operational validation."

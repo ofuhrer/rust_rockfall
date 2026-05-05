@@ -9,7 +9,7 @@ public measurements at the right level of evidence.
 
 | Dataset | Repository ID | Primary role | Current use | Not used for |
 | --- | --- | --- | --- | --- |
-| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. Small RF16 DEM-backed segmented contact fixtures compare trajectory shape, jump-height envelope, impact timing, rebound velocity, and post-impact energy change across two-event and extended eleven-event subsets. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full runout/deposition validation, or shape-effect validation in v0.5.0 |
+| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. Small RF16 DEM-backed segmented contact fixtures compare trajectory shape, jump-height envelope, impact timing, rebound velocity, and post-impact energy change across model-selection and held-out subsets. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full runout/deposition validation, or shape-effect validation in v0.5.0 |
 | Lu / Chant Sura scarring tables | `chant_sura_esurf_2019_impacts` | Impact-level scarring calibration | Public scar-depth and jump-energy tables constrain `scarring_contact_v1` at the single-impact level. | Trajectory validation or hazard-map validation |
 | Tschamut 2014 | `tschamut2014` | Deposition-level validation | Public release/deposition subset compares ensemble runout and deposition-cloud metrics on a transparent terrain proxy. | Impact-level calibration, shape validation, or operational hazard skill |
 | Synthetic analytic fixtures | `synthetic_*` | Verification | Closed-form or controlled checks for mechanics, terrain handling, stochastic reproducibility, scarring diagnostics, and hazard-layer post-processing. | Real-world validation |
@@ -66,6 +66,13 @@ The checked-in validation subset in
   `observed_contact_events_extended.csv`: five selected trajectories, 16
   local-time-reset segments, and 11 segment-boundary contact/rebound proxies
   whose samples remain inside the RF16 DEM crop.
+- `terrain_rf16_contact_heldout.asc`, `release_points_contact_heldout.csv`,
+  `observed_trajectories_contact_heldout.csv`, and
+  `observed_contact_events_heldout.csv`: six held-out trajectories, 15
+  local-time-reset segments, and 9 segment-boundary contact/rebound proxies
+  with no trajectory overlap against the model-selection subset.
+- `metadata_contact_split.json`: deterministic split record separating
+  model-selection and held-out evaluation trajectories.
 - `block_metadata.csv`: equivalent-sphere approximations inferred from trajectory mass.
 - `rock_shapes.csv`: EOTA shape bounding boxes and point counts, when `eota.7z` has been downloaded.
 - `metadata.json`: source files, assumptions, and limitations.
@@ -92,6 +99,12 @@ The extended contact experiment is
 model-comparison variants. It increases the contact-event count from two to
 eleven while preserving the same validation/calibration separation and the same
 small RF16 terrain crop.
+
+The held-out contact experiment is
+`validation/cases/chant_sura_contact_heldout.yaml`, with a rotational comparison
+variant. It tests whether the `sphere_rotational_v1` trajectory-shape and energy
+improvement generalizes to disjoint source trajectories before any future
+default-model decision.
 
 ## What Each Dataset Constrains
 

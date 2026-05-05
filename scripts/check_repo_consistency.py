@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -47,6 +48,7 @@ KNOWN_TERRAIN_TYPES = {
 KNOWN_OUTPUT_KEYS = {
     "trajectory_csv",
     "diagnostics_json",
+    "manifest_json",
     "ensemble_deposition_csv",
     "ensemble_trajectories_dir",
     "ensemble_impact_events_dir",
@@ -639,6 +641,41 @@ def check_chant_sura_validation_metadata() -> list[str]:
         if values.get("observed_contact_event_count") != 11.0:
             errors.append("chant_sura_contact_extended should declare 11 observed contact events")
 
+    heldout_case_path = ROOT / "validation/cases/chant_sura_contact_heldout.yaml"
+    if not heldout_case_path.exists():
+        errors.append("validation/cases/chant_sura_contact_heldout.yaml is missing")
+    else:
+        case = yaml.safe_load(heldout_case_path.read_text()) or {}
+        if (case.get("references") or {}).get("dataset") != "chant_sura_2020":
+            errors.append("chant_sura_contact_heldout does not reference dataset chant_sura_2020")
+        terrain = case.get("terrain") or {}
+        terrain_path = terrain.get("path")
+        if not terrain_path or not (ROOT / terrain_path).exists():
+            errors.append("chant_sura_contact_heldout references missing DEM fixture")
+        observations = case.get("observations") or {}
+        for key in ("release_points_csv", "trajectory_csv", "contact_events_csv"):
+            path = observations.get(key)
+            if not path:
+                errors.append(f"chant_sura_contact_heldout omits observations.{key}")
+            elif not (ROOT / path).exists():
+                errors.append(
+                    f"chant_sura_contact_heldout references missing observations.{key}: {path}"
+                )
+        values = (case.get("expected") or {}).get("values", {}) or {}
+        if values.get("observed_contact_event_count") != 9.0:
+            errors.append("chant_sura_contact_heldout should declare 9 observed contact events")
+    split_path = ROOT / "validation/data/processed/chant_sura_2020/metadata_contact_split.json"
+    if not split_path.exists():
+        errors.append("Chant Sura contact split metadata is missing")
+    else:
+        split = json.loads(split_path.read_text())
+        selection_ids = set(split.get("model_selection_subset", {}).get("trajectory_ids", []))
+        heldout_ids = set(split.get("held_out_evaluation_subset", {}).get("trajectory_ids", []))
+        if not selection_ids or not heldout_ids:
+            errors.append("Chant Sura contact split metadata omits selection or held-out ids")
+        if selection_ids.intersection(heldout_ids):
+            errors.append("Chant Sura contact split has overlapping trajectory ids")
+
     strategy = ROOT / "docs/dataset_strategy.md"
     if not strategy.exists():
         errors.append("docs/dataset_strategy.md is missing")
@@ -652,9 +689,24 @@ def check_chant_sura_validation_metadata() -> list[str]:
         errors.append("docs/chant_sura_contact_validation.md is missing")
     else:
         text = contact_doc.read_text()
-        for term in ("DEM-backed", "segment", "impact timing", "rebound velocity", "extended fixture"):
+        for term in (
+            "DEM-backed",
+            "segment",
+            "impact timing",
+            "rebound velocity",
+            "extended fixture",
+            "held-out fixture",
+        ):
             if term not in text:
                 errors.append(f"docs/chant_sura_contact_validation.md omits {term!r}")
+    generalization_doc = ROOT / "docs/chant_sura_contact_generalization.md"
+    if not generalization_doc.exists():
+        errors.append("docs/chant_sura_contact_generalization.md is missing")
+    else:
+        text = generalization_doc.read_text()
+        for term in ("held-out", "model-selection", "sphere_rotational_v1", "translational_v0"):
+            if term not in text:
+                errors.append(f"docs/chant_sura_contact_generalization.md omits {term!r}")
     return errors
 
 

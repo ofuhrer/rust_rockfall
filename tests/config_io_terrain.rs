@@ -871,6 +871,7 @@ fn tschamut_validation_fixture_runs_reproducibly() {
 fn ensemble_trajectory_dir_is_opt_in_and_deterministic() {
     let case_path = temp_path("ensemble_trajectories.yaml");
     let diagnostics = temp_path("ensemble_trajectories.json");
+    let manifest = temp_path("ensemble_trajectories_manifest.json");
     let trajectory = temp_path("ensemble_trajectories_representative.csv");
     let ensemble_dir = temp_path("ensemble_trajectories_dir");
     let ensemble_impacts_dir = temp_path("ensemble_impacts_dir");
@@ -900,11 +901,13 @@ expected:
   metrics: [ensemble_mean_runout_m]
 outputs:
   diagnostics_json: {}
+  manifest_json: {}
   trajectory_csv: {}
   ensemble_trajectories_dir: {}
   ensemble_impact_events_dir: {}
 "#,
             diagnostics.display(),
+            manifest.display(),
             trajectory.display(),
             ensemble_dir.display(),
             ensemble_impacts_dir.display()
@@ -923,6 +926,21 @@ outputs:
     assert!(second_file.exists());
     assert!(third_file.exists());
     assert!(first_impacts.exists());
+    assert!(manifest.exists());
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(manifest_json["schema_version"], "run_manifest_v1");
+    assert_eq!(manifest_json["case_id"], "ensemble_trajectory_output");
+    assert_eq!(manifest_json["completion_status"], "passed");
+    assert_eq!(manifest_json["seed_policy"]["global_seed"], 123);
+    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 4);
+    assert!(manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["kind"] == "ensemble_trajectories"
+            && entry["file_count"] == 3
+            && entry["row_count"].as_u64().unwrap() > 0));
     let first_contents = fs::read_to_string(&first_file).unwrap();
 
     let second = run_case_file(&case_path).unwrap();
@@ -931,6 +949,7 @@ outputs:
 
     fs::remove_file(case_path).unwrap();
     fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(manifest).unwrap();
     fs::remove_file(trajectory).unwrap();
     fs::remove_file(first_file).unwrap();
     fs::remove_file(second_file).unwrap();

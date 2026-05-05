@@ -262,6 +262,8 @@ fn case_order(case_id: &str) -> u16 {
         "validation_chant_sura_contact_extended_rotational" => 571,
         "validation_chant_sura_contact_extended_roughness" => 572,
         "validation_chant_sura_contact_extended_scarring" => 573,
+        "validation_chant_sura_contact_heldout" => 575,
+        "validation_chant_sura_contact_heldout_rotational" => 576,
         "validation_tschamut_proxy_plane" => 580,
         "validation_tschamut_basic" => 590,
         "validation_tschamut_baseline" => 600,

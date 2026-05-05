@@ -65,6 +65,181 @@ class RasterLayer:
     note: str = ""
 
 
+@dataclass(frozen=True)
+class InputStats:
+    trajectory_count: int = 0
+    trajectory_sample_count: int = 0
+    deposition_point_count: int = 0
+    impact_event_count: int = 0
+    significant_impact_count: int = 0
+
+
+@dataclass
+class GridBounds:
+    xs: list[float]
+    ys: list[float]
+
+    @staticmethod
+    def empty() -> "GridBounds":
+        return GridBounds(xs=[], ys=[])
+
+    def add_row(self, row: dict[str, float | str]) -> None:
+        x = row.get("x_m")
+        y = row.get("y_m")
+        if isinstance(x, float) and isinstance(y, float) and math.isfinite(x) and math.isfinite(y):
+            self.xs.append(x)
+            self.ys.append(y)
+
+    def to_grid(self, cell_size: float) -> GridSpec:
+        if cell_size <= 0.0:
+            raise SystemExit("--cell-size must be positive")
+        if not self.xs or not self.ys:
+            raise SystemExit("input files contain no x_m/y_m coordinates")
+
+        pad = cell_size
+        xmin = math.floor((min(self.xs) - pad) / cell_size) * cell_size
+        ymin = math.floor((min(self.ys) - pad) / cell_size) * cell_size
+        xmax = math.ceil((max(self.xs) + pad) / cell_size) * cell_size
+        ymax = math.ceil((max(self.ys) + pad) / cell_size) * cell_size
+        ncols = max(1, int(round((xmax - xmin) / cell_size)))
+        nrows = max(1, int(round((ymax - ymin) / cell_size)))
+        return GridSpec(xmin=xmin, ymin=ymin, ncols=ncols, nrows=nrows, cell_size=cell_size)
+
+
+class HazardAccumulator:
+    def __init__(self, grid: GridSpec, terrain: "TerrainSampler", block_radius_m: float) -> None:
+        self.grid = grid
+        self.terrain = terrain
+        self.block_radius_m = block_radius_m
+        self.reach = zeros(grid)
+        self.max_ke = nodata_grid(grid)
+        self.max_jump = nodata_grid(grid)
+        self.deposition = zeros(grid)
+        self.impact_density = zeros(grid)
+        self.deposition_points: list[dict[str, float | str]] = []
+        self.trajectory_count = 0
+        self.trajectory_sample_count = 0
+        self.deposition_point_count = 0
+        self.impact_event_count = 0
+        self.significant_impact_count = 0
+        self.warnings: list[str] = []
+        self.terrain_warning_emitted = False
+
+    def accumulate_trajectory(self, path: Path, warnings: list[str]) -> None:
+        if not path.exists():
+            return
+        self.trajectory_count += 1
+        occupied: set[tuple[int, int]] = set()
+        for sample in iter_numeric_csv(path, f"trajectory:{path}", warnings):
+            self.trajectory_sample_count += 1
+            cell = sample_cell(self.grid, sample)
+            if cell is None:
+                continue
+            row, col = cell
+            occupied.add(cell)
+            kinetic = numeric(sample.get("kinetic_j"))
+            if kinetic is not None:
+                self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
+            jump = jump_height(sample, self.terrain, self.block_radius_m)
+            if jump is None and not self.terrain_warning_emitted:
+                self.warnings.append("maximum jump height omitted where terrain could not be evaluated")
+                self.terrain_warning_emitted = True
+            elif jump is not None:
+                self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
+        for row, col in occupied:
+            self.reach[row][col] += 1.0
+
+    def accumulate_deposition(self, path: Path | None, warnings: list[str]) -> None:
+        if path is None or not path.exists():
+            return
+        for point in iter_numeric_csv(path, f"deposition:{path}", warnings):
+            self.deposition_point_count += 1
+            self.deposition_points.append(point)
+            cell = sample_cell(self.grid, point)
+            if cell is not None:
+                self.deposition[cell[0]][cell[1]] += 1.0
+
+    def accumulate_impacts(self, paths: list[Path], warnings: list[str]) -> None:
+        for path in paths:
+            if not path.exists():
+                continue
+            for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
+                self.impact_event_count += 1
+                if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
+                    continue
+                self.significant_impact_count += 1
+                cell = sample_cell(self.grid, event)
+                if cell is not None:
+                    self.impact_density[cell[0]][cell[1]] += 1.0
+
+    def stats(self) -> InputStats:
+        return InputStats(
+            trajectory_count=self.trajectory_count,
+            trajectory_sample_count=self.trajectory_sample_count,
+            deposition_point_count=self.deposition_point_count,
+            impact_event_count=self.impact_event_count,
+            significant_impact_count=self.significant_impact_count,
+        )
+
+    def layers(self) -> tuple[list[RasterLayer], list[str]]:
+        warnings = list(self.warnings)
+        layers: list[RasterLayer] = []
+        if self.trajectory_count:
+            scale_grid(self.reach, 1.0 / self.trajectory_count)
+            layers.append(
+                RasterLayer(
+                    "reach_probability",
+                    "Reach probability",
+                    "fraction of supplied trajectories",
+                    self.reach,
+                    note="Cells touched by each supplied trajectory, normalized by the number of trajectory CSVs.",
+                )
+            )
+            layers.append(RasterLayer("max_kinetic_energy", "Maximum kinetic energy", "J", self.max_ke, nodata=True))
+            layers.append(
+                RasterLayer(
+                    "max_jump_height",
+                    "Maximum jump height",
+                    "m above terrain plus block radius",
+                    self.max_jump,
+                    nodata=True,
+                )
+            )
+        else:
+            warnings.append("no trajectory CSVs supplied; reach, energy, and jump-height layers were not created")
+
+        if self.deposition_point_count:
+            scale_grid(self.deposition, 1.0 / self.deposition_point_count)
+            layers.append(
+                RasterLayer(
+                    "deposition_density",
+                    "Deposition density",
+                    "fraction of deposition points",
+                    self.deposition,
+                    note="Final-position density from ensemble deposition CSV.",
+                )
+            )
+        else:
+            warnings.append("no ensemble deposition CSV supplied; deposition density layer was not created")
+
+        if self.impact_event_count:
+            if self.significant_impact_count:
+                scale_grid(self.impact_density, 1.0 / self.significant_impact_count)
+            layers.append(
+                RasterLayer(
+                    "significant_impact_density",
+                    "Significant impact density",
+                    "fraction of significant impact events",
+                    self.impact_density,
+                    note=f"Significant impacts use incoming_normal_speed_mps >= {SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:g} m/s.",
+                )
+            )
+        else:
+            warnings.append("no impact-event CSV supplied; significant impact density layer was not created")
+
+        return layers, warnings
+
+
 def main_with_args(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", type=Path, help="verification or validation YAML case")
@@ -88,6 +263,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
     parser.add_argument("--diagnostics", type=Path, help="JSON diagnostics report")
     parser.add_argument("--output-dir", type=Path, required=True, help="directory for hazard layers and report")
     parser.add_argument("--cell-size", type=float, default=5.0, help="raster cell size in metres")
+    parser.add_argument("--grid-xmin", type=float, help="explicit output grid minimum x coordinate")
+    parser.add_argument("--grid-ymin", type=float, help="explicit output grid minimum y coordinate")
+    parser.add_argument("--grid-ncols", type=int, help="explicit output grid column count")
+    parser.add_argument("--grid-nrows", type=int, help="explicit output grid row count")
+    parser.add_argument("--grid-cell-size", type=float, help="explicit output grid cell size in metres")
     parser.add_argument("--prefix", help="output filename prefix; defaults to case_id or hazard_layers")
     parser.add_argument("--no-plots", action="store_true", help="skip PNG rendering")
     args = parser.parse_args(argv)
@@ -104,41 +284,51 @@ def main_with_args(argv: list[str] | None = None) -> int:
     diagnostics_path = args.diagnostics or first_case_output_path(case, "diagnostics_json")
 
     input_warnings: list[str] = []
-    trajectories = [
-        (path.stem, sanitize_rows(read_numeric_csv(path), f"trajectory:{path}", input_warnings))
-        for path in trajectory_paths
-        if path.exists()
-    ]
-    depositions = (
-        sanitize_rows(read_numeric_csv(deposition_path), f"deposition:{deposition_path}", input_warnings)
-        if deposition_path and deposition_path.exists()
-        else []
-    )
-    impacts = []
-    for path in impact_event_paths:
-        if path.exists():
-            impacts.extend(sanitize_rows(read_numeric_csv(path), f"impact_events:{path}", input_warnings))
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
 
-    if not trajectories and not depositions and not impacts:
-        raise SystemExit("no trajectory, deposition, or impact-event inputs found")
-
-    grid = build_grid(trajectories, depositions, impacts, args.cell_size)
+    explicit_grid = parse_explicit_grid(args)
+    if explicit_grid:
+        grid, grid_source = explicit_grid, "explicit"
+    else:
+        bounds = discover_bounds(trajectory_paths, deposition_path, impact_event_paths, args.cell_size, input_warnings)
+        grid, grid_source = bounds.to_grid(args.cell_size), "auto"
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
 
-    layers, warnings = build_layers(grid, trajectories, depositions, impacts, terrain, block_radius_m)
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m)
+    accumulator.accumulate_deposition(deposition_path, input_warnings)
+    for trajectory_path in trajectory_paths:
+        accumulator.accumulate_trajectory(trajectory_path, input_warnings)
+    accumulator.accumulate_impacts(impact_event_paths, input_warnings)
+    stats = accumulator.stats()
+    if not stats.trajectory_count and not stats.deposition_point_count and not stats.impact_event_count:
+        raise SystemExit("no trajectory, deposition, or impact-event inputs found")
+
+    layers, warnings = accumulator.layers()
     warnings = input_warnings + warnings + validate_layers(layers)
     write_layers(output_dir, prefix, grid, layers)
-    write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", depositions)
+    write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", accumulator.deposition_points)
 
-    metadata = build_metadata(case, diagnostics, grid, layers, warnings, trajectories, depositions, impacts)
-    write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    metadata_path = output_dir / f"{prefix}_metadata.json"
+    metadata = build_metadata(case, diagnostics, grid, grid_source, layers, warnings, stats)
+    write_text(metadata_path, json.dumps(metadata, indent=2, sort_keys=True) + "\n")
 
     plot_paths: dict[str, str] = {}
     if not args.no_plots:
         plot_paths = render_png_layers(output_dir, prefix, grid, layers)
     write_html_report(output_dir / "index.html", case, metadata, layers, plot_paths, prefix)
+    manifest = build_hazard_manifest(
+        case,
+        diagnostics,
+        metadata,
+        output_dir,
+        prefix,
+        grid_source,
+        layers,
+        plot_paths,
+        warnings,
+    )
+    write_text(output_dir / f"{prefix}_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     print(f"wrote hazard layers to {output_dir}")
     return 0
@@ -215,189 +405,84 @@ def first_case_output_path(case: dict[str, Any], key: str) -> Path | None:
     return paths[0] if paths else None
 
 
-def read_numeric_csv(path: Path | None) -> list[dict[str, float | str]]:
+def parse_explicit_grid(args: argparse.Namespace) -> GridSpec | None:
+    values = [args.grid_xmin, args.grid_ymin, args.grid_ncols, args.grid_nrows, args.grid_cell_size]
+    provided = [value is not None for value in values]
+    if any(provided) and not all(provided):
+        raise SystemExit(
+            "--grid-xmin, --grid-ymin, --grid-ncols, --grid-nrows, and --grid-cell-size must be provided together"
+        )
+    if not any(provided):
+        return None
+    if args.grid_ncols <= 0 or args.grid_nrows <= 0:
+        raise SystemExit("--grid-ncols and --grid-nrows must be positive")
+    if args.grid_cell_size <= 0.0:
+        raise SystemExit("--grid-cell-size must be positive")
+    return GridSpec(
+        xmin=float(args.grid_xmin),
+        ymin=float(args.grid_ymin),
+        ncols=int(args.grid_ncols),
+        nrows=int(args.grid_nrows),
+        cell_size=float(args.grid_cell_size),
+    )
+
+
+def discover_bounds(
+    trajectory_paths: list[Path],
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+    cell_size: float,
+    warnings: list[str],
+) -> GridBounds:
+    if cell_size <= 0.0:
+        raise SystemExit("--cell-size must be positive")
+    bounds = GridBounds.empty()
+    for path in trajectory_paths:
+        if path.exists():
+            for row in iter_numeric_csv(path, f"trajectory:{path}", warnings, emit_warnings=False):
+                bounds.add_row(row)
+    if deposition_path and deposition_path.exists():
+        for row in iter_numeric_csv(deposition_path, f"deposition:{deposition_path}", warnings, emit_warnings=False):
+            bounds.add_row(row)
+    for path in impact_event_paths:
+        if path.exists():
+            for row in iter_numeric_csv(path, f"impact_events:{path}", warnings, emit_warnings=False):
+                bounds.add_row(row)
+    return bounds
+
+
+def iter_numeric_csv(
+    path: Path | None,
+    label: str,
+    warnings: list[str],
+    *,
+    emit_warnings: bool = True,
+) -> Any:
     if path is None:
-        return []
+        return
+    dropped = 0
     with path.open(newline="") as file:
         reader = csv.DictReader(file)
-        rows: list[dict[str, float | str]] = []
         for row in reader:
             parsed: dict[str, float | str] = {}
+            row_bad = False
             for key, value in row.items():
                 if value is None or value == "":
                     continue
                 try:
-                    parsed[key] = float(value)
+                    parsed_value: float | str = float(value)
                 except ValueError:
-                    parsed[key] = value
-            rows.append(parsed)
-    return rows
-
-
-def sanitize_rows(
-    rows: list[dict[str, float | str]],
-    label: str,
-    warnings: list[str],
-) -> list[dict[str, float | str]]:
-    sanitized: list[dict[str, float | str]] = []
-    dropped = 0
-    for row in rows:
-        clean: dict[str, float | str] = {}
-        row_bad = False
-        for key, value in row.items():
-            if isinstance(value, float) and not math.isfinite(value):
-                row_bad = True
-                continue
-            clean[key] = value
-        if row_bad and ("x_m" in row or "y_m" in row):
-            dropped += 1
-            continue
-        sanitized.append(clean)
-    if dropped:
-        warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
-    return sanitized
-
-
-def build_grid(
-    trajectories: list[tuple[str, list[dict[str, float | str]]]],
-    depositions: list[dict[str, float | str]],
-    impacts: list[dict[str, float | str]],
-    cell_size: float,
-) -> GridSpec:
-    if cell_size <= 0.0:
-        raise SystemExit("--cell-size must be positive")
-    xs: list[float] = []
-    ys: list[float] = []
-    for _, samples in trajectories:
-        for sample in samples:
-            append_xy(xs, ys, sample)
-    for point in depositions:
-        append_xy(xs, ys, point)
-    for event in impacts:
-        append_xy(xs, ys, event)
-    if not xs or not ys:
-        raise SystemExit("input files contain no x_m/y_m coordinates")
-
-    pad = cell_size
-    xmin = math.floor((min(xs) - pad) / cell_size) * cell_size
-    ymin = math.floor((min(ys) - pad) / cell_size) * cell_size
-    xmax = math.ceil((max(xs) + pad) / cell_size) * cell_size
-    ymax = math.ceil((max(ys) + pad) / cell_size) * cell_size
-    ncols = max(1, int(round((xmax - xmin) / cell_size)))
-    nrows = max(1, int(round((ymax - ymin) / cell_size)))
-    return GridSpec(xmin=xmin, ymin=ymin, ncols=ncols, nrows=nrows, cell_size=cell_size)
-
-
-def append_xy(xs: list[float], ys: list[float], row: dict[str, float | str]) -> None:
-    x = row.get("x_m")
-    y = row.get("y_m")
-    if isinstance(x, float) and isinstance(y, float) and math.isfinite(x) and math.isfinite(y):
-        xs.append(x)
-        ys.append(y)
-
-
-def build_layers(
-    grid: GridSpec,
-    trajectories: list[tuple[str, list[dict[str, float | str]]]],
-    depositions: list[dict[str, float | str]],
-    impacts: list[dict[str, float | str]],
-    terrain: "TerrainSampler",
-    block_radius_m: float,
-) -> tuple[list[RasterLayer], list[str]]:
-    warnings: list[str] = []
-    layers: list[RasterLayer] = []
-
-    if trajectories:
-        reach = zeros(grid)
-        max_ke = nodata_grid(grid)
-        max_jump = nodata_grid(grid)
-        trajectory_count = len(trajectories)
-        terrain_warning_emitted = False
-        for _, samples in trajectories:
-            occupied: set[tuple[int, int]] = set()
-            for sample in samples:
-                cell = sample_cell(grid, sample)
-                if cell is None:
+                    parsed_value = value
+                if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
+                    row_bad = True
                     continue
-                row, col = cell
-                occupied.add(cell)
-                kinetic = numeric(sample.get("kinetic_j"))
-                if kinetic is not None:
-                    max_ke[row][col] = max(max_ke[row][col], kinetic) if max_ke[row][col] != NODATA else kinetic
-                jump = jump_height(sample, terrain, block_radius_m)
-                if jump is None and not terrain_warning_emitted:
-                    warnings.append("maximum jump height omitted where terrain could not be evaluated")
-                    terrain_warning_emitted = True
-                elif jump is not None:
-                    max_jump[row][col] = max(max_jump[row][col], jump) if max_jump[row][col] != NODATA else jump
-            for row, col in occupied:
-                reach[row][col] += 1.0 / trajectory_count
-        layers.append(
-            RasterLayer(
-                "reach_probability",
-                "Reach probability",
-                "fraction of supplied trajectories",
-                reach,
-                note="Cells touched by each supplied trajectory, normalized by the number of trajectory CSVs.",
-            )
-        )
-        layers.append(RasterLayer("max_kinetic_energy", "Maximum kinetic energy", "J", max_ke, nodata=True))
-        layers.append(
-            RasterLayer(
-                "max_jump_height",
-                "Maximum jump height",
-                "m above terrain plus block radius",
-                max_jump,
-                nodata=True,
-            )
-        )
-    else:
-        warnings.append("no trajectory CSVs supplied; reach, energy, and jump-height layers were not created")
-
-    if depositions:
-        deposition = zeros(grid)
-        for point in depositions:
-            cell = sample_cell(grid, point)
-            if cell is not None:
-                deposition[cell[0]][cell[1]] += 1.0 / len(depositions)
-        layers.append(
-            RasterLayer(
-                "deposition_density",
-                "Deposition density",
-                "fraction of deposition points",
-                deposition,
-                note="Final-position density from ensemble deposition CSV.",
-            )
-        )
-    else:
-        warnings.append("no ensemble deposition CSV supplied; deposition density layer was not created")
-
-    if impacts:
-        significant = [
-            event
-            for event in impacts
-            if (numeric(event.get("incoming_normal_speed_mps")) or 0.0)
-            >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
-        ]
-        density = zeros(grid)
-        if significant:
-            for event in significant:
-                cell = sample_cell(grid, event)
-                if cell is not None:
-                    density[cell[0]][cell[1]] += 1.0 / len(significant)
-        layers.append(
-            RasterLayer(
-                "significant_impact_density",
-                "Significant impact density",
-                "fraction of significant impact events",
-                density,
-                note=f"Significant impacts use incoming_normal_speed_mps >= {SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:g} m/s.",
-            )
-        )
-    else:
-        warnings.append("no impact-event CSV supplied; significant impact density layer was not created")
-
-    return layers, warnings
+                parsed[key] = parsed_value
+            if row_bad and ("x_m" in row or "y_m" in row):
+                dropped += 1
+                continue
+            yield parsed
+    if emit_warnings and dropped:
+        warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
 
 
 def sample_cell(grid: GridSpec, sample: dict[str, float | str]) -> tuple[int, int] | None:
@@ -418,6 +503,13 @@ def zeros(grid: GridSpec) -> list[list[float]]:
 
 def nodata_grid(grid: GridSpec) -> list[list[float]]:
     return [[NODATA for _ in range(grid.ncols)] for _ in range(grid.nrows)]
+
+
+def scale_grid(values: list[list[float]], factor: float) -> None:
+    for row_index, row in enumerate(values):
+        for col_index, value in enumerate(row):
+            if value != NODATA:
+                values[row_index][col_index] = value * factor
 
 
 def jump_height(sample: dict[str, float | str], terrain: "TerrainSampler", radius_m: float) -> float | None:
@@ -621,11 +713,10 @@ def build_metadata(
     case: dict[str, Any],
     diagnostics: dict[str, Any],
     grid: GridSpec,
+    grid_source: str,
     layers: list[RasterLayer],
     warnings: list[str],
-    trajectories: list[tuple[str, list[dict[str, float | str]]]],
-    depositions: list[dict[str, float | str]],
-    impacts: list[dict[str, float | str]],
+    stats: InputStats,
 ) -> dict[str, Any]:
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -640,12 +731,14 @@ def build_metadata(
             "ncols": grid.ncols,
             "nrows": grid.nrows,
             "cell_size_m": grid.cell_size,
+            "source": grid_source,
         },
         "inputs": {
-            "trajectory_count": len(trajectories),
-            "trajectory_sample_count": sum(len(samples) for _, samples in trajectories),
-            "deposition_point_count": len(depositions),
-            "impact_event_count": len(impacts),
+            "trajectory_count": stats.trajectory_count,
+            "trajectory_sample_count": stats.trajectory_sample_count,
+            "deposition_point_count": stats.deposition_point_count,
+            "impact_event_count": stats.impact_event_count,
+            "significant_impact_count": stats.significant_impact_count,
         },
         "layers": [
             {
@@ -665,6 +758,88 @@ def build_metadata(
             "Risk mapping requires exposure and vulnerability data and is outside this workflow.",
         ],
     }
+
+
+def build_hazard_manifest(
+    case: dict[str, Any],
+    diagnostics: dict[str, Any],
+    metadata: dict[str, Any],
+    output_dir: Path,
+    prefix: str,
+    grid_source: str,
+    layers: list[RasterLayer],
+    plot_paths: dict[str, str],
+    warnings: list[str],
+) -> dict[str, Any]:
+    outputs: list[dict[str, Any]] = []
+    for layer in layers:
+        outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.csv", "hazard_layer", "csv_grid"))
+        outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.asc", "hazard_layer", "esri_ascii_grid"))
+    outputs.append(output_manifest_entry(output_dir / f"{prefix}_deposition_points.geojson", "deposition_points", "geojson"))
+    outputs.append(output_manifest_entry(output_dir / f"{prefix}_metadata.json", "hazard_metadata", "json"))
+    outputs.append(output_manifest_entry(output_dir / "index.html", "hazard_report", "html"))
+    for layer_key, filename in sorted(plot_paths.items()):
+        outputs.append(output_manifest_entry(output_dir / filename, f"{layer_key}_plot", "png"))
+
+    terrain = case.get("terrain") or {}
+    random = case.get("random") or {}
+    parameters = terrain.get("parameters") or {}
+    return {
+        "schema_version": "run_manifest_v1",
+        "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
+        "case_id": metadata.get("case_id"),
+        "model_version": metadata.get("model_version"),
+        "git_hash": diagnostics.get("git_hash"),
+        "config_fingerprint": None,
+        "completion_status": "completed",
+        "seed_policy": {
+            "global_seed": random.get("seed"),
+            "ensemble_size": random.get("ensemble_size", 1),
+            "derivation": "hazard post-processing consumes existing simulation outputs; seed derivation is inherited from the source run",
+        },
+        "terrain": {
+            "terrain_type": terrain.get("type"),
+            "path": terrain.get("path"),
+            "crs": None,
+            "vertical_datum": None,
+            "resolution_m": parameters.get("cell_size_m") or parameters.get("cellsize"),
+        },
+        "outputs": outputs,
+        "warnings": warnings,
+        "grid": dict(metadata.get("grid", {}), source=grid_source),
+        "inputs": metadata.get("inputs", {}),
+        "layers": [
+            {
+                "key": layer.key,
+                "source": layer_source(layer.key),
+                "units": layer.units,
+                "summary": summarize_layer(layer),
+            }
+            for layer in layers
+        ],
+    }
+
+
+def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, Any]:
+    return {
+        "kind": kind,
+        "format": format_name,
+        "path": str(path),
+        "file_count": 1,
+        "total_bytes": path.stat().st_size if path.exists() else 0,
+        "row_count": None,
+        "skipped_empty_files": None,
+    }
+
+
+def layer_source(layer_key: str) -> str:
+    if layer_key in {"reach_probability", "max_kinetic_energy", "max_jump_height"}:
+        return "trajectory_csv"
+    if layer_key == "deposition_density":
+        return "ensemble_deposition_csv"
+    if layer_key == "significant_impact_density":
+        return "impact_event_csv"
+    return "unknown"
 
 
 def summarize_layer(layer: RasterLayer) -> dict[str, float | int | None]:

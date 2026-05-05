@@ -93,7 +93,7 @@ The repository separates:
 - validation: real-world and synthetic validation cases under `validation/`
 - calibration: future explicit parameter-fitting experiments only
 
-Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes small public-derived validation fixtures for Tschamut 2014 and Chant Sura 2020. Tschamut is used for deposition/runout distribution diagnostics on a lightweight terrain proxy. Chant Sura includes a first-flight kinematic subset, a small RF16 DEM-backed segmented-contact subset, and an extended multi-trajectory RF16 contact subset for contact-model comparison. These fixtures are research validation diagnostics, not calibrated field validation or operational hazard assessment.
+Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes small public-derived validation fixtures for Tschamut 2014 and Chant Sura 2020. Tschamut is used for deposition/runout distribution diagnostics on a lightweight terrain proxy. Chant Sura includes a first-flight kinematic subset, small RF16 DEM-backed segmented-contact subsets, and a held-out RF16 contact subset for contact-model generalization checks. These fixtures are research validation diagnostics, not calibrated field validation or operational hazard assessment.
 
 The default CI/local suite should run:
 
@@ -169,6 +169,12 @@ python3 scripts/build_hazard_layers.py \
 ```
 
 Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, and significant impact density when impact events are available. These are hazard indicators only, not risk maps and not operational Swiss hazard products.
+
+The hazard builder writes both metadata JSON and a `run_manifest_v1` sidecar.
+For larger pilot-style runs, pass the explicit grid arguments
+`--grid-xmin`, `--grid-ymin`, `--grid-ncols`, `--grid-nrows`, and
+`--grid-cell-size` so all layers use a fixed reference grid instead of
+auto-discovered bounds.
 
 Future Swiss pilot workflows should use authoritative swisstopo geodata,
 especially swissALTI3D for bare-earth terrain. The current repository contains

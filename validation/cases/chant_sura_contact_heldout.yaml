@@ -1,0 +1,79 @@
+case_id: validation_chant_sura_contact_heldout
+title: Chant Sura held-out DEM-backed contact subset
+level: 5
+description: Held-out Chant Sura validation experiment using trajectories disjoint from the model-selection contact subsets. The case uses reconstructed local-time-reset flight segments that remain inside the small RF16 DEM crop and treats segment boundaries as contact/rebound proxies for default translational_v0 evaluation.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact_heldout.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [0.992105262795, -3.37105263147, -1.99925789473]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.005, t_max: 1.55, max_steps: 310, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: held-out-trajectory-contact-level
+  note: "Held-out model-comparison fixture only. Uses 15 reconstructed flight segments and 9 segment-boundary contact/rebound proxies from six public Chant Sura trajectories not used in the model-selection contact subset."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points_contact_heldout.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv
+  contact_events_csv: validation/data/processed/chant_sura_2020/observed_contact_events_heldout.csv
+expected:
+  metrics:
+    - validation_trajectory_count
+    - observed_trajectory_sample_count
+    - trajectory_shape_mean_error_m
+    - trajectory_shape_p95_error_m
+    - trajectory_shape_max_error_m
+    - trajectory_final_position_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_max_jump_height_mean_error_m
+    - trajectory_jump_height_envelope_error_m
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - impact_timing_p95_error_s
+    - rebound_velocity_mean_error_mps
+    - rebound_velocity_p95_error_mps
+    - post_impact_energy_change_mean_error_j
+  values:
+    validation_trajectory_count: 15.0
+    observed_trajectory_sample_count: 765.0
+    observed_contact_event_count: 9.0
+    contact_event_compared_count: 9.0
+  maximums:
+    trajectory_shape_mean_error_m: 12.0
+    trajectory_shape_p95_error_m: 30.0
+    trajectory_shape_max_error_m: 40.0
+    trajectory_final_position_mean_error_m: 30.0
+    trajectory_energy_mean_relative_error: 12.0
+    trajectory_max_jump_height_mean_error_m: 10.0
+    trajectory_jump_height_envelope_error_m: 10.0
+    impact_timing_mean_error_s: 1.2
+    impact_timing_p95_error_s: 1.8
+    rebound_velocity_mean_error_mps: 30.0
+    rebound_velocity_p95_error_mps: 40.0
+    post_impact_energy_change_mean_error_j: 250000.0
+outputs:
+  diagnostics_json: validation/results/chant_sura_contact_heldout_metrics.json
+  trajectory_csv: validation/results/chant_sura_contact_heldout_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  literature:
+    - "Caviezel, A. et al. (2020). Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland. EnviDat. https://doi.org/10.16904/envidat.174."
+  notes:
+    - "Held-out source trajectories: RF16W200r2, RF18W200r4, RF20e200r2, RF20e200r5, RF16W800r2, and RF18W800r1."
+    - "No source trajectory overlaps the model-selection contact subset recorded in metadata_contact_split.json."
+    - "Segment boundaries are contact/rebound proxies inferred from local time resets, not direct impact sensor labels."
+    - "This is an independent model-comparison fixture and is not calibrated field validation or operational hazard assessment."
+report:
+  verifies:
+    - "Whether the contact-model ranking from the Chant Sura model-selection subset generalizes to disjoint source trajectories."
+    - "Trajectory shape, kinetic-energy evolution, jump-height envelope, rebound velocity, and impact timing on a real DEM crop."
+  does_not_verify:
+    - "Statistical significance, full runout, deposition, instrumented impact timing, shape effects, calibrated roughness/scarring, or operational hazard skill."

@@ -64,7 +64,9 @@ trajectory realism.
    has been implemented as both a small RF16W200r1 experiment in
    `validation/cases/chant_sura_contact.yaml` and an extended multi-trajectory
    experiment in `validation/cases/chant_sura_contact_extended.yaml`. Both are
-   documented in `docs/chant_sura_contact_validation.md`. The fixtures expose
+   documented in `docs/chant_sura_contact_validation.md`. A held-out split in
+   `docs/chant_sura_contact_generalization.md` now tests whether the rotational
+   contact result generalizes to disjoint trajectory IDs. The fixtures expose
    the model to real terrain-contact timing, but remain qualitative subsets
    rather than full-campaign validation.
 2. **Observed impact-event alignment beyond segment-boundary proxies.** The

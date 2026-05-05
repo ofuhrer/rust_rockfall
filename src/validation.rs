@@ -4,6 +4,10 @@ use crate::{
     dynamics::{ContactModel, SoilInteractionModel},
     geometry::SphereBlock,
     io,
+    manifest::{
+        OutputManifest, RunManifest, SeedPolicyManifest, TerrainManifest,
+        RUN_MANIFEST_SCHEMA_VERSION,
+    },
     simulation::{
         simulate_ensemble, simulate_one_trajectory_with_terrain, SimulationConfig, SimulationError,
         TerrainConfig, TrajectoryRequest, TrajectoryRun,
@@ -33,6 +37,8 @@ pub fn free_flight_state(initial: BodyState, gravity_mps2: f64, time_s: f64) -> 
 }
 
 pub const SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
+const OUTPUT_FILE_WARNING_THRESHOLD: usize = 1_000;
+const OUTPUT_FILE_HIGH_WARNING_THRESHOLD: usize = 10_000;
 
 pub fn translational_energy_j(state: &BodyState, block: &SphereBlock) -> f64 {
     0.5 * block.mass_kg * state.velocity_mps.norm_squared()
@@ -275,6 +281,8 @@ pub struct OutputConfig {
     #[serde(default, alias = "metrics_json")]
     pub diagnostics_json: Option<PathBuf>,
     #[serde(default)]
+    pub manifest_json: Option<PathBuf>,
+    #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
     #[serde(default)]
     pub ensemble_deposition_csv: Option<PathBuf>,
@@ -456,6 +464,7 @@ pub fn run_case_file(path: impl AsRef<Path>) -> Result<CaseReport, ValidationErr
 
 pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut warnings = Vec::new();
+    let mut output_entries = Vec::new();
     let observations = match load_observations(case, &mut warnings)? {
         ObservationLoad::Loaded(data) => data,
         ObservationLoad::MissingRequired(path) => {
@@ -468,6 +477,16 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             )?;
             if let Some(path) = &case.outputs.diagnostics_json {
                 write_report(path, &report)?;
+                output_entries.push(file_output_manifest(
+                    path,
+                    "diagnostics",
+                    "json",
+                    Some(report.metrics.len()),
+                    None,
+                )?);
+            }
+            if let Some(path) = &case.outputs.manifest_json {
+                write_run_manifest(path, case, &report, output_entries)?;
             }
             return Ok(report);
         }
@@ -487,12 +506,33 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let result = config.run()?;
     if let Some(path) = &case.outputs.trajectory_csv {
         io::write_trajectory_csv(path, &result.samples)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "trajectory",
+            "csv",
+            Some(result.samples.len()),
+            None,
+        )?);
     }
     if let Some(path) = &case.outputs.impact_events_csv {
         io::write_impact_events_csv(path, &result.impact_events)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "impact_events",
+            "csv",
+            Some(result.impact_events.len()),
+            None,
+        )?);
     }
     if let Some(path) = &case.outputs.impact_events_json {
         io::write_impact_events_json(path, &result.impact_events)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "impact_events",
+            "json",
+            Some(result.impact_events.len()),
+            None,
+        )?);
     }
 
     let samples = &result.samples;
@@ -514,8 +554,15 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         observations: &observations.deposition_points,
         expected: &case.expected,
     });
-    compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
-    compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
+    compute_ensemble_metrics(case, &mut metrics, &mut warnings, &mut output_entries)?;
+    compute_validation_ensemble_metrics(
+        case,
+        &config,
+        &observations,
+        &mut metrics,
+        &mut warnings,
+        &mut output_entries,
+    )?;
     compute_observed_trajectory_metrics(case, &config, &observations, &mut metrics)?;
     compute_observed_contact_metrics(case, &config, &observations, &mut metrics)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
@@ -548,6 +595,17 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
 
     if let Some(path) = &case.outputs.diagnostics_json {
         write_report(path, &report)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "diagnostics",
+            "json",
+            Some(report.metrics.len()),
+            None,
+        )?);
+    }
+
+    if let Some(path) = &case.outputs.manifest_json {
+        write_run_manifest(path, case, &report, output_entries)?;
     }
 
     Ok(report)
@@ -559,6 +617,119 @@ pub fn write_report(path: impl AsRef<Path>, report: &CaseReport) -> Result<(), V
     }
     fs::write(path, serde_json::to_string_pretty(report)?)?;
     Ok(())
+}
+
+fn write_run_manifest(
+    path: impl AsRef<Path>,
+    case: &BenchmarkCase,
+    report: &CaseReport,
+    outputs: Vec<OutputManifest>,
+) -> Result<(), ValidationError> {
+    let manifest = build_run_manifest(case, report, outputs);
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serde_json::to_string_pretty(&manifest)?)?;
+    Ok(())
+}
+
+fn build_run_manifest(
+    case: &BenchmarkCase,
+    report: &CaseReport,
+    outputs: Vec<OutputManifest>,
+) -> RunManifest {
+    RunManifest {
+        schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
+        created_unix_s: report.timestamp_unix_s,
+        case_id: case.case_id.clone(),
+        model_version: report.model_version.clone(),
+        git_hash: report.git_hash.clone(),
+        config_fingerprint: report.parameters.config_fingerprint().ok(),
+        completion_status: case_status_text(report.status).to_string(),
+        seed_policy: SeedPolicyManifest {
+            global_seed: case.random.seed,
+            ensemble_size: case.random.ensemble_size.max(1),
+            derivation:
+                "single trajectories use random.seed directly; ensembles derive trajectory seeds from global seed, case ID, and trajectory ID"
+                    .to_string(),
+        },
+        terrain: TerrainManifest {
+            terrain_type: case.terrain.terrain_type.clone(),
+            path: case
+                .terrain
+                .path
+                .as_ref()
+                .map(|path| path.to_string_lossy().to_string()),
+            crs: None,
+            vertical_datum: None,
+            resolution_m: terrain_resolution_m(&case.terrain),
+        },
+        outputs,
+        warnings: report.warnings.clone(),
+    }
+}
+
+fn case_status_text(status: CaseStatus) -> &'static str {
+    match status {
+        CaseStatus::Passed => "passed",
+        CaseStatus::Failed => "failed",
+        CaseStatus::Skipped => "skipped",
+    }
+}
+
+fn terrain_resolution_m(terrain: &CaseTerrain) -> Option<f64> {
+    terrain
+        .parameters
+        .get("cell_size_m")
+        .copied()
+        .or_else(|| terrain.parameters.get("cellsize").copied())
+}
+
+fn file_output_manifest(
+    path: impl AsRef<Path>,
+    kind: &str,
+    format: &str,
+    row_count: Option<usize>,
+    skipped_empty_files: Option<usize>,
+) -> Result<OutputManifest, ValidationError> {
+    Ok(OutputManifest {
+        kind: kind.to_string(),
+        format: format.to_string(),
+        path: path.as_ref().to_string_lossy().to_string(),
+        file_count: 1,
+        total_bytes: fs::metadata(path.as_ref())?.len(),
+        row_count,
+        skipped_empty_files,
+    })
+}
+
+fn warn_large_debug_outputs(
+    case: &BenchmarkCase,
+    expected_files: usize,
+    warnings: &mut Vec<String>,
+) {
+    if expected_files < OUTPUT_FILE_WARNING_THRESHOLD {
+        return;
+    }
+    let mut configured_outputs = Vec::new();
+    if case.outputs.ensemble_trajectories_dir.is_some() {
+        configured_outputs.push("ensemble_trajectories_dir");
+    }
+    if case.outputs.ensemble_impact_events_dir.is_some() {
+        configured_outputs.push("ensemble_impact_events_dir");
+    }
+    if configured_outputs.is_empty() {
+        return;
+    }
+    let severity = if expected_files >= OUTPUT_FILE_HIGH_WARNING_THRESHOLD {
+        "high"
+    } else {
+        "medium"
+    };
+    warnings.push(format!(
+        "{severity}-scale debug output warning: configured {} may create up to {expected_files} per-trajectory CSV files; use these outputs for inspection, not production-scale hazard generation",
+        configured_outputs.join(" and ")
+    ));
 }
 
 fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, ValidationError> {
@@ -871,6 +1042,7 @@ fn compute_ensemble_metrics(
     case: &BenchmarkCase,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
+    output_entries: &mut Vec<OutputManifest>,
 ) -> Result<(), ValidationError> {
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
@@ -916,11 +1088,15 @@ fn compute_ensemble_metrics(
         &trajectory_ids,
     )?;
     if case.observations.is_none() {
+        warn_large_debug_outputs(case, ensemble_size, warnings);
         if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
-            write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?;
+            output_entries.push(write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?);
         }
         if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
-            write_ensemble_impact_events_dir(dir, &ensemble.trajectories)?;
+            output_entries.push(write_ensemble_impact_events_dir(
+                dir,
+                &ensemble.trajectories,
+            )?);
         }
     }
     let mut runouts = ensemble
@@ -979,12 +1155,15 @@ fn compute_validation_ensemble_metrics(
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
+    output_entries: &mut Vec<OutputManifest>,
 ) -> Result<(), ValidationError> {
     if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
         return Ok(());
     }
 
     let ensemble_size = case.random.ensemble_size.max(1);
+    let expected_debug_files = observations.release_points.len() * ensemble_size;
+    warn_large_debug_outputs(case, expected_debug_files, warnings);
     let global_seed = case.random.seed.unwrap_or(0);
     let terrain = base_config.terrain.build()?;
     let mut runs = Vec::with_capacity(observations.release_points.len() * ensemble_size);
@@ -1012,12 +1191,19 @@ fn compute_validation_ensemble_metrics(
 
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
         write_ensemble_deposition_csv(path, &deposition_rows)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "ensemble_deposition",
+            "csv",
+            Some(deposition_rows.len()),
+            None,
+        )?);
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
-        write_ensemble_trajectory_dir(dir, &runs)?;
+        output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
     }
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
-        write_ensemble_impact_events_dir(dir, &runs)?;
+        output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
     }
 
     compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
@@ -1347,30 +1533,58 @@ fn write_ensemble_deposition_csv(
 fn write_ensemble_trajectory_dir(
     dir: impl AsRef<Path>,
     runs: &[TrajectoryRun],
-) -> Result<(), ValidationError> {
+) -> Result<OutputManifest, ValidationError> {
     fs::create_dir_all(dir.as_ref())?;
+    let mut total_bytes = 0_u64;
+    let mut row_count = 0_usize;
     for run in runs {
         let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
         let path = dir.as_ref().join(filename);
         io::write_trajectory_csv(&path, &run.samples)?;
+        total_bytes += fs::metadata(&path)?.len();
+        row_count += run.samples.len();
     }
-    Ok(())
+    Ok(OutputManifest {
+        kind: "ensemble_trajectories".to_string(),
+        format: "csv_directory".to_string(),
+        path: dir.as_ref().to_string_lossy().to_string(),
+        file_count: runs.len(),
+        total_bytes,
+        row_count: Some(row_count),
+        skipped_empty_files: Some(0),
+    })
 }
 
 fn write_ensemble_impact_events_dir(
     dir: impl AsRef<Path>,
     runs: &[TrajectoryRun],
-) -> Result<(), ValidationError> {
+) -> Result<OutputManifest, ValidationError> {
     fs::create_dir_all(dir.as_ref())?;
+    let mut file_count = 0_usize;
+    let mut total_bytes = 0_u64;
+    let mut row_count = 0_usize;
+    let mut skipped_empty_files = 0_usize;
     for run in runs {
         if run.impact_events.is_empty() {
+            skipped_empty_files += 1;
             continue;
         }
         let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
         let path = dir.as_ref().join(filename);
         io::write_impact_events_csv(&path, &run.impact_events)?;
+        file_count += 1;
+        total_bytes += fs::metadata(&path)?.len();
+        row_count += run.impact_events.len();
     }
-    Ok(())
+    Ok(OutputManifest {
+        kind: "ensemble_impact_events".to_string(),
+        format: "csv_directory".to_string(),
+        path: dir.as_ref().to_string_lossy().to_string(),
+        file_count,
+        total_bytes,
+        row_count: Some(row_count),
+        skipped_empty_files: Some(skipped_empty_files),
+    })
 }
 
 fn safe_filename(text: &str) -> String {
@@ -2005,5 +2219,61 @@ fn git_hash() -> Option<String> {
         None
     } else {
         Some(hash)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn large_debug_output_warnings_are_nonfatal_and_thresholded() {
+        let mut case = BenchmarkCase {
+            case_id: "warning_case".to_string(),
+            title: String::new(),
+            level: None,
+            description: String::new(),
+            terrain: CaseTerrain {
+                terrain_type: "plane".to_string(),
+                ..CaseTerrain::default()
+            },
+            block: CaseBlock {
+                mass: Some(1.0),
+                radius: Some(0.5),
+            },
+            release: CaseRelease::default(),
+            parameters: CaseParameters::default(),
+            simulation: CaseSimulation::default(),
+            random: CaseRandom::default(),
+            observations: None,
+            validation_scope: None,
+            expected: ExpectedConfig::default(),
+            metrics: Vec::new(),
+            outputs: OutputConfig {
+                ensemble_trajectories_dir: Some(PathBuf::from("trajectory_debug")),
+                ensemble_impact_events_dir: Some(PathBuf::from("impact_debug")),
+                ..OutputConfig::default()
+            },
+            references: ReferenceConfig::default(),
+        };
+        let mut warnings = Vec::new();
+        warn_large_debug_outputs(&case, OUTPUT_FILE_WARNING_THRESHOLD - 1, &mut warnings);
+        assert!(warnings.is_empty());
+
+        warn_large_debug_outputs(&case, OUTPUT_FILE_WARNING_THRESHOLD, &mut warnings);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("medium-scale debug output warning"));
+        assert!(warnings[0].contains("ensemble_trajectories_dir and ensemble_impact_events_dir"));
+
+        warnings.clear();
+        warn_large_debug_outputs(&case, OUTPUT_FILE_HIGH_WARNING_THRESHOLD, &mut warnings);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("high-scale debug output warning"));
+
+        case.outputs.ensemble_trajectories_dir = None;
+        case.outputs.ensemble_impact_events_dir = None;
+        warnings.clear();
+        warn_large_debug_outputs(&case, OUTPUT_FILE_HIGH_WARNING_THRESHOLD, &mut warnings);
+        assert!(warnings.is_empty());
     }
 }

@@ -1,0 +1,44 @@
+{
+  "calibration_policy": "No calibration data or parameter tuning are used in this split.",
+  "dataset_id": "chant_sura_2020",
+  "doi": "https://doi.org/10.16904/envidat.174",
+  "held_out_evaluation_subset": {
+    "cases": [
+      "validation/cases/chant_sura_contact_heldout.yaml",
+      "validation/cases/chant_sura_contact_heldout_rotational.yaml"
+    ],
+    "role": "Independent trajectory-level evaluation of the contact-model recommendation.",
+    "trajectory_ids": [
+      "RF16W200r2",
+      "RF18W200r4",
+      "RF20e200r2",
+      "RF20e200r5",
+      "RF16W800r2",
+      "RF18W800r1"
+    ]
+  },
+  "model_selection_subset": {
+    "cases": [
+      "validation/cases/chant_sura_contact.yaml",
+      "validation/cases/chant_sura_contact_rotational.yaml",
+      "validation/cases/chant_sura_contact_extended.yaml",
+      "validation/cases/chant_sura_contact_extended_rotational.yaml"
+    ],
+    "role": "Used to choose/recommend contact-model options before held-out evaluation.",
+    "trajectory_ids": [
+      "RF16W200r1",
+      "RF16W200r3",
+      "RF18W200r1",
+      "RF18W800r6",
+      "RF20e200r1"
+    ]
+  },
+  "overlap": [],
+  "selection_constraints": [
+    "No trajectory ID overlap between model-selection and held-out subsets.",
+    "Held-out trajectories include W200 and W800 mass classes where available inside the RF16 DEM crop.",
+    "All included segments have at least 90% of samples inside the RF16 DEM crop.",
+    "Segment boundaries remain contact/rebound proxies, not direct instrumented impacts."
+  ],
+  "split_method": "Deterministic trajectory-level split constrained to trajectories with early local-time-reset segments inside the checked-in RF16 DEM crop."
+}

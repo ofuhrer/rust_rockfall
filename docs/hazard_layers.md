@@ -23,6 +23,7 @@ Exports:
 - CSV grid with row, column, cell center, and value.
 - ESRI ASCII grid for lightweight GIS-style inspection.
 - GeoJSON point file for deposition locations.
+- JSON metadata and `run_manifest_v1` provenance sidecars.
 - PNG layer plots when `matplotlib` is available.
 - A local `index.html` report.
 
@@ -52,6 +53,21 @@ Open the generated report locally:
 
 ```bash
 open hazard/results/tschamut_baseline/index.html
+```
+
+For production-style tile experiments, provide an explicit reference grid. When
+all explicit-grid arguments are supplied, they override `--cell-size` for grid
+construction and the metadata/manifest record `source: explicit`:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/validation_tschamut_baseline.yaml \
+  --output-dir hazard/results/tschamut_baseline \
+  --grid-xmin 0 \
+  --grid-ymin 0 \
+  --grid-ncols 100 \
+  --grid-nrows 100 \
+  --grid-cell-size 5
 ```
 
 ## How to Read the Layers
@@ -99,6 +115,13 @@ contain CSV files. This is the recommended mode for scientifically meaningful
 small-to-medium ensemble reach, energy, jump-height, and significant-impact
 layers. Keep it disabled for default CI-scale runs unless the extra files are
 needed.
+
+The hazard builder uses streaming CSV passes for raster accumulation. In
+auto-grid mode it first scans inputs to discover bounds, then streams the same
+inputs into accumulators. In explicit-grid mode it skips the bounds scan and
+streams directly into the provided grid. Full trajectory and impact rows are not
+retained in memory; deposition points are still retained for the small GeoJSON
+debug export.
 
 The workflow supports analytic plane/paraboloid/step terrain and ESRI ASCII DEM
 terrain for jump-height estimation. Unsupported terrain metadata leaves

@@ -147,7 +147,7 @@ datasets:
       - geospatial files
       - sensor streams
       - xlsx
-    download_status: small_processed_trajectory_and_extended_contact_subsets_checked_in
+    download_status: small_processed_trajectory_contact_and_heldout_subsets_checked_in
     local_path: data/raw/chant_sura_2020
     processed_path: data/processed/chant_sura_2020
     intended_validation_use:
@@ -163,6 +163,7 @@ datasets:
       - Only the first monotonic time segment is used because the public output text files concatenate jump segments with local time resets.
       - Current checked-in contact subset uses the first three RF16W200r1 local-time-reset segments and a small ASCII-grid crop from the public RF16 UAS DEM in Input.7z.
       - Extended checked-in contact subset uses five selected trajectories, 16 local-time-reset segments, and 11 segment-boundary contact/rebound proxies that remain inside the same RF16 DEM crop.
+      - Held-out checked-in contact subset uses six disjoint trajectories, 15 segments, and 9 contact/rebound proxies; metadata_contact_split.json records the deterministic split.
       - The large Input.7z archive remains ignored raw data; only the tiny derived DEM crop is committed as a validation fixture.
       - EOTA shape files are summarized as metadata for future non-spherical model development; v0.5.0 still uses equivalent spheres.
     resources:

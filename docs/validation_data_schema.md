@@ -27,7 +27,7 @@ Required case fields:
 - optional `validation_scope.type` and `validation_scope.note` for real-world cases
 - optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`, `observations.contact_events_csv`
 - `expected.metrics`, `expected.tolerances`
-- `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
+- `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.manifest_json`, optional `outputs.ensemble_deposition_csv`
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
@@ -127,6 +127,12 @@ When `outputs.ensemble_impact_events_dir` is set, validation writes deterministi
 per-trajectory impact-event CSV files for ensemble members that produced impact
 events. Hazard-layer significant-impact density should use this directory when
 full-ensemble impact density is needed.
+
+When `outputs.manifest_json` is set, verification or validation writes an
+additive `run_manifest_v1` sidecar. The manifest records the case id, model
+version, git hash, config fingerprint, seed policy, terrain source, output file
+summaries, warnings, and completion status. It does not replace diagnostics JSON
+or change pass/fail semantics.
 
 Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
 

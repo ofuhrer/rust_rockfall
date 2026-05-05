@@ -15,7 +15,7 @@
   "experiment_id": "chant_sura_2020_contact_extended",
   "limitations": [
     "Small multi-trajectory fixture constrained to the RF16 DEM crop.",
-    "The extended subset improves contact-event count but still uses segment-boundary proxies.",
+    "This segmented subset improves contact-event count but still uses segment-boundary proxies.",
     "No calibration data are mixed into this validation fixture.",
     "The current sphere model cannot represent EOTA rock shape."
   ],
@@ -29,6 +29,7 @@
     "Output/txt/RF20e200r1.txt",
     "terrain_rf16_contact.asc derived from the public RF16 UAS DEM"
   ],
+  "split_role": "model_selection",
   "terrain_crs": "EPSG:2056 / CH1903+ LV95 inherited from the RF16 UAS DEM crop; heights are metres from the source DEM.",
   "terrain_fixture": "terrain_rf16_contact_extended.asc",
   "trajectory_sample_count": 816,

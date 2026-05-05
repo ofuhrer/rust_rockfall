@@ -16,8 +16,10 @@ The new contact experiment adds a small real-terrain fixture:
 - `validation/cases/chant_sura_contact_extended_rotational.yaml`
 - `validation/cases/chant_sura_contact_extended_roughness.yaml`
 - `validation/cases/chant_sura_contact_extended_scarring.yaml`
+- `validation/cases/chant_sura_contact_heldout.yaml`
+- `validation/cases/chant_sura_contact_heldout_rotational.yaml`
 
-These cases keep the first-flight subset unchanged. The original contact fixture uses a separate RF16W200r1 segmented fixture; the extended fixture uses five source trajectories whose early segments remain inside the RF16 DEM crop. The core contact diagnostics are impact timing, rebound velocity, and post-impact energy change.
+These cases keep the first-flight subset unchanged. The original contact fixture uses a separate RF16W200r1 segmented fixture; the extended fixture uses five source trajectories whose early segments remain inside the RF16 DEM crop; the held-out fixture uses six disjoint source trajectories to test whether the `sphere_rotational_v1` recommendation generalizes. The core contact diagnostics are impact timing, rebound velocity, and post-impact energy change.
 
 ## Data And Terrain
 
@@ -40,6 +42,12 @@ Checked-in derived fixture:
 - `validation/data/processed/chant_sura_2020/observed_trajectories_contact_extended.csv`
 - `validation/data/processed/chant_sura_2020/observed_contact_events_extended.csv`
 - `validation/data/processed/chant_sura_2020/metadata_contact_extended.json`
+- `validation/data/processed/chant_sura_2020/terrain_rf16_contact_heldout.asc`
+- `validation/data/processed/chant_sura_2020/release_points_contact_heldout.csv`
+- `validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv`
+- `validation/data/processed/chant_sura_2020/observed_contact_events_heldout.csv`
+- `validation/data/processed/chant_sura_2020/metadata_contact_heldout.json`
+- `validation/data/processed/chant_sura_2020/metadata_contact_split.json`
 
 The terrain crop is a small ESRI ASCII grid derived with `gdal_translate` from the public RF16 UAS DEM. The source GeoTIFF reports EPSG:2056 / CH1903+ LV95. Heights are in metres and are treated as source DEM elevations without vertical transformation. The fixture uses the trajectory coordinates directly because both the DEM and reconstructed trajectory use LV95-scale coordinates.
 
@@ -77,6 +85,17 @@ The extended fixture adds segments selected from:
 - `RF20e200r1`
 
 It includes 16 reconstructed flight segments, 816 trajectory samples, and 11 segment-boundary contact/rebound proxies. Segment detection still uses local time resets, but segments are retained only when at least 90% of samples fall within the small RF16 DEM crop. This gives more impact-angle, velocity, and mass variation while keeping the fixture small enough for regular validation runs.
+
+The held-out fixture uses disjoint source trajectories:
+
+- `RF16W200r2`
+- `RF18W200r4`
+- `RF20e200r2`
+- `RF20e200r5`
+- `RF16W800r2`
+- `RF18W800r1`
+
+It includes 15 reconstructed flight segments, 765 trajectory samples, and 9 segment-boundary contact/rebound proxies. The split is persisted in `metadata_contact_split.json`; no held-out trajectory ID overlaps the model-selection subset.
 
 ## Metrics
 
@@ -126,6 +145,15 @@ Extended fixture results:
 
 The extended fixture preserves the main conclusion: `sphere_rotational_v1` improves trajectory shape and kinetic-energy evolution, but it does not improve rebound velocity or jump-height envelope. Roughness and scarring affect individual contact metrics but do not improve shape or energy in this uncalibrated comparison. The larger event count makes this ranking less dependent on the original two contact proxies, but it is still not a formal statistical significance test.
 
+Held-out fixture results:
+
+| Case | Contact option | Shape mean error (m) | Energy relative error | Jump envelope error (m) | Impact timing mean error (s) | Rebound velocity mean error (m/s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `validation_chant_sura_contact_heldout` | `translational_v0` | 0.505 | 0.440 | 0.713 | 0.474 | 4.099 |
+| `validation_chant_sura_contact_heldout_rotational` | `sphere_rotational_v1` | 0.475 | 0.391 | 0.744 | 0.477 | 4.150 |
+
+The held-out result supports generalization of the trajectory-level improvement: rotational contact again lowers shape and kinetic-energy error. It still does not improve jump-height envelope, rebound velocity, or impact timing, so it strengthens the opt-in recommendation without justifying a default change.
+
 ## Interpretation
 
 This fixture answers a narrower question than full field validation:
@@ -145,7 +173,7 @@ The remaining errors are scientifically meaningful:
 ## Limitations
 
 - The original RF16W200r1 contact fixture includes only one trajectory and two segment-boundary contact proxies.
-- The extended fixture improves coverage to five trajectories and 11 contact proxies, but remains a small subset constrained to one DEM crop.
+- The extended fixture improves coverage to five trajectories and 11 contact proxies, and the held-out fixture adds six disjoint trajectories and 9 contact proxies, but both remain small subsets constrained to one DEM crop.
 - Segment boundaries are inferred from local time resets, not from a direct impact sensor event table.
 - The fixture uses an equivalent sphere and cannot represent EOTA rock shape.
 - The full public Input archive is large and remains ignored raw data.

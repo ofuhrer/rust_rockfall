@@ -9,6 +9,7 @@ pub mod dynamics;
 pub mod geometry;
 pub mod integrator;
 pub mod io;
+pub mod manifest;
 pub mod simulation;
 pub mod state;
 pub mod stochastic;

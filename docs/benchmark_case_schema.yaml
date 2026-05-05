@@ -69,6 +69,7 @@ expected:
 outputs:
   trajectory_csv: verification/results/example.csv
   diagnostics_json: verification/results/example.json
+  manifest_json: verification/results/example_manifest.json
   ensemble_deposition_csv: null
   ensemble_trajectories_dir: null
   ensemble_impact_events_dir: null

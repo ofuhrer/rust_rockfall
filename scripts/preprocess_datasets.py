@@ -49,6 +49,15 @@ CHANT_SURA_CONTACT_EXTENDED_TRAJECTORIES = [
 ]
 CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID = "chant_sura_2020_contact_extended"
 CHANT_SURA_CONTACT_EXTENDED_MIN_INSIDE_FRACTION = 0.9
+CHANT_SURA_CONTACT_HELDOUT_TRAJECTORIES = [
+    ("RF16W200r2", 2),
+    ("RF18W200r4", 3),
+    ("RF20e200r2", 3),
+    ("RF20e200r5", 3),
+    ("RF16W800r2", 2),
+    ("RF18W800r1", 2),
+]
+CHANT_SURA_CONTACT_HELDOUT_EXPERIMENT_ID = "chant_sura_2020_contact_heldout"
 
 
 def write_synthetic_fixture() -> None:
@@ -76,9 +85,17 @@ def write_synthetic_fixture() -> None:
 
 def write_csv(path: Path, header: list[str], rows: list[list[str]]) -> None:
     with path.open("w", newline="") as file:
-        writer = csv.writer(file)
+        writer = csv.writer(file, lineterminator="\n")
         writer.writerow(header)
         writer.writerows(rows)
+
+
+def normalize_trailing_whitespace(path: Path) -> None:
+    """Normalize generated text fixtures without changing numeric content."""
+
+    text = path.read_text(encoding="utf-8")
+    lines = [line.rstrip() for line in text.splitlines()]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def inventory_archives(dataset_id: str) -> None:
@@ -337,6 +354,7 @@ def preprocess_chant_sura_2020() -> None:
         write_chant_sura_metadata(out / "metadata.json", len(CHANT_SURA_TRAJECTORY_IDS), len(trajectory_rows), bool(shape_rows))
     write_chant_sura_contact_fixture(raw_dir, output_archive)
     write_chant_sura_contact_extended_fixture(raw_dir, output_archive)
+    write_chant_sura_contact_heldout_fixture(raw_dir, output_archive)
     print("wrote Chant Sura validation subset to data/processed/chant_sura_2020 and validation/data/processed/chant_sura_2020")
 
 
@@ -496,8 +514,83 @@ def write_chant_sura_contact_extended_fixture(raw_dir: Path, output_archive: Pat
         return
 
     extent = read_ascii_grid_extent(source_terrain)
+    selected = select_chant_sura_contact_segments(
+        output_archive,
+        CHANT_SURA_CONTACT_EXTENDED_TRAJECTORIES,
+        extent,
+        "extended",
+    )
+
+    for out in (
+        ROOT / "data" / "processed" / "chant_sura_2020",
+        ROOT / "validation" / "data" / "processed" / "chant_sura_2020",
+    ):
+        out.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_terrain, out / "terrain_rf16_contact_extended.asc")
+        write_chant_sura_contact_segmented_rows(
+            out,
+            selected,
+            extent,
+            suffix="extended",
+            experiment_id=CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID,
+            terrain_fixture="terrain_rf16_contact_extended.asc",
+            split_role="model_selection",
+        )
+    print("wrote extended Chant Sura DEM-backed contact fixture")
+
+
+def write_chant_sura_contact_heldout_fixture(raw_dir: Path, output_archive: Path) -> None:
+    """Write the independent held-out Chant Sura contact fixture.
+
+    The held-out trajectories are disjoint from the model-selection trajectories
+    used by the existing contact and extended contact fixtures. The same RF16 DEM
+    crop is reused so only public trajectory output is needed to regenerate the
+    small fixture.
+    """
+
+    source_terrain = (
+        ROOT / "validation" / "data" / "processed" / "chant_sura_2020" / "terrain_rf16_contact.asc"
+    )
+    if not source_terrain.exists():
+        print("skip Chant Sura held-out contact fixture: terrain_rf16_contact.asc is missing")
+        return
+
+    extent = read_ascii_grid_extent(source_terrain)
+    selected = select_chant_sura_contact_segments(
+        output_archive,
+        CHANT_SURA_CONTACT_HELDOUT_TRAJECTORIES,
+        extent,
+        "held-out",
+    )
+
+    for out in (
+        ROOT / "data" / "processed" / "chant_sura_2020",
+        ROOT / "validation" / "data" / "processed" / "chant_sura_2020",
+    ):
+        out.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_terrain, out / "terrain_rf16_contact_heldout.asc")
+        normalize_trailing_whitespace(out / "terrain_rf16_contact_heldout.asc")
+        write_chant_sura_contact_segmented_rows(
+            out,
+            selected,
+            extent,
+            suffix="heldout",
+            experiment_id=CHANT_SURA_CONTACT_HELDOUT_EXPERIMENT_ID,
+            terrain_fixture="terrain_rf16_contact_heldout.asc",
+            split_role="held_out_evaluation",
+        )
+        write_chant_sura_contact_split_metadata(out / "metadata_contact_split.json")
+    print("wrote held-out Chant Sura DEM-backed contact fixture")
+
+
+def select_chant_sura_contact_segments(
+    output_archive: Path,
+    trajectory_specs: list[tuple[str, int]],
+    extent: dict[str, float],
+    label: str,
+) -> list[tuple[str, list[list[dict[str, float]]], float, float]]:
     selected: list[tuple[str, list[list[dict[str, float]]], float, float]] = []
-    for trajectory_id, segment_limit in CHANT_SURA_CONTACT_EXTENDED_TRAJECTORIES:
+    for trajectory_id, segment_limit in trajectory_specs:
         text = extract_archive_member(output_archive, f"Output/txt/{trajectory_id}.txt")
         segments = []
         for segment in split_chant_sura_segments(text):
@@ -512,27 +605,23 @@ def write_chant_sura_contact_extended_fixture(raw_dir: Path, output_archive: Pat
                 break
         if len(segments) < 2:
             raise SystemExit(
-                f"extended Chant Sura contact fixture found fewer than two DEM-backed segments for {trajectory_id}"
+                f"{label} Chant Sura contact fixture found fewer than two DEM-backed segments for {trajectory_id}"
             )
         first = segments[0][0]
         mass_kg = infer_mass_kg(first)
         radius_m = equivalent_sphere_radius_m(mass_kg)
         selected.append((trajectory_id, segments, mass_kg, radius_m))
-
-    for out in (
-        ROOT / "data" / "processed" / "chant_sura_2020",
-        ROOT / "validation" / "data" / "processed" / "chant_sura_2020",
-    ):
-        out.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source_terrain, out / "terrain_rf16_contact_extended.asc")
-        write_chant_sura_contact_extended_rows(out, selected, extent)
-    print("wrote extended Chant Sura DEM-backed contact fixture")
+    return selected
 
 
-def write_chant_sura_contact_extended_rows(
+def write_chant_sura_contact_segmented_rows(
     out: Path,
     selected: list[tuple[str, list[list[dict[str, float]]], float, float]],
     extent: dict[str, float],
+    suffix: str,
+    experiment_id: str,
+    terrain_fixture: str,
+    split_role: str,
 ) -> None:
     release_rows = []
     trajectory_rows = []
@@ -547,7 +636,7 @@ def write_chant_sura_contact_extended_rows(
             release_rows.append(
                 [
                     segment_id,
-                    CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID,
+                    experiment_id,
                     fmt(first["x"]),
                     fmt(first["y"]),
                     fmt(first["z"] + radius_m),
@@ -568,7 +657,7 @@ def write_chant_sura_contact_extended_rows(
                 trajectory_rows.append(
                     [
                         segment_id,
-                        CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID,
+                        experiment_id,
                         fmt(sample["time"]),
                         fmt(sample["x"]),
                         fmt(sample["y"]),
@@ -616,7 +705,7 @@ def write_chant_sura_contact_extended_rows(
                 [
                     f"{trajectory_id}_impact_{impact_index:02d}",
                     source_segment_id,
-                    CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID,
+                    experiment_id,
                     source_segment_id,
                     next_segment_id,
                     str(contact_count),
@@ -646,7 +735,7 @@ def write_chant_sura_contact_extended_rows(
             contact_count += 1
 
     write_csv(
-        out / "release_points_contact_extended.csv",
+        out / f"release_points_contact_{suffix}.csv",
         [
             "trajectory_id",
             "experiment_id",
@@ -668,7 +757,7 @@ def write_chant_sura_contact_extended_rows(
         release_rows,
     )
     write_csv(
-        out / "observed_trajectories_contact_extended.csv",
+        out / f"observed_trajectories_contact_{suffix}.csv",
         [
             "trajectory_id",
             "experiment_id",
@@ -697,7 +786,7 @@ def write_chant_sura_contact_extended_rows(
         trajectory_rows,
     )
     write_csv(
-        out / "observed_contact_events_extended.csv",
+        out / f"observed_contact_events_{suffix}.csv",
         [
             "event_id",
             "trajectory_id",
@@ -729,33 +818,40 @@ def write_chant_sura_contact_extended_rows(
         ],
         contact_rows,
     )
-    write_chant_sura_contact_extended_metadata(
-        out / "metadata_contact_extended.json",
+    write_chant_sura_contact_segmented_metadata(
+        out / f"metadata_contact_{suffix}.json",
         selected,
         extent,
         segment_count,
         contact_count,
         len(trajectory_rows),
+        experiment_id=experiment_id,
+        terrain_fixture=terrain_fixture,
+        split_role=split_role,
     )
 
 
-def write_chant_sura_contact_extended_metadata(
+def write_chant_sura_contact_segmented_metadata(
     path: Path,
     selected: list[tuple[str, list[list[dict[str, float]]], float, float]],
     extent: dict[str, float],
     segment_count: int,
     contact_count: int,
     sample_count: int,
+    experiment_id: str,
+    terrain_fixture: str,
+    split_role: str,
 ) -> None:
     metadata = {
         "dataset_id": "chant_sura_2020",
         "doi": "https://doi.org/10.16904/envidat.174",
-        "experiment_id": CHANT_SURA_CONTACT_EXTENDED_EXPERIMENT_ID,
+        "experiment_id": experiment_id,
         "source_files": [
             f"Output/txt/{trajectory_id}.txt" for trajectory_id, _, _, _ in selected
         ]
         + ["terrain_rf16_contact.asc derived from the public RF16 UAS DEM"],
-        "terrain_fixture": "terrain_rf16_contact_extended.asc",
+        "terrain_fixture": terrain_fixture,
+        "split_role": split_role,
         "terrain_crs": "EPSG:2056 / CH1903+ LV95 inherited from the RF16 UAS DEM crop; heights are metres from the source DEM.",
         "dem_crop_extent": extent,
         "trajectory_selection": [
@@ -776,10 +872,52 @@ def write_chant_sura_contact_extended_metadata(
         "z_alignment": "raw_z_m preserves the public reconstructed z value; z_m is raw_z_m plus the equivalent sphere radius for the simulator centre-of-mass convention.",
         "limitations": [
             "Small multi-trajectory fixture constrained to the RF16 DEM crop.",
-            "The extended subset improves contact-event count but still uses segment-boundary proxies.",
+            "This segmented subset improves contact-event count but still uses segment-boundary proxies.",
             "No calibration data are mixed into this validation fixture.",
             "The current sphere model cannot represent EOTA rock shape.",
         ],
+    }
+    path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def write_chant_sura_contact_split_metadata(path: Path) -> None:
+    model_selection_ids = sorted(
+        {
+            CHANT_SURA_CONTACT_TRAJECTORY_ID,
+            *[trajectory_id for trajectory_id, _ in CHANT_SURA_CONTACT_EXTENDED_TRAJECTORIES],
+        }
+    )
+    heldout_ids = [trajectory_id for trajectory_id, _ in CHANT_SURA_CONTACT_HELDOUT_TRAJECTORIES]
+    metadata = {
+        "dataset_id": "chant_sura_2020",
+        "doi": "https://doi.org/10.16904/envidat.174",
+        "split_method": "Deterministic trajectory-level split constrained to trajectories with early local-time-reset segments inside the checked-in RF16 DEM crop.",
+        "model_selection_subset": {
+            "role": "Used to choose/recommend contact-model options before held-out evaluation.",
+            "trajectory_ids": model_selection_ids,
+            "cases": [
+                "validation/cases/chant_sura_contact.yaml",
+                "validation/cases/chant_sura_contact_rotational.yaml",
+                "validation/cases/chant_sura_contact_extended.yaml",
+                "validation/cases/chant_sura_contact_extended_rotational.yaml",
+            ],
+        },
+        "held_out_evaluation_subset": {
+            "role": "Independent trajectory-level evaluation of the contact-model recommendation.",
+            "trajectory_ids": heldout_ids,
+            "cases": [
+                "validation/cases/chant_sura_contact_heldout.yaml",
+                "validation/cases/chant_sura_contact_heldout_rotational.yaml",
+            ],
+        },
+        "overlap": sorted(set(model_selection_ids).intersection(heldout_ids)),
+        "selection_constraints": [
+            "No trajectory ID overlap between model-selection and held-out subsets.",
+            "Held-out trajectories include W200 and W800 mass classes where available inside the RF16 DEM crop.",
+            "All included segments have at least 90% of samples inside the RF16 DEM crop.",
+            "Segment boundaries remain contact/rebound proxies, not direct instrumented impacts.",
+        ],
+        "calibration_policy": "No calibration data or parameter tuning are used in this split.",
     }
     path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
