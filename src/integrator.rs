@@ -1,11 +1,13 @@
 use crate::{
     dynamics::{
         apply_contact_friction, apply_rotational_contact_motion, ballistic_step,
-        contact_point_tangent_velocity, resolve_rotational_sphere_contact, resolve_sphere_contact,
-        rolling_residual, ContactModel, RotationalContactSettings,
+        contact_point_tangent_velocity, resolve_rotational_sphere_contact_with_normal,
+        resolve_sphere_contact_with_normal, rolling_residual, ContactModel,
+        RotationalContactSettings,
     },
     geometry::SphereBlock,
     state::{BodyState, ContactState, TrajectorySample},
+    stochastic::{sample_contact_roughness, seeded_rng, ContactRoughness},
     terrain::Terrain,
 };
 
@@ -20,6 +22,8 @@ pub struct IntegratorSettings {
     pub rolling_resistance_coefficient: f64,
     pub stop_speed_mps: f64,
     pub contact_model: ContactModel,
+    pub roughness: ContactRoughness,
+    pub roughness_seed: Option<u64>,
 }
 
 pub fn simulate_fixed_step(
@@ -31,6 +35,10 @@ pub fn simulate_fixed_step(
     let mut state = initial;
     let mut time_s = 0.0;
     let mut samples = Vec::new();
+    let mut roughness_rng = settings
+        .roughness
+        .is_active()
+        .then(|| seeded_rng(settings.roughness_seed.unwrap_or(0)));
     samples.push(TrajectorySample::from_state(
         time_s,
         &state,
@@ -44,22 +52,49 @@ pub fn simulate_fixed_step(
         ballistic_step(&mut state, settings.dt_s, settings.gravity_mps2);
         time_s += settings.dt_s;
 
+        let base_normal = terrain.normal(state.position_m.x, state.position_m.y);
+        let signed_distance_before_response =
+            terrain.signed_distance_sphere(state.position_m, block.radius_m);
+        let incoming =
+            signed_distance_before_response <= 0.0 && state.velocity_mps.dot(&base_normal) < 0.0;
+        let effective_contact = if incoming {
+            sample_contact_roughness(
+                base_normal,
+                settings.normal_restitution,
+                settings.tangential_restitution,
+                settings.friction_coefficient,
+                settings.roughness,
+                roughness_rng.as_mut(),
+            )
+        } else {
+            sample_contact_roughness(
+                base_normal,
+                settings.normal_restitution,
+                settings.tangential_restitution,
+                settings.friction_coefficient,
+                ContactRoughness::default(),
+                None,
+            )
+        };
+
         let response = match settings.contact_model {
-            ContactModel::TranslationalV0 => resolve_sphere_contact(
+            ContactModel::TranslationalV0 => resolve_sphere_contact_with_normal(
                 &mut state,
                 terrain,
                 block.radius_m,
-                settings.normal_restitution,
-                settings.tangential_restitution,
-                settings.friction_coefficient,
+                effective_contact.normal,
+                effective_contact.normal_restitution,
+                effective_contact.tangential_restitution,
+                effective_contact.friction_coefficient,
             ),
-            ContactModel::SphereRotationalV1 => resolve_rotational_sphere_contact(
+            ContactModel::SphereRotationalV1 => resolve_rotational_sphere_contact_with_normal(
                 &mut state,
                 terrain,
                 block,
-                settings.normal_restitution,
-                settings.tangential_restitution,
-                settings.friction_coefficient,
+                effective_contact.normal,
+                effective_contact.normal_restitution,
+                effective_contact.tangential_restitution,
+                effective_contact.friction_coefficient,
             ),
         };
 

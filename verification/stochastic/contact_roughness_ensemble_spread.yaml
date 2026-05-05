@@ -1,0 +1,39 @@
+case_id: stochastic_contact_roughness_ensemble_spread
+title: Stochastic contact roughness creates ensemble spread
+level: 3
+description: Verifies that nonzero stochastic contact roughness creates deterministic runout spread across trajectory-specific seeds without release perturbations.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.2, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [3.0, 0.2, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.35
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.10
+  roughness_std_tangent: 0.10
+  roughness_std_angle: 0.12
+simulation: { dt: 0.01, t_max: 6.0, stop_velocity: 0.05 }
+random: { seed: 2024, ensemble_size: 12 }
+expected:
+  metrics:
+    - ensemble_runout_spread_m
+    - ensemble_mean_runout_m
+    - ensemble_p05_runout_m
+    - ensemble_p95_runout_m
+    - different_seed_ensemble_runout_delta_m
+  minimums:
+    ensemble_runout_spread_m: 0.02
+    different_seed_ensemble_runout_delta_m: 0.001
+  maximums:
+    ensemble_runout_spread_m: 10.0
+outputs:
+  diagnostics_json: verification/results/stochastic_contact_roughness_ensemble_spread.json
+references:
+  notes:
+    - "Release perturbations are zero; spread comes only from seeded impact roughness."

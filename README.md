@@ -2,6 +2,8 @@
 
 `rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
 
+Current crate/model version: `v0.3.0`.
+
 The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
 
 ## Current Model
@@ -14,10 +16,22 @@ The first model is intentionally small:
 - gravity-driven free flight with exact constant-acceleration stepping
 - impact response with normal and tangential restitution
 - Coulomb friction during contact
+- opt-in `sphere_rotational_v1` contact with rolling diagnostics
 - deterministic seeded release perturbations
+- opt-in `stochastic_contact_v1` impact roughness for seeded ensemble spread
 - CSV trajectory output from a CLI
 
-Unsupported in v0: convex polyhedral contact, hard-contact complementarity solvers, compactable-soil scarring, forest interaction, fragmentation, GIS production workflows, visualization, GPU/HPC execution, and Python bindings.
+Unsupported in v0.3.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, compactable-soil scarring, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+
+## Versioning
+
+The project uses semantic versioning:
+
+- `MAJOR`: breaking physics or output changes, including changing a default model.
+- `MINOR`: new opt-in physics or model capabilities that preserve existing defaults.
+- `PATCH`: bug fixes, documentation, and test improvements.
+
+New physics must be explicit in configuration. Defaults are not changed silently.
 
 ## Quickstart
 
@@ -26,7 +40,7 @@ cargo test
 cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
 cargo run -- verify --case verification/analytic/free_fall.yaml
 cargo run -- verify --all
-cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+cargo run -- validate --all
 ```
 
 The output CSV contains time, position, velocity, speed, energy diagnostics, and contact state for every trajectory sample.
@@ -45,6 +59,8 @@ Core documentation:
 - `docs/benchmark_catalog.md`
 - `docs/datasets.md`
 - `docs/validation_data_schema.md`
+- `docs/README.md`
+- `CHANGELOG.md`
 
 ## Rust Crate Layout
 
@@ -92,11 +108,11 @@ python3 visualization/plot_case.py \
 
 Visualization is for inspection and debugging only; numerical verification and validation remain authoritative.
 
-To build a local HTML report for the standard v0 verification/validation cases:
+To build a local HTML report for the standard versioned verification/validation cases:
 
 ```bash
 cargo run -- verify --all
-cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+cargo run -- validate --all
 python3 visualization/build_report.py --render-plots
 open visualization/reports/standard_v0/index.html
 ```
@@ -118,7 +134,7 @@ cargo fmt --check \
   && cargo clippy --all-targets --all-features -- -D warnings \
   && cargo test \
   && cargo run -- verify --all \
-  && cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml \
+  && cargo run -- validate --all \
   && python3 scripts/check_repo_consistency.py
 ```
 

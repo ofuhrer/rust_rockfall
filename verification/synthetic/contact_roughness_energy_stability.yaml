@@ -1,0 +1,33 @@
+case_id: synthetic_contact_roughness_energy_stability
+title: Stochastic contact roughness remains dissipative
+level: 1
+description: Verifies that bounded stochastic contact roughness does not introduce positive total-energy jumps in a dissipative synthetic trajectory.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [2.0, 0.2, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.75
+  friction_coefficient: 0.5
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.08
+  roughness_std_angle: 0.04
+simulation: { dt: 0.01, t_max: 5.0, stop_velocity: 0.05 }
+random: { seed: 31415, ensemble_size: 1 }
+expected:
+  metrics: [energy_monotonicity_violation_j, impact_count, runout_m]
+  tolerances:
+    energy_monotonicity_violation_j: 0.01
+  min_impact_count: 1
+outputs:
+  diagnostics_json: verification/results/synthetic_contact_roughness_energy_stability.json
+  trajectory_csv: verification/results/synthetic_contact_roughness_energy_stability.csv
+references:
+  notes:
+    - "Roughness perturbations only reduce restitution coefficients or increase friction; this test guards against accidental energy injection."

@@ -4,7 +4,7 @@ Validation asks whether the current model is useful when compared with observati
 
 ## v0 Status
 
-Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact/scarring, explicit roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
+Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact/scarring, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
 
 ## Dataset Policy
 
@@ -30,6 +30,7 @@ Missing public observations cause a skipped report with instructions rather than
 ## Metrics
 
 Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, and ensemble runout summaries where seeded perturbations are used.
+Roughness-specific verification metrics include zero-roughness baseline comparison and different-seed ensemble runout deltas.
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
 
@@ -39,6 +40,7 @@ Validation and benchmark workflows must preserve deterministic reproducibility:
 
 - identical trajectory inputs and seed produce identical samples and summaries;
 - different trajectory seeds produce distinct perturbed releases when perturbation ranges are nonzero;
+- opt-in contact roughness is driven by trajectory-specific seeds and is reproducible for the same trajectory identity;
 - ensemble trajectory seeds are derived from global seed, case ID, and trajectory ID;
 - per-trajectory results are independent of execution order;
 - optional real-world validation cases must skip cleanly when data are absent rather than changing deterministic test behavior.
@@ -52,5 +54,6 @@ These criteria support future large ensemble execution without making current va
 - Calibration experiments must be explicitly separated from validation cases.
 - All tuned parameters must record dataset, objective function, parameter bounds, resulting values, and holdout validation dataset.
 - Do not tune secretly to match one dataset.
+- Roughness parameters must not be tuned inside validation cases; any future calibration must live in an explicit calibration experiment with recorded objective, bounds, dataset, and holdout policy.
 
 Validation results must describe the model version, parameters, preprocessing, and limitations.

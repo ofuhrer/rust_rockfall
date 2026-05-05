@@ -1,4 +1,4 @@
-use rust_rockfall::stochastic::{derive_trajectory_seed, ReleasePerturbation};
+use rust_rockfall::stochastic::{derive_trajectory_seed, ReleasePerturbation, RoughnessModel};
 use rust_rockfall::{
     simulate_ensemble, simulate_one_trajectory, ContactModel, SimulationConfig, SphereBlock,
     TerrainConfig, TrajectoryRequest,
@@ -132,6 +132,10 @@ fn ensemble_ready_config() -> SimulationConfig {
         friction_coefficient: 0.45,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
         stop_speed_mps: 0.05,
         random_seed: None,
         release_perturbation: ReleasePerturbation {

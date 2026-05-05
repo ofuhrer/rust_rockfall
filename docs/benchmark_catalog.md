@@ -1,6 +1,6 @@
 # Benchmark Catalog
 
-This catalog lists the current v0 verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
+This catalog lists the current `v0.3.0` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
 
 ## Level 0: Analytic Unit Tests
 
@@ -25,6 +25,7 @@ This catalog lists the current v0 verification and validation cases. These cases
 - `synthetic_step_terrain_single_drop`: drop across one terrain discontinuity.
 - `synthetic_step_terrain_multi_bounce`: repeated contacts after a step drop.
 - `synthetic_ascii_dem_fixture`: small ESRI ASCII grid loading and trajectory smoke test.
+- `synthetic_contact_roughness_energy_stability`: bounded stochastic contact roughness remains dissipative within fixed-step numerical tolerance.
 
 ## Level 2: Motion-Regime Tests
 
@@ -39,10 +40,13 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 - `stochastic_seeded_release_reproducibility`: same seed reproduces the same trajectory.
 - `stochastic_different_seed_spread`: different seeds with nonzero perturbation produce nonzero runout spread.
 - `stochastic_ensemble_runout_statistics`: reports mean, median, p05, p95, and kinetic-energy envelope.
+- `stochastic_contact_roughness_zero_consistency`: `stochastic_contact_v1` with zero standard deviations exactly matches `roughness_model: none`.
+- `stochastic_contact_roughness_reproducibility`: roughened impacts are reproducible for a fixed seed.
+- `stochastic_contact_roughness_ensemble_spread`: roughened impacts produce deterministic ensemble spread without release perturbations.
 
 ## Level 5: Validation Scaffolds
 
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
 - `validation_tschamut_basic`: optional scaffold for public SLF/WSL EnviDat Tschamut data; skipped until processed observations exist locally.
 
-Real-world validation remains partial and qualitative for v0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and calibrated DEM workflows.
+Real-world validation remains partial and qualitative for v0.3.0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and calibrated DEM workflows.

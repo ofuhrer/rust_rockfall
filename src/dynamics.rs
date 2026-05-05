@@ -51,6 +51,27 @@ pub fn resolve_sphere_contact(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
+    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    resolve_sphere_contact_with_normal(
+        state,
+        terrain,
+        radius_m,
+        normal,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+}
+
+pub fn resolve_sphere_contact_with_normal(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    radius_m: f64,
+    contact_normal: Vec3,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> ContactResponse {
     let signed_distance = terrain.signed_distance_sphere(state.position_m, radius_m);
     if signed_distance > 0.0 {
         return ContactResponse {
@@ -62,8 +83,9 @@ pub fn resolve_sphere_contact(
         };
     }
 
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
-    state.position_m -= signed_distance * normal;
+    let projection_normal = terrain.normal(state.position_m.x, state.position_m.y);
+    state.position_m -= signed_distance * projection_normal;
+    let normal = unit_or(contact_normal, projection_normal);
 
     let vn = state.velocity_mps.dot(&normal);
     let normal_velocity = vn * normal;
@@ -107,6 +129,27 @@ pub fn resolve_rotational_sphere_contact(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
+    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    resolve_rotational_sphere_contact_with_normal(
+        state,
+        terrain,
+        block,
+        normal,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+}
+
+pub fn resolve_rotational_sphere_contact_with_normal(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    block: SphereBlock,
+    contact_normal: Vec3,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> ContactResponse {
     let signed_distance = terrain.signed_distance_sphere(state.position_m, block.radius_m);
     if signed_distance > 0.0 {
         return ContactResponse {
@@ -118,8 +161,9 @@ pub fn resolve_rotational_sphere_contact(
         };
     }
 
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
-    state.position_m -= signed_distance * normal;
+    let projection_normal = terrain.normal(state.position_m.x, state.position_m.y);
+    state.position_m -= signed_distance * projection_normal;
+    let normal = unit_or(contact_normal, projection_normal);
     let contact_offset = -block.radius_m * normal;
     let contact_velocity = contact_point_velocity(state, contact_offset);
     let vn = contact_velocity.dot(&normal);
@@ -326,5 +370,14 @@ fn clamp_vector_norm(vector: Vec3, max_norm: f64) -> Vec3 {
         vector * (max_norm.max(0.0) / norm)
     } else {
         vector
+    }
+}
+
+fn unit_or(vector: Vec3, fallback: Vec3) -> Vec3 {
+    let norm = vector.norm();
+    if norm > 0.0 {
+        vector / norm
+    } else {
+        fallback
     }
 }

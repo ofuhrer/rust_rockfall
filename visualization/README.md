@@ -4,7 +4,7 @@ This directory contains lightweight diagnostic visualization tools for simulatio
 
 ## Current Outputs
 
-The existing trajectory CSV already includes the fields needed for v0 plots:
+The existing trajectory CSV already includes the fields needed for current plots:
 
 - time
 - position and velocity
@@ -36,6 +36,7 @@ The script writes:
 - `*_trajectory_xz.png`: x-z trajectory with terrain overlay where supported
 - `*_trajectory_xy.png`: x-y plan view
 - `*_energy.png`: kinetic, potential, and total energy over time
+- `*_runout_histogram.png`: runout distribution when multiple trajectories are overlaid
 - `*_summary.json`: runout, impact count, speed, and report metadata summary
 
 SVG remains available explicitly:
@@ -70,11 +71,11 @@ python3 visualization/plot_case.py \
   --output-dir visualization/output/ensemble_debug
 ```
 
-The summary JSON reports simple runout and speed statistics, including median and p05/p95 percentiles. This is intended for deterministic, small ensembles and debugging. It is not a substitute for numerical validation metrics.
+The summary JSON reports simple runout and speed statistics, including median and p05/p95 percentiles. When multiple trajectory CSVs are provided, the script also writes a runout histogram. This is intended for deterministic, small ensembles and debugging. It is not a substitute for numerical validation metrics.
 
 ## HTML Reports
 
-Generate a local HTML report that collects standard v0 case metadata, pass/fail/skipped status, numerical metrics, links to raw JSON/CSV outputs, and available PNG plots:
+Generate a local HTML report that collects standard versioned case metadata, pass/fail/skipped status, numerical metrics, links to raw JSON/CSV outputs, and available PNG plots:
 
 ```bash
 cargo run -- verify --all
@@ -96,6 +97,7 @@ The report is meant for scientific inspection:
 - each case states what it checks and what it does not check;
 - trajectory and energy plots include captions explaining the diagnostic purpose of each figure;
 - stochastic cases that produce only summary metrics explain why no trajectory plot is expected;
+- roughness-enabled cases are marked as opt-in and uncalibrated;
 - synthetic cases are described as verification/regression checks, not evidence of operational hazard skill.
 
 For a PDF copy, open the HTML report in a browser and use the browser print/save-as-PDF command. The report CSS is kept print-friendly, but the HTML and linked JSON/CSV artifacts remain the primary local outputs.

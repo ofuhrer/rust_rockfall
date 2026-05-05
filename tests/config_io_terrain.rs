@@ -4,7 +4,7 @@ use rust_rockfall::{
     io,
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::ContactState,
-    stochastic::ReleasePerturbation,
+    stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::{
         ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
         StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
@@ -257,6 +257,7 @@ fn simulation_config_json_defaults_and_seeded_initial_state_are_deterministic() 
     assert_abs_diff_eq!(config.gravity_mps2, 9.81, epsilon = 1.0e-12);
     assert_abs_diff_eq!(config.normal_restitution, 0.25, epsilon = 1.0e-12);
     assert_eq!(config.contact_model, ContactModel::TranslationalV0);
+    assert_eq!(config.roughness_model, RoughnessModel::None);
     assert_eq!(config.initial_state(), config.initial_state());
 }
 
@@ -285,6 +286,28 @@ fn simulation_config_json_accepts_rotational_contact_model() {
 }
 
 #[test]
+fn simulation_config_json_accepts_stochastic_contact_roughness() {
+    let json = r#"{
+        "block": { "radius_m": 0.5, "mass_kg": 10.0 },
+        "initial_position_m": [0.0, 0.0, 2.0],
+        "initial_velocity_mps": [1.0, 0.0, -0.5],
+        "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0 },
+        "dt_s": 0.01,
+        "max_time_s": 1.0,
+        "random_seed": 11,
+        "roughness_model": "stochastic_contact_v1",
+        "roughness_std_normal": 0.05,
+        "roughness_std_tangent": 0.04,
+        "roughness_std_angle": 0.03
+    }"#;
+
+    let config: SimulationConfig = serde_json::from_str(json).unwrap();
+    assert_eq!(config.roughness_model, RoughnessModel::StochasticContactV1);
+    assert_abs_diff_eq!(config.roughness_std_angle, 0.03, epsilon = 1.0e-12);
+    assert_eq!(config.run().unwrap().samples, config.run().unwrap().samples);
+}
+
+#[test]
 fn validation_yaml_rejects_unknown_contact_model() {
     let path = temp_path("bad_contact_model.yaml");
     fs::write(
@@ -295,6 +318,25 @@ terrain: { type: plane, parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 } }
 block: { mass: 1.0, radius: 0.5 }
 parameters:
   contact_model: hidden_magic
+"#,
+    )
+    .unwrap();
+
+    assert!(load_case(&path).is_err());
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn validation_yaml_rejects_unknown_roughness_model() {
+    let path = temp_path("bad_roughness_model.yaml");
+    fs::write(
+        &path,
+        r#"
+case_id: bad_roughness_model
+terrain: { type: plane, parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 } }
+block: { mass: 1.0, radius: 0.5 }
+parameters:
+  roughness_model: hidden_magic
 "#,
     )
     .unwrap();
@@ -347,6 +389,13 @@ fn simulation_validation_rejects_non_positive_inputs() {
         Err(SimulationError::NonPositive(
             "rolling_resistance_coefficient"
         ))
+    ));
+
+    let mut config = minimal_config();
+    config.roughness_std_angle = -0.1;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("roughness_std_angle"))
     ));
 }
 
@@ -457,6 +506,10 @@ fn minimal_config() -> SimulationConfig {
         friction_coefficient: 0.45,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
         stop_speed_mps: 0.1,
         random_seed: None,
         release_perturbation: ReleasePerturbation::default(),

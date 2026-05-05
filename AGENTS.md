@@ -25,6 +25,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Add or update focused tests for every feature, behavior branch, physical model, parser, and output format change.
 - Document any new equation, parameter, assumption, or limitation in the appropriate `docs/` file.
 - For contact-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, and consistency checks in the same change.
+- For roughness-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
@@ -52,7 +53,7 @@ cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo run -- verify --all
-cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+cargo run -- validate --all
 python3 scripts/check_repo_consistency.py
 ```
 
@@ -67,6 +68,15 @@ If the toolchain is unavailable, state that clearly and still validate any chang
 - Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
 - Do not add MPI, GPU, distributed execution, or heavy parallel frameworks without an explicit phase change.
 
+## Versioning Rules
+
+- Use semantic versioning: `MAJOR.MINOR.PATCH`.
+- Any new opt-in physics feature requires a `MINOR` bump.
+- Any default physics change, output-breaking change, or silent numerical behavior change requires a justified `MAJOR` bump.
+- Bug fixes that change numerical results may be `PATCH` only when the previous behavior was clearly incorrect and a regression test documents it.
+- Update `Cargo.toml`, `README.md`, `docs/README.md`, `CHANGELOG.md`, schemas, and reports when versioned behavior changes.
+- No silent behavior changes are allowed; preserve old defaults unless a versioned breaking change explicitly says otherwise.
+
 ## Commit and Push Discipline
 
 Before committing:
@@ -78,7 +88,7 @@ Before committing:
     && cargo clippy --all-targets --all-features -- -D warnings \
     && cargo test \
     && cargo run -- verify --all \
-    && cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml \
+    && cargo run -- validate --all \
     && python3 scripts/check_repo_consistency.py
   ```
 

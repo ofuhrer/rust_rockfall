@@ -3,7 +3,10 @@ use crate::{
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
     state::{BodyState, TrajectorySample},
-    stochastic::{derive_trajectory_seed, sample_release, stable_hash64, ReleasePerturbation},
+    stochastic::{
+        derive_trajectory_seed, sample_release, stable_hash64, ContactRoughness,
+        ReleasePerturbation, RoughnessModel,
+    },
     terrain::{
         ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
         StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
@@ -35,6 +38,14 @@ pub struct SimulationConfig {
     pub rolling_resistance_coefficient: f64,
     #[serde(default)]
     pub contact_model: ContactModel,
+    #[serde(default)]
+    pub roughness_model: RoughnessModel,
+    #[serde(default)]
+    pub roughness_std_normal: f64,
+    #[serde(default)]
+    pub roughness_std_tangent: f64,
+    #[serde(default)]
+    pub roughness_std_angle: f64,
     #[serde(default = "default_stop_speed")]
     pub stop_speed_mps: f64,
     #[serde(default)]
@@ -211,6 +222,13 @@ impl SimulationConfig {
             rolling_resistance_coefficient: self.rolling_resistance_coefficient,
             stop_speed_mps: self.stop_speed_mps,
             contact_model: self.contact_model,
+            roughness: ContactRoughness {
+                roughness_model: self.roughness_model,
+                roughness_std_normal: self.roughness_std_normal,
+                roughness_std_tangent: self.roughness_std_tangent,
+                roughness_std_angle: self.roughness_std_angle,
+            },
+            roughness_seed: self.random_seed,
         };
         Ok(SimulationResult {
             samples: simulate_fixed_step(self.initial_state(), self.block, terrain, settings),
@@ -248,6 +266,14 @@ impl SimulationConfig {
                 "rolling_resistance_coefficient",
             ));
         }
+        ContactRoughness {
+            roughness_model: self.roughness_model,
+            roughness_std_normal: self.roughness_std_normal,
+            roughness_std_tangent: self.roughness_std_tangent,
+            roughness_std_angle: self.roughness_std_angle,
+        }
+        .validate()
+        .map_err(SimulationError::NonPositive)?;
         Ok(())
     }
 }

@@ -2,7 +2,7 @@
 
 ## Scope
 
-The v0 simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.3.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
 
 Supported now:
 
@@ -13,6 +13,7 @@ Supported now:
 - Coulomb friction during contact
 - opt-in rotational sphere contact with rolling diagnostics
 - deterministic stochastic release perturbations
+- opt-in stochastic impact roughness
 - energy-budget trajectory diagnostics
 
 Deliberately left out:
@@ -22,6 +23,7 @@ Deliberately left out:
 - convex polyhedral contact
 - nonsmooth complementarity solver
 - compactable-soil scarring
+- calibrated terrain roughness fields
 - forest, barriers, fragmentation, GIS production workflows, MPI/GPU/distributed execution
 
 ## Equations and Assumptions
@@ -62,6 +64,28 @@ a = (5/7) g_t
 ```
 
 `rolling_resistance_coefficient` is a dimensionless early-stage resistance parameter used only by `sphere_rotational_v1`. It is transparent and testable, but not calibrated as a terrain or soil law.
+
+## Impact Roughness
+
+The default roughness model is `none`. The opt-in `stochastic_contact_v1` model applies bounded stochastic perturbations at impact only. It is a contact stochasticity model, not a spatial terrain roughness map.
+
+For each impact, a trajectory-specific `ChaCha8Rng` samples:
+
+```text
+n' = normalize(n + alpha t1 + beta t2)
+e_n' = e_n clamp(1 - |eta_n|, 0, 1)
+e_t' = e_t clamp(1 - |eta_t|, 0, 1)
+mu' = mu (1 + |eta_t|)
+```
+
+where `n` is the terrain normal, `t1` and `t2` are orthogonal tangent directions, `alpha` and `beta` are bounded angular perturbations in radians, and `eta_n`, `eta_t` are bounded coefficient perturbations. The parameters are:
+
+- `roughness_model`: `none` or `stochastic_contact_v1`
+- `roughness_std_angle`: angular standard-deviation scale in radians
+- `roughness_std_normal`: dimensionless normal-restitution perturbation scale
+- `roughness_std_tangent`: dimensionless tangential-restitution/friction perturbation scale
+
+The coefficient perturbations are dissipative by construction: restitution is only reduced and friction is only increased. The perturbed normal can redirect rebound direction and create deterministic ensemble spread, but the model is not calibrated to a field terrain class. With all roughness standard deviations set to zero, `stochastic_contact_v1` is required to match `none` exactly.
 
 During sliding, the model constrains normal velocity to zero, applies gravity tangent to the terrain, and reduces speed with Coulomb friction:
 
@@ -106,12 +130,12 @@ Important data types:
 The CLI accepts the same JSON configuration:
 
 ```bash
-rockfall --config examples/inclined_plane.json --output trajectory.csv
+rockfall run --config examples/inclined_plane.json --output trajectory.csv
 ```
 
 ## HPC-Readiness Boundaries
 
-The v0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+The v0.3.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.
@@ -123,7 +147,7 @@ The v0 codebase does not implement MPI, GPU execution, distributed schedulers, o
 
 ## Reproducibility Model
 
-Randomness is explicit. Release perturbations use a seeded `ChaCha8Rng`; no global RNG state is used.
+Randomness is explicit. Release perturbations and opt-in stochastic contact roughness use seeded `ChaCha8Rng` streams; no global RNG state is used.
 
 For ensemble-style runs, trajectory seeds are derived from:
 
@@ -131,7 +155,7 @@ For ensemble-style runs, trajectory seeds are derived from:
 global_seed + case_id + trajectory_id
 ```
 
-via a stable in-repository hash function. This makes each trajectory reproducible by identity, independent of whether trajectories are executed sequentially, in reverse order, or later across separate workers.
+via a stable in-repository hash function. This makes each trajectory reproducible by identity, independent of whether trajectories are executed sequentially, in reverse order, or later across separate workers. Contact roughness uses the trajectory seed and is therefore reproducible with the same `case_id`, `trajectory_id`, and global seed.
 
 `SimulationConfig::config_fingerprint` and `SimulationConfig::run_fingerprint` provide stable identifiers for configuration and configuration-plus-trajectory-request. These are intended for bookkeeping, cache keys, and future chunked output manifests, not as cryptographic hashes.
 
@@ -141,7 +165,7 @@ The next scientifically meaningful extensions are:
 
 - DEM fixture tests and terrain boundary policies
 - impact event localization for reduced time-step sensitivity
-- surface roughness parameterization
+- calibrated spatial roughness and terrain-class parameterization
 - quaternion orientation state
 - ellipsoid and convex-polyhedron geometry APIs
 - nonsmooth contact solver or integration with a public solver reference

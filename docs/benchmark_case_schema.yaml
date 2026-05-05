@@ -26,6 +26,10 @@ parameters:
   friction_coefficient: 0.45
   rolling_resistance_coefficient: 0.0
   contact_model: translational_v0
+  roughness_model: none
+  roughness_std_normal: 0.0
+  roughness_std_tangent: 0.0
+  roughness_std_angle: 0.0
 simulation:
   dt: 0.01
   t_max: 1.0

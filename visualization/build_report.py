@@ -34,6 +34,7 @@ PLOT_KINDS = (
     ("trajectory_xz", "Trajectory x-z"),
     ("trajectory_xy", "Plan view"),
     ("energy", "Energy"),
+    ("runout_histogram", "Runout histogram"),
 )
 PLOT_CAPTIONS = {
     "trajectory_xz": (
@@ -50,7 +51,12 @@ PLOT_CAPTIONS = {
         "impact transitions. Use this plot to inspect conservation or dissipation trends; the "
         "numeric tolerances in the JSON report remain authoritative."
     ),
+    "runout_histogram": (
+        "Distribution of final horizontal runout for overlaid trajectory ensembles. This is a "
+        "diagnostic summary of simulated spread, not a calibrated exceedance probability."
+    ),
 }
+FALLBACK_MODEL_VERSION = "0.3.0"
 
 
 @dataclass
@@ -223,6 +229,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
         status_counts[report.status] = status_counts.get(report.status, 0) + 1
 
     generated_at = time.strftime("%Y-%m-%d %H:%M:%S %Z")
+    model_versions = ", ".join(sorted(model_versions_in_reports(reports))) or f"v{FALLBACK_MODEL_VERSION}"
     rows = "\n".join(render_case_nav(report) for report in reports)
     sections = "\n".join(render_case_section(report, report_dir) for report in reports)
     summary = ", ".join(
@@ -236,7 +243,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rockfall v0 Verification and Validation Report</title>
+  <title>Rockfall v0.3.0 Verification and Validation Report</title>
   <style>
     :root {{
       --bg: #f8fafc;
@@ -307,25 +314,26 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 </head>
 <body>
 <main>
-  <h1>Rockfall v0 Verification and Validation Report</h1>
+  <h1>Rockfall v0.3.0 Verification and Validation Report</h1>
   <p class="lede">Local diagnostic report assembled from checked-in YAML case definitions, JSON result reports, trajectory CSVs, and PNG plots. This is a browsing aid; numerical verification and validation commands remain authoritative.</p>
-  <p class="meta">Generated: {escape(generated_at)}. Cases: {len(reports)}. Status summary: {summary or "none"}. Plot root: <a href="{plot_root_link}">{escape(plot_root_label)}</a>.</p>
+  <p class="meta">Generated: {escape(generated_at)}. Model version(s): {escape(model_versions)}. Cases: {len(reports)}. Status summary: {summary or "none"}. Plot root: <a href="{plot_root_link}">{escape(plot_root_label)}</a>.</p>
 
   <div class="intro-grid">
     <section class="intro-card">
       <h2>How To Interpret This Report</h2>
       <ul>
-        <li><strong>Passed</strong> means the current v0 implementation met the case-specific numerical tolerances in the JSON diagnostics.</li>
+        <li><strong>Passed</strong> means the current version met the case-specific numerical tolerances in the JSON diagnostics.</li>
         <li><strong>Skipped optional</strong> means required external validation data are not present locally; this is expected for public datasets that are downloaded separately.</li>
         <li>Plots are diagnostic aids for spotting unexpected trajectories, energy trends, and contact markers. The metric tables and linked JSON reports are the source of truth.</li>
         <li>Synthetic and analytic cases verify controlled behavior only. They do not demonstrate operational hazard-assessment skill.</li>
       </ul>
     </section>
     <section class="intro-card">
-      <h2>Known Limitations Of v0</h2>
+      <h2>Known Limitations Of v0.3.0</h2>
       <ul>
         <li>Spherical blocks only; no polyhedral shape, fragmentation, or shape-dependent terrain contact.</li>
-        <li>Simplified restitution/friction contact; no scarring, roughness field, forest interaction, or nonsmooth multi-contact solver.</li>
+        <li>Simplified restitution/friction contact; opt-in contact roughness is not a calibrated spatial roughness field.</li>
+        <li>No scarring, forest interaction, fragmentation, or nonsmooth multi-contact solver.</li>
         <li>DEM support is limited to small fixtures; no production GIS or calibrated terrain-class workflow is implemented.</li>
         <li>The opt-in rotational sphere model is experimental and its rolling resistance parameter is not field-calibrated.</li>
       </ul>
@@ -366,6 +374,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     references = report.data.get("references", {})
     description = str(report.data.get("description") or "")
     links = render_links(report, report_dir)
+    roughness = render_roughness_note(report)
     scope = render_case_scope(report)
     metrics_table = render_metrics_table(report)
     plots = render_plots_html(report, report_dir)
@@ -384,6 +393,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     <div>{status_badge(report.status)}</div>
   </div>
   <p>{escape(description)}</p>
+  {roughness}
   {scope}
   {links}
   <div class="grid">
@@ -416,6 +426,23 @@ def render_links(report: CaseReport, report_dir: Path) -> str:
         return ""
     parts = [f"<a href=\"{rel_link(path, report_dir)}\">{escape(label)}</a>" for label, path in links]
     return f"<div class=\"links\">{''.join(parts)}</div>"
+
+
+def render_roughness_note(report: CaseReport) -> str:
+    parameters = report.data.get("parameters", {})
+    if not isinstance(parameters, dict):
+        return ""
+    if parameters.get("roughness_model", "none") != "stochastic_contact_v1":
+        return ""
+    normal = parameters.get("roughness_std_normal", 0.0)
+    tangent = parameters.get("roughness_std_tangent", 0.0)
+    angle = parameters.get("roughness_std_angle", 0.0)
+    return (
+        "<p class=\"notice\"><strong>Roughness enabled:</strong> "
+        "stochastic_contact_v1 perturbs impact contact normals and dissipative contact parameters "
+        f"with std normal={escape(format_value(normal))}, tangent={escape(format_value(tangent))}, "
+        f"angle={escape(format_value(angle))} rad. This is an opt-in verification model, not a calibrated terrain law.</p>"
+    )
 
 
 def render_metrics_table(report: CaseReport) -> str:
@@ -542,7 +569,7 @@ def no_plot_explanation(report: CaseReport) -> str:
         )
     if report.level == "3" and not nested_path(report.data, "outputs", "trajectory_csv"):
         return (
-            "This stochastic case is metric-only for v0: it checks seeded reproducibility or ensemble "
+            "This stochastic case is metric-only for the current model: it checks seeded reproducibility or ensemble "
             "summary statistics without writing a per-trajectory CSV, so there is no trajectory plot to render."
         )
     if report.trajectory_path and not report.trajectory_path.exists():
@@ -598,6 +625,14 @@ def render_manifest(reports: list[CaseReport], report_dir: Path) -> dict[str, An
             for report in reports
         ],
     }
+
+
+def model_versions_in_reports(reports: list[CaseReport]) -> set[str]:
+    versions = set()
+    for report in reports:
+        if report.diagnostics and report.diagnostics.get("model_version"):
+            versions.add(f"v{report.diagnostics['model_version']}")
+    return versions
 
 
 def path_if_exists_or_declared(path: Path | None, report_dir: Path) -> str | None:

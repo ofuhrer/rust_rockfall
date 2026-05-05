@@ -1,6 +1,6 @@
 # Validation Data and Case Schema
 
-This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, seeded release perturbations, and CSV trajectory output.
+This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, opt-in stochastic contact roughness, seeded release perturbations, and CSV trajectory output.
 
 ## Case YAML
 
@@ -13,6 +13,10 @@ Required case fields:
 - `parameters.gravity`, `normal_restitution`, `tangential_restitution`, `friction_coefficient`
 - optional `parameters.contact_model`: `translational_v0` by default, or `sphere_rotational_v1`
 - optional `parameters.rolling_resistance_coefficient`: dimensionless, default `0.0`, used by `sphere_rotational_v1`
+- optional `parameters.roughness_model`: `none` by default, or `stochastic_contact_v1`
+- optional `parameters.roughness_std_normal`: dimensionless dissipative normal-restitution perturbation scale, default `0.0`
+- optional `parameters.roughness_std_tangent`: dimensionless dissipative tangential-restitution/friction perturbation scale, default `0.0`
+- optional `parameters.roughness_std_angle`: contact-normal angular perturbation scale in radians, default `0.0`
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
 - `expected.metrics`, `expected.tolerances`
@@ -49,6 +53,8 @@ The CLI can report:
 - `energy_conservation_error_j`
 - `energy_monotonicity_violation_j`
 - `seed_repeat_max_position_delta_m`
+- `roughness_zero_baseline_max_position_delta_m`
+- `different_seed_ensemble_runout_delta_m`
 - `ensemble_mean_runout_m`
 - `ensemble_median_runout_m`
 - `ensemble_p05_runout_m`

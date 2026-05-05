@@ -1,0 +1,32 @@
+case_id: stochastic_contact_roughness_zero_consistency
+title: Zero stochastic contact roughness matches baseline
+level: 3
+description: Verifies that opt-in stochastic contact roughness with all standard deviations set to zero is identical to roughness_model none.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.15, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [3.0, 0.2, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.0
+  roughness_std_tangent: 0.0
+  roughness_std_angle: 0.0
+simulation: { dt: 0.01, t_max: 5.0, stop_velocity: 0.05 }
+random: { seed: 42, ensemble_size: 1 }
+expected:
+  metrics: [roughness_zero_baseline_max_position_delta_m, runout_m]
+  tolerances:
+    roughness_zero_baseline_max_position_delta_m: 0.0
+outputs:
+  diagnostics_json: verification/results/stochastic_contact_roughness_zero_consistency.json
+  trajectory_csv: verification/results/stochastic_contact_roughness_zero_consistency.csv
+references:
+  notes:
+    - "This guards backward compatibility: enabling stochastic_contact_v1 with zero amplitudes must not alter a trajectory."

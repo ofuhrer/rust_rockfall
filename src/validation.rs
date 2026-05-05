@@ -6,7 +6,7 @@ use crate::{
     io,
     simulation::{simulate_ensemble, SimulationConfig, SimulationError, TerrainConfig},
     state::{BodyState, ContactState, TrajectorySample},
-    stochastic::ReleasePerturbation,
+    stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::TerrainError,
     Vec3,
 };
@@ -127,6 +127,14 @@ pub struct CaseParameters {
     pub rolling_resistance_coefficient: f64,
     #[serde(default)]
     pub contact_model: ContactModel,
+    #[serde(default)]
+    pub roughness_model: RoughnessModel,
+    #[serde(default)]
+    pub roughness_std_normal: f64,
+    #[serde(default)]
+    pub roughness_std_tangent: f64,
+    #[serde(default)]
+    pub roughness_std_angle: f64,
 }
 
 impl Default for CaseParameters {
@@ -138,6 +146,10 @@ impl Default for CaseParameters {
             friction_coefficient: default_friction(),
             rolling_resistance_coefficient: 0.0,
             contact_model: ContactModel::default(),
+            roughness_model: RoughnessModel::default(),
+            roughness_std_normal: 0.0,
+            roughness_std_tangent: 0.0,
+            roughness_std_angle: 0.0,
         }
     }
 }
@@ -349,6 +361,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         &case.expected,
     );
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
+    compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
 
     let requested_metrics = requested_metrics(case);
     if !requested_metrics.is_empty() {
@@ -425,6 +438,10 @@ fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, Val
         friction_coefficient: case.parameters.friction_coefficient,
         rolling_resistance_coefficient: case.parameters.rolling_resistance_coefficient,
         contact_model: case.parameters.contact_model,
+        roughness_model: case.parameters.roughness_model,
+        roughness_std_normal: case.parameters.roughness_std_normal,
+        roughness_std_tangent: case.parameters.roughness_std_tangent,
+        roughness_std_angle: case.parameters.roughness_std_angle,
         stop_speed_mps: case.simulation.stop_velocity,
         random_seed: case.random.seed,
         release_perturbation: ReleasePerturbation {
@@ -652,11 +669,17 @@ fn compute_ensemble_metrics(
         return Ok(());
     }
 
+    let roughness_active = case.parameters.roughness_model == RoughnessModel::StochasticContactV1
+        && (case.parameters.roughness_std_normal > 0.0
+            || case.parameters.roughness_std_tangent > 0.0
+            || case.parameters.roughness_std_angle > 0.0);
+
     if case.release.perturbation.position_uniform_m == 0.0
         && case.release.perturbation.velocity_uniform_mps == 0.0
+        && !roughness_active
     {
         warnings.push(
-            "ensemble_size > 1 but release perturbation is zero; runout spread may be zero"
+            "ensemble_size > 1 but release and roughness perturbations are zero; runout spread may be zero"
                 .to_string(),
         );
     }
@@ -706,6 +729,48 @@ fn compute_ensemble_metrics(
     metrics.insert(
         "ensemble_p95_max_kinetic_energy_j".to_string(),
         percentile(&max_kinetic, 0.95),
+    );
+
+    if let Some(seed) = case.random.seed {
+        let alternate = simulate_ensemble(
+            &ensemble_config,
+            case.case_id.clone(),
+            seed.wrapping_add(1),
+            &trajectory_ids,
+        )?;
+        metrics.insert(
+            "different_seed_ensemble_runout_delta_m".to_string(),
+            max_runout_delta(&ensemble, &alternate),
+        );
+    }
+    Ok(())
+}
+
+fn compute_roughness_comparison_metrics(
+    case: &BenchmarkCase,
+    config: &SimulationConfig,
+    samples: &[TrajectorySample],
+    metrics: &mut BTreeMap<String, f64>,
+) -> Result<(), ValidationError> {
+    if case.parameters.roughness_model != RoughnessModel::StochasticContactV1 {
+        return Ok(());
+    }
+    if case.parameters.roughness_std_normal != 0.0
+        || case.parameters.roughness_std_tangent != 0.0
+        || case.parameters.roughness_std_angle != 0.0
+    {
+        return Ok(());
+    }
+
+    let mut baseline = config.clone();
+    baseline.roughness_model = RoughnessModel::None;
+    baseline.roughness_std_normal = 0.0;
+    baseline.roughness_std_tangent = 0.0;
+    baseline.roughness_std_angle = 0.0;
+    let baseline_result = baseline.run()?;
+    metrics.insert(
+        "roughness_zero_baseline_max_position_delta_m".to_string(),
+        max_position_delta(samples, &baseline_result.samples),
     );
     Ok(())
 }
@@ -906,6 +971,17 @@ fn max_position_delta(a: &[TrajectorySample], b: &[TrajectorySample]) -> f64 {
                 [right.x_m, right.y_m, right.z_m],
             )
         })
+        .fold(0.0_f64, f64::max)
+}
+
+fn max_runout_delta(
+    left: &crate::simulation::EnsembleResult,
+    right: &crate::simulation::EnsembleResult,
+) -> f64 {
+    left.trajectories
+        .iter()
+        .zip(right.trajectories.iter())
+        .map(|(a, b)| (a.summary.runout_m - b.summary.runout_m).abs())
         .fold(0.0_f64, f64::max)
 }
 

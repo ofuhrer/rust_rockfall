@@ -8,7 +8,7 @@ use rust_rockfall::{
     integrator::{simulate_fixed_step, IntegratorSettings},
     simulation::{SimulationConfig, TerrainConfig},
     state::{BodyState, ContactState, EnergyDiagnostics},
-    stochastic::{sample_release, ReleasePerturbation},
+    stochastic::{sample_release, ContactRoughness, ReleasePerturbation, RoughnessModel},
     terrain::{Plane, Terrain},
     ContactModel, Vec3,
 };
@@ -32,6 +32,8 @@ fn free_flight_energy_is_conserved_without_contact() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::TranslationalV0,
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
         },
     );
     let first = samples.first().unwrap().total_energy_j;
@@ -113,6 +115,8 @@ fn coulomb_friction_stops_sliding_on_horizontal_plane() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.05,
             contact_model: ContactModel::TranslationalV0,
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
         },
     );
 
@@ -169,6 +173,10 @@ fn simple_inclined_plane_runout_is_finite_and_downslope() {
         friction_coefficient: 0.6,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
         stop_speed_mps: 0.1,
         random_seed: None,
         release_perturbation: ReleasePerturbation::default(),
@@ -178,6 +186,72 @@ fn simple_inclined_plane_runout_is_finite_and_downslope() {
     let last = result.samples.last().unwrap();
     assert!(last.x_m > 0.0);
     assert!(result.samples.len() < 1002);
+}
+
+#[test]
+fn zero_stochastic_contact_roughness_matches_baseline_exactly() {
+    let baseline = roughness_test_config(RoughnessModel::None, 0.0, 0.0, 0.0, Some(99));
+    let rough_zero =
+        roughness_test_config(RoughnessModel::StochasticContactV1, 0.0, 0.0, 0.0, Some(99));
+
+    assert_eq!(
+        baseline.run().unwrap().samples,
+        rough_zero.run().unwrap().samples
+    );
+}
+
+#[test]
+fn stochastic_contact_roughness_is_seed_reproducible() {
+    let first = roughness_test_config(
+        RoughnessModel::StochasticContactV1,
+        0.05,
+        0.05,
+        0.05,
+        Some(17),
+    )
+    .run()
+    .unwrap();
+    let repeat = roughness_test_config(
+        RoughnessModel::StochasticContactV1,
+        0.05,
+        0.05,
+        0.05,
+        Some(17),
+    )
+    .run()
+    .unwrap();
+    let different = roughness_test_config(
+        RoughnessModel::StochasticContactV1,
+        0.05,
+        0.05,
+        0.05,
+        Some(18),
+    )
+    .run()
+    .unwrap();
+
+    assert_eq!(first.samples, repeat.samples);
+    assert_ne!(first.samples, different.samples);
+}
+
+#[test]
+fn stochastic_contact_roughness_does_not_create_energy_spikes() {
+    let result = roughness_test_config(
+        RoughnessModel::StochasticContactV1,
+        0.08,
+        0.08,
+        0.04,
+        Some(1234),
+    )
+    .run()
+    .unwrap();
+    let max_energy_increase = result
+        .samples
+        .windows(2)
+        .map(|pair| (pair[1].total_energy_j - pair[0].total_energy_j).max(0.0))
+        .fold(0.0_f64, f64::max);
+
+    assert_abs_diff_eq!(max_energy_increase, 0.0, epsilon = 1.0e-6);
 }
 
 #[test]
@@ -191,6 +265,41 @@ fn vertical_rotational_impact_leaves_spin_unchanged() {
     assert!(response.impacted);
     assert_abs_diff_eq!(state.velocity_mps.z, 2.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(state.angular_velocity_radps.norm(), 0.0, epsilon = 1.0e-12);
+}
+
+fn roughness_test_config(
+    roughness_model: RoughnessModel,
+    roughness_std_normal: f64,
+    roughness_std_tangent: f64,
+    roughness_std_angle: f64,
+    random_seed: Option<u64>,
+) -> SimulationConfig {
+    SimulationConfig {
+        block: SphereBlock::new(0.5, 50.0),
+        initial_position_m: [0.0, 0.0, 4.0],
+        initial_velocity_mps: [3.0, 0.2, -0.5],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::Plane {
+            z0_m: 0.0,
+            slope_x: -0.15,
+            slope_y: 0.0,
+        },
+        dt_s: 0.01,
+        max_time_s: 5.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.2,
+        tangential_restitution: 0.8,
+        friction_coefficient: 0.4,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
+        roughness_model,
+        roughness_std_normal,
+        roughness_std_tangent,
+        roughness_std_angle,
+        stop_speed_mps: 0.05,
+        random_seed,
+        release_perturbation: ReleasePerturbation::default(),
+    }
 }
 
 #[test]
@@ -267,6 +376,8 @@ fn rolling_sphere_incline_acceleration_matches_solid_sphere_solution() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::SphereRotationalV1,
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
         },
     );
 
@@ -297,6 +408,8 @@ fn rolling_resistance_stops_horizontal_motion() {
             rolling_resistance_coefficient: 0.2,
             stop_speed_mps: 0.02,
             contact_model: ContactModel::SphereRotationalV1,
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
         },
     );
 
@@ -332,6 +445,8 @@ fn insufficient_static_friction_slides_instead_of_rolling() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::SphereRotationalV1,
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
         },
     );
 

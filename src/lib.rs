@@ -3,7 +3,7 @@
 //! This crate does not contain RAMMS::ROCKFALL code and does not attempt to
 //! reproduce proprietary implementations. The current model is a deliberately
 //! small spherical-block simulator intended for analytic validation and future
-//! extension.
+//! extension. New physics features are opt-in and versioned.
 
 pub mod dynamics;
 pub mod geometry;
@@ -23,6 +23,7 @@ pub use simulation::{
     TrajectoryRun, TrajectorySummary,
 };
 pub use state::{BodyState, ContactState, TrajectorySample};
+pub use stochastic::{ContactRoughness, RoughnessModel};
 
 /// Three-dimensional vector type used throughout the crate.
 pub type Vec3 = nalgebra::Vector3<f64>;

@@ -79,6 +79,7 @@ def main() -> int:
     render_trajectory_xz(title, trajectories, terrain, expected, radius, output_dir, prefix, formats)
     render_trajectory_xy(title, trajectories, expected, output_dir, prefix, formats)
     render_energy(title, trajectories, output_dir, prefix, formats)
+    render_runout_histogram(title, trajectories, output_dir, prefix, formats)
     write_text(
         output_dir / f"{prefix}_summary.json",
         json.dumps(summarize(trajectories, diagnostics), indent=2, sort_keys=True) + "\n",
@@ -204,6 +205,32 @@ def render_energy(title: str, trajectories: list[Trajectory], output_dir: Path, 
     ax.grid(True, alpha=0.25)
     ax.legend(loc="best", fontsize=9)
     save_figure(fig, output_dir, f"{prefix}_energy", formats)
+
+
+def render_runout_histogram(
+    title: str,
+    trajectories: list[Trajectory],
+    output_dir: Path,
+    prefix: str,
+    formats: list[str],
+) -> None:
+    if len(trajectories) <= 1:
+        return
+    runouts = []
+    for trajectory in trajectories:
+        first = trajectory.samples[0]
+        last = trajectory.samples[-1]
+        runouts.append(math.hypot(float(last["x_m"]) - float(first["x_m"]), float(last["y_m"]) - float(first["y_m"])))
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.2), constrained_layout=True)
+    ax.hist(runouts, bins=min(10, max(3, len(runouts))), color="#1f77b4", alpha=0.78, edgecolor="#0f172a")
+    ax.axvline(statistics.fmean(runouts), color="#111827", lw=2, label="mean")
+    ax.set_title(f"{title}: runout distribution")
+    ax.set_xlabel("runout [m]")
+    ax.set_ylabel("trajectory count")
+    ax.grid(True, axis="y", alpha=0.25)
+    ax.legend(loc="best", fontsize=9)
+    save_figure(fig, output_dir, f"{prefix}_runout_histogram", formats)
 
 
 def plot_state_markers(ax, trajectory: Trajectory, x_key: str, y_key: str, color: str) -> None:

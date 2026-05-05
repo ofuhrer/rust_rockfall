@@ -21,6 +21,7 @@ ALLOWED_GENERATED = {
     "validation/results/.gitkeep",
 }
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
+KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
 KNOWN_CONTACT_STATES = {"airborne", "impact", "sliding", "rolling", "stopped"}
 KNOWN_OUTPUT_KEYS = {"trajectory_csv", "diagnostics_json"}
 KNOWN_METRICS = {
@@ -40,6 +41,8 @@ KNOWN_METRICS = {
     "energy_conservation_error_j",
     "energy_monotonicity_violation_j",
     "seed_repeat_max_position_delta_m",
+    "roughness_zero_baseline_max_position_delta_m",
+    "different_seed_ensemble_runout_delta_m",
     "ensemble_mean_runout_m",
     "ensemble_median_runout_m",
     "ensemble_p05_runout_m",
@@ -65,6 +68,7 @@ def main() -> int:
     errors.extend(check_schema_docs())
     errors.extend(check_documented_paths())
     errors.extend(check_contact_model_docs())
+    errors.extend(check_version_consistency())
 
     if errors:
         for error in errors:
@@ -109,6 +113,10 @@ def check_yaml_cases() -> list[str]:
         if contact_model not in KNOWN_CONTACT_MODELS:
             errors.append(f"{rel}: unknown contact_model {contact_model!r}")
 
+        roughness_model = parameters.get("roughness_model", "none")
+        if roughness_model not in KNOWN_ROUGHNESS_MODELS:
+            errors.append(f"{rel}: unknown roughness_model {roughness_model!r}")
+
         expected = data.get("expected", {}) or {}
         contact_state = expected.get("contact_state")
         if contact_state is not None and contact_state not in KNOWN_CONTACT_STATES:
@@ -137,15 +145,29 @@ def check_schema_docs() -> list[str]:
         "translational_v0",
         "sphere_rotational_v1",
         "rolling_resistance_coefficient",
+        "roughness_model",
+        "stochastic_contact_v1",
+        "roughness_std_normal",
+        "roughness_std_tangent",
+        "roughness_std_angle",
         "final_rolling_residual_mps",
         "final_contact_tangent_speed_mps",
         "final_angular_speed_radps",
+        "roughness_zero_baseline_max_position_delta_m",
+        "different_seed_ensemble_runout_delta_m",
     ]
     errors = []
     for term in required_schema_terms:
         if term not in schema:
             errors.append(f"docs/validation_data_schema.md omits {term}")
-        if term in {"contact_model", "rolling_resistance_coefficient"} and term not in benchmark:
+        if term in {
+            "contact_model",
+            "rolling_resistance_coefficient",
+            "roughness_model",
+            "roughness_std_normal",
+            "roughness_std_tangent",
+            "roughness_std_angle",
+        } and term not in benchmark:
             errors.append(f"docs/benchmark_case_schema.yaml omits {term}")
     return errors
 
@@ -182,6 +204,31 @@ def check_contact_model_docs() -> list[str]:
         for model in KNOWN_CONTACT_MODELS:
             if model not in text:
                 errors.append(f"{path.relative_to(ROOT)} omits contact model {model}")
+    return errors
+
+
+def check_version_consistency() -> list[str]:
+    cargo = (ROOT / "Cargo.toml").read_text()
+    match = re.search(r'^version\s*=\s*"([^"]+)"', cargo, re.MULTILINE)
+    if not match:
+        return ["Cargo.toml omits package version"]
+    version = match.group(1)
+    tagged = f"v{version}"
+    errors = []
+    required_paths = [
+        ROOT / "README.md",
+        ROOT / "docs/README.md",
+        ROOT / "CHANGELOG.md",
+    ]
+    for path in required_paths:
+        if tagged not in path.read_text():
+            errors.append(f"{path.relative_to(ROOT)} omits {tagged}")
+
+    report_generator = (ROOT / "visualization/build_report.py").read_text()
+    if f'FALLBACK_MODEL_VERSION = "{version}"' not in report_generator:
+        errors.append("visualization/build_report.py fallback version disagrees with Cargo.toml")
+    if "model_version" not in report_generator:
+        errors.append("visualization/build_report.py does not render model_version")
     return errors
 
 

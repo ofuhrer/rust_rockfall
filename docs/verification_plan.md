@@ -40,9 +40,20 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 
 - full 3D polyhedral rigid-body contact
 - nonsmooth complementarity solvers
-- terrain roughness/scarring
+- calibrated spatial terrain roughness/scarring
 - forest/deadwood interaction
 - fragmentation
 - operational hazard prediction
 
 Verification cases must not be calibrated.
+
+## Roughness Verification
+
+`v0.3.0` adds opt-in `stochastic_contact_v1` impact roughness. Verification covers:
+
+- zero-roughness consistency with `roughness_model: none`;
+- fixed-seed reproducibility for roughened impacts;
+- different-seed ensemble spread without release perturbations;
+- bounded energy behavior for dissipative roughened contact.
+
+These tests verify deterministic contact stochasticity only. They do not calibrate roughness against field terrain classes or validate hazard prediction.

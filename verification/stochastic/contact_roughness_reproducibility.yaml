@@ -1,0 +1,32 @@
+case_id: stochastic_contact_roughness_reproducibility
+title: Stochastic contact roughness is seed reproducible
+level: 3
+description: Verifies that the same roughness seed reproduces the same trajectory when stochastic_contact_v1 is enabled.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.15, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [3.0, 0.2, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.4
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.08
+  roughness_std_angle: 0.08
+simulation: { dt: 0.01, t_max: 5.0, stop_velocity: 0.05 }
+random: { seed: 12345, ensemble_size: 1 }
+expected:
+  metrics: [seed_repeat_max_position_delta_m, runout_m]
+  tolerances:
+    seed_repeat_max_position_delta_m: 0.0
+outputs:
+  diagnostics_json: verification/results/stochastic_contact_roughness_reproducibility.json
+  trajectory_csv: verification/results/stochastic_contact_roughness_reproducibility.csv
+references:
+  notes:
+    - "This checks deterministic stochastic contact sampling for a single trajectory, not ensemble calibration."

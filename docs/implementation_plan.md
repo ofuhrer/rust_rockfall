@@ -57,12 +57,13 @@
 
 ## Phase 6: Stochastic Ensembles
 
-- Objective: deterministic release perturbations and later ensembles.
-- Methods: `ChaCha8Rng` seeded sampling.
+- Status: active in `v0.3.0`.
+- Objective: deterministic release perturbations, opt-in stochastic contact roughness, and ensemble summaries.
+- Methods: `ChaCha8Rng` seeded sampling; trajectory-specific seeds for release and impact roughness.
 - Modules: `stochastic`, `simulation`.
-- Tests: fixed seed reproduces identical samples.
-- Output: reproducible single-run perturbations.
-- Limitations: aggregate ensemble summaries are future work.
+- Tests: fixed seed reproduces identical samples; zero roughness matches baseline; nonzero roughness produces deterministic runout spread; dissipative roughness has bounded energy behavior.
+- Output: reproducible single-run perturbations and ensemble summary metrics.
+- Limitations: roughness is contact stochasticity, not a calibrated spatial terrain roughness law.
 
 ## Phase 7: Validation Cases
 
@@ -85,7 +86,7 @@
 
 - Python bindings
 - GeoTIFF and production DEM workflows
-- stochastic ensemble summaries and rasterized reach maps
+- rasterized reach maps
 - visualization
 - compactable-soil scarring
 - convex polyhedral rigid-body contact
