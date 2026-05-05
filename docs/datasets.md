@@ -13,6 +13,24 @@ Primary public sources currently registered:
 - Surava rockfall trilogy: EnviDat DOI [10.16904/envidat.248](https://doi.org/10.16904/envidat.248), WSL Data Policy.
 - Parde rockfall gallery impact tests: EnviDat DOI [10.16904/envidat.41](https://doi.org/10.16904/envidat.41), ODbL with DbCL.
 
+Operational Swiss geodata sources are also registered as metadata-only
+placeholders. They are input-data candidates for future hazard-map workflows,
+not experimental validation datasets:
+
+- swissALTI3D: primary bare-earth DEM terrain foundation.
+- swissSURFACE3D and swissSURFACE3D Raster: surface, vegetation, building, and
+  obstacle context.
+- swissTLM3D: topographic vector context for infrastructure, hydrography,
+  land-cover, and release/exclusion masks.
+- swissBUILDINGS3D: building exposure or obstacle context for later risk or
+  site-specific studies.
+- GeoCover, Geological Atlas 1:25,000, and GeoMaps 500: geological/material and
+  release-zone context at different scales.
+- SWISSIMAGE: orthophoto QA and visual review.
+
+See `swisstopo_data_strategy.md` for the distinction between validation
+datasets and operational geodata.
+
 ## Downloading Data
 
 Install PyYAML if needed:
@@ -63,6 +81,11 @@ This writes:
 The Tschamut terrain file is an `idw_residual_dem_from_lps` ESRI ASCII grid proxy. It adds inverse-distance-weighted residuals from public LPS ground elevations to a least-squares trend plane. It is more realistic than the earlier fitted plane because it retains local terrain variation, but it is still not an official field DEM. Coordinates remain in the public LPS local horizontal coordinate system, and elevations are shifted by `-1600 m` to match the overview table convention.
 
 Dataset-specific conversions should write validation-ready CSV/GeoJSON under `data/processed/<dataset_id>/` and must document CRS, units, and inferred fields.
+
+swisstopo products are not downloaded by the generic validation-data workflow.
+For Swiss pilot domains, download only the required tiles manually or through a
+documented future adapter, preserve raw filenames locally, and create
+metadata/provenance records before conversion to internal DEM fixtures.
 
 Create the Chant Sura trajectory-validation subset from the public EnviDat Output archive and optional EOTA shape archive:
 

@@ -1,5 +1,11 @@
 # Scarring Contact v1 Review
 
+Historical status note: this review predates the later impact-event diagnostics
+and single-impact calibration experiments. Its recommendation to add
+impact-level diagnostics has been implemented; current calibration context lives
+in `docs/scarring_single_impact_calibration.md` and
+`docs/scarring_real_data_calibration.md`.
+
 ## Decision
 
 `scarring_contact_v1` is not ready for scientific calibration yet.

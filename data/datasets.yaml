@@ -1,5 +1,5 @@
 version: 1
-updated_utc: "2026-05-04"
+updated_utc: "2026-05-05"
 policy:
   raw_data_root: data/raw
   processed_data_root: data/processed
@@ -344,6 +344,272 @@ datasets:
         format: zip
         size_bytes: 320251100
         raw_file: parde2016_accelmeas.zip
+
+  - id: swisstopo_swissalti3d
+    name: swissALTI3D
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. swissALTI3D."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "LV95 / LN02; represented in project metadata as EPSG:2056 horizontal coordinates with LN02 heights."
+    data_types:
+      - bare-earth digital elevation model
+      - 0.5 m and 2 m raster grid
+      - pilot terrain foundation
+    file_formats:
+      - Cloud Optimized GeoTIFF
+      - ASCII XYZ
+      - ESRI ASCII GRID on request
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swissalti3d
+    processed_path: data/processed/swisstopo/swissalti3d
+    intended_validation_use:
+      - authoritative Swiss terrain input for future hazard-map pilot domains
+      - DEM ingestion and CRS/provenance tests
+      - not an experimental validation dataset by itself
+    preprocessing_notes:
+      - Do not commit raw swissALTI3D tiles.
+      - Use cropped pilot domains only when license-compatible and scientifically justified.
+      - Preserve LV95/EPSG:2056 coordinates, LN02 heights, resolution, tile ids, checksums, and preprocessing provenance.
+      - Prefer 2 m tiles for first pilots unless 0.5 m terrain detail is scientifically required.
+    resources: []
+
+  - id: swisstopo_swisssurface3d
+    name: swissSURFACE3D
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swisssurface3d
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. swissSURFACE3D."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "LV95 / LN02."
+    data_types:
+      - classified airborne LiDAR point cloud
+      - vegetation and man-made surface points
+      - obstacle and DSM derivation context
+    file_formats:
+      - Cloud Optimized Point Cloud LAZ 1.4 (COPC)
+      - LAS
+      - CSV on request
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swisssurface3d
+    processed_path: data/processed/swisstopo/swisssurface3d
+    intended_validation_use:
+      - future forest and obstacle context
+      - terrain/surface comparison against swissALTI3D
+      - not required for v0 hazard-layer development
+    preprocessing_notes:
+      - Do not commit point-cloud tiles.
+      - Any derived canopy, obstacle, or DSM layer must record classification filters and provenance.
+    resources: []
+
+  - id: swisstopo_swisssurface3d_raster
+    name: swissSURFACE3D Raster
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swisssurface3d-raster
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. swissSURFACE3D Raster."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "LV95 / LN02."
+    data_types:
+      - digital surface model
+      - vegetation/building/bridge/water surface raster
+      - obstacle context
+    file_formats:
+      - Cloud Optimized GeoTIFF
+      - ASCII XYZ
+      - ESRI ASCII GRID on request
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swisssurface3d_raster
+    processed_path: data/processed/swisstopo/swisssurface3d_raster
+    intended_validation_use:
+      - optional future DSM and obstacle sensitivity layer
+      - comparison with swissALTI3D for vegetation/building height context
+    preprocessing_notes:
+      - Do not use as the default bare-earth terrain for rockfall trajectory integration.
+      - Record whether any surface-object layer is used as hazard context or risk/exposure context.
+    resources: []
+
+  - id: swisstopo_swisstlm3d
+    name: swissTLM3D
+    source_url: https://www.swisstopo.admin.ch/en/landscape-model-swisstlm3d
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. swissTLM3D."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "LV95 / LN02."
+    data_types:
+      - topographic 3D vector features
+      - roads and tracks
+      - hydrography
+      - buildings and constructed features
+      - land-cover/context features
+    file_formats:
+      - ESRI File Geodatabase
+      - ESRI Shapefile
+      - GeoPackage
+      - DXF
+      - INTERLIS 2
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swisstlm3d
+    processed_path: data/processed/swisstopo/swisstlm3d
+    intended_validation_use:
+      - future release-zone masks, exclusion masks, infrastructure context, and QA overlays
+      - not a physics-validation dataset
+    preprocessing_notes:
+      - Preserve feature class names, source version, CRS, and filtering criteria.
+      - Do not conflate infrastructure context with risk unless exposure/vulnerability inputs are explicitly added.
+    resources: []
+
+  - id: swisstopo_swissbuildings3d
+    name: swissBUILDINGS3D
+    source_url: https://www.swisstopo.admin.ch/en/landscape-model-swissbuildings3d-3-0-beta
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. swissBUILDINGS3D."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "LV95 / LN02."
+    data_types:
+      - 3D building models
+      - roof, facade, footprint, and solid building geometries
+      - exposure/obstacle context
+    file_formats:
+      - ESRI File Geodatabase
+      - DWG
+      - CityGML where available
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swissbuildings3d
+    processed_path: data/processed/swisstopo/swissbuildings3d
+    intended_validation_use:
+      - future exposure or obstacle context
+      - risk-workflow input only when vulnerability/exposure modelling is explicitly added
+    preprocessing_notes:
+      - Not required for hazard-only trajectory simulation.
+      - Do not describe building exposure products as hazard layers.
+    resources: []
+
+  - id: swisstopo_geocover
+    name: GeoCover geological 2D models
+    source_url: https://www.swisstopo.admin.ch/en/geological-model-2d-geocover
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. GeoCover geological 2D models."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "MN95/LV95; align explicitly with EPSG:2056 workflows."
+    data_types:
+      - geological vector datasets
+      - superficial strata and lithological context
+      - release-zone/material screening context
+    file_formats:
+      - File Geodatabase ZIP
+      - GeoPackage
+      - INTERLIS
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/geocover
+    processed_path: data/processed/swisstopo/geocover
+    intended_validation_use:
+      - future geology/material masks for release-zone definition
+      - terrain-class and calibration-context documentation
+    preprocessing_notes:
+      - Keep geological interpretation separate from hidden parameter tuning.
+      - Record map sheet/compilation id and any lithology-to-parameter assumptions.
+    resources: []
+
+  - id: swisstopo_geological_atlas_25k
+    name: Geological Atlas of Switzerland 1:25,000
+    source_url: https://shop.swisstopo.admin.ch/en/maps/geological-maps
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. Geological Atlas of Switzerland 1:25,000."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "Sheet/product dependent; convert or reference to LV95/EPSG:2056 before spatial use."
+    data_types:
+      - geological map sheets
+      - explanatory booklets
+      - detailed bedrock and superficial geology context
+    file_formats:
+      - printed map
+      - PDF
+      - geodata where available through swisstopo channels
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/geological_atlas_25k
+    processed_path: data/processed/swisstopo/geological_atlas_25k
+    intended_validation_use:
+      - site-scale release-zone and material-context interpretation
+    preprocessing_notes:
+      - Use as contextual geologic evidence, not as a direct physics parameter without documented calibration.
+    resources: []
+
+  - id: swisstopo_geomaps_500
+    name: GeoMaps 500
+    source_url: https://www.swisstopo.admin.ch/en/geomaps-500
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. GeoMaps 500."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "Product dependent; document CRS before spatial use."
+    data_types:
+      - geological overview maps
+      - tectonic overview maps
+      - hydrogeological overview maps
+      - geophysical overview maps
+    file_formats:
+      - pixel/raster products
+      - vector products
+      - geoservices
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/geomaps_500
+    processed_path: data/processed/swisstopo/geomaps_500
+    intended_validation_use:
+      - regional geological context only
+      - not sufficient for local release-zone or parameter calibration
+    preprocessing_notes:
+      - Treat as coarse contextual information at 1:500,000 scale.
+    resources: []
+
+  - id: swisstopo_swissimage
+    name: SWISSIMAGE
+    source_url: https://www.swisstopo.admin.ch/en/orthoimage-swissimage-10
+    doi: null
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    license_id: swisstopo-terms
+    citation: "Federal Office of Topography swisstopo. SWISSIMAGE."
+    authors:
+      - Federal Office of Topography swisstopo
+    coordinate_system: "CH1903+ / LV95 (EPSG:2056) for recent downloadable products."
+    data_types:
+      - orthophoto mosaic
+      - visual QA imagery
+      - hillshade/release-zone review context
+    file_formats:
+      - Cloud Optimized GeoTIFF
+      - RGB TIFF with world file for older products
+    download_status: metadata_only
+    local_path: data/raw/swisstopo/swissimage
+    processed_path: data/processed/swisstopo/swissimage
+    intended_validation_use:
+      - visual inspection and QA of pilot terrain, release zones, and hazard layers
+      - not a physical validation dataset by itself
+    preprocessing_notes:
+      - Do not commit imagery tiles.
+      - Record acquisition year, tile id, resolution, CRS, and any copyright statements.
+    resources: []
 
   - id: synthetic_plane_basic
     name: Synthetic inclined-plane validation fixture

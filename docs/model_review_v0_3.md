@@ -1,5 +1,10 @@
 # Model Review v0.3.0
 
+Historical status note: this review records the rationale for the opt-in
+`stochastic_contact_v1` roughness model. Later releases retain that model and
+add scarring diagnostics, calibration experiments, hazard-layer workflows, and
+Swiss geodata strategy.
+
 `v0.3.0` implements the next incremental model step after rotational sphere contact: opt-in stochastic contact roughness.
 
 ## Rationale

@@ -67,7 +67,7 @@
 
 ## Phase 6b: Minimal Scarring Diagnostics
 
-- Status: active in `v0.4.0`.
+- Status: implemented in `v0.4.0`; retained in the current model as opt-in physics.
 - Objective: add opt-in compactable-soil impact energy-loss diagnostics without changing default behavior.
 - Methods: estimate impact-local scar depth, sphere-cap area, drag force, and bounded translational energy loss.
 - Modules: `dynamics`, `integrator`, `simulation`, `state`, `validation`.
@@ -96,9 +96,9 @@
 
 - Python bindings
 - GeoTIFF and production DEM workflows
-- rasterized reach maps
-- visualization
-- compactable-soil scarring
+- streaming/tiled hazard-map reducers and GeoTIFF/COG export
+- production visualization/reporting workflows
+- calibrated compactable-soil scarring refinements
 - convex polyhedral rigid-body contact
 - public benchmark dataset integration
 - HPC and GPU acceleration

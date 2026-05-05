@@ -126,6 +126,7 @@ def main() -> int:
     errors.extend(check_calibration_metadata())
     errors.extend(check_scarring_not_in_tschamut_workflows())
     errors.extend(check_hazard_layer_metadata())
+    errors.extend(check_swisstopo_geodata_metadata())
 
     if errors:
         for error in errors:
@@ -149,6 +150,20 @@ def check_staged_generated_outputs() -> list[str]:
             continue
         if any(path.startswith(prefix) for prefix in GENERATED_PREFIXES):
             errors.append(f"generated output is staged: {path}")
+    tracked = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    ).stdout.splitlines()
+    for path in tracked:
+        if path in ALLOWED_GENERATED:
+            continue
+        if any(path.startswith(prefix) for prefix in GENERATED_PREFIXES):
+            errors.append(f"generated output is tracked: {path}")
+        if path.startswith("data/raw/") and path != "data/raw/.gitkeep":
+            errors.append(f"raw external data is tracked: {path}")
     return errors
 
 
@@ -321,6 +336,109 @@ def check_hazard_layer_metadata() -> list[str]:
     ):
         if term not in docs:
             errors.append(f"hazard-layer docs omit {term!r}")
+    return errors
+
+
+def check_swisstopo_geodata_metadata() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+
+    errors = []
+    required_paths = [
+        ROOT / "docs/swisstopo_data_strategy.md",
+        ROOT / "docs/swisstopo_terrain_tile_schema.yaml",
+        ROOT / "data/processed/swisstopo/README.md",
+        ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"missing swisstopo geodata artifact {path.relative_to(ROOT)}")
+
+    registry = yaml.safe_load((ROOT / "data/datasets.yaml").read_text()) or {}
+    datasets = {dataset.get("id"): dataset for dataset in registry.get("datasets", [])}
+    required_dataset_ids = {
+        "swisstopo_swissalti3d",
+        "swisstopo_swisssurface3d",
+        "swisstopo_swisssurface3d_raster",
+        "swisstopo_swisstlm3d",
+        "swisstopo_swissbuildings3d",
+        "swisstopo_geocover",
+        "swisstopo_geological_atlas_25k",
+        "swisstopo_geomaps_500",
+        "swisstopo_swissimage",
+    }
+    for dataset_id in sorted(required_dataset_ids):
+        dataset = datasets.get(dataset_id)
+        if not dataset:
+            errors.append(f"data/datasets.yaml omits {dataset_id}")
+            continue
+        for key in ("source_url", "license", "citation", "local_path", "processed_path"):
+            if not dataset.get(key):
+                errors.append(f"{dataset_id} dataset metadata omits {key}")
+        if dataset.get("download_status") != "metadata_only":
+            errors.append(f"{dataset_id} must remain metadata_only until explicit download support exists")
+
+    if (ROOT / "docs/swisstopo_data_strategy.md").exists():
+        strategy = (ROOT / "docs/swisstopo_data_strategy.md").read_text()
+        for term in (
+            "swissALTI3D",
+            "swissSURFACE3D",
+            "swissTLM3D",
+            "swissBUILDINGS3D",
+            "GeoCover",
+            "Geological Atlas",
+            "GeoMaps 500",
+            "SWISSIMAGE",
+            "EPSG:2056",
+            "LN02",
+            "provenance",
+            "hazard",
+            "risk",
+        ):
+            if term not in strategy:
+                errors.append(f"docs/swisstopo_data_strategy.md omits {term!r}")
+
+    hazard_docs = "\n".join(
+        path.read_text()
+        for path in (
+            ROOT / "docs/hazard_layers.md",
+            ROOT / "docs/hazard_workflow_scale_review.md",
+        )
+        if path.exists()
+    )
+    for term in ("swissALTI3D", "EPSG:2056", "LN02", "provenance", "GeoTIFF", "COG"):
+        if term not in hazard_docs:
+            errors.append(f"hazard geodata docs omit {term!r}")
+
+    gitignore = (ROOT / ".gitignore").read_text()
+    if "data/raw/**" not in gitignore:
+        errors.append(".gitignore must keep raw dataset directories ignored")
+    for raw_path in (
+        "data/raw/swisstopo/swissalti3d/example.tif",
+        "data/raw/swisstopo/swissimage/example.tif",
+    ):
+        check = subprocess.run(
+            ["git", "check-ignore", "-q", raw_path],
+            cwd=ROOT,
+            check=False,
+        )
+        if check.returncode != 0:
+            errors.append(f"{raw_path} is not ignored by git")
+
+    sample_path = ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml"
+    if sample_path.exists():
+        sample = yaml.safe_load(sample_path.read_text()) or {}
+        crs = sample.get("coordinate_reference_system", {}) or {}
+        if crs.get("epsg") != 2056:
+            errors.append("sample swissALTI3D tile metadata must use EPSG:2056")
+        if crs.get("vertical_datum") != "LN02":
+            errors.append("sample swissALTI3D tile metadata must use LN02")
+        if sample.get("source_dataset") != "swisstopo_swissalti3d":
+            errors.append("sample swissALTI3D tile metadata references wrong source_dataset")
+        if sample.get("source_file_present") is not False:
+            errors.append("sample swissALTI3D tile metadata must remain metadata-only")
     return errors
 
 

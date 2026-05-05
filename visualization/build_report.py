@@ -62,7 +62,7 @@ PLOT_CAPTIONS = {
         "of distribution-level mismatch; it is not an operational hazard-skill score."
     ),
 }
-FALLBACK_MODEL_VERSION = "0.4.0"
+FALLBACK_MODEL_VERSION = "0.5.0"
 
 
 @dataclass
@@ -324,7 +324,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rockfall v0.4.0 Verification and Validation Report</title>
+  <title>Rockfall v0.5.0 Verification and Validation Report</title>
   <style>
     :root {{
       --bg: #f8fafc;
@@ -395,7 +395,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 </head>
 <body>
 <main>
-  <h1>Rockfall v0.4.0 Verification and Validation Report</h1>
+  <h1>Rockfall v0.5.0 Verification and Validation Report</h1>
   <p class="lede">Local diagnostic report assembled from checked-in YAML case definitions, JSON result reports, trajectory CSVs, and PNG plots. This is a browsing aid; numerical verification and validation commands remain authoritative.</p>
   <p class="meta">Generated: {escape(generated_at)}. Model version(s): {escape(model_versions)}. Cases: {len(reports)}. Status summary: {summary or "none"}. Plot root: <a href="{plot_root_link}">{escape(plot_root_label)}</a>.</p>
 
@@ -410,7 +410,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
       </ul>
     </section>
     <section class="intro-card">
-      <h2>Known Limitations Of v0.4.0</h2>
+      <h2>Known Limitations Of v0.5.0</h2>
       <ul>
         <li>Spherical blocks only; no polyhedral shape, fragmentation, or shape-dependent terrain contact.</li>
         <li>Simplified restitution/friction contact; opt-in contact roughness is not a calibrated spatial roughness field.</li>

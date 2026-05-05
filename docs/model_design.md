@@ -2,7 +2,7 @@
 
 ## Scope
 
-The `v0.4.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.5.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
 
 Supported now:
 
@@ -126,7 +126,7 @@ If `scarring_max_depth_m` is supplied, that nonnegative value is used as the sca
 d = 0.16 m^(1/4) ME^(-0.4) |v_n^-|^(0.8)
 ```
 
-where `ME` is interpreted from `soil_strength_pa` after conversion to kPa. The cap at one radius is a v0.4.0 stability assumption for the simple sphere-cap area model, not a calibrated field law.
+where `ME` is interpreted from `soil_strength_pa` after conversion to kPa. The cap at one radius is a stability assumption for the simple sphere-cap area model, not a calibrated field law.
 
 The projected sphere-cap scar area is:
 
@@ -195,7 +195,7 @@ rockfall run --config examples/inclined_plane.json --output trajectory.csv
 
 ## HPC-Readiness Boundaries
 
-The v0.4.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+The v0.5.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.

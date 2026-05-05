@@ -1,6 +1,6 @@
 # Tschamut Validation Review
 
-This review covers the active `validation_tschamut_basic` case originally reviewed for `v0.3.0` and still run in `v0.4.0` with `soil_interaction_model: none`. The case uses public-derived data from Volkwein and Gerber's EnviDat dataset, "Repetitive trajectory testing in Tschamut 2014", DOI <https://doi.org/10.16904/envidat.34>. It is a limited validation workflow check, not an operational hazard validation and not a calibrated reproduction of the field experiment.
+This historical review covers the active `validation_tschamut_basic` case originally reviewed for `v0.3.0` and still run in `v0.5.0` with `soil_interaction_model: none`. The case uses public-derived data from Volkwein and Gerber's EnviDat dataset, "Repetitive trajectory testing in Tschamut 2014", DOI <https://doi.org/10.16904/envidat.34>. It is a limited validation workflow check, not an operational hazard validation and not a calibrated reproduction of the field experiment.
 
 ## Preprocessing Assessment
 

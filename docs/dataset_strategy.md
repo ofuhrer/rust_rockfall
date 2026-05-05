@@ -9,10 +9,33 @@ public measurements at the right level of evidence.
 
 | Dataset | Repository ID | Primary role | Current use | Not used for |
 | --- | --- | --- | --- | --- |
-| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full DEM-based runout, or shape-effect validation in v0.4.0 |
+| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full DEM-based runout, or shape-effect validation in v0.5.0 |
 | Lu / Chant Sura scarring tables | `chant_sura_esurf_2019_impacts` | Impact-level scarring calibration | Public scar-depth and jump-energy tables constrain `scarring_contact_v1` at the single-impact level. | Trajectory validation or hazard-map validation |
 | Tschamut 2014 | `tschamut2014` | Deposition-level validation | Public release/deposition subset compares ensemble runout and deposition-cloud metrics on a transparent terrain proxy. | Impact-level calibration, shape validation, or operational hazard skill |
 | Synthetic analytic fixtures | `synthetic_*` | Verification | Closed-form or controlled checks for mechanics, terrain handling, stochastic reproducibility, scarring diagnostics, and hazard-layer post-processing. | Real-world validation |
+
+## Operational Swiss Geodata
+
+swisstopo products registered under `swisstopo_*` are operational input geodata,
+not experimental validation datasets. Their purpose is to support future Swiss
+hazard-map workflows after the physics has been constrained by public
+experiments:
+
+- `swisstopo_swissalti3d`: mandatory bare-earth terrain foundation for pilot
+  domains.
+- `swisstopo_swisssurface3d` and `swisstopo_swisssurface3d_raster`: optional
+  vegetation, building, surface, and obstacle context.
+- `swisstopo_swisstlm3d`: topographic vector context for release masks,
+  infrastructure overlays, hydrography, and QA.
+- `swisstopo_geocover`, `swisstopo_geological_atlas_25k`, and
+  `swisstopo_geomaps_500`: geological/material context at different scales.
+- `swisstopo_swissimage`: orthophoto QA and visual review.
+- `swisstopo_swissbuildings3d`: future exposure/obstacle context; risk use
+  requires explicit exposure and vulnerability modelling.
+
+These datasets must retain CRS, vertical datum, resolution, extent, tile id, and
+provenance metadata. Full swisstopo raw products are not committed. The detailed
+strategy and first pilot workflow are in `docs/swisstopo_data_strategy.md`.
 
 ## Chant Sura as the Primary Reference Dataset
 
@@ -57,10 +80,13 @@ is a consistency diagnostic rather than field-terrain validation.
   stopping and runout behavior, with current conclusions limited by the terrain
   proxy.
 - **Shape effects:** Chant Sura and EOTA shape data can constrain future
-  non-spherical models, but v0.4.0 does not yet use those shapes dynamically.
+  non-spherical models, but v0.5.0 does not yet use those shapes dynamically.
 - **Hazard-map layers:** Synthetic and Tschamut cases exercise hazard-layer
   post-processing; real hazard-map validation requires larger ensembles, real
   DEMs, CRS-aware exports, and release-zone workflows.
+- **Operational terrain/input geodata:** swissALTI3D and related swisstopo
+  layers provide terrain and map context for future production-style workflows,
+  but they do not validate model physics by themselves.
 
 ## Inconsistencies and Gaps
 
@@ -84,4 +110,8 @@ is a consistency diagnostic rather than field-terrain validation.
 - Use Lu/ESurf impact tables for scarring calibration only.
 - Use Tschamut as deposition-level validation only unless a separate
   trajectory-focused preprocessing pipeline is added.
+- Keep swisstopo operational input geodata separate from experimental
+  calibration and validation datasets.
+- Do not commit large swisstopo raw tiles or imagery; use metadata records and
+  small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.

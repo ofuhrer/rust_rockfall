@@ -2,7 +2,7 @@
 
 `rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
 
-Current crate/model version: `v0.4.0`.
+Current crate/model version: `v0.5.0`.
 
 The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
 
@@ -25,7 +25,7 @@ The first model is intentionally small:
 - optional per-impact CSV/JSON diagnostics for reconstructing contact and scarring events
 - CSV trajectory output from a CLI
 
-Unsupported in v0.4.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+Unsupported in v0.5.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
 
 ## Versioning
 
@@ -59,6 +59,7 @@ Core documentation:
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
 - `docs/roadmap_hazard_mapping.md`
+- `docs/swisstopo_data_strategy.md`
 - `docs/dataset_strategy.md`
 - `docs/hazard_layers.md`
 - `docs/verification_plan.md`
@@ -167,6 +168,11 @@ python3 scripts/build_hazard_layers.py \
 ```
 
 Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, and significant impact density when impact events are available. These are hazard indicators only, not risk maps and not operational Swiss hazard products.
+
+Future Swiss pilot workflows should use authoritative swisstopo geodata,
+especially swissALTI3D for bare-earth terrain. The current repository contains
+metadata and a small tile-metadata fixture only; it does not download or commit
+national swisstopo datasets. See `docs/swisstopo_data_strategy.md`.
 
 For ensemble-based reach, energy, and jump-height layers, opt into
 `outputs.ensemble_trajectories_dir` in the case YAML. For ensemble impact

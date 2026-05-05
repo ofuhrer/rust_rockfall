@@ -2,8 +2,17 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## v0.5.0
+
+- Added Chant Sura trajectory-validation fixtures and model-improvement evaluation documentation.
+- Added real-data single-impact scarring calibration using public Chant Sura / ESurf 2019 tables.
 - Added a lightweight hazard-layer post-processing workflow for reach probability, deposition density, maximum kinetic energy, maximum jump height, significant impact density, CSV/ASCII grid exports, deposition GeoJSON, PNG plots, and local HTML reports.
-- Added hazard-layer documentation, scale-review notes, and smoke-test fixtures while keeping the simulation physics unchanged.
+- Added opt-in full ensemble trajectory and impact-event outputs for scientifically meaningful small-to-medium hazard layers.
+- Added hazard-layer scientific analysis, scale-review notes, and smoke-test fixtures while keeping simulation physics unchanged.
+- Added swisstopo metadata-only dataset registry entries, terrain tile metadata schema, and Swiss pilot geodata strategy without downloading or committing national datasets.
+- Consolidated documentation, dataset roles, version metadata, generated-artifact hygiene, and repository consistency checks.
 
 ## v0.4.0
 

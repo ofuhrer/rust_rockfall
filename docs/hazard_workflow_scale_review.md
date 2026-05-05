@@ -174,6 +174,32 @@ implemented:
 - export to GeoTIFF or Cloud-Optimized GeoTIFF for rasters and GeoPackage or
   GeoJSON for vector summaries.
 
+## swisstopo Terrain and Context Inputs
+
+Future Swiss pilot domains should use swisstopo operational input geodata, not
+experimental validation terrain proxies. The current strategy is:
+
+- **swissALTI3D** is the mandatory bare-earth terrain foundation for pilot
+  hazard domains. It is delivered in LV95/LN02 one-kilometre tiles and can be
+  obtained as COG GeoTIFF or text formats.
+- **swissSURFACE3D Raster** and **swissSURFACE3D** are optional surface,
+  vegetation, building, and obstacle context layers. They are not replacements
+  for the bare-earth terrain used by the current trajectory kernel.
+- **swissTLM3D** provides roads, tracks, hydrography, constructed features, land
+  cover, and other vector context for release masks, exclusions, infrastructure
+  overlays, and QA.
+- **GeoCover**, the **Geological Atlas 1:25,000**, and **GeoMaps 500** provide
+  geological/material context at different scales. Any translation from geology
+  to model parameters must be explicit and must not become hidden calibration.
+- **SWISSIMAGE** is a visual QA layer for terrain preprocessing, release zones,
+  hillshade comparison, and map review.
+
+A metadata-only tile fixture is checked in at
+`data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml`. It documents
+the fields future ingestion should validate: EPSG:2056 / LV95 coordinates,
+LN02 heights, resolution, extent, nodata policy, checksums, preprocessing
+method, license/terms reference, and provenance. It is not a real terrain tile.
+
 ## Storage Format Assessment
 
 Current formats:
@@ -200,6 +226,7 @@ Candidate future formats:
 
 Minimum requirements before Switzerland-wide mapping:
 
+- swisstopo-aware terrain ingestion for cropped swissALTI3D pilot domains;
 - deterministic release-zone generation from polygons or raster masks;
 - full ensemble trajectory/event output, preferably chunked; the current
   `ensemble_trajectories_dir` and `ensemble_impact_events_dir` are the first
@@ -211,6 +238,13 @@ Minimum requirements before Switzerland-wide mapping:
 - storage policy for raw trajectories versus reduced summaries;
 - calibration/validation metadata embedded in every layer;
 - clear separation between hazard layers and downstream risk workflows.
+
+The first pilot workflow is defined in `docs/swisstopo_data_strategy.md`: select
+a small slope or valley, obtain only the needed swissALTI3D tiles, crop with
+documented provenance, generate release zones from slope plus geology context,
+run deterministic ensembles, and export hazard layers with CRS/provenance
+metadata. Full Swiss-scale download and processing remain deliberately out of
+scope.
 
 ## Prioritized Next Steps
 

@@ -1,6 +1,6 @@
 [package]
 name = "rust_rockfall"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description = "Independent, literature-based research core for simple 3D rockfall simulation"
 license = "MIT"

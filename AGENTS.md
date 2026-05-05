@@ -30,6 +30,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - For roughness-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - For soil/scarring-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - For dataset or validation-case changes, update `data/datasets.yaml`, preprocessing scripts, validation-ready schema/docs, and `docs/dataset_strategy.md` together so calibration, trajectory validation, deposition validation, and hazard mapping stay separated.
+- For Swiss operational geodata changes, keep validation datasets and operational input datasets separate, update `docs/swisstopo_data_strategy.md`, preserve CRS/vertical-datum/provenance metadata, and never commit large swisstopo raw tiles.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.
@@ -52,6 +53,9 @@ When these files conflict, preserve the safety constraints first, then update th
 - Treat release-zone generation, DEM/GIS integration, ensemble orchestration, calibration/validation, and geospatial export as future workflow layers around the core simulator.
 - Keep risk modelling separate from hazard modelling; risk requires exposure and vulnerability inputs that are not part of the current core.
 - Treat hazard-layer generation as post-processing of simulation outputs, not core physics; document whether a layer comes from full trajectory ensembles, representative trajectories, deposition summaries, or impact-event logs.
+- Treat swisstopo datasets as operational input geodata for future Swiss pilot and hazard-map workflows, not as model-validation evidence by themselves.
+- Preserve CRS, vertical datum, resolution, extent, source-tile ids, and provenance for all geospatial outputs.
+- Do not commit large swissALTI3D, swissSURFACE3D, SWISSIMAGE, swissTLM3D, or swissBUILDINGS3D raw products; use metadata records and small intentional fixtures only.
 
 ## Code Expectations
 

@@ -20,3 +20,9 @@ Large public datasets are not committed. Use `scripts/download_datasets.py` to d
 - Do not tune simulator parameters secretly to match one dataset.
 
 The included `synthetic_plane_basic` fixture is synthetic and exists only for CI-style validation of data loading and metrics. The checked-in `chant_sura_2020` subset is a small public trajectory-validation fixture; the checked-in `tschamut2014` subset is a deposition/runout validation fixture. See `../docs/dataset_strategy.md` for dataset roles.
+
+Metadata-only swisstopo entries describe future operational input geodata for
+Swiss hazard-map workflows. They are not experimental validation datasets and
+their raw national products must not be committed. See
+`../docs/swisstopo_data_strategy.md` and
+`processed/swisstopo/sample_swissalti3d_tile_metadata.yaml`.

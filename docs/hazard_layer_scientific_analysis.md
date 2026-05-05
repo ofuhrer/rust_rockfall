@@ -1,7 +1,7 @@
 # Scientific Analysis of Ensemble Hazard Layers
 
 This document interprets the current ensemble-based hazard-layer outputs for
-`v0.4.0`. It uses freshly generated, ignored artifacts under
+`v0.5.0`. It uses freshly generated, ignored artifacts under
 `hazard/results/hazard_analysis_*` from git hash `2a328c2`. No simulation
 physics, validation semantics, or calibration settings were changed.
 

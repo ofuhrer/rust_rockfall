@@ -1,0 +1,44 @@
+# Minimal metadata schema for future swisstopo terrain tile ingestion.
+# This is a documentation schema, not a runtime parser.
+schema_version: 1
+tile_id: string
+source_dataset: swisstopo_swissalti3d
+source_product: swissALTI3D
+source_url: url
+source_filename: string
+source_file_present: boolean
+download_status: metadata_only | local_raw_available | processed_fixture
+license: string
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: Cloud Optimized GeoTIFF | GeoTIFF | ESRI ASCII GRID | XYZ
+  resolution_m: number
+  width_px: integer
+  height_px: integer
+  nodata: number | null
+extent_lv95_m:
+  xmin: number
+  ymin: number
+  xmax: number
+  ymax: number
+preprocessing:
+  status: not_run | cropped | resampled | converted_to_internal_dem
+  crop_extent_lv95_m:
+    xmin: number
+    ymin: number
+    xmax: number
+    ymax: number
+  resampling_method: none | nearest | bilinear | cubic
+  raw_sha256: string | null
+  processed_sha256: string | null
+  tool: string | null
+  processed_utc: string | null
+provenance:
+  intended_use: string
+  notes:
+    - string

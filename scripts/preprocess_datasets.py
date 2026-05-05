@@ -229,7 +229,7 @@ def preprocess_chant_sura_2020() -> None:
                 fmt(mass_kg),
                 fmt(radius_m),
                 "equivalent_sphere_from_mass",
-                "radius inferred with density 2670 kg/m3; original EOTA shape data are not used by the v0.4.0 sphere model",
+                "radius inferred with density 2670 kg/m3; original EOTA shape data are not used by the current sphere model",
             ],
         )
         for sample in segment:
@@ -435,7 +435,7 @@ def write_chant_sura_metadata(
         },
         "assumptions": [
             "Mass is inferred from published Ekin and speed columns per trajectory sample.",
-            "Sphere radius is an equivalent-volume proxy using density 2670 kg/m3; original shapes are not used by the v0.4.0 sphere model.",
+            "Sphere radius is an equivalent-volume proxy using density 2670 kg/m3; original shapes are not used by the current sphere model.",
             "Only the first monotonic time segment is used because the public text files concatenate jump segments with local time resets.",
             "This subset is intended for trajectory-shape, energy-evolution, and proxy jump-height checks, not deposition validation.",
         ],

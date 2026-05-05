@@ -1,0 +1,42 @@
+# Metadata-only fixture for future swissALTI3D terrain ingestion.
+# Values are illustrative except where explicitly marked as swisstopo product
+# conventions. No raw swisstopo raster is committed with this file.
+schema_version: 1
+tile_id: swissalti3d_lv95_2600_1200_sample
+source_dataset: swisstopo_swissalti3d
+source_product: swissALTI3D
+source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+source_filename: swissalti3d_2026_2600-1200_2m_cog.tif
+source_file_present: false
+download_status: metadata_only
+license: swisstopo terms of use; verify current terms before any redistribution
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: Cloud Optimized GeoTIFF
+  resolution_m: 2.0
+  width_px: 500
+  height_px: 500
+  nodata: null
+extent_lv95_m:
+  xmin: 2600000.0
+  ymin: 1200000.0
+  xmax: 2601000.0
+  ymax: 1201000.0
+preprocessing:
+  status: not_run
+  crop_extent_lv95_m: null
+  resampling_method: none
+  raw_sha256: null
+  processed_sha256: null
+  tool: null
+  processed_utc: null
+provenance:
+  intended_use: pilot_terrain_ingestion_schema_fixture
+  notes:
+    - Metadata-only example for validating CRS, extent, and provenance fields.
+    - Do not treat this as an available DEM tile.

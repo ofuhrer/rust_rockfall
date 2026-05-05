@@ -99,7 +99,7 @@ Open the generated report in a browser:
 open visualization/reports/standard_v0/index.html
 ```
 
-The `standard_v0` directory name is retained as a stable output path for the v0-series report. It is not the model version; the report header and JSON diagnostics show the exact version, such as `v0.4.0`.
+The `standard_v0` directory name is retained as a stable output path for the v0-series report. It is not the model version; the report header and JSON diagnostics show the exact version, such as `v0.5.0`.
 
 The report generator reads descriptions, expected behavior, metrics, tolerances, and references directly from the YAML case definitions. It does not duplicate case documentation and does not run simulations itself. The `--render-plots` option only refreshes PNG plots from existing trajectory CSVs.
 

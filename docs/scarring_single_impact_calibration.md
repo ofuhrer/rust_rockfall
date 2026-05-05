@@ -17,7 +17,7 @@ The first experiment therefore uses a small semi-empirical proxy dataset:
 
 - data file: `calibration/data/scarring_single_impact/reference_impacts.csv`
 - experiment config: `calibration/experiments/scarring_single_impact_v0_4/config.yaml`
-- source: proxy targets derived from the documented v0.4.0 scarring depth and drag-work equations
+- source: proxy targets derived from the documented `scarring_contact_v1` scarring depth and drag-work equations
 - status: repository test/calibration fixture, not observational field data
 
 The proxy dataset contains three flat-plane impacts:

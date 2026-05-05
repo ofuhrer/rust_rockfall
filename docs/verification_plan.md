@@ -62,7 +62,7 @@ These tests verify deterministic contact stochasticity only. They do not calibra
 
 ## Scarring Verification
 
-`v0.4.0` adds opt-in `scarring_contact_v1` soil interaction diagnostics. Verification covers:
+`v0.4.0` added opt-in `scarring_contact_v1` soil interaction diagnostics, retained in the current `v0.5.0` model. Verification covers:
 
 - zero-effect consistency with `soil_interaction_model: none`;
 - positive scarring depth and drag diagnostics in synthetic impact cases;

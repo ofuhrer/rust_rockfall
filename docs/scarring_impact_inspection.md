@@ -1,5 +1,10 @@
 # Scarring Impact Inspection
 
+Historical status note: this inspection documents the first manual use of the
+impact-event diagnostics introduced around `v0.4.0`. The diagnostics are still
+supported in the current release; later calibration interpretation is documented
+separately.
+
 This manual inspection uses the v0.4.0 impact-event diagnostics to reconstruct a small number of synthetic `scarring_contact_v1` impacts. It does not change simulation physics, validation cases, or calibration workflows.
 
 ## Inspection Setup

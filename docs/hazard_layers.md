@@ -104,6 +104,31 @@ The workflow supports analytic plane/paraboloid/step terrain and ESRI ASCII DEM
 terrain for jump-height estimation. Unsupported terrain metadata leaves
 jump-height cells unset and records a warning in metadata.
 
+## Swiss Geodata Metadata Requirements
+
+The current CSV grids and ESRI ASCII grids are sufficient for development,
+tests, and small diagnostic reports. They are not sufficient by themselves for
+Swiss pilot or regional map products because they do not carry full geospatial
+metadata.
+
+Any hazard layer derived from swisstopo terrain should record:
+
+- horizontal CRS, expected to be `EPSG:2056` / CH1903+ LV95 for Swiss workflows;
+- vertical datum, expected to be LN02 when using standard swissALTI3D products;
+- grid resolution, extent, cell alignment, nodata value, and raster dimensions;
+- source terrain dataset, tile ids, source filenames, and product date/version;
+- crop/resampling method and checksums where available;
+- model version, config hash or case id, calibration status, random seed policy,
+  ensemble size, and trajectory id range;
+- whether each layer was derived from full ensemble trajectories,
+  representative trajectories, deposition summaries, or impact-event logs.
+
+For exchange outside this repository, the target raster format should become
+GeoTIFF or Cloud-Optimized GeoTIFF so CRS, nodata, compression, and tiling are
+standardized. GeoJSON remains useful for small vector overlays, while GeoPackage
+is a better future target for larger release zones, deposits, and context
+features.
+
 ## Hazard Versus Risk
 
 These outputs describe simulated physical hazard indicators only. Risk mapping
@@ -115,14 +140,19 @@ models. Those are explicitly outside the current simulator.
 For future Alpine/Swiss workflows, this layer can evolve without changing the
 trajectory kernel:
 
+- use swissALTI3D as the default bare-earth terrain foundation for pilot hazard
+  domains;
 - evolve the current opt-in per-trajectory ensemble CSV output toward chunked
   full-ensemble trajectory outputs;
 - accumulate rasters tile-by-tile over DEM tiles and release-zone batches;
 - preserve deterministic trajectory IDs and seeds for reproducibility;
-- export GeoTIFF/Cloud-Optimized GeoTIFF and GeoPackage/GeoJSON products;
+- export GeoTIFF/Cloud-Optimized GeoTIFF and GeoPackage/GeoJSON products with
+  CRS, extent, resolution, and provenance metadata;
 - add scenario uncertainty layers for release, terrain, and material-parameter
   ensembles;
 - keep calibration/validation metadata attached to every generated map product.
 
 The first scaling review is documented in
 `docs/hazard_workflow_scale_review.md`.
+The swisstopo input-data strategy is documented in
+`docs/swisstopo_data_strategy.md`.

@@ -1,6 +1,6 @@
 # Benchmark Catalog
 
-This catalog lists the current `v0.4.0` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
+This catalog lists the current `v0.5.0` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
 
 ## Level 0: Analytic Unit Tests
 
@@ -58,4 +58,4 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 - `validation_tschamut_proxy_plane`: limited public-data terrain comparison case using the earlier fitted-plane terrain proxy for the Tschamut 2014 subset.
 - `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations and the `idw_residual_dem_from_lps` clamped DEM proxy. It reports distribution-level runout and deposition-cloud mismatch only.
 
-Real-world validation remains partial and qualitative for v0.4.0 because the simulator lacks block shape, advanced contact, calibrated scarring with drag torque/slip-dependent friction, roughness calibration, forest interaction, fragmentation, and production field DEM workflows.
+Real-world validation remains partial and qualitative for v0.5.0 because the simulator lacks block shape, advanced contact, calibrated scarring with drag torque/slip-dependent friction, roughness calibration, forest interaction, fragmentation, and production field DEM workflows.

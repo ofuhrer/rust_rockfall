@@ -2,7 +2,7 @@
 
 Validation asks whether the current model is useful when compared with observations or published benchmarks. It does not target RAMMS::ROCKFALL equivalence and does not use proprietary datasets.
 
-## v0 Status
+## v0.5.0 Status
 
 Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in minimal scarring_contact_v1 impact energy-loss diagnostics, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact, calibrated scarring with drag torque or slip-dependent friction, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
 
@@ -15,7 +15,7 @@ Real-world validation is partial and qualitative. The current simulator is a sph
 - Do not commit large raw data.
 - Keep large real-data validation optional; small license-compatible derived fixtures may be checked in for CI smoke tests.
 
-The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`.
+The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`. swisstopo entries are operational input geodata for future Swiss hazard-map workflows, not experimental validation datasets.
 
 ## Commands
 
