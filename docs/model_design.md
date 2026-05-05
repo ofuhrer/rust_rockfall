@@ -144,10 +144,15 @@ E_loss = min(F_d d, post_contact_translational_kinetic_energy)
 The post-contact translational velocity magnitude is reduced to remove `E_loss` without changing direction. Angular velocity is not changed by scarring in this minimal model. The new diagnostics are:
 
 - `scarring_depth_m`
+- `scarring_area_m2` in optional impact-event output
 - `scarring_drag_force_n`
+- `scarring_uncapped_energy_loss_j` in optional impact-event output
 - `scarring_energy_loss_j`
+- `scarring_depth_source` in optional impact-event output
 
 With `soil_interaction_model: none`, or with zero depth-producing/drag parameters, the scarring layer is required to be inert. Deferred features include calibrated soil classes, drag torque, slip-dependent scarring friction, terrain deformation, and non-spherical contact.
+
+Optional impact-event outputs (`outputs.impact_events_csv` and `outputs.impact_events_json`) log one record per terrain impact. They include incoming, post-contact, post-scarring, and post-step velocity/energy snapshots so a single contact step can be reconstructed without changing the trajectory CSV format.
 
 ## Public API
 

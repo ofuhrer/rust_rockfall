@@ -42,7 +42,13 @@ KNOWN_TERRAIN_TYPES = {
     "esri_ascii_grid_clamped",
     "ascii_dem_clamped",
 }
-KNOWN_OUTPUT_KEYS = {"trajectory_csv", "diagnostics_json", "ensemble_deposition_csv"}
+KNOWN_OUTPUT_KEYS = {
+    "trajectory_csv",
+    "diagnostics_json",
+    "ensemble_deposition_csv",
+    "impact_events_csv",
+    "impact_events_json",
+}
 KNOWN_METRICS = {
     "position_error_m",
     "velocity_error_mps",
@@ -202,8 +208,14 @@ def check_schema_docs() -> list[str]:
         "scarring_layer_density_kgpm3",
         "scarring_max_depth_m",
         "scarring_depth_m",
+        "scarring_area_m2",
         "scarring_drag_force_n",
+        "scarring_uncapped_energy_loss_j",
+        "scarring_capped_energy_loss_j",
         "scarring_energy_loss_j",
+        "scarring_depth_source",
+        "impact_events_csv",
+        "impact_events_json",
         "max_scarring_depth_m",
         "max_scarring_drag_force_n",
         "total_scarring_energy_loss_j",

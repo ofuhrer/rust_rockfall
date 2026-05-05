@@ -28,6 +28,7 @@ Required case fields:
 - optional `observations.release_points_csv`, `observations.deposition_points_csv`
 - `expected.metrics`, `expected.tolerances`
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
+- optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 
@@ -93,6 +94,17 @@ The CLI can report:
 - `scarring_zero_baseline_max_position_delta_m`
 
 Trajectory CSV diagnostics include `scarring_depth_m`, `scarring_drag_force_n`, and `scarring_energy_loss_j`. They are zero unless `soil_interaction_model: scarring_contact_v1` is active and an incoming impact produces a nonzero scar-depth diagnostic.
+
+Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
+
+- impact identity and location: `impact_index`, `time_s`, `x_m`, `y_m`, `z_m`
+- terrain and effective contact normals: `terrain_normal_*`, `effective_normal_*`
+- velocity snapshots: `incoming_*`, `post_contact_*`, `post_scarring_*`, and `post_step_*`
+- impact geometry: `impact_angle_deg`, normal/tangential speed components for each snapshot
+- translational and rotational energies before contact, after contact, after scarring, and after same-step contact motion
+- scarring diagnostics: `scarring_depth_m`, `scarring_area_m2`, `scarring_drag_force_n`, `scarring_uncapped_energy_loss_j`, `scarring_capped_energy_loss_j`, `scarring_depth_source`, and `cumulative_scarring_energy_loss_j`
+
+`scarring_depth_source` is one of `none`, `computed`, `computed_capped`, `explicit`, or `explicit_capped`.
 
 `expected.tolerances` compare error-style metrics against maximum allowed values. `expected.minimums` and `expected.maximums` bound direct metrics such as runout, max speed, or ensemble spread.
 

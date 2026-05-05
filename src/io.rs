@@ -1,4 +1,7 @@
-use crate::{simulation::SimulationConfig, state::TrajectorySample};
+use crate::{
+    simulation::SimulationConfig,
+    state::{ImpactEvent, TrajectorySample},
+};
 use std::{fs::File, io::BufReader, path::Path};
 use thiserror::Error;
 
@@ -26,5 +29,26 @@ pub fn write_trajectory_csv(
         writer.serialize(sample)?;
     }
     writer.flush()?;
+    Ok(())
+}
+
+pub fn write_impact_events_csv(
+    path: impl AsRef<Path>,
+    events: &[ImpactEvent],
+) -> Result<(), IoError> {
+    let mut writer = csv::Writer::from_path(path)?;
+    for event in events {
+        writer.serialize(event)?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+pub fn write_impact_events_json(
+    path: impl AsRef<Path>,
+    events: &[ImpactEvent],
+) -> Result<(), IoError> {
+    let file = File::create(path)?;
+    serde_json::to_writer_pretty(file, events)?;
     Ok(())
 }

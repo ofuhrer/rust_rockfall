@@ -1,8 +1,8 @@
 use crate::{
     dynamics::{ContactModel, ScarringSettings, SoilInteractionModel},
     geometry::SphereBlock,
-    integrator::{simulate_fixed_step, IntegratorSettings},
-    state::{BodyState, TrajectorySample},
+    integrator::{simulate_fixed_step_with_events, IntegratorSettings},
+    state::{BodyState, ImpactEvent, TrajectorySample},
     stochastic::{
         derive_trajectory_seed, sample_release, stable_hash64, ContactRoughness,
         ReleasePerturbation, RoughnessModel,
@@ -124,6 +124,8 @@ pub enum TerrainConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SimulationResult {
     pub samples: Vec<TrajectorySample>,
+    #[serde(default)]
+    pub impact_events: Vec<ImpactEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -166,6 +168,8 @@ impl TrajectoryRequest {
 pub struct TrajectoryRun {
     pub request: TrajectoryRequest,
     pub samples: Vec<TrajectorySample>,
+    #[serde(default)]
+    pub impact_events: Vec<ImpactEvent>,
     pub summary: TrajectorySummary,
 }
 
@@ -250,8 +254,11 @@ impl SimulationConfig {
             },
             roughness_seed: self.random_seed,
         };
+        let result =
+            simulate_fixed_step_with_events(self.initial_state(), self.block, terrain, settings);
         Ok(SimulationResult {
-            samples: simulate_fixed_step(self.initial_state(), self.block, terrain, settings),
+            samples: result.samples,
+            impact_events: result.impact_events,
         })
     }
 
@@ -327,6 +334,7 @@ pub fn simulate_one_trajectory_with_terrain(
     Ok(TrajectoryRun {
         request,
         samples: result.samples,
+        impact_events: result.impact_events,
         summary,
     })
 }

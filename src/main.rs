@@ -24,6 +24,10 @@ enum Command {
         config: PathBuf,
         #[arg(short, long)]
         output: PathBuf,
+        #[arg(long)]
+        impact_events_csv: Option<PathBuf>,
+        #[arg(long)]
+        impact_events_json: Option<PathBuf>,
     },
     /// Run verification cases from verification/.
     Verify {
@@ -65,7 +69,12 @@ enum CliError {
 fn main() -> Result<(), CliError> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { config, output } => run_simulation(config, output),
+        Command::Run {
+            config,
+            output,
+            impact_events_csv,
+            impact_events_json,
+        } => run_simulation(config, output, impact_events_csv, impact_events_json),
         Command::Verify { case, all } => run_case_command(case, all, Path::new("verification")),
         Command::Validate { case, all } => {
             run_case_command(case, all, Path::new("validation/cases"))
@@ -76,10 +85,31 @@ fn main() -> Result<(), CliError> {
     }
 }
 
-fn run_simulation(config: PathBuf, output: PathBuf) -> Result<(), CliError> {
+fn run_simulation(
+    config: PathBuf,
+    output: PathBuf,
+    impact_events_csv: Option<PathBuf>,
+    impact_events_json: Option<PathBuf>,
+) -> Result<(), CliError> {
     let config = io::read_config(config)?;
     let result = config.run()?;
     io::write_trajectory_csv(&output, &result.samples)?;
+    if let Some(path) = impact_events_csv {
+        io::write_impact_events_csv(&path, &result.impact_events)?;
+        eprintln!(
+            "wrote {} impact events to {}",
+            result.impact_events.len(),
+            path.display()
+        );
+    }
+    if let Some(path) = impact_events_json {
+        io::write_impact_events_json(&path, &result.impact_events)?;
+        eprintln!(
+            "wrote {} impact events to {}",
+            result.impact_events.len(),
+            path.display()
+        );
+    }
     eprintln!(
         "wrote {} trajectory samples to {}",
         result.samples.len(),

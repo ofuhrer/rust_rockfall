@@ -6,7 +6,10 @@ use crate::{
         rolling_residual, ContactModel, RotationalContactSettings, ScarringSettings,
     },
     geometry::SphereBlock,
-    state::{BodyState, ContactState, TrajectoryDiagnostics, TrajectorySample},
+    state::{
+        BodyState, ContactState, ImpactEvent, ImpactStageEnergy, TrajectoryDiagnostics,
+        TrajectorySample,
+    },
     stochastic::{sample_contact_roughness, seeded_rng, ContactRoughness},
     terrain::Terrain,
 };
@@ -27,15 +30,32 @@ pub struct IntegratorSettings {
     pub roughness_seed: Option<u64>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntegrationResult {
+    pub samples: Vec<TrajectorySample>,
+    pub impact_events: Vec<ImpactEvent>,
+}
+
 pub fn simulate_fixed_step(
     initial: BodyState,
     block: SphereBlock,
     terrain: &dyn Terrain,
     settings: IntegratorSettings,
 ) -> Vec<TrajectorySample> {
+    simulate_fixed_step_with_events(initial, block, terrain, settings).samples
+}
+
+pub fn simulate_fixed_step_with_events(
+    initial: BodyState,
+    block: SphereBlock,
+    terrain: &dyn Terrain,
+    settings: IntegratorSettings,
+) -> IntegrationResult {
     let mut state = initial;
     let mut time_s = 0.0;
     let mut samples = Vec::new();
+    let mut impact_events = Vec::new();
+    let mut cumulative_scarring_energy_loss_j = 0.0;
     let mut roughness_rng = settings
         .roughness
         .is_active()
@@ -54,6 +74,7 @@ pub fn simulate_fixed_step(
         time_s += settings.dt_s;
 
         let base_normal = terrain.normal(state.position_m.x, state.position_m.y);
+        let pre_contact_state = state;
         let incoming_velocity = state.velocity_mps;
         let signed_distance_before_response =
             terrain.signed_distance_sphere(state.position_m, block.radius_m);
@@ -99,6 +120,7 @@ pub fn simulate_fixed_step(
                 effective_contact.friction_coefficient,
             ),
         };
+        let post_contact_state = state;
         let scarring = if incoming {
             apply_scarring_energy_loss(
                 &mut state,
@@ -110,6 +132,8 @@ pub fn simulate_fixed_step(
         } else {
             Default::default()
         };
+        cumulative_scarring_energy_loss_j += scarring.scarring_energy_loss_j;
+        let post_scarring_state = state;
 
         let mut contact_state = if response.impacted {
             ContactState::Impact
@@ -187,6 +211,22 @@ pub fn simulate_fixed_step(
             response.rolling_residual_mps
         };
 
+        if response.impacted {
+            impact_events.push(build_impact_event(ImpactEventInput {
+                impact_index: impact_events.len() + 1,
+                time_s,
+                block,
+                terrain_normal: base_normal,
+                effective_normal: effective_contact.normal,
+                pre_contact_state,
+                post_contact_state,
+                post_scarring_state,
+                post_step_state: state,
+                scarring,
+                cumulative_scarring_energy_loss_j,
+            }));
+        }
+
         samples.push(TrajectorySample::from_state_with_diagnostics(
             time_s,
             &state,
@@ -205,5 +245,114 @@ pub fn simulate_fixed_step(
         }
     }
 
-    samples
+    IntegrationResult {
+        samples,
+        impact_events,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ImpactEventInput {
+    impact_index: usize,
+    time_s: f64,
+    block: SphereBlock,
+    terrain_normal: crate::Vec3,
+    effective_normal: crate::Vec3,
+    pre_contact_state: BodyState,
+    post_contact_state: BodyState,
+    post_scarring_state: BodyState,
+    post_step_state: BodyState,
+    scarring: crate::dynamics::ScarringDiagnostics,
+    cumulative_scarring_energy_loss_j: f64,
+}
+
+fn build_impact_event(input: ImpactEventInput) -> ImpactEvent {
+    let normal = unit_or(input.terrain_normal, crate::Vec3::new(0.0, 0.0, 1.0));
+    let effective_normal = unit_or(input.effective_normal, normal);
+    let pre_energy = ImpactStageEnergy::from_state(&input.pre_contact_state, &input.block);
+    let post_contact_energy =
+        ImpactStageEnergy::from_state(&input.post_contact_state, &input.block);
+    let post_scarring_energy =
+        ImpactStageEnergy::from_state(&input.post_scarring_state, &input.block);
+    let post_step_energy = ImpactStageEnergy::from_state(&input.post_step_state, &input.block);
+    let incoming = input.pre_contact_state.velocity_mps;
+    let post_contact = input.post_contact_state.velocity_mps;
+    let post_scarring = input.post_scarring_state.velocity_mps;
+    let post_step = input.post_step_state.velocity_mps;
+    let (incoming_normal, incoming_tangent) = velocity_components(incoming, normal);
+    let (post_contact_normal, post_contact_tangent) = velocity_components(post_contact, normal);
+    let (post_scarring_normal, post_scarring_tangent) = velocity_components(post_scarring, normal);
+    let (post_step_normal, post_step_tangent) = velocity_components(post_step, normal);
+
+    ImpactEvent {
+        impact_index: input.impact_index,
+        time_s: input.time_s,
+        x_m: input.post_step_state.position_m.x,
+        y_m: input.post_step_state.position_m.y,
+        z_m: input.post_step_state.position_m.z,
+        terrain_normal_x: normal.x,
+        terrain_normal_y: normal.y,
+        terrain_normal_z: normal.z,
+        effective_normal_x: effective_normal.x,
+        effective_normal_y: effective_normal.y,
+        effective_normal_z: effective_normal.z,
+        incoming_vx_mps: incoming.x,
+        incoming_vy_mps: incoming.y,
+        incoming_vz_mps: incoming.z,
+        post_contact_vx_mps: post_contact.x,
+        post_contact_vy_mps: post_contact.y,
+        post_contact_vz_mps: post_contact.z,
+        post_scarring_vx_mps: post_scarring.x,
+        post_scarring_vy_mps: post_scarring.y,
+        post_scarring_vz_mps: post_scarring.z,
+        post_step_vx_mps: post_step.x,
+        post_step_vy_mps: post_step.y,
+        post_step_vz_mps: post_step.z,
+        impact_angle_deg: impact_angle_deg(incoming, normal),
+        incoming_normal_speed_mps: incoming_normal,
+        incoming_tangent_speed_mps: incoming_tangent,
+        post_contact_normal_speed_mps: post_contact_normal,
+        post_contact_tangent_speed_mps: post_contact_tangent,
+        post_scarring_normal_speed_mps: post_scarring_normal,
+        post_scarring_tangent_speed_mps: post_scarring_tangent,
+        post_step_normal_speed_mps: post_step_normal,
+        post_step_tangent_speed_mps: post_step_tangent,
+        pre_contact_translational_j: pre_energy.translational_j,
+        pre_contact_rotational_j: pre_energy.rotational_j,
+        post_contact_translational_j: post_contact_energy.translational_j,
+        post_contact_rotational_j: post_contact_energy.rotational_j,
+        post_scarring_translational_j: post_scarring_energy.translational_j,
+        post_scarring_rotational_j: post_scarring_energy.rotational_j,
+        post_step_translational_j: post_step_energy.translational_j,
+        post_step_rotational_j: post_step_energy.rotational_j,
+        scarring_depth_m: input.scarring.scarring_depth_m,
+        scarring_area_m2: input.scarring.scarring_area_m2,
+        scarring_drag_force_n: input.scarring.scarring_drag_force_n,
+        scarring_uncapped_energy_loss_j: input.scarring.scarring_uncapped_energy_loss_j,
+        scarring_capped_energy_loss_j: input.scarring.scarring_energy_loss_j,
+        scarring_depth_source: input.scarring.scarring_depth_source,
+        cumulative_scarring_energy_loss_j: input.cumulative_scarring_energy_loss_j,
+    }
+}
+
+fn velocity_components(velocity: crate::Vec3, normal: crate::Vec3) -> (f64, f64) {
+    let normal_component = velocity.dot(&normal);
+    let tangent = velocity - normal_component * normal;
+    (normal_component.abs(), tangent.norm())
+}
+
+fn impact_angle_deg(incoming_velocity: crate::Vec3, normal: crate::Vec3) -> f64 {
+    let speed = incoming_velocity.norm();
+    if speed <= 0.0 {
+        return 0.0;
+    }
+    let cos_angle = (-incoming_velocity / speed).dot(&normal).clamp(-1.0, 1.0);
+    cos_angle.acos().to_degrees()
+}
+
+fn unit_or(vector: crate::Vec3, fallback: crate::Vec3) -> crate::Vec3 {
+    vector
+        .try_normalize(crate::EPS)
+        .or_else(|| fallback.try_normalize(crate::EPS))
+        .unwrap_or_else(|| crate::Vec3::new(0.0, 0.0, 1.0))
 }

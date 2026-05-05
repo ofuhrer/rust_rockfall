@@ -72,6 +72,8 @@ class CaseReport:
     diagnostics: dict[str, Any] | None
     diagnostics_path: Path | None
     trajectory_path: Path | None
+    impact_events_csv_path: Path | None
+    impact_events_json_path: Path | None
     plot_paths: dict[str, Path]
 
     @property
@@ -257,8 +259,12 @@ def load_case_report(path: Path, plot_root: Path) -> CaseReport:
     data = load_yaml(path)
     diagnostics_rel = nested_path(data, "outputs", "diagnostics_json")
     trajectory_rel = nested_path(data, "outputs", "trajectory_csv")
+    impact_events_csv_rel = nested_path(data, "outputs", "impact_events_csv")
+    impact_events_json_rel = nested_path(data, "outputs", "impact_events_json")
     diagnostics_path = ROOT / diagnostics_rel if diagnostics_rel else None
     trajectory_path = ROOT / trajectory_rel if trajectory_rel else None
+    impact_events_csv_path = ROOT / impact_events_csv_rel if impact_events_csv_rel else None
+    impact_events_json_path = ROOT / impact_events_json_rel if impact_events_json_rel else None
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else None
     case_id = str(data.get("case_id") or path.stem)
     plot_paths = {
@@ -271,6 +277,8 @@ def load_case_report(path: Path, plot_root: Path) -> CaseReport:
         diagnostics=diagnostics,
         diagnostics_path=diagnostics_path,
         trajectory_path=trajectory_path,
+        impact_events_csv_path=impact_events_csv_path,
+        impact_events_json_path=impact_events_json_path,
         plot_paths=plot_paths,
     )
 
@@ -498,6 +506,20 @@ def render_links(report: CaseReport, report_dir: Path) -> str:
     if report.trajectory_path:
         label = "trajectory CSV" if report.trajectory_path.exists() else "trajectory CSV missing"
         links.append((label, report.trajectory_path))
+    if report.impact_events_csv_path:
+        label = (
+            "impact events CSV"
+            if report.impact_events_csv_path.exists()
+            else "impact events CSV missing"
+        )
+        links.append((label, report.impact_events_csv_path))
+    if report.impact_events_json_path:
+        label = (
+            "impact events JSON"
+            if report.impact_events_json_path.exists()
+            else "impact events JSON missing"
+        )
+        links.append((label, report.impact_events_json_path))
     ensemble_rel = nested_path(report.data, "outputs", "ensemble_deposition_csv")
     if ensemble_rel:
         ensemble_path = ROOT / ensemble_rel

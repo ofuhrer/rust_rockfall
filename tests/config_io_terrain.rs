@@ -545,6 +545,27 @@ fn read_config_reports_json_errors_and_write_csv_round_trips_samples() {
     assert!(csv_text.contains("scarring_depth_m"));
     assert!(csv_text.contains("scarring_energy_loss_j"));
     fs::remove_file(csv_path).unwrap();
+
+    let mut impact_config = minimal_config();
+    impact_config.initial_position_m = [0.0, 0.0, 1.0];
+    impact_config.initial_velocity_mps = [0.0, 0.0, -1.0];
+    impact_config.max_time_s = 0.4;
+    let impact_result = impact_config.run().unwrap();
+    assert_eq!(impact_result.impact_events.len(), 1);
+
+    let impact_csv_path = temp_path("impact_events.csv");
+    io::write_impact_events_csv(&impact_csv_path, &impact_result.impact_events).unwrap();
+    let impact_csv = fs::read_to_string(&impact_csv_path).unwrap();
+    assert!(impact_csv.contains("impact_index"));
+    assert!(impact_csv.contains("post_scarring_vz_mps"));
+    fs::remove_file(impact_csv_path).unwrap();
+
+    let impact_json_path = temp_path("impact_events.json");
+    io::write_impact_events_json(&impact_json_path, &impact_result.impact_events).unwrap();
+    let impact_json = fs::read_to_string(&impact_json_path).unwrap();
+    assert!(impact_json.contains("\"impact_index\""));
+    assert!(impact_json.contains("\"scarring_capped_energy_loss_j\""));
+    fs::remove_file(impact_json_path).unwrap();
 }
 
 #[test]

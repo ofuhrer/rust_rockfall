@@ -28,7 +28,7 @@ This catalog lists the current `v0.4.0` verification and validation cases. These
 - `synthetic_clamped_dem_terrain_variation`: opt-in clamped ESRI ASCII DEM trajectory over a small varied patch, including an initial boundary-clamped query.
 - `synthetic_contact_roughness_energy_stability`: bounded stochastic contact roughness remains dissipative within fixed-step numerical tolerance.
 - `synthetic_scarring_zero_baseline`: `scarring_contact_v1` with inert parameters exactly matches `soil_interaction_model: none`.
-- `synthetic_scarring_energy_dissipation`: fixed-depth scarring diagnostics produce positive bounded energy loss without positive total-energy jumps.
+- `synthetic_scarring_energy_dissipation`: fixed-depth scarring diagnostics produce positive bounded energy loss without positive total-energy jumps; optional impact-event CSV/JSON output makes the contact step auditable.
 - `synthetic_scarring_depth_velocity_scaling`: inferred scarring depth activates for finite normal impact speed without drag energy loss.
 - `synthetic_scarring_depth_soil_strength_scaling`: weak-soil scarring parameters produce a substantial inferred depth diagnostic.
 

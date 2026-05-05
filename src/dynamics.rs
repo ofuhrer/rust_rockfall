@@ -73,11 +73,31 @@ impl ScarringSettings {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScarringDepthSource {
+    #[default]
+    None,
+    Computed,
+    ComputedCapped,
+    Explicit,
+    ExplicitCapped,
+}
+
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct ScarringDiagnostics {
     pub scarring_depth_m: f64,
+    pub scarring_area_m2: f64,
     pub scarring_drag_force_n: f64,
+    pub scarring_uncapped_energy_loss_j: f64,
     pub scarring_energy_loss_j: f64,
+    pub scarring_depth_source: ScarringDepthSource,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct ScarringDepthEstimate {
+    pub depth_m: f64,
+    pub source: ScarringDepthSource,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -423,13 +443,14 @@ pub fn apply_scarring_energy_loss(
         return ScarringDiagnostics::default();
     }
 
-    let depth_m = estimate_scarring_depth_m(
+    let depth = estimate_scarring_depth(
         block.mass_kg,
         block.radius_m,
         normal_impact_speed_mps,
         settings.soil_strength_pa,
         settings.scarring_max_depth_m,
     );
+    let depth_m = depth.depth_m;
     if depth_m <= 0.0 {
         return ScarringDiagnostics::default();
     }
@@ -443,7 +464,8 @@ pub fn apply_scarring_energy_loss(
         * impact_speed_mps
         * impact_speed_mps;
     let available_kinetic_j = 0.5 * block.mass_kg * state.velocity_mps.norm_squared();
-    let energy_loss_j = (drag_force_n * depth_m).clamp(0.0, available_kinetic_j);
+    let uncapped_energy_loss_j = (drag_force_n * depth_m).max(0.0);
+    let energy_loss_j = uncapped_energy_loss_j.clamp(0.0, available_kinetic_j);
 
     if energy_loss_j > 0.0 && available_kinetic_j > 0.0 {
         let retained_fraction = ((available_kinetic_j - energy_loss_j) / available_kinetic_j)
@@ -454,8 +476,11 @@ pub fn apply_scarring_energy_loss(
 
     ScarringDiagnostics {
         scarring_depth_m: depth_m,
+        scarring_area_m2: scar_area_m2,
         scarring_drag_force_n: drag_force_n,
+        scarring_uncapped_energy_loss_j: uncapped_energy_loss_j,
         scarring_energy_loss_j: energy_loss_j,
+        scarring_depth_source: depth.source,
     }
 }
 
@@ -466,22 +491,59 @@ pub fn estimate_scarring_depth_m(
     soil_strength_pa: f64,
     max_depth_m: Option<f64>,
 ) -> f64 {
+    estimate_scarring_depth(
+        mass_kg,
+        radius_m,
+        normal_impact_speed_mps,
+        soil_strength_pa,
+        max_depth_m,
+    )
+    .depth_m
+}
+
+pub fn estimate_scarring_depth(
+    mass_kg: f64,
+    radius_m: f64,
+    normal_impact_speed_mps: f64,
+    soil_strength_pa: f64,
+    max_depth_m: Option<f64>,
+) -> ScarringDepthEstimate {
     let cap_m = radius_m.max(0.0);
     if cap_m <= 0.0 {
-        return 0.0;
+        return ScarringDepthEstimate::default();
     }
     if let Some(depth_m) = max_depth_m {
-        return depth_m.clamp(0.0, cap_m);
+        let clamped = depth_m.clamp(0.0, cap_m);
+        return ScarringDepthEstimate {
+            depth_m: clamped,
+            source: if depth_m > cap_m {
+                ScarringDepthSource::ExplicitCapped
+            } else if clamped > 0.0 {
+                ScarringDepthSource::Explicit
+            } else {
+                ScarringDepthSource::None
+            },
+        };
     }
     if mass_kg <= 0.0 || normal_impact_speed_mps <= 0.0 || soil_strength_pa <= 0.0 {
-        return 0.0;
+        return ScarringDepthEstimate::default();
     }
     let soil_strength_kpa = soil_strength_pa / 1000.0;
     let depth_m = 0.16
         * mass_kg.powf(0.25)
         * soil_strength_kpa.powf(-0.4)
         * normal_impact_speed_mps.powf(0.8);
-    depth_m.clamp(0.0, cap_m)
+    let clamped = depth_m.clamp(0.0, cap_m);
+    ScarringDepthEstimate {
+        depth_m: clamped,
+        source: if depth_m > cap_m {
+            ScarringDepthSource::ComputedCapped
+        } else if clamped > 0.0 {
+            ScarringDepthSource::Computed
+        } else {
+            ScarringDepthSource::None
+        },
+    }
 }
 
 pub fn sphere_cap_projection_area_m2(radius_m: f64, depth_m: f64) -> f64 {

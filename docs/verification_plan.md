@@ -67,6 +67,7 @@ These tests verify deterministic contact stochasticity only. They do not calibra
 - zero-effect consistency with `soil_interaction_model: none`;
 - positive scarring depth and drag diagnostics in synthetic impact cases;
 - nonnegative, bounded scarring energy loss;
+- impact-event energy accounting for pre-contact, post-contact, post-scarring, and post-step snapshots;
 - expected depth scaling with impact speed and soil strength through unit tests.
 
 These tests verify the minimal compactable-soil bookkeeping and energy removal only. They do not calibrate soil strength, do not represent terrain categories, and do not validate operational field behavior.

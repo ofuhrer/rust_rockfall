@@ -15,9 +15,11 @@ Core documents:
 - `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.
 - `validation_data_schema.md`: YAML case and validation-data schema.
+- `impact_diagnostics.md`: optional per-impact event logging fields and interpretation guide.
 - `implementation_plan.md`: phased implementation roadmap.
 - `literature_review.md`: public literature and grey-literature sources.
 - `model_review_v0_3.md`: rationale for the first opt-in impact roughness model.
 - `model_gap_analysis_v0_3.md`: theory-informed rationale for the minimal opt-in scarring model.
+- `scarring_contact_v1_review.md`: calibration-readiness review for the minimal scarring model.
 
 Version notes are tracked in `../CHANGELOG.md`.

@@ -20,6 +20,7 @@ The first model is intentionally small:
 - deterministic seeded release perturbations
 - opt-in `stochastic_contact_v1` impact roughness for seeded ensemble spread
 - opt-in `scarring_contact_v1` compactable-soil impact energy-loss diagnostics
+- optional per-impact CSV/JSON diagnostics for reconstructing contact and scarring events
 - CSV trajectory output from a CLI
 
 Unsupported in v0.4.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.

@@ -2,8 +2,8 @@ use approx::{assert_abs_diff_eq, assert_relative_eq};
 use rust_rockfall::{
     dynamics::{
         acceleration_from_gravity, apply_contact_friction, estimate_scarring_depth_m,
-        resolve_rotational_sphere_contact, resolve_sphere_contact, ScarringSettings,
-        SoilInteractionModel,
+        resolve_rotational_sphere_contact, resolve_sphere_contact, ScarringDepthSource,
+        ScarringSettings, SoilInteractionModel,
     },
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
@@ -326,6 +326,97 @@ fn scarring_diagnostics_are_deterministic() {
     );
 
     assert_eq!(config.run().unwrap().samples, config.run().unwrap().samples);
+}
+
+#[test]
+fn vertical_impact_event_reconstructs_contact_without_scarring() {
+    let mut config = scarring_test_config(SoilInteractionModel::None, 0.0, 0.0, 0.0, None);
+    config.initial_velocity_mps = [0.0, 0.0, -1.0];
+    config.terrain = TerrainConfig::Plane {
+        z0_m: 0.0,
+        slope_x: 0.0,
+        slope_y: 0.0,
+    };
+    config.max_time_s = 0.7;
+    config.dt_s = 0.005;
+    config.normal_restitution = 0.5;
+    let result = config.run().unwrap();
+
+    assert_eq!(result.impact_events.len(), 1);
+    let event = &result.impact_events[0];
+    assert_eq!(event.impact_index, 1);
+    assert!(event.incoming_vz_mps < 0.0);
+    assert_abs_diff_eq!(event.impact_angle_deg, 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(event.incoming_tangent_speed_mps, 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(
+        event.post_contact_normal_speed_mps,
+        config.normal_restitution * event.incoming_normal_speed_mps,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(event.scarring_capped_energy_loss_j, 0.0, epsilon = 1.0e-12);
+    assert_eq!(event.scarring_depth_source, ScarringDepthSource::None);
+}
+
+#[test]
+fn oblique_scarring_impact_event_records_contact_and_soil_loss() {
+    let mut config = scarring_test_config(
+        SoilInteractionModel::ScarringContactV1,
+        100_000.0,
+        1.2,
+        1600.0,
+        Some(0.05),
+    );
+    config.max_time_s = 0.9;
+    config.dt_s = 0.005;
+    let result = config.run().unwrap();
+
+    assert_eq!(result.impact_events.len(), 1);
+    let event = &result.impact_events[0];
+    assert!(event.incoming_tangent_speed_mps > 0.0);
+    assert!(event.scarring_depth_m > 0.0);
+    assert!(event.scarring_area_m2 > 0.0);
+    assert!(event.scarring_drag_force_n > 0.0);
+    assert!(event.scarring_uncapped_energy_loss_j >= event.scarring_capped_energy_loss_j);
+    assert!(event.scarring_capped_energy_loss_j > 0.0);
+    assert_eq!(event.scarring_depth_source, ScarringDepthSource::Explicit);
+    assert!(event.post_scarring_translational_j <= event.post_contact_translational_j);
+}
+
+#[test]
+fn impact_event_energy_accounting_matches_scarring_diagnostics() {
+    let mut config = scarring_test_config(
+        SoilInteractionModel::ScarringContactV1,
+        100_000.0,
+        1.0,
+        1600.0,
+        Some(0.04),
+    );
+    config.max_time_s = 1.2;
+    config.dt_s = 0.005;
+    let result = config.run().unwrap();
+
+    let cumulative: f64 = result
+        .impact_events
+        .iter()
+        .map(|event| event.scarring_capped_energy_loss_j)
+        .sum();
+    for event in &result.impact_events {
+        assert_abs_diff_eq!(
+            event.post_contact_translational_j - event.post_scarring_translational_j,
+            event.scarring_capped_energy_loss_j,
+            epsilon = 1.0e-9
+        );
+        assert!(event.post_scarring_translational_j <= event.post_contact_translational_j);
+    }
+    assert_abs_diff_eq!(
+        result
+            .impact_events
+            .last()
+            .unwrap()
+            .cumulative_scarring_energy_loss_j,
+        cumulative,
+        epsilon = 1.0e-12
+    );
 }
 
 #[test]

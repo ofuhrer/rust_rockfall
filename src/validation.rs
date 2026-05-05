@@ -274,6 +274,10 @@ pub struct OutputConfig {
     pub trajectory_csv: Option<PathBuf>,
     #[serde(default)]
     pub ensemble_deposition_csv: Option<PathBuf>,
+    #[serde(default)]
+    pub impact_events_csv: Option<PathBuf>,
+    #[serde(default)]
+    pub impact_events_json: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -421,6 +425,12 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let result = config.run()?;
     if let Some(path) = &case.outputs.trajectory_csv {
         io::write_trajectory_csv(path, &result.samples)?;
+    }
+    if let Some(path) = &case.outputs.impact_events_csv {
+        io::write_impact_events_csv(path, &result.impact_events)?;
+    }
+    if let Some(path) = &case.outputs.impact_events_json {
+        io::write_impact_events_json(path, &result.impact_events)?;
     }
 
     let samples = &result.samples;

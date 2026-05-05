@@ -32,6 +32,8 @@ expected:
 outputs:
   diagnostics_json: verification/results/synthetic_scarring_energy_dissipation.json
   trajectory_csv: verification/results/synthetic_scarring_energy_dissipation.csv
+  impact_events_csv: verification/results/synthetic_scarring_energy_dissipation_impacts.csv
+  impact_events_json: verification/results/synthetic_scarring_energy_dissipation_impacts.json
 references:
   notes:
     - "The scarring layer reduces post-contact translational kinetic energy only; it does not apply torque or terrain-category effects."

@@ -69,6 +69,8 @@ outputs:
   trajectory_csv: verification/results/example.csv
   diagnostics_json: verification/results/example.json
   ensemble_deposition_csv: null
+  impact_events_csv: null
+  impact_events_json: null
 references:
   literature: []
   dataset: null

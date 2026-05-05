@@ -1,4 +1,8 @@
-use crate::{dynamics::ScarringDiagnostics, geometry::SphereBlock, Vec3};
+use crate::{
+    dynamics::{ScarringDepthSource, ScarringDiagnostics},
+    geometry::SphereBlock,
+    Vec3,
+};
 use serde::{Deserialize, Serialize};
 
 /// Dynamic state of the simulated block center of mass.
@@ -86,6 +90,74 @@ pub struct TrajectorySample {
     pub scarring_depth_m: f64,
     pub scarring_drag_force_n: f64,
     pub scarring_energy_loss_j: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ImpactStageEnergy {
+    pub translational_j: f64,
+    pub rotational_j: f64,
+}
+
+impl ImpactStageEnergy {
+    pub fn from_state(state: &BodyState, block: &SphereBlock) -> Self {
+        Self {
+            translational_j: 0.5 * block.mass_kg * state.velocity_mps.norm_squared(),
+            rotational_j: 0.5
+                * block.moment_of_inertia_kg_m2()
+                * state.angular_velocity_radps.norm_squared(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ImpactEvent {
+    pub impact_index: usize,
+    pub time_s: f64,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    pub terrain_normal_x: f64,
+    pub terrain_normal_y: f64,
+    pub terrain_normal_z: f64,
+    pub effective_normal_x: f64,
+    pub effective_normal_y: f64,
+    pub effective_normal_z: f64,
+    pub incoming_vx_mps: f64,
+    pub incoming_vy_mps: f64,
+    pub incoming_vz_mps: f64,
+    pub post_contact_vx_mps: f64,
+    pub post_contact_vy_mps: f64,
+    pub post_contact_vz_mps: f64,
+    pub post_scarring_vx_mps: f64,
+    pub post_scarring_vy_mps: f64,
+    pub post_scarring_vz_mps: f64,
+    pub post_step_vx_mps: f64,
+    pub post_step_vy_mps: f64,
+    pub post_step_vz_mps: f64,
+    pub impact_angle_deg: f64,
+    pub incoming_normal_speed_mps: f64,
+    pub incoming_tangent_speed_mps: f64,
+    pub post_contact_normal_speed_mps: f64,
+    pub post_contact_tangent_speed_mps: f64,
+    pub post_scarring_normal_speed_mps: f64,
+    pub post_scarring_tangent_speed_mps: f64,
+    pub post_step_normal_speed_mps: f64,
+    pub post_step_tangent_speed_mps: f64,
+    pub pre_contact_translational_j: f64,
+    pub pre_contact_rotational_j: f64,
+    pub post_contact_translational_j: f64,
+    pub post_contact_rotational_j: f64,
+    pub post_scarring_translational_j: f64,
+    pub post_scarring_rotational_j: f64,
+    pub post_step_translational_j: f64,
+    pub post_step_rotational_j: f64,
+    pub scarring_depth_m: f64,
+    pub scarring_area_m2: f64,
+    pub scarring_drag_force_n: f64,
+    pub scarring_uncapped_energy_loss_j: f64,
+    pub scarring_capped_energy_loss_j: f64,
+    pub scarring_depth_source: ScarringDepthSource,
+    pub cumulative_scarring_energy_loss_j: f64,
 }
 
 impl TrajectorySample {
