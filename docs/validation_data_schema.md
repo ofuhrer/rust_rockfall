@@ -25,7 +25,7 @@ Required case fields:
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
 - optional `validation_scope.type` and `validation_scope.note` for real-world cases
-- optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`
+- optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`, `observations.contact_events_csv`
 - `expected.metrics`, `expected.tolerances`
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
@@ -91,6 +91,15 @@ The CLI can report:
 - `trajectory_final_position_mean_error_m`
 - `trajectory_energy_mean_relative_error`
 - `trajectory_max_jump_height_mean_error_m`
+- `trajectory_jump_height_envelope_error_m`
+- `observed_contact_event_count`
+- `contact_event_compared_count`
+- `impact_timing_mean_error_s`
+- `impact_timing_p95_error_s`
+- `rebound_velocity_mean_error_mps`
+- `rebound_velocity_p95_error_mps`
+- `post_impact_energy_change_mean_error_j`
+- `post_impact_energy_change_p95_error_j`
 - `observed_mean_runout_m`
 - `simulated_mean_runout_m`
 - `deposition_centroid_error_m`
@@ -183,3 +192,27 @@ When `observations.trajectory_csv` is present, validation groups samples by
 `trajectory_id`, simulates each matching release from `observations.release_points_csv`
 when available, interpolates simulated samples to observed times, and reports
 trajectory-shape, kinetic-energy, final-position, and proxy jump-height errors.
+
+Observed contact-event CSV required fields:
+
+- `event_id`
+- `trajectory_id`
+- `experiment_id`
+- `source_segment_id`
+- `next_segment_id`
+- `impact_index`
+- `impact_time_s`
+- `x_m`
+- `y_m`
+- `z_m`
+- `incoming_vx_mps`, `incoming_vy_mps`, `incoming_vz_mps`
+- `outgoing_vx_mps`, `outgoing_vy_mps`, `outgoing_vz_mps`
+
+Optional contact-event fields include `raw_z_m`, `incoming_speed_mps`,
+`outgoing_speed_mps`, `pre_impact_kinetic_j`, `post_impact_kinetic_j`,
+`mass_kg`, and `radius_m`. When `observations.contact_events_csv` is present,
+validation simulates each `source_segment_id` from the matching release row,
+uses the first significant simulated impact event, and reports impact timing,
+rebound-velocity, and post-impact kinetic-energy-change errors. This is a
+contact-diagnostic comparison, not a claim that segment boundaries are exact
+instrumented contact measurements.

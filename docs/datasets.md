@@ -105,7 +105,9 @@ This writes:
 - `data/processed/chant_sura_2020/rock_shapes.csv` when `eota.7z` is present
 - a small checked-in validation subset under `validation/data/processed/chant_sura_2020/`
 
-The checked-in Chant Sura subset uses three reconstructed trajectory text files from `Output.7z`: `RF16W200r1`, `RF16W800r1`, and `RF18W200r1`. Only the first monotonic time segment is used because the public output files concatenate jump segments with local time resets. Mass is inferred from the published `Ekin` and speed columns, and equivalent sphere radii are inferred using density `2670 kg/m3`. The `Input.7z` DEM is large and remains optional/raw-only for now, so the current validation case uses an explicit flat clearance-plane proxy and must not be interpreted as DEM-based field validation.
+The checked-in Chant Sura first-flight subset uses three reconstructed trajectory text files from `Output.7z`: `RF16W200r1`, `RF16W800r1`, and `RF18W200r1`. Only the first monotonic time segment is used because the public output files concatenate jump segments with local time resets. Mass is inferred from the published `Ekin` and speed columns, and equivalent sphere radii are inferred using density `2670 kg/m3`.
+
+The DEM-backed contact subset uses the first three local-time-reset segments from `RF16W200r1` plus a small ASCII-grid crop derived from `Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif`. The full `Input.7z` archive is large and remains ignored raw data. Only the tiny derived `terrain_rf16_contact.asc` fixture is committed. Segment boundaries are treated as contact/rebound proxies and must not be interpreted as full-campaign field validation.
 
 Create the Chant Sura real impact-level scarring calibration subset from public ESurf 2019 table downloads:
 

@@ -61,6 +61,7 @@ Core documentation:
 - `docs/roadmap_hazard_mapping.md`
 - `docs/swisstopo_data_strategy.md`
 - `docs/dataset_strategy.md`
+- `docs/chant_sura_contact_validation.md`
 - `docs/hazard_layers.md`
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`
@@ -92,7 +93,7 @@ The repository separates:
 - validation: real-world and synthetic validation cases under `validation/`
 - calibration: future explicit parameter-fitting experiments only
 
-Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes a small public-derived Tschamut 2014 validation subset for CI-scale smoke testing; it uses a lightweight IDW residual DEM proxy and is not calibrated field validation.
+Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes small public-derived validation fixtures for Tschamut 2014 and Chant Sura 2020. Tschamut is used for deposition/runout distribution diagnostics on a lightweight terrain proxy. Chant Sura includes both a first-flight kinematic subset and a small RF16 DEM-backed segmented-contact subset. These fixtures are research validation diagnostics, not calibrated field validation or operational hazard assessment.
 
 The default CI/local suite should run:
 

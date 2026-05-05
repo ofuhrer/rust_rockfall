@@ -18,6 +18,7 @@ import shutil
 import statistics
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -25,6 +26,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TSCHAMUT_VALIDATION_RUN_LIMIT = 10
 CHANT_SURA_TRAJECTORY_IDS = ["RF16W200r1", "RF16W800r1", "RF18W200r1"]
+CHANT_SURA_CONTACT_TRAJECTORY_ID = "RF16W200r1"
+CHANT_SURA_CONTACT_SEGMENT_LIMIT = 3
+CHANT_SURA_CONTACT_EXPERIMENT_ID = "chant_sura_2020_rf16_contact_subset"
+CHANT_SURA_CONTACT_DEM_MEMBER = "Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif"
+CHANT_SURA_CONTACT_DEM_XML_MEMBER = (
+    "Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif.xml"
+)
+CHANT_SURA_CONTACT_DEM_PROJWIN = [
+    "2793260.45",
+    "1180276.15",
+    "2793265.10",
+    "1180268.50",
+]
+CHANT_SURA_CONTACT_DEM_OUTSIZE = ["94", "154"]
 
 
 def write_synthetic_fixture() -> None:
@@ -311,6 +326,7 @@ def preprocess_chant_sura_2020() -> None:
                 shape_rows,
             )
         write_chant_sura_metadata(out / "metadata.json", len(CHANT_SURA_TRAJECTORY_IDS), len(trajectory_rows), bool(shape_rows))
+    write_chant_sura_contact_fixture(raw_dir, output_archive)
     print("wrote Chant Sura validation subset to data/processed/chant_sura_2020 and validation/data/processed/chant_sura_2020")
 
 
@@ -329,7 +345,13 @@ def extract_archive_member(archive: Path, member: str) -> str:
 
 
 def first_monotonic_chant_sura_segment(text: str) -> list[dict[str, float]]:
+    segments = split_chant_sura_segments(text)
+    return segments[0] if segments else []
+
+
+def split_chant_sura_segments(text: str) -> list[list[dict[str, float]]]:
     rows = csv.DictReader(text.splitlines())
+    segments: list[list[dict[str, float]]] = []
     segment: list[dict[str, float]] = []
     previous_time = -math.inf
     for row in rows:
@@ -341,10 +363,284 @@ def first_monotonic_chant_sura_segment(text: str) -> list[dict[str, float]]:
         if time_s is None:
             continue
         if segment and time_s < previous_time:
-            break
+            segments.append(segment)
+            segment = []
         segment.append(parsed)
         previous_time = time_s
-    return segment
+    if segment:
+        segments.append(segment)
+    return segments
+
+
+def write_chant_sura_contact_fixture(raw_dir: Path, output_archive: Path) -> None:
+    input_archive = raw_dir / "Input.7z"
+    if not input_archive.exists():
+        print("skip Chant Sura contact fixture: Input.7z is not downloaded")
+        return
+    if shutil.which("gdal_translate") is None:
+        print("skip Chant Sura contact fixture: gdal_translate is unavailable")
+        return
+
+    text = extract_archive_member(
+        output_archive, f"Output/txt/{CHANT_SURA_CONTACT_TRAJECTORY_ID}.txt"
+    )
+    segments = split_chant_sura_segments(text)[:CHANT_SURA_CONTACT_SEGMENT_LIMIT]
+    if len(segments) < 2:
+        raise SystemExit("Chant Sura contact fixture requires at least two segments")
+    first = segments[0][0]
+    mass_kg = infer_mass_kg(first)
+    radius_m = equivalent_sphere_radius_m(mass_kg)
+
+    with tempfile.TemporaryDirectory(prefix="chant_sura_contact_") as tmp:
+        tmp_path = Path(tmp)
+        subprocess.run(
+            [
+                "bsdtar",
+                "-xf",
+                str(input_archive),
+                "-C",
+                str(tmp_path),
+                CHANT_SURA_CONTACT_DEM_MEMBER,
+                CHANT_SURA_CONTACT_DEM_XML_MEMBER,
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        dem_path = tmp_path / CHANT_SURA_CONTACT_DEM_MEMBER
+        patch_path = tmp_path / "terrain_rf16_contact.asc"
+        subprocess.run(
+            [
+                "gdal_translate",
+                "-of",
+                "AAIGrid",
+                "-projwin",
+                *CHANT_SURA_CONTACT_DEM_PROJWIN,
+                "-outsize",
+                *CHANT_SURA_CONTACT_DEM_OUTSIZE,
+                str(dem_path),
+                str(patch_path),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+
+        for out in (
+            ROOT / "data" / "processed" / "chant_sura_2020",
+            ROOT / "validation" / "data" / "processed" / "chant_sura_2020",
+        ):
+            out.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(patch_path, out / "terrain_rf16_contact.asc")
+            write_chant_sura_contact_rows(out, segments, mass_kg, radius_m)
+    print("wrote Chant Sura DEM-backed contact fixture")
+
+
+def write_chant_sura_contact_rows(
+    out: Path,
+    segments: list[list[dict[str, float]]],
+    mass_kg: float,
+    radius_m: float,
+) -> None:
+    release_rows = []
+    trajectory_rows = []
+    contact_rows = []
+    for segment_index, segment in enumerate(segments):
+        segment_id = f"{CHANT_SURA_CONTACT_TRAJECTORY_ID}_seg{segment_index:02d}"
+        first = segment[0]
+        release_rows.append(
+            [
+                segment_id,
+                CHANT_SURA_CONTACT_EXPERIMENT_ID,
+                fmt(first["x"]),
+                fmt(first["y"]),
+                fmt(first["z"] + radius_m),
+                fmt(first["v_x"]),
+                fmt(first["v_y"]),
+                fmt(first["v_z"]),
+                fmt(mass_kg),
+                fmt(radius_m),
+                CHANT_SURA_CONTACT_TRAJECTORY_ID,
+                segment_id,
+                str(segment_index),
+                fmt(radius_m),
+            ]
+        )
+        for sample in segment:
+            trajectory_rows.append(
+                [
+                    segment_id,
+                    CHANT_SURA_CONTACT_EXPERIMENT_ID,
+                    fmt(sample["time"]),
+                    fmt(sample["x"]),
+                    fmt(sample["y"]),
+                    fmt(sample["z"] + radius_m),
+                    fmt(sample["v_x"]),
+                    fmt(sample["v_y"]),
+                    fmt(sample["v_z"]),
+                    fmt(sample["v"]),
+                    fmt(sample["Ekin"]),
+                    fmt(sample.get("Erot", 0.0)),
+                    fmt(sample.get("Etot", 0.0)),
+                    fmt(sample.get("omega_x", 0.0)),
+                    fmt(sample.get("omega_y", 0.0)),
+                    fmt(sample.get("omega_z", 0.0)),
+                    CHANT_SURA_CONTACT_TRAJECTORY_ID,
+                    segment_id,
+                    str(segment_index),
+                    fmt(sample["z"]),
+                    fmt(radius_m),
+                ]
+            )
+    for impact_index in range(len(segments) - 1):
+        incoming = segments[impact_index][-1]
+        outgoing = segments[impact_index + 1][0]
+        source_segment_id = f"{CHANT_SURA_CONTACT_TRAJECTORY_ID}_seg{impact_index:02d}"
+        next_segment_id = f"{CHANT_SURA_CONTACT_TRAJECTORY_ID}_seg{impact_index + 1:02d}"
+        contact_rows.append(
+            [
+                f"{CHANT_SURA_CONTACT_TRAJECTORY_ID}_impact_{impact_index:02d}",
+                source_segment_id,
+                CHANT_SURA_CONTACT_EXPERIMENT_ID,
+                source_segment_id,
+                next_segment_id,
+                str(impact_index),
+                fmt(incoming["time"]),
+                fmt(incoming["x"]),
+                fmt(incoming["y"]),
+                fmt(incoming["z"] + radius_m),
+                fmt(incoming["z"]),
+                fmt(incoming["v_x"]),
+                fmt(incoming["v_y"]),
+                fmt(incoming["v_z"]),
+                fmt(outgoing["v_x"]),
+                fmt(outgoing["v_y"]),
+                fmt(outgoing["v_z"]),
+                fmt(incoming["v"]),
+                fmt(outgoing["v"]),
+                fmt(incoming["Ekin"]),
+                fmt(outgoing["Ekin"]),
+                fmt(mass_kg),
+                fmt(radius_m),
+                fmt(radius_m),
+            ]
+        )
+
+    write_csv(
+        out / "release_points_contact.csv",
+        [
+            "trajectory_id",
+            "experiment_id",
+            "x_m",
+            "y_m",
+            "z_m",
+            "vx_mps",
+            "vy_mps",
+            "vz_mps",
+            "mass_kg",
+            "radius_m",
+            "source_trajectory_id",
+            "segment_id",
+            "segment_index",
+            "z_offset_applied_m",
+        ],
+        release_rows,
+    )
+    write_csv(
+        out / "observed_trajectories_contact.csv",
+        [
+            "trajectory_id",
+            "experiment_id",
+            "time_s",
+            "x_m",
+            "y_m",
+            "z_m",
+            "vx_mps",
+            "vy_mps",
+            "vz_mps",
+            "speed_mps",
+            "kinetic_j",
+            "rotational_j",
+            "total_energy_j",
+            "omega_x_radps",
+            "omega_y_radps",
+            "omega_z_radps",
+            "source_trajectory_id",
+            "segment_id",
+            "segment_index",
+            "raw_z_m",
+            "z_offset_applied_m",
+        ],
+        trajectory_rows,
+    )
+    write_csv(
+        out / "observed_contact_events.csv",
+        [
+            "event_id",
+            "trajectory_id",
+            "experiment_id",
+            "source_segment_id",
+            "next_segment_id",
+            "impact_index",
+            "impact_time_s",
+            "x_m",
+            "y_m",
+            "z_m",
+            "raw_z_m",
+            "incoming_vx_mps",
+            "incoming_vy_mps",
+            "incoming_vz_mps",
+            "outgoing_vx_mps",
+            "outgoing_vy_mps",
+            "outgoing_vz_mps",
+            "incoming_speed_mps",
+            "outgoing_speed_mps",
+            "pre_impact_kinetic_j",
+            "post_impact_kinetic_j",
+            "mass_kg",
+            "radius_m",
+            "z_offset_applied_m",
+        ],
+        contact_rows,
+    )
+    write_chant_sura_contact_metadata(out / "metadata_contact.json", len(segments), radius_m, mass_kg)
+
+
+def write_chant_sura_contact_metadata(
+    path: Path, segment_count: int, radius_m: float, mass_kg: float
+) -> None:
+    metadata = {
+        "dataset_id": "chant_sura_2020",
+        "doi": "https://doi.org/10.16904/envidat.174",
+        "experiment_id": CHANT_SURA_CONTACT_EXPERIMENT_ID,
+        "source_files": [
+            f"Output/txt/{CHANT_SURA_CONTACT_TRAJECTORY_ID}.txt",
+            CHANT_SURA_CONTACT_DEM_MEMBER,
+        ],
+        "terrain_fixture": "terrain_rf16_contact.asc",
+        "terrain_source": "cropped from public RF16 UAS DEM using gdal_translate -of AAIGrid",
+        "terrain_crs": "EPSG:2056 / CH1903+ LV95 as reported by GeoTIFF keys; heights in metres, interpreted as LN02-like local elevation from the source DEM.",
+        "dem_crop_extent": {
+            "x_min_m": 2793260.428143590223,
+            "x_max_m": 2793265.128143590223,
+            "y_min_m": 1180268.476802509977,
+            "y_max_m": 1180276.176802509977,
+            "cellsize_m": 0.05,
+            "ncols": 94,
+            "nrows": 154,
+        },
+        "trajectory_source": f"first {segment_count} local-time-reset segments from {CHANT_SURA_CONTACT_TRAJECTORY_ID}",
+        "segment_count": segment_count,
+        "contact_event_count": max(0, segment_count - 1),
+        "z_alignment": "Observed output z is retained in raw_z_m; z_m is raw_z_m plus equivalent sphere radius so the simulator center-of-mass state is compatible with terrain contact distance.",
+        "equivalent_sphere_radius_m": radius_m,
+        "mass_kg": mass_kg,
+        "limitations": [
+            "Small RF16-only corridor; not full Chant Sura runout or deposition validation.",
+            "Segment boundaries are treated as observed contact/rebound events from local time resets.",
+            "DEM and trajectory alignment is used without horizontal reprojection because both are in LV95-scale coordinates.",
+            "v0 sphere model cannot represent the original EOTA rock shape.",
+        ],
+    }
+    path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def infer_mass_kg(sample: dict[str, float]) -> float:

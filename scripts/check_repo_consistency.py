@@ -95,6 +95,15 @@ KNOWN_METRICS = {
     "trajectory_final_position_mean_error_m",
     "trajectory_energy_mean_relative_error",
     "trajectory_max_jump_height_mean_error_m",
+    "trajectory_jump_height_envelope_error_m",
+    "observed_contact_event_count",
+    "contact_event_compared_count",
+    "impact_timing_mean_error_s",
+    "impact_timing_p95_error_s",
+    "rebound_velocity_mean_error_mps",
+    "rebound_velocity_p95_error_mps",
+    "post_impact_energy_change_mean_error_j",
+    "post_impact_energy_change_p95_error_j",
     "observed_mean_runout_m",
     "simulated_mean_runout_m",
     "deposition_centroid_error_m",
@@ -250,6 +259,7 @@ def check_schema_docs() -> list[str]:
         "impact_events_json",
         "ensemble_trajectories_dir",
         "ensemble_impact_events_dir",
+        "contact_events_csv",
         "max_scarring_depth_m",
         "max_scarring_drag_force_n",
         "total_scarring_energy_loss_j",
@@ -570,6 +580,33 @@ def check_chant_sura_validation_metadata() -> list[str]:
         if "validation_scope" not in case:
             errors.append("chant_sura_trajectory_subset omits validation_scope")
 
+    contact_case_path = ROOT / "validation/cases/chant_sura_contact.yaml"
+    if not contact_case_path.exists():
+        errors.append("validation/cases/chant_sura_contact.yaml is missing")
+    else:
+        case = yaml.safe_load(contact_case_path.read_text()) or {}
+        if (case.get("references") or {}).get("dataset") != "chant_sura_2020":
+            errors.append("chant_sura_contact does not reference dataset chant_sura_2020")
+        terrain = case.get("terrain") or {}
+        terrain_path = terrain.get("path")
+        if not terrain_path or not (ROOT / terrain_path).exists():
+            errors.append("chant_sura_contact references missing DEM fixture")
+        observations = case.get("observations") or {}
+        for key in ("release_points_csv", "trajectory_csv", "contact_events_csv"):
+            path = observations.get(key)
+            if not path:
+                errors.append(f"chant_sura_contact omits observations.{key}")
+            elif not (ROOT / path).exists():
+                errors.append(f"chant_sura_contact references missing observations.{key}: {path}")
+        metrics = (case.get("expected") or {}).get("metrics", []) or []
+        for metric in (
+            "impact_timing_mean_error_s",
+            "rebound_velocity_mean_error_mps",
+            "post_impact_energy_change_mean_error_j",
+        ):
+            if metric not in metrics:
+                errors.append(f"chant_sura_contact omits contact metric {metric}")
+
     strategy = ROOT / "docs/dataset_strategy.md"
     if not strategy.exists():
         errors.append("docs/dataset_strategy.md is missing")
@@ -578,6 +615,14 @@ def check_chant_sura_validation_metadata() -> list[str]:
         for term in ("Chant Sura", "trajectory", "calibration", "Tschamut", "hazard"):
             if term not in text:
                 errors.append(f"docs/dataset_strategy.md omits {term!r}")
+    contact_doc = ROOT / "docs/chant_sura_contact_validation.md"
+    if not contact_doc.exists():
+        errors.append("docs/chant_sura_contact_validation.md is missing")
+    else:
+        text = contact_doc.read_text()
+        for term in ("DEM-backed", "segment", "impact timing", "rebound velocity"):
+            if term not in text:
+                errors.append(f"docs/chant_sura_contact_validation.md omits {term!r}")
     return errors
 
 

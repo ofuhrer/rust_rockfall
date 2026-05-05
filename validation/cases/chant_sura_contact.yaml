@@ -1,0 +1,80 @@
+case_id: validation_chant_sura_contact
+title: Chant Sura DEM-backed segmented contact subset
+level: 5
+description: DEM-backed RF16W200r1 Chant Sura validation experiment using the first three reconstructed local-time-reset trajectory segments and two segment-boundary contact/rebound events. This case keeps the original first-flight subset unchanged and adds contact-aware metrics for the default translational_v0 model.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [1.17599999905, -4.33600000013, -4.23375]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.005, t_max: 1.15, max_steps: 230, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: trajectory-contact-level
+  note: "Small RF16-only DEM-backed experiment. Segment-boundary time resets are treated as observed contact/rebound proxies; this constrains contact timing and rebound velocity qualitatively, not operational hazard skill."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points_contact.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories_contact.csv
+  contact_events_csv: validation/data/processed/chant_sura_2020/observed_contact_events.csv
+expected:
+  metrics:
+    - validation_trajectory_count
+    - observed_trajectory_sample_count
+    - trajectory_shape_mean_error_m
+    - trajectory_shape_p95_error_m
+    - trajectory_shape_max_error_m
+    - trajectory_final_position_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_max_jump_height_mean_error_m
+    - trajectory_jump_height_envelope_error_m
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - impact_timing_p95_error_s
+    - rebound_velocity_mean_error_mps
+    - rebound_velocity_p95_error_mps
+    - post_impact_energy_change_mean_error_j
+  values:
+    validation_trajectory_count: 3.0
+    observed_trajectory_sample_count: 153.0
+    observed_contact_event_count: 2.0
+    contact_event_compared_count: 2.0
+  maximums:
+    trajectory_shape_mean_error_m: 8.0
+    trajectory_shape_p95_error_m: 20.0
+    trajectory_shape_max_error_m: 25.0
+    trajectory_final_position_mean_error_m: 20.0
+    trajectory_energy_mean_relative_error: 8.0
+    trajectory_max_jump_height_mean_error_m: 8.0
+    trajectory_jump_height_envelope_error_m: 8.0
+    impact_timing_mean_error_s: 0.8
+    impact_timing_p95_error_s: 1.0
+    rebound_velocity_mean_error_mps: 20.0
+    rebound_velocity_p95_error_mps: 25.0
+    post_impact_energy_change_mean_error_j: 25000.0
+outputs:
+  diagnostics_json: validation/results/chant_sura_contact_metrics.json
+  trajectory_csv: validation/results/chant_sura_contact_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  literature:
+    - "Caviezel, A. et al. (2020). Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland. EnviDat. https://doi.org/10.16904/envidat.174."
+    - "Caviezel, A. et al. (2021). The relevance of rock shape over mass. Nature Communications."
+  notes:
+    - "Uses Output/txt/RF16W200r1.txt and a small ASCII-grid crop from Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif."
+    - "Observed raw z values are preserved in processed CSV metadata columns; z_m is shifted upward by the equivalent sphere radius so the simulator center-of-mass convention is compatible with terrain contact."
+    - "This is a small model-comparison experiment and should not be read as full Chant Sura validation or operational hazard assessment."
+report:
+  verifies:
+    - "Trajectory shape across multiple reconstructed RF16W200r1 flight segments on a real DEM patch."
+    - "Approximate contact timing and rebound velocity at two segment-boundary contact proxies."
+    - "Jump-height envelope relative to a real terrain patch."
+  does_not_verify:
+    - "Full runout, deposition, non-spherical EOTA shape effects, calibrated roughness/scarring, or operational hazard skill."

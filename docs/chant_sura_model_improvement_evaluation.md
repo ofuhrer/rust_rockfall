@@ -60,11 +60,12 @@ trajectory realism.
 
 ## Candidate Ranking
 
-1. **DEM-backed Chant Sura trajectory/contact validation.** This is the most
-   important next step. The current subset cannot judge contact physics because
-   it is limited to first-flight segments and a flat clearance proxy. Processing
-   the Chant Sura input DEM and aligning reconstructed multi-segment
-   trajectories would expose the model to real terrain-contact timing.
+1. **DEM-backed Chant Sura trajectory/contact validation.** This recommendation
+   has been implemented as a small RF16W200r1 experiment in
+   `validation/cases/chant_sura_contact.yaml` and documented in
+   `docs/chant_sura_contact_validation.md`. The fixture exposes the model to
+   real terrain-contact timing, but remains a small qualitative subset rather
+   than full-campaign validation.
 2. **Trajectory segment stitching and observed impact-event alignment.** The
    public trajectory text files concatenate jump segments with local time resets.
    A preprocessing layer that preserves segment IDs and identifies observed

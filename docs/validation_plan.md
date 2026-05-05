@@ -38,7 +38,9 @@ Planned metrics include trajectory-envelope overlap, bounce-height time-series e
 
 ## Real-World Validation Interpretation
 
-Chant Sura is the primary trajectory/physics reference dataset. The current checked-in case uses three short first-flight reconstructed segments from the public EnviDat `Output.7z` archive. It compares trajectory shape, translational kinetic-energy evolution, and proxy jump-height consistency. Because it uses a flat clearance plane and not the large Chant Sura input DEM, it does not validate full terrain interaction, complete runout, deposition, or shape-dependent motion.
+Chant Sura is the primary trajectory/physics reference dataset. The checked-in first-flight case uses three short reconstructed segments from the public EnviDat `Output.7z` archive. It compares trajectory shape, translational kinetic-energy evolution, and proxy jump-height consistency on a flat clearance plane.
+
+The DEM-backed segmented-contact experiment uses a small RF16 UAS DEM crop and the first three RF16W200r1 local-time-reset segments. It adds contact-aware metrics for impact timing, rebound velocity, post-impact kinetic-energy change, and jump-height envelope. This constrains contact-model behavior qualitatively, but it is still a small subset and does not validate complete runout, deposition, non-spherical shape effects, or operational hazard skill.
 
 The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the current workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
 

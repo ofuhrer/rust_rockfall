@@ -29,12 +29,20 @@ Current implemented metrics:
 - `trajectory_final_position_mean_error_m`
 - `trajectory_energy_mean_relative_error`
 - `trajectory_max_jump_height_mean_error_m`
+- `trajectory_jump_height_envelope_error_m`
+- `observed_contact_event_count`
+- `contact_event_compared_count`
+- `impact_timing_mean_error_s`
+- `impact_timing_p95_error_s`
+- `rebound_velocity_mean_error_mps`
+- `rebound_velocity_p95_error_mps`
+- `post_impact_energy_change_mean_error_j`
+- `post_impact_energy_change_p95_error_j`
 
 Planned metrics:
 
 - trajectory envelope overlap
 - velocity and angular-velocity time-series error
-- kinetic-energy error at impact points
 - runout exceedance probability
 - deposition-density skill score beyond the current nearest-neighbor/overlap summary
 - ensemble percentile envelopes for spatial deposition fields

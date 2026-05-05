@@ -1,0 +1,33 @@
+{
+  "contact_event_count": 2,
+  "dataset_id": "chant_sura_2020",
+  "dem_crop_extent": {
+    "cellsize_m": 0.05,
+    "ncols": 94,
+    "nrows": 154,
+    "x_max_m": 2793265.1281435904,
+    "x_min_m": 2793260.42814359,
+    "y_max_m": 1180276.17680251,
+    "y_min_m": 1180268.47680251
+  },
+  "doi": "https://doi.org/10.16904/envidat.174",
+  "equivalent_sphere_radius_m": 0.26579071657712566,
+  "experiment_id": "chant_sura_2020_rf16_contact_subset",
+  "limitations": [
+    "Small RF16-only corridor; not full Chant Sura runout or deposition validation.",
+    "Segment boundaries are treated as observed contact/rebound events from local time resets.",
+    "DEM and trajectory alignment is used without horizontal reprojection because both are in LV95-scale coordinates.",
+    "v0 sphere model cannot represent the original EOTA rock shape."
+  ],
+  "mass_kg": 210.0,
+  "segment_count": 3,
+  "source_files": [
+    "Output/txt/RF16W200r1.txt",
+    "Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif"
+  ],
+  "terrain_crs": "EPSG:2056 / CH1903+ LV95 as reported by GeoTIFF keys; heights in metres, interpreted as LN02-like local elevation from the source DEM.",
+  "terrain_fixture": "terrain_rf16_contact.asc",
+  "terrain_source": "cropped from public RF16 UAS DEM using gdal_translate -of AAIGrid",
+  "trajectory_source": "first three local-time-reset segments from RF16W200r1 reconstructed output trajectory",
+  "z_alignment": "Observed output z is retained in raw_z_m; z_m is raw_z_m plus equivalent sphere radius so the simulator center-of-mass state is compatible with terrain contact distance."
+}

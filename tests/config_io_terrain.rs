@@ -753,6 +753,97 @@ outputs:
 }
 
 #[test]
+fn validation_compares_observed_contact_events() {
+    let case_path = temp_path("observed_contact_case.yaml");
+    let observations = temp_path("observed_contact_trajectory.csv");
+    let contacts = temp_path("observed_contact_events.csv");
+    let releases = temp_path("observed_contact_releases.csv");
+    let diagnostics = temp_path("observed_contact_metrics.json");
+    let trajectory = temp_path("observed_contact_output.csv");
+
+    fs::write(
+        &observations,
+        "trajectory_id,experiment_id,time_s,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,speed_mps,kinetic_j\n\
+         seg00,synthetic_contact,0.0,0.0,0.0,2.0,0.0,0.0,-1.0,1.0,5.0\n\
+         seg00,synthetic_contact,0.46,0.0,0.0,0.5,0.0,0.0,-5.5,5.5,151.25\n",
+    )
+    .unwrap();
+    fs::write(
+        &releases,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,mass_kg,radius_m\n\
+         seg00,synthetic_contact,0.0,0.0,2.0,0.0,0.0,-1.0,10.0,0.5\n",
+    )
+    .unwrap();
+    fs::write(
+        &contacts,
+        "event_id,trajectory_id,experiment_id,source_segment_id,next_segment_id,impact_index,impact_time_s,x_m,y_m,z_m,incoming_vx_mps,incoming_vy_mps,incoming_vz_mps,outgoing_vx_mps,outgoing_vy_mps,outgoing_vz_mps,pre_impact_kinetic_j,post_impact_kinetic_j,mass_kg,radius_m\n\
+         impact00,seg00,synthetic_contact,seg00,seg01,0,0.46,0.0,0.0,0.5,0.0,0.0,-5.5,0.0,0.0,2.75,151.25,37.8125,10.0,0.5\n",
+    )
+    .unwrap();
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: observed_contact_case
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 2.0]
+  velocity: [0.0, 0.0, -1.0]
+parameters:
+  normal_restitution: 0.5
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: {{ dt: 0.01, t_max: 0.5, stop_velocity: 0.01 }}
+observations:
+  release_points_csv: {}
+  trajectory_csv: {}
+  contact_events_csv: {}
+expected:
+  metrics:
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - rebound_velocity_mean_error_mps
+outputs:
+  diagnostics_json: {}
+  trajectory_csv: {}
+"#,
+            releases.display(),
+            observations.display(),
+            contacts.display(),
+            diagnostics.display(),
+            trajectory.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert_abs_diff_eq!(
+        report.metrics["observed_contact_event_count"],
+        1.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        report.metrics["contact_event_compared_count"],
+        1.0,
+        epsilon = 1.0e-12
+    );
+    assert!(report.metrics["impact_timing_mean_error_s"] <= 0.02);
+    assert!(report.metrics["rebound_velocity_mean_error_mps"] <= 0.2);
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(observations).unwrap();
+    fs::remove_file(contacts).unwrap();
+    fs::remove_file(releases).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+}
+
+#[test]
 fn tschamut_validation_fixture_runs_reproducibly() {
     let output = PathBuf::from("validation/results/tschamut_basic_metrics.json");
     let trajectory = PathBuf::from("validation/results/tschamut_basic_trajectory.csv");

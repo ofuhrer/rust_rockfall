@@ -1,0 +1,54 @@
+case_id: validation_chant_sura_contact_roughness
+title: Chant Sura segmented contact with stochastic_contact_v1
+level: 5
+description: Same RF16W200r1 DEM-backed contact subset as validation_chant_sura_contact, with deterministic opt-in stochastic_contact_v1 perturbations for model-comparison diagnostics.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [1.17599999905, -4.33600000013, -4.23375]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.02
+  roughness_std_tangent: 0.02
+  roughness_std_angle: 0.03
+simulation: { dt: 0.005, t_max: 1.15, max_steps: 230, stop_velocity: 0.05 }
+random: { seed: 17416, ensemble_size: 1 }
+validation_scope:
+  type: trajectory-contact-level
+  note: "Model-comparison case only; deterministic contact roughness is enabled but not calibrated to Chant Sura."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points_contact.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories_contact.csv
+  contact_events_csv: validation/data/processed/chant_sura_2020/observed_contact_events.csv
+expected:
+  metrics:
+    - trajectory_shape_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_jump_height_envelope_error_m
+    - observed_contact_event_count
+    - contact_event_compared_count
+    - impact_timing_mean_error_s
+    - rebound_velocity_mean_error_mps
+  values:
+    observed_contact_event_count: 2.0
+    contact_event_compared_count: 2.0
+  maximums:
+    trajectory_shape_mean_error_m: 8.0
+    trajectory_energy_mean_relative_error: 8.0
+    trajectory_jump_height_envelope_error_m: 8.0
+    impact_timing_mean_error_s: 0.8
+    rebound_velocity_mean_error_mps: 20.0
+outputs:
+  diagnostics_json: validation/results/chant_sura_contact_roughness_metrics.json
+  trajectory_csv: validation/results/chant_sura_contact_roughness_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  notes:
+    - "Experimental model-comparison case; roughness is synthetic and not calibrated."

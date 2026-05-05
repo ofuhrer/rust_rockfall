@@ -50,6 +50,7 @@ observations:
   release_points_csv: null
   deposition_points_csv: null
   trajectory_csv: null
+  contact_events_csv: null
 expected:
   metrics: [runout_m, impact_count]
   final_position_m: null

@@ -9,7 +9,7 @@ public measurements at the right level of evidence.
 
 | Dataset | Repository ID | Primary role | Current use | Not used for |
 | --- | --- | --- | --- | --- |
-| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full DEM-based runout, or shape-effect validation in v0.5.0 |
+| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. A small RF16 DEM-backed segmented contact fixture compares trajectory shape, jump-height envelope, impact timing, rebound velocity, and post-impact energy change. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full runout/deposition validation, or shape-effect validation in v0.5.0 |
 | Lu / Chant Sura scarring tables | `chant_sura_esurf_2019_impacts` | Impact-level scarring calibration | Public scar-depth and jump-energy tables constrain `scarring_contact_v1` at the single-impact level. | Trajectory validation or hazard-map validation |
 | Tschamut 2014 | `tschamut2014` | Deposition-level validation | Public release/deposition subset compares ensemble runout and deposition-cloud metrics on a transparent terrain proxy. | Impact-level calibration, shape validation, or operational hazard skill |
 | Synthetic analytic fixtures | `synthetic_*` | Verification | Closed-form or controlled checks for mechanics, terrain handling, stochastic reproducibility, scarring diagnostics, and hazard-layer post-processing. | Real-world validation |
@@ -47,7 +47,7 @@ registry entry is DOI [10.16904/envidat.174](https://doi.org/10.16904/envidat.17
 Public resources currently registered include:
 
 - `Output.7z`: reconstructed trajectory text files under `Output/txt/`.
-- `Input.7z`: site input data, including DEM-related material; this archive is large and remains optional/raw-only for now.
+- `Input.7z`: site input data, including the RF16 UAS DEM used to derive the small contact-validation terrain crop. The full archive remains large and raw-only.
 - `ExperimentalRuns.7z`: large sensor/video run archive, not required by the minimal subset.
 - `EOTA.7z`: small public rock-shape point files; summarized as metadata for future non-spherical modelling.
 - ESurf 2019 tables 1 and 2: scar dimensions and jump-energy summaries used by the scarring calibration workflow.
@@ -57,6 +57,10 @@ The checked-in validation subset in
 
 - `release_points.csv`: initial state for three first-flight trajectory segments.
 - `observed_trajectories.csv`: reconstructed positions, velocities, kinetic energy, rotational energy, and angular velocity for the selected segments.
+- `terrain_rf16_contact.asc`: small RF16 UAS DEM crop in LV95 coordinates.
+- `release_points_contact.csv`, `observed_trajectories_contact.csv`, and
+  `observed_contact_events.csv`: first three RF16W200r1 local-time-reset
+  trajectory segments plus two segment-boundary contact/rebound proxies.
 - `block_metadata.csv`: equivalent-sphere approximations inferred from trajectory mass.
 - `rock_shapes.csv`: EOTA shape bounding boxes and point counts, when `eota.7z` has been downloaded.
 - `metadata.json`: source files, assumptions, and limitations.
@@ -67,6 +71,16 @@ monotonic time segment of three reconstructed trajectories because the public
 trajectory text files concatenate jump segments with local time resets. It uses
 a flat clearance-plane proxy, not the full site DEM, so jump-height comparison
 is a consistency diagnostic rather than field-terrain validation.
+
+The DEM-backed segmented-contact experiment is
+`validation/cases/chant_sura_contact.yaml`, with comparison variants for
+`sphere_rotational_v1`, `stochastic_contact_v1`, and `scarring_contact_v1`.
+It uses a small crop from
+`Input/UAS/2018_06_20_RF16/20180619_Chant_Sura_DEM_0.05m.tif`. The processed
+fixture preserves raw observed z in metadata columns but shifts `z_m` by the
+equivalent sphere radius so the current simulator's centre-of-mass convention
+is compatible with terrain contact. Segment boundaries are treated as
+contact/rebound proxies, not exact instrumented impact events.
 
 ## What Each Dataset Constrains
 
@@ -90,17 +104,19 @@ is a consistency diagnostic rather than field-terrain validation.
 
 ## Inconsistencies and Gaps
 
-- The current Chant Sura trajectory subset is short and ballistic; it is useful
+- The original Chant Sura trajectory subset is short and ballistic; it is useful
   for kinematic traceability but weak for contact validation.
+- The segmented-contact fixture improves contact observability but is still a
+  small RF16-only subset. It does not replace full-campaign trajectory,
+  deposition, or shape validation.
 - Scarring calibration uses impact-level quantities, while Tschamut validation
   uses trajectory/deposition quantities. Parameters must not be transferred
   without explicit comparative experiments.
 - Tschamut currently under-runs observations; adding scarring increases energy
   loss and worsens that mismatch, suggesting terrain/model structural error
   rather than a simple scarring-parameter issue.
-- The large Chant Sura input DEM is not yet part of the checked-in validation
-  fixture. Until it is processed, Chant Sura cannot validate terrain-following
-  runout or full jump-height behavior.
+- Only a tiny derived Chant Sura input DEM crop is checked in. The full
+  `Input.7z` archive remains ignored raw data and must not be committed.
 
 ## Operating Rules
 

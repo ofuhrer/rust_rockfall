@@ -224,6 +224,8 @@ pub struct ObservationConfig {
     pub deposition_points_csv: Option<PathBuf>,
     #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
+    #[serde(default)]
+    pub contact_events_csv: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -350,6 +352,40 @@ pub struct ObservedTrajectorySample {
     pub speed_mps: Option<f64>,
     #[serde(default)]
     pub kinetic_j: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ObservedContactEvent {
+    pub event_id: String,
+    pub trajectory_id: String,
+    pub experiment_id: String,
+    pub source_segment_id: String,
+    pub next_segment_id: String,
+    pub impact_index: usize,
+    pub impact_time_s: f64,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    #[serde(default)]
+    pub raw_z_m: Option<f64>,
+    pub incoming_vx_mps: f64,
+    pub incoming_vy_mps: f64,
+    pub incoming_vz_mps: f64,
+    pub outgoing_vx_mps: f64,
+    pub outgoing_vy_mps: f64,
+    pub outgoing_vz_mps: f64,
+    #[serde(default)]
+    pub incoming_speed_mps: Option<f64>,
+    #[serde(default)]
+    pub outgoing_speed_mps: Option<f64>,
+    #[serde(default)]
+    pub pre_impact_kinetic_j: Option<f64>,
+    #[serde(default)]
+    pub post_impact_kinetic_j: Option<f64>,
+    #[serde(default)]
+    pub mass_kg: Option<f64>,
+    #[serde(default)]
+    pub radius_m: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -481,6 +517,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
     compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
     compute_observed_trajectory_metrics(case, &config, &observations, &mut metrics)?;
+    compute_observed_contact_metrics(case, &config, &observations, &mut metrics)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
     compute_scarring_comparison_metrics(case, &config, samples, &mut metrics)?;
 
@@ -1023,6 +1060,8 @@ fn compute_observed_trajectory_metrics(
     let mut final_position_errors = Vec::new();
     let mut relative_energy_errors = Vec::new();
     let mut max_jump_errors = Vec::new();
+    let mut observed_jump_envelope = 0.0_f64;
+    let mut simulated_jump_envelope = 0.0_f64;
     let mut compared_trajectory_count = 0_usize;
 
     for (trajectory_id, mut observed_samples) in grouped {
@@ -1085,9 +1124,11 @@ fn compute_observed_trajectory_metrics(
                 config.block.radius_m,
             ));
         }
+        observed_jump_envelope = observed_jump_envelope.max(observed_max_jump);
 
         let simulated_max_jump =
             max_bounce_height(&run.samples, terrain.as_ref(), config.block.radius_m);
+        simulated_jump_envelope = simulated_jump_envelope.max(simulated_max_jump);
         max_jump_errors.push((simulated_max_jump - observed_max_jump).abs());
 
         if let (Some(simulated_last), Some(observed_last)) =
@@ -1140,9 +1181,138 @@ fn compute_observed_trajectory_metrics(
             "trajectory_max_jump_height_mean_error_m".to_string(),
             mean(&max_jump_errors),
         );
+        metrics.insert(
+            "trajectory_jump_height_envelope_error_m".to_string(),
+            (simulated_jump_envelope - observed_jump_envelope).abs(),
+        );
     }
 
     Ok(())
+}
+
+fn compute_observed_contact_metrics(
+    case: &BenchmarkCase,
+    base_config: &SimulationConfig,
+    observations: &ObservationData,
+    metrics: &mut BTreeMap<String, f64>,
+) -> Result<(), ValidationError> {
+    if observations.contact_events.is_empty() {
+        return Ok(());
+    }
+
+    let releases = observations
+        .release_points
+        .iter()
+        .map(|release| (release.trajectory_id.as_str(), release))
+        .collect::<BTreeMap<_, _>>();
+    let terrain = base_config.terrain.build()?;
+    let mut impact_timing_errors = Vec::new();
+    let mut rebound_velocity_errors = Vec::new();
+    let mut post_impact_energy_change_errors = Vec::new();
+    let mut compared_count = 0_usize;
+
+    for observed in &observations.contact_events {
+        let Some(release) = releases.get(observed.source_segment_id.as_str()) else {
+            continue;
+        };
+        let mut config = base_config.clone();
+        config.initial_position_m = [release.x_m, release.y_m, release.z_m];
+        config.initial_velocity_mps = [release.vx_mps, release.vy_mps, release.vz_mps];
+        if let (Some(radius_m), Some(mass_kg)) = (release.radius_m, release.mass_kg) {
+            config.block = SphereBlock::new(radius_m, mass_kg);
+        }
+        if let (Some(radius_m), Some(mass_kg)) = (observed.radius_m, observed.mass_kg) {
+            config.block = SphereBlock::new(radius_m, mass_kg);
+        }
+        config.max_time_s = (observed.impact_time_s + 4.0 * config.dt_s).max(config.dt_s);
+        config.random_seed = None;
+
+        let request = TrajectoryRequest::from_global_seed(
+            0,
+            case.case_id.clone(),
+            observed.source_segment_id.clone(),
+        );
+        let run = simulate_one_trajectory_with_terrain(&config, request, terrain.as_ref())?;
+        let Some(simulated_impact) = first_significant_impact_event(&run.impact_events) else {
+            continue;
+        };
+
+        compared_count += 1;
+        impact_timing_errors.push((simulated_impact.time_s - observed.impact_time_s).abs());
+        rebound_velocity_errors.push(distance3(
+            [
+                simulated_impact.post_scarring_vx_mps,
+                simulated_impact.post_scarring_vy_mps,
+                simulated_impact.post_scarring_vz_mps,
+            ],
+            [
+                observed.outgoing_vx_mps,
+                observed.outgoing_vy_mps,
+                observed.outgoing_vz_mps,
+            ],
+        ));
+
+        if let (Some(pre_observed), Some(post_observed)) = (
+            observed.pre_impact_kinetic_j,
+            observed.post_impact_kinetic_j,
+        ) {
+            let observed_delta = post_observed - pre_observed;
+            let simulated_delta = simulated_impact.post_scarring_translational_j
+                - simulated_impact.pre_contact_translational_j;
+            post_impact_energy_change_errors.push((simulated_delta - observed_delta).abs());
+        }
+    }
+
+    metrics.insert(
+        "observed_contact_event_count".to_string(),
+        observations.contact_events.len() as f64,
+    );
+    metrics.insert(
+        "contact_event_compared_count".to_string(),
+        compared_count as f64,
+    );
+    if !impact_timing_errors.is_empty() {
+        impact_timing_errors.sort_by(f64::total_cmp);
+        metrics.insert(
+            "impact_timing_mean_error_s".to_string(),
+            mean(&impact_timing_errors),
+        );
+        metrics.insert(
+            "impact_timing_p95_error_s".to_string(),
+            percentile(&impact_timing_errors, 0.95),
+        );
+    }
+    if !rebound_velocity_errors.is_empty() {
+        rebound_velocity_errors.sort_by(f64::total_cmp);
+        metrics.insert(
+            "rebound_velocity_mean_error_mps".to_string(),
+            mean(&rebound_velocity_errors),
+        );
+        metrics.insert(
+            "rebound_velocity_p95_error_mps".to_string(),
+            percentile(&rebound_velocity_errors, 0.95),
+        );
+    }
+    if !post_impact_energy_change_errors.is_empty() {
+        post_impact_energy_change_errors.sort_by(f64::total_cmp);
+        metrics.insert(
+            "post_impact_energy_change_mean_error_j".to_string(),
+            mean(&post_impact_energy_change_errors),
+        );
+        metrics.insert(
+            "post_impact_energy_change_p95_error_j".to_string(),
+            percentile(&post_impact_energy_change_errors, 0.95),
+        );
+    }
+
+    Ok(())
+}
+
+fn first_significant_impact_event(events: &[ImpactEvent]) -> Option<&ImpactEvent> {
+    events
+        .iter()
+        .find(|event| event.incoming_normal_speed_mps >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS)
+        .or_else(|| events.first())
 }
 
 fn ensemble_deposition_row(release_id: &str, run: &TrajectoryRun) -> EnsembleDepositionPoint {
@@ -1427,6 +1597,7 @@ struct ObservationData {
     deposition_points: Vec<DepositionPoint>,
     release_points: Vec<ReleasePoint>,
     trajectory_samples: Vec<ObservedTrajectorySample>,
+    contact_events: Vec<ObservedContactEvent>,
 }
 
 enum ObservationLoad {
@@ -1461,6 +1632,12 @@ fn load_observations(
             return Ok(ObservationLoad::MissingRequired(path.clone()));
         }
         data.trajectory_samples = read_observed_trajectory_samples(path)?;
+    }
+    if let Some(path) = &observations.contact_events_csv {
+        if !path.exists() {
+            return Ok(ObservationLoad::MissingRequired(path.clone()));
+        }
+        data.contact_events = read_observed_contact_events(path)?;
     }
     if data.deposition_points.len() > 1 && data.release_points.is_empty() {
         warnings.push(format!(
@@ -1499,6 +1676,15 @@ fn read_observed_trajectory_samples(
         samples.push(record?);
     }
     Ok(samples)
+}
+
+fn read_observed_contact_events(path: &Path) -> Result<Vec<ObservedContactEvent>, ValidationError> {
+    let mut reader = csv::Reader::from_path(path)?;
+    let mut events = Vec::new();
+    for record in reader.deserialize() {
+        events.push(record?);
+    }
+    Ok(events)
 }
 
 fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, ValidationError> {
