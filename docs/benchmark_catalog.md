@@ -12,6 +12,10 @@ This catalog lists the current v0 verification and validation cases. These cases
 - `analytic_inclined_slide_stop`: checks frictional stopping for an initially upslope sliding block.
 - `analytic_no_motion_threshold`: checks that `tan(theta) < mu` does not initiate sliding from rest.
 - `analytic_energy_conservation_no_dissipation`: checks total-energy drift with no contact and no dissipation.
+- `analytic_rolling_incline_solid_sphere`: checks opt-in solid-sphere rolling acceleration.
+- `analytic_rolling_resistance_stop`: checks rolling-resistance stopping on horizontal terrain.
+- `analytic_rolling_energy_monotonic`: checks monotonic total-energy loss under rolling resistance.
+- `analytic_insufficient_static_friction_slides`: checks that insufficient static friction reports sliding rather than rolling.
 
 ## Level 1: Synthetic Terrain Tests
 
@@ -28,7 +32,7 @@ This catalog lists the current v0 verification and validation cases. These cases
 - `regime_slide_to_stop_transition`: sliding state dissipates to stopped state.
 - `regime_repeated_low_energy_impacts`: low-energy repeated impacts with bounded energy diagnostics.
 
-The current model exposes `airborne`, `impact`, `sliding`, and `stopped` contact states. It does not expose a full rolling regime.
+The default `translational_v0` contact model exposes `airborne`, `impact`, `sliding`, and `stopped` contact states. The opt-in `sphere_rotational_v1` contact model also exposes `rolling` and rolling-residual diagnostics.
 
 ## Level 3: Stochastic Tests
 
@@ -42,4 +46,3 @@ The current model exposes `airborne`, `impact`, `sliding`, and `stopped` contact
 - `validation_tschamut_basic`: optional scaffold for public SLF/WSL EnviDat Tschamut data; skipped until processed observations exist locally.
 
 Real-world validation remains partial and qualitative for v0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and calibrated DEM workflows.
-

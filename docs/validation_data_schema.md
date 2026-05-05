@@ -1,6 +1,6 @@
 # Validation Data and Case Schema
 
-This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current v0 model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs, fixed-step integration, impact restitution, Coulomb friction, seeded release perturbations, and CSV trajectory output.
+This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, seeded release perturbations, and CSV trajectory output.
 
 ## Case YAML
 
@@ -11,6 +11,8 @@ Required case fields:
 - `block.mass`, `block.radius`
 - `release.position`, `release.velocity`, optional `release.perturbation`
 - `parameters.gravity`, `normal_restitution`, `tangential_restitution`, `friction_coefficient`
+- optional `parameters.contact_model`: `translational_v0` by default, or `sphere_rotational_v1`
+- optional `parameters.rolling_resistance_coefficient`: dimensionless, default `0.0`, used by `sphere_rotational_v1`
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
 - `expected.metrics`, `expected.tolerances`
@@ -56,6 +58,10 @@ The CLI can report:
 - `deposition_point_error_m`
 - `runout_distance_error_m`
 - `lateral_deviation_m`
+- `max_rolling_residual_mps`
+- `final_rolling_residual_mps`
+- `final_contact_tangent_speed_mps`
+- `final_angular_speed_radps`
 
 `expected.tolerances` compare error-style metrics against maximum allowed values. `expected.minimums` and `expected.maximums` bound direct metrics such as runout, max speed, or ensemble spread.
 
@@ -80,5 +86,4 @@ Observed trajectory CSV required fields:
 - `y_m`
 - `z_m`
 
-Optional fields include velocity components, angular velocity, speed, bounce height, contact state, block mass, shape class, terrain class, forest/obstacle metadata, CRS, and preprocessing notes.
-
+Optional fields include velocity components, angular velocity, contact-point tangential speed, rolling residual, speed, bounce height, contact state, block mass, shape class, terrain class, forest/obstacle metadata, CRS, and preprocessing notes.

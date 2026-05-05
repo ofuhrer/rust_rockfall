@@ -11,6 +11,7 @@ The existing trajectory CSV already includes the fields needed for v0 plots:
 - speed
 - kinetic, rotational, potential, and total energy
 - contact state
+- angular velocity, contact-point tangential speed, and rolling residual
 
 The verification/validation JSON reports provide case status, metrics, tolerances, warnings, and model metadata. No core output-format change is required for the initial visualization layer.
 

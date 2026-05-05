@@ -11,6 +11,7 @@ Supported now:
 - gravity-driven free flight
 - normal/tangential restitution at impact
 - Coulomb friction during contact
+- opt-in rotational sphere contact with rolling diagnostics
 - deterministic stochastic release perturbations
 - energy-budget trajectory diagnostics
 
@@ -39,7 +40,28 @@ v = v_n + v_t
 v_n+ = -e_n v_n-
 ```
 
-Tangential velocity is reduced by a friction-capped restitution impulse. This is an independently chosen v0 approximation, not a hard-contact complementarity solver.
+The default `translational_v0` contact model reduces tangential velocity with a friction-capped restitution impulse. This is an independently chosen v0 approximation, not a hard-contact complementarity solver.
+
+The opt-in `sphere_rotational_v1` contact model uses the sphere contact point:
+
+```text
+r = -R n
+v_c = v + omega x r
+```
+
+Normal impulse updates linear velocity with normal restitution. Tangential impulse is capped by Coulomb friction and updates both linear and angular velocity. During rolling, the model enforces the solid-sphere no-slip relation through diagnostics:
+
+```text
+v_t + omega x r = 0
+```
+
+For a solid sphere rolling on an inclined plane with sufficient static friction and no rolling resistance, the tangential acceleration is:
+
+```text
+a = (5/7) g_t
+```
+
+`rolling_resistance_coefficient` is a dimensionless early-stage resistance parameter used only by `sphere_rotational_v1`. It is transparent and testable, but not calibrated as a terrain or soil law.
 
 During sliding, the model constrains normal velocity to zero, applies gravity tangent to the terrain, and reduces speed with Coulomb friction:
 
@@ -75,6 +97,7 @@ Important data types:
 - `SphereBlock`
 - `BodyState`
 - `TrajectorySample`
+- `ContactModel`
 - `TrajectoryRequest`
 - `TrajectoryRun`
 - `TrajectorySummary`
@@ -117,7 +140,8 @@ via a stable in-repository hash function. This makes each trajectory reproducibl
 The next scientifically meaningful extensions are:
 
 - DEM fixture tests and terrain boundary policies
-- sphere rolling diagnostics and rolling resistance
+- impact event localization for reduced time-step sensitivity
+- surface roughness parameterization
 - quaternion orientation state
 - ellipsoid and convex-polyhedron geometry APIs
 - nonsmooth contact solver or integration with a public solver reference

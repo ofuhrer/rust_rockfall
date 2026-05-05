@@ -24,6 +24,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Make the smallest coherent change that improves the simulator, tests, or documentation.
 - Add or update focused tests for every feature, behavior branch, physical model, parser, and output format change.
 - Document any new equation, parameter, assumption, or limitation in the appropriate `docs/` file.
+- For contact-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, and consistency checks in the same change.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
@@ -51,6 +52,8 @@ cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo run -- verify --all
+cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+python3 scripts/check_repo_consistency.py
 ```
 
 If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
@@ -74,7 +77,9 @@ Before committing:
   cargo fmt --check \
     && cargo clippy --all-targets --all-features -- -D warnings \
     && cargo test \
-    && cargo run -- verify --all
+    && cargo run -- verify --all \
+    && cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml \
+    && python3 scripts/check_repo_consistency.py
   ```
 
 - Do a quick consistency pass:

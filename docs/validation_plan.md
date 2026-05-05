@@ -4,7 +4,7 @@ Validation asks whether the current model is useful when compared with observati
 
 ## v0 Status
 
-Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact/scarring, explicit roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
+Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact/scarring, explicit roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
 
 ## Dataset Policy
 
@@ -29,7 +29,7 @@ Missing public observations cause a skipped report with instructions rather than
 
 ## Metrics
 
-Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, final speed, impact count, max speed, max bounce height, energy diagnostics, and ensemble runout summaries where seeded perturbations are used.
+Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, and ensemble runout summaries where seeded perturbations are used.
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
 

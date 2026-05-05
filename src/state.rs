@@ -29,6 +29,7 @@ pub enum ContactState {
     Airborne,
     Sliding,
     Impact,
+    Rolling,
     Stopped,
 }
 
@@ -70,6 +71,11 @@ pub struct TrajectorySample {
     pub potential_j: f64,
     pub total_energy_j: f64,
     pub contact_state: ContactState,
+    pub omega_x_radps: f64,
+    pub omega_y_radps: f64,
+    pub omega_z_radps: f64,
+    pub contact_tangent_speed_mps: f64,
+    pub rolling_residual_mps: f64,
 }
 
 impl TrajectorySample {
@@ -79,6 +85,26 @@ impl TrajectorySample {
         block: &SphereBlock,
         gravity_mps2: f64,
         contact_state: ContactState,
+    ) -> Self {
+        Self::from_state_with_contact_diagnostics(
+            time_s,
+            state,
+            block,
+            gravity_mps2,
+            contact_state,
+            0.0,
+            0.0,
+        )
+    }
+
+    pub fn from_state_with_contact_diagnostics(
+        time_s: f64,
+        state: &BodyState,
+        block: &SphereBlock,
+        gravity_mps2: f64,
+        contact_state: ContactState,
+        contact_tangent_speed_mps: f64,
+        rolling_residual_mps: f64,
     ) -> Self {
         let energy = EnergyDiagnostics::from_state(state, block, gravity_mps2);
         Self {
@@ -95,6 +121,11 @@ impl TrajectorySample {
             potential_j: energy.potential_j,
             total_energy_j: energy.total_j,
             contact_state,
+            omega_x_radps: state.angular_velocity_radps.x,
+            omega_y_radps: state.angular_velocity_radps.y,
+            omega_z_radps: state.angular_velocity_radps.z,
+            contact_tangent_speed_mps,
+            rolling_residual_mps,
         }
     }
 }

@@ -8,7 +8,7 @@ Scientifically, v0 should still be treated as a simplified spherical-block traje
 
 The recommended next high-impact improvement is:
 
-> Implement a physically consistent spherical contact-mode model with translational-rotational coupling, explicit rolling/sliding diagnostics, and simple rolling resistance.
+> Implement a physically consistent opt-in `sphere_rotational_v1` contact model with translational-rotational coupling, explicit rolling/sliding diagnostics, and simple rolling resistance while preserving `translational_v0` as the default.
 
 This is a better next step than roughness or polyhedral shape because it fixes a core mechanics gap in the current sphere model while remaining compatible with the existing architecture and verification suite.
 
@@ -243,7 +243,7 @@ Reason not selected first:
 
 ## Recommendation
 
-The next primary model improvement should be a **physically consistent spherical contact-mode model with rotation, rolling/sliding transitions, and rolling resistance**.
+The next primary model improvement should be a **physically consistent opt-in `sphere_rotational_v1` contact model with rotation, rolling/sliding transitions, and rolling resistance**.
 
 This choice gives the best effort-to-benefit ratio:
 

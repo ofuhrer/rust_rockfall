@@ -24,6 +24,8 @@ parameters:
   normal_restitution: 0.25
   tangential_restitution: 0.85
   friction_coefficient: 0.45
+  rolling_resistance_coefficient: 0.0
+  contact_model: translational_v0
 simulation:
   dt: 0.01
   t_max: 1.0
@@ -54,4 +56,3 @@ references:
   literature: []
   dataset: null
   notes: []
-

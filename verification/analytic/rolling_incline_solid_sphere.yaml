@@ -1,0 +1,36 @@
+case_id: analytic_rolling_incline_solid_sphere
+title: Solid sphere rolling on an inclined plane
+level: 0
+description: Verifies the opt-in rotational sphere model against the no-slip solid-sphere acceleration a=(5/7)g sin(theta).
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.2, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5099019513592785]
+  velocity: [0.0, 0.0, 0.0]
+  angular_velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 1.0
+  rolling_resistance_coefficient: 0.0
+  contact_model: sphere_rotational_v1
+simulation: { dt: 0.001, t_max: 0.1, max_steps: 100, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [final_speed_mps, final_rolling_residual_mps]
+  contact_state: rolling
+  minimums:
+    final_speed_mps: 0.12
+  maximums:
+    final_speed_mps: 0.16
+    final_rolling_residual_mps: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_rolling_incline_solid_sphere.json
+  trajectory_csv: verification/results/analytic_rolling_incline_solid_sphere.csv
+references:
+  notes:
+    - "The expected speed range covers fixed-step contact projection while checking the solid-sphere rolling acceleration scale."
+

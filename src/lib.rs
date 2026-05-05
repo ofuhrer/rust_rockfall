@@ -15,6 +15,7 @@ pub mod stochastic;
 pub mod terrain;
 pub mod validation;
 
+pub use dynamics::ContactModel;
 pub use geometry::SphereBlock;
 pub use simulation::{
     simulate_ensemble, simulate_one_trajectory, simulate_one_trajectory_with_terrain,

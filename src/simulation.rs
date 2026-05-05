@@ -1,4 +1,5 @@
 use crate::{
+    dynamics::ContactModel,
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
     state::{BodyState, TrajectorySample},
@@ -30,6 +31,10 @@ pub struct SimulationConfig {
     pub tangential_restitution: f64,
     #[serde(default = "default_friction")]
     pub friction_coefficient: f64,
+    #[serde(default)]
+    pub rolling_resistance_coefficient: f64,
+    #[serde(default)]
+    pub contact_model: ContactModel,
     #[serde(default = "default_stop_speed")]
     pub stop_speed_mps: f64,
     #[serde(default)]
@@ -203,7 +208,9 @@ impl SimulationConfig {
             normal_restitution: self.normal_restitution,
             tangential_restitution: self.tangential_restitution,
             friction_coefficient: self.friction_coefficient,
+            rolling_resistance_coefficient: self.rolling_resistance_coefficient,
             stop_speed_mps: self.stop_speed_mps,
+            contact_model: self.contact_model,
         };
         Ok(SimulationResult {
             samples: simulate_fixed_step(self.initial_state(), self.block, terrain, settings),
@@ -235,6 +242,11 @@ impl SimulationConfig {
         }
         if self.gravity_mps2 <= 0.0 {
             return Err(SimulationError::NonPositive("gravity_mps2"));
+        }
+        if self.rolling_resistance_coefficient < 0.0 {
+            return Err(SimulationError::NonPositive(
+                "rolling_resistance_coefficient",
+            ));
         }
         Ok(())
     }

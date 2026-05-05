@@ -30,6 +30,7 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 - impact response with normal restitution
 - tangential restitution as limited by the current Coulomb impulse approximation
 - Coulomb contact friction and stopping
+- opt-in rotational sphere contact, rolling diagnostics, and rolling resistance
 - terrain height/normal use in contact projection
 - deterministic seeded release perturbations
 - order-independent ensemble seed derivation
@@ -39,7 +40,6 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 
 - full 3D polyhedral rigid-body contact
 - nonsmooth complementarity solvers
-- rolling resistance as a separate physics model
 - terrain roughness/scarring
 - forest/deadwood interaction
 - fragmentation

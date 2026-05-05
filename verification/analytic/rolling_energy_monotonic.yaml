@@ -1,0 +1,34 @@
+case_id: analytic_rolling_energy_monotonic
+title: Rolling resistance dissipates total energy
+level: 0
+description: Verifies that horizontal pure rolling with rolling resistance has monotonic total-energy loss.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 8.0, radius: 0.4 }
+release:
+  position: [0.0, 0.0, 0.4]
+  velocity: [0.8, 0.0, 0.0]
+  angular_velocity: [0.0, 2.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 1.0
+  rolling_resistance_coefficient: 0.1
+  contact_model: sphere_rotational_v1
+simulation: { dt: 0.001, t_max: 0.2, max_steps: 200, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [energy_monotonicity_violation_j, final_rolling_residual_mps]
+  contact_state: rolling
+  maximums:
+    energy_monotonicity_violation_j: 0.000001
+    final_rolling_residual_mps: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_rolling_energy_monotonic.json
+  trajectory_csv: verification/results/analytic_rolling_energy_monotonic.csv
+references:
+  notes:
+    - "This verifies the sign of rolling-resistance work, not a calibrated terrain law."
+

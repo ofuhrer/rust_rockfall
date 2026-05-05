@@ -1,6 +1,7 @@
 //! Verification and validation helpers, case loading, and metric computation.
 
 use crate::{
+    dynamics::ContactModel,
     geometry::SphereBlock,
     io,
     simulation::{simulate_ensemble, SimulationConfig, SimulationError, TerrainConfig},
@@ -122,6 +123,10 @@ pub struct CaseParameters {
     pub tangential_restitution: f64,
     #[serde(default = "default_friction", alias = "mu")]
     pub friction_coefficient: f64,
+    #[serde(default)]
+    pub rolling_resistance_coefficient: f64,
+    #[serde(default)]
+    pub contact_model: ContactModel,
 }
 
 impl Default for CaseParameters {
@@ -131,6 +136,8 @@ impl Default for CaseParameters {
             normal_restitution: default_normal_restitution(),
             tangential_restitution: default_tangential_restitution(),
             friction_coefficient: default_friction(),
+            rolling_resistance_coefficient: 0.0,
+            contact_model: ContactModel::default(),
         }
     }
 }
@@ -416,6 +423,8 @@ fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, Val
         normal_restitution: case.parameters.normal_restitution,
         tangential_restitution: case.parameters.tangential_restitution,
         friction_coefficient: case.parameters.friction_coefficient,
+        rolling_resistance_coefficient: case.parameters.rolling_resistance_coefficient,
+        contact_model: case.parameters.contact_model,
         stop_speed_mps: case.simulation.stop_velocity,
         random_seed: case.random.seed,
         release_perturbation: ReleasePerturbation {
@@ -541,6 +550,26 @@ fn compute_metrics(
     metrics.insert(
         "energy_monotonicity_violation_j".to_string(),
         energy_monotonicity_violation(samples),
+    );
+    metrics.insert(
+        "max_rolling_residual_mps".to_string(),
+        samples
+            .iter()
+            .map(|sample| sample.rolling_residual_mps)
+            .fold(0.0_f64, f64::max),
+    );
+    metrics.insert(
+        "final_rolling_residual_mps".to_string(),
+        last.rolling_residual_mps,
+    );
+    metrics.insert(
+        "final_contact_tangent_speed_mps".to_string(),
+        last.contact_tangent_speed_mps,
+    );
+    metrics.insert(
+        "final_angular_speed_radps".to_string(),
+        (last.omega_x_radps.powi(2) + last.omega_y_radps.powi(2) + last.omega_z_radps.powi(2))
+            .sqrt(),
     );
 
     if let Some(expected_position) = expected.final_position_m {

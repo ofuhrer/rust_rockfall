@@ -38,12 +38,13 @@
 
 ## Phase 4: Sliding and Rolling Refinement
 
-- Objective: distinguish airborne, impact, sliding, and stopped modes more cleanly.
-- Methods: terrain-tangent gravity and Coulomb stop criterion.
-- Modules: `dynamics`, `state`.
-- Tests: stopping on horizontal terrain and acceleration on inclined terrain.
-- Output: clearer diagnostics for contact mode transitions.
-- Limitations: rolling resistance remains simplified.
+- Status: active.
+- Objective: add opt-in sphere rotational contact with rolling/sliding diagnostics while preserving `translational_v0` as the default model.
+- Methods: sphere contact point velocity, normal restitution impulse, Coulomb-capped tangential impulse with angular-velocity updates, no-slip rolling acceleration, and simple dimensionless rolling resistance.
+- Modules: `dynamics`, `state`, `integrator`, `simulation`, `validation`.
+- Tests: rotational impulse unit tests, solid-sphere rolling on an inclined plane, rolling-resistance stopping, energy monotonicity, and insufficient-friction sliding.
+- Output: `rolling` contact state plus angular velocity, contact tangent speed, and rolling residual diagnostics.
+- Limitations: rolling resistance remains a simple transparent law, not a calibrated terrain/soil model.
 
 ## Phase 5: Rotational Dynamics Scaffold
 
@@ -90,4 +91,3 @@
 - convex polyhedral rigid-body contact
 - public benchmark dataset integration
 - HPC and GPU acceleration
-

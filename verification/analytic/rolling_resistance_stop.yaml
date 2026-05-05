@@ -1,0 +1,37 @@
+case_id: analytic_rolling_resistance_stop
+title: Horizontal rolling resistance stop
+level: 0
+description: Verifies that dimensionless rolling resistance stops a pure-rolling sphere on horizontal terrain.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [1.0, 0.0, 0.0]
+  angular_velocity: [0.0, 2.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 1.0
+  rolling_resistance_coefficient: 0.2
+  contact_model: sphere_rotational_v1
+simulation: { dt: 0.001, t_max: 2.0, max_steps: 2000, stop_velocity: 0.02 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, final_speed_mps, energy_monotonicity_violation_j]
+  contact_state: stopped
+  minimums:
+    runout_m: 0.22
+  maximums:
+    runout_m: 0.29
+    final_speed_mps: 0.02
+    energy_monotonicity_violation_j: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_rolling_resistance_stop.json
+  trajectory_csv: verification/results/analytic_rolling_resistance_stop.csv
+references:
+  notes:
+    - "The analytic stopping distance is v0^2/(2*c_rr*g) for this simple horizontal rolling-resistance law."
+

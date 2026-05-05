@@ -1,7 +1,7 @@
 use rust_rockfall::stochastic::{derive_trajectory_seed, ReleasePerturbation};
 use rust_rockfall::{
-    simulate_ensemble, simulate_one_trajectory, SimulationConfig, SphereBlock, TerrainConfig,
-    TrajectoryRequest,
+    simulate_ensemble, simulate_one_trajectory, ContactModel, SimulationConfig, SphereBlock,
+    TerrainConfig, TrajectoryRequest,
 };
 use std::collections::BTreeMap;
 
@@ -130,6 +130,8 @@ fn ensemble_ready_config() -> SimulationConfig {
         normal_restitution: 0.2,
         tangential_restitution: 0.85,
         friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
         stop_speed_mps: 0.05,
         random_seed: None,
         release_perturbation: ReleasePerturbation {

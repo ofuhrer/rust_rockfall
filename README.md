@@ -115,7 +115,9 @@ The `pre-commit` hook runs `cargo fmt --check` and YAML syntax checks. The `pre-
 cargo fmt --check \
   && cargo clippy --all-targets --all-features -- -D warnings \
   && cargo test \
-  && cargo run -- verify --all
+  && cargo run -- verify --all \
+  && cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml \
+  && python3 scripts/check_repo_consistency.py
 ```
 
 CI remains the source of truth; the hooks are a local guardrail.

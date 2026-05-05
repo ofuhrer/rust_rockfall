@@ -9,8 +9,8 @@ use rust_rockfall::{
         ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
         StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
-    validation::{run_case_file, CaseStatus},
-    Vec3,
+    validation::{load_case, run_case_file, CaseStatus},
+    ContactModel, Vec3,
 };
 use std::{
     fs,
@@ -256,7 +256,51 @@ fn simulation_config_json_defaults_and_seeded_initial_state_are_deterministic() 
     let config: SimulationConfig = serde_json::from_str(json).unwrap();
     assert_abs_diff_eq!(config.gravity_mps2, 9.81, epsilon = 1.0e-12);
     assert_abs_diff_eq!(config.normal_restitution, 0.25, epsilon = 1.0e-12);
+    assert_eq!(config.contact_model, ContactModel::TranslationalV0);
     assert_eq!(config.initial_state(), config.initial_state());
+}
+
+#[test]
+fn simulation_config_json_accepts_rotational_contact_model() {
+    let json = r#"{
+        "block": { "radius_m": 0.5, "mass_kg": 10.0 },
+        "initial_position_m": [0.0, 0.0, 0.5],
+        "initial_velocity_mps": [1.0, 0.0, 0.0],
+        "initial_angular_velocity_radps": [0.0, 2.0, 0.0],
+        "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0 },
+        "dt_s": 0.01,
+        "max_time_s": 0.02,
+        "contact_model": "sphere_rotational_v1",
+        "rolling_resistance_coefficient": 0.1
+    }"#;
+
+    let config: SimulationConfig = serde_json::from_str(json).unwrap();
+    assert_eq!(config.contact_model, ContactModel::SphereRotationalV1);
+    assert_abs_diff_eq!(
+        config.rolling_resistance_coefficient,
+        0.1,
+        epsilon = 1.0e-12
+    );
+    assert!(!config.run().unwrap().samples.is_empty());
+}
+
+#[test]
+fn validation_yaml_rejects_unknown_contact_model() {
+    let path = temp_path("bad_contact_model.yaml");
+    fs::write(
+        &path,
+        r#"
+case_id: bad_contact_model
+terrain: { type: plane, parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 } }
+block: { mass: 1.0, radius: 0.5 }
+parameters:
+  contact_model: hidden_magic
+"#,
+    )
+    .unwrap();
+
+    assert!(load_case(&path).is_err());
+    fs::remove_file(path).unwrap();
 }
 
 #[test]
@@ -295,6 +339,15 @@ fn simulation_validation_rejects_non_positive_inputs() {
         config.run(),
         Err(SimulationError::NonPositive("gravity_mps2"))
     ));
+
+    let mut config = minimal_config();
+    config.rolling_resistance_coefficient = -0.1;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive(
+            "rolling_resistance_coefficient"
+        ))
+    ));
 }
 
 #[test]
@@ -316,9 +369,12 @@ fn read_config_reports_json_errors_and_write_csv_round_trips_samples() {
             ContactState::Airborne => "airborne",
             ContactState::Sliding => "sliding",
             ContactState::Impact => "impact",
+            ContactState::Rolling => "rolling",
             ContactState::Stopped => "stopped",
         })
     );
+    assert!(csv_text.contains("omega_x_radps"));
+    assert!(csv_text.contains("rolling_residual_mps"));
     fs::remove_file(csv_path).unwrap();
 }
 
@@ -399,6 +455,8 @@ fn minimal_config() -> SimulationConfig {
         normal_restitution: 0.25,
         tangential_restitution: 0.85,
         friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
         stop_speed_mps: 0.1,
         random_seed: None,
         release_perturbation: ReleasePerturbation::default(),
