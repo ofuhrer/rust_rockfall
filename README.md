@@ -79,6 +79,19 @@ cargo run -- verify --all
 
 Optional public-data validation cases skip gracefully until data have been downloaded and preprocessed.
 
+## Visualization
+
+Optional diagnostic visualization tools live under `visualization/`. They consume existing CSV trajectory and JSON report outputs and generate PNG plots without adding dependencies to the Rust core:
+
+```bash
+cargo run -- verify --case verification/analytic/free_fall.yaml
+python3 visualization/plot_case.py \
+  --case verification/analytic/free_fall.yaml \
+  --output-dir visualization/output/free_fall
+```
+
+Visualization is for inspection and debugging only; numerical verification and validation remain authoritative.
+
 ## Local Git Hooks
 
 Optional hook templates are stored under `scripts/git-hooks/`. Install them with:

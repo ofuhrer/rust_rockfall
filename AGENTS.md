@@ -55,6 +55,15 @@ cargo run -- verify --all
 
 If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
 
+## HPC-Readiness Constraints
+
+- Keep the single-trajectory kernel deterministic, stateless, and free of file I/O.
+- Keep randomness explicit; derive ensemble seeds from global seed, case ID, and trajectory ID.
+- Keep computation, orchestration, and output writing separate.
+- Preserve reproducibility independent of trajectory execution order.
+- Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
+- Do not add MPI, GPU, distributed execution, or heavy parallel frameworks without an explicit phase change.
+
 ## Commit and Push Discipline
 
 Before committing:

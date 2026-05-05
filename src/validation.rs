@@ -3,7 +3,7 @@
 use crate::{
     geometry::SphereBlock,
     io,
-    simulation::{SimulationConfig, SimulationError, TerrainConfig},
+    simulation::{simulate_ensemble, SimulationConfig, SimulationError, TerrainConfig},
     state::{BodyState, ContactState, TrajectorySample},
     stochastic::ReleasePerturbation,
     terrain::TerrainError,
@@ -632,26 +632,28 @@ fn compute_ensemble_metrics(
         );
     }
 
-    let base_seed = case.random.seed.unwrap_or(0);
-    let mut runouts = Vec::with_capacity(ensemble_size);
-    let mut max_kinetic = Vec::with_capacity(ensemble_size);
-    for offset in 0..ensemble_size {
-        let mut case_i = case.clone();
-        case_i.random.seed = Some(base_seed + offset as u64);
-        case_i.random.ensemble_size = 1;
-        let config = build_simulation_config(&case_i)?;
-        let result = config.run()?;
-        if let (Some(first), Some(last)) = (result.samples.first(), result.samples.last()) {
-            runouts.push(((last.x_m - first.x_m).powi(2) + (last.y_m - first.y_m).powi(2)).sqrt());
-            max_kinetic.push(
-                result
-                    .samples
-                    .iter()
-                    .map(|sample| sample.kinetic_j)
-                    .fold(0.0_f64, f64::max),
-            );
-        }
-    }
+    let global_seed = case.random.seed.unwrap_or(0);
+    let trajectory_ids = (0..ensemble_size)
+        .map(|offset| format!("trajectory_{offset:06}"))
+        .collect::<Vec<_>>();
+    let mut ensemble_config = build_simulation_config(case)?;
+    ensemble_config.random_seed = None;
+    let ensemble = simulate_ensemble(
+        &ensemble_config,
+        case.case_id.clone(),
+        global_seed,
+        &trajectory_ids,
+    )?;
+    let mut runouts = ensemble
+        .trajectories
+        .iter()
+        .map(|trajectory| trajectory.summary.runout_m)
+        .collect::<Vec<_>>();
+    let mut max_kinetic = ensemble
+        .trajectories
+        .iter()
+        .map(|trajectory| trajectory.summary.max_kinetic_energy_j)
+        .collect::<Vec<_>>();
 
     runouts.sort_by(f64::total_cmp);
     max_kinetic.sort_by(f64::total_cmp);

@@ -1,6 +1,8 @@
 .DS_Store
 target/
 *.jsonl
+__pycache__/
+*.py[cod]
 
 # Raw public datasets can be large; keep downloads local unless a fixture is
 # intentionally added outside data/raw.
@@ -10,6 +12,7 @@ verification/results/**
 !verification/results/.gitkeep
 validation/results/**
 !validation/results/.gitkeep
+visualization/output/**
 trajectory.csv
 
 # Keep checked-in example configs and small validation fixtures.

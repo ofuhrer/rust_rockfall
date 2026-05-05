@@ -2,7 +2,7 @@ use crate::{
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
     state::{BodyState, TrajectorySample},
-    stochastic::{sample_release, ReleasePerturbation},
+    stochastic::{derive_trajectory_seed, sample_release, stable_hash64, ReleasePerturbation},
     terrain::{
         ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
         StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
@@ -97,12 +97,78 @@ pub struct SimulationResult {
     pub samples: Vec<TrajectorySample>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrajectoryRequest {
+    pub case_id: String,
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+}
+
+impl TrajectoryRequest {
+    pub fn new(
+        case_id: impl Into<String>,
+        trajectory_id: impl Into<String>,
+        seed: Option<u64>,
+    ) -> Self {
+        Self {
+            case_id: case_id.into(),
+            trajectory_id: trajectory_id.into(),
+            seed,
+        }
+    }
+
+    pub fn from_global_seed(
+        global_seed: u64,
+        case_id: impl Into<String>,
+        trajectory_id: impl Into<String>,
+    ) -> Self {
+        let case_id = case_id.into();
+        let trajectory_id = trajectory_id.into();
+        let seed = derive_trajectory_seed(global_seed, &case_id, &trajectory_id);
+        Self {
+            case_id,
+            trajectory_id,
+            seed: Some(seed),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrajectoryRun {
+    pub request: TrajectoryRequest,
+    pub samples: Vec<TrajectorySample>,
+    pub summary: TrajectorySummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrajectorySummary {
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+    pub sample_count: usize,
+    pub final_position_m: [f64; 3],
+    pub final_speed_mps: f64,
+    pub runout_m: f64,
+    pub max_speed_mps: f64,
+    pub max_kinetic_energy_j: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnsembleResult {
+    pub case_id: String,
+    pub global_seed: u64,
+    pub trajectories: Vec<TrajectoryRun>,
+}
+
 #[derive(Debug, Error)]
 pub enum SimulationError {
     #[error("terrain error: {0}")]
     Terrain(#[from] TerrainError),
+    #[error("configuration serialization error: {0}")]
+    Serialize(#[from] serde_json::Error),
     #[error("configuration value must be positive: {0}")]
     NonPositive(&'static str),
+    #[error("trajectory {0} has no samples")]
+    EmptyTrajectory(String),
 }
 
 impl SimulationConfig {
@@ -122,6 +188,14 @@ impl SimulationConfig {
     pub fn run(&self) -> Result<SimulationResult, SimulationError> {
         self.validate()?;
         let terrain = self.terrain.build()?;
+        self.run_with_terrain(terrain.as_ref())
+    }
+
+    pub fn run_with_terrain(
+        &self,
+        terrain: &dyn Terrain,
+    ) -> Result<SimulationResult, SimulationError> {
+        self.validate()?;
         let settings = IntegratorSettings {
             dt_s: self.dt_s,
             max_time_s: self.max_time_s,
@@ -132,13 +206,18 @@ impl SimulationConfig {
             stop_speed_mps: self.stop_speed_mps,
         };
         Ok(SimulationResult {
-            samples: simulate_fixed_step(
-                self.initial_state(),
-                self.block,
-                terrain.as_ref(),
-                settings,
-            ),
+            samples: simulate_fixed_step(self.initial_state(), self.block, terrain, settings),
         })
+    }
+
+    pub fn config_fingerprint(&self) -> Result<String, SimulationError> {
+        let serialized = serde_json::to_string(self)?;
+        Ok(format!("{:016x}", stable_hash64(serialized.as_bytes())))
+    }
+
+    pub fn run_fingerprint(&self, request: &TrajectoryRequest) -> Result<String, SimulationError> {
+        let serialized = serde_json::to_string(&(self, request))?;
+        Ok(format!("{:016x}", stable_hash64(serialized.as_bytes())))
     }
 
     fn validate(&self) -> Result<(), SimulationError> {
@@ -159,6 +238,92 @@ impl SimulationConfig {
         }
         Ok(())
     }
+}
+
+pub fn simulate_one_trajectory(
+    config: &SimulationConfig,
+    request: TrajectoryRequest,
+) -> Result<TrajectoryRun, SimulationError> {
+    let terrain = config.terrain.build()?;
+    simulate_one_trajectory_with_terrain(config, request, terrain.as_ref())
+}
+
+pub fn simulate_one_trajectory_with_terrain(
+    config: &SimulationConfig,
+    request: TrajectoryRequest,
+    terrain: &dyn Terrain,
+) -> Result<TrajectoryRun, SimulationError> {
+    let mut trajectory_config = config.clone();
+    trajectory_config.random_seed = request.seed;
+    let result = trajectory_config.run_with_terrain(terrain)?;
+    let summary = summarize_trajectory(&request.trajectory_id, request.seed, &result.samples)?;
+    Ok(TrajectoryRun {
+        request,
+        samples: result.samples,
+        summary,
+    })
+}
+
+pub fn simulate_ensemble(
+    config: &SimulationConfig,
+    case_id: impl Into<String>,
+    global_seed: u64,
+    trajectory_ids: &[String],
+) -> Result<EnsembleResult, SimulationError> {
+    let case_id = case_id.into();
+    let terrain = config.terrain.build()?;
+    let mut trajectories = Vec::with_capacity(trajectory_ids.len());
+    for trajectory_id in trajectory_ids {
+        let request = TrajectoryRequest::from_global_seed(
+            global_seed,
+            case_id.clone(),
+            trajectory_id.clone(),
+        );
+        trajectories.push(simulate_one_trajectory_with_terrain(
+            config,
+            request,
+            terrain.as_ref(),
+        )?);
+    }
+    Ok(EnsembleResult {
+        case_id,
+        global_seed,
+        trajectories,
+    })
+}
+
+pub fn summarize_trajectory(
+    trajectory_id: impl Into<String>,
+    seed: Option<u64>,
+    samples: &[TrajectorySample],
+) -> Result<TrajectorySummary, SimulationError> {
+    let trajectory_id = trajectory_id.into();
+    let first = samples
+        .first()
+        .ok_or_else(|| SimulationError::EmptyTrajectory(trajectory_id.clone()))?;
+    let last = samples
+        .last()
+        .expect("non-empty samples have a last sample");
+    let runout_m = ((last.x_m - first.x_m).powi(2) + (last.y_m - first.y_m).powi(2)).sqrt();
+    let max_speed_mps = samples
+        .iter()
+        .map(|sample| sample.speed_mps)
+        .fold(0.0_f64, f64::max);
+    let max_kinetic_energy_j = samples
+        .iter()
+        .map(|sample| sample.kinetic_j)
+        .fold(0.0_f64, f64::max);
+
+    Ok(TrajectorySummary {
+        trajectory_id,
+        seed,
+        sample_count: samples.len(),
+        final_position_m: [last.x_m, last.y_m, last.z_m],
+        final_speed_mps: last.speed_mps,
+        runout_m,
+        max_speed_mps,
+        max_kinetic_energy_j,
+    })
 }
 
 impl TerrainConfig {

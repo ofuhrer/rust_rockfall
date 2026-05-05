@@ -33,6 +33,18 @@ Implemented validation metrics include deposition-point distance error, runout d
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
 
+## Reproducibility Criteria
+
+Validation and benchmark workflows must preserve deterministic reproducibility:
+
+- identical trajectory inputs and seed produce identical samples and summaries;
+- different trajectory seeds produce distinct perturbed releases when perturbation ranges are nonzero;
+- ensemble trajectory seeds are derived from global seed, case ID, and trajectory ID;
+- per-trajectory results are independent of execution order;
+- optional real-world validation cases must skip cleanly when data are absent rather than changing deterministic test behavior.
+
+These criteria support future large ensemble execution without making current validation depend on MPI, GPUs, or distributed schedulers.
+
 ## Calibration Policy
 
 - Verification tests must not be calibrated.

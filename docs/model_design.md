@@ -21,7 +21,7 @@ Deliberately left out:
 - convex polyhedral contact
 - nonsmooth complementarity solver
 - compactable-soil scarring
-- forest, barriers, fragmentation, GIS production workflows, GPU/HPC, visualization
+- forest, barriers, fragmentation, GIS production workflows, MPI/GPU/distributed execution
 
 ## Equations and Assumptions
 
@@ -58,6 +58,16 @@ let config: SimulationConfig = serde_json::from_reader(reader)?;
 let result = config.run()?;
 ```
 
+HPC-ready orchestration entry points:
+
+```rust
+let request = TrajectoryRequest::from_global_seed(42, "case_id", "trajectory_000001");
+let run = simulate_one_trajectory(&config, request)?;
+
+let ids = vec!["trajectory_000001".to_string(), "trajectory_000002".to_string()];
+let ensemble = simulate_ensemble(&config, "case_id", 42, &ids)?;
+```
+
 Important data types:
 
 - `SimulationConfig`
@@ -65,12 +75,42 @@ Important data types:
 - `SphereBlock`
 - `BodyState`
 - `TrajectorySample`
+- `TrajectoryRequest`
+- `TrajectoryRun`
+- `TrajectorySummary`
+- `EnsembleResult`
 
 The CLI accepts the same JSON configuration:
 
 ```bash
 rockfall --config examples/inclined_plane.json --output trajectory.csv
 ```
+
+## HPC-Readiness Boundaries
+
+The v0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+
+- The single-trajectory kernel is deterministic for explicit inputs.
+- `simulate_fixed_step` performs no file I/O and does not use global state.
+- `SimulationConfig::run` returns structured samples; CSV/JSON writing is handled by `io` and validation orchestration.
+- `SimulationConfig::run_with_terrain` and ensemble orchestration can reuse a previously constructed terrain object, avoiding repeated DEM file reads inside trajectory loops.
+- Terrain access is abstracted behind the `Terrain` trait and constructed from serializable `TerrainConfig`.
+- Ensemble execution is represented as a loop over independent `TrajectoryRequest` values.
+- `TrajectorySummary` separates per-trajectory diagnostics from full trajectory samples so future runners can aggregate summaries while streaming or chunking detailed outputs.
+
+## Reproducibility Model
+
+Randomness is explicit. Release perturbations use a seeded `ChaCha8Rng`; no global RNG state is used.
+
+For ensemble-style runs, trajectory seeds are derived from:
+
+```text
+global_seed + case_id + trajectory_id
+```
+
+via a stable in-repository hash function. This makes each trajectory reproducible by identity, independent of whether trajectories are executed sequentially, in reverse order, or later across separate workers.
+
+`SimulationConfig::config_fingerprint` and `SimulationConfig::run_fingerprint` provide stable identifiers for configuration and configuration-plus-trajectory-request. These are intended for bookkeeping, cache keys, and future chunked output manifests, not as cryptographic hashes.
 
 ## Extension Path
 
@@ -82,4 +122,5 @@ The next scientifically meaningful extensions are:
 - ellipsoid and convex-polyhedron geometry APIs
 - nonsmooth contact solver or integration with a public solver reference
 - calibrated scarring model based on public experimental data
-
+- output manifests for chunked ensemble runs
+- optional parallel/distributed orchestration outside the trajectory kernel

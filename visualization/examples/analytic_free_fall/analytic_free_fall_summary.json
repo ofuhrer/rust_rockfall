@@ -1,0 +1,33 @@
+{
+  "diagnostics_metrics": {
+    "energy_conservation_error_j": 3.637978807091713e-12,
+    "position_error_m": 1.4210854715202004e-14,
+    "velocity_error_mps": 3.552713678800501e-15
+  },
+  "diagnostics_status": "passed",
+  "impact_count": {
+    "max": 0.0,
+    "mean": 0.0,
+    "median": 0.0,
+    "min": 0.0,
+    "p05": 0.0,
+    "p95": 0.0
+  },
+  "max_speed_mps": {
+    "max": 9.809999999999997,
+    "mean": 9.809999999999997,
+    "median": 9.809999999999997,
+    "min": 9.809999999999997,
+    "p05": 9.809999999999997,
+    "p95": 9.809999999999997
+  },
+  "runout_m": {
+    "max": 0.0,
+    "mean": 0.0,
+    "median": 0.0,
+    "min": 0.0,
+    "p05": 0.0,
+    "p95": 0.0
+  },
+  "trajectory_count": 1
+}

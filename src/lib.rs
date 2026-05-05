@@ -16,7 +16,11 @@ pub mod terrain;
 pub mod validation;
 
 pub use geometry::SphereBlock;
-pub use simulation::{SimulationConfig, SimulationResult, TerrainConfig};
+pub use simulation::{
+    simulate_ensemble, simulate_one_trajectory, simulate_one_trajectory_with_terrain,
+    EnsembleResult, SimulationConfig, SimulationResult, TerrainConfig, TrajectoryRequest,
+    TrajectoryRun, TrajectorySummary,
+};
 pub use state::{BodyState, ContactState, TrajectorySample};
 
 /// Three-dimensional vector type used throughout the crate.

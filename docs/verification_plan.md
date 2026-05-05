@@ -32,6 +32,7 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 - Coulomb contact friction and stopping
 - terrain height/normal use in contact projection
 - deterministic seeded release perturbations
+- order-independent ensemble seed derivation
 - energy diagnostics and monotonicity checks
 
 ## What Is Not Verified
@@ -45,4 +46,3 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 - operational hazard prediction
 
 Verification cases must not be calibrated.
-
