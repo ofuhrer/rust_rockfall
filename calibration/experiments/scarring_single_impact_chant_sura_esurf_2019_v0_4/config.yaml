@@ -1,0 +1,46 @@
+experiment_id: scarring_single_impact_chant_sura_esurf_2019_v0_4
+title: "Scarring single-impact calibration with Chant Sura ESurf 2019 data (experimental)"
+model_version: "0.4.0"
+dataset:
+  id: chant_sura_esurf_2019_impacts
+  path: calibration/data/scarring_single_impact/chant_sura_esurf_2019_impacts.csv
+  source: "Caviezel et al. 2019 ESurf Tables 1 and 2, derived from Chant Sura Experimental Campaign / EnviDat DOI 10.16904/envidat.174."
+  license: "Copernicus open-access article tables; underlying EnviDat dataset under WSL Data Policy."
+  note: "Exploratory real-data impact calibration. Impact normal/tangent split is inferred and observed energy loss is not pure scarring."
+simulation:
+  dt: 0.001
+  t_max: 0.004
+  stop_velocity: 0.0
+random:
+  seed: 4104
+fixed_parameters:
+  gravity: 9.81
+  normal_restitution: 0.4
+  tangential_restitution: 0.85
+  friction_coefficient: 0.4
+  contact_model: translational_v0
+  soil_interaction_model: scarring_contact_v1
+parameter_grid:
+  soil_strength_pa: [100000.0, 250000.0, 500000.0]
+  scarring_drag_coefficient: [0.5, 1.0, 2.0]
+  scarring_layer_density_kgpm3: [1200.0, 1600.0]
+objective:
+  description: "Weighted mean relative error over ADM scar depth and post-rebound translational energy. Post-rebound energy includes all contact losses, not only scarring."
+  weights:
+    mean_relative_depth_error: 0.6
+    mean_relative_post_rebound_energy_error: 0.4
+  epsilon: 1.0e-9
+outputs:
+  generated_results_dir: calibration/results/scarring_single_impact_chant_sura_esurf_2019_v0_4
+  candidate_results_csv: calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/candidate_results.csv
+  selected_parameters_yaml: calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/selected_parameters.yaml
+  summary_json: calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/summary.json
+  report_html: calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/report.html
+scope_note: "real-data impact-level calibration only. This is not validation, not trajectory calibration, and not operational calibration."
+limitations_summary: "single-impact real-data calibration with inferred impact components"
+interpretation: "This exploratory real-data experiment tests whether scarring_contact_v1 can jointly match mapped scar depths and post-rebound translational energies from a small public Chant Sura subset. It is not validation and must not be used for defaults."
+notes:
+  - "This experiment augments but does not overwrite the proxy calibration dataset."
+  - "The normal/tangent velocity split is inferred from jump height and resultant speed."
+  - "Observed energy transitions include terrain-elevation and reconstruction effects, so they are not pure scarring losses."
+  - "Do not use selected parameters in Tschamut validation without a separate calibration/validation decision."

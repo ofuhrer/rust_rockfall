@@ -41,6 +41,8 @@ The Tschamut 2014 case is a limited distribution-level comparison against public
 
 Terrain representation is part of the validation assumption set. `validation_tschamut_proxy_plane` keeps the earlier fitted-plane terrain approximation as an explicit structural-error comparison, while `validation_tschamut_basic` uses the `idw_residual_dem_from_lps` clamped DEM proxy derived from public LPS ground points. Neither terrain is an official field DEM.
 
+The Tschamut `scarring_contact_v1` comparison in `docs/tschamut_scarring_experiment.md` is an explicit comparative experiment. It applies impact-level Chant Sura scarring parameters to Tschamut without changing the original validation case and without tuning to Tschamut runout. Such experiments are useful for understanding model directionality, but they are not evidence of predictive skill unless calibration and held-out validation are separately designed.
+
 For real-world cases:
 
 - distributions matter more than individual paths for the current model;

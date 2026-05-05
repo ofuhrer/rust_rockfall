@@ -12,6 +12,7 @@ Use this document to decide how to work. Use the docs to decide what to build.
 - Literature and background inventory: `docs/literature_review.md`
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`
+- Long-term hazard-mapping roadmap: `docs/roadmap_hazard_mapping.md`
 - Required validation approach: `docs/validation_plan.md`
 - Source material: `background/`
 
@@ -38,6 +39,15 @@ When these files conflict, preserve the safety constraints first, then update th
 - Do not claim equivalence with RAMMS::ROCKFALL or any proprietary model.
 - Do not introduce undocumented physics or hidden parameter choices.
 - Do not present this project as validated for operational hazard assessment.
+- Do not describe hazard-map layers as risk maps unless exposure and vulnerability data are explicitly included.
+
+## Long-Term Direction
+
+- The long-term target is open, research-oriented probabilistic rockfall hazard mapping for Alpine terrain in Switzerland.
+- Keep trajectory, impact, calibration, and validation work aligned with future spatial hazard outputs.
+- Future hazard outputs should be designed around runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers.
+- Treat release-zone generation, DEM/GIS integration, ensemble orchestration, calibration/validation, and geospatial export as future workflow layers around the core simulator.
+- Keep risk modelling separate from hazard modelling; risk requires exposure and vulnerability inputs that are not part of the current core.
 
 ## Code Expectations
 

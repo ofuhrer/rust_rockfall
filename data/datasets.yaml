@@ -140,11 +140,13 @@ datasets:
       - StoneNode sensor streams
       - videos
       - rock masses and EOTA shape data
+      - published scar-dimension and jump-energy tables
     file_formats:
       - 7z
       - zip
       - geospatial files
       - sensor streams
+      - xlsx
     download_status: metadata_only
     local_path: data/raw/chant_sura_2020
     processed_path: data/processed/chant_sura_2020
@@ -180,6 +182,16 @@ datasets:
         format: 7z
         size_bytes: 419
         raw_file: eota.7z
+      - id: esurf_2019_table_1
+        name: ESurf 2019 Table 1 - scar dimensions
+        url: https://esurf.copernicus.org/articles/7/199/2019/esurf-7-199-2019-t01.xlsx
+        format: xlsx
+        raw_file: esurf-7-199-2019-t01.xlsx
+      - id: esurf_2019_table_2
+        name: ESurf 2019 Table 2 - jump energy and velocity summaries
+        url: https://esurf.copernicus.org/articles/7/199/2019/esurf-7-199-2019-t02.xlsx
+        format: xlsx
+        raw_file: esurf-7-199-2019-t02.xlsx
 
   - id: schiers_deadwood_2022
     name: Shape still matters - experimental quantification of deadwood effects on rockfall dynamics

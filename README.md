@@ -4,7 +4,9 @@
 
 Current crate/model version: `v0.4.0`.
 
-The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
+The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
+
+The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames future map outputs such as runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers. Risk mapping is a later, separate workflow because it requires exposure and vulnerability data beyond the current simulator.
 
 ## Current Model
 
@@ -56,6 +58,7 @@ Core documentation:
 - `docs/literature_review.md`
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
+- `docs/roadmap_hazard_mapping.md`
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`
 - `docs/benchmark_catalog.md`
@@ -114,6 +117,16 @@ python3 scripts/calibrate_scarring_impact.py
 ```
 
 It uses a semi-empirical proxy dataset to exercise `ImpactEvent` diagnostics and parameter sensitivity. It is not field validation and the selected parameters are not used by validation cases.
+
+The first real-data impact-level scarring experiment uses public Chant Sura / ESurf 2019 scar and jump-energy tables:
+
+```bash
+python3 scripts/preprocess_scarring_real_data.py
+python3 scripts/calibrate_scarring_impact.py \
+  --config calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/config.yaml
+```
+
+This experiment is exploratory: impact-normal components are inferred, energy transitions are not pure scarring losses, and the selected parameters are not model defaults.
 
 ## Visualization
 

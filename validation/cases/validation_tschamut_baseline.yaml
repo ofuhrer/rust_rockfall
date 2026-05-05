@@ -1,0 +1,58 @@
+case_id: validation_tschamut_baseline
+title: Tschamut baseline comparison for scarring experiment
+level: 5
+description: Baseline distribution-level Tschamut comparison used only as the control case for the scarring_contact_v1 trajectory-level experiment. It intentionally mirrors validation_tschamut_basic while writing separate outputs.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/tschamut/terrain.asc
+  parameters: {}
+block: { mass: 69.0, radius: 0.176667 }
+release:
+  position: [33.4, 236.67, 76.276667]
+  velocity: [0.74314, 1.3547, 0.76954]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
+random: { seed: 34014, ensemble_size: 6 }
+validation_scope:
+  type: comparative-baseline
+  note: "Control case for the scarring_contact_v1 experiment. It is identical to the current Tschamut validation setup except for separate output paths and case_id."
+observations:
+  release_points_csv: validation/data/processed/tschamut/release_points.csv
+  deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
+expected:
+  metrics:
+    - validation_release_count
+    - validation_simulated_trajectory_count
+    - observed_mean_runout_m
+    - simulated_mean_runout_m
+    - runout_distance_error_m
+    - deposition_centroid_error_m
+    - deposition_cloud_mean_nearest_error_m
+    - lateral_spread_error_m
+    - deposition_cloud_overlap_fraction
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/results/tschamut_baseline_metrics.json
+  trajectory_csv: validation/results/tschamut_baseline_trajectory.csv
+  ensemble_deposition_csv: validation/results/tschamut_baseline_ensemble_deposition.csv
+references:
+  dataset: tschamut2014
+  literature:
+    - "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34."
+  notes:
+    - "Uses the same public-derived release and deposition CSVs as validation_tschamut_basic."
+    - "Terrain is the IDW residual DEM proxy, not an official field DEM."
+    - "This case keeps soil_interaction_model none and is not calibrated for Tschamut."
+report:
+  verifies:
+    - "Provides the direct control run for evaluating whether adding scarring_contact_v1 changes Tschamut distribution-level metrics."
+  does_not_verify:
+    - "Individual Tschamut trajectories, operational hazard skill, calibrated Tschamut parameters, block shape effects, vegetation, or fragmentation."

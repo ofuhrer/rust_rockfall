@@ -64,6 +64,14 @@ The Tschamut terrain file is an `idw_residual_dem_from_lps` ESRI ASCII grid prox
 
 Dataset-specific conversions should write validation-ready CSV/GeoJSON under `data/processed/<dataset_id>/` and must document CRS, units, and inferred fields.
 
+Create the Chant Sura real impact-level scarring calibration subset from public ESurf 2019 table downloads:
+
+```bash
+python3 scripts/preprocess_scarring_real_data.py
+```
+
+This writes `calibration/data/scarring_single_impact/chant_sura_esurf_2019_impacts.csv` and metadata next to it. The table downloads are cached under `data/raw/chant_sura_2020/` and remain ignored by git. The conversion infers an effective normal/tangential impact split from published jump height and resultant speed; this is documented in `docs/scarring_real_data_calibration.md`.
+
 ## Real-World Validation Status
 
 `validation/cases/tschamut_basic.yaml` is active with the small processed Tschamut subset under `validation/data/processed/tschamut/`. It uses the IDW residual DEM with opt-in clamped boundary access. `validation/cases/tschamut_proxy_plane.yaml` keeps the earlier fitted-plane approximation as an explicit comparison case. Both compare ensemble-level runout and deposition-cloud summaries only.

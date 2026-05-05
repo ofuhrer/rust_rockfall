@@ -2,6 +2,8 @@
 
 This document describes the first controlled single-impact calibration experiment for `scarring_contact_v1`. It is an impact-level parameter-recovery and sensitivity exercise. It is not trajectory calibration, not validation, and not operational calibration.
 
+For the later real-data augmentation using public Chant Sura / ESurf 2019 table data, see `scarring_real_data_calibration.md`.
+
 ## Dataset
 
 No committed repository dataset currently provides public impact-level scar measurements with all of the following fields:

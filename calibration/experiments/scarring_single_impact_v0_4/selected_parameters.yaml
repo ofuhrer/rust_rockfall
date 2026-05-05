@@ -9,5 +9,5 @@ parameters:
   scarring_layer_density_kgpm3: 1600.0
 limitations:
 - single-impact proxy calibration only
-- not observational field validation
+- not validation
 - not a trajectory-level parameter set

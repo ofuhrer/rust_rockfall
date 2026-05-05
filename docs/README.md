@@ -11,6 +11,7 @@ The repository uses semantic versioning:
 Core documents:
 
 - `model_design.md`: current equations, assumptions, model options, and API boundaries.
+- `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
 - `verification_plan.md`: analytic and synthetic verification strategy.
 - `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.
@@ -23,5 +24,7 @@ Core documents:
 - `scarring_contact_v1_review.md`: calibration-readiness review for the minimal scarring model.
 - `scarring_impact_inspection.md`: manual reconstruction of representative synthetic scarring impacts.
 - `scarring_single_impact_calibration.md`: first controlled single-impact scarring calibration workflow.
+- `scarring_real_data_calibration.md`: first real-data single-impact scarring calibration experiment using public Chant Sura / ESurf 2019 tables.
+- `tschamut_scarring_experiment.md`: controlled Tschamut baseline versus transferred impact-level `scarring_contact_v1` comparison.
 
 Version notes are tracked in `../CHANGELOG.md`.

@@ -1,0 +1,68 @@
+case_id: validation_tschamut_scarring
+title: Tschamut with scarring_contact_v1 (experimental)
+level: 5
+description: Comparative Tschamut experiment using opt-in scarring_contact_v1 with parameters selected from the Chant Sura ESurf 2019 single-impact calibration workflow. This is not trajectory calibration and is not a prediction-quality validation case.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/tschamut/terrain.asc
+  parameters: {}
+block: { mass: 69.0, radius: 0.176667 }
+release:
+  position: [33.4, 236.67, 76.276667]
+  velocity: [0.74314, 1.3547, 0.76954]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+  soil_interaction_model: scarring_contact_v1
+  soil_strength_pa: 500000.0
+  scarring_drag_coefficient: 1.0
+  scarring_layer_density_kgpm3: 1200.0
+simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
+random: { seed: 34014, ensemble_size: 6 }
+validation_scope:
+  type: comparative-experiment
+  note: "Exploratory comparison only. The scarring parameters come from impact-level Chant Sura calibration, not Tschamut trajectory calibration."
+observations:
+  release_points_csv: validation/data/processed/tschamut/release_points.csv
+  deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
+expected:
+  metrics:
+    - validation_release_count
+    - validation_simulated_trajectory_count
+    - observed_mean_runout_m
+    - simulated_mean_runout_m
+    - runout_distance_error_m
+    - deposition_centroid_error_m
+    - deposition_cloud_mean_nearest_error_m
+    - lateral_spread_error_m
+    - deposition_cloud_overlap_fraction
+    - max_scarring_depth_m
+    - max_scarring_drag_force_n
+    - total_scarring_energy_loss_j
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/results/tschamut_scarring_metrics.json
+  trajectory_csv: validation/results/tschamut_scarring_trajectory.csv
+  ensemble_deposition_csv: validation/results/tschamut_scarring_ensemble_deposition.csv
+references:
+  dataset: tschamut2014
+  literature:
+    - "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34."
+    - "Caviezel et al. (2019). Reconstruction of four-dimensional rockfall trajectories using remote sensing and rock-based accelerometers and gyroscopes. Earth Surface Dynamics. https://doi.org/10.5194/esurf-7-199-2019."
+  notes:
+    - "Uses the same public-derived release and deposition CSVs as validation_tschamut_basic."
+    - "Terrain is the IDW residual DEM proxy, not an official field DEM."
+    - "Scarring parameters are transferred from a Chant Sura single-impact calibration experiment and are not tuned to Tschamut runout."
+    - "Expected physical direction: scarring adds impact-local energy loss and should shorten trajectories relative to the baseline."
+report:
+  verifies:
+    - "Runs a controlled trajectory-level comparison with opt-in scarring_contact_v1 enabled."
+    - "Checks whether impact-level calibrated scarring changes distribution-level Tschamut runout, deposition-cloud, and spread metrics."
+  does_not_verify:
+    - "Predictive skill, operational hazard validity, Tschamut-calibrated scarring parameters, individual trajectories, block shape effects, vegetation, or fragmentation."

@@ -224,6 +224,8 @@ def case_order(case_id: str) -> int:
         "validation_synthetic_plane_basic": 510,
         "validation_tschamut_proxy_plane": 580,
         "validation_tschamut_basic": 590,
+        "validation_tschamut_baseline": 600,
+        "validation_tschamut_scarring": 610,
     }
     return orders.get(case_id, 1000)
 
@@ -309,6 +311,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
     generated_at = time.strftime("%Y-%m-%d %H:%M:%S %Z")
     model_versions = ", ".join(sorted(model_versions_in_reports(reports))) or f"v{FALLBACK_MODEL_VERSION}"
     rows = "\n".join(render_case_nav(report) for report in reports)
+    comparisons = render_comparisons(reports)
     sections = "\n".join(render_case_section(report, report_dir) for report in reports)
     summary = ", ".join(
         f"{escape(status_label(status))}: {count}" for status, count in sorted(status_counts.items())
@@ -418,6 +421,8 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
     </section>
   </div>
 
+  {comparisons}
+
   <h2>Case Index</h2>
   <table>
     <thead><tr><th>Case</th><th>Level</th><th>Status</th><th>Metrics</th></tr></thead>
@@ -431,6 +436,54 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 </main>
 </body>
 </html>
+"""
+
+
+def render_comparisons(reports: list[CaseReport]) -> str:
+    sections = [render_tschamut_scarring_comparison(reports)]
+    return "\n".join(section for section in sections if section)
+
+
+def render_tschamut_scarring_comparison(reports: list[CaseReport]) -> str:
+    by_id = {report.case_id: report for report in reports}
+    baseline = by_id.get("validation_tschamut_baseline")
+    scarring = by_id.get("validation_tschamut_scarring")
+    if baseline is None or scarring is None or baseline.diagnostics is None or scarring.diagnostics is None:
+        return ""
+
+    baseline_metrics = baseline.diagnostics.get("metrics", {})
+    scarring_metrics = scarring.diagnostics.get("metrics", {})
+    metrics = [
+        ("simulated_mean_runout_m", "Simulated mean runout (m)"),
+        ("runout_distance_error_m", "Runout error (m)"),
+        ("deposition_centroid_error_m", "Deposition centroid error (m)"),
+        ("deposition_cloud_mean_nearest_error_m", "Cloud mean-nearest error (m)"),
+        ("deposition_cloud_overlap_fraction", "Cloud overlap fraction"),
+        ("lateral_spread_error_m", "Lateral spread error (m)"),
+    ]
+    rows = []
+    for key, label in metrics:
+        before = baseline_metrics.get(key)
+        after = scarring_metrics.get(key)
+        delta = None if before is None or after is None else after - before
+        rows.append(
+            "<tr>"
+            f"<td>{escape(label)}</td>"
+            f"<td>{escape(format_metric(before))}</td>"
+            f"<td>{escape(format_metric(after))}</td>"
+            f"<td>{escape(format_metric(delta))}</td>"
+            "</tr>"
+        )
+    return f"""
+  <section class="card">
+    <h2>Tschamut With scarring_contact_v1 (Experimental)</h2>
+    <p class="notice">This side-by-side comparison applies impact-level calibrated scarring parameters to the Tschamut trajectory workflow without tuning them to Tschamut. It is a comparative experiment, not a claim of predictive skill.</p>
+    <table>
+      <thead><tr><th>Metric</th><th>Baseline</th><th>Scarring</th><th>Scarring - baseline</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table>
+    <p class="caption">Because scarring adds impact-local energy loss, shorter runout is the expected physical direction. If the baseline already under-runs the observed mean runout, further shortening is evidence that this parameter transfer does not improve trajectory-level realism for this case.</p>
+  </section>
 """
 
 
@@ -868,6 +921,12 @@ def format_value(value: Any) -> str:
     if isinstance(value, (dict, list)):
         return json.dumps(value, sort_keys=True)
     return str(value)
+
+
+def format_metric(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return format_value(value)
 
 
 def escape(value: str) -> str:

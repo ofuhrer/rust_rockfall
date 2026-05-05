@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scarring single-impact calibration with Chant Sura ESurf 2019 data (experimental)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; line-height: 1.45; max-width: 1100px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 0.9rem; }
+    th, td { border: 1px solid #d8dee8; padding: 7px 9px; text-align: left; }
+    th { background: #eef3f8; }
+    code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Scarring single-impact calibration with Chant Sura ESurf 2019 data (experimental)</h1>
+  <p><strong>Scope:</strong> real-data impact-level calibration only. This is not validation, not trajectory calibration, and not operational calibration.</p>
+  <p><strong>Best candidate:</strong> <code>candidate_014</code>, objective 1.41832.</p>
+  <h2>Best Candidate Parameters</h2>
+  <ul>
+    <li>soil_strength_pa: 500000</li>
+    <li>scarring_drag_coefficient: 1</li>
+    <li>scarring_layer_density_kgpm3: 1200</li>
+  </ul>
+  <h2>Best Candidate Impact Comparison</h2>
+  <table>
+    <thead><tr><th>impact_id</th><th>observed_depth_m</th><th>simulated_depth_m</th><th>observed_energy_loss_j</th><th>simulated_energy_loss_j</th><th>observed_post_rebound_translational_j</th><th>simulated_post_rebound_translational_j</th><th>relative_depth_error</th><th>relative_energy_loss_error</th><th>relative_post_rebound_energy_error</th></tr></thead>
+    <tbody><tr><td>chant_sura_2_1</td><td>0.1</td><td>0.426512</td><td>None</td><td>91406.3</td><td>53800</td><td>60384.7</td><td>3.26512</td><td>None</td><td>0.122393</td></tr><tr><td>chant_sura_2_2</td><td>0.12</td><td>0.274481</td><td>None</td><td>23023.5</td><td>120800</td><td>49352.3</td><td>1.28734</td><td>None</td><td>0.591455</td></tr><tr><td>chant_sura_2_3</td><td>0.08</td><td>0.130834</td><td>None</td><td>10681.3</td><td>97200</td><td>146934</td><td>0.635422</td><td>None</td><td>0.511671</td></tr><tr><td>chant_sura_4_1</td><td>0.05</td><td>0.311547</td><td>None</td><td>82169.9</td><td>135100</td><td>154136</td><td>5.23093</td><td>None</td><td>0.140901</td></tr><tr><td>chant_sura_4_2</td><td>0.08</td><td>0.175478</td><td>None</td><td>19381.7</td><td>95300</td><td>140744</td><td>1.19348</td><td>None</td><td>0.476851</td></tr><tr><td>chant_sura_4_3</td><td>0.16</td><td>0.349541</td><td>None</td><td>56121.4</td><td>89300</td><td>68206.1</td><td>1.18463</td><td>None</td><td>0.236214</td></tr></tbody>
+  </table>
+  <h2>Top Candidates</h2>
+  <table>
+    <thead><tr><th>candidate</th><th>objective</th><th>soil_strength_pa</th><th>Cd</th><th>rho</th><th>depth error</th><th>loss error</th><th>post-rebound energy error</th></tr></thead>
+    <tbody><tr><td>candidate_014</td><td>1.41832</td><td>500000</td><td>1</td><td>1200</td><td>2.13282</td><td>None</td><td>0.346581</td></tr><tr><td>candidate_015</td><td>1.44573</td><td>500000</td><td>1</td><td>1600</td><td>2.13282</td><td>None</td><td>0.415094</td></tr><tr><td>candidate_013</td><td>1.45836</td><td>500000</td><td>0.5</td><td>1600</td><td>2.13282</td><td>None</td><td>0.44666</td></tr><tr><td>candidate_012</td><td>1.48877</td><td>500000</td><td>0.5</td><td>1200</td><td>2.13282</td><td>None</td><td>0.522705</td></tr><tr><td>candidate_016</td><td>1.53231</td><td>500000</td><td>2</td><td>1200</td><td>2.13282</td><td>None</td><td>0.631548</td></tr><tr><td>candidate_017</td><td>1.56291</td><td>500000</td><td>2</td><td>1600</td><td>2.13282</td><td>None</td><td>0.708052</td></tr><tr><td>candidate_008</td><td>1.86344</td><td>250000</td><td>1</td><td>1200</td><td>2.8705</td><td>None</td><td>0.352854</td></tr><tr><td>candidate_007</td><td>1.8924</td><td>250000</td><td>0.5</td><td>1600</td><td>2.8705</td><td>None</td><td>0.425248</td></tr><tr><td>candidate_006</td><td>1.91456</td><td>250000</td><td>0.5</td><td>1200</td><td>2.8705</td><td>None</td><td>0.480641</td></tr><tr><td>candidate_009</td><td>1.91673</td><td>250000</td><td>1</td><td>1600</td><td>2.8705</td><td>None</td><td>0.486081</td></tr></tbody>
+  </table>
+</body>
+</html>

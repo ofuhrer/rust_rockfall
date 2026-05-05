@@ -30,6 +30,9 @@ objective:
     mean_relative_depth_error: 0.55
     mean_relative_energy_loss_error: 0.45
   epsilon: 1.0e-9
+scope_note: "impact-level proxy calibration only. This is not trajectory validation and not operational calibration."
+limitations_summary: "single-impact proxy calibration only"
+interpretation: "This parameter-recovery experiment shows impact-level sensitivity. It is not field calibration and must not be used for validation defaults."
 outputs:
   generated_results_dir: calibration/results/scarring_single_impact_v0_4
   candidate_results_csv: calibration/experiments/scarring_single_impact_v0_4/candidate_results.csv

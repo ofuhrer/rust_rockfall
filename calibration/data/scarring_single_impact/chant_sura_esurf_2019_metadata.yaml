@@ -1,0 +1,24 @@
+dataset_id: chant_sura_esurf_2019_impacts
+source_dataset_id: chant_sura_2020
+source_dataset_doi: https://doi.org/10.16904/envidat.174
+source_publication_doi: https://doi.org/10.5194/esurf-7-199-2019
+license: Copernicus open-access article tables; underlying EnviDat dataset under WSL Data Policy
+generated_by: scripts/preprocess_scarring_real_data.py
+row_count: 6
+raw_inputs:
+  - data/raw/chant_sura_2020/esurf-7-199-2019-t01.xlsx
+  - data/raw/chant_sura_2020/esurf-7-199-2019-t02.xlsx
+output:
+  path: calibration/data/scarring_single_impact/chant_sura_esurf_2019_impacts.csv
+  units: SI
+assumptions:
+  - EOTA221 mass is treated as 780 kg.
+  - Spherical radius is an equivalent-volume proxy using concrete density 2400 kg/m3.
+  - Effective normal impact speed is derived from jump height as sqrt(2*g*JH).
+  - Observed post-rebound energy is the beginning energy of the next published jump.
+  - Observed total translational energy loss includes restitution, terrain interaction, and scarring; it is not a pure scarring measurement.
+  - ADM scar depth is used as the calibration depth target because it is extracted from UAS altitude-difference mapping.
+limitations:
+  - Impact normal and tangent components are inferred, not directly measured.
+  - Rock shape is EOTA221, but the simulator uses an equivalent sphere.
+  - The rows are suitable for exploratory calibration only, not validation or operational parameter selection.

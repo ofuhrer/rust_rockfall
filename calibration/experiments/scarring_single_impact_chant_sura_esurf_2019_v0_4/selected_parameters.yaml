@@ -1,0 +1,13 @@
+experiment_id: scarring_single_impact_chant_sura_esurf_2019_v0_4
+model_version: 0.4.0
+dataset_id: chant_sura_esurf_2019_impacts
+selection: minimum weighted mean relative impact-level objective
+objective: 1.4183249156028892
+parameters:
+  soil_strength_pa: 500000.0
+  scarring_drag_coefficient: 1.0
+  scarring_layer_density_kgpm3: 1200.0
+limitations:
+- single-impact real-data calibration with inferred impact components
+- not validation
+- not a trajectory-level parameter set

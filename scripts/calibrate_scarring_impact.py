@@ -2,8 +2,8 @@
 """Run a deterministic single-impact calibration for scarring_contact_v1.
 
 This experiment is intentionally narrow. It uses simple flat-plane single-impact
-simulations and compares ImpactEvent diagnostics to a small semi-empirical proxy
-dataset. It is separate from validation and does not change any model defaults.
+simulations and compares ImpactEvent diagnostics to a configured impact dataset.
+It is separate from validation and does not change any model defaults.
 """
 
 from __future__ import annotations
@@ -82,8 +82,9 @@ def run_experiment(config: dict[str, Any]) -> None:
         rows.append(row)
         print(
             f"{candidate_id} objective={row['objective']:.6f} "
-            f"depth_err={row['mean_relative_depth_error']:.6f} "
-            f"energy_err={row['mean_relative_energy_loss_error']:.6f}"
+            f"depth_err={format_progress_value(row['mean_relative_depth_error'])} "
+            f"loss_err={format_progress_value(row['mean_relative_energy_loss_error'])} "
+            f"post_rebound_err={format_progress_value(row['mean_relative_post_rebound_energy_error'])}"
         )
 
     rows.sort(key=lambda row: (float(row["objective"]), row["candidate_id"]))
@@ -105,9 +106,17 @@ def read_reference_impacts(path: Path) -> list[dict[str, Any]]:
                 "radius_m": float(row["radius_m"]),
                 "incoming_normal_speed_mps": float(row["incoming_normal_speed_mps"]),
                 "incoming_tangent_speed_mps": float(row["incoming_tangent_speed_mps"]),
-                "impact_angle_deg": float(row["impact_angle_deg"]),
-                "observed_scarring_depth_m": float(row["observed_scarring_depth_m"]),
-                "observed_scarring_energy_loss_j": float(row["observed_scarring_energy_loss_j"]),
+                "impact_angle_deg": optional_float(row.get("impact_angle_deg")),
+                "observed_scarring_depth_m": optional_float(row.get("observed_scarring_depth_m")),
+                "observed_scarring_energy_loss_j": optional_float(
+                    row.get("observed_scarring_energy_loss_j")
+                ),
+                "observed_post_rebound_translational_j": optional_float(
+                    row.get("observed_post_rebound_translational_j")
+                ),
+                "observed_total_translational_energy_loss_j": optional_float(
+                    row.get("observed_total_translational_energy_loss_j")
+                ),
                 "notes": row.get("notes", ""),
             }
         )
@@ -216,18 +225,23 @@ def compare_impact(
     impact: dict[str, Any], event: dict[str, Any], config: dict[str, Any]
 ) -> dict[str, Any]:
     epsilon = float(config["objective"].get("epsilon", 1.0e-9))
-    observed_depth = impact["observed_scarring_depth_m"]
-    observed_loss = impact["observed_scarring_energy_loss_j"]
+    observed_depth = impact.get("observed_scarring_depth_m")
+    observed_loss = impact.get("observed_scarring_energy_loss_j")
+    observed_post_rebound = impact.get("observed_post_rebound_translational_j")
     simulated_depth = float(event["scarring_depth_m"])
     simulated_loss = float(event["scarring_capped_energy_loss_j"])
-    return {
+    simulated_post_rebound = float(event["post_scarring_translational_j"])
+    row = {
         "impact_id": impact["impact_id"],
         "observed_depth_m": observed_depth,
         "simulated_depth_m": simulated_depth,
         "observed_energy_loss_j": observed_loss,
         "simulated_energy_loss_j": simulated_loss,
-        "relative_depth_error": abs(simulated_depth - observed_depth) / max(observed_depth, epsilon),
-        "relative_energy_loss_error": abs(simulated_loss - observed_loss) / max(observed_loss, epsilon),
+        "observed_post_rebound_translational_j": observed_post_rebound,
+        "simulated_post_rebound_translational_j": simulated_post_rebound,
+        "observed_total_translational_energy_loss_j": impact.get(
+            "observed_total_translational_energy_loss_j"
+        ),
         "incoming_normal_speed_mps": float(event["incoming_normal_speed_mps"]),
         "incoming_tangent_speed_mps": float(event["incoming_tangent_speed_mps"]),
         "post_contact_translational_j": float(event["post_contact_translational_j"]),
@@ -235,6 +249,12 @@ def compare_impact(
         "scarring_loss_fraction_of_post_contact_energy": simulated_loss
         / max(float(event["post_contact_translational_j"]), epsilon),
     }
+    row["relative_depth_error"] = relative_error(simulated_depth, observed_depth, epsilon)
+    row["relative_energy_loss_error"] = relative_error(simulated_loss, observed_loss, epsilon)
+    row["relative_post_rebound_energy_error"] = relative_error(
+        simulated_post_rebound, observed_post_rebound, epsilon
+    )
+    return row
 
 
 def summarize_candidate(
@@ -243,19 +263,33 @@ def summarize_candidate(
     impact_rows: list[dict[str, Any]],
     config: dict[str, Any],
 ) -> dict[str, Any]:
-    mean_depth_error = mean(row["relative_depth_error"] for row in impact_rows)
-    mean_energy_error = mean(row["relative_energy_loss_error"] for row in impact_rows)
-    weights = config["objective"]["weights"]
-    objective = (
-        float(weights["mean_relative_depth_error"]) * mean_depth_error
-        + float(weights["mean_relative_energy_loss_error"]) * mean_energy_error
+    mean_depth_error = mean_present(row["relative_depth_error"] for row in impact_rows)
+    mean_energy_error = mean_present(row["relative_energy_loss_error"] for row in impact_rows)
+    mean_post_rebound_error = mean_present(
+        row["relative_post_rebound_energy_error"] for row in impact_rows
     )
+    weights = config["objective"]["weights"]
+    objective_terms = {
+        "mean_relative_depth_error": mean_depth_error,
+        "mean_relative_energy_loss_error": mean_energy_error,
+        "mean_relative_post_rebound_energy_error": mean_post_rebound_error,
+    }
+    objective = 0.0
+    used_weight = 0.0
+    for metric, weight in weights.items():
+        value = objective_terms.get(metric)
+        if value is not None:
+            objective += float(weight) * value
+            used_weight += float(weight)
+    if used_weight <= 0.0:
+        raise SystemExit("objective weights do not reference any available target metrics")
     row: dict[str, Any] = {
         "candidate_id": candidate_id,
         **candidate,
         "objective": objective,
         "mean_relative_depth_error": mean_depth_error,
         "mean_relative_energy_loss_error": mean_energy_error,
+        "mean_relative_post_rebound_energy_error": mean_post_rebound_error,
     }
     for impact_row in impact_rows:
         impact_id = impact_row["impact_id"]
@@ -268,6 +302,26 @@ def summarize_candidate(
 def mean(values: Any) -> float:
     values = list(values)
     return sum(values) / len(values)
+
+
+def mean_present(values: Any) -> float | None:
+    values = [value for value in values if value is not None]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def relative_error(simulated: float, observed: float | None, epsilon: float) -> float | None:
+    if observed is None:
+        return None
+    return abs(simulated - observed) / max(abs(observed), epsilon)
+
+
+def optional_float(value: object) -> float | None:
+    text = str(value or "").strip()
+    if not text or text.lower() == "nan":
+        return None
+    return float(text)
 
 
 def write_candidate_results(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -294,8 +348,8 @@ def write_selected_parameters(path: Path, best: dict[str, Any], config: dict[str
                 "scarring_layer_density_kgpm3": float(best["scarring_layer_density_kgpm3"]),
             },
             "limitations": [
-                "single-impact proxy calibration only",
-                "not observational field validation",
+                config.get("limitations_summary", "single-impact calibration only"),
+                "not validation",
                 "not a trajectory-level parameter set",
             ],
         },
@@ -316,8 +370,11 @@ def write_summary(
         "best": rows[0],
         "top_candidates": rows[:5],
         "interpretation": (
-            "This parameter-recovery experiment shows impact-level sensitivity. "
-            "It is not field calibration and must not be used for validation defaults."
+            config.get(
+                "interpretation",
+                "This experiment shows impact-level sensitivity. It is not validation "
+                "and must not be used for validation defaults.",
+            )
         ),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -334,8 +391,11 @@ def write_html_report(
         "simulated_depth_m",
         "observed_energy_loss_j",
         "simulated_energy_loss_j",
+        "observed_post_rebound_translational_j",
+        "simulated_post_rebound_translational_j",
         "relative_depth_error",
         "relative_energy_loss_error",
+        "relative_post_rebound_energy_error",
     ]
     best_rows = []
     for impact in impacts:
@@ -359,6 +419,7 @@ def write_html_report(
             f"<td>{escape(format_value(row['scarring_layer_density_kgpm3']))}</td>"
             f"<td>{escape(format_value(row['mean_relative_depth_error']))}</td>"
             f"<td>{escape(format_value(row['mean_relative_energy_loss_error']))}</td>"
+            f"<td>{escape(format_value(row['mean_relative_post_rebound_energy_error']))}</td>"
             "</tr>"
         )
     html_text = f"""<!doctype html>
@@ -376,7 +437,7 @@ def write_html_report(
 </head>
 <body>
   <h1>{escape(config['title'])}</h1>
-  <p><strong>Scope:</strong> impact-level proxy calibration only. This is not trajectory validation and not operational calibration.</p>
+  <p><strong>Scope:</strong> {escape(config.get('scope_note', 'impact-level calibration only. This is not validation and not operational calibration.'))}</p>
   <p><strong>Best candidate:</strong> <code>{escape(best['candidate_id'])}</code>, objective {escape(format_value(best['objective']))}.</p>
   <h2>Best Candidate Parameters</h2>
   <ul>
@@ -391,7 +452,7 @@ def write_html_report(
   </table>
   <h2>Top Candidates</h2>
   <table>
-    <thead><tr><th>candidate</th><th>objective</th><th>soil_strength_pa</th><th>Cd</th><th>rho</th><th>depth error</th><th>energy error</th></tr></thead>
+    <thead><tr><th>candidate</th><th>objective</th><th>soil_strength_pa</th><th>Cd</th><th>rho</th><th>depth error</th><th>loss error</th><th>post-rebound energy error</th></tr></thead>
     <tbody>{''.join(candidate_rows)}</tbody>
   </table>
 </body>
@@ -423,6 +484,12 @@ def format_value(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.6g}"
     return str(value)
+
+
+def format_progress_value(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.6f}"
 
 
 def escape(value: Any) -> str:

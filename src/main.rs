@@ -255,6 +255,8 @@ fn case_order(case_id: &str) -> u16 {
         "validation_synthetic_plane_basic" => 510,
         "validation_tschamut_proxy_plane" => 580,
         "validation_tschamut_basic" => 590,
+        "validation_tschamut_baseline" => 600,
+        "validation_tschamut_scarring" => 610,
         _ => 1000,
     }
 }

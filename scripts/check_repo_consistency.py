@@ -371,13 +371,26 @@ def check_scarring_not_in_tschamut_workflows() -> list[str]:
     except ImportError:
         return []
     errors = []
-    for path in sorted((ROOT / "validation/cases").glob("tschamut*.yaml")):
+    allowed_scarring_cases = {
+        "validation/cases/validation_tschamut_scarring.yaml",
+    }
+    for path in sorted((ROOT / "validation/cases").glob("*.yaml")):
+        relative = path.relative_to(ROOT).as_posix()
+        if "tschamut" not in path.name:
+            continue
         data = yaml.safe_load(path.read_text()) or {}
         model = (data.get("parameters") or {}).get("soil_interaction_model", "none")
-        if model != "none":
+        if model != "none" and relative not in allowed_scarring_cases:
             errors.append(
                 f"{path.relative_to(ROOT)} must not enable scarring without an explicit calibration/validation decision"
             )
+        if relative in allowed_scarring_cases:
+            scope_note = ((data.get("validation_scope") or {}).get("note") or "").lower()
+            if model != "scarring_contact_v1":
+                errors.append(f"{relative} must enable scarring_contact_v1")
+            for term in ("exploratory", "impact-level", "not tschamut trajectory calibration"):
+                if term not in scope_note:
+                    errors.append(f"{relative} validation_scope.note omits {term!r}")
     for path in sorted((ROOT / "calibration/experiments").glob("tschamut_v0_3/*.yaml")):
         data = yaml.safe_load(path.read_text()) or {}
         if "scarring_contact_v1" in path.read_text() or data.get("soil_interaction_model"):
@@ -407,6 +420,14 @@ def check_calibration_metadata() -> list[str]:
         ROOT / "calibration/experiments/scarring_single_impact_v0_4/summary.json",
         ROOT / "docs/scarring_single_impact_calibration.md",
         ROOT / "scripts/calibrate_scarring_impact.py",
+        ROOT / "calibration/data/scarring_single_impact/chant_sura_esurf_2019_impacts.csv",
+        ROOT / "calibration/data/scarring_single_impact/chant_sura_esurf_2019_metadata.yaml",
+        ROOT / "calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/config.yaml",
+        ROOT / "calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/candidate_results.csv",
+        ROOT / "calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/selected_parameters.yaml",
+        ROOT / "calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/summary.json",
+        ROOT / "docs/scarring_real_data_calibration.md",
+        ROOT / "scripts/preprocess_scarring_real_data.py",
     ]
     for path in required_paths:
         if not path.exists():
@@ -454,6 +475,22 @@ def check_calibration_metadata() -> list[str]:
     for term in ("single-impact", "proxy", "not validation", "not operational"):
         if term not in scarring_docs:
             errors.append(f"single-impact scarring calibration docs omit {term!r}")
+
+    real_selected_path = (
+        ROOT
+        / "calibration/experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/selected_parameters.yaml"
+    )
+    if real_selected_path.exists():
+        selected = yaml.safe_load(real_selected_path.read_text()) or {}
+        if selected.get("dataset_id") != "chant_sura_esurf_2019_impacts":
+            errors.append("real-data scarring calibration selected parameters reference wrong dataset")
+        if not selected.get("parameters"):
+            errors.append("real-data scarring calibration omits parameter values")
+
+    real_docs = (ROOT / "docs/scarring_real_data_calibration.md").read_text()
+    for term in ("Chant Sura", "not validation", "inferred", "not operational"):
+        if term not in real_docs:
+            errors.append(f"real-data scarring calibration docs omit {term!r}")
     return errors
 
 
