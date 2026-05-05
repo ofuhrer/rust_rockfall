@@ -168,6 +168,34 @@ class InputStats:
     significant_impact_count: int = 0
 
 
+@dataclass(frozen=True)
+class TrajectorySample:
+    x_m: float | None
+    y_m: float | None
+    z_m: float | None
+    kinetic_j: float | None
+    speed_mps: float | None
+
+
+@dataclass(frozen=True)
+class TrajectorySampleBatch:
+    path: Path
+    trajectory_id: str | None
+    samples: tuple[TrajectorySample, ...]
+
+
+@dataclass(frozen=True)
+class DepositionPointBatch:
+    points: tuple[dict[str, float | str], ...]
+
+
+@dataclass(frozen=True)
+class ImpactEventBatch:
+    event_count: int
+    significant_event_count: int
+    significant_points: tuple[tuple[float, float], ...]
+
+
 @dataclass
 class GridBounds:
     xs: list[float]
@@ -253,11 +281,8 @@ class HazardAccumulator:
         self.warnings: list[str] = []
         self.terrain_warning_emitted = False
 
-    def accumulate_trajectory(self, path: Path, warnings: list[str]) -> None:
-        if not path.exists():
-            return
+    def accumulate_trajectory(self, batch: TrajectorySampleBatch) -> None:
         self.trajectory_count += 1
-        trajectory_id: str | None = None
         occupied: set[tuple[int, int]] = set()
         kinetic_exceeded: dict[float, set[tuple[int, int]]] = {
             threshold: set() for threshold in self.kinetic_exceedance
@@ -268,98 +293,139 @@ class HazardAccumulator:
         velocity_exceeded: dict[float, set[tuple[int, int]]] = {
             threshold: set() for threshold in self.velocity_exceedance
         }
-        for sample in iter_numeric_csv(path, f"trajectory:{path}", warnings):
-            if trajectory_id is None:
-                trajectory_id = trajectory_id_from_sample_or_path(sample, path)
+        for sample in batch.samples:
             self.trajectory_sample_count += 1
-            cell = sample_cell(self.grid, sample)
+            cell = sample_cell_from_xy(self.grid, sample.x_m, sample.y_m)
             if cell is None:
                 continue
             row, col = cell
-            occupied.add(cell)
-            kinetic = numeric(sample.get("kinetic_j"))
-            if kinetic is not None:
-                self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
-                for threshold in kinetic_exceeded:
-                    if kinetic >= threshold:
-                        kinetic_exceeded[threshold].add(cell)
-            speed = numeric(sample.get("speed_mps"))
-            if speed is not None:
-                for threshold in velocity_exceeded:
-                    if speed >= threshold:
-                        velocity_exceeded[threshold].add(cell)
-            jump = jump_height(sample, self.terrain, self.block_radius_m)
-            if jump is None and not self.terrain_warning_emitted:
-                self.warnings.append("maximum jump height omitted where terrain could not be evaluated")
-                self.terrain_warning_emitted = True
-            elif jump is not None:
-                self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
-                for threshold in jump_exceeded:
-                    if jump >= threshold:
-                        jump_exceeded[threshold].add(cell)
+            self.accumulate_trajectory_occupancy(cell, occupied)
+            self.accumulate_trajectory_maxima_and_exceedances(
+                sample,
+                row,
+                col,
+                cell,
+                kinetic_exceeded,
+                jump_exceeded,
+                velocity_exceeded,
+            )
+        self.commit_trajectory_sets(occupied, kinetic_exceeded, jump_exceeded, velocity_exceeded)
+        if self.probability is not None:
+            if batch.trajectory_id is None:
+                raise SystemExit(f"trajectory file {batch.path} contains no samples and cannot be weighted")
+            self.commit_weighted_trajectory_sets(
+                batch.trajectory_id,
+                occupied,
+                kinetic_exceeded,
+                jump_exceeded,
+                velocity_exceeded,
+            )
+
+    def accumulate_trajectory_occupancy(
+        self,
+        cell: tuple[int, int],
+        occupied: set[tuple[int, int]],
+    ) -> None:
+        occupied.add(cell)
+
+    def accumulate_trajectory_maxima_and_exceedances(
+        self,
+        sample: TrajectorySample,
+        row: int,
+        col: int,
+        cell: tuple[int, int],
+        kinetic_exceeded: dict[float, set[tuple[int, int]]],
+        jump_exceeded: dict[float, set[tuple[int, int]]],
+        velocity_exceeded: dict[float, set[tuple[int, int]]],
+    ) -> None:
+        kinetic = sample.kinetic_j
+        if kinetic is not None:
+            self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
+            for threshold in kinetic_exceeded:
+                if kinetic >= threshold:
+                    kinetic_exceeded[threshold].add(cell)
+        speed = sample.speed_mps
+        if speed is not None:
+            for threshold in velocity_exceeded:
+                if speed >= threshold:
+                    velocity_exceeded[threshold].add(cell)
+        jump = self.sample_jump_height(sample)
+        if jump is None and not self.terrain_warning_emitted:
+            self.warnings.append("maximum jump height omitted where terrain could not be evaluated")
+            self.terrain_warning_emitted = True
+        elif jump is not None:
+            self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
+            for threshold in jump_exceeded:
+                if jump >= threshold:
+                    jump_exceeded[threshold].add(cell)
+
+    def sample_jump_height(self, sample: TrajectorySample) -> float | None:
+        x = sample.x_m
+        y = sample.y_m
+        z = sample.z_m
+        if x is None or y is None or z is None:
+            return None
+        ground = self.terrain.height(x, y)
+        if ground is None:
+            return None
+        return max(0.0, z - ground - self.block_radius_m)
+
+    def commit_trajectory_sets(
+        self,
+        occupied: set[tuple[int, int]],
+        kinetic_exceeded: dict[float, set[tuple[int, int]]],
+        jump_exceeded: dict[float, set[tuple[int, int]]],
+        velocity_exceeded: dict[float, set[tuple[int, int]]],
+    ) -> None:
         for row, col in occupied:
             self.reach[row][col] += 1.0
         increment_exceedance_grids(self.kinetic_exceedance, kinetic_exceeded)
         increment_exceedance_grids(self.jump_exceedance, jump_exceeded)
         increment_exceedance_grids(self.velocity_exceedance, velocity_exceeded)
-        if self.probability is not None:
-            if trajectory_id is None:
-                raise SystemExit(f"trajectory file {path} contains no samples and cannot be weighted")
-            weight = self.probability.weight_for_trajectory(trajectory_id)
-            if self.weighted_reach is not None:
-                for row, col in occupied:
-                    self.weighted_reach[row][col] += weight
-            increment_weighted_exceedance_grids(
-                self.weighted_kinetic_exceedance,
-                kinetic_exceeded,
-                weight,
-            )
-            increment_weighted_exceedance_grids(
-                self.weighted_jump_exceedance,
-                jump_exceeded,
-                weight,
-            )
-            increment_weighted_exceedance_grids(
-                self.weighted_velocity_exceedance,
-                velocity_exceeded,
-                weight,
-            )
 
-    def accumulate_deposition(self, path: Path | None, warnings: list[str]) -> None:
-        if path is None or not path.exists():
-            return
-        for point in iter_numeric_csv(path, f"deposition:{path}", warnings):
+    def commit_weighted_trajectory_sets(
+        self,
+        trajectory_id: str,
+        occupied: set[tuple[int, int]],
+        kinetic_exceeded: dict[float, set[tuple[int, int]]],
+        jump_exceeded: dict[float, set[tuple[int, int]]],
+        velocity_exceeded: dict[float, set[tuple[int, int]]],
+    ) -> None:
+        weight = self.probability.weight_for_trajectory(trajectory_id) if self.probability else 0.0
+        if self.weighted_reach is not None:
+            for row, col in occupied:
+                self.weighted_reach[row][col] += weight
+        increment_weighted_exceedance_grids(
+            self.weighted_kinetic_exceedance,
+            kinetic_exceeded,
+            weight,
+        )
+        increment_weighted_exceedance_grids(
+            self.weighted_jump_exceedance,
+            jump_exceeded,
+            weight,
+        )
+        increment_weighted_exceedance_grids(
+            self.weighted_velocity_exceedance,
+            velocity_exceeded,
+            weight,
+        )
+
+    def accumulate_deposition(self, batch: DepositionPointBatch) -> None:
+        for point in batch.points:
             self.deposition_point_count += 1
             self.deposition_points.append(point)
             cell = sample_cell(self.grid, point)
             if cell is not None:
                 self.deposition[cell[0]][cell[1]] += 1.0
 
-    def accumulate_impacts(self, paths: list[Path], warnings: list[str]) -> None:
-        for path in paths:
-            if not path.exists():
-                continue
-            for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
-                self.impact_event_count += 1
-                if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
-                    continue
-                self.significant_impact_count += 1
-                cell = sample_cell(self.grid, event)
-                if cell is not None:
-                    self.impact_density[cell[0]][cell[1]] += 1.0
-
-    def accumulate_impacts_parquet(self, paths: list[Path], warnings: list[str]) -> None:
-        for path in paths:
-            if not path.exists():
-                continue
-            stats = accumulate_impact_density_from_parquet(
-                path,
-                self.grid,
-                self.impact_density,
-                warnings,
-            )
-            self.impact_event_count += stats["impact_event_count"]
-            self.significant_impact_count += stats["significant_impact_count"]
+    def accumulate_impacts(self, batch: ImpactEventBatch) -> None:
+        self.impact_event_count += batch.event_count
+        self.significant_impact_count += batch.significant_event_count
+        for x, y in batch.significant_points:
+            cell = self.grid.cell(x, y)
+            if cell is not None:
+                self.impact_density[cell[0]][cell[1]] += 1.0
 
     def stats(self) -> InputStats:
         return InputStats(
@@ -646,11 +712,15 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     accumulation_started = time.perf_counter()
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config, probability_state)
-    accumulator.accumulate_deposition(deposition_path, input_warnings)
+    accumulator.accumulate_deposition(read_deposition_batch(deposition_path, input_warnings))
     for trajectory_path in trajectory_paths:
-        accumulator.accumulate_trajectory(trajectory_path, input_warnings)
-    accumulator.accumulate_impacts(impact_event_paths, input_warnings)
-    accumulator.accumulate_impacts_parquet(impact_event_parquet_paths, input_warnings)
+        batch = read_trajectory_sample_batch(trajectory_path, input_warnings)
+        if batch is not None:
+            accumulator.accumulate_trajectory(batch)
+    for batch in read_impact_event_csv_batches(impact_event_paths, input_warnings):
+        accumulator.accumulate_impacts(batch)
+    for batch in read_impact_event_parquet_batches(impact_event_parquet_paths, input_warnings):
+        accumulator.accumulate_impacts(batch)
     stats = accumulator.stats()
     if not stats.trajectory_count and not stats.deposition_point_count and not stats.impact_event_count:
         raise SystemExit("no trajectory, deposition, or impact-event inputs found")
@@ -1046,6 +1116,64 @@ def discover_bounds(
     return bounds
 
 
+def read_trajectory_sample_batch(path: Path, warnings: list[str]) -> TrajectorySampleBatch | None:
+    if not path.exists():
+        return None
+    samples: list[TrajectorySample] = []
+    trajectory_id: str | None = None
+    for row in iter_numeric_csv(path, f"trajectory:{path}", warnings):
+        if trajectory_id is None:
+            trajectory_id = trajectory_id_from_sample_or_path(row, path)
+        samples.append(
+            TrajectorySample(
+                x_m=numeric(row.get("x_m")),
+                y_m=numeric(row.get("y_m")),
+                z_m=numeric(row.get("z_m")),
+                kinetic_j=numeric(row.get("kinetic_j")),
+                speed_mps=numeric(row.get("speed_mps")),
+            )
+        )
+    return TrajectorySampleBatch(path=path, trajectory_id=trajectory_id, samples=tuple(samples))
+
+
+def read_deposition_batch(path: Path | None, warnings: list[str]) -> DepositionPointBatch:
+    if path is None or not path.exists():
+        return DepositionPointBatch(points=())
+    return DepositionPointBatch(
+        points=tuple(iter_numeric_csv(path, f"deposition:{path}", warnings))
+    )
+
+
+def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Any:
+    for path in paths:
+        if not path.exists():
+            continue
+        event_count = 0
+        significant_event_count = 0
+        significant_points: list[tuple[float, float]] = []
+        for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
+            event_count += 1
+            if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
+                continue
+            significant_event_count += 1
+            x = numeric(event.get("x_m"))
+            y = numeric(event.get("y_m"))
+            if x is not None and y is not None:
+                significant_points.append((x, y))
+        yield ImpactEventBatch(
+            event_count=event_count,
+            significant_event_count=significant_event_count,
+            significant_points=tuple(significant_points),
+        )
+
+
+def read_impact_event_parquet_batches(paths: list[Path], warnings: list[str]) -> Any:
+    for path in paths:
+        if not path.exists():
+            continue
+        yield from iter_impact_event_parquet_batches(path, warnings)
+
+
 def iter_numeric_csv(
     path: Path | None,
     label: str,
@@ -1068,46 +1196,6 @@ def iter_numeric_csv(
                     parsed_value: float | str = float(value)
                 except ValueError:
                     parsed_value = value
-                if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
-                    row_bad = True
-                    continue
-                parsed[key] = parsed_value
-            if row_bad and ("x_m" in row or "y_m" in row):
-                dropped += 1
-                continue
-            yield parsed
-    if emit_warnings and dropped:
-        warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
-
-
-def iter_numeric_parquet(
-    path: Path | None,
-    label: str,
-    warnings: list[str],
-    *,
-    emit_warnings: bool = True,
-) -> Any:
-    if path is None:
-        return
-    try:
-        import pyarrow.parquet as pq  # type: ignore
-    except ImportError as exc:
-        raise SystemExit("pyarrow is required for impact-event Parquet inputs") from exc
-    dropped = 0
-    parquet_file = pq.ParquetFile(path)
-    for batch in parquet_file.iter_batches(batch_size=65_536):
-        for row in batch.to_pylist():
-            parsed: dict[str, float | str | bool] = {}
-            row_bad = False
-            for key, value in row.items():
-                if value is None or value == "":
-                    continue
-                if isinstance(value, bool):
-                    parsed_value: float | str | bool = value
-                elif isinstance(value, (int, float)):
-                    parsed_value = float(value)
-                else:
-                    parsed_value = str(value)
                 if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
                     row_bad = True
                     continue
@@ -1149,12 +1237,7 @@ def add_parquet_xy_bounds(
         warnings.append(f"dropped {dropped} non-finite coordinate rows from impact_events_parquet:{path}")
 
 
-def accumulate_impact_density_from_parquet(
-    path: Path,
-    grid: GridSpec,
-    impact_density: list[list[float]],
-    warnings: list[str],
-) -> dict[str, int]:
+def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Any:
     try:
         import pyarrow.parquet as pq  # type: ignore
     except ImportError as exc:
@@ -1169,13 +1252,14 @@ def accumulate_impact_density_from_parquet(
         require_parquet_columns(parquet_file, path, ("incoming_normal_speed_mps",))
         columns = ["x_m", "y_m", "incoming_normal_speed_mps"]
 
-    impact_event_count = 0
-    significant_impact_count = 0
     dropped = 0
     for batch in parquet_file.iter_batches(columns=columns, batch_size=65_536):
         xs = batch.column(0).to_pylist()
         ys = batch.column(1).to_pylist()
         significance_values = batch.column(2).to_pylist()
+        impact_event_count = 0
+        significant_impact_count = 0
+        significant_points: list[tuple[float, float]] = []
         for x_value, y_value, significance_value in zip(xs, ys, significance_values):
             impact_event_count += 1
             if use_significant_flag:
@@ -1191,15 +1275,14 @@ def accumulate_impact_density_from_parquet(
             if x is None or y is None:
                 dropped += 1
                 continue
-            cell = grid.cell(x, y)
-            if cell is not None:
-                impact_density[cell[0]][cell[1]] += 1.0
+            significant_points.append((x, y))
+        yield ImpactEventBatch(
+            event_count=impact_event_count,
+            significant_event_count=significant_impact_count,
+            significant_points=tuple(significant_points),
+        )
     if dropped:
         warnings.append(f"dropped {dropped} non-finite significant impact rows from impact_events_parquet:{path}")
-    return {
-        "impact_event_count": impact_event_count,
-        "significant_impact_count": significant_impact_count,
-    }
 
 
 def require_parquet_columns(parquet_file: Any, path: Path, columns: tuple[str, ...]) -> None:
@@ -1222,6 +1305,10 @@ def finite_float(value: Any) -> float | None:
 def sample_cell(grid: GridSpec, sample: dict[str, float | str | bool]) -> tuple[int, int] | None:
     x = numeric(sample.get("x_m"))
     y = numeric(sample.get("y_m"))
+    return sample_cell_from_xy(grid, x, y)
+
+
+def sample_cell_from_xy(grid: GridSpec, x: float | None, y: float | None) -> tuple[int, int] | None:
     if x is None or y is None:
         return None
     return grid.cell(x, y)
@@ -1270,18 +1357,6 @@ def increment_weighted_exceedance_grids(
 def exceedance_layer_key(prefix: str, threshold: float, suffix: str) -> str:
     threshold_text = f"{threshold:g}".replace("-", "neg_").replace(".", "p")
     return f"{prefix}_{threshold_text}{suffix}"
-
-
-def jump_height(sample: dict[str, float | str], terrain: "TerrainSampler", radius_m: float) -> float | None:
-    x = numeric(sample.get("x_m"))
-    y = numeric(sample.get("y_m"))
-    z = numeric(sample.get("z_m"))
-    if x is None or y is None or z is None:
-        return None
-    ground = terrain.height(x, y)
-    if ground is None:
-        return None
-    return max(0.0, z - ground - radius_m)
 
 
 def trajectory_id_from_sample_or_path(sample: dict[str, float | str], path: Path) -> str:

@@ -19,6 +19,49 @@ SWISS_PILOT = ROOT / "validation" / "data" / "processed" / "swisstopo_pilot"
 
 
 class HazardLayerTests(unittest.TestCase):
+    def test_trajectory_csv_batch_reader_preserves_samples_and_id(self) -> None:
+        warnings: list[str] = []
+        batch = hazard.read_trajectory_sample_batch(FIXTURE / "trajectory_a.csv", warnings)
+
+        self.assertIsNotNone(batch)
+        assert batch is not None
+        self.assertEqual(batch.trajectory_id, "trajectory_a")
+        self.assertEqual(len(batch.samples), 3)
+        self.assertEqual(warnings, [])
+        self.assertAlmostEqual(batch.samples[0].x_m or 0.0, 0.0)
+        self.assertAlmostEqual(batch.samples[1].kinetic_j or 0.0, 10.0)
+        self.assertAlmostEqual(batch.samples[2].speed_mps or 0.0, 0.5)
+
+    def test_impact_csv_batch_reader_preserves_significant_event_semantics(self) -> None:
+        warnings: list[str] = []
+        batches = list(hazard.read_impact_event_csv_batches([FIXTURE / "impacts.csv"], warnings))
+
+        self.assertEqual(len(batches), 1)
+        self.assertEqual(batches[0].event_count, 2)
+        self.assertEqual(batches[0].significant_event_count, 1)
+        self.assertEqual(batches[0].significant_points, ((2.0, 0.0),))
+        self.assertEqual(warnings, [])
+
+    def test_projected_parquet_impact_batch_reader_preserves_counts(self) -> None:
+        try:
+            import pyarrow  # noqa: F401  # type: ignore
+        except ImportError:
+            self.skipTest("pyarrow is required for Parquet impact-event fixtures")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            parquet_path = Path(tmp) / "impact_events.parquet"
+            write_impact_parquet_fixture(parquet_path, FIXTURE / "ensemble_impacts")
+            warnings: list[str] = []
+            batches = list(hazard.read_impact_event_parquet_batches([parquet_path], warnings))
+
+        self.assertEqual(sum(batch.event_count for batch in batches), 2)
+        self.assertEqual(sum(batch.significant_event_count for batch in batches), 2)
+        self.assertEqual(
+            [point for batch in batches for point in batch.significant_points],
+            [(2.0, 0.0), (3.0, 1.0)],
+        )
+        self.assertEqual(warnings, [])
+
     def test_fixture_layers_are_reproducible_and_interpretable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

@@ -290,3 +290,28 @@ After the input batching and reducer interface exists, the next two steps are:
 2. Extend the reducer interface into tile/chunk states with deterministic merge
    rules for counts, maxima, and fixed-threshold exceedance layers.
 
+## First Slice Implementation Note
+
+The first implementation slice introduced typed internal trajectory and impact
+batches inside `scripts/build_hazard_layers.py` while preserving existing CSV,
+Parquet, and raster outputs. The slice is an architecture boundary, not a
+vectorization or tiling optimization.
+
+Post-change benchmark command:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes trajectories parquet \
+  --contact-models translational_v0 sphere_rotational_v1 \
+  --hazard-plots no-plots \
+  --weighted-hazard none \
+  --output-root validation/results/hazard_batch_refactor_300_500
+```
+
+The timing signal was mixed, which is expected for a boundary refactor that
+still performs Python-level per-sample cell updates. The useful outcome is that
+trajectory CSV, impact CSV, and projected impact Parquet inputs now meet an
+internal batch interface, so a future trajectory Parquet reader or tiled reducer
+can be added without changing hazard semantics.
