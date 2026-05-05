@@ -218,6 +218,19 @@ fn oblique_rotational_impact_generates_spin_with_friction() {
 }
 
 #[test]
+fn dissipative_rotational_impact_does_not_increase_total_energy() {
+    let block = SphereBlock::new(0.5, 10.0);
+    let terrain = Plane::horizontal(0.0);
+    let mut state = BodyState::new(Vec3::new(0.0, 0.0, 0.49), Vec3::new(3.0, 0.0, -4.0));
+    let before = EnergyDiagnostics::from_state(&state, &block, 9.81).total_j;
+
+    resolve_rotational_sphere_contact(&mut state, &terrain, block, 0.5, 0.0, 10.0);
+
+    let after = EnergyDiagnostics::from_state(&state, &block, 9.81).total_j;
+    assert!(after <= before);
+}
+
+#[test]
 fn rotational_tangential_impulse_respects_coulomb_cap() {
     let block = SphereBlock::new(0.5, 10.0);
     let terrain = Plane::horizontal(0.0);
