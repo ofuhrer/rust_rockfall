@@ -22,7 +22,10 @@ parameters:
 simulation: { dt: 0.01, t_max: 4.0, stop_velocity: 0.05 }
 random: { seed: 91, ensemble_size: 1 }
 expected:
-  metrics: [total_scarring_energy_loss_j, max_scarring_depth_m, max_scarring_drag_force_n, energy_monotonicity_violation_j]
+  metrics: [impact_event_count, significant_impact_count, total_scarring_energy_loss_j, max_scarring_depth_m, max_scarring_drag_force_n, energy_monotonicity_violation_j]
+  values:
+    impact_event_count: 1.0
+    significant_impact_count: 1.0
   minimums:
     total_scarring_energy_loss_j: 1.0
     max_scarring_depth_m: 0.049

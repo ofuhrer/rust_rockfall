@@ -21,5 +21,6 @@ Core documents:
 - `model_review_v0_3.md`: rationale for the first opt-in impact roughness model.
 - `model_gap_analysis_v0_3.md`: theory-informed rationale for the minimal opt-in scarring model.
 - `scarring_contact_v1_review.md`: calibration-readiness review for the minimal scarring model.
+- `scarring_impact_inspection.md`: manual reconstruction of representative synthetic scarring impacts.
 
 Version notes are tracked in `../CHANGELOG.md`.

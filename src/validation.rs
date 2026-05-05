@@ -8,7 +8,7 @@ use crate::{
         simulate_ensemble, simulate_one_trajectory_with_terrain, SimulationConfig, SimulationError,
         TerrainConfig, TrajectoryRequest, TrajectoryRun,
     },
-    state::{BodyState, ContactState, TrajectorySample},
+    state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::TerrainError,
     Vec3,
@@ -31,6 +31,8 @@ pub fn free_flight_state(initial: BodyState, gravity_mps2: f64, time_s: f64) -> 
         angular_velocity_radps: initial.angular_velocity_radps,
     }
 }
+
+pub const SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
 
 pub fn translational_energy_j(state: &BodyState, block: &SphereBlock) -> f64 {
     0.5 * block.mass_kg * state.velocity_mps.norm_squared()
@@ -442,15 +444,16 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         .ok_or_else(|| ValidationError::EmptyTrajectory(case.case_id.clone()))?;
 
     let terrain = config.terrain.build()?;
-    let mut metrics = compute_metrics(
+    let mut metrics = compute_metrics(MetricContext {
         samples,
+        impact_events: &result.impact_events,
         first,
         last,
-        terrain.as_ref(),
-        &config.block,
-        &observations.deposition_points,
-        &case.expected,
-    );
+        terrain: terrain.as_ref(),
+        block: &config.block,
+        observations: &observations.deposition_points,
+        expected: &case.expected,
+    });
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
     compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
@@ -630,20 +633,32 @@ fn build_terrain_config(terrain: &CaseTerrain) -> Result<TerrainConfig, Validati
     }
 }
 
-fn compute_metrics(
-    samples: &[TrajectorySample],
-    first: &TrajectorySample,
-    last: &TrajectorySample,
-    terrain: &dyn crate::terrain::Terrain,
-    block: &SphereBlock,
-    observations: &[DepositionPoint],
-    expected: &ExpectedConfig,
-) -> BTreeMap<String, f64> {
+struct MetricContext<'a> {
+    samples: &'a [TrajectorySample],
+    impact_events: &'a [ImpactEvent],
+    first: &'a TrajectorySample,
+    last: &'a TrajectorySample,
+    terrain: &'a dyn crate::terrain::Terrain,
+    block: &'a SphereBlock,
+    observations: &'a [DepositionPoint],
+    expected: &'a ExpectedConfig,
+}
+
+fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
+    let samples = context.samples;
+    let impact_events = context.impact_events;
+    let first = context.first;
+    let last = context.last;
+    let terrain = context.terrain;
+    let block = context.block;
+    let observations = context.observations;
+    let expected = context.expected;
     let mut metrics = BTreeMap::new();
     let dx = last.x_m - first.x_m;
     let dy = last.y_m - first.y_m;
     let runout = (dx * dx + dy * dy).sqrt();
     let impact_count = impact_count(samples);
+    let significant_impact_count = significant_impact_count(impact_events);
     let max_speed = samples
         .iter()
         .map(|sample| sample.speed_mps)
@@ -662,6 +677,15 @@ fn compute_metrics(
     metrics.insert("runout_m".to_string(), runout);
     metrics.insert("final_speed_mps".to_string(), last.speed_mps);
     metrics.insert("impact_count".to_string(), impact_count as f64);
+    metrics.insert("impact_event_count".to_string(), impact_events.len() as f64);
+    metrics.insert(
+        "significant_impact_count".to_string(),
+        significant_impact_count as f64,
+    );
+    metrics.insert(
+        "significant_impact_min_normal_speed_mps".to_string(),
+        SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS,
+    );
     metrics.insert("max_speed_mps".to_string(), max_speed);
     metrics.insert("max_kinetic_energy_j".to_string(), max_kinetic);
     metrics.insert("max_bounce_height_m".to_string(), max_bounce_height);
@@ -1255,6 +1279,13 @@ fn impact_count(samples: &[TrajectorySample]) -> usize {
             pair[1].contact_state == ContactState::Impact
                 && pair[0].contact_state == ContactState::Airborne
         })
+        .count()
+}
+
+fn significant_impact_count(impact_events: &[ImpactEvent]) -> usize {
+    impact_events
+        .iter()
+        .filter(|event| event.incoming_normal_speed_mps >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS)
         .count()
 }
 

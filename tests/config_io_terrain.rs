@@ -616,6 +616,66 @@ fn validation_case_runner_writes_metrics_for_synthetic_fixture() {
 }
 
 #[test]
+fn validation_reports_raw_and_significant_impact_counts_separately() {
+    let case_path = temp_path("impact_count_semantics.yaml");
+    let diagnostics = temp_path("impact_count_semantics.json");
+    let trajectory = temp_path("impact_count_semantics.csv");
+    let impacts = temp_path("impact_count_semantics_impacts.csv");
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: impact_count_semantics
+title: Impact count semantics
+level: 1
+description: Temporary scarring case with low-energy contact chatter.
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 50.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, -0.2]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.4
+  tangential_restitution: 0.85
+  friction_coefficient: 0.4
+  soil_interaction_model: scarring_contact_v1
+  soil_strength_pa: 500000.0
+  scarring_drag_coefficient: 0.01
+  scarring_layer_density_kgpm3: 1600.0
+simulation: {{ dt: 0.005, t_max: 1.0, stop_velocity: 0.05 }}
+random: {{ seed: 777, ensemble_size: 1 }}
+expected:
+  metrics: [impact_event_count, significant_impact_count, significant_impact_min_normal_speed_mps]
+outputs:
+  diagnostics_json: {}
+  trajectory_csv: {}
+  impact_events_csv: {}
+"#,
+            diagnostics.display(),
+            trajectory.display(),
+            impacts.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+
+    assert!(report.metrics["impact_event_count"] > report.metrics["significant_impact_count"]);
+    assert!(report.metrics["significant_impact_count"] > 0.0);
+    assert_abs_diff_eq!(
+        report.metrics["significant_impact_min_normal_speed_mps"],
+        0.05,
+        epsilon = 1.0e-12
+    );
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+    fs::remove_file(impacts).unwrap();
+}
+
+#[test]
 fn tschamut_validation_fixture_runs_reproducibly() {
     let output = PathBuf::from("validation/results/tschamut_basic_metrics.json");
     let trajectory = PathBuf::from("validation/results/tschamut_basic_trajectory.csv");

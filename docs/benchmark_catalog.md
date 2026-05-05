@@ -32,6 +32,8 @@ This catalog lists the current `v0.4.0` verification and validation cases. These
 - `synthetic_scarring_depth_velocity_scaling`: inferred scarring depth activates for finite normal impact speed without drag energy loss.
 - `synthetic_scarring_depth_soil_strength_scaling`: weak-soil scarring parameters produce a substantial inferred depth diagnostic.
 
+Impact count metrics are explicit: `impact_event_count` is the raw event ledger, `significant_impact_count` filters event rows to incoming normal speed at or above `0.05 m/s`, and legacy `impact_count` remains the trajectory-state transition count.
+
 ## Level 2: Motion-Regime Tests
 
 - `regime_bounce_to_slide_transition`: impact followed by contact-dominated motion inferred from diagnostics.

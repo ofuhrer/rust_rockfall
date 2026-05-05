@@ -23,6 +23,18 @@ Each event records four state snapshots:
 
 The trajectory CSV row for the same time corresponds to the `post_step` state. The impact-event record is therefore the source of truth for reconstructing the intermediate contact and scarring stages.
 
+## Raw And Significant Impacts
+
+The impact-event log is intentionally raw: one `ImpactEvent` is emitted whenever the contact response reports an impact. During low-energy near-rest motion this can include contact chatter with tiny normal approach speeds.
+
+For interpretation and reporting, the validation metrics distinguish:
+
+- `impact_event_count`: every raw impact-event record;
+- `significant_impact_count`: event records with `incoming_normal_speed_mps >= 0.05 m/s`;
+- `impact_count`: the older trajectory-sample transition metric, retained for backward compatibility.
+
+Use `impact_event_count` for audit trails and `significant_impact_count` for physically meaningful impact comparisons. Do not assume `impact_event_count == impact_count`.
+
 ## Normal And Tangential Components
 
 For each velocity snapshot, the event reports normal and tangential speed relative to the base terrain normal. `impact_angle_deg` is the angle between the incoming travel direction and the terrain normal:
