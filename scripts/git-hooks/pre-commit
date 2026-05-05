@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "cargo is not on PATH. Install Rust or source \"\$HOME/.cargo/env\"." >&2
+  exit 1
+fi
+
+echo "pre-commit: cargo fmt --check"
+cargo fmt --check
+
+echo "pre-commit: YAML syntax check"
+python3 - <<'PY'
+from pathlib import Path
+import sys
+
+try:
+    import yaml
+except ImportError:
+    print("PyYAML is required for the YAML syntax check. Install with `python3 -m pip install PyYAML`.", file=sys.stderr)
+    raise SystemExit(1)
+
+paths = (
+    list(Path("verification").glob("**/*.yaml"))
+    + list(Path("validation/cases").glob("*.yaml"))
+    + [Path("data/datasets.yaml"), Path("docs/benchmark_case_schema.yaml")]
+)
+for path in paths:
+    with path.open() as file:
+        yaml.safe_load(file)
+print(f"checked {len(paths)} YAML files")
+PY
+

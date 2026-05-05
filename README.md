@@ -78,3 +78,22 @@ cargo run -- verify --all
 ```
 
 Optional public-data validation cases skip gracefully until data have been downloaded and preprocessed.
+
+## Local Git Hooks
+
+Optional hook templates are stored under `scripts/git-hooks/`. Install them with:
+
+```bash
+scripts/install_git_hooks.sh
+```
+
+The `pre-commit` hook runs `cargo fmt --check` and YAML syntax checks. The `pre-push` hook runs the full local chain:
+
+```bash
+cargo fmt --check \
+  && cargo clippy --all-targets --all-features -- -D warnings \
+  && cargo test \
+  && cargo run -- verify --all
+```
+
+CI remains the source of truth; the hooks are a local guardrail.

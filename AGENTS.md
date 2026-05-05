@@ -26,6 +26,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Document any new equation, parameter, assumption, or limitation in the appropriate `docs/` file.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
+- If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
 
 ## Hard Boundaries
 
@@ -46,12 +47,45 @@ When these files conflict, preserve the safety constraints first, then update th
 Before handoff, run these when a Rust toolchain is available:
 
 ```bash
-cargo test
 cargo fmt --check
-cargo clippy -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cargo run -- verify --all
 ```
 
 If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
+
+## Commit and Push Discipline
+
+Before committing:
+
+- Run the full local test chain:
+
+  ```bash
+  cargo fmt --check \
+    && cargo clippy --all-targets --all-features -- -D warnings \
+    && cargo test \
+    && cargo run -- verify --all
+  ```
+
+- Do a quick consistency pass:
+  - inspect `git status -sb`;
+  - confirm generated outputs under `verification/results/`, `validation/results/`, `target/`, and downloaded raw data are not staged;
+  - scan changed docs and CLI examples for stale command names or paths;
+  - confirm new or changed features are covered by focused tests and listed in the relevant V&V docs when applicable.
+
+Before pushing:
+
+- Re-run the full local test chain, or run `scripts/git-hooks/pre-push` directly.
+- Do a more thorough consistency pass:
+  - review the staged or committed diff with `git show --stat --oneline HEAD` and targeted `git show` sections;
+  - verify `README.md`, `AGENTS.md`, and relevant files in `docs/` agree on scope, commands, limitations, and validation status;
+  - verify public dataset metadata includes source, DOI or URL, license, local path, and download/preprocessing status;
+  - verify no proprietary data, large raw downloads, generated result reports, or unrelated local files are included;
+  - verify CLI commands in docs still match the implemented subcommands;
+  - verify all optional real-world validation cases skip gracefully when data are absent.
+
+If a check is intentionally skipped, record the exact reason in the final response or commit notes.
 
 ## Test Coverage Expectations
 

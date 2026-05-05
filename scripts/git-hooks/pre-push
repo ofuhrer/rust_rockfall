@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "cargo is not on PATH. Install Rust or source \"\$HOME/.cargo/env\"." >&2
+  exit 1
+fi
+
+echo "pre-push: full local verification chain"
+cargo fmt --check \
+  && cargo clippy --all-targets --all-features -- -D warnings \
+  && cargo test \
+  && cargo run -- verify --all
+
