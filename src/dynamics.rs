@@ -57,16 +57,20 @@ impl Default for ScarringSettings {
 
 impl ScarringSettings {
     pub fn validate(&self) -> Result<(), &'static str> {
-        if self.soil_strength_pa < 0.0 {
+        if !self.soil_strength_pa.is_finite() || self.soil_strength_pa < 0.0 {
             return Err("soil_strength_pa");
         }
-        if self.scarring_drag_coefficient < 0.0 {
+        if !self.scarring_drag_coefficient.is_finite() || self.scarring_drag_coefficient < 0.0 {
             return Err("scarring_drag_coefficient");
         }
-        if self.scarring_layer_density_kgpm3 < 0.0 {
+        if !self.scarring_layer_density_kgpm3.is_finite() || self.scarring_layer_density_kgpm3 < 0.0
+        {
             return Err("scarring_layer_density_kgpm3");
         }
-        if self.scarring_max_depth_m.is_some_and(|depth| depth < 0.0) {
+        if self
+            .scarring_max_depth_m
+            .is_some_and(|depth| !depth.is_finite() || depth < 0.0)
+        {
             return Err("scarring_max_depth_m");
         }
         Ok(())

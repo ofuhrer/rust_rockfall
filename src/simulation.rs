@@ -293,26 +293,22 @@ impl SimulationConfig {
     }
 
     fn validate(&self) -> Result<(), SimulationError> {
-        if self.block.radius_m <= 0.0 {
-            return Err(SimulationError::NonPositive("block.radius_m"));
-        }
-        if self.block.mass_kg <= 0.0 {
-            return Err(SimulationError::NonPositive("block.mass_kg"));
-        }
-        if self.dt_s <= 0.0 {
-            return Err(SimulationError::NonPositive("dt_s"));
-        }
-        if self.max_time_s <= 0.0 {
-            return Err(SimulationError::NonPositive("max_time_s"));
-        }
-        if self.gravity_mps2 <= 0.0 {
-            return Err(SimulationError::NonPositive("gravity_mps2"));
-        }
-        if self.rolling_resistance_coefficient < 0.0 {
-            return Err(SimulationError::NonPositive(
-                "rolling_resistance_coefficient",
-            ));
-        }
+        require_positive(self.block.radius_m, "block.radius_m")?;
+        require_positive(self.block.mass_kg, "block.mass_kg")?;
+        require_positive(self.dt_s, "dt_s")?;
+        require_positive(self.max_time_s, "max_time_s")?;
+        require_positive(self.gravity_mps2, "gravity_mps2")?;
+        require_nonnegative(self.normal_restitution, "normal_restitution")?;
+        require_nonnegative(self.tangential_restitution, "tangential_restitution")?;
+        require_nonnegative(self.friction_coefficient, "friction_coefficient")?;
+        require_nonnegative(
+            self.rolling_resistance_coefficient,
+            "rolling_resistance_coefficient",
+        )?;
+        require_nonnegative(self.stop_speed_mps, "stop_speed_mps")?;
+        self.release_perturbation
+            .validate()
+            .map_err(SimulationError::NonPositive)?;
         ContactRoughness {
             roughness_model: self.roughness_model,
             roughness_std_normal: self.roughness_std_normal,
@@ -331,6 +327,22 @@ impl SimulationConfig {
         .validate()
         .map_err(SimulationError::NonPositive)?;
         Ok(())
+    }
+}
+
+fn require_positive(value: f64, field: &'static str) -> Result<(), SimulationError> {
+    if value.is_finite() && value > 0.0 {
+        Ok(())
+    } else {
+        Err(SimulationError::NonPositive(field))
+    }
+}
+
+fn require_nonnegative(value: f64, field: &'static str) -> Result<(), SimulationError> {
+    if value.is_finite() && value >= 0.0 {
+        Ok(())
+    } else {
+        Err(SimulationError::NonPositive(field))
     }
 }
 

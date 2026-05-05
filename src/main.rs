@@ -156,16 +156,25 @@ fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(),
 }
 
 fn collect_yaml_cases(root: &Path) -> Result<Vec<PathBuf>, CliError> {
+    if !root.exists() {
+        return Err(CliError::Usage(format!(
+            "case root does not exist: {}",
+            root.display()
+        )));
+    }
     let mut cases = Vec::new();
     collect_yaml_cases_recursive(root, &mut cases)?;
     cases.sort_by_key(|path| case_sort_key(path));
+    if cases.is_empty() {
+        return Err(CliError::Usage(format!(
+            "no YAML cases found under {}",
+            root.display()
+        )));
+    }
     Ok(cases)
 }
 
 fn collect_yaml_cases_recursive(root: &Path, cases: &mut Vec<PathBuf>) -> Result<(), CliError> {
-    if !root.exists() {
-        return Ok(());
-    }
     for entry in fs::read_dir(root)? {
         let entry = entry?;
         let path = entry.path();
@@ -273,5 +282,25 @@ fn case_order(case_id: &str) -> u16 {
         "validation_tschamut_baseline" => 600,
         "validation_tschamut_scarring" => 610,
         _ => 1000,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collect_yaml_cases_reports_empty_root() {
+        let root =
+            std::env::temp_dir().join(format!("rust_rockfall_empty_cases_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        let error = collect_yaml_cases(&root).unwrap_err();
+        assert!(matches!(
+            error,
+            CliError::Usage(message) if message.contains("no YAML cases found")
+        ));
+
+        fs::remove_dir(root).unwrap();
     }
 }

@@ -118,7 +118,29 @@ When private terrain is not available, use the opt-in synthetic scale benchmark:
 python3 scripts/run_performance_benchmark.py
 ```
 
-This generates synthetic terrain, source-area metadata, validation cases, and benchmark outputs under ignored `validation/results/performance_synthetic_scale/`. It runs a matrix over release counts, contact models, full trajectory output on/off, impact-event output on/off, and hazard layers with/without plots.
+This runs the default `standard` profile and generates synthetic terrain,
+source-area metadata, validation cases, and benchmark outputs under ignored
+`validation/results/performance_synthetic_scale/`. The standard profile is a
+short no-plot matrix over 10 releases, both contact models, full trajectory
+output, Parquet impact-event output, a shorter synthetic horizon, and one
+representative sampling-weighted hazard stage. It is intended for routine local
+iteration. The runner builds the local debug `rockfall` binary once when needed
+and reuses it for generated cases, so default timing is not dominated by repeated
+Cargo startup. Use `scale` or `custom` when CSV impact-event output must be
+included.
+
+For larger data-format decisions, use the explicit scale profile:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile scale \
+  --output-root validation/results/parquet_impact_benchmark
+```
+
+The scale profile uses release counts `500` and `1000`, includes CSV+Parquet
+impact output, may take many minutes, and can produce gigabytes of ignored
+artifacts. Use `--profile smoke` for a very small script sanity check and
+`--profile custom --counts ... --output-modes ...` for targeted local trials.
 
 See `docs/performance_benchmark_synthetic_scale.md` for command variants and interpretation guidance. The synthetic benchmark is intentionally not part of `cargo run -- validate --all`.
 

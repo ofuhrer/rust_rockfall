@@ -19,6 +19,18 @@ impl Default for ReleasePerturbation {
     }
 }
 
+impl ReleasePerturbation {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if !self.position_uniform_m.is_finite() || self.position_uniform_m < 0.0 {
+            return Err("release_perturbation.position_uniform_m");
+        }
+        if !self.velocity_uniform_mps.is_finite() || self.velocity_uniform_mps < 0.0 {
+            return Err("release_perturbation.velocity_uniform_mps");
+        }
+        Ok(())
+    }
+}
+
 pub fn seeded_rng(seed: u64) -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(seed)
 }
@@ -105,13 +117,13 @@ impl ContactRoughness {
     }
 
     pub fn validate(&self) -> Result<(), &'static str> {
-        if self.roughness_std_normal < 0.0 {
+        if !self.roughness_std_normal.is_finite() || self.roughness_std_normal < 0.0 {
             return Err("roughness_std_normal");
         }
-        if self.roughness_std_tangent < 0.0 {
+        if !self.roughness_std_tangent.is_finite() || self.roughness_std_tangent < 0.0 {
             return Err("roughness_std_tangent");
         }
-        if self.roughness_std_angle < 0.0 {
+        if !self.roughness_std_angle.is_finite() || self.roughness_std_angle < 0.0 {
             return Err("roughness_std_angle");
         }
         Ok(())

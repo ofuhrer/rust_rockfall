@@ -21,6 +21,8 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             runs = perf.prepare_benchmark_inputs(
                 output_root=output_root,
                 counts=[2],
+                contact_models=["translational_v0"],
+                output_modes=["summary_only", "trajectories", "csv_parquet"],
                 terrain_size=16,
                 cell_size=2.0,
                 dt=0.05,
@@ -28,7 +30,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                 seed=123,
             )
 
-            self.assertEqual(len(runs), len(perf.CONTACT_MODELS) * len(perf.OUTPUT_MODES))
+            self.assertEqual(len(runs), 3)
             self.assertTrue((output_root / "inputs" / "synthetic_scale_dem.asc").exists())
             self.assertTrue((output_root / "inputs" / "synthetic_scale_terrain_metadata.yaml").exists())
             self.assertTrue((output_root / "inputs" / "release_zone_2.yaml").exists())
@@ -39,12 +41,105 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             self.assertEqual(case["expected"]["values"]["release_zone_point_count"], 2.0)
             self.assertNotIn("ensemble_trajectories_dir", case["outputs"])
             self.assertNotIn("ensemble_impact_events_dir", case["outputs"])
+            self.assertNotIn("ensemble_impact_events_parquet", case["outputs"])
 
-            full_output = next(run for run in runs if run.mode_name == "trajectories_impacts")
+            full_output = next(run for run in runs if run.mode_name == "trajectories_csv_parquet_impacts")
             full_case = yaml.safe_load(full_output.case_path.read_text())
             self.assertIn("ensemble_trajectories_dir", full_case["outputs"])
             self.assertIn("ensemble_impact_events_dir", full_case["outputs"])
+            self.assertIn("ensemble_impact_events_parquet", full_case["outputs"])
+            self.assertIn("trajectory_metadata_csv", full_case["outputs"])
             self.assertEqual(full_case["simulation"]["max_steps"], 4)
+
+    def test_profiles_resolve_expected_matrix_defaults(self) -> None:
+        smoke = perf.resolve_benchmark_config(perf.parse_args(["--profile", "smoke"]))
+        self.assertEqual(smoke.counts, (5,))
+        self.assertEqual(smoke.contact_models, ("translational_v0",))
+        self.assertEqual(smoke.output_modes, ("trajectories", "parquet"))
+        self.assertEqual(smoke.hazard_plots, "no-plots")
+
+        standard = perf.resolve_benchmark_config(perf.parse_args([]))
+        self.assertEqual(standard.profile, "standard")
+        self.assertEqual(standard.counts, (10,))
+        self.assertEqual(standard.contact_models, perf.CONTACT_MODELS)
+        self.assertEqual(standard.output_modes, ("trajectories", "parquet"))
+        self.assertEqual(standard.hazard_plots, "no-plots")
+        self.assertEqual(standard.weighted_hazard, "representative")
+        self.assertEqual(standard.t_max, 3.0)
+        self.assertNotIn("csv", standard.output_modes)
+        self.assertNotIn("csv_parquet", standard.output_modes)
+
+        scale = perf.resolve_benchmark_config(perf.parse_args(["--profile", "scale"]))
+        self.assertEqual(scale.counts, (500, 1000))
+        self.assertIn("csv_parquet", scale.output_modes)
+        self.assertEqual(scale.weighted_hazard, "representative")
+
+    def test_custom_profile_requires_counts_and_modes(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires --counts and --output-modes"):
+            perf.resolve_benchmark_config(perf.parse_args(["--profile", "custom"]))
+
+        custom = perf.resolve_benchmark_config(
+            perf.parse_args(
+                [
+                    "--profile",
+                    "custom",
+                    "--counts",
+                    "3",
+                    "4",
+                    "--output-modes",
+                    "trajectories",
+                    "parquet",
+                    "--contact-models",
+                    "translational_v0",
+                ]
+            )
+        )
+        self.assertEqual(custom.counts, (3, 4))
+        self.assertEqual(custom.output_modes, ("trajectories", "parquet"))
+        self.assertEqual(custom.contact_models, ("translational_v0",))
+
+    def test_benchmark_selection_rejects_empty_and_incompatible_modes(self) -> None:
+        with self.assertRaisesRegex(ValueError, "at least one contact model"):
+            perf.prepare_benchmark_inputs(
+                output_root=Path("/tmp/unused"),
+                counts=[1],
+                contact_models=[],
+                output_modes=["trajectories"],
+                terrain_size=16,
+                cell_size=2.0,
+                dt=0.05,
+                t_max=0.2,
+                seed=123,
+            )
+
+        with self.assertRaisesRegex(ValueError, "at least one output mode"):
+            perf.prepare_benchmark_inputs(
+                output_root=Path("/tmp/unused"),
+                counts=[1],
+                contact_models=["translational_v0"],
+                output_modes=[],
+                terrain_size=16,
+                cell_size=2.0,
+                dt=0.05,
+                t_max=0.2,
+                seed=123,
+            )
+
+        with self.assertRaisesRegex(ValueError, "requires an output mode with Parquet"):
+            perf.resolve_benchmark_config(
+                perf.parse_args(
+                    [
+                        "--profile",
+                        "custom",
+                        "--counts",
+                        "3",
+                        "--output-modes",
+                        "trajectories",
+                        "--weighted-hazard",
+                        "representative",
+                    ]
+                )
+            )
 
     def test_summary_report_uses_manifest_performance_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,7 +169,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                 contact_model="translational_v0",
                 mode_name="summary_only",
                 write_trajectories=False,
-                write_impacts=False,
+                impact_output_mode="none",
                 case_path=output_root / "case.yaml",
                 manifest_path=manifest,
                 diagnostics_path=output_root / "metrics.json",

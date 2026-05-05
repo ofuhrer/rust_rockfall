@@ -27,14 +27,56 @@ except ImportError as exc:  # pragma: no cover - environment issue.
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_ROOT = ROOT / "validation" / "results" / "performance_synthetic_scale"
-DEFAULT_COUNTS = (50, 100, 200)
 CONTACT_MODELS = ("translational_v0", "sphere_rotational_v1")
-OUTPUT_MODES = (
-    ("summary_only", False, False),
-    ("trajectories", True, False),
-    ("impacts", False, True),
-    ("trajectories_impacts", True, True),
-)
+OUTPUT_MODE_SPECS = {
+    "summary_only": ("summary_only", False, "none"),
+    "trajectories": ("trajectories", True, "none"),
+    "csv": ("trajectories_csv_impacts", True, "csv"),
+    "parquet": ("trajectories_parquet_impacts", True, "parquet"),
+    "csv_parquet": ("trajectories_csv_parquet_impacts", True, "csv_parquet"),
+}
+OUTPUT_MODE_CHOICES = tuple(OUTPUT_MODE_SPECS)
+
+
+@dataclass(frozen=True)
+class BenchmarkProfile:
+    counts: tuple[int, ...]
+    contact_models: tuple[str, ...]
+    output_modes: tuple[str, ...]
+    hazard_plots: str
+    weighted_hazard: str
+    terrain_size: int = 80
+    cell_size: float = 2.0
+    dt: float = 0.02
+    t_max: float = 5.0
+
+
+PROFILES: dict[str, BenchmarkProfile] = {
+    "smoke": BenchmarkProfile(
+        counts=(5,),
+        contact_models=("translational_v0",),
+        output_modes=("trajectories", "parquet"),
+        hazard_plots="no-plots",
+        weighted_hazard="none",
+        terrain_size=24,
+        t_max=1.0,
+    ),
+    "standard": BenchmarkProfile(
+        counts=(10,),
+        contact_models=CONTACT_MODELS,
+        output_modes=("trajectories", "parquet"),
+        hazard_plots="no-plots",
+        weighted_hazard="representative",
+        t_max=3.0,
+    ),
+    "scale": BenchmarkProfile(
+        counts=(500, 1000),
+        contact_models=CONTACT_MODELS,
+        output_modes=("summary_only", "trajectories", "csv", "parquet", "csv_parquet"),
+        hazard_plots="no-plots",
+        weighted_hazard="representative",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -44,10 +86,25 @@ class BenchmarkRun:
     contact_model: str
     mode_name: str
     write_trajectories: bool
-    write_impacts: bool
+    impact_output_mode: str
     case_path: Path
     manifest_path: Path
     diagnostics_path: Path
+
+
+@dataclass(frozen=True)
+class ResolvedBenchmarkConfig:
+    profile: str
+    counts: tuple[int, ...]
+    contact_models: tuple[str, ...]
+    output_modes: tuple[str, ...]
+    hazard_plots: str
+    weighted_hazard: str
+    terrain_size: int
+    cell_size: float
+    dt: float
+    t_max: float
+    seed: int
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -55,18 +112,49 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Run opt-in synthetic performance benchmarks and summarize manifest timings."
     )
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
-    parser.add_argument("--counts", type=int, nargs="+", default=list(DEFAULT_COUNTS))
-    parser.add_argument("--terrain-size", type=int, default=80, help="synthetic DEM width/height in cells")
-    parser.add_argument("--cell-size", type=float, default=2.0, help="synthetic DEM cell size in metres")
-    parser.add_argument("--dt", type=float, default=0.02)
-    parser.add_argument("--t-max", type=float, default=5.0)
+    parser.add_argument(
+        "--profile",
+        choices=("smoke", "standard", "scale", "custom"),
+        default="standard",
+        help=(
+            "benchmark profile: smoke is test-fast, standard is the default routine no-plot run, "
+            "scale reproduces the 500/1000 exploratory matrix, custom requires --counts and --output-modes"
+        ),
+    )
+    parser.add_argument("--counts", type=int, nargs="+", help="release counts; overrides the selected profile")
+    parser.add_argument(
+        "--contact-models",
+        nargs="+",
+        choices=CONTACT_MODELS,
+        help="contact models to benchmark; overrides the selected profile",
+    )
+    parser.add_argument(
+        "--output-modes",
+        nargs="+",
+        choices=OUTPUT_MODE_CHOICES,
+        help=(
+            "output modes to benchmark: trajectories has no impact-event output, csv writes the CSV "
+            "impact directory, parquet writes one impact-event Parquet file, csv_parquet writes both"
+        ),
+    )
+    parser.add_argument("--terrain-size", type=int, help="synthetic DEM width/height in cells")
+    parser.add_argument("--cell-size", type=float, help="synthetic DEM cell size in metres")
+    parser.add_argument("--dt", type=float)
+    parser.add_argument("--t-max", type=float)
     parser.add_argument("--seed", type=int, default=97031)
     parser.add_argument("--skip-hazard", action="store_true", help="skip hazard-layer post-processing")
     parser.add_argument(
         "--hazard-plots",
         choices=("both", "with-plots", "no-plots"),
-        default="both",
-        help="which hazard-layer plotting modes to run when trajectory output is enabled",
+        help="which hazard-layer plotting modes to run when trajectory output is enabled; overrides the profile",
+    )
+    parser.add_argument(
+        "--weighted-hazard",
+        choices=("none", "representative", "all"),
+        help=(
+            "run opt-in sampling-weighted hazard layers using trajectory_metadata_table_v1; "
+            "representative runs the first eligible no-plot hazard case only; overrides the profile"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -79,23 +167,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        config = resolve_benchmark_config(args)
         runs = prepare_benchmark_inputs(
             output_root=args.output_root,
-            counts=args.counts,
-            terrain_size=args.terrain_size,
-            cell_size=args.cell_size,
-            dt=args.dt,
-            t_max=args.t_max,
-            seed=args.seed,
+            counts=list(config.counts),
+            contact_models=list(config.contact_models),
+            output_modes=list(config.output_modes),
+            terrain_size=config.terrain_size,
+            cell_size=config.cell_size,
+            dt=config.dt,
+            t_max=config.t_max,
+            seed=config.seed,
         )
         if args.dry_run:
-            print(f"prepared {len(runs)} benchmark cases under {args.output_root}")
+            print(
+                f"prepared {len(runs)} {config.profile} benchmark cases under {args.output_root} "
+                f"(counts={list(config.counts)}, output_modes={list(config.output_modes)})"
+            )
             return 0
         rows = run_benchmark_matrix(
             runs,
             output_root=args.output_root,
             skip_hazard=args.skip_hazard,
-            hazard_plots=args.hazard_plots,
+            hazard_plots=config.hazard_plots,
+            weighted_hazard=config.weighted_hazard,
         )
         write_summary_reports(args.output_root, rows)
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
@@ -104,10 +199,55 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def resolve_benchmark_config(args: argparse.Namespace) -> ResolvedBenchmarkConfig:
+    if args.profile == "custom":
+        if args.counts is None or args.output_modes is None:
+            raise ValueError("--profile custom requires --counts and --output-modes")
+        base = PROFILES["standard"]
+    else:
+        base = PROFILES[args.profile]
+
+    counts = tuple(args.counts) if args.counts is not None else base.counts
+    contact_models = tuple(args.contact_models) if args.contact_models is not None else base.contact_models
+    output_modes = tuple(args.output_modes) if args.output_modes is not None else base.output_modes
+    hazard_plots = args.hazard_plots if args.hazard_plots is not None else base.hazard_plots
+    weighted_hazard = args.weighted_hazard if args.weighted_hazard is not None else base.weighted_hazard
+    terrain_size = args.terrain_size if args.terrain_size is not None else base.terrain_size
+    cell_size = args.cell_size if args.cell_size is not None else base.cell_size
+    dt = args.dt if args.dt is not None else base.dt
+    t_max = args.t_max if args.t_max is not None else base.t_max
+
+    unknown_modes = [mode for mode in output_modes if mode not in OUTPUT_MODE_SPECS]
+    if unknown_modes:
+        raise ValueError(f"unsupported output modes: {unknown_modes}")
+    validate_benchmark_selection(
+        counts=counts,
+        contact_models=contact_models,
+        output_modes=output_modes,
+        weighted_hazard=weighted_hazard,
+    )
+
+    return ResolvedBenchmarkConfig(
+        profile=args.profile,
+        counts=counts,
+        contact_models=contact_models,
+        output_modes=output_modes,
+        hazard_plots=hazard_plots,
+        weighted_hazard=weighted_hazard,
+        terrain_size=terrain_size,
+        cell_size=cell_size,
+        dt=dt,
+        t_max=t_max,
+        seed=args.seed,
+    )
+
+
 def prepare_benchmark_inputs(
     *,
     output_root: Path,
     counts: list[int],
+    contact_models: list[str] | None = None,
+    output_modes: list[str] | None = None,
     terrain_size: int,
     cell_size: float,
     dt: float,
@@ -115,6 +255,16 @@ def prepare_benchmark_inputs(
     seed: int,
 ) -> list[BenchmarkRun]:
     validate_positive_counts(counts)
+    if contact_models is None:
+        contact_models = list(PROFILES["standard"].contact_models)
+    if output_modes is None:
+        output_modes = list(PROFILES["standard"].output_modes)
+    validate_benchmark_selection(
+        counts=tuple(counts),
+        contact_models=tuple(contact_models),
+        output_modes=tuple(output_modes),
+        weighted_hazard="none",
+    )
     if terrain_size < 16:
         raise ValueError("--terrain-size must be at least 16 cells")
     if cell_size <= 0.0:
@@ -149,8 +299,11 @@ def prepare_benchmark_inputs(
             cell_size=cell_size,
             seed=seed + count,
         )
-        for contact_model in CONTACT_MODELS:
-            for mode_name, write_trajectories, write_impacts in OUTPUT_MODES:
+        for contact_model in contact_models:
+            if contact_model not in CONTACT_MODELS:
+                raise ValueError(f"unsupported contact model: {contact_model}")
+            for output_mode in output_modes:
+                mode_name, write_trajectories, impact_output_mode = OUTPUT_MODE_SPECS[output_mode]
                 run_id = run_identifier(count, contact_model, mode_name)
                 case_path = cases_dir / f"{run_id}.yaml"
                 diagnostics_path = results_dir / f"{run_id}_metrics.json"
@@ -166,7 +319,7 @@ def prepare_benchmark_inputs(
                     manifest_path=manifest_path,
                     contact_model=contact_model,
                     write_trajectories=write_trajectories,
-                    write_impacts=write_impacts,
+                    impact_output_mode=impact_output_mode,
                     dt=dt,
                     t_max=t_max,
                     seed=seed,
@@ -179,7 +332,7 @@ def prepare_benchmark_inputs(
                         contact_model=contact_model,
                         mode_name=mode_name,
                         write_trajectories=write_trajectories,
-                        write_impacts=write_impacts,
+                        impact_output_mode=impact_output_mode,
                         case_path=case_path,
                         manifest_path=manifest_path,
                         diagnostics_path=diagnostics_path,
@@ -194,31 +347,77 @@ def run_benchmark_matrix(
     output_root: Path,
     skip_hazard: bool,
     hazard_plots: str,
+    weighted_hazard: str,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    weighted_representative_run = False
+    rockfall_command = ensure_rockfall_command()
     for run in runs:
         subprocess.run(
-            ["cargo", "run", "--quiet", "--", "validate", "--case", str(run.case_path)],
+            [str(rockfall_command), "validate", "--case", str(run.case_path)],
             cwd=ROOT,
             check=True,
         )
         rows.append(row_from_manifest(run=run, stage="validation", manifest_path=run.manifest_path))
         if not skip_hazard and run.write_trajectories:
             if hazard_plots in ("both", "with-plots"):
-                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=False))
+                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=False, weighted=False))
             if hazard_plots in ("both", "no-plots"):
-                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=True))
+                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=True, weighted=False))
+            if weighted_hazard == "all" or (
+                weighted_hazard == "representative"
+                and not weighted_representative_run
+                and run.impact_output_mode in {"parquet", "csv_parquet"}
+            ):
+                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=True, weighted=True))
+                weighted_representative_run = True
     return rows
 
 
-def run_hazard_stage(run: BenchmarkRun, *, output_root: Path, no_plots: bool) -> dict[str, Any]:
-    suffix = "hazard_no_plots" if no_plots else "hazard_with_plots"
+def ensure_rockfall_command() -> Path:
+    binary = ROOT / "target" / "debug" / ("rockfall.exe" if sys.platform == "win32" else "rockfall")
+    if not binary.exists():
+        subprocess.run(["cargo", "build", "--quiet", "--bin", "rockfall"], cwd=ROOT, check=True)
+    if not binary.exists():
+        raise OSError(f"rockfall binary was not built at {binary}")
+    return binary
+
+
+def validate_benchmark_selection(
+    *,
+    counts: tuple[int, ...],
+    contact_models: tuple[str, ...],
+    output_modes: tuple[str, ...],
+    weighted_hazard: str,
+) -> None:
+    validate_positive_counts(list(counts))
+    if not contact_models:
+        raise ValueError("at least one contact model is required")
+    unknown_contact_models = [model for model in contact_models if model not in CONTACT_MODELS]
+    if unknown_contact_models:
+        raise ValueError(f"unsupported contact models: {unknown_contact_models}")
+    if not output_modes:
+        raise ValueError("at least one output mode is required")
+    unknown_modes = [mode for mode in output_modes if mode not in OUTPUT_MODE_SPECS]
+    if unknown_modes:
+        raise ValueError(f"unsupported output modes: {unknown_modes}")
+    if weighted_hazard == "representative" and not any(
+        mode in {"parquet", "csv_parquet"} for mode in output_modes
+    ):
+        raise ValueError(
+            "--weighted-hazard representative requires an output mode with Parquet impact events"
+        )
+
+
+def run_hazard_stage(run: BenchmarkRun, *, output_root: Path, no_plots: bool, weighted: bool) -> dict[str, Any]:
+    suffix = "hazard_weighted_no_plots" if weighted else ("hazard_no_plots" if no_plots else "hazard_with_plots")
     output_dir = output_root / "hazard" / run.run_id / suffix
+    case_path = make_weighted_hazard_case(run, output_root) if weighted else run.case_path
     command = [
         "python3",
         "scripts/build_hazard_layers.py",
         "--case",
-        str(run.case_path),
+        str(case_path),
         "--output-dir",
         str(output_dir),
         "--cell-size",
@@ -231,9 +430,73 @@ def run_hazard_stage(run: BenchmarkRun, *, output_root: Path, no_plots: bool) ->
     return row_from_manifest(run=run, stage=suffix, manifest_path=manifest_path)
 
 
+def make_weighted_hazard_case(run: BenchmarkRun, output_root: Path) -> Path:
+    case = yaml.safe_load(run.case_path.read_text(encoding="utf-8"))
+    metadata_path = (case.get("outputs") or {}).get("trajectory_metadata_csv")
+    if not metadata_path:
+        raise ValueError(f"{run.run_id} has no trajectory_metadata_csv for weighted hazard benchmark")
+    trajectory_dir = (case.get("outputs") or {}).get("ensemble_trajectories_dir")
+    if not trajectory_dir:
+        raise ValueError(f"{run.run_id} has no ensemble_trajectories_dir for weighted hazard benchmark")
+    metadata_path = write_filtered_weighted_metadata(
+        source_metadata=ROOT / str(metadata_path),
+        trajectory_dir=ROOT / str(trajectory_dir),
+        output_root=output_root,
+        run_id=run.run_id,
+    )
+    case["hazard_probability"] = {
+        "probability_model": "sampling_weighted",
+        "metadata_path": str(metadata_path),
+        "weight_column": "sampling_weight",
+        "normalization_convention": "conditioned_on_filter",
+        "filters": {
+            "source_zone_ids": [],
+            "scenario_ids": [],
+            "block_mass_kg_min": None,
+            "block_mass_kg_max": None,
+        },
+    }
+    weighted_dir = output_root / "cases_weighted"
+    weighted_dir.mkdir(parents=True, exist_ok=True)
+    case_path = weighted_dir / f"{run.run_id}_weighted.yaml"
+    case_path.write_text(yaml.safe_dump(case, sort_keys=False), encoding="utf-8")
+    return case_path
+
+
+def write_filtered_weighted_metadata(
+    *,
+    source_metadata: Path,
+    trajectory_dir: Path,
+    output_root: Path,
+    run_id: str,
+) -> Path:
+    trajectory_ids = {path.stem for path in trajectory_dir.glob("*.csv")}
+    if not trajectory_ids:
+        raise ValueError(f"{trajectory_dir} contains no trajectory CSV files")
+    metadata_dir = output_root / "weighted_metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    output_path = metadata_dir / f"{run_id}_weighted_metadata.csv"
+    with source_metadata.open(newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        if not reader.fieldnames or "trajectory_id" not in reader.fieldnames:
+            raise ValueError(f"{source_metadata} must contain trajectory_id")
+        rows = [row for row in reader if row.get("trajectory_id") in trajectory_ids]
+    if {row["trajectory_id"] for row in rows} != trajectory_ids:
+        missing = sorted(trajectory_ids - {row["trajectory_id"] for row in rows})
+        raise ValueError(f"{source_metadata} is missing trajectory metadata rows: {missing[:5]}")
+    with output_path.open("w", newline="", encoding="utf-8") as target:
+        writer = csv.DictWriter(target, fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return output_path
+
+
 def row_from_manifest(run: BenchmarkRun, *, stage: str, manifest_path: Path) -> dict[str, Any]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     performance = manifest.get("performance") or {}
+    outputs = manifest.get("outputs") or []
+    csv_impacts = sum_outputs(outputs, kind="ensemble_impact_events", format_name="csv_directory")
+    parquet_impacts = sum_outputs(outputs, kind="ensemble_impact_events", format_name="parquet")
     simulation_seconds = float(performance.get("simulation_seconds") or 0.0)
     total_seconds = float(performance.get("total_wall_seconds") or 0.0)
     trajectory_count = int(performance.get("trajectory_count") or 0)
@@ -245,7 +508,9 @@ def row_from_manifest(run: BenchmarkRun, *, stage: str, manifest_path: Path) -> 
         "release_count": run.release_count,
         "contact_model": run.contact_model,
         "trajectory_output": run.write_trajectories,
-        "impact_output": run.write_impacts,
+        "impact_output_mode": run.impact_output_mode,
+        "csv_impact_output": run.impact_output_mode in {"csv", "csv_parquet"},
+        "parquet_impact_output": run.impact_output_mode in {"parquet", "csv_parquet"},
         "total_wall_seconds": total_seconds,
         "terrain_load_seconds": float(performance.get("terrain_load_seconds") or 0.0),
         "release_generation_seconds": float(performance.get("release_generation_seconds") or 0.0),
@@ -260,6 +525,12 @@ def row_from_manifest(run: BenchmarkRun, *, stage: str, manifest_path: Path) -> 
         "impact_event_count": impact_count,
         "output_file_count": int(performance.get("output_file_count") or 0),
         "output_bytes": int(performance.get("output_bytes") or 0),
+        "csv_impact_file_count": csv_impacts["file_count"],
+        "csv_impact_bytes": csv_impacts["total_bytes"],
+        "csv_impact_rows": csv_impacts["row_count"],
+        "parquet_impact_file_count": parquet_impacts["file_count"],
+        "parquet_impact_bytes": parquet_impacts["total_bytes"],
+        "parquet_impact_rows": parquet_impacts["row_count"],
         "trajectories_per_second": safe_rate(trajectory_count, throughput_denominator),
         "impacts_per_second": safe_rate(impact_count, throughput_denominator),
         "manifest_path": str(manifest_path),
@@ -276,7 +547,9 @@ def write_summary_reports(output_root: Path, rows: list[dict[str, Any]]) -> None
         "release_count",
         "contact_model",
         "trajectory_output",
-        "impact_output",
+        "impact_output_mode",
+        "csv_impact_output",
+        "parquet_impact_output",
         "total_wall_seconds",
         "terrain_load_seconds",
         "release_generation_seconds",
@@ -291,6 +564,12 @@ def write_summary_reports(output_root: Path, rows: list[dict[str, Any]]) -> None
         "impact_event_count",
         "output_file_count",
         "output_bytes",
+        "csv_impact_file_count",
+        "csv_impact_bytes",
+        "csv_impact_rows",
+        "parquet_impact_file_count",
+        "parquet_impact_bytes",
+        "parquet_impact_rows",
         "trajectories_per_second",
         "impacts_per_second",
         "manifest_path",
@@ -327,6 +606,19 @@ def format_cell(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.6g}"
     return str(value)
+
+
+def sum_outputs(outputs: list[dict[str, Any]], *, kind: str, format_name: str) -> dict[str, int]:
+    matched = [
+        output
+        for output in outputs
+        if output.get("kind") == kind and output.get("format") == format_name
+    ]
+    return {
+        "file_count": sum(int(output.get("file_count") or 0) for output in matched),
+        "total_bytes": sum(int(output.get("total_bytes") or 0) for output in matched),
+        "row_count": sum(int(output.get("row_count") or 0) for output in matched),
+    }
 
 
 def write_synthetic_dem(path: Path, *, terrain_size: int, cell_size: float) -> None:
@@ -481,7 +773,7 @@ def build_validation_case(
     manifest_path: Path,
     contact_model: str,
     write_trajectories: bool,
-    write_impacts: bool,
+    impact_output_mode: str,
     dt: float,
     t_max: float,
     seed: int,
@@ -493,8 +785,11 @@ def build_validation_case(
     }
     if write_trajectories:
         outputs["ensemble_trajectories_dir"] = str(results_dir / f"{run_id}_trajectories")
-    if write_impacts:
+        outputs["trajectory_metadata_csv"] = str(results_dir / f"{run_id}_trajectory_metadata.csv")
+    if impact_output_mode in {"csv", "csv_parquet"}:
         outputs["ensemble_impact_events_dir"] = str(results_dir / f"{run_id}_impacts")
+    if impact_output_mode in {"parquet", "csv_parquet"}:
+        outputs["ensemble_impact_events_parquet"] = str(results_dir / f"{run_id}_impacts.parquet")
 
     return {
         "case_id": run_id,

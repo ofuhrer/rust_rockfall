@@ -32,6 +32,7 @@ Core documents:
 - `performance_benchmark_results_initial.md`: first measured timing and output-volume results from the smoke and synthetic Swiss pilot benchmark runs.
 - `performance_benchmark_synthetic_scale.md`: opt-in synthetic scale benchmark for stress-testing simulation, CSV output, impact-event output, hazard accumulation, plotting, and file count before changing data formats.
 - `performance_benchmark_synthetic_scale_results.md`: measured synthetic scale benchmark results and engineering recommendation based on the 50/100/200 release matrix.
+- `parquet_impact_benchmark_results.md`: measured comparison of opt-in Parquet impact-event output against per-trajectory CSV impact-event output at 500/1000 release scale.
 - `columnar_output_design_decision.md`: design decision for opt-in batched Parquet/Arrow impact and trajectory outputs based on the 500/1000 synthetic benchmark.
 - `probabilistic_trajectory_metadata_design.md`: design and current implementation status for carrying per-trajectory release, block, scenario, and sampling-weight metadata into opt-in weighted hazard maps and future columnar outputs.
 - `probabilistic_hazard_framework_priorities.md`: prioritized roadmap for moving from unweighted diagnostic hazard layers toward explicit probabilistic hazard-map semantics.

@@ -594,11 +594,63 @@ fn simulation_validation_rejects_non_positive_inputs() {
     ));
 
     let mut config = minimal_config();
+    config.normal_restitution = -0.1;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("normal_restitution"))
+    ));
+
+    let mut config = minimal_config();
+    config.tangential_restitution = f64::NAN;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("tangential_restitution"))
+    ));
+
+    let mut config = minimal_config();
+    config.friction_coefficient = -0.1;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("friction_coefficient"))
+    ));
+
+    let mut config = minimal_config();
     config.rolling_resistance_coefficient = -0.1;
     assert!(matches!(
         config.run(),
         Err(SimulationError::NonPositive(
             "rolling_resistance_coefficient"
+        ))
+    ));
+
+    let mut config = minimal_config();
+    config.stop_speed_mps = -0.1;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("stop_speed_mps"))
+    ));
+
+    let mut config = minimal_config();
+    config.release_perturbation = ReleasePerturbation {
+        position_uniform_m: -0.1,
+        velocity_uniform_mps: 0.0,
+    };
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive(
+            "release_perturbation.position_uniform_m"
+        ))
+    ));
+
+    let mut config = minimal_config();
+    config.release_perturbation = ReleasePerturbation {
+        position_uniform_m: 0.0,
+        velocity_uniform_mps: f64::NAN,
+    };
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive(
+            "release_perturbation.velocity_uniform_mps"
         ))
     ));
 
