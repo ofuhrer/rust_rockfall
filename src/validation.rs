@@ -4,7 +4,10 @@ use crate::{
     dynamics::ContactModel,
     geometry::SphereBlock,
     io,
-    simulation::{simulate_ensemble, SimulationConfig, SimulationError, TerrainConfig},
+    simulation::{
+        simulate_ensemble, simulate_one_trajectory_with_terrain, SimulationConfig, SimulationError,
+        TerrainConfig, TrajectoryRequest, TrajectoryRun,
+    },
     state::{BodyState, ContactState, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::TerrainError,
@@ -54,6 +57,8 @@ pub struct BenchmarkCase {
     pub random: CaseRandom,
     #[serde(default)]
     pub observations: Option<ObservationConfig>,
+    #[serde(default)]
+    pub validation_scope: Option<ValidationScope>,
     #[serde(default)]
     pub expected: ExpectedConfig,
     #[serde(default)]
@@ -197,9 +202,19 @@ impl Default for CaseRandom {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ObservationConfig {
     #[serde(default)]
+    pub release_points_csv: Option<PathBuf>,
+    #[serde(default)]
     pub deposition_points_csv: Option<PathBuf>,
     #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ValidationScope {
+    #[serde(default, rename = "type")]
+    pub scope_type: String,
+    #[serde(default)]
+    pub note: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -242,6 +257,8 @@ pub struct OutputConfig {
     pub diagnostics_json: Option<PathBuf>,
     #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
+    #[serde(default)]
+    pub ensemble_deposition_csv: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -261,6 +278,45 @@ pub struct DepositionPoint {
     pub x_m: f64,
     pub y_m: f64,
     pub z_m: f64,
+    #[serde(default)]
+    pub release_x_m: Option<f64>,
+    #[serde(default)]
+    pub release_y_m: Option<f64>,
+    #[serde(default)]
+    pub release_z_m: Option<f64>,
+    #[serde(default)]
+    pub observed_runout_m: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ReleasePoint {
+    pub trajectory_id: String,
+    pub experiment_id: String,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    #[serde(default)]
+    pub vx_mps: f64,
+    #[serde(default)]
+    pub vy_mps: f64,
+    #[serde(default)]
+    pub vz_mps: f64,
+    #[serde(default)]
+    pub mass_kg: Option<f64>,
+    #[serde(default)]
+    pub radius_m: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnsembleDepositionPoint {
+    pub release_id: String,
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    pub runout_m: f64,
+    pub final_speed_mps: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -320,7 +376,7 @@ pub fn run_case_file(path: impl AsRef<Path>) -> Result<CaseReport, ValidationErr
 pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut warnings = Vec::new();
     let observations = match load_observations(case, &mut warnings)? {
-        ObservationLoad::Loaded(points) => points,
+        ObservationLoad::Loaded(data) => data,
         ObservationLoad::MissingRequired(path) => {
             let report = skipped_report(
                 case,
@@ -335,6 +391,16 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             return Ok(report);
         }
     };
+    if case.validation_scope.is_some()
+        && case.expected.tolerances.is_empty()
+        && case.expected.minimums.is_empty()
+        && case.expected.maximums.is_empty()
+        && case.expected.values.is_empty()
+    {
+        warnings.push(
+            "real-world validation case has no pass/fail acceptance thresholds; passed means the workflow completed and reported metrics".to_string(),
+        );
+    }
 
     let config = build_simulation_config(case)?;
     let result = config.run()?;
@@ -357,10 +423,11 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         last,
         terrain.as_ref(),
         &config.block,
-        &observations,
+        &observations.deposition_points,
         &case.expected,
     );
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
+    compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
 
     let requested_metrics = requested_metrics(case);
@@ -746,6 +813,162 @@ fn compute_ensemble_metrics(
     Ok(())
 }
 
+fn compute_validation_ensemble_metrics(
+    case: &BenchmarkCase,
+    base_config: &SimulationConfig,
+    observations: &ObservationData,
+    metrics: &mut BTreeMap<String, f64>,
+    warnings: &mut Vec<String>,
+) -> Result<(), ValidationError> {
+    if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
+        return Ok(());
+    }
+
+    let ensemble_size = case.random.ensemble_size.max(1);
+    let global_seed = case.random.seed.unwrap_or(0);
+    let terrain = base_config.terrain.build()?;
+    let mut runs = Vec::with_capacity(observations.release_points.len() * ensemble_size);
+    let mut deposition_rows = Vec::with_capacity(observations.release_points.len() * ensemble_size);
+
+    for release in &observations.release_points {
+        let mut release_config = base_config.clone();
+        release_config.initial_position_m = [release.x_m, release.y_m, release.z_m];
+        release_config.initial_velocity_mps = [release.vx_mps, release.vy_mps, release.vz_mps];
+        release_config.random_seed = None;
+        if let (Some(radius_m), Some(mass_kg)) = (release.radius_m, release.mass_kg) {
+            release_config.block = SphereBlock::new(radius_m, mass_kg);
+        }
+
+        for member_index in 0..ensemble_size {
+            let member_id = format!("{}_member_{member_index:03}", release.trajectory_id);
+            let request =
+                TrajectoryRequest::from_global_seed(global_seed, case.case_id.clone(), member_id);
+            let run =
+                simulate_one_trajectory_with_terrain(&release_config, request, terrain.as_ref())?;
+            deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
+            runs.push(run);
+        }
+    }
+
+    if let Some(path) = &case.outputs.ensemble_deposition_csv {
+        write_ensemble_deposition_csv(path, &deposition_rows)?;
+    }
+
+    compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
+    metrics.insert(
+        "validation_release_count".to_string(),
+        observations.release_points.len() as f64,
+    );
+    metrics.insert(
+        "validation_simulated_trajectory_count".to_string(),
+        runs.len() as f64,
+    );
+    Ok(())
+}
+
+fn ensemble_deposition_row(release_id: &str, run: &TrajectoryRun) -> EnsembleDepositionPoint {
+    let final_position = run.summary.final_position_m;
+    EnsembleDepositionPoint {
+        release_id: release_id.to_string(),
+        trajectory_id: run.summary.trajectory_id.clone(),
+        seed: run.summary.seed,
+        x_m: final_position[0],
+        y_m: final_position[1],
+        z_m: final_position[2],
+        runout_m: run.summary.runout_m,
+        final_speed_mps: run.summary.final_speed_mps,
+    }
+}
+
+fn write_ensemble_deposition_csv(
+    path: impl AsRef<Path>,
+    points: &[EnsembleDepositionPoint],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for point in points {
+        writer.serialize(point)?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+fn compute_deposition_cloud_metrics(
+    runs: &[TrajectoryRun],
+    observations: &ObservationData,
+    metrics: &mut BTreeMap<String, f64>,
+    warnings: &mut Vec<String>,
+) {
+    let simulated_points = runs
+        .iter()
+        .map(|run| {
+            (
+                run.summary.final_position_m[0],
+                run.summary.final_position_m[1],
+            )
+        })
+        .collect::<Vec<_>>();
+    let observed_points = observations
+        .deposition_points
+        .iter()
+        .map(|point| (point.x_m, point.y_m))
+        .collect::<Vec<_>>();
+    if simulated_points.is_empty() || observed_points.is_empty() {
+        return;
+    }
+
+    let simulated_runouts = runs
+        .iter()
+        .map(|run| run.summary.runout_m)
+        .collect::<Vec<_>>();
+    let observed_runouts = observations
+        .deposition_points
+        .iter()
+        .filter_map(observed_runout)
+        .collect::<Vec<_>>();
+
+    if observed_runouts.is_empty() {
+        warnings.push(
+            "observed deposition points do not include release coordinates; runout error is omitted"
+                .to_string(),
+        );
+    } else {
+        metrics.insert(
+            "observed_mean_runout_m".to_string(),
+            mean(&observed_runouts),
+        );
+        metrics.insert(
+            "simulated_mean_runout_m".to_string(),
+            mean(&simulated_runouts),
+        );
+        metrics.insert(
+            "runout_distance_error_m".to_string(),
+            (mean(&simulated_runouts) - mean(&observed_runouts)).abs(),
+        );
+    }
+
+    let simulated_centroid = centroid2(&simulated_points);
+    let observed_centroid = centroid2(&observed_points);
+    metrics.insert(
+        "deposition_centroid_error_m".to_string(),
+        distance2(simulated_centroid, observed_centroid),
+    );
+    metrics.insert(
+        "deposition_cloud_mean_nearest_error_m".to_string(),
+        symmetric_mean_nearest_distance(&simulated_points, &observed_points),
+    );
+    metrics.insert(
+        "lateral_spread_error_m".to_string(),
+        (stddev_axis_y(&simulated_points) - stddev_axis_y(&observed_points)).abs(),
+    );
+    metrics.insert(
+        "deposition_cloud_overlap_fraction".to_string(),
+        cloud_overlap_fraction(&simulated_points, &observed_points, 15.0),
+    );
+}
+
 fn compute_roughness_comparison_metrics(
     case: &BenchmarkCase,
     config: &SimulationConfig,
@@ -844,8 +1067,14 @@ fn evaluate_failures(
     failures
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+struct ObservationData {
+    deposition_points: Vec<DepositionPoint>,
+    release_points: Vec<ReleasePoint>,
+}
+
 enum ObservationLoad {
-    Loaded(Vec<DepositionPoint>),
+    Loaded(ObservationData),
     MissingRequired(PathBuf),
 }
 
@@ -854,28 +1083,49 @@ fn load_observations(
     warnings: &mut Vec<String>,
 ) -> Result<ObservationLoad, ValidationError> {
     let Some(observations) = &case.observations else {
-        return Ok(ObservationLoad::Loaded(Vec::new()));
+        return Ok(ObservationLoad::Loaded(ObservationData::default()));
     };
-    let Some(path) = &observations.deposition_points_csv else {
-        return Ok(ObservationLoad::Loaded(Vec::new()));
-    };
-    if !path.exists() {
-        return Ok(ObservationLoad::MissingRequired(path.clone()));
+
+    let mut data = ObservationData::default();
+    if let Some(path) = &observations.release_points_csv {
+        if !path.exists() {
+            return Ok(ObservationLoad::MissingRequired(path.clone()));
+        }
+        data.release_points = read_release_points(path)?;
     }
 
+    if let Some(path) = &observations.deposition_points_csv {
+        if !path.exists() {
+            return Ok(ObservationLoad::MissingRequired(path.clone()));
+        }
+        data.deposition_points = read_deposition_points(path)?;
+    }
+    if data.deposition_points.len() > 1 && data.release_points.is_empty() {
+        warnings.push(format!(
+            "case {} has {} observed deposition points; current metrics use the first point",
+            case.case_id,
+            data.deposition_points.len()
+        ));
+    }
+    Ok(ObservationLoad::Loaded(data))
+}
+
+fn read_deposition_points(path: &Path) -> Result<Vec<DepositionPoint>, ValidationError> {
     let mut reader = csv::Reader::from_path(path)?;
     let mut points = Vec::new();
     for record in reader.deserialize() {
         points.push(record?);
     }
-    if points.len() > 1 {
-        warnings.push(format!(
-            "case {} has {} observed deposition points; current metrics use the first point",
-            case.case_id,
-            points.len()
-        ));
+    Ok(points)
+}
+
+fn read_release_points(path: &Path) -> Result<Vec<ReleasePoint>, ValidationError> {
+    let mut reader = csv::Reader::from_path(path)?;
+    let mut points = Vec::new();
+    for record in reader.deserialize() {
+        points.push(record?);
     }
-    Ok(ObservationLoad::Loaded(points))
+    Ok(points)
 }
 
 fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, ValidationError> {
@@ -985,6 +1235,15 @@ fn max_runout_delta(
         .fold(0.0_f64, f64::max)
 }
 
+fn observed_runout(point: &DepositionPoint) -> Option<f64> {
+    point.observed_runout_m.or_else(|| {
+        Some(distance2(
+            (point.x_m, point.y_m),
+            (point.release_x_m?, point.release_y_m?),
+        ))
+    })
+}
+
 fn mean(values: &[f64]) -> f64 {
     if values.is_empty() {
         0.0
@@ -1010,6 +1269,69 @@ fn percentile(values: &[f64], p: f64) -> f64 {
 
 fn distance3(a: [f64; 3], b: [f64; 3]) -> f64 {
     ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+}
+
+fn centroid2(points: &[(f64, f64)]) -> (f64, f64) {
+    if points.is_empty() {
+        return (0.0, 0.0);
+    }
+    let x = points.iter().map(|point| point.0).sum::<f64>() / points.len() as f64;
+    let y = points.iter().map(|point| point.1).sum::<f64>() / points.len() as f64;
+    (x, y)
+}
+
+fn distance2(a: (f64, f64), b: (f64, f64)) -> f64 {
+    ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2)).sqrt()
+}
+
+fn symmetric_mean_nearest_distance(left: &[(f64, f64)], right: &[(f64, f64)]) -> f64 {
+    0.5 * (mean_nearest_distance(left, right) + mean_nearest_distance(right, left))
+}
+
+fn mean_nearest_distance(from: &[(f64, f64)], to: &[(f64, f64)]) -> f64 {
+    if from.is_empty() || to.is_empty() {
+        return 0.0;
+    }
+    from.iter()
+        .map(|point| {
+            to.iter()
+                .map(|candidate| distance2(*point, *candidate))
+                .fold(f64::INFINITY, f64::min)
+        })
+        .sum::<f64>()
+        / from.len() as f64
+}
+
+fn stddev_axis_y(points: &[(f64, f64)]) -> f64 {
+    if points.len() <= 1 {
+        return 0.0;
+    }
+    let mean_y = points.iter().map(|point| point.1).sum::<f64>() / points.len() as f64;
+    let variance = points
+        .iter()
+        .map(|point| (point.1 - mean_y).powi(2))
+        .sum::<f64>()
+        / points.len() as f64;
+    variance.sqrt()
+}
+
+fn cloud_overlap_fraction(
+    simulated_points: &[(f64, f64)],
+    observed_points: &[(f64, f64)],
+    radius_m: f64,
+) -> f64 {
+    if simulated_points.is_empty() {
+        return 0.0;
+    }
+    let hits = simulated_points
+        .iter()
+        .filter(|point| {
+            observed_points
+                .iter()
+                .any(|observed| distance2(**point, *observed) <= radius_m)
+        })
+        .count();
+    hits as f64 / simulated_points.len() as f64
 }
 
 fn param(params: &BTreeMap<String, f64>, name: &str, default: f64) -> f64 {

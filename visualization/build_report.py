@@ -35,6 +35,7 @@ PLOT_KINDS = (
     ("trajectory_xy", "Plan view"),
     ("energy", "Energy"),
     ("runout_histogram", "Runout histogram"),
+    ("deposition_xy", "Deposition cloud"),
 )
 PLOT_CAPTIONS = {
     "trajectory_xz": (
@@ -54,6 +55,11 @@ PLOT_CAPTIONS = {
     "runout_histogram": (
         "Distribution of final horizontal runout for overlaid trajectory ensembles. This is a "
         "diagnostic summary of simulated spread, not a calibrated exceedance probability."
+    ),
+    "deposition_xy": (
+        "Observed deposition points and simulated ensemble final positions in the local dataset "
+        "coordinate system. For real-world validation cases, this plot supports qualitative review "
+        "of distribution-level mismatch; it is not an operational hazard-skill score."
     ),
 }
 FALLBACK_MODEL_VERSION = "0.3.0"
@@ -433,6 +439,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     description = str(report.data.get("description") or "")
     links = render_links(report, report_dir)
     roughness = render_roughness_note(report)
+    validation_scope = render_validation_scope_note(report)
     scope = render_case_scope(report)
     metrics_table = render_metrics_table(report)
     plots = render_plots_html(report, report_dir)
@@ -452,6 +459,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
   </div>
   <p>{escape(description)}</p>
   {roughness}
+  {validation_scope}
   {scope}
   {links}
   <div class="grid">
@@ -480,6 +488,11 @@ def render_links(report: CaseReport, report_dir: Path) -> str:
     if report.trajectory_path:
         label = "trajectory CSV" if report.trajectory_path.exists() else "trajectory CSV missing"
         links.append((label, report.trajectory_path))
+    ensemble_rel = nested_path(report.data, "outputs", "ensemble_deposition_csv")
+    if ensemble_rel:
+        ensemble_path = ROOT / ensemble_rel
+        label = "ensemble deposition CSV" if ensemble_path.exists() else "ensemble deposition CSV missing"
+        links.append((label, ensemble_path))
     if not links:
         return ""
     parts = [f"<a href=\"{rel_link(path, report_dir)}\">{escape(label)}</a>" for label, path in links]
@@ -500,6 +513,20 @@ def render_roughness_note(report: CaseReport) -> str:
         "stochastic_contact_v1 perturbs impact contact normals and dissipative contact parameters "
         f"with std normal={escape(format_value(normal))}, tangent={escape(format_value(tangent))}, "
         f"angle={escape(format_value(angle))} rad. This is an opt-in verification model, not a calibrated terrain law.</p>"
+    )
+
+
+def render_validation_scope_note(report: CaseReport) -> str:
+    scope = report.data.get("validation_scope", {})
+    if not isinstance(scope, dict) or not scope:
+        return ""
+    scope_type = scope.get("type", "limited")
+    note = scope.get("note", "")
+    return (
+        "<p class=\"notice\"><strong>Real-world validation "
+        f"({escape(str(scope_type))}):</strong> {escape(str(note))} "
+        "This comparison is intended to expose model plausibility and deficiencies, not to certify "
+        "field accuracy or operational hazard validity.</p>"
     )
 
 

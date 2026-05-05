@@ -19,8 +19,10 @@ Required case fields:
 - optional `parameters.roughness_std_angle`: contact-normal angular perturbation scale in radians, default `0.0`
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
+- optional `validation_scope.type` and `validation_scope.note` for real-world cases
+- optional `observations.release_points_csv`, `observations.deposition_points_csv`
 - `expected.metrics`, `expected.tolerances`
-- `outputs.trajectory_csv`, `outputs.diagnostics_json`
+- `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 
@@ -64,6 +66,14 @@ The CLI can report:
 - `deposition_point_error_m`
 - `runout_distance_error_m`
 - `lateral_deviation_m`
+- `validation_release_count`
+- `validation_simulated_trajectory_count`
+- `observed_mean_runout_m`
+- `simulated_mean_runout_m`
+- `deposition_centroid_error_m`
+- `deposition_cloud_mean_nearest_error_m`
+- `deposition_cloud_overlap_fraction`
+- `lateral_spread_error_m`
 - `max_rolling_residual_mps`
 - `final_rolling_residual_mps`
 - `final_contact_tangent_speed_mps`
@@ -75,6 +85,17 @@ The CLI can report:
 
 Use plain CSV or GeoJSON with explicit units and coordinate metadata. Do not overwrite raw public data.
 
+Release-point CSV required fields:
+
+- `trajectory_id`
+- `experiment_id`
+- `x_m`
+- `y_m`
+- `z_m`
+
+Optional release fields include `vx_mps`, `vy_mps`, `vz_mps`, `mass_kg`, and `radius_m`.
+For v0 validation, `x_m`, `y_m`, and `z_m` are interpreted as block-center coordinates in meters.
+
 Deposition-point CSV required fields:
 
 - `trajectory_id`
@@ -82,6 +103,9 @@ Deposition-point CSV required fields:
 - `x_m`
 - `y_m`
 - `z_m`
+
+Optional deposition fields include `release_x_m`, `release_y_m`, `release_z_m`, and `observed_runout_m`.
+When these are present, validation can compare distribution-level runout and deposition-cloud metrics instead of exact trajectories.
 
 Observed trajectory CSV required fields:
 

@@ -1,33 +1,59 @@
 case_id: validation_tschamut_basic
-title: Tschamut public rockfall dataset scaffold
+title: Tschamut public rockfall dataset limited validation
 level: 5
-description: Optional real-world validation scaffold for the public SLF/WSL EnviDat Tschamut induced rockfall dataset.
+description: Limited distribution-level comparison against a small processed subset of the public SLF/WSL EnviDat Tschamut 2014 LPS trajectory dataset.
 terrain:
-  type: plane
-  parameters: { z0_m: 0.0, slope_x: -0.25, slope_y: 0.0 }
-block: { mass: 100.0, radius: 0.5 }
+  type: ascii_dem
+  path: validation/data/processed/tschamut/terrain.asc
+  parameters: {}
+block: { mass: 69.0, radius: 0.176667 }
 release:
-  position: [0.0, 0.0, 5.0]
-  velocity: [0.0, 0.0, 0.0]
+  position: [33.4, 236.67, 72.934936]
+  velocity: [0.74314, 1.3547, 0.76954]
 parameters:
   gravity: 9.81
   normal_restitution: 0.25
   tangential_restitution: 0.85
   friction_coefficient: 0.45
-simulation: { dt: 0.01, t_max: 20.0, max_steps: 2000, stop_velocity: 0.1 }
-random: { seed: 1, ensemble_size: 1 }
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
+random: { seed: 34014, ensemble_size: 6 }
+validation_scope:
+  type: distribution-level
+  note: "v0.3.0 is not calibrated for this dataset and is not expected to reproduce individual trajectories."
 observations:
-  deposition_points_csv: validation/data/processed/tschamut/deposition_points.csv
+  release_points_csv: validation/data/processed/tschamut/release_points.csv
+  deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
 expected:
-  metrics: [deposition_point_error_m, runout_distance_error_m, lateral_deviation_m]
+  metrics:
+    - validation_release_count
+    - validation_simulated_trajectory_count
+    - observed_mean_runout_m
+    - simulated_mean_runout_m
+    - runout_distance_error_m
+    - deposition_centroid_error_m
+    - deposition_cloud_mean_nearest_error_m
+    - lateral_spread_error_m
+    - deposition_cloud_overlap_fraction
   tolerances: {}
 outputs:
   diagnostics_json: validation/results/tschamut_basic_metrics.json
   trajectory_csv: validation/results/tschamut_basic_trajectory.csv
+  ensemble_deposition_csv: validation/results/tschamut_basic_ensemble_deposition.csv
 references:
   dataset: tschamut2014
   literature:
-    - "Caviezel et al. Tschamut induced rockfall dataset, EnviDat DOI 10.16904/envidat.34."
+    - "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34."
   notes:
-    - "This case skips gracefully until public data are downloaded and preprocessed."
-    - "The placeholder plane and parameters are not calibrated and must not be interpreted as field validation."
+    - "Uses a small checked-in derived subset from the public LPS trajectory table so normal CI does not download large raw data."
+    - "The terrain is a transparent least-squares proxy plane sampled as ESRI ASCII grid, not an official field DEM."
+    - "Block geometry is approximated as a sphere; roughness is synthetic and not calibrated to Tschamut."
+report:
+  verifies:
+    - "Loads public-derived Tschamut release and deposition points and runs deterministic seeded ensembles from them."
+    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.3.0 model."
+  does_not_verify:
+    - "Individual Tschamut trajectories, operational hazard skill, calibrated terrain roughness, block shape effects, vegetation, or fragmentation."

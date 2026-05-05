@@ -28,7 +28,7 @@ datasets:
       - zip
       - ascii tab-separated
       - Excel
-    download_status: metadata_only
+    download_status: small_processed_subset_checked_in
     local_path: data/raw/tschamut2014
     processed_path: data/processed/tschamut2014
     intended_validation_use:
@@ -39,7 +39,9 @@ datasets:
     preprocessing_notes:
       - Extract ZIP archives without modifying raw files.
       - Convert tab-separated trajectory and overview tables to common CSV schemas.
-      - Derive release and deposition points from overview tables.
+      - Derive release and deposition points from public overview or LPS trajectory tables.
+      - Current validation subset derives release and deposition points from first and last samples of the public LPS trajectory table.
+      - Current terrain.asc is a least-squares proxy plane fitted to public LPS terrain elevations; it is not an official field DEM.
       - Keep CH-1903 coordinates explicit in metadata; do not transform silently.
     resources:
       - id: slope_block_scans

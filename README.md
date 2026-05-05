@@ -84,7 +84,7 @@ The repository separates:
 - validation: real-world and synthetic validation cases under `validation/`
 - calibration: future explicit parameter-fitting experiments only
 
-Large public datasets are downloaded on demand with `scripts/download_datasets.py`; they are not required for normal tests.
+Large public datasets are downloaded on demand with `scripts/download_datasets.py`. The repository includes a small public-derived Tschamut 2014 validation subset for CI-scale smoke testing; it is not calibrated field validation.
 
 The default CI/local suite should run:
 
@@ -93,7 +93,7 @@ cargo test
 cargo run -- verify --all
 ```
 
-Optional public-data validation cases skip gracefully until data have been downloaded and preprocessed.
+Optional large public-data validation cases skip gracefully until data have been downloaded and preprocessed.
 
 ## Visualization
 

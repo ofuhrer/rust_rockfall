@@ -75,11 +75,21 @@ def main() -> int:
     terrain = case.get("terrain", {}) if isinstance(case.get("terrain"), dict) else {}
     expected = case.get("expected", {}) if isinstance(case.get("expected"), dict) else {}
     radius = block_radius(case)
+    observed_deposition = read_optional_points(nested_path(case, "observations", "deposition_points_csv"))
+    ensemble_deposition = read_optional_points(nested_path(case, "outputs", "ensemble_deposition_csv"))
 
     render_trajectory_xz(title, trajectories, terrain, expected, radius, output_dir, prefix, formats)
     render_trajectory_xy(title, trajectories, expected, output_dir, prefix, formats)
     render_energy(title, trajectories, output_dir, prefix, formats)
     render_runout_histogram(title, trajectories, output_dir, prefix, formats)
+    render_deposition_cloud(
+        title,
+        observed_deposition,
+        ensemble_deposition,
+        output_dir,
+        prefix,
+        formats,
+    )
     write_text(
         output_dir / f"{prefix}_summary.json",
         json.dumps(summarize(trajectories, diagnostics), indent=2, sort_keys=True) + "\n",
@@ -122,6 +132,26 @@ def read_trajectory(path: Path) -> Trajectory:
 def read_json(path: Path) -> dict:
     with path.open() as file:
         return json.load(file)
+
+
+def read_optional_points(path_text: str | None) -> list[dict[str, float | str]]:
+    if not path_text:
+        return []
+    path = ROOT / path_text
+    if not path.exists():
+        return []
+    points: list[dict[str, float | str]] = []
+    with path.open(newline="") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            point: dict[str, float | str] = {}
+            for key, value in row.items():
+                if key in {"trajectory_id", "experiment_id", "release_id", "source", "block_id"}:
+                    point[key] = value
+                elif value not in {None, ""}:
+                    point[key] = float(value)
+            points.append(point)
+    return points
 
 
 def render_trajectory_xz(
@@ -231,6 +261,47 @@ def render_runout_histogram(
     ax.grid(True, axis="y", alpha=0.25)
     ax.legend(loc="best", fontsize=9)
     save_figure(fig, output_dir, f"{prefix}_runout_histogram", formats)
+
+
+def render_deposition_cloud(
+    title: str,
+    observed: list[dict[str, float | str]],
+    simulated: list[dict[str, float | str]],
+    output_dir: Path,
+    prefix: str,
+    formats: list[str],
+) -> None:
+    if not observed and not simulated:
+        return
+    fig, ax = plt.subplots(figsize=(9.0, 6.2), constrained_layout=True)
+    if observed:
+        ax.scatter(
+            [float(point["x_m"]) for point in observed],
+            [float(point["y_m"]) for point in observed],
+            marker="x",
+            s=62,
+            linewidths=1.8,
+            color="#111827",
+            label="observed deposition",
+        )
+    if simulated:
+        ax.scatter(
+            [float(point["x_m"]) for point in simulated],
+            [float(point["y_m"]) for point in simulated],
+            marker="o",
+            s=28,
+            alpha=0.62,
+            color="#1f77b4",
+            edgecolors="none",
+            label="simulated ensemble final points",
+        )
+    ax.set_title(f"{title}: deposition cloud")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_aspect("equal", adjustable="box")
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best", fontsize=9)
+    save_figure(fig, output_dir, f"{prefix}_deposition_xy", formats)
 
 
 def plot_state_markers(ax, trajectory: Trajectory, x_key: str, y_key: str, color: str) -> None:

@@ -475,16 +475,27 @@ fn validation_case_runner_writes_metrics_for_synthetic_fixture() {
 }
 
 #[test]
-fn validation_case_runner_skips_missing_public_data() {
+fn tschamut_validation_fixture_runs_reproducibly() {
     let output = PathBuf::from("validation/results/tschamut_basic_metrics.json");
+    let trajectory = PathBuf::from("validation/results/tschamut_basic_trajectory.csv");
+    let ensemble = PathBuf::from("validation/results/tschamut_basic_ensemble_deposition.csv");
     let _ = fs::remove_file(&output);
+    let _ = fs::remove_file(&trajectory);
+    let _ = fs::remove_file(&ensemble);
 
-    let report = run_case_file("validation/cases/tschamut_basic.yaml").unwrap();
+    let first = run_case_file("validation/cases/tschamut_basic.yaml").unwrap();
+    let second = run_case_file("validation/cases/tschamut_basic.yaml").unwrap();
 
-    assert_eq!(report.status, CaseStatus::Skipped);
-    assert!(!report.warnings.is_empty());
+    assert_eq!(first.status, CaseStatus::Passed);
+    assert_eq!(first.metrics, second.metrics);
+    assert!(first.metrics.contains_key("deposition_centroid_error_m"));
+    assert!(first.metrics.contains_key("runout_distance_error_m"));
     assert!(output.exists());
+    assert!(trajectory.exists());
+    assert!(ensemble.exists());
     fs::remove_file(output).unwrap();
+    fs::remove_file(trajectory).unwrap();
+    fs::remove_file(ensemble).unwrap();
 }
 
 fn minimal_config() -> SimulationConfig {

@@ -13,7 +13,7 @@ Real-world validation is partial and qualitative. The current simulator is a sph
 - Store reproducible derived files under `data/processed/<dataset_id>/` or `validation/data/processed/<dataset_id>/`.
 - Cite dataset title, authors, DOI, source URL, and license.
 - Do not commit large raw data.
-- Skip optional real-data validation gracefully when data are not downloaded.
+- Keep large real-data validation optional; small license-compatible derived fixtures may be checked in for CI smoke tests.
 
 The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`.
 
@@ -25,14 +25,25 @@ cargo run -- validate --case validation/cases/tschamut_basic.yaml
 cargo run -- validate --all
 ```
 
-Missing public observations cause a skipped report with instructions rather than a CI failure.
+Missing optional public observations cause a skipped report with instructions rather than a CI failure. The checked-in Tschamut subset is intentionally small enough for local and CI validation smoke tests.
 
 ## Metrics
 
-Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, and ensemble runout summaries where seeded perturbations are used.
+Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, deposition centroid error, deposition-cloud mean nearest-neighbor distance, deposition-cloud overlap fraction, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, and ensemble runout summaries where seeded perturbations are used.
 Roughness-specific verification metrics include zero-roughness baseline comparison and different-seed ensemble runout deltas.
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
+
+## Real-World Validation Interpretation
+
+The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the v0.3.0 workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
+
+For real-world cases:
+
+- distributions matter more than individual paths for the current model;
+- mismatch is expected and should identify missing physics, such as block shape, calibrated roughness, vegetation, and richer terrain representation;
+- roughness parameters in validation cases are generic model settings, not tuned Tschamut calibration;
+- a passing status means the workflow completed and reported metrics, not that the model is field-accurate.
 
 ## Reproducibility Criteria
 

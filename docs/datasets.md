@@ -27,6 +27,15 @@ Download a targeted resource:
 python3 scripts/download_datasets.py --dataset tschamut2014 --resource overview_tests
 ```
 
+For the current Tschamut validation subset, download the public overview and LPS trajectory resources:
+
+```bash
+python3 scripts/download_datasets.py \
+  --dataset tschamut2014 \
+  --resource overview_tests \
+  --resource lps_trajectories
+```
+
 Downloaded files go to `data/raw/<dataset_id>/` and retain original filenames. A JSONL manifest records URL, date, size, and SHA-256 checksum.
 
 ## Preprocessing
@@ -37,19 +46,29 @@ Create the synthetic fixture:
 python3 scripts/preprocess_datasets.py --dataset synthetic_plane_basic
 ```
 
-Inventory downloaded ZIP archives:
+Preprocess the Tschamut 2014 resources:
 
 ```bash
 python3 scripts/preprocess_datasets.py --dataset tschamut2014
 ```
 
+This writes:
+
+- `data/processed/tschamut2014/release_points.csv`
+- `data/processed/tschamut2014/observed_deposition.csv`
+- `data/processed/tschamut2014/block_metadata.csv`
+- `data/processed/tschamut2014/terrain.asc`
+- a small checked-in subset under `validation/data/processed/tschamut/`
+
+The Tschamut terrain file is a least-squares plane proxy sampled as ESRI ASCII grid from public LPS terrain elevations. It is not an official field DEM. Coordinates remain in the public LPS local horizontal coordinate system, and elevations are shifted by `-1600 m` to match the overview table convention.
+
 Dataset-specific conversions should write validation-ready CSV/GeoJSON under `data/processed/<dataset_id>/` and must document CRS, units, and inferred fields.
 
 ## Real-World Validation Status
 
-`validation/cases/tschamut_basic.yaml` is a scaffold. It skips gracefully until `data/processed/tschamut2014/deposition_points.csv` exists.
+`validation/cases/tschamut_basic.yaml` is active with the small processed Tschamut subset under `validation/data/processed/tschamut/`. It compares ensemble-level runout and deposition-cloud summaries only.
 
-The current simulator is not yet physically rich enough for calibrated comparison against shape-sensitive field experiments. The first real-data use should be qualitative runout/deposition checks on simple Tschamut cases, with calibration choices recorded separately.
+The current simulator is not yet physically rich enough for calibrated comparison against shape-sensitive field experiments. Tschamut results should be interpreted as a transparent plausibility and deficiency check, not as operational validation.
 
 ## Rules
 
@@ -59,4 +78,3 @@ The current simulator is not yet physically rich enough for calibrated compariso
 - Do not commit large raw archives.
 - Do not tune parameters secretly to match one dataset.
 - Keep calibration, verification, and validation separate.
-

@@ -23,7 +23,7 @@ ALLOWED_GENERATED = {
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
 KNOWN_CONTACT_STATES = {"airborne", "impact", "sliding", "rolling", "stopped"}
-KNOWN_OUTPUT_KEYS = {"trajectory_csv", "diagnostics_json"}
+KNOWN_OUTPUT_KEYS = {"trajectory_csv", "diagnostics_json", "ensemble_deposition_csv"}
 KNOWN_METRICS = {
     "position_error_m",
     "velocity_error_mps",
@@ -52,6 +52,14 @@ KNOWN_METRICS = {
     "deposition_point_error_m",
     "runout_distance_error_m",
     "lateral_deviation_m",
+    "validation_release_count",
+    "validation_simulated_trajectory_count",
+    "observed_mean_runout_m",
+    "simulated_mean_runout_m",
+    "deposition_centroid_error_m",
+    "deposition_cloud_mean_nearest_error_m",
+    "deposition_cloud_overlap_fraction",
+    "lateral_spread_error_m",
     "final_speed_mps",
     "max_kinetic_energy_j",
     "max_rolling_residual_mps",
@@ -69,6 +77,7 @@ def main() -> int:
     errors.extend(check_documented_paths())
     errors.extend(check_contact_model_docs())
     errors.extend(check_version_consistency())
+    errors.extend(check_tschamut_validation_metadata())
 
     if errors:
         for error in errors:
@@ -229,6 +238,42 @@ def check_version_consistency() -> list[str]:
         errors.append("visualization/build_report.py fallback version disagrees with Cargo.toml")
     if "model_version" not in report_generator:
         errors.append("visualization/build_report.py does not render model_version")
+    return errors
+
+
+def check_tschamut_validation_metadata() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+    errors = []
+    registry = yaml.safe_load((ROOT / "data/datasets.yaml").read_text()) or {}
+    datasets = {dataset.get("id"): dataset for dataset in registry.get("datasets", [])}
+    dataset = datasets.get("tschamut2014")
+    if not dataset:
+        errors.append("data/datasets.yaml omits tschamut2014 metadata")
+    else:
+        for key in ("source_url", "doi", "license", "citation", "local_path", "processed_path"):
+            if not dataset.get(key):
+                errors.append(f"tschamut2014 dataset metadata omits {key}")
+
+    case = yaml.safe_load((ROOT / "validation/cases/tschamut_basic.yaml").read_text()) or {}
+    if (case.get("references") or {}).get("dataset") != "tschamut2014":
+        errors.append("validation/cases/tschamut_basic.yaml does not reference dataset tschamut2014")
+    observations = case.get("observations") or {}
+    for key in ("release_points_csv", "deposition_points_csv"):
+        path = observations.get(key)
+        if not path:
+            errors.append(f"tschamut_basic omits observations.{key}")
+        elif not (ROOT / path).exists():
+            errors.append(f"tschamut_basic references missing observations.{key}: {path}")
+    if "validation_scope" not in case:
+        errors.append("tschamut_basic omits validation_scope")
+
+    report = ROOT / "visualization" / "build_report.py"
+    report_text = report.read_text()
+    if "Real-world validation" not in report_text:
+        errors.append("visualization/build_report.py omits real-world validation wording")
     return errors
 
 

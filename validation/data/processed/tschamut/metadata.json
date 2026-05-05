@@ -1,0 +1,20 @@
+{
+  "coordinate_system": "Tschamut LPS local horizontal coordinates; elevations are EnviDat LPS terrain heights shifted by -1600 m for consistency with overview data.",
+  "dataset_id": "tschamut2014",
+  "doi": "https://doi.org/10.16904/envidat.34",
+  "license": "ODbL with Database Contents License (DbCL)",
+  "source_files": [
+    "OverviewAllTests.txt",
+    "all_LPS_splined.txt"
+  ],
+  "source_run_count": 80,
+  "terrain_proxy": {
+    "equation": "z_m = slope_x * x_m + slope_y * y_m + intercept_m",
+    "intercept_m": -15.009701417307735,
+    "note": "This is a transparent v0 proxy terrain fitted to public LPS terrain points. It is not an official field DEM and must not be interpreted as calibrated terrain reconstruction.",
+    "slope_x": -0.2531275637807767,
+    "slope_y": 0.4065679284814367,
+    "type": "least_squares_plane_sampled_as_esri_ascii_grid"
+  },
+  "validation_subset_run_count": 10
+}

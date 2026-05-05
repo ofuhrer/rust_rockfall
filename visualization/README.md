@@ -13,7 +13,7 @@ The existing trajectory CSV already includes the fields needed for current plots
 - contact state
 - angular velocity, contact-point tangential speed, and rolling residual
 
-The verification/validation JSON reports provide case status, metrics, tolerances, warnings, and model metadata. No core output-format change is required for the initial visualization layer.
+The verification/validation JSON reports provide case status, metrics, tolerances, warnings, and model metadata. Validation cases may also write `outputs.ensemble_deposition_csv`, which is consumed as a deposition-cloud overlay.
 
 ## Generate Plots
 
@@ -37,6 +37,7 @@ The script writes:
 - `*_trajectory_xy.png`: x-y plan view
 - `*_energy.png`: kinetic, potential, and total energy over time
 - `*_runout_histogram.png`: runout distribution when multiple trajectories are overlaid
+- `*_deposition_xy.png`: observed and simulated deposition clouds when validation data are available
 - `*_summary.json`: runout, impact count, speed, and report metadata summary
 
 SVG remains available explicitly:
@@ -58,7 +59,16 @@ python3 visualization/plot_case.py \
   --output-dir visualization/output/synthetic_plane_basic
 ```
 
-Real-world validation cases skip until processed public observations are present. Visualization should be run after the relevant validation command has produced a trajectory CSV.
+The checked-in Tschamut 2014 subset produces an additional deposition-cloud plot:
+
+```bash
+cargo run -- validate --case validation/cases/tschamut_basic.yaml
+python3 visualization/plot_case.py \
+  --case validation/cases/tschamut_basic.yaml \
+  --output-dir visualization/output/tschamut_basic
+```
+
+Large real-world validation cases still skip until processed public observations are present. Visualization should be run after the relevant validation command has produced trajectory and diagnostics outputs.
 
 ## Multiple Trajectories and Ensembles
 

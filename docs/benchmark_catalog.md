@@ -47,6 +47,6 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 ## Level 5: Validation Scaffolds
 
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
-- `validation_tschamut_basic`: optional scaffold for public SLF/WSL EnviDat Tschamut data; skipped until processed observations exist locally.
+- `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations. It reports distribution-level runout and deposition-cloud mismatch only.
 
 Real-world validation remains partial and qualitative for v0.3.0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and calibrated DEM workflows.
