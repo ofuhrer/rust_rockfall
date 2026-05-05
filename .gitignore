@@ -1,0 +1,16 @@
+.DS_Store
+target/
+*.jsonl
+
+# Raw public datasets can be large; keep downloads local unless a fixture is
+# intentionally added outside data/raw.
+data/raw/**
+!data/raw/.gitkeep
+verification/results/**
+!verification/results/.gitkeep
+validation/results/**
+!validation/results/.gitkeep
+trajectory.csv
+
+# Keep checked-in example configs and small validation fixtures.
+!examples/*.json

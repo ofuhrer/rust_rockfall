@@ -1,0 +1,33 @@
+case_id: regime_repeated_low_energy_impacts
+title: Repeated low-energy impacts
+level: 2
+description: Verifies impact counting and energy diagnostics for a low restitution bouncing case.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 1.5]
+  velocity: [0.1, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.3
+simulation: { dt: 0.002, t_max: 2.0, max_steps: 1000, stop_velocity: 0.03 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, max_bounce_height_m, final_speed_mps, energy_monotonicity_violation_j]
+  min_impact_count: 1
+  max_impact_count: 8
+  maximums:
+    max_bounce_height_m: 1.1
+    final_speed_mps: 3.0
+  tolerances:
+    energy_monotonicity_violation_j: 1.0
+outputs:
+  diagnostics_json: verification/results/regime_repeated_low_energy_impacts.json
+  trajectory_csv: verification/results/regime_repeated_low_energy_impacts.csv
+references:
+  notes:
+    - "This does not validate nonsmooth multi-contact behavior; it only checks the v0 single-contact loop."

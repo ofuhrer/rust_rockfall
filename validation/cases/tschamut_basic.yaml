@@ -1,0 +1,33 @@
+case_id: validation_tschamut_basic
+title: Tschamut public rockfall dataset scaffold
+level: 5
+description: Optional real-world validation scaffold for the public SLF/WSL EnviDat Tschamut induced rockfall dataset.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.25, slope_y: 0.0 }
+block: { mass: 100.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 5.0]
+  velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.01, t_max: 20.0, max_steps: 2000, stop_velocity: 0.1 }
+random: { seed: 1, ensemble_size: 1 }
+observations:
+  deposition_points_csv: validation/data/processed/tschamut/deposition_points.csv
+expected:
+  metrics: [deposition_point_error_m, runout_distance_error_m, lateral_deviation_m]
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/results/tschamut_basic_metrics.json
+  trajectory_csv: validation/results/tschamut_basic_trajectory.csv
+references:
+  dataset: tschamut2014
+  literature:
+    - "Caviezel et al. Tschamut induced rockfall dataset, EnviDat DOI 10.16904/envidat.34."
+  notes:
+    - "This case skips gracefully until public data are downloaded and preprocessed."
+    - "The placeholder plane and parameters are not calibrated and must not be interpreted as field validation."

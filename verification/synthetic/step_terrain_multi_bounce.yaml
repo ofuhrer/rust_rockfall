@@ -1,0 +1,33 @@
+case_id: synthetic_step_terrain_multi_bounce
+title: Step terrain multi-bounce
+level: 1
+description: Verifies repeated low-dissipation contacts after a step drop.
+terrain:
+  type: step
+  parameters: { step_x_m: 1.0, high_z_m: 0.0, low_z_m: -3.0 }
+block: { mass: 15.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.7]
+  velocity: [2.2, 0.0, 0.2]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.45
+  tangential_restitution: 0.9
+  friction_coefficient: 0.1
+simulation: { dt: 0.005, t_max: 4.0, max_steps: 800, stop_velocity: 0.03 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, impact_count, max_bounce_height_m, max_speed_mps]
+  min_runout_m: 2.0
+  max_runout_m: 15.0
+  min_impact_count: 1
+  maximums:
+    max_bounce_height_m: 5.0
+    max_speed_mps: 12.0
+outputs:
+  diagnostics_json: verification/results/synthetic_step_terrain_multi_bounce.json
+  trajectory_csv: verification/results/synthetic_step_terrain_multi_bounce.csv
+references:
+  notes:
+    - "This is a numerical stress fixture for a discontinuous analytic height field."
+

@@ -1,0 +1,77 @@
+# AGENTS.md
+
+## Role
+
+This file is the operating guide for automated agents working in this repository. It is intentionally procedural; scientific background, model scope, implementation phases, and validation detail live in `docs/`.
+
+Use this document to decide how to work. Use the docs to decide what to build.
+
+## Source of Truth
+
+- Project overview and quickstart: `README.md`
+- Literature and background inventory: `docs/literature_review.md`
+- Current equations, assumptions, and APIs: `docs/model_design.md`
+- Phase ordering and future work: `docs/implementation_plan.md`
+- Required validation approach: `docs/validation_plan.md`
+- Source material: `background/`
+
+When these files conflict, preserve the safety constraints first, then update the docs so the repository tells one consistent story.
+
+## Agent Workflow
+
+- Inspect the relevant docs and code before changing behavior.
+- Keep changes aligned with the current implementation phase unless the user explicitly asks to advance the phase.
+- Make the smallest coherent change that improves the simulator, tests, or documentation.
+- Add or update focused tests for every feature, behavior branch, physical model, parser, and output format change.
+- Document any new equation, parameter, assumption, or limitation in the appropriate `docs/` file.
+- Keep seeded runs deterministic.
+- Leave generated trajectory outputs out of git unless they are intentional fixtures.
+
+## Hard Boundaries
+
+- Do not reverse-engineer binaries or proprietary tools.
+- Do not copy protected implementation details.
+- Do not claim equivalence with RAMMS::ROCKFALL or any proprietary model.
+- Do not introduce undocumented physics or hidden parameter choices.
+- Do not present this project as validated for operational hazard assessment.
+
+## Code Expectations
+
+- Use idiomatic Rust with explicit units in field and variable names where practical.
+- Keep public APIs small and behavior-oriented.
+- Keep modules focused; follow the existing `src/` module boundaries instead of creating broad utility modules.
+- Prefer structured parsers and serializers over ad hoc text handling.
+- Prefer clear numerical code over premature optimization.
+
+Before handoff, run these when a Rust toolchain is available:
+
+```bash
+cargo test
+cargo fmt --check
+cargo clippy -- -D warnings
+```
+
+If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
+
+## Test Coverage Expectations
+
+- Every feature must have isolated tests that exercise its expected behavior directly.
+- Every physics change must include analytic or conservation-style tests where possible.
+- Every stochastic change must include fixed-seed reproducibility tests.
+- Every parser, serializer, and CLI-facing change must include success and failure cases.
+- Every bug fix must add a regression test that fails without the fix.
+- Integration tests must cover representative end-to-end trajectories across supported terrain and contact modes.
+- Maintain a comprehensive test suite that aims for exhaustive coverage of public APIs, edge cases, and failure paths.
+- Do not remove or weaken tests unless the behavior contract is intentionally changed and documented.
+- If exhaustive coverage is not feasible for a change, document the specific gap, why it remains, and what test should close it later.
+
+## Review Checklist
+
+- Does the change preserve the independent, literature-based framing?
+- Are new assumptions explicit?
+- Is each new feature tested individually?
+- Does the comprehensive test suite still cover public APIs, edge cases, and failure paths?
+- Are energy, contact, parser, output, and stochastic behavior changes tested?
+- Are fixed-seed results deterministic?
+- Are docs updated without duplicating material better owned by another doc?
+- Are limitations still visible to future users and agents?

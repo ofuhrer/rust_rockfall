@@ -1,0 +1,33 @@
+case_id: analytic_repeated_bounce
+title: Repeated vertical bounces
+level: 0
+description: Verifies repeated impacts decay consistently with normal restitution in the current fixed-step contact model.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 5.5]
+  velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: { dt: 0.002, t_max: 3.2, max_steps: 1600, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, rebound_height_error_m, energy_monotonicity_violation_j]
+  rebound_height_m: 1.25
+  min_impact_count: 2
+  max_impact_count: 60
+  tolerances:
+    rebound_height_error_m: 0.08
+    energy_monotonicity_violation_j: 0.5
+outputs:
+  diagnostics_json: verification/results/analytic_repeated_bounce.json
+  trajectory_csv: verification/results/analytic_repeated_bounce.csv
+references:
+  notes:
+    - "For the first rebound from 5 m clearance, ideal clearance is e_n^2*h0 = 1.25 m; later rebounds are lower."
+    - "The broad impact-count bound records known fixed-step contact chatter in v0; rebound height is the primary analytic check."

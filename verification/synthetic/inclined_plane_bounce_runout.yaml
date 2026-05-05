@@ -1,0 +1,32 @@
+case_id: synthetic_inclined_plane_bounce_runout
+title: Inclined-plane bounce and runout
+level: 1
+description: Verifies downslope motion and bounded impacts on an inclined analytic plane.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.25, slope_y: 0.0 }
+block: { mass: 30.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [1.0, 0.0, -1.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.01, t_max: 8.0, max_steps: 800, stop_velocity: 0.1 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, runout_m, final_speed_mps, max_speed_mps]
+  min_runout_m: 0.5
+  max_runout_m: 40.0
+  min_impact_count: 1
+  maximums:
+    max_speed_mps: 20.0
+outputs:
+  diagnostics_json: verification/results/synthetic_inclined_plane_bounce_runout.json
+  trajectory_csv: verification/results/synthetic_inclined_plane_bounce_runout.csv
+references:
+  notes:
+    - "Expected behavior is monotonic net movement in the +x downslope direction."
+

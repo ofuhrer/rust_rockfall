@@ -1,0 +1,31 @@
+case_id: synthetic_step_terrain_single_drop
+title: Step terrain single drop
+level: 1
+description: Verifies a simple trajectory crossing from a high platform to a lower step.
+terrain:
+  type: step
+  parameters: { step_x_m: 2.0, high_z_m: 0.0, low_z_m: -2.0 }
+block: { mass: 15.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [4.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.05
+simulation: { dt: 0.005, t_max: 3.0, max_steps: 600, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, impact_count, max_speed_mps, max_bounce_height_m]
+  min_runout_m: 2.0
+  max_runout_m: 12.0
+  min_impact_count: 1
+  maximums:
+    max_speed_mps: 10.0
+outputs:
+  diagnostics_json: verification/results/synthetic_step_terrain_single_drop.json
+  trajectory_csv: verification/results/synthetic_step_terrain_single_drop.csv
+references:
+  notes:
+    - "The step terrain has a vertical discontinuity represented only through the height function and upward normal."

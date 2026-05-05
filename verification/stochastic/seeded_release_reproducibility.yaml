@@ -1,0 +1,31 @@
+case_id: stochastic_seeded_release_reproducibility
+title: Seeded release reproducibility
+level: 3
+description: Verifies that a fixed seed gives numerically identical repeated trajectories in serial execution.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.2, slope_y: 0.0 }
+block: { mass: 20.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 3.0]
+  velocity: [1.0, 0.0, 0.0]
+  perturbation: { position_uniform_m: 0.05, velocity_uniform_mps: 0.02 }
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.01, t_max: 4.0, max_steps: 400, stop_velocity: 0.05 }
+random: { seed: 42, ensemble_size: 1 }
+expected:
+  metrics: [seed_repeat_max_position_delta_m, runout_m]
+  tolerances:
+    seed_repeat_max_position_delta_m: 0.0
+  min_runout_m: 0.1
+outputs:
+  diagnostics_json: verification/results/stochastic_seeded_release_reproducibility.json
+  trajectory_csv: verification/results/stochastic_seeded_release_reproducibility.csv
+references:
+  notes:
+    - "This checks deterministic sampling, not probabilistic adequacy."
+

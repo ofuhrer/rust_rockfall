@@ -1,0 +1,31 @@
+case_id: analytic_inclined_slide_stop
+title: Inclined-plane slide to stop
+level: 0
+description: Verifies frictional stopping for a sphere initially sliding upslope on an inclined plane.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.2, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [-1.0, 0.0, 0.2]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.8
+simulation: { dt: 0.01, t_max: 5.0, max_steps: 500, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, final_speed_mps, impact_count]
+  contact_state: stopped
+  max_runout_m: 1.5
+  max_impact_count: 3
+  tolerances: {}
+outputs:
+  diagnostics_json: verification/results/analytic_inclined_slide_stop.json
+  trajectory_csv: verification/results/analytic_inclined_slide_stop.csv
+references:
+  notes:
+    - "Analytic sign check: friction and downslope gravity oppose the initial upslope tangential velocity until stopping."
+

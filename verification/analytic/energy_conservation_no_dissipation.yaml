@@ -1,0 +1,29 @@
+case_id: analytic_energy_conservation_no_dissipation
+title: Energy conservation without dissipation
+level: 0
+description: Verifies total mechanical energy remains constant with e_n=1, e_t=1, and mu=0 when no terrain contact occurs.
+terrain:
+  type: plane
+  parameters: { z0_m: -1000.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 20.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 80.0]
+  velocity: [2.0, 1.0, 3.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 1.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: { dt: 0.02, t_max: 2.0, max_steps: 100, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [energy_conservation_error_j, energy_error_j]
+  tolerances:
+    energy_conservation_error_j: 0.000001
+    energy_error_j: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_energy_conservation_no_dissipation.json
+  trajectory_csv: verification/results/analytic_energy_conservation_no_dissipation.csv
+references:
+  notes:
+    - "This is a pure free-flight conservation test for the exact constant-gravity update."

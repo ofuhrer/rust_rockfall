@@ -1,0 +1,31 @@
+case_id: stochastic_different_seed_spread
+title: Different seed spread
+level: 3
+description: Verifies that nonzero release perturbations produce a nonzero ensemble runout spread for different seeds.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.2, slope_y: 0.0 }
+block: { mass: 20.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 3.0]
+  velocity: [1.0, 0.0, 0.0]
+  perturbation: { position_uniform_m: 0.2, velocity_uniform_mps: 0.1 }
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.01, t_max: 4.0, max_steps: 400, stop_velocity: 0.05 }
+random: { seed: 100, ensemble_size: 8 }
+expected:
+  metrics: [ensemble_p05_runout_m, ensemble_median_runout_m, ensemble_p95_runout_m, ensemble_runout_spread_m]
+  minimums:
+    ensemble_runout_spread_m: 0.001
+  maximums:
+    ensemble_runout_spread_m: 10.0
+outputs:
+  diagnostics_json: verification/results/stochastic_different_seed_spread.json
+references:
+  notes:
+    - "The spread bounds are intentionally loose because this is a reproducibility/sanity test, not calibration."
+

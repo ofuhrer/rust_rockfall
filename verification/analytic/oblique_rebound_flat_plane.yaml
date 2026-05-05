@@ -1,0 +1,32 @@
+case_id: analytic_oblique_rebound_flat_plane
+title: Oblique rebound on a flat plane
+level: 0
+description: Verifies normal restitution and Coulomb-capped tangential response for one oblique impact.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.49]
+  velocity: [2.0, 0.0, -4.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 0.5
+  friction_coefficient: 10.0
+simulation: { dt: 0.001, t_max: 0.001, max_steps: 1, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, velocity_error_mps]
+  final_velocity_mps: [1.0, 0.0, 2.004905]
+  min_impact_count: 1
+  max_impact_count: 1
+  tolerances:
+    velocity_error_mps: 0.02
+outputs:
+  diagnostics_json: verification/results/analytic_oblique_rebound_flat_plane.json
+  trajectory_csv: verification/results/analytic_oblique_rebound_flat_plane.csv
+references:
+  notes:
+    - "The high friction coefficient lets the configured tangential restitution act in this one-step impact fixture."
+

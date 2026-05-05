@@ -1,0 +1,28 @@
+[package]
+name = "rust_rockfall"
+version = "0.1.0"
+edition = "2021"
+description = "Independent, literature-based research core for simple 3D rockfall simulation"
+license = "MIT"
+
+[lib]
+name = "rust_rockfall"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rockfall"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+csv = "1.3"
+nalgebra = { version = "0.33", features = ["serde-serialize"] }
+rand = "0.8"
+rand_chacha = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+thiserror = "2.0"
+
+[dev-dependencies]
+approx = "0.5"

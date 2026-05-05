@@ -1,0 +1,33 @@
+case_id: analytic_free_fall
+title: Free fall without terrain contact
+level: 0
+description: Verifies z(t)=z0+v0*t-0.5*g*t^2, vz(t)=v0-g*t, and mechanical-energy conservation.
+terrain:
+  type: plane
+  parameters: { z0_m: -1000.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 100.0]
+  velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: { dt: 0.01, t_max: 1.0, max_steps: 100, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [position_error_m, velocity_error_mps, energy_conservation_error_j]
+  final_position_m: [0.0, 0.0, 95.095]
+  final_velocity_mps: [0.0, 0.0, -9.81]
+  tolerances:
+    position_error_m: 0.000001
+    velocity_error_mps: 0.000001
+    energy_conservation_error_j: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_free_fall.json
+  trajectory_csv: verification/results/analytic_free_fall.csv
+references:
+  notes:
+    - "Analytic constant-acceleration solution; terrain is deliberately far below the trajectory."
+

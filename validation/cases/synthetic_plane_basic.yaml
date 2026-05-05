@@ -1,0 +1,35 @@
+case_id: validation_synthetic_plane_basic
+title: Synthetic plane validation smoke case
+level: 5
+description: Small checked-in fixture that exercises validation observation loading and deposition metrics without external data.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [1.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.5
+simulation: { dt: 0.01, t_max: 5.0, max_steps: 500, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+observations:
+  deposition_points_csv: validation/data/processed/synthetic_plane_basic/observed_deposition.csv
+expected:
+  metrics: [deposition_point_error_m, runout_distance_error_m, lateral_deviation_m, final_speed_mps]
+  maximums:
+    deposition_point_error_m: 0.5
+    runout_distance_error_m: 0.5
+    lateral_deviation_m: 0.1
+    final_speed_mps: 0.05
+outputs:
+  diagnostics_json: validation/results/synthetic_plane_basic_metrics.json
+  trajectory_csv: validation/results/synthetic_plane_basic_trajectory.csv
+references:
+  dataset: synthetic_plane_basic
+  notes:
+    - "Synthetic fixture only; not a real-world validation claim."
+

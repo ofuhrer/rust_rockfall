@@ -1,0 +1,30 @@
+case_id: analytic_no_motion_threshold
+title: Static no-motion threshold on a shallow incline
+level: 0
+description: Verifies that a block at rest does not start sliding when tan(theta) is below the Coulomb coefficient.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.1, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.5
+simulation: { dt: 0.01, t_max: 1.0, max_steps: 100, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, final_speed_mps]
+  contact_state: stopped
+  max_runout_m: 0.02
+  tolerances: {}
+outputs:
+  diagnostics_json: verification/results/analytic_no_motion_threshold.json
+  trajectory_csv: verification/results/analytic_no_motion_threshold.csv
+references:
+  notes:
+    - "This checks the v0 static-friction threshold path, not full rolling resistance."
+

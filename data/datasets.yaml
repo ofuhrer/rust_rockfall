@@ -1,0 +1,355 @@
+version: 1
+updated_utc: "2026-05-04"
+policy:
+  raw_data_root: data/raw
+  processed_data_root: data/processed
+  commit_large_raw_files: false
+  preserve_original_filenames: true
+  source_metadata_api: https://www.envidat.ch/api/3/action/package_show
+datasets:
+  - id: tschamut2014
+    name: Repetitive trajectory testing in Tschamut 2014
+    source_url: https://www.envidat.ch/metadata/tschamut2014
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=tschamut2014
+    doi: https://doi.org/10.16904/envidat.34
+    license: ODbL with Database Contents License (DbCL)
+    license_id: odc-odbl
+    citation: "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34"
+    authors:
+      - Axel Volkwein
+      - Werner Gerber
+    coordinate_system: "Slope point clouds in CH-1903; block point clouds in local x/y/z coordinates."
+    data_types:
+      - slope and block point clouds
+      - test overview
+      - local positioning trajectories at about 10 Hz
+      - jumps and impacts from in-block sensors
+    file_formats:
+      - zip
+      - ascii tab-separated
+      - Excel
+    download_status: metadata_only
+    local_path: data/raw/tschamut2014
+    processed_path: data/processed/tschamut2014
+    intended_validation_use:
+      - trajectory reconstruction checks
+      - runout and deposition metrics
+      - velocity and acceleration qualitative checks
+      - jump and impact statistics
+    preprocessing_notes:
+      - Extract ZIP archives without modifying raw files.
+      - Convert tab-separated trajectory and overview tables to common CSV schemas.
+      - Derive release and deposition points from overview tables.
+      - Keep CH-1903 coordinates explicit in metadata; do not transform silently.
+    resources:
+      - id: slope_block_scans
+        name: Tschamut2014_Slope+BlockScans
+        url: https://www.envidat.ch/dataset/6a7664a6-77a9-49c9-9498-4b63c018fa09/resource/8cf275ca-06d0-47cf-b67f-48780b019ae6/download/geosciences-08-00088-s001.zip
+        format: zip
+        size_bytes: 1779331
+        raw_file: geosciences-08-00088-s001.zip
+      - id: overview_tests
+        name: Overview of all tests
+        url: https://www.envidat.ch/dataset/6a7664a6-77a9-49c9-9498-4b63c018fa09/resource/467dc8f8-9069-4c87-8856-3d12817633be/download/overviewalltests.zip
+        format: zip
+        size_bytes: 44962
+        raw_file: overviewalltests.zip
+      - id: lps_trajectories
+        name: Block trajectories recorded from local positioning system
+        url: https://www.envidat.ch/dataset/6a7664a6-77a9-49c9-9498-4b63c018fa09/resource/b6dc0f14-5b86-4353-a2a6-ef06c0ddf0ad/download/trajectoriesfromlps.zip
+        format: zip
+        size_bytes: 6430962
+        raw_file: trajectoriesfromlps.zip
+      - id: jumps_impacts
+        name: Jumps and impacts
+        url: https://www.envidat.ch/dataset/6a7664a6-77a9-49c9-9498-4b63c018fa09/resource/e2f0958e-2b51-49ce-ba25-40c4ffd331a7/download/jumpsandimpacts.zip
+        format: zip
+        size_bytes: 1051503
+        raw_file: jumpsandimpacts.zip
+
+  - id: tschamut_small_rock_2016
+    name: Induced Rockfall Dataset (Small Rock Experimental Campaign), Tschamut, Grisons, Switzerland
+    source_url: https://www.envidat.ch/metadata/experimental-rockfall-dataset-tschamut-grisons-switzerland
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=experimental-rockfall-dataset-tschamut-grisons-switzerland
+    doi: https://doi.org/10.16904/envidat.37
+    license: ODbL with Database Contents License (DbCL)
+    license_id: odc-odbl
+    citation: "Caviezel, A., Bühler, Y., Christen, M., Bartelt, P. (2018). Induced Rockfall Dataset (Small Rock Experimental Campaign), Tschamut, Grisons, Switzerland. EnviDat. https://doi.org/10.16904/envidat.37"
+    authors:
+      - Andrin Caviezel
+      - Yves Bühler
+      - Marc Christen
+      - Perry Bartelt
+    coordinate_system: "Site-specific geodata; CRS to be confirmed from downloaded archive metadata."
+    data_types:
+      - deposition points for wet and frozen ground campaigns
+      - UAV DEM and orthophoto
+      - rock point clouds
+      - StoneNode v1.0 sensor streams
+    file_formats:
+      - 7z
+      - geospatial rasters/vector data
+      - sensor streams
+    download_status: metadata_only
+    local_path: data/raw/tschamut_small_rock_2016
+    processed_path: data/processed/tschamut_small_rock_2016
+    intended_validation_use:
+      - deposition distribution
+      - DEM-based runout validation
+      - shape-class sensitivity after non-spherical model support
+    preprocessing_notes:
+      - Requires 7z extraction support.
+      - Convert deposition points and release metadata to common CSV/GeoJSON.
+      - Treat `.pts` rock geometry as public input data, not as proprietary implementation logic.
+    resources:
+      - id: induced_rockfall_data
+        name: Induced Rockfall Data, Tschamut, GR
+        url: https://www.envidat.ch/dataset/5b7a47bf-cbea-42a0-879f-ea2ccd17e82f/resource/3be3d9f6-cf12-4dbc-bdf1-80e101fb47f7/download/2018_rf_tschamut.7z
+        format: 7z
+        size_bytes: 83833546
+        raw_file: 2018_rf_tschamut.7z
+      - id: stonenode_streams
+        name: StoneNode v1.0 Data for equipped experimental Runs
+        url: https://www.envidat.ch/dataset/5b7a47bf-cbea-42a0-879f-ea2ccd17e82f/resource/c80b0561-d5f8-4bd6-97e7-ec5a15bfd84e/download/experimentalruns_sensorstreams.7z
+        format: 7z
+        size_bytes: 6899716
+        raw_file: experimentalruns_sensorstreams.7z
+
+  - id: chant_sura_2020
+    name: Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland
+    source_url: https://www.envidat.ch/metadata/induced-rockfall-dataset-chant-sura
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=induced-rockfall-dataset-chant-sura
+    doi: https://doi.org/10.16904/envidat.174
+    license: WSL Data Policy
+    license_id: wsl-data
+    citation: "Caviezel, A. et al. (2020). Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland. EnviDat. https://doi.org/10.16904/envidat.174"
+    authors:
+      - Andrin Caviezel
+      - Sophia Demmel
+      - Yves Bühler
+      - Adrian Ringenbach
+      - Marc Christen
+      - Perry Bartelt
+    coordinate_system: "Site geodata; CRS to be confirmed from input archive."
+    data_types:
+      - DEM and orthophoto
+      - deposition points
+      - reconstructed trajectories
+      - StoneNode sensor streams
+      - videos
+      - rock masses and EOTA shape data
+    file_formats:
+      - 7z
+      - zip
+      - geospatial files
+      - sensor streams
+    download_status: metadata_only
+    local_path: data/raw/chant_sura_2020
+    processed_path: data/processed/chant_sura_2020
+    intended_validation_use:
+      - shape and mass sensitivity
+      - reconstructed trajectory comparison
+      - deposition and runout metrics
+      - velocity and bounce-height metrics where reconstructed data permit
+    preprocessing_notes:
+      - Prefer Input and Output archives before large Experimental Runs or Video archives.
+      - WSL Data Policy must be reviewed before committing derived files.
+    resources:
+      - id: experimental_runs
+        name: Experimental Runs Archive
+        url: https://www.envidat.ch/dataset/71e65311-b0dd-48df-acfc-791c99cb0662/resource/d9c77b83-fd15-414c-a257-461e6d2b2545/download/experimentalruns.7z
+        format: 7z
+        size_bytes: 538660719
+        raw_file: experimentalruns.7z
+      - id: input_archive
+        name: Input Archive
+        url: https://os.zhdk.cloud.switch.ch/envicloud/doi/envidat.174/caviezel_et_al_2020/Input.7z
+        format: 7z
+        raw_file: Input.7z
+      - id: output_archive
+        name: Output Archive
+        url: https://www.envidat.ch/dataset/71e65311-b0dd-48df-acfc-791c99cb0662/resource/a2e218f8-cffe-4c6a-8515-01a0ff704524/download/output.7z
+        format: 7z
+        size_bytes: 4736837
+        raw_file: output.7z
+      - id: eota
+        name: EOTA
+        url: https://www.envidat.ch/dataset/71e65311-b0dd-48df-acfc-791c99cb0662/resource/eaa94cfe-a85f-4c26-ad2a-2f53b9e4af56/download/eota.7z
+        format: 7z
+        size_bytes: 419
+        raw_file: eota.7z
+
+  - id: schiers_deadwood_2022
+    name: Shape still matters - experimental quantification of deadwood effects on rockfall dynamics
+    source_url: https://www.envidat.ch/metadata/shape_still_matters
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=shape_still_matters
+    doi: https://doi.org/10.16904/envidat.359
+    license: WSL Data Policy
+    license_id: wsl-data
+    citation: "Ringenbach, A. et al. (2022). Shape still matters - experimental quantification of deadwood effects on rockfall dynamics. EnviDat. https://doi.org/10.16904/envidat.359"
+    authors:
+      - Adrian Ringenbach
+      - Gregor Raphael Schmucki
+      - Guillaume Meyrat
+      - Peter Bebi
+      - Andrin Caviezel
+    coordinate_system: "Spatial archive CRS to be confirmed after download."
+    data_types:
+      - StoneNode acceleration and gyroscope data
+      - DSM/LiDAR and orthophotos
+      - deposition points
+      - reconstructed trajectories
+      - deadwood and tree geometry
+      - soil moisture
+      - videos
+    file_formats:
+      - zip
+      - Matlab
+      - geospatial files
+      - point clouds
+    download_status: metadata_only
+    local_path: data/raw/schiers_deadwood_2022
+    processed_path: data/processed/schiers_deadwood_2022
+    intended_validation_use:
+      - forest/deadwood obstruction effects in future phases
+      - reconstructed trajectory comparison
+      - rotation sensor validation
+    preprocessing_notes:
+      - Many archives are very large; download only targeted resources.
+      - RAMMS input archives are public dataset resources but must be treated as scenario data, not proprietary implementation details.
+    resources:
+      - id: ramms_inputs
+        name: RAMMS_inputs.zip
+        url: https://www.envidat.ch/dataset/c87e6daf-2fe3-42c9-8c56-0e3a225293e5/resource/076d7442-4a40-4b77-a030-0ae584abc5ae/download/ramms_inputs.zip
+        format: zip
+        size_bytes: 8879303
+        raw_file: ramms_inputs.zip
+      - id: reconstructed_trajectories
+        name: ReconstructedTrajectories.zip
+        url: https://www.envidat.ch/dataset/c87e6daf-2fe3-42c9-8c56-0e3a225293e5/resource/7aa7863c-3abc-4723-87b4-5ad1d9b1ad7f/download/reconstructedtrajectories.zip
+        format: zip
+        size_bytes: 20739917
+        raw_file: reconstructedtrajectories.zip
+      - id: tree_deflections
+        name: TreeDeflectionsAfterRockImpacts.zip
+        url: https://www.envidat.ch/dataset/c87e6daf-2fe3-42c9-8c56-0e3a225293e5/resource/ab904283-883d-492e-bdd1-aba706e1aa65/download/treedeflectionsafterrockimpacts.zip
+        format: zip
+        size_bytes: 24951
+        raw_file: treedeflectionsafterrockimpacts.zip
+
+  - id: surava_trilogy_2021
+    name: Experimental rockfall trilogy of Surava
+    source_url: https://www.envidat.ch/metadata/experimental-rockfall-trilogy-of-surava
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=experimental-rockfall-trilogy-of-surava
+    doi: https://doi.org/10.16904/envidat.248
+    license: WSL Data Policy
+    license_id: wsl-data
+    citation: "Caviezel, A. et al. (2021). Experimental rockfall trilogy of Surava. EnviDat. https://doi.org/10.16904/envidat.248"
+    authors:
+      - Andrin Caviezel
+      - Adrian Ringenbach
+      - Yves Bühler
+      - Andreas Stoffel
+      - Perry Bartelt
+    coordinate_system: "Release file indicates LV95; DEM CRS to be confirmed from data."
+    data_types:
+      - high-resolution DEM
+      - release point shapefile
+      - tree shapefiles
+      - in-situ sensor data
+    file_formats:
+      - ASCII grid
+      - zip
+      - shapefile
+      - Matlab
+    download_status: metadata_only
+    local_path: data/raw/surava_trilogy_2021
+    processed_path: data/processed/surava_trilogy_2021
+    intended_validation_use:
+      - future forest/deadwood interaction validation
+      - terrain and release-point preprocessing tests
+    preprocessing_notes:
+      - DEM is large but directly useful as ASCII grid.
+      - Forest interactions are out of current simulator scope.
+    resources:
+      - id: dem_5cm
+        name: DEM_Surava_5cm_Resolution
+        url: https://www.envidat.ch/dataset/4da88d3f-5627-40d2-843d-c884a31238b1/resource/f75eab92-8c62-45e0-b2b9-4729e244b241/download/dhm.asc
+        format: asc
+        size_bytes: 116938116
+        raw_file: dhm.asc
+      - id: release_point
+        name: ReleasePoint
+        url: https://www.envidat.ch/dataset/4da88d3f-5627-40d2-843d-c884a31238b1/resource/e57401a7-b80d-4055-838c-5582710f870b/download/release_lv95.zip
+        format: zip
+        size_bytes: 2360
+        raw_file: release_lv95.zip
+
+  - id: parde_gallery_2016
+    name: Rockfall gallery testing Parde 2016
+    source_url: https://www.envidat.ch/metadata/rockfall-gallery-testing-parde-2016
+    api_url: https://www.envidat.ch/api/3/action/package_show?id=rockfall-gallery-testing-parde-2016
+    doi: https://doi.org/10.16904/envidat.41
+    license: ODbL with Database Contents License (DbCL)
+    license_id: odc-odbl
+    citation: "Volkwein, A. (2018). Rockfall gallery testing Parde 2016. EnviDat. https://doi.org/10.16904/envidat.41"
+    authors:
+      - Axel Volkwein
+    coordinate_system: "Impact test coordinate system; verify from spreadsheets after download."
+    data_types:
+      - concrete block impact tests
+      - high-speed video analysis
+      - acceleration measurements
+      - trajectory kinetics and dynamics
+    file_formats:
+      - zip
+      - xlsx
+    download_status: metadata_only
+    local_path: data/raw/parde_gallery_2016
+    processed_path: data/processed/parde_gallery_2016
+    intended_validation_use:
+      - future impact/rebound and kinetic-energy validation
+    preprocessing_notes:
+      - Raw archives are large; prefer video-analysis archive for initial derived metrics.
+      - Gallery/structure interaction is out of current simulator scope.
+    resources:
+      - id: video_analysis
+        name: Video analysis
+        url: https://www.envidat.ch/dataset/2c3b41a5-0ff2-4d65-b396-19afe029df09/resource/4b0dc245-87aa-4b49-bea5-560b95be025a/download/parde2016_videoanalyses.zip
+        format: zip
+        size_bytes: 7038602
+        raw_file: parde2016_videoanalyses.zip
+      - id: acceleration_measurements
+        name: Acceleration measurements
+        url: https://www.envidat.ch/dataset/2c3b41a5-0ff2-4d65-b396-19afe029df09/resource/1dd217a8-3975-4ae8-a7fe-83302438a7df/download/parde2016_accelmeas.zip
+        format: zip
+        size_bytes: 320251100
+        raw_file: parde2016_accelmeas.zip
+
+  - id: synthetic_plane_basic
+    name: Synthetic inclined-plane validation fixture
+    source_url: local
+    doi: null
+    license: MIT, same as repository code
+    license_id: mit
+    citation: "Synthetic fixture generated for rust_rockfall validation tests."
+    authors:
+      - rust_rockfall contributors
+    coordinate_system: local Cartesian metres
+    data_types:
+      - release point
+      - deposition point
+      - block metadata
+    file_formats:
+      - csv
+      - yaml
+    download_status: included
+    local_path: data/processed/synthetic_plane_basic
+    processed_path: data/processed/synthetic_plane_basic
+    intended_validation_use:
+      - CI data loading
+      - validation metric computation
+      - validate subcommand smoke test
+    preprocessing_notes:
+      - Synthetic data only; not a scientific benchmark.
+    resources: []

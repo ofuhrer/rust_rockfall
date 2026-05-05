@@ -1,0 +1,57 @@
+case_id: string
+title: string
+level: 0
+description: string
+terrain:
+  type: plane
+  parameters:
+    z0_m: 0.0
+    slope_x: 0.0
+    slope_y: 0.0
+  path: null
+block:
+  mass: 10.0
+  radius: 0.5
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [0.0, 0.0, 0.0]
+  angular_velocity: [0.0, 0.0, 0.0]
+  perturbation:
+    position_uniform_m: 0.0
+    velocity_uniform_mps: 0.0
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation:
+  dt: 0.01
+  t_max: 1.0
+  max_steps: 100
+  stop_velocity: 0.05
+random:
+  seed: 1
+  ensemble_size: 1
+expected:
+  metrics: [runout_m, impact_count]
+  final_position_m: null
+  final_velocity_mps: null
+  rebound_height_m: null
+  stopping_distance_m: null
+  impact_time_s: null
+  min_runout_m: null
+  max_runout_m: null
+  min_impact_count: null
+  max_impact_count: null
+  values: {}
+  minimums: {}
+  maximums: {}
+  tolerances: {}
+outputs:
+  trajectory_csv: verification/results/example.csv
+  diagnostics_json: verification/results/example.json
+references:
+  literature: []
+  dataset: null
+  notes: []
+

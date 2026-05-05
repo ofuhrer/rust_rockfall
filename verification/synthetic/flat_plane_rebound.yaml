@@ -1,0 +1,34 @@
+case_id: synthetic_flat_plane_rebound
+title: Flat-plane rebound sanity case
+level: 1
+description: Verifies impact count, low runout, and bounded bounce height over a horizontal analytic plane.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 25.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 3.0]
+  velocity: [0.5, 0.0, -2.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.35
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: { dt: 0.005, t_max: 2.0, max_steps: 400, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, runout_m, max_bounce_height_m, max_speed_mps, energy_monotonicity_violation_j]
+  min_impact_count: 1
+  max_runout_m: 3.0
+  maximums:
+    max_bounce_height_m: 2.6
+    max_speed_mps: 9.0
+  tolerances:
+    energy_monotonicity_violation_j: 2.0
+outputs:
+  diagnostics_json: verification/results/synthetic_flat_plane_rebound.json
+  trajectory_csv: verification/results/synthetic_flat_plane_rebound.csv
+references:
+  notes:
+    - "Level 1 terrain/contact test; no field validity is implied."
+

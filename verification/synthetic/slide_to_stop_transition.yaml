@@ -1,0 +1,31 @@
+case_id: regime_slide_to_stop_transition
+title: Slide-to-stop transition
+level: 2
+description: Verifies a horizontal sliding state dissipates to the configured stopped state.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 0.5]
+  velocity: [1.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.5
+simulation: { dt: 0.01, t_max: 5.0, max_steps: 500, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, final_speed_mps, impact_count]
+  contact_state: stopped
+  max_runout_m: 1.0
+  maximums:
+    final_speed_mps: 0.05
+outputs:
+  diagnostics_json: verification/results/regime_slide_to_stop_transition.json
+  trajectory_csv: verification/results/regime_slide_to_stop_transition.csv
+references:
+  notes:
+    - "Expected stopping distance is approximately v0^2/(2*mu*g)=0.102 m, with tolerance kept broad for fixed-step stopping."
+

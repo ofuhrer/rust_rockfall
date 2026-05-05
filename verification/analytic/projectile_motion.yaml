@@ -1,0 +1,33 @@
+case_id: analytic_projectile_motion
+title: Projectile motion with known initial velocity
+level: 0
+description: Verifies x/y linear motion and z parabolic motion without contact.
+terrain:
+  type: plane
+  parameters: { z0_m: -1000.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [1.0, -2.0, 50.0]
+  velocity: [3.0, 4.0, 5.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: { dt: 0.01, t_max: 1.0, max_steps: 100, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [position_error_m, velocity_error_mps, energy_conservation_error_j]
+  final_position_m: [4.0, 2.0, 50.095]
+  final_velocity_mps: [3.0, 4.0, -4.81]
+  tolerances:
+    position_error_m: 0.000001
+    velocity_error_mps: 0.000001
+    energy_conservation_error_j: 0.000001
+outputs:
+  diagnostics_json: verification/results/analytic_projectile_motion.json
+  trajectory_csv: verification/results/analytic_projectile_motion.csv
+references:
+  notes:
+    - "Analytic constant-acceleration projectile solution."
+

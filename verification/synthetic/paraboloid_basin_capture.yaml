@@ -1,0 +1,32 @@
+case_id: synthetic_paraboloid_basin_capture
+title: Paraboloid basin capture
+level: 1
+description: Verifies a dissipative trajectory remains bounded in a convex paraboloid basin.
+terrain:
+  type: paraboloid
+  parameters: { z0_m: 0.0, ax: 0.04, ay: 0.04 }
+block: { mass: 20.0, radius: 0.5 }
+release:
+  position: [4.0, 0.0, 2.0]
+  velocity: [-1.0, 0.2, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.15
+  tangential_restitution: 0.75
+  friction_coefficient: 0.6
+simulation: { dt: 0.01, t_max: 8.0, max_steps: 800, stop_velocity: 0.08 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, final_speed_mps, impact_count, max_speed_mps]
+  max_runout_m: 12.0
+  min_impact_count: 1
+  maximums:
+    final_speed_mps: 8.0
+    max_speed_mps: 15.0
+outputs:
+  diagnostics_json: verification/results/synthetic_paraboloid_basin_capture.json
+  trajectory_csv: verification/results/synthetic_paraboloid_basin_capture.csv
+references:
+  notes:
+    - "The current v0 model has no advanced basin trapping physics; this is a boundedness/contact sanity check."
+

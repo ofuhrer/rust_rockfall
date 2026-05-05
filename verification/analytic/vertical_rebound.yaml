@@ -1,0 +1,32 @@
+case_id: analytic_vertical_rebound
+title: Vertical rebound on a horizontal plane
+level: 0
+description: Verifies first rebound height is approximately e_n^2 times the initial drop height for a spherical block.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 10.5]
+  velocity: [0.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+simulation: { dt: 0.002, t_max: 3.0, max_steps: 1500, stop_velocity: 0.0 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [impact_count, rebound_height_error_m, runout_m]
+  rebound_height_m: 2.5
+  min_impact_count: 1
+  max_impact_count: 2
+  max_runout_m: 0.001
+  tolerances:
+    rebound_height_error_m: 0.08
+outputs:
+  diagnostics_json: verification/results/analytic_vertical_rebound.json
+  trajectory_csv: verification/results/analytic_vertical_rebound.csv
+references:
+  notes:
+    - "Initial clearance is 10 m, so the ideal first rebound clearance is 0.5^2*10 = 2.5 m."

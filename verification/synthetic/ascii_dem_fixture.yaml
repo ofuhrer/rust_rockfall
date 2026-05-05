@@ -1,0 +1,30 @@
+case_id: synthetic_ascii_dem_fixture
+title: Tiny ESRI ASCII DEM fixture
+level: 1
+description: Verifies that a small ESRI ASCII grid can be loaded and used by the simulator in CI.
+terrain:
+  type: esri_ascii_grid
+  path: verification/synthetic/fixtures/tiny_plane.asc
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [2.0, 2.0, 1.5]
+  velocity: [0.2, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: { dt: 0.005, t_max: 0.2, max_steps: 40, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+expected:
+  metrics: [runout_m, max_speed_mps, max_bounce_height_m]
+  max_runout_m: 1.0
+  maximums:
+    max_speed_mps: 3.0
+    max_bounce_height_m: 1.1
+outputs:
+  diagnostics_json: verification/results/synthetic_ascii_dem_fixture.json
+  trajectory_csv: verification/results/synthetic_ascii_dem_fixture.csv
+references:
+  notes:
+    - "DEM interpolation and normal computation are covered more tightly by Rust unit tests."
