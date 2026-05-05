@@ -1,0 +1,65 @@
+case_id: validation_tschamut_swissalti3d_baseline
+title: Tschamut swissALTI3D real-site pilot (baseline template)
+level: 5
+description: Template for a local/private Tschamut rerun with a manually supplied swissALTI3D-style DEM crop, source-area metadata, optional terrain classes, and the default translational_v0 contact model. Generate an ignored runnable case with scripts/prepare_tschamut_swissalti3d_pilot.py.
+terrain:
+  type: ascii_dem_clamped
+  path: __PRIVATE_TSCHAMUT_SWISSALTI3D_DEM_ASC__
+  metadata_path: __PRIVATE_TSCHAMUT_SWISSALTI3D_TERRAIN_METADATA_YAML__
+terrain_classes:
+  metadata_path: __OPTIONAL_PRIVATE_TERRAIN_CLASSES_METADATA_YAML__
+block: { mass: 69.0, radius: 0.176667 }
+release:
+  position: [0.0, 0.0, 0.0]
+  velocity: [0.0, 0.0, 0.0]
+release_zone:
+  metadata_path: __PRIVATE_TSCHAMUT_RELEASE_ZONE_METADATA_YAML__
+  generated_release_points_csv: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_release_points.csv
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  contact_model: translational_v0
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
+random: { seed: 34014, ensemble_size: 1 }
+hazard_layers:
+  statistics:
+    kinetic_energy_exceedance_j: [1000.0, 10000.0]
+    jump_height_exceedance_m: [0.5, 2.0]
+    velocity_exceedance_mps: [5.0, 10.0]
+validation_scope:
+  type: real-site-diagnostic-template
+  note: "Template only. Use private terrain/source metadata and existing parameters; do not tune to Tschamut observations."
+observations:
+  deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
+expected:
+  metrics:
+    - release_zone_point_count
+    - release_zone_extent_area_m2
+    - release_zone_mean_runout_m
+    - release_zone_max_runout_m
+    - observed_mean_runout_m
+    - simulated_mean_runout_m
+    - runout_distance_error_m
+    - deposition_centroid_error_m
+    - deposition_cloud_mean_nearest_error_m
+    - lateral_spread_error_m
+    - deposition_cloud_overlap_fraction
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_metrics.json
+  manifest_json: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_manifest.json
+  ensemble_deposition_csv: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_deposition.csv
+  ensemble_trajectories_dir: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_trajectories
+  ensemble_impact_events_dir: validation/results/tschamut_swissalti3d_private/validation_tschamut_swissalti3d_baseline_impacts
+references:
+  dataset: tschamut2014
+  notes:
+    - "Template contains placeholders and is not part of validate --all."
+    - "Use scripts/prepare_tschamut_swissalti3d_pilot.py to create ignored runnable cases under validation/private/."
+    - "Raw swissALTI3D data remain private/local and out of git."

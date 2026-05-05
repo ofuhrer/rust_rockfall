@@ -10,10 +10,12 @@ import unittest
 from pathlib import Path
 
 import scripts.build_hazard_layers as hazard
+import scripts.prepare_tschamut_swissalti3d_pilot as tschamut_pilot
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "hazard"
+SWISS_PILOT = ROOT / "validation" / "data" / "processed" / "swisstopo_pilot"
 
 
 class HazardLayerTests(unittest.TestCase):
@@ -46,7 +48,18 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(manifest["completion_status"], "completed")
             self.assertEqual(manifest["grid"]["source"], "auto")
             self.assertEqual(manifest["inputs"]["trajectory_sample_count"], 6)
+            self.assertGreaterEqual(manifest["performance"]["total_wall_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["hazard_layer_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["output_write_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["accumulation_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["core_output_write_seconds"], 0.0)
+            self.assertEqual(manifest["performance"]["plot_render_seconds"], 0.0)
+            self.assertFalse(manifest["performance"]["plots_enabled"])
+            self.assertEqual(manifest["performance"]["trajectory_count"], 2)
+            self.assertEqual(manifest["performance"]["impact_event_count"], 2)
+            self.assertGreater(manifest["performance"]["output_file_count"], 0)
             self.assertTrue(any(output["kind"] == "hazard_layer" for output in manifest["outputs"]))
+            self.assertFalse(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
             reach_summary = next(
                 layer["summary"] for layer in metadata["layers"] if layer["key"] == "reach_probability"
             )
@@ -75,10 +88,53 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(asc_header[0], "ncols 5")
             self.assertEqual(asc_header[1], "nrows 3")
 
-            html = (output_dir / "index.html").read_text()
+            self.assertFalse((output_dir / "index.html").exists())
+            self.assertEqual(list(output_dir.glob("*.png")), [])
+
+    def test_plotted_mode_preserves_report_outputs_without_changing_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            no_plot_dir = Path(tmp) / "no_plots"
+            plotted_dir = Path(tmp) / "plotted"
+            base_args = [
+                "--case",
+                str(FIXTURE / "plane_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*base_args, "--output-dir", str(no_plot_dir), "--no-plots"]),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args([*base_args, "--output-dir", str(plotted_dir)]),
+                0,
+            )
+
+            for layer in (
+                "reach_probability",
+                "deposition_density",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "significant_impact_density",
+            ):
+                self.assertEqual(
+                    read_layer(no_plot_dir / f"hazard_fixture_plane_{layer}.csv", layer),
+                    read_layer(plotted_dir / f"hazard_fixture_plane_{layer}.csv", layer),
+                )
+
+            html = (plotted_dir / "index.html").read_text()
             self.assertIn("not operational risk", html)
             self.assertIn("How to Read Hazard Layers", html)
             self.assertIn("Reach probability", html)
+            self.assertGreater(len(list(plotted_dir.glob("*.png"))), 0)
+
+            manifest = json.loads((plotted_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertTrue(manifest["performance"]["plots_enabled"])
+            self.assertGreaterEqual(manifest["performance"]["plot_render_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["core_output_write_seconds"], 0.0)
+            self.assertTrue(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
 
     def test_exceedance_layers_are_additive_and_manifested(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -163,6 +219,198 @@ class HazardLayerTests(unittest.TestCase):
                 any(layer["key"] == "velocity_exceedance_1p5mps" for layer in manifest["layers"])
             )
 
+    def test_sampling_weighted_layers_equal_unweighted_when_weights_are_uniform(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "uniform_metadata.csv"
+            rows = fixture_weight_rows()
+            for row in rows:
+                row["sampling_weight"] = "1.0"
+            write_metadata_csv(metadata_path, rows)
+            case_path = write_weighted_case(work / "uniform_case.yaml", metadata_path)
+            output_dir = work / "hazard"
+
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            for weighted_key, unweighted_key in (
+                ("weighted_reach_probability", "reach_probability"),
+                ("weighted_kinetic_energy_exceedance_10j", "kinetic_energy_exceedance_10j"),
+                ("weighted_jump_height_exceedance_0p4m", "jump_height_exceedance_0p4m"),
+                ("weighted_velocity_exceedance_1p5mps", "velocity_exceedance_1p5mps"),
+            ):
+                self.assertEqual(
+                    read_layer(output_dir / f"hazard_fixture_weighted_{weighted_key}.csv", weighted_key),
+                    read_layer(output_dir / f"hazard_fixture_weighted_{unweighted_key}.csv", unweighted_key),
+                )
+
+    def test_sampling_weighted_layers_use_nonuniform_weights(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "weighted_case.yaml"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            unweighted = read_layer(
+                output_dir / "hazard_fixture_weighted_reach_probability.csv",
+                "reach_probability",
+            )
+            weighted = read_layer(
+                output_dir / "hazard_fixture_weighted_weighted_reach_probability.csv",
+                "weighted_reach_probability",
+            )
+            self.assertNotEqual(weighted, unweighted)
+            nonzero_values = sorted({round(value, 8) for value in weighted.values() if value > 0.0})
+            self.assertEqual(nonzero_values, [0.25, 0.75, 1.0])
+
+            weighted_velocity = read_layer(
+                output_dir / "hazard_fixture_weighted_weighted_velocity_exceedance_1p5mps.csv",
+                "weighted_velocity_exceedance_1p5mps",
+            )
+            self.assertAlmostEqual(max(weighted_velocity.values()), 0.75)
+
+            metadata = json.loads((output_dir / "hazard_fixture_weighted_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            probability = manifest["hazard_probability"]
+            self.assertEqual(probability["probability_model"], "sampling_weighted")
+            self.assertEqual(probability["weight_column"], "sampling_weight")
+            self.assertEqual(probability["normalization_convention"], "conditioned_on_filter")
+            self.assertAlmostEqual(probability["total_input_weight"], 4.0)
+            self.assertAlmostEqual(probability["total_filtered_weight"], 4.0)
+            self.assertIn("weighted_reach_probability", probability["generated_weighted_layer_names"])
+            self.assertEqual(metadata["hazard_probability"], probability)
+
+    def test_sampling_weighted_layers_reject_negative_weights(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "negative_metadata.csv"
+            rows = fixture_weight_rows()
+            rows[1]["sampling_weight"] = "-0.5"
+            write_metadata_csv(metadata_path, rows)
+            case_path = write_weighted_case(work / "negative_case.yaml", metadata_path)
+
+            with self.assertRaisesRegex(SystemExit, "non-negative"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(work / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                )
+
+    def test_sampling_weighted_layers_require_metadata_for_all_trajectories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "missing_metadata.csv"
+            write_metadata_csv(metadata_path, fixture_weight_rows()[:1])
+            case_path = write_weighted_case(work / "missing_case.yaml", metadata_path)
+
+            with self.assertRaisesRegex(SystemExit, "missing from"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(work / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                )
+
+    def test_sampling_weighted_filters_apply_to_metadata_and_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "filtered_metadata.csv"
+            write_metadata_csv(metadata_path, fixture_weight_rows())
+            case_path = write_weighted_case(
+                work / "filtered_case.yaml",
+                metadata_path,
+                filters={
+                    "source_zone_ids": ["zone_a"],
+                    "scenario_ids": [],
+                    "block_mass_kg_min": None,
+                    "block_mass_kg_max": 15.0,
+                },
+            )
+            output_dir = work / "hazard"
+
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--trajectory",
+                        str(FIXTURE / "ensemble_trajectories" / "trajectory_000000.csv"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            weighted = read_layer(
+                output_dir / "hazard_fixture_weighted_weighted_reach_probability.csv",
+                "weighted_reach_probability",
+            )
+            self.assertEqual(sorted({value for value in weighted.values() if value > 0.0}), [1.0])
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            self.assertAlmostEqual(manifest["hazard_probability"]["total_input_weight"], 4.0)
+            self.assertAlmostEqual(manifest["hazard_probability"]["total_filtered_weight"], 1.0)
+
+    def test_unweighted_mode_does_not_emit_weighted_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+            metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertIsNone(metadata["hazard_probability"])
+            self.assertIsNone(manifest["hazard_probability"])
+            self.assertFalse(list(output_dir.glob("*weighted*.csv")))
+
     def test_explicit_grid_mode_records_reference_grid_in_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)
@@ -198,6 +446,60 @@ class HazardLayerTests(unittest.TestCase):
             asc_header = (output_dir / "hazard_fixture_plane_reach_probability.asc").read_text().splitlines()[:6]
             self.assertEqual(asc_header[0], "ncols 6")
             self.assertEqual(asc_header[1], "nrows 4")
+
+    def test_tschamut_swissalti3d_pilot_preparation_uses_synthetic_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            generated = tschamut_pilot.prepare_pilot_cases(
+                dem_path=SWISS_PILOT / "swissalti3d_pilot_crop.asc",
+                terrain_metadata_path=SWISS_PILOT / "swissalti3d_pilot_metadata.yaml",
+                release_zone_metadata_path=SWISS_PILOT / "release_zone_source_area.yaml",
+                terrain_classes_metadata_path=SWISS_PILOT / "terrain_classes_metadata.yaml",
+                case_dir=work / "cases",
+                results_dir=work / "results",
+                seed=1234,
+                ensemble_size=2,
+                force=False,
+            )
+            self.assertEqual(
+                [path.name for path in generated],
+                ["tschamut_swissalti3d_baseline.yaml", "tschamut_swissalti3d_rotational.yaml"],
+            )
+
+            baseline = yaml_load(generated[0])
+            rotational = yaml_load(generated[1])
+            self.assertEqual(baseline["parameters"]["contact_model"], "translational_v0")
+            self.assertEqual(rotational["parameters"]["contact_model"], "sphere_rotational_v1")
+            self.assertEqual(baseline["random"]["seed"], 1234)
+            self.assertEqual(baseline["random"]["ensemble_size"], 2)
+            self.assertEqual(
+                baseline["terrain"]["metadata_path"],
+                str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            )
+            self.assertEqual(
+                baseline["terrain_classes"]["metadata_path"],
+                str(SWISS_PILOT / "terrain_classes_metadata.yaml"),
+            )
+            self.assertIn("hazard_layers", baseline)
+            self.assertIn("ensemble_trajectories_dir", baseline["outputs"])
+
+    def test_tschamut_swissalti3d_pilot_preparation_reports_missing_private_data(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(
+                tschamut_pilot.PilotError,
+                "missing private swissALTI3D-style DEM crop",
+            ):
+                tschamut_pilot.prepare_pilot_cases(
+                    dem_path=Path(tmp) / "missing.asc",
+                    terrain_metadata_path=SWISS_PILOT / "swissalti3d_pilot_metadata.yaml",
+                    release_zone_metadata_path=SWISS_PILOT / "release_zone_source_area.yaml",
+                    terrain_classes_metadata_path=None,
+                    case_dir=Path(tmp) / "cases",
+                    results_dir=Path(tmp) / "results",
+                    seed=1234,
+                    ensemble_size=1,
+                    force=False,
+                )
 
     def test_nonfinite_coordinate_rows_are_dropped_with_warning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -297,6 +599,40 @@ def read_layer(path: Path, key: str) -> dict[tuple[int, int], float]:
         for row in reader:
             values[(int(row["row"]), int(row["col"]))] = float(row[key])
     return values
+
+
+def yaml_load(path: Path) -> dict:
+    import yaml  # type: ignore
+
+    return yaml.safe_load(path.read_text())
+
+
+def write_weighted_case(
+    path: Path,
+    metadata_path: Path,
+    filters: dict | None = None,
+) -> Path:
+    import yaml  # type: ignore
+
+    case = yaml_load(FIXTURE / "weighted_case.yaml")
+    case["hazard_probability"]["metadata_path"] = str(metadata_path)
+    if filters is not None:
+        case["hazard_probability"]["filters"] = filters
+    path.write_text(yaml.safe_dump(case, sort_keys=False))
+    return path
+
+
+def fixture_weight_rows() -> list[dict[str, str]]:
+    with (FIXTURE / "weighted_metadata.csv").open(newline="") as file:
+        return [dict(row) for row in csv.DictReader(file)]
+
+
+def write_metadata_csv(path: Path, rows: list[dict[str, str]]) -> None:
+    fieldnames = list(rows[0].keys())
+    with path.open("w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 if __name__ == "__main__":

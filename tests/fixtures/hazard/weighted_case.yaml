@@ -1,0 +1,36 @@
+case_id: hazard_fixture_weighted
+title: Hazard layer fixture with illustrative non-uniform sampling weights
+level: 4
+description: Small fixture for sampling-weighted hazard-layer tests. Weights are illustrative only, not calibrated probabilities.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 0.8
+  friction_coefficient: 0.3
+simulation: { dt: 0.1, t_max: 1.0, stop_velocity: 0.1 }
+random: { seed: 7, ensemble_size: 2 }
+outputs:
+  ensemble_trajectories_dir: tests/fixtures/hazard/ensemble_trajectories
+  ensemble_deposition_csv: tests/fixtures/hazard/deposition.csv
+hazard_layers:
+  statistics:
+    kinetic_energy_exceedance_j: [10.0]
+    jump_height_exceedance_m: [0.4]
+    velocity_exceedance_mps: [1.5]
+hazard_probability:
+  probability_model: sampling_weighted
+  metadata_path: tests/fixtures/hazard/weighted_metadata.csv
+  weight_column: sampling_weight
+  normalization_convention: conditioned_on_filter
+  filters:
+    source_zone_ids: []
+    scenario_ids: []
+    block_mass_kg_min: null
+    block_mass_kg_max: null

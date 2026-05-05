@@ -54,6 +54,16 @@ hazard_layers:
     kinetic_energy_exceedance_j: []
     jump_height_exceedance_m: []
     velocity_exceedance_mps: []
+hazard_probability:
+  probability_model: null # currently only sampling_weighted is supported
+  metadata_path: null # trajectory_metadata_table_v1 CSV
+  weight_column: null # currently only sampling_weight is supported
+  normalization_convention: null # currently only conditioned_on_filter is supported
+  filters:
+    source_zone_ids: []
+    scenario_ids: []
+    block_mass_kg_min: null
+    block_mass_kg_max: null
 validation_scope:
   type: null
   note: null
@@ -79,6 +89,7 @@ expected:
   tolerances: {}
 outputs:
   trajectory_csv: verification/results/example.csv
+  trajectory_metadata_csv: null
   diagnostics_json: verification/results/example.json
   manifest_json: verification/results/example_manifest.json
   ensemble_deposition_csv: null
@@ -90,3 +101,10 @@ references:
   literature: []
   dataset: null
   notes: []
+
+# Local/private real-site pilot templates live under validation/templates/.
+# They should be materialized into ignored validation/private/ cases with
+# scripts/prepare_tschamut_swissalti3d_pilot.py before running validate.
+#
+# run_manifest_v1 sidecars include optional performance timing/output-volume
+# metadata. See docs/performance_benchmarking.md.

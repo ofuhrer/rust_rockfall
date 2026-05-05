@@ -3,6 +3,7 @@ use rust_rockfall::{
     geodata::{ReleaseZoneMetadata, TerrainClassMap, TerrainClassMetadata, TerrainSourceMetadata},
     geometry::SphereBlock,
     io,
+    manifest::RunManifest,
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::ContactState,
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -14,6 +15,62 @@ use rust_rockfall::{
     ContactModel, ContactParameterProvider, ContactParameters, ScarringSettings,
     SoilInteractionModel, Vec3,
 };
+
+#[test]
+fn run_manifest_without_performance_section_remains_backward_compatible() {
+    let text = r#"{
+      "schema_version": "run_manifest_v1",
+      "created_unix_s": 1,
+      "case_id": "legacy_manifest",
+      "model_version": "0.5.0",
+      "git_hash": null,
+      "config_fingerprint": null,
+      "completion_status": "passed",
+      "seed_policy": {
+        "global_seed": null,
+        "ensemble_size": 1,
+        "derivation": "legacy"
+      },
+      "terrain": {
+        "terrain_type": "plane",
+        "path": null,
+        "metadata_path": null,
+        "crs": null,
+        "epsg": null,
+        "vertical_datum": null,
+        "resolution_m": null,
+        "extent": null,
+        "nodata": null,
+        "source_dataset": null,
+        "source_product": null,
+        "source_url": null,
+        "source_filename": null,
+        "license": null,
+        "download_status": null,
+        "preprocessing_status": null,
+        "raw_sha256": null,
+        "processed_sha256": null,
+        "provenance_notes": []
+      },
+      "release_zone": null,
+      "terrain_classes": null,
+      "outputs": [],
+      "warnings": []
+    }"#;
+    let manifest: RunManifest = serde_json::from_str(text).unwrap();
+    assert_eq!(manifest.case_id, "legacy_manifest");
+    assert!(manifest.trajectory_metadata.is_none());
+    assert!(manifest.performance.is_none());
+
+    let text_with_legacy_metadata = text.replace(
+        "\"terrain_classes\": null,\n      \"outputs\": []",
+        "\"terrain_classes\": null,\n      \"trajectory_metadata\": {\n        \"schema_version\": \"trajectory_metadata_table_v1\",\n        \"path\": \"metadata.csv\",\n        \"row_count\": 2,\n        \"total_sampling_weight\": 2.0\n      },\n      \"outputs\": []",
+    );
+    let manifest: RunManifest = serde_json::from_str(&text_with_legacy_metadata).unwrap();
+    let metadata = manifest.trajectory_metadata.unwrap();
+    assert_eq!(metadata.probability_model, "unweighted");
+    assert_eq!(metadata.probability_semantics, "sampling_weight_only");
+}
 use std::{
     fs,
     path::PathBuf,
@@ -923,6 +980,7 @@ fn ensemble_trajectory_dir_is_opt_in_and_deterministic() {
     let diagnostics = temp_path("ensemble_trajectories.json");
     let manifest = temp_path("ensemble_trajectories_manifest.json");
     let trajectory = temp_path("ensemble_trajectories_representative.csv");
+    let metadata = temp_path("ensemble_trajectory_metadata.csv");
     let ensemble_dir = temp_path("ensemble_trajectories_dir");
     let ensemble_impacts_dir = temp_path("ensemble_impacts_dir");
     fs::write(
@@ -953,12 +1011,14 @@ outputs:
   diagnostics_json: {}
   manifest_json: {}
   trajectory_csv: {}
+  trajectory_metadata_csv: {}
   ensemble_trajectories_dir: {}
   ensemble_impact_events_dir: {}
 "#,
             diagnostics.display(),
             manifest.display(),
             trajectory.display(),
+            metadata.display(),
             ensemble_dir.display(),
             ensemble_impacts_dir.display()
         ),
@@ -972,6 +1032,7 @@ outputs:
     let first_impacts = ensemble_impacts_dir.join("trajectory_000000.csv");
     assert_eq!(first.status, CaseStatus::Passed);
     assert!(trajectory.exists());
+    assert!(metadata.exists());
     assert!(first_file.exists());
     assert!(second_file.exists());
     assert!(third_file.exists());
@@ -983,7 +1044,54 @@ outputs:
     assert_eq!(manifest_json["case_id"], "ensemble_trajectory_output");
     assert_eq!(manifest_json["completion_status"], "passed");
     assert_eq!(manifest_json["seed_policy"]["global_seed"], 123);
-    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 4);
+    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 5);
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["schema_version"],
+        "trajectory_metadata_table_v1"
+    );
+    assert_eq!(manifest_json["trajectory_metadata"]["row_count"], 3);
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["total_sampling_weight"],
+        3.0
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["probability_model"],
+        "unweighted"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["normalization_convention"],
+        "unweighted_current_outputs"
+    );
+    assert!(
+        manifest_json["performance"]["total_wall_seconds"]
+            .as_f64()
+            .unwrap()
+            >= 0.0
+    );
+    assert!(
+        manifest_json["performance"]["simulation_seconds"]
+            .as_f64()
+            .unwrap()
+            >= 0.0
+    );
+    assert!(
+        manifest_json["performance"]["output_write_seconds"]
+            .as_f64()
+            .unwrap()
+            >= 0.0
+    );
+    assert!(
+        manifest_json["performance"]["trajectory_count"]
+            .as_u64()
+            .unwrap()
+            >= 1
+    );
+    assert!(
+        manifest_json["performance"]["output_file_count"]
+            .as_u64()
+            .unwrap()
+            >= 4
+    );
     assert!(manifest_json["outputs"]
         .as_array()
         .unwrap()
@@ -992,15 +1100,30 @@ outputs:
             && entry["file_count"] == 3
             && entry["row_count"].as_u64().unwrap() > 0));
     let first_contents = fs::read_to_string(&first_file).unwrap();
+    assert!(first_contents.starts_with("trajectory_id,time_s"));
+    assert!(first_contents.contains("trajectory_000000"));
+    let impact_contents = fs::read_to_string(&first_impacts).unwrap();
+    assert!(impact_contents.starts_with("trajectory_id,impact_index"));
+    assert!(impact_contents.contains("trajectory_000000"));
+    let metadata_contents = fs::read_to_string(&metadata).unwrap();
+    assert!(metadata_contents.starts_with("trajectory_id,release_id,source_zone_id"));
+    assert!(metadata_contents.contains("trajectory_000000,trajectory_000000,manual_release"));
+    assert!(metadata_contents.contains("release_probability"));
+    assert!(metadata_contents.contains("block_density_kgpm3"));
+    assert!(metadata_contents.contains("probability_model"));
+    assert!(metadata_contents.contains("unweighted"));
+    assert_eq!(metadata_contents.lines().count(), 4);
 
     let second = run_case_file(&case_path).unwrap();
     assert_eq!(first.metrics, second.metrics);
     assert_eq!(first_contents, fs::read_to_string(&first_file).unwrap());
+    assert_eq!(metadata_contents, fs::read_to_string(&metadata).unwrap());
 
     fs::remove_file(case_path).unwrap();
     fs::remove_file(diagnostics).unwrap();
     fs::remove_file(manifest).unwrap();
     fs::remove_file(trajectory).unwrap();
+    fs::remove_file(metadata).unwrap();
     fs::remove_file(first_file).unwrap();
     fs::remove_file(second_file).unwrap();
     fs::remove_file(third_file).unwrap();
@@ -1037,6 +1160,12 @@ fn swissalti3d_pilot_case_writes_terrain_provenance_manifest() {
         "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml"
     );
     assert_eq!(manifest_json["terrain"]["extent"]["xmin"], 2600000.0);
+    assert!(
+        manifest_json["performance"]["terrain_load_seconds"]
+            .as_f64()
+            .unwrap()
+            >= 0.0
+    );
 
     fs::remove_file(diagnostics).unwrap();
     fs::remove_file(trajectory).unwrap();

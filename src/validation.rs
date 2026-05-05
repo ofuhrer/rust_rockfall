@@ -1,19 +1,19 @@
 //! Verification and validation helpers, case loading, and metric computation.
 
 use crate::{
-    dynamics::{ContactModel, ContactParameterProvider, SoilInteractionModel},
+    dynamics::{ContactModel, ContactParameterProvider, ScarringDepthSource, SoilInteractionModel},
     geodata::{GeodataError, ReleaseZoneMetadata, TerrainClassMap, TerrainSourceMetadata},
     geometry::SphereBlock,
     io,
     manifest::{
-        OutputManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
+        OutputManifest, PerformanceManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
         TerrainClassCoverageManifest, TerrainClassManifest, TerrainExtentManifest, TerrainManifest,
-        RUN_MANIFEST_SCHEMA_VERSION,
+        TrajectoryMetadataManifest, RUN_MANIFEST_SCHEMA_VERSION,
     },
     simulation::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
-        SimulationError, TerrainConfig, TrajectoryRequest, TrajectoryRun,
+        SimulationError, SimulationResult, TerrainConfig, TrajectoryRequest, TrajectoryRun,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -26,7 +26,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 use thiserror::Error;
 
@@ -40,6 +40,7 @@ pub fn free_flight_state(initial: BodyState, gravity_mps2: f64, time_s: f64) -> 
 }
 
 pub const SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
+pub const TRAJECTORY_METADATA_SCHEMA_VERSION: &str = "trajectory_metadata_table_v1";
 const OUTPUT_FILE_WARNING_THRESHOLD: usize = 1_000;
 const OUTPUT_FILE_HIGH_WARNING_THRESHOLD: usize = 10_000;
 
@@ -306,6 +307,8 @@ pub struct OutputConfig {
     #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
     #[serde(default)]
+    pub trajectory_metadata_csv: Option<PathBuf>,
+    #[serde(default)]
     pub ensemble_deposition_csv: Option<PathBuf>,
     #[serde(default)]
     pub ensemble_trajectories_dir: Option<PathBuf>,
@@ -430,6 +433,24 @@ pub struct EnsembleDepositionPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrajectoryMetadataRow {
+    pub trajectory_id: String,
+    pub release_id: String,
+    pub source_zone_id: String,
+    pub release_x_m: f64,
+    pub release_y_m: f64,
+    pub release_z_m: f64,
+    pub release_probability: Option<f64>,
+    pub block_radius_m: f64,
+    pub block_mass_kg: f64,
+    pub block_density_kgpm3: Option<f64>,
+    pub shape_class: String,
+    pub scenario_id: String,
+    pub sampling_weight: f64,
+    pub probability_model: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeneratedReleasePointRecord {
     pub release_id: String,
     pub x_m: f64,
@@ -454,6 +475,130 @@ pub struct CaseReport {
     pub failures: Vec<String>,
     pub warnings: Vec<String>,
     pub parameters: SimulationConfig,
+}
+
+#[derive(Debug, Clone, Default)]
+struct RuntimeTiming {
+    total_wall_seconds: f64,
+    terrain_load_seconds: f64,
+    release_generation_seconds: f64,
+    simulation_seconds: f64,
+    output_write_seconds: f64,
+    trajectory_count: usize,
+    impact_event_count: usize,
+}
+
+impl RuntimeTiming {
+    fn record_run(&mut self, run: &TrajectoryRun) {
+        self.trajectory_count += 1;
+        self.impact_event_count += run.impact_events.len();
+    }
+
+    fn record_result(&mut self, result: &SimulationResult) {
+        self.trajectory_count += 1;
+        self.impact_event_count += result.impact_events.len();
+    }
+
+    fn record_runs(&mut self, runs: &[TrajectoryRun]) {
+        for run in runs {
+            self.record_run(run);
+        }
+    }
+
+    fn to_manifest(&self, outputs: &[OutputManifest]) -> PerformanceManifest {
+        PerformanceManifest {
+            total_wall_seconds: self.total_wall_seconds.max(0.0),
+            terrain_load_seconds: self.terrain_load_seconds.max(0.0),
+            release_generation_seconds: self.release_generation_seconds.max(0.0),
+            simulation_seconds: self.simulation_seconds.max(0.0),
+            output_write_seconds: self.output_write_seconds.max(0.0),
+            hazard_layer_seconds: None,
+            trajectory_count: self.trajectory_count,
+            impact_event_count: self.impact_event_count,
+            output_file_count: outputs.iter().map(|output| output.file_count).sum(),
+            output_bytes: outputs.iter().map(|output| output.total_bytes).sum(),
+        }
+    }
+}
+
+struct RunManifestContext<'a> {
+    case: &'a BenchmarkCase,
+    report: &'a CaseReport,
+    outputs: Vec<OutputManifest>,
+    terrain_source: Option<&'a TerrainSourceMetadata>,
+    release_zone: Option<&'a ReleaseZoneManifest>,
+    terrain_classes: Option<&'a TerrainClassManifest>,
+    trajectory_metadata: Option<TrajectoryMetadataManifest>,
+    performance: PerformanceManifest,
+}
+
+#[derive(Debug, Default)]
+struct TrajectoryMetadataCollector {
+    rows: BTreeMap<String, TrajectoryMetadataRow>,
+}
+
+impl TrajectoryMetadataCollector {
+    fn insert_run(
+        &mut self,
+        case: &BenchmarkCase,
+        run: &TrajectoryRun,
+        release_id: impl Into<String>,
+        source_zone_id: impl Into<String>,
+        block: &SphereBlock,
+    ) {
+        if let Some(first) = run.samples.first() {
+            self.insert_row(TrajectoryMetadataRow {
+                trajectory_id: run.summary.trajectory_id.clone(),
+                release_id: release_id.into(),
+                source_zone_id: source_zone_id.into(),
+                release_x_m: first.x_m,
+                release_y_m: first.y_m,
+                release_z_m: first.z_m,
+                release_probability: None,
+                block_radius_m: block.radius_m,
+                block_mass_kg: block.mass_kg,
+                block_density_kgpm3: sphere_density_kgpm3(block),
+                shape_class: "sphere".to_string(),
+                scenario_id: case.case_id.clone(),
+                sampling_weight: 1.0,
+                probability_model: default_probability_model().to_string(),
+            });
+        }
+    }
+
+    fn insert_single_result(
+        &mut self,
+        case: &BenchmarkCase,
+        result: &SimulationResult,
+        block: &SphereBlock,
+    ) {
+        if let Some(first) = result.samples.first() {
+            self.insert_row(TrajectoryMetadataRow {
+                trajectory_id: default_single_trajectory_id().to_string(),
+                release_id: default_single_trajectory_id().to_string(),
+                source_zone_id: default_manual_source_zone_id().to_string(),
+                release_x_m: first.x_m,
+                release_y_m: first.y_m,
+                release_z_m: first.z_m,
+                release_probability: None,
+                block_radius_m: block.radius_m,
+                block_mass_kg: block.mass_kg,
+                block_density_kgpm3: sphere_density_kgpm3(block),
+                shape_class: "sphere".to_string(),
+                scenario_id: case.case_id.clone(),
+                sampling_weight: 1.0,
+                probability_model: default_probability_model().to_string(),
+            });
+        }
+    }
+
+    fn insert_row(&mut self, row: TrajectoryMetadataRow) {
+        self.rows.entry(row.trajectory_id.clone()).or_insert(row);
+    }
+
+    fn rows(&self) -> Vec<TrajectoryMetadataRow> {
+        self.rows.values().cloned().collect()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -499,11 +644,16 @@ pub fn run_case_file(path: impl AsRef<Path>) -> Result<CaseReport, ValidationErr
 }
 
 pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
+    let total_started = Instant::now();
+    let mut timing = RuntimeTiming::default();
     let mut warnings = Vec::new();
     let mut output_entries = Vec::new();
+    let mut trajectory_metadata = TrajectoryMetadataCollector::default();
+    let load_started = Instant::now();
     let terrain_source = load_terrain_source_metadata(case)?;
     let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
     let terrain_class_map = load_terrain_class_map(case, terrain_source.as_ref())?;
+    timing.terrain_load_seconds += load_started.elapsed().as_secs_f64();
     let mut release_zone_manifest = release_zone_source
         .as_ref()
         .map(|source| release_zone_manifest(case.release_zone.as_ref(), source, 0));
@@ -521,7 +671,9 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 ),
             )?;
             if let Some(path) = &case.outputs.diagnostics_json {
+                let output_started = Instant::now();
                 write_report(path, &report)?;
+                timing.output_write_seconds += output_started.elapsed().as_secs_f64();
                 output_entries.push(file_output_manifest(
                     path,
                     "diagnostics",
@@ -531,14 +683,20 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 )?);
             }
             if let Some(path) = &case.outputs.manifest_json {
+                timing.total_wall_seconds = total_started.elapsed().as_secs_f64();
+                let performance = timing.to_manifest(&output_entries);
                 write_run_manifest(
                     path,
-                    case,
-                    &report,
-                    output_entries,
-                    terrain_source.as_ref(),
-                    release_zone_manifest.as_ref(),
-                    terrain_class_manifest.as_ref(),
+                    RunManifestContext {
+                        case,
+                        report: &report,
+                        outputs: output_entries,
+                        terrain_source: terrain_source.as_ref(),
+                        release_zone: release_zone_manifest.as_ref(),
+                        terrain_classes: terrain_class_manifest.as_ref(),
+                        trajectory_metadata: None,
+                        performance,
+                    },
                 )?;
             }
             return Ok(report);
@@ -556,14 +714,23 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     }
 
     let config = build_simulation_config(case)?;
+    let terrain_started = Instant::now();
     let terrain = config.terrain.build()?;
+    timing.terrain_load_seconds += terrain_started.elapsed().as_secs_f64();
     let class_provider = terrain_class_map
         .as_ref()
         .map(|class_map| class_map as &dyn ContactParameterProvider);
+    let simulation_started = Instant::now();
     let result =
         config.run_with_terrain_and_contact_parameters(terrain.as_ref(), class_provider)?;
+    timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+    timing.trajectory_count += 1;
+    timing.impact_event_count += result.impact_events.len();
+    trajectory_metadata.insert_single_result(case, &result, &config.block);
     if let Some(path) = &case.outputs.trajectory_csv {
-        io::write_trajectory_csv(path, &result.samples)?;
+        let output_started = Instant::now();
+        write_trajectory_csv_with_id(path, default_single_trajectory_id(), &result.samples)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "trajectory",
@@ -573,7 +740,13 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         )?);
     }
     if let Some(path) = &case.outputs.impact_events_csv {
-        io::write_impact_events_csv(path, &result.impact_events)?;
+        let output_started = Instant::now();
+        write_impact_events_csv_with_id(
+            path,
+            default_single_trajectory_id(),
+            &result.impact_events,
+        )?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "impact_events",
@@ -583,7 +756,9 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         )?);
     }
     if let Some(path) = &case.outputs.impact_events_json {
+        let output_started = Instant::now();
         io::write_impact_events_json(path, &result.impact_events)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "impact_events",
@@ -617,26 +792,33 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         &mut metrics,
         &mut warnings,
         &mut output_entries,
+        &mut timing,
+        &mut trajectory_metadata,
     )?;
-    compute_validation_ensemble_metrics(
+    compute_validation_ensemble_metrics(ValidationEnsembleContext {
         case,
-        &config,
-        class_provider,
-        &observations,
-        &mut metrics,
-        &mut warnings,
-        &mut output_entries,
-    )?;
+        base_config: &config,
+        contact_parameters: class_provider,
+        observations: &observations,
+        metrics: &mut metrics,
+        warnings: &mut warnings,
+        output_entries: &mut output_entries,
+        timing: &mut timing,
+        trajectory_metadata: &mut trajectory_metadata,
+    })?;
     if let Some(source) = release_zone_source.as_ref() {
-        release_zone_manifest = compute_release_zone_metrics(
+        release_zone_manifest = compute_release_zone_metrics(ReleaseZoneMetricContext {
             case,
-            &config,
-            class_provider,
-            source,
-            &mut metrics,
-            &mut warnings,
-            &mut output_entries,
-        )?;
+            base_config: &config,
+            contact_parameters: class_provider,
+            release_zone: source,
+            observations: &observations,
+            metrics: &mut metrics,
+            warnings: &mut warnings,
+            output_entries: &mut output_entries,
+            timing: &mut timing,
+            trajectory_metadata: &mut trajectory_metadata,
+        })?;
     }
     compute_observed_trajectory_metrics(
         case,
@@ -674,8 +856,35 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         parameters: config,
     };
 
+    let trajectory_metadata_manifest = if let Some(path) = &case.outputs.trajectory_metadata_csv {
+        let rows = trajectory_metadata.rows();
+        let output_started = Instant::now();
+        write_trajectory_metadata_csv(path, &rows)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        output_entries.push(file_output_manifest(
+            path,
+            "trajectory_metadata",
+            "csv",
+            Some(rows.len()),
+            None,
+        )?);
+        Some(TrajectoryMetadataManifest {
+            schema_version: TRAJECTORY_METADATA_SCHEMA_VERSION.to_string(),
+            path: path.to_string_lossy().to_string(),
+            row_count: rows.len(),
+            probability_model: default_probability_model().to_string(),
+            probability_semantics: "sampling_weight_only".to_string(),
+            normalization_convention: "unweighted_current_outputs".to_string(),
+            total_sampling_weight: rows.iter().map(|row| row.sampling_weight).sum(),
+        })
+    } else {
+        None
+    };
+
     if let Some(path) = &case.outputs.diagnostics_json {
+        let output_started = Instant::now();
         write_report(path, &report)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "diagnostics",
@@ -686,14 +895,20 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     }
 
     if let Some(path) = &case.outputs.manifest_json {
+        timing.total_wall_seconds = total_started.elapsed().as_secs_f64();
+        let performance = timing.to_manifest(&output_entries);
         write_run_manifest(
             path,
-            case,
-            &report,
-            output_entries,
-            terrain_source.as_ref(),
-            release_zone_manifest.as_ref(),
-            terrain_class_manifest.as_ref(),
+            RunManifestContext {
+                case,
+                report: &report,
+                outputs: output_entries,
+                terrain_source: terrain_source.as_ref(),
+                release_zone: release_zone_manifest.as_ref(),
+                terrain_classes: terrain_class_manifest.as_ref(),
+                trajectory_metadata: trajectory_metadata_manifest,
+                performance,
+            },
         )?;
     }
 
@@ -710,21 +925,9 @@ pub fn write_report(path: impl AsRef<Path>, report: &CaseReport) -> Result<(), V
 
 fn write_run_manifest(
     path: impl AsRef<Path>,
-    case: &BenchmarkCase,
-    report: &CaseReport,
-    outputs: Vec<OutputManifest>,
-    terrain_source: Option<&TerrainSourceMetadata>,
-    release_zone: Option<&ReleaseZoneManifest>,
-    terrain_classes: Option<&TerrainClassManifest>,
+    context: RunManifestContext<'_>,
 ) -> Result<(), ValidationError> {
-    let manifest = build_run_manifest(
-        case,
-        report,
-        outputs,
-        terrain_source,
-        release_zone,
-        terrain_classes,
-    );
+    let manifest = build_run_manifest(context);
     if let Some(parent) = path.as_ref().parent() {
         fs::create_dir_all(parent)?;
     }
@@ -732,14 +935,17 @@ fn write_run_manifest(
     Ok(())
 }
 
-fn build_run_manifest(
-    case: &BenchmarkCase,
-    report: &CaseReport,
-    outputs: Vec<OutputManifest>,
-    terrain_source: Option<&TerrainSourceMetadata>,
-    release_zone: Option<&ReleaseZoneManifest>,
-    terrain_classes: Option<&TerrainClassManifest>,
-) -> RunManifest {
+fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
+    let RunManifestContext {
+        case,
+        report,
+        outputs,
+        terrain_source,
+        release_zone,
+        terrain_classes,
+        trajectory_metadata,
+        performance,
+    } = context;
     RunManifest {
         schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
         created_unix_s: report.timestamp_unix_s,
@@ -758,7 +964,9 @@ fn build_run_manifest(
         terrain: terrain_manifest(&case.terrain, terrain_source),
         release_zone: release_zone.cloned(),
         terrain_classes: terrain_classes.cloned(),
+        trajectory_metadata,
         outputs,
+        performance: Some(performance),
         warnings: report.warnings.clone(),
     }
 }
@@ -862,6 +1070,8 @@ fn terrain_manifest(
             license: Some(source.license.clone()),
             download_status: Some(source.download_status.clone()),
             preprocessing_status: Some(source.preprocessing.status.clone()),
+            raw_sha256: source.preprocessing.raw_sha256.clone(),
+            processed_sha256: source.preprocessing.processed_sha256.clone(),
             provenance_notes: source.provenance.notes.clone(),
         };
     }
@@ -883,6 +1093,8 @@ fn terrain_manifest(
         license: None,
         download_status: None,
         preprocessing_status: None,
+        raw_sha256: None,
+        processed_sha256: None,
         provenance_notes: Vec::new(),
     }
 }
@@ -1313,16 +1525,22 @@ fn compute_ensemble_metrics(
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
     output_entries: &mut Vec<OutputManifest>,
+    timing: &mut RuntimeTiming,
+    trajectory_metadata: &mut TrajectoryMetadataCollector,
 ) -> Result<(), ValidationError> {
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
         let config_a = build_simulation_config(case)?;
         let config_b = build_simulation_config(case)?;
         let terrain = config_a.terrain.build()?;
+        let simulation_started = Instant::now();
         let a = config_a
             .run_with_terrain_and_contact_parameters(terrain.as_ref(), contact_parameters)?;
         let b = config_b
             .run_with_terrain_and_contact_parameters(terrain.as_ref(), contact_parameters)?;
+        timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+        timing.record_result(&a);
+        timing.record_result(&b);
         metrics.insert(
             "seed_repeat_max_position_delta_m".to_string(),
             max_position_delta(&a.samples, &b.samples),
@@ -1354,6 +1572,7 @@ fn compute_ensemble_metrics(
         .collect::<Vec<_>>();
     let mut ensemble_config = build_simulation_config(case)?;
     ensemble_config.random_seed = None;
+    let simulation_started = Instant::now();
     let ensemble = simulate_ensemble_with_contact_parameters(
         &ensemble_config,
         case.case_id.clone(),
@@ -1361,16 +1580,31 @@ fn compute_ensemble_metrics(
         &trajectory_ids,
         contact_parameters,
     )?;
+    timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+    timing.record_runs(&ensemble.trajectories);
+    for run in &ensemble.trajectories {
+        trajectory_metadata.insert_run(
+            case,
+            run,
+            run.summary.trajectory_id.clone(),
+            default_manual_source_zone_id(),
+            &ensemble_config.block,
+        );
+    }
     if case.observations.is_none() {
         warn_large_debug_outputs(case, ensemble_size, warnings);
         if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+            let output_started = Instant::now();
             output_entries.push(write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?);
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
         if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+            let output_started = Instant::now();
             output_entries.push(write_ensemble_impact_events_dir(
                 dir,
                 &ensemble.trajectories,
             )?);
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
     }
     let mut runouts = ensemble
@@ -1409,6 +1643,7 @@ fn compute_ensemble_metrics(
     );
 
     if let Some(seed) = case.random.seed {
+        let simulation_started = Instant::now();
         let alternate = simulate_ensemble_with_contact_parameters(
             &ensemble_config,
             case.case_id.clone(),
@@ -1416,6 +1651,8 @@ fn compute_ensemble_metrics(
             &trajectory_ids,
             contact_parameters,
         )?;
+        timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+        timing.record_runs(&alternate.trajectories);
         metrics.insert(
             "different_seed_ensemble_runout_delta_m".to_string(),
             max_runout_delta(&ensemble, &alternate),
@@ -1424,15 +1661,32 @@ fn compute_ensemble_metrics(
     Ok(())
 }
 
+struct ValidationEnsembleContext<'a> {
+    case: &'a BenchmarkCase,
+    base_config: &'a SimulationConfig,
+    contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    observations: &'a ObservationData,
+    metrics: &'a mut BTreeMap<String, f64>,
+    warnings: &'a mut Vec<String>,
+    output_entries: &'a mut Vec<OutputManifest>,
+    timing: &'a mut RuntimeTiming,
+    trajectory_metadata: &'a mut TrajectoryMetadataCollector,
+}
+
 fn compute_validation_ensemble_metrics(
-    case: &BenchmarkCase,
-    base_config: &SimulationConfig,
-    contact_parameters: Option<&dyn ContactParameterProvider>,
-    observations: &ObservationData,
-    metrics: &mut BTreeMap<String, f64>,
-    warnings: &mut Vec<String>,
-    output_entries: &mut Vec<OutputManifest>,
+    context: ValidationEnsembleContext<'_>,
 ) -> Result<(), ValidationError> {
+    let ValidationEnsembleContext {
+        case,
+        base_config,
+        contact_parameters,
+        observations,
+        metrics,
+        warnings,
+        output_entries,
+        timing,
+        trajectory_metadata,
+    } = context;
     if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
         return Ok(());
     }
@@ -1458,19 +1712,31 @@ fn compute_validation_ensemble_metrics(
             let member_id = format!("{}_member_{member_index:03}", release.trajectory_id);
             let request =
                 TrajectoryRequest::from_global_seed(global_seed, case.case_id.clone(), member_id);
+            let simulation_started = Instant::now();
             let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
                 &release_config,
                 request,
                 terrain.as_ref(),
                 contact_parameters,
             )?;
+            timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+            timing.record_run(&run);
             deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
+            trajectory_metadata.insert_run(
+                case,
+                &run,
+                release.trajectory_id.clone(),
+                default_observed_source_zone_id(),
+                &release_config.block,
+            );
             runs.push(run);
         }
     }
 
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
+        let output_started = Instant::now();
         write_ensemble_deposition_csv(path, &deposition_rows)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "ensemble_deposition",
@@ -1480,10 +1746,14 @@ fn compute_validation_ensemble_metrics(
         )?);
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+        let output_started = Instant::now();
         output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+        let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
 
     compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
@@ -1498,21 +1768,44 @@ fn compute_validation_ensemble_metrics(
     Ok(())
 }
 
+struct ReleaseZoneMetricContext<'a> {
+    case: &'a BenchmarkCase,
+    base_config: &'a SimulationConfig,
+    contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    release_zone: &'a ReleaseZoneMetadata,
+    observations: &'a ObservationData,
+    metrics: &'a mut BTreeMap<String, f64>,
+    warnings: &'a mut Vec<String>,
+    output_entries: &'a mut Vec<OutputManifest>,
+    timing: &'a mut RuntimeTiming,
+    trajectory_metadata: &'a mut TrajectoryMetadataCollector,
+}
+
 fn compute_release_zone_metrics(
-    case: &BenchmarkCase,
-    base_config: &SimulationConfig,
-    contact_parameters: Option<&dyn ContactParameterProvider>,
-    release_zone: &ReleaseZoneMetadata,
-    metrics: &mut BTreeMap<String, f64>,
-    warnings: &mut Vec<String>,
-    output_entries: &mut Vec<OutputManifest>,
+    context: ReleaseZoneMetricContext<'_>,
 ) -> Result<Option<ReleaseZoneManifest>, ValidationError> {
+    let ReleaseZoneMetricContext {
+        case,
+        base_config,
+        contact_parameters,
+        release_zone,
+        observations,
+        metrics,
+        warnings,
+        output_entries,
+        timing,
+        trajectory_metadata,
+    } = context;
     let Some(release_zone_config) = &case.release_zone else {
         return Ok(None);
     };
+    let release_started = Instant::now();
     let release_points = release_zone.sample_points()?;
+    timing.release_generation_seconds += release_started.elapsed().as_secs_f64();
     warn_large_debug_outputs(case, release_points.len(), warnings);
+    let terrain_started = Instant::now();
     let terrain = base_config.terrain.build()?;
+    timing.terrain_load_seconds += terrain_started.elapsed().as_secs_f64();
     let mut runs = Vec::with_capacity(release_points.len());
     let mut deposition_rows = Vec::with_capacity(release_points.len());
     let mut generated_records = Vec::with_capacity(release_points.len());
@@ -1541,18 +1834,30 @@ fn compute_release_zone_metrics(
             case.case_id.clone(),
             point.release_id.clone(),
         );
+        let simulation_started = Instant::now();
         let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
             &release_config,
             request,
             terrain.as_ref(),
             contact_parameters,
         )?;
+        timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
+        timing.record_run(&run);
         deposition_rows.push(ensemble_deposition_row(&point.release_id, &run));
+        trajectory_metadata.insert_run(
+            case,
+            &run,
+            point.release_id.clone(),
+            release_zone.zone_id.clone(),
+            &release_config.block,
+        );
         runs.push(run);
     }
 
     if let Some(path) = &release_zone_config.generated_release_points_csv {
+        let output_started = Instant::now();
         write_generated_release_points_csv(path, &generated_records)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "generated_release_points",
@@ -1562,7 +1867,9 @@ fn compute_release_zone_metrics(
         )?);
     }
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
+        let output_started = Instant::now();
         write_ensemble_deposition_csv(path, &deposition_rows)?;
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
             "release_zone_deposition",
@@ -1572,10 +1879,14 @@ fn compute_release_zone_metrics(
         )?);
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+        let output_started = Instant::now();
         output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+        let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
 
     let mut runouts = runs
@@ -1596,6 +1907,7 @@ fn compute_release_zone_metrics(
         "release_zone_max_runout_m".to_string(),
         runouts.last().copied().unwrap_or(0.0),
     );
+    compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
     Ok(Some(release_zone_manifest(
         Some(release_zone_config),
         release_zone,
@@ -1927,6 +2239,199 @@ fn write_ensemble_deposition_csv(
     Ok(())
 }
 
+fn write_trajectory_metadata_csv(
+    path: impl AsRef<Path>,
+    rows: &[TrajectoryMetadataRow],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for row in rows {
+        writer.serialize(row)?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+fn write_trajectory_csv_with_id(
+    path: impl AsRef<Path>,
+    trajectory_id: &str,
+    samples: &[TrajectorySample],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    writer.write_record([
+        "trajectory_id",
+        "time_s",
+        "x_m",
+        "y_m",
+        "z_m",
+        "vx_mps",
+        "vy_mps",
+        "vz_mps",
+        "speed_mps",
+        "kinetic_j",
+        "rotational_j",
+        "potential_j",
+        "total_energy_j",
+        "contact_state",
+        "omega_x_radps",
+        "omega_y_radps",
+        "omega_z_radps",
+        "contact_tangent_speed_mps",
+        "rolling_residual_mps",
+        "scarring_depth_m",
+        "scarring_drag_force_n",
+        "scarring_energy_loss_j",
+    ])?;
+    for sample in samples {
+        writer.write_record([
+            trajectory_id.to_string(),
+            sample.time_s.to_string(),
+            sample.x_m.to_string(),
+            sample.y_m.to_string(),
+            sample.z_m.to_string(),
+            sample.vx_mps.to_string(),
+            sample.vy_mps.to_string(),
+            sample.vz_mps.to_string(),
+            sample.speed_mps.to_string(),
+            sample.kinetic_j.to_string(),
+            sample.rotational_j.to_string(),
+            sample.potential_j.to_string(),
+            sample.total_energy_j.to_string(),
+            contact_state_csv(sample.contact_state).to_string(),
+            sample.omega_x_radps.to_string(),
+            sample.omega_y_radps.to_string(),
+            sample.omega_z_radps.to_string(),
+            sample.contact_tangent_speed_mps.to_string(),
+            sample.rolling_residual_mps.to_string(),
+            sample.scarring_depth_m.to_string(),
+            sample.scarring_drag_force_n.to_string(),
+            sample.scarring_energy_loss_j.to_string(),
+        ])?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+fn write_impact_events_csv_with_id(
+    path: impl AsRef<Path>,
+    trajectory_id: &str,
+    events: &[ImpactEvent],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    writer.write_record([
+        "trajectory_id",
+        "impact_index",
+        "time_s",
+        "x_m",
+        "y_m",
+        "z_m",
+        "terrain_normal_x",
+        "terrain_normal_y",
+        "terrain_normal_z",
+        "effective_normal_x",
+        "effective_normal_y",
+        "effective_normal_z",
+        "incoming_vx_mps",
+        "incoming_vy_mps",
+        "incoming_vz_mps",
+        "post_contact_vx_mps",
+        "post_contact_vy_mps",
+        "post_contact_vz_mps",
+        "post_scarring_vx_mps",
+        "post_scarring_vy_mps",
+        "post_scarring_vz_mps",
+        "post_step_vx_mps",
+        "post_step_vy_mps",
+        "post_step_vz_mps",
+        "impact_angle_deg",
+        "incoming_normal_speed_mps",
+        "incoming_tangent_speed_mps",
+        "post_contact_normal_speed_mps",
+        "post_contact_tangent_speed_mps",
+        "post_scarring_normal_speed_mps",
+        "post_scarring_tangent_speed_mps",
+        "post_step_normal_speed_mps",
+        "post_step_tangent_speed_mps",
+        "pre_contact_translational_j",
+        "pre_contact_rotational_j",
+        "post_contact_translational_j",
+        "post_contact_rotational_j",
+        "post_scarring_translational_j",
+        "post_scarring_rotational_j",
+        "post_step_translational_j",
+        "post_step_rotational_j",
+        "scarring_depth_m",
+        "scarring_area_m2",
+        "scarring_drag_force_n",
+        "scarring_uncapped_energy_loss_j",
+        "scarring_capped_energy_loss_j",
+        "scarring_depth_source",
+        "cumulative_scarring_energy_loss_j",
+    ])?;
+    for event in events {
+        writer.write_record([
+            trajectory_id.to_string(),
+            event.impact_index.to_string(),
+            event.time_s.to_string(),
+            event.x_m.to_string(),
+            event.y_m.to_string(),
+            event.z_m.to_string(),
+            event.terrain_normal_x.to_string(),
+            event.terrain_normal_y.to_string(),
+            event.terrain_normal_z.to_string(),
+            event.effective_normal_x.to_string(),
+            event.effective_normal_y.to_string(),
+            event.effective_normal_z.to_string(),
+            event.incoming_vx_mps.to_string(),
+            event.incoming_vy_mps.to_string(),
+            event.incoming_vz_mps.to_string(),
+            event.post_contact_vx_mps.to_string(),
+            event.post_contact_vy_mps.to_string(),
+            event.post_contact_vz_mps.to_string(),
+            event.post_scarring_vx_mps.to_string(),
+            event.post_scarring_vy_mps.to_string(),
+            event.post_scarring_vz_mps.to_string(),
+            event.post_step_vx_mps.to_string(),
+            event.post_step_vy_mps.to_string(),
+            event.post_step_vz_mps.to_string(),
+            event.impact_angle_deg.to_string(),
+            event.incoming_normal_speed_mps.to_string(),
+            event.incoming_tangent_speed_mps.to_string(),
+            event.post_contact_normal_speed_mps.to_string(),
+            event.post_contact_tangent_speed_mps.to_string(),
+            event.post_scarring_normal_speed_mps.to_string(),
+            event.post_scarring_tangent_speed_mps.to_string(),
+            event.post_step_normal_speed_mps.to_string(),
+            event.post_step_tangent_speed_mps.to_string(),
+            event.pre_contact_translational_j.to_string(),
+            event.pre_contact_rotational_j.to_string(),
+            event.post_contact_translational_j.to_string(),
+            event.post_contact_rotational_j.to_string(),
+            event.post_scarring_translational_j.to_string(),
+            event.post_scarring_rotational_j.to_string(),
+            event.post_step_translational_j.to_string(),
+            event.post_step_rotational_j.to_string(),
+            event.scarring_depth_m.to_string(),
+            event.scarring_area_m2.to_string(),
+            event.scarring_drag_force_n.to_string(),
+            event.scarring_uncapped_energy_loss_j.to_string(),
+            event.scarring_capped_energy_loss_j.to_string(),
+            scarring_depth_source_csv(event.scarring_depth_source).to_string(),
+            event.cumulative_scarring_energy_loss_j.to_string(),
+        ])?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
 fn write_generated_release_points_csv(
     path: impl AsRef<Path>,
     points: &[GeneratedReleasePointRecord],
@@ -1952,7 +2457,7 @@ fn write_ensemble_trajectory_dir(
     for run in runs {
         let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
         let path = dir.as_ref().join(filename);
-        io::write_trajectory_csv(&path, &run.samples)?;
+        write_trajectory_csv_with_id(&path, &run.summary.trajectory_id, &run.samples)?;
         total_bytes += fs::metadata(&path)?.len();
         row_count += run.samples.len();
     }
@@ -1983,7 +2488,7 @@ fn write_ensemble_impact_events_dir(
         }
         let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
         let path = dir.as_ref().join(filename);
-        io::write_impact_events_csv(&path, &run.impact_events)?;
+        write_impact_events_csv_with_id(&path, &run.summary.trajectory_id, &run.impact_events)?;
         file_count += 1;
         total_bytes += fs::metadata(&path)?.len();
         row_count += run.impact_events.len();
@@ -2012,6 +2517,47 @@ fn safe_filename(text: &str) -> String {
         "trajectory".to_string()
     } else {
         output
+    }
+}
+
+fn default_single_trajectory_id() -> &'static str {
+    "trajectory_000000"
+}
+
+fn default_manual_source_zone_id() -> &'static str {
+    "manual_release"
+}
+
+fn default_observed_source_zone_id() -> &'static str {
+    "observed_release_points"
+}
+
+fn default_probability_model() -> &'static str {
+    "unweighted"
+}
+
+fn sphere_density_kgpm3(block: &SphereBlock) -> Option<f64> {
+    let volume_m3 = (4.0 / 3.0) * std::f64::consts::PI * block.radius_m.powi(3);
+    (volume_m3 > 0.0).then_some(block.mass_kg / volume_m3)
+}
+
+fn contact_state_csv(state: ContactState) -> &'static str {
+    match state {
+        ContactState::Airborne => "airborne",
+        ContactState::Sliding => "sliding",
+        ContactState::Impact => "impact",
+        ContactState::Rolling => "rolling",
+        ContactState::Stopped => "stopped",
+    }
+}
+
+fn scarring_depth_source_csv(source: ScarringDepthSource) -> &'static str {
+    match source {
+        ScarringDepthSource::None => "none",
+        ScarringDepthSource::Computed => "computed",
+        ScarringDepthSource::ComputedCapped => "computed_capped",
+        ScarringDepthSource::Explicit => "explicit",
+        ScarringDepthSource::ExplicitCapped => "explicit_capped",
     }
 }
 

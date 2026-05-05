@@ -116,6 +116,13 @@ parameters. The generated `run_manifest_v1` records the validated terrain-source
 release-zone, and terrain-class metadata. Details are in
 `docs/swiss_terrain_ingestion_pilot.md`.
 
+For the first real-site Tschamut rerun, `scripts/prepare_tschamut_swissalti3d_pilot.py`
+creates ignored local case files from a private swissALTI3D-style DEM crop,
+terrain metadata, release-zone metadata, and optional terrain-class metadata.
+The script performs the same lightweight CRS, extent, resolution, nodata, and
+provenance checks before any validation command is run. Details are in
+`docs/tschamut_swissalti3d_pilot.md`.
+
 ## First Swiss Pilot Workflow
 
 1. Select one small Alpine slope or valley domain with a clearly bounded source

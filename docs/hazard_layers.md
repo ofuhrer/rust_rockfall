@@ -22,6 +22,12 @@ Current layers:
   - `kinetic_energy_exceedance_<threshold>j`
   - `jump_height_exceedance_<threshold>m`
   - `velocity_exceedance_<threshold>mps`
+- opt-in sampling-weighted conditional layers when `hazard_probability` is
+  configured with `probability_model: sampling_weighted`:
+  - `weighted_reach_probability`
+  - `weighted_kinetic_energy_exceedance_<threshold>j`
+  - `weighted_jump_height_exceedance_<threshold>m`
+  - `weighted_velocity_exceedance_<threshold>mps`
 
 Exports:
 
@@ -29,8 +35,8 @@ Exports:
 - ESRI ASCII grid for lightweight GIS-style inspection.
 - GeoJSON point file for deposition locations.
 - JSON metadata and `run_manifest_v1` provenance sidecars.
-- PNG layer plots when `matplotlib` is available.
-- A local `index.html` report.
+- optional PNG layer plots when diagnostic rendering is enabled.
+- optional local `index.html` report when diagnostic rendering is enabled.
 
 ## Usage
 
@@ -41,7 +47,8 @@ cargo run -- validate --case validation/cases/validation_tschamut_baseline.yaml
 python3 scripts/build_hazard_layers.py \
   --case validation/cases/validation_tschamut_baseline.yaml \
   --output-dir hazard/results/tschamut_baseline \
-  --cell-size 5
+  --cell-size 5 \
+  --no-plots
 ```
 
 For a synthetic scarring case with impact-event diagnostics:
@@ -54,10 +61,17 @@ python3 scripts/build_hazard_layers.py \
   --cell-size 1
 ```
 
-Open the generated report locally:
+For production-style benchmark or pilot runs, `--no-plots` is recommended. It
+writes only the core CSV, ASCII grid, GeoJSON, metadata JSON, and manifest
+outputs. To render PNG plots and a local HTML diagnostic report for inspection,
+omit `--no-plots`:
 
 ```bash
-open hazard/results/tschamut_baseline/index.html
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/validation_tschamut_baseline.yaml \
+  --output-dir hazard/results/tschamut_baseline_report \
+  --cell-size 5
+open hazard/results/tschamut_baseline_report/index.html
 ```
 
 For production-style tile experiments, provide an explicit reference grid. When
@@ -75,7 +89,7 @@ python3 scripts/build_hazard_layers.py \
   --grid-cell-size 5
 ```
 
-For RAMMS-like diagnostic interpretation, add opt-in exceedance layers. These
+For diagnostic intensity-style interpretation, add opt-in exceedance layers. These
 layers are additive and leave the existing reach, deposition, maximum-energy,
 jump-height, and impact-density layers unchanged:
 
@@ -100,6 +114,60 @@ hazard_layers:
     velocity_exceedance_mps: [0.5, 1.0]
 ```
 
+## Sampling-Weighted Conditional Maps
+
+Weighted hazard layers are opt-in and use `trajectory_metadata_table_v1`.
+They currently support only Monte Carlo-style `sampling_weight`; they do not
+represent physical source probabilities, annual release frequencies, block-size
+probability distributions, exposure, or risk.
+
+```yaml
+hazard_probability:
+  probability_model: sampling_weighted
+  metadata_path: validation/results/example_trajectory_metadata.csv
+  weight_column: sampling_weight
+  normalization_convention: conditioned_on_filter
+  filters:
+    source_zone_ids: []
+    scenario_ids: []
+    block_mass_kg_min: null
+    block_mass_kg_max: null
+```
+
+Validation rules are deliberately strict:
+
+- `probability_model` must be `sampling_weighted`;
+- `normalization_convention` must be `conditioned_on_filter`;
+- `weight_column` must be `sampling_weight`;
+- metadata must contain `trajectory_id` and nonnegative finite weights;
+- all supplied trajectory IDs must resolve to metadata rows;
+- filters must leave positive total weight.
+
+Weighted reach and weighted exceedance layers are normalized by the total
+filtered sampling weight. If all weights are `1.0`, weighted layers match the
+corresponding unweighted trajectory-count layers. Unweighted outputs are still
+written unchanged whenever weighted maps are enabled.
+
+## Production Versus Diagnostic Rendering
+
+The hazard builder is split into four phases:
+
+1. input discovery/loading;
+2. raster and statistic accumulation;
+3. core output writing;
+4. optional PNG/HTML diagnostic rendering.
+
+`run_manifest_v1.performance` records this split with
+`accumulation_seconds`, `core_output_write_seconds`, `plot_render_seconds`,
+`plots_enabled`, and the backward-compatible `hazard_layer_seconds` and
+`output_write_seconds` fields. `hazard_layer_seconds` is the same accumulation
+timing; `output_write_seconds` is the sum of core output writing and optional
+plot/report rendering.
+
+Use `--no-plots` for larger runs, benchmark runs, and scripted production-style
+hazard layer generation. Use plotted mode only when a human-readable local
+diagnostic report is needed for a selected case.
+
 ## How to Read the Layers
 
 The generated HTML report includes a short interpretation section and per-layer
@@ -120,6 +188,8 @@ for that layer. Maximum-value rasters record the largest sampled value in a
 cell; they are not expected values, design values, or calibrated hazard
 intensities. Exceedance rasters are normalized by trajectory count: a cell is
 counted at most once per trajectory for each configured threshold.
+Weighted rasters, when enabled, use the same cell-counting rule but replace the
+trajectory count denominator with the filtered sum of `sampling_weight`.
 
 ## Current Limitations
 

@@ -31,17 +31,56 @@ Required case fields:
 - optional `validation_scope.type` and `validation_scope.note` for real-world cases
 - optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`, `observations.contact_events_csv`
 - `expected.metrics`, `expected.tolerances`
-- `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.manifest_json`, optional `outputs.ensemble_deposition_csv`
+- `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.manifest_json`, optional `outputs.trajectory_metadata_csv`, optional `outputs.ensemble_deposition_csv`
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
 - optional `hazard_layers.statistics.kinetic_energy_exceedance_j`, `jump_height_exceedance_m`, and `velocity_exceedance_mps` for additive hazard post-processing thresholds
+- optional top-level `hazard_probability` block for opt-in sampling-weighted conditional hazard-layer post-processing
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 
 ## Hazard-Layer Statistics
 
 `hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. Existing validation pass/fail semantics are unchanged.
+
+## Hazard Probability Block
+
+`hazard_probability` is also consumed only by
+`scripts/build_hazard_layers.py`. It is optional and disabled by default. The
+current implementation supports only sampling-weighted conditional maps:
+
+```yaml
+hazard_probability:
+  probability_model: sampling_weighted
+  metadata_path: validation/results/example_trajectory_metadata.csv
+  weight_column: sampling_weight
+  normalization_convention: conditioned_on_filter
+  filters:
+    source_zone_ids: []
+    scenario_ids: []
+    block_mass_kg_min: null
+    block_mass_kg_max: null
+```
+
+Validation rules:
+
+- `probability_model` must be `sampling_weighted`;
+- `normalization_convention` must be `conditioned_on_filter`;
+- `weight_column` must be `sampling_weight`;
+- `metadata_path` must point to a `trajectory_metadata_table_v1` CSV with
+  `trajectory_id` and `sampling_weight`;
+- sampling weights must be finite and nonnegative;
+- filters may restrict `source_zone_id`, `scenario_id`, and block-mass range;
+- the filtered total weight must be positive;
+- every trajectory CSV supplied to the hazard builder must resolve to a
+  metadata row that passes the active filters.
+
+When enabled, the hazard builder writes weighted reach and weighted
+trajectory-level exceedance probability rasters alongside the existing
+unweighted rasters. These are conditional sampling-weighted diagnostics only;
+they are not annual-frequency, physical source-probability, exposure, or risk
+layers.
 
 ## Release-Zone Metadata
 
@@ -173,14 +212,25 @@ Trajectory CSV diagnostics include `scarring_depth_m`, `scarring_drag_force_n`, 
 
 When `outputs.ensemble_trajectories_dir` is set, validation writes deterministic
 per-trajectory CSV files named from the trajectory id. Existing representative
-`outputs.trajectory_csv` behavior is unchanged. Hazard-layer reach probability,
-maximum kinetic energy, and maximum jump height should use
+`outputs.trajectory_csv` remains a representative trajectory output and now
+includes an additive leading `trajectory_id` column when written by validation.
+Hazard-layer reach probability, maximum kinetic energy, and maximum jump height should use
 `outputs.ensemble_trajectories_dir` when the full ensemble is needed.
 
 When `outputs.ensemble_impact_events_dir` is set, validation writes deterministic
 per-trajectory impact-event CSV files for ensemble members that produced impact
-events. Hazard-layer significant-impact density should use this directory when
-full-ensemble impact density is needed.
+events. Validation-written impact-event CSVs include an additive leading
+`trajectory_id` column. Hazard-layer significant-impact density should use this
+directory when full-ensemble impact density is needed.
+
+When `outputs.trajectory_metadata_csv` is set, validation writes one
+`trajectory_metadata_table_v1` row per simulated output trajectory. Current rows
+contain `trajectory_id`, `release_id`, `source_zone_id`, release coordinates,
+null `release_probability`, `block_radius_m`, `block_mass_kg`, optional
+`block_density_kgpm3`, `shape_class`, `scenario_id`, `sampling_weight = 1.0`,
+and `probability_model = "unweighted"`. This sidecar can be used by opt-in
+sampling-weighted hazard-layer post-processing. It does not change default
+unweighted hazard or validation semantics.
 
 When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model
@@ -189,14 +239,30 @@ summaries, warnings, and completion status. It does not replace diagnostics JSON
 or change pass/fail semantics. If `terrain.metadata_path` is present, the
 manifest terrain section includes CRS/EPSG, vertical datum, LV95 extent,
 resolution, nodata, source dataset/product, source filename/URL, license,
-download/preprocessing status, and provenance notes. If `release_zone` is
+download/preprocessing status, optional `raw_sha256` and `processed_sha256`
+checksums from the metadata sidecar, and provenance notes. If `release_zone` is
 present, the manifest includes release-zone id, metadata path, CRS/EPSG,
 vertical datum, deterministic sampling mode and seed, requested/generated
 release-point counts, polygon extent/area, source/license fields, and
 provenance notes. If `terrain_classes` is present, the manifest includes
 terrain-class layer id, metadata path, class-grid path, CRS/EPSG, vertical datum,
 resolution, extent, nodata, source/license fields, class coverage histogram, and
-provenance notes.
+provenance notes. If `outputs.trajectory_metadata_csv` is present, the manifest
+includes a `trajectory_metadata` section with schema version, path, row count,
+probability model, probability semantics, normalization convention, and total
+sampling weight.
+
+Current manifests also include an optional `performance` object with lightweight
+wall-clock and output-volume diagnostics: `total_wall_seconds`,
+`terrain_load_seconds`, `release_generation_seconds`, `simulation_seconds`,
+`output_write_seconds`, optional `hazard_layer_seconds`, `trajectory_count`,
+`impact_event_count`, `output_file_count`, and `output_bytes`. Hazard-layer
+manifests additionally split post-processing into `accumulation_seconds`,
+`core_output_write_seconds`, `plot_render_seconds`, and `plots_enabled`.
+`hazard_layer_seconds` is retained as a backward-compatible alias for
+`accumulation_seconds`; `output_write_seconds` is the sum of core output writing
+and optional plot/report rendering. These values are diagnostic metadata, not
+validation thresholds. Older manifests without this section remain valid.
 
 Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
 
@@ -220,6 +286,25 @@ The repository deliberately distinguishes three impact-count concepts:
 - `significant_impact_count`: impact-event count filtered by incoming normal speed. In v0.5.0, an impact is significant when `incoming_normal_speed_mps >= 0.05 m/s`. This threshold is tied to the current stop-speed scale and is intended to separate physically interpretable rebound/contact events from near-rest chatter while preserving the raw event log.
 
 Use `impact_event_count` when auditing all contact responses, `significant_impact_count` when comparing impact-level behavior, and `impact_count` only for legacy trajectory-state tests.
+
+## Local Tschamut/swissALTI3D Pilot Templates
+
+Runnable private Tschamut/swissALTI3D pilot cases should be generated under
+ignored `validation/private/` paths with:
+
+```bash
+python3 scripts/prepare_tschamut_swissalti3d_pilot.py \
+  --dem-path /path/to/private/tschamut_swissalti3d_crop.asc \
+  --terrain-metadata /path/to/private/tschamut_swissalti3d_metadata.yaml \
+  --release-zone-metadata /path/to/private/tschamut_release_zone.yaml
+```
+
+The checked-in templates live under `validation/templates/` and contain
+placeholders only. They are not scanned by `cargo run -- validate --all`.
+Generated private cases use the same schema as validation cases, including
+`terrain.metadata_path`, `release_zone.metadata_path`,
+optional `terrain_classes.metadata_path`, full ensemble trajectory/impact
+outputs, and `hazard_layers.statistics` thresholds.
 
 ## Validation-Ready Data
 

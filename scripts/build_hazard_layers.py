@@ -13,6 +13,7 @@ import csv
 import html
 import json
 import math
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -88,6 +89,77 @@ class HazardStatisticConfig:
 
 
 @dataclass(frozen=True)
+class HazardProbabilityFilters:
+    source_zone_ids: tuple[str, ...] = ()
+    scenario_ids: tuple[str, ...] = ()
+    block_mass_kg_min: float | None = None
+    block_mass_kg_max: float | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "source_zone_ids": list(self.source_zone_ids),
+            "scenario_ids": list(self.scenario_ids),
+            "block_mass_kg_min": self.block_mass_kg_min,
+            "block_mass_kg_max": self.block_mass_kg_max,
+        }
+
+
+@dataclass(frozen=True)
+class HazardProbabilityConfig:
+    probability_model: str
+    metadata_path: Path
+    weight_column: str
+    normalization_convention: str
+    filters: HazardProbabilityFilters
+
+    @property
+    def enabled(self) -> bool:
+        return True
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "probability_model": self.probability_model,
+            "metadata_path": str(self.metadata_path),
+            "weight_column": self.weight_column,
+            "normalization_convention": self.normalization_convention,
+            "filters": self.filters.as_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class TrajectoryWeight:
+    trajectory_id: str
+    weight: float
+    source_zone_id: str | None
+    scenario_id: str | None
+    block_mass_kg: float | None
+
+
+@dataclass(frozen=True)
+class HazardProbabilityState:
+    config: HazardProbabilityConfig
+    weights: dict[str, TrajectoryWeight]
+    total_input_weight: float
+    total_filtered_weight: float
+
+    def weight_for_trajectory(self, trajectory_id: str) -> float:
+        try:
+            return self.weights[trajectory_id].weight
+        except KeyError as exc:
+            raise SystemExit(
+                f"trajectory id {trajectory_id!r} is missing from {self.config.metadata_path}"
+            ) from exc
+
+    def as_manifest(self, generated_layer_names: list[str]) -> dict[str, Any]:
+        return {
+            **self.config.as_dict(),
+            "total_input_weight": self.total_input_weight,
+            "total_filtered_weight": self.total_filtered_weight,
+            "generated_weighted_layer_names": generated_layer_names,
+        }
+
+
+@dataclass(frozen=True)
 class InputStats:
     trajectory_count: int = 0
     trajectory_sample_count: int = 0
@@ -135,23 +207,41 @@ class HazardAccumulator:
         terrain: "TerrainSampler",
         block_radius_m: float,
         statistics: HazardStatisticConfig,
+        probability: HazardProbabilityState | None = None,
     ) -> None:
         self.grid = grid
         self.terrain = terrain
         self.block_radius_m = block_radius_m
         self.statistics = statistics
+        self.probability = probability
         self.reach = zeros(grid)
+        self.weighted_reach = zeros(grid) if probability else None
         self.max_ke = nodata_grid(grid)
         self.max_jump = nodata_grid(grid)
         self.kinetic_exceedance = {
             threshold: zeros(grid) for threshold in statistics.kinetic_energy_exceedance_j
         }
+        self.weighted_kinetic_exceedance = (
+            {threshold: zeros(grid) for threshold in statistics.kinetic_energy_exceedance_j}
+            if probability
+            else {}
+        )
         self.jump_exceedance = {
             threshold: zeros(grid) for threshold in statistics.jump_height_exceedance_m
         }
+        self.weighted_jump_exceedance = (
+            {threshold: zeros(grid) for threshold in statistics.jump_height_exceedance_m}
+            if probability
+            else {}
+        )
         self.velocity_exceedance = {
             threshold: zeros(grid) for threshold in statistics.velocity_exceedance_mps
         }
+        self.weighted_velocity_exceedance = (
+            {threshold: zeros(grid) for threshold in statistics.velocity_exceedance_mps}
+            if probability
+            else {}
+        )
         self.deposition = zeros(grid)
         self.impact_density = zeros(grid)
         self.deposition_points: list[dict[str, float | str]] = []
@@ -167,6 +257,7 @@ class HazardAccumulator:
         if not path.exists():
             return
         self.trajectory_count += 1
+        trajectory_id: str | None = None
         occupied: set[tuple[int, int]] = set()
         kinetic_exceeded: dict[float, set[tuple[int, int]]] = {
             threshold: set() for threshold in self.kinetic_exceedance
@@ -178,6 +269,8 @@ class HazardAccumulator:
             threshold: set() for threshold in self.velocity_exceedance
         }
         for sample in iter_numeric_csv(path, f"trajectory:{path}", warnings):
+            if trajectory_id is None:
+                trajectory_id = trajectory_id_from_sample_or_path(sample, path)
             self.trajectory_sample_count += 1
             cell = sample_cell(self.grid, sample)
             if cell is None:
@@ -209,6 +302,28 @@ class HazardAccumulator:
         increment_exceedance_grids(self.kinetic_exceedance, kinetic_exceeded)
         increment_exceedance_grids(self.jump_exceedance, jump_exceeded)
         increment_exceedance_grids(self.velocity_exceedance, velocity_exceeded)
+        if self.probability is not None:
+            if trajectory_id is None:
+                raise SystemExit(f"trajectory file {path} contains no samples and cannot be weighted")
+            weight = self.probability.weight_for_trajectory(trajectory_id)
+            if self.weighted_reach is not None:
+                for row, col in occupied:
+                    self.weighted_reach[row][col] += weight
+            increment_weighted_exceedance_grids(
+                self.weighted_kinetic_exceedance,
+                kinetic_exceeded,
+                weight,
+            )
+            increment_weighted_exceedance_grids(
+                self.weighted_jump_exceedance,
+                jump_exceeded,
+                weight,
+            )
+            increment_weighted_exceedance_grids(
+                self.weighted_velocity_exceedance,
+                velocity_exceeded,
+                weight,
+            )
 
     def accumulate_deposition(self, path: Path | None, warnings: list[str]) -> None:
         if path is None or not path.exists():
@@ -266,6 +381,24 @@ class HazardAccumulator:
                     nodata=True,
                 )
             )
+            if self.probability is not None:
+                denominator = self.probability.total_filtered_weight
+                if denominator <= 0.0:
+                    raise SystemExit("filtered total sampling weight must be positive")
+                if self.weighted_reach is not None:
+                    scale_grid(self.weighted_reach, 1.0 / denominator)
+                    layers.append(
+                        RasterLayer(
+                            "weighted_reach_probability",
+                            "Weighted reach probability",
+                            "sampling-weighted fraction of filtered trajectories",
+                            self.weighted_reach,
+                            note=(
+                                "Sampling-weighted conditional reach probability using "
+                                "trajectory_metadata_table_v1 and normalization conditioned on filters."
+                            ),
+                        )
+                    )
             for threshold, values in self.kinetic_exceedance.items():
                 scale_grid(values, 1.0 / self.trajectory_count)
                 layers.append(
@@ -276,6 +409,20 @@ class HazardAccumulator:
                         values,
                         note=(
                             "Trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if kinetic_j >= {threshold:g} J in that cell."
+                        ),
+                    )
+                )
+            for threshold, values in self.weighted_kinetic_exceedance.items():
+                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("weighted_kinetic_energy_exceedance", threshold, "j"),
+                        f"Weighted kinetic energy exceedance >= {threshold:g} J",
+                        "sampling-weighted fraction of filtered trajectories",
+                        values,
+                        note=(
+                            "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if kinetic_j >= {threshold:g} J in that cell."
                         ),
                     )
@@ -294,6 +441,20 @@ class HazardAccumulator:
                         ),
                     )
                 )
+            for threshold, values in self.weighted_jump_exceedance.items():
+                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("weighted_jump_height_exceedance", threshold, "m"),
+                        f"Weighted jump height exceedance >= {threshold:g} m",
+                        "sampling-weighted fraction of filtered trajectories",
+                        values,
+                        note=(
+                            "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if jump height >= {threshold:g} m in that cell."
+                        ),
+                    )
+                )
             for threshold, values in self.velocity_exceedance.items():
                 scale_grid(values, 1.0 / self.trajectory_count)
                 layers.append(
@@ -304,6 +465,20 @@ class HazardAccumulator:
                         values,
                         note=(
                             "Trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if speed_mps >= {threshold:g} m/s in that cell."
+                        ),
+                    )
+                )
+            for threshold, values in self.weighted_velocity_exceedance.items():
+                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("weighted_velocity_exceedance", threshold, "mps"),
+                        f"Weighted velocity exceedance >= {threshold:g} m/s",
+                        "sampling-weighted fraction of filtered trajectories",
+                        values,
+                        note=(
+                            "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if speed_mps >= {threshold:g} m/s in that cell."
                         ),
                     )
@@ -344,6 +519,7 @@ class HazardAccumulator:
 
 
 def main_with_args(argv: list[str] | None = None) -> int:
+    total_started = time.perf_counter()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", type=Path, help="verification or validation YAML case")
     parser.add_argument("--trajectory", action="append", type=Path, default=[], help="trajectory CSV; may be repeated")
@@ -393,7 +569,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         default=[],
         help="add trajectory-level velocity exceedance probability layer for this threshold in m/s; may be repeated",
     )
-    parser.add_argument("--no-plots", action="store_true", help="skip PNG rendering")
+    parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
     case = load_yaml(args.case) if args.case else {}
@@ -409,6 +585,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     input_warnings: list[str] = []
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
+    probability_config = parse_hazard_probability(case)
 
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
@@ -419,8 +596,15 @@ def main_with_args(argv: list[str] | None = None) -> int:
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
     statistic_config = parse_hazard_statistics(case, args)
+    probability_state = load_hazard_probability_state(
+        probability_config,
+        trajectory_paths,
+        deposition_path,
+        impact_event_paths,
+    )
 
-    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config)
+    accumulation_started = time.perf_counter()
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config, probability_state)
     accumulator.accumulate_deposition(deposition_path, input_warnings)
     for trajectory_path in trajectory_paths:
         accumulator.accumulate_trajectory(trajectory_path, input_warnings)
@@ -431,17 +615,31 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     layers, warnings = accumulator.layers()
     warnings = input_warnings + warnings + validate_layers(layers)
-    write_layers(output_dir, prefix, grid, layers)
-    write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", accumulator.deposition_points)
+    accumulation_seconds = time.perf_counter() - accumulation_started
 
-    metadata_path = output_dir / f"{prefix}_metadata.json"
-    metadata = build_metadata(case, diagnostics, grid, grid_source, layers, warnings, stats, statistic_config)
-    write_text(metadata_path, json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    core_write_started = time.perf_counter()
+    metadata = build_metadata(
+        case,
+        diagnostics,
+        grid,
+        grid_source,
+        layers,
+        warnings,
+        stats,
+        statistic_config,
+        probability_state,
+    )
+    write_core_hazard_outputs(output_dir, prefix, grid, layers, accumulator.deposition_points, metadata)
+    core_output_write_seconds = time.perf_counter() - core_write_started
 
     plot_paths: dict[str, str] = {}
-    if not args.no_plots:
+    plot_render_seconds = 0.0
+    plots_enabled = not args.no_plots
+    if plots_enabled:
+        plot_started = time.perf_counter()
         plot_paths = render_png_layers(output_dir, prefix, grid, layers)
-    write_html_report(output_dir / "index.html", case, metadata, layers, plot_paths, prefix)
+        write_html_report(output_dir / "index.html", case, metadata, layers, plot_paths, prefix)
+        plot_render_seconds = time.perf_counter() - plot_started
     manifest = build_hazard_manifest(
         case,
         diagnostics,
@@ -453,6 +651,12 @@ def main_with_args(argv: list[str] | None = None) -> int:
         plot_paths,
         warnings,
         statistic_config,
+        probability_state,
+        total_wall_seconds=time.perf_counter() - total_started,
+        accumulation_seconds=accumulation_seconds,
+        core_output_write_seconds=core_output_write_seconds,
+        plot_render_seconds=plot_render_seconds,
+        plots_enabled=plots_enabled,
     )
     write_text(output_dir / f"{prefix}_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -590,6 +794,169 @@ def validated_thresholds(values: list[float], name: str) -> tuple[float, ...]:
     return tuple(unique)
 
 
+def parse_hazard_probability(case: dict[str, Any]) -> HazardProbabilityConfig | None:
+    raw = case.get("hazard_probability")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise SystemExit("hazard_probability must be a mapping")
+    probability_model = str(raw.get("probability_model") or "")
+    if probability_model != "sampling_weighted":
+        raise SystemExit("hazard_probability.probability_model must be sampling_weighted")
+    normalization = str(raw.get("normalization_convention") or "")
+    if normalization != "conditioned_on_filter":
+        raise SystemExit("hazard_probability.normalization_convention must be conditioned_on_filter")
+    weight_column = str(raw.get("weight_column") or "")
+    if weight_column != "sampling_weight":
+        raise SystemExit("hazard_probability.weight_column must be sampling_weight")
+    metadata_path = raw.get("metadata_path")
+    if not metadata_path:
+        raise SystemExit("hazard_probability.metadata_path is required")
+    filters = raw.get("filters") or {}
+    if not isinstance(filters, dict):
+        raise SystemExit("hazard_probability.filters must be a mapping")
+    block_mass_min = optional_float(filters.get("block_mass_kg_min"), "block_mass_kg_min")
+    block_mass_max = optional_float(filters.get("block_mass_kg_max"), "block_mass_kg_max")
+    if block_mass_min is not None and block_mass_max is not None and block_mass_min > block_mass_max:
+        raise SystemExit("hazard_probability.filters.block_mass_kg_min cannot exceed block_mass_kg_max")
+    return HazardProbabilityConfig(
+        probability_model=probability_model,
+        metadata_path=ROOT / str(metadata_path),
+        weight_column=weight_column,
+        normalization_convention=normalization,
+        filters=HazardProbabilityFilters(
+            source_zone_ids=tuple(str(value) for value in list_from_any(filters.get("source_zone_ids"))),
+            scenario_ids=tuple(str(value) for value in list_from_any(filters.get("scenario_ids"))),
+            block_mass_kg_min=block_mass_min,
+            block_mass_kg_max=block_mass_max,
+        ),
+    )
+
+
+def load_hazard_probability_state(
+    config: HazardProbabilityConfig | None,
+    trajectory_paths: list[Path],
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+) -> HazardProbabilityState | None:
+    if config is None:
+        return None
+    if not config.metadata_path.exists():
+        raise SystemExit(f"hazard_probability metadata file does not exist: {config.metadata_path}")
+    all_rows: dict[str, TrajectoryWeight] = {}
+    total_input_weight = 0.0
+    total_filtered_weight = 0.0
+    with config.metadata_path.open(newline="") as file:
+        reader = csv.DictReader(file)
+        if not reader.fieldnames or "trajectory_id" not in reader.fieldnames:
+            raise SystemExit("trajectory metadata must contain trajectory_id")
+        if config.weight_column not in reader.fieldnames:
+            raise SystemExit(f"trajectory metadata must contain {config.weight_column}")
+        for row in reader:
+            trajectory_id = str(row.get("trajectory_id") or "").strip()
+            if not trajectory_id:
+                raise SystemExit("trajectory metadata contains an empty trajectory_id")
+            if trajectory_id in all_rows:
+                raise SystemExit(f"trajectory metadata contains duplicate trajectory_id: {trajectory_id}")
+            weight = parse_required_float(row.get(config.weight_column), config.weight_column)
+            if weight < 0.0:
+                raise SystemExit(f"sampling weights must be non-negative: {trajectory_id}")
+            record = TrajectoryWeight(
+                trajectory_id=trajectory_id,
+                weight=weight,
+                source_zone_id=blank_to_none(row.get("source_zone_id")),
+                scenario_id=blank_to_none(row.get("scenario_id")),
+                block_mass_kg=parse_optional_float_text(row.get("block_mass_kg"), "block_mass_kg"),
+            )
+            all_rows[trajectory_id] = record
+            total_input_weight += weight
+
+    filtered = {
+        trajectory_id: record
+        for trajectory_id, record in all_rows.items()
+        if metadata_record_matches_filters(record, config.filters)
+    }
+    total_filtered_weight = math.fsum(record.weight for record in filtered.values())
+    if total_filtered_weight <= 0.0:
+        raise SystemExit("filtered total sampling weight must be positive")
+
+    for path in trajectory_paths:
+        trajectory_id = trajectory_id_from_path_or_file(path)
+        if trajectory_id not in all_rows:
+            raise SystemExit(f"trajectory id {trajectory_id!r} is missing from {config.metadata_path}")
+        if trajectory_id not in filtered:
+            raise SystemExit(
+                f"trajectory id {trajectory_id!r} is excluded by hazard_probability filters; "
+                "supply matching trajectory inputs or adjust filters"
+            )
+
+    for trajectory_id in trajectory_ids_from_hazard_side_inputs(deposition_path, impact_event_paths):
+        if trajectory_id not in all_rows:
+            raise SystemExit(f"trajectory id {trajectory_id!r} is missing from {config.metadata_path}")
+
+    return HazardProbabilityState(
+        config=config,
+        weights=filtered,
+        total_input_weight=total_input_weight,
+        total_filtered_weight=total_filtered_weight,
+    )
+
+
+def metadata_record_matches_filters(record: TrajectoryWeight, filters: HazardProbabilityFilters) -> bool:
+    if filters.source_zone_ids and record.source_zone_id not in filters.source_zone_ids:
+        return False
+    if filters.scenario_ids and record.scenario_id not in filters.scenario_ids:
+        return False
+    if filters.block_mass_kg_min is not None:
+        if record.block_mass_kg is None or record.block_mass_kg < filters.block_mass_kg_min:
+            return False
+    if filters.block_mass_kg_max is not None:
+        if record.block_mass_kg is None or record.block_mass_kg > filters.block_mass_kg_max:
+            return False
+    return True
+
+
+def list_from_any(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def optional_float(value: Any, name: str) -> float | None:
+    if value is None:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"hazard_probability.filters.{name} must be numeric") from exc
+    if not math.isfinite(result):
+        raise SystemExit(f"hazard_probability.filters.{name} must be finite")
+    return result
+
+
+def parse_required_float(value: Any, name: str) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"{name} must be numeric") from exc
+    if not math.isfinite(result):
+        raise SystemExit(f"{name} must be finite")
+    return result
+
+
+def parse_optional_float_text(value: Any, name: str) -> float | None:
+    if value is None or value == "":
+        return None
+    return parse_required_float(value, name)
+
+
+def blank_to_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
 def discover_bounds(
     trajectory_paths: list[Path],
     deposition_path: Path | None,
@@ -685,6 +1052,17 @@ def increment_exceedance_grids(
             grid[row][col] += 1.0
 
 
+def increment_weighted_exceedance_grids(
+    grids: dict[float, list[list[float]]],
+    exceeded: dict[float, set[tuple[int, int]]],
+    weight: float,
+) -> None:
+    for threshold, cells in exceeded.items():
+        grid = grids[threshold]
+        for row, col in cells:
+            grid[row][col] += weight
+
+
 def exceedance_layer_key(prefix: str, threshold: float, suffix: str) -> str:
     threshold_text = f"{threshold:g}".replace("-", "neg_").replace(".", "p")
     return f"{prefix}_{threshold_text}{suffix}"
@@ -700,6 +1078,51 @@ def jump_height(sample: dict[str, float | str], terrain: "TerrainSampler", radiu
     if ground is None:
         return None
     return max(0.0, z - ground - radius_m)
+
+
+def trajectory_id_from_sample_or_path(sample: dict[str, float | str], path: Path) -> str:
+    value = sample.get("trajectory_id")
+    if isinstance(value, str) and value:
+        return value
+    return path.stem
+
+
+def trajectory_id_from_path_or_file(path: Path) -> str:
+    if path.exists():
+        with path.open(newline="") as file:
+            reader = csv.DictReader(file)
+            try:
+                row = next(reader)
+            except StopIteration:
+                return path.stem
+            value = row.get("trajectory_id")
+            if value:
+                return str(value)
+    return path.stem
+
+
+def trajectory_ids_from_hazard_side_inputs(
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+) -> set[str]:
+    ids: set[str] = set()
+    if deposition_path is not None:
+        ids.update(trajectory_ids_from_csv_if_available(deposition_path))
+    for path in impact_event_paths:
+        ids.update(trajectory_ids_from_csv_if_available(path))
+    return ids
+
+
+def trajectory_ids_from_csv_if_available(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    with path.open(newline="") as file:
+        reader = csv.DictReader(file)
+        if reader.fieldnames and "trajectory_id" in reader.fieldnames:
+            return {str(row["trajectory_id"]).strip() for row in reader if str(row.get("trajectory_id") or "").strip()}
+    if path.stem.startswith("trajectory_"):
+        return {path.stem}
+    return set()
 
 
 class TerrainSampler:
@@ -896,7 +1319,11 @@ def build_metadata(
     warnings: list[str],
     stats: InputStats,
     statistic_config: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
 ) -> dict[str, Any]:
+    weighted_layer_names = [
+        layer.key for layer in layers if layer.key.startswith("weighted_")
+    ]
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "case_id": case.get("case_id"),
@@ -920,6 +1347,7 @@ def build_metadata(
             "significant_impact_count": stats.significant_impact_count,
         },
         "hazard_statistics": statistic_config.as_dict(),
+        "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
         "layers": [
             {
                 "key": layer.key,
@@ -941,6 +1369,19 @@ def build_metadata(
     }
 
 
+def write_core_hazard_outputs(
+    output_dir: Path,
+    prefix: str,
+    grid: GridSpec,
+    layers: list[RasterLayer],
+    deposition_points: list[dict[str, float | str]],
+    metadata: dict[str, Any],
+) -> None:
+    write_layers(output_dir, prefix, grid, layers)
+    write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", deposition_points)
+    write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+
+
 def build_hazard_manifest(
     case: dict[str, Any],
     diagnostics: dict[str, Any],
@@ -952,6 +1393,13 @@ def build_hazard_manifest(
     plot_paths: dict[str, str],
     warnings: list[str],
     statistic_config: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+    *,
+    total_wall_seconds: float,
+    accumulation_seconds: float,
+    core_output_write_seconds: float,
+    plot_render_seconds: float,
+    plots_enabled: bool,
 ) -> dict[str, Any]:
     outputs: list[dict[str, Any]] = []
     for layer in layers:
@@ -959,13 +1407,21 @@ def build_hazard_manifest(
         outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.asc", "hazard_layer", "esri_ascii_grid"))
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_deposition_points.geojson", "deposition_points", "geojson"))
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_metadata.json", "hazard_metadata", "json"))
-    outputs.append(output_manifest_entry(output_dir / "index.html", "hazard_report", "html"))
+    if plots_enabled:
+        outputs.append(output_manifest_entry(output_dir / "index.html", "hazard_report", "html"))
     for layer_key, filename in sorted(plot_paths.items()):
         outputs.append(output_manifest_entry(output_dir / filename, f"{layer_key}_plot", "png"))
 
     terrain = case.get("terrain") or {}
     random = case.get("random") or {}
     parameters = terrain.get("parameters") or {}
+    output_file_count = sum(int(output["file_count"]) for output in outputs)
+    output_bytes = sum(int(output["total_bytes"]) for output in outputs)
+    inputs = metadata.get("inputs", {})
+    accumulation_seconds = max(0.0, accumulation_seconds)
+    core_output_write_seconds = max(0.0, core_output_write_seconds)
+    plot_render_seconds = max(0.0, plot_render_seconds)
+    output_write_seconds = core_output_write_seconds + plot_render_seconds
     return {
         "schema_version": "run_manifest_v1",
         "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
@@ -987,6 +1443,22 @@ def build_hazard_manifest(
             "resolution_m": parameters.get("cell_size_m") or parameters.get("cellsize"),
         },
         "outputs": outputs,
+        "performance": {
+            "total_wall_seconds": max(0.0, total_wall_seconds),
+            "terrain_load_seconds": 0.0,
+            "release_generation_seconds": 0.0,
+            "simulation_seconds": 0.0,
+            "output_write_seconds": output_write_seconds,
+            "hazard_layer_seconds": accumulation_seconds,
+            "accumulation_seconds": accumulation_seconds,
+            "core_output_write_seconds": core_output_write_seconds,
+            "plot_render_seconds": plot_render_seconds,
+            "plots_enabled": plots_enabled,
+            "trajectory_count": int(inputs.get("trajectory_count", 0) or 0),
+            "impact_event_count": int(inputs.get("impact_event_count", 0) or 0),
+            "output_file_count": output_file_count,
+            "output_bytes": output_bytes,
+        },
         "warnings": warnings,
         "grid": dict(metadata.get("grid", {}), source=grid_source),
         "inputs": metadata.get("inputs", {}),
@@ -994,6 +1466,11 @@ def build_hazard_manifest(
             "configured": statistic_config.as_dict(),
             "generated_layer_names": [layer.key for layer in layers if "exceedance" in layer.key],
         },
+        "hazard_probability": (
+            probability.as_manifest([layer.key for layer in layers if layer.key.startswith("weighted_")])
+            if probability
+            else None
+        ),
         "layers": [
             {
                 "key": layer.key,
@@ -1019,7 +1496,12 @@ def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, 
 
 
 def layer_source(layer_key: str) -> str:
-    if layer_key in {"reach_probability", "max_kinetic_energy", "max_jump_height"} or "exceedance" in layer_key:
+    if layer_key in {
+        "reach_probability",
+        "weighted_reach_probability",
+        "max_kinetic_energy",
+        "max_jump_height",
+    } or "exceedance" in layer_key:
         return "trajectory_csv"
     if layer_key == "deposition_density":
         return "ensemble_deposition_csv"
@@ -1058,7 +1540,12 @@ def validate_layers(layers: list[RasterLayer]) -> list[str]:
         summary = summarize_layer(layer)
         if summary["valid_cell_count"] == 0:
             warnings.append(f"{layer.key} has no valid cells")
-        if layer.key in {"reach_probability", "deposition_density", "significant_impact_density"} or "exceedance" in layer.key:
+        if layer.key in {
+            "reach_probability",
+            "weighted_reach_probability",
+            "deposition_density",
+            "significant_impact_density",
+        } or "exceedance" in layer.key:
             maximum = summary["maximum"]
             minimum = summary["minimum"]
             if isinstance(maximum, float) and maximum > 1.0 + 1e-12:

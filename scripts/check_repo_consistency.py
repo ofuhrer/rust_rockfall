@@ -47,6 +47,7 @@ KNOWN_TERRAIN_TYPES = {
 }
 KNOWN_OUTPUT_KEYS = {
     "trajectory_csv",
+    "trajectory_metadata_csv",
     "diagnostics_json",
     "manifest_json",
     "ensemble_deposition_csv",
@@ -165,6 +166,8 @@ def check_staged_generated_outputs() -> list[str]:
             continue
         if any(path.startswith(prefix) for prefix in GENERATED_PREFIXES):
             errors.append(f"generated output is staged: {path}")
+        if path.startswith("data/private/") or path.startswith("validation/private/"):
+            errors.append(f"private local data or generated private case is staged: {path}")
     tracked = subprocess.run(
         ["git", "ls-files"],
         cwd=ROOT,
@@ -179,6 +182,8 @@ def check_staged_generated_outputs() -> list[str]:
             errors.append(f"generated output is tracked: {path}")
         if path.startswith("data/raw/") and path != "data/raw/.gitkeep":
             errors.append(f"raw external data is tracked: {path}")
+        if path.startswith("data/private/") or path.startswith("validation/private/"):
+            errors.append(f"private local data or generated private case is tracked: {path}")
     return errors
 
 
@@ -288,11 +293,18 @@ def check_schema_docs() -> list[str]:
         "friction_mu",
         "rolling_resistance",
         "hazard_layers",
+        "hazard_probability",
+        "sampling_weighted",
+        "sampling_weight",
+        "normalization_convention",
+        "conditioned_on_filter",
         "kinetic_energy_exceedance_j",
         "jump_height_exceedance_m",
         "velocity_exceedance_mps",
         "EPSG:2056",
         "LN02",
+        "raw_sha256",
+        "processed_sha256",
     ]
     errors = []
     for term in required_schema_terms:
@@ -343,6 +355,7 @@ def check_hazard_layer_metadata() -> list[str]:
         ROOT / "hazard/README.md",
         ROOT / "hazard/results/.gitkeep",
         ROOT / "docs/hazard_layers.md",
+        ROOT / "docs/performance_benchmarking.md",
         ROOT / "docs/hazard_workflow_scale_review.md",
         ROOT / "tests/test_hazard_layers.py",
         ROOT / "tests/fixtures/hazard/plane_case.yaml",
@@ -381,13 +394,18 @@ def check_swisstopo_geodata_metadata() -> list[str]:
     required_paths = [
         ROOT / "docs/swisstopo_data_strategy.md",
         ROOT / "docs/swiss_terrain_ingestion_pilot.md",
+        ROOT / "docs/tschamut_swissalti3d_pilot.md",
         ROOT / "docs/swisstopo_terrain_tile_schema.yaml",
         ROOT / "data/processed/swisstopo/README.md",
         ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml",
+        ROOT / "scripts/prepare_tschamut_swissalti3d_pilot.py",
+        ROOT / "validation/templates/tschamut_swissalti3d_baseline.yaml",
+        ROOT / "validation/templates/tschamut_swissalti3d_rotational.yaml",
         ROOT / "validation/cases/swissalti3d_pilot.yaml",
         ROOT / "validation/cases/swissalti3d_release_zone_pilot.yaml",
         ROOT / "validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml",
         ROOT / "validation/cases/swissalti3d_hazard_statistics_pilot.yaml",
+        ROOT / "validation/cases/performance_smoke.yaml",
         ROOT / "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc",
         ROOT / "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml",
         ROOT / "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml",

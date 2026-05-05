@@ -8,6 +8,8 @@ __pycache__/
 # intentionally added outside data/raw.
 data/raw/**
 !data/raw/.gitkeep
+data/private/**
+validation/private/**
 verification/results/**
 !verification/results/.gitkeep
 validation/results/**

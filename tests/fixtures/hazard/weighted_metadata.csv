@@ -1,0 +1,3 @@
+trajectory_id,release_id,source_zone_id,release_x_m,release_y_m,release_z_m,release_probability,block_radius_m,block_mass_kg,block_density_kgpm3,shape_class,scenario_id,sampling_weight,probability_model
+trajectory_000000,release_a,zone_a,0.0,0.0,1.5,,0.5,10.0,19.098593171,sphere,hazard_fixture_weighted,1.0,unweighted
+trajectory_000001,release_b,zone_b,0.0,0.0,1.5,,0.5,20.0,38.197186342,sphere,hazard_fixture_weighted,3.0,unweighted

@@ -17,7 +17,11 @@ pub struct RunManifest {
     pub terrain: TerrainManifest,
     pub release_zone: Option<ReleaseZoneManifest>,
     pub terrain_classes: Option<TerrainClassManifest>,
+    #[serde(default)]
+    pub trajectory_metadata: Option<TrajectoryMetadataManifest>,
     pub outputs: Vec<OutputManifest>,
+    #[serde(default)]
+    pub performance: Option<PerformanceManifest>,
     pub warnings: Vec<String>,
 }
 
@@ -46,6 +50,8 @@ pub struct TerrainManifest {
     pub license: Option<String>,
     pub download_status: Option<String>,
     pub preprocessing_status: Option<String>,
+    pub raw_sha256: Option<String>,
+    pub processed_sha256: Option<String>,
     pub provenance_notes: Vec<String>,
 }
 
@@ -102,6 +108,32 @@ pub struct TerrainClassCoverageManifest {
     pub coverage_fraction: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrajectoryMetadataManifest {
+    pub schema_version: String,
+    pub path: String,
+    pub row_count: usize,
+    #[serde(default = "default_probability_model")]
+    pub probability_model: String,
+    #[serde(default = "default_probability_semantics")]
+    pub probability_semantics: String,
+    #[serde(default = "default_normalization_convention")]
+    pub normalization_convention: String,
+    pub total_sampling_weight: f64,
+}
+
+fn default_probability_model() -> String {
+    "unweighted".to_string()
+}
+
+fn default_probability_semantics() -> String {
+    "sampling_weight_only".to_string()
+}
+
+fn default_normalization_convention() -> String {
+    "unweighted_current_outputs".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OutputManifest {
     pub kind: String,
@@ -111,4 +143,18 @@ pub struct OutputManifest {
     pub total_bytes: u64,
     pub row_count: Option<usize>,
     pub skipped_empty_files: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PerformanceManifest {
+    pub total_wall_seconds: f64,
+    pub terrain_load_seconds: f64,
+    pub release_generation_seconds: f64,
+    pub simulation_seconds: f64,
+    pub output_write_seconds: f64,
+    pub hazard_layer_seconds: Option<f64>,
+    pub trajectory_count: usize,
+    pub impact_event_count: usize,
+    pub output_file_count: usize,
+    pub output_bytes: u64,
 }

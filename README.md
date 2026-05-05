@@ -2,9 +2,9 @@
 
 `rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
 
-Current crate/model version: `v0.5.0`.
+Current crate/model version: `v0.6.0`.
 
-The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
+The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not decompile or inspect proprietary binaries, and it does not claim numerical equivalence with any proprietary or operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
 
 The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames future map outputs such as runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers. Risk mapping is a later, separate workflow because it requires exposure and vulnerability data beyond the current simulator.
 
@@ -25,7 +25,7 @@ The first model is intentionally small:
 - optional per-impact CSV/JSON diagnostics for reconstructing contact and scarring events
 - CSV trajectory output from a CLI
 
-Unsupported in v0.5.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+Unsupported in v0.6.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
 
 ## Versioning
 
@@ -52,6 +52,14 @@ The output CSV contains time, position, velocity, speed, energy diagnostics, and
 ## Repository Notes
 
 The `background/` folder contains third-party background material and publications. Those documents retain their own copyrights and licenses. They are used only as public scientific and grey-literature references for the independent implementation.
+
+Core algorithm references used by the current design include:
+
+- Leine et al. 2014, *Simulation of rockfall trajectories with consideration of rock shape*
+- Leine et al. 2021, *Stability of rigid body motion through an extended intermediate axis theorem*
+- Lu et al. 2019, *Modelling rockfall impact with scarring in compactable soils*
+- Crosta and Agliardi 2004, *Parametric evaluation of 3D dispersion of rockfall trajectories*
+- STONE / GRASS `r.stone` public documentation for point-like 3D rockfall modelling context
 
 Core documentation:
 
@@ -190,6 +198,11 @@ to include the opt-in terrain/material-class parameter lookup fixture. Run
 before building additive exceedance hazard layers for the same synthetic pilot
 stack. See
 `docs/swisstopo_data_strategy.md` and `docs/swiss_terrain_ingestion_pilot.md`.
+For a local/private Tschamut rerun with a manually supplied real swissALTI3D-style
+crop, use `scripts/prepare_tschamut_swissalti3d_pilot.py` to generate ignored
+baseline and `sphere_rotational_v1` case files under `validation/private/`.
+That workflow is documented in `docs/tschamut_swissalti3d_pilot.md` and does
+not tune parameters or commit raw geodata.
 
 For ensemble-based reach, energy, and jump-height layers, opt into
 `outputs.ensemble_trajectories_dir` in the case YAML. For ensemble impact

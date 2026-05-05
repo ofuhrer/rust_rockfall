@@ -4,6 +4,13 @@
 
 - No unreleased changes.
 
+## v0.6.0
+
+- Added opt-in sampling-weighted conditional hazard layers using `trajectory_metadata_table_v1` and `sampling_weight`.
+- Added strict probability-configuration validation for supported `sampling_weighted` maps, metadata joins, filters, nonnegative weights, and positive filtered total weight.
+- Added weighted reach, kinetic-energy exceedance, jump-height exceedance, and velocity exceedance raster outputs while preserving existing unweighted hazard layers.
+- Added weighted-hazard manifest metadata, illustrative fixtures, focused tests, and probability-semantics documentation.
+
 ## v0.5.0
 
 - Added Chant Sura trajectory-validation fixtures and model-improvement evaluation documentation.
