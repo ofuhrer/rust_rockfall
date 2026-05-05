@@ -53,6 +53,7 @@ KNOWN_OUTPUT_KEYS = {
     "ensemble_deposition_csv",
     "ensemble_trajectories_dir",
     "ensemble_impact_events_dir",
+    "ensemble_impact_events_parquet",
     "impact_events_csv",
     "impact_events_json",
 }
@@ -270,6 +271,7 @@ def check_schema_docs() -> list[str]:
         "impact_events_json",
         "ensemble_trajectories_dir",
         "ensemble_impact_events_dir",
+        "ensemble_impact_events_parquet",
         "contact_events_csv",
         "max_scarring_depth_m",
         "max_scarring_drag_force_n",

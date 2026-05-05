@@ -180,8 +180,9 @@ summary statistics. The most important distinction is the input source:
   current validation ensemble, because validation writes an ensemble deposition
   CSV;
 - impact-derived layers (`significant_impact_density`) are only produced when
-  impact-event CSV output is available. Use
-  `outputs.ensemble_impact_events_dir` for full ensemble impact density.
+  impact-event output is available. Use `outputs.ensemble_impact_events_dir`
+  for per-trajectory CSVs or `outputs.ensemble_impact_events_parquet` for one
+  batched `impact_events_table_v1` file.
 
 The probability/density rasters are normalized by the number of supplied samples
 for that layer. Maximum-value rasters record the largest sampled value in a
@@ -208,14 +209,33 @@ outputs:
   ensemble_deposition_csv: validation/results/example_deposition.csv
   ensemble_trajectories_dir: validation/results/example_ensemble_trajectories
   ensemble_impact_events_dir: validation/results/example_ensemble_impacts
+  ensemble_impact_events_parquet: validation/results/example_impact_events.parquet
 ```
 
-The hazard builder automatically prefers `ensemble_trajectories_dir` and
-`ensemble_impact_events_dir` from a case file when those directories exist and
-contain CSV files. This is the recommended mode for scientifically meaningful
-small-to-medium ensemble reach, energy, jump-height, and significant-impact
-layers. Keep it disabled for default CI-scale runs unless the extra files are
-needed.
+The hazard builder automatically prefers `ensemble_trajectories_dir` and one
+case-defined full-ensemble impact-event source when those paths exist. If both
+`ensemble_impact_events_dir` and `ensemble_impact_events_parquet` are present in
+a case file, the Parquet table is used by default to avoid double-counting;
+explicit CLI impact inputs override that default. CSV directories remain
+easiest to inspect by hand; Parquet reduces file-count pressure for
+impact-heavy runs. This is the
+recommended mode for scientifically meaningful small-to-medium ensemble reach,
+energy, jump-height, and significant-impact layers. Keep full debug outputs
+disabled for default CI-scale runs unless the extra files are needed.
+
+Parquet impact events can also be supplied explicitly:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/example.yaml \
+  --impact-events-parquet validation/results/example_impact_events.parquet \
+  --output-dir hazard/results/example \
+  --no-plots
+```
+
+Reading Parquet impact events requires `pyarrow` in the Python environment. CSV
+impact-event directories remain supported and require no additional Python
+columnar dependency.
 
 The hazard builder uses streaming CSV passes for raster accumulation. In
 auto-grid mode it first scans inputs to discover bounds, then streams the same

@@ -34,6 +34,7 @@ Required case fields:
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.manifest_json`, optional `outputs.trajectory_metadata_csv`, optional `outputs.ensemble_deposition_csv`
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
+- optional `outputs.ensemble_impact_events_parquet` for one batched `impact_events_table_v1` Parquet file containing all ensemble impact events; this is opt-in and can be written alongside or instead of the CSV directory
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
 - optional `hazard_layers.statistics.kinetic_energy_exceedance_j`, `jump_height_exceedance_m`, and `velocity_exceedance_mps` for additive hazard post-processing thresholds
 - optional top-level `hazard_probability` block for opt-in sampling-weighted conditional hazard-layer post-processing
@@ -223,6 +224,16 @@ events. Validation-written impact-event CSVs include an additive leading
 `trajectory_id` column. Hazard-layer significant-impact density should use this
 directory when full-ensemble impact density is needed.
 
+When `outputs.ensemble_impact_events_parquet` is set, validation writes one
+batched Parquet file with schema version `impact_events_table_v1`. The table
+contains `trajectory_id`, `impact_index`, optional `seed`, a
+`significant_impact` flag, `scarring_depth_source`, and the same numeric
+velocity, energy, geometry, and scarring diagnostics exposed by impact-event
+CSV/JSON output. Cases may write CSV impact directories, Parquet, both, or
+neither. This columnar output is intended for file-count reduction and efficient
+trajectory-id joins in post-processing; it does not change validation semantics
+or simulation physics.
+
 When `outputs.trajectory_metadata_csv` is set, validation writes one
 `trajectory_metadata_table_v1` row per simulated output trajectory. Current rows
 contain `trajectory_id`, `release_id`, `source_zone_id`, release coordinates,
@@ -251,6 +262,11 @@ provenance notes. If `outputs.trajectory_metadata_csv` is present, the manifest
 includes a `trajectory_metadata` section with schema version, path, row count,
 probability model, probability semantics, normalization convention, and total
 sampling weight.
+
+If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
+array includes `kind: ensemble_impact_events`, `format: parquet`,
+`schema_version: impact_events_table_v1`, path, row count, file count, total
+bytes, compression, and row-group count when available.
 
 Current manifests also include an optional `performance` object with lightweight
 wall-clock and output-volume diagnostics: `total_wall_seconds`,

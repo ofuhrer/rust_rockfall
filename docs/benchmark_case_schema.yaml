@@ -95,6 +95,7 @@ outputs:
   ensemble_deposition_csv: null
   ensemble_trajectories_dir: null
   ensemble_impact_events_dir: null
+  ensemble_impact_events_parquet: null
   impact_events_csv: null
   impact_events_json: null
 references:

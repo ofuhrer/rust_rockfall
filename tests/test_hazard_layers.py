@@ -591,6 +591,66 @@ class HazardLayerTests(unittest.TestCase):
             self.assertAlmostEqual(sum(full_impacts.values()), 1.0)
             self.assertEqual(len([value for value in full_impacts.values() if value > 0.0]), 2)
 
+    def test_parquet_impact_events_match_csv_impact_density(self) -> None:
+        try:
+            import pyarrow  # noqa: F401  # type: ignore
+        except ImportError:
+            self.skipTest("pyarrow is required for Parquet impact-event fixtures")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            parquet_path = work / "impact_events.parquet"
+            write_impact_parquet_fixture(parquet_path, FIXTURE / "ensemble_impacts")
+            parquet_case = yaml_load(FIXTURE / "ensemble_case.yaml")
+            parquet_case["outputs"]["ensemble_impact_events_parquet"] = str(parquet_path)
+            case_path = work / "parquet_case.yaml"
+            write_yaml(case_path, parquet_case)
+
+            csv_dir = work / "csv"
+            parquet_dir = work / "parquet"
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "ensemble_case.yaml"),
+                        "--output-dir",
+                        str(csv_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(parquet_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            self.assertEqual(
+                read_layer(
+                    csv_dir / "hazard_fixture_ensemble_significant_impact_density.csv",
+                    "significant_impact_density",
+                ),
+                read_layer(
+                    parquet_dir / "hazard_fixture_ensemble_significant_impact_density.csv",
+                    "significant_impact_density",
+                ),
+            )
+            metadata = json.loads((parquet_dir / "hazard_fixture_ensemble_metadata.json").read_text())
+            self.assertEqual(metadata["inputs"]["impact_event_count"], 2)
+            self.assertEqual(metadata["inputs"]["significant_impact_count"], 2)
+
 
 def read_layer(path: Path, key: str) -> dict[tuple[int, int], float]:
     values: dict[tuple[int, int], float] = {}
@@ -605,6 +665,37 @@ def yaml_load(path: Path) -> dict:
     import yaml  # type: ignore
 
     return yaml.safe_load(path.read_text())
+
+
+def write_yaml(path: Path, value: dict) -> None:
+    import yaml  # type: ignore
+
+    path.write_text(yaml.safe_dump(value, sort_keys=False))
+
+
+def write_impact_parquet_fixture(path: Path, impact_dir: Path) -> None:
+    import pyarrow as pa  # type: ignore
+    import pyarrow.parquet as pq  # type: ignore
+
+    rows: list[dict[str, object]] = []
+    for csv_path in sorted(impact_dir.glob("*.csv")):
+        with csv_path.open(newline="") as file:
+            for row in csv.DictReader(file):
+                incoming = float(row["incoming_normal_speed_mps"])
+                rows.append(
+                    {
+                        "trajectory_id": csv_path.stem,
+                        "impact_index": int(row["impact_index"]),
+                        "time_s": float(row["time_s"]),
+                        "x_m": float(row["x_m"]),
+                        "y_m": float(row["y_m"]),
+                        "z_m": float(row["z_m"]),
+                        "incoming_normal_speed_mps": incoming,
+                        "significant_impact": incoming >= hazard.SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS,
+                    }
+                )
+    table = pa.Table.from_pylist(rows)
+    pq.write_table(table, path)
 
 
 def write_weighted_case(

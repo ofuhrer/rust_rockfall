@@ -177,7 +177,7 @@ class GridBounds:
     def empty() -> "GridBounds":
         return GridBounds(xs=[], ys=[])
 
-    def add_row(self, row: dict[str, float | str]) -> None:
+    def add_row(self, row: dict[str, float | str | bool]) -> None:
         x = row.get("x_m")
         y = row.get("y_m")
         if isinstance(x, float) and isinstance(y, float) and math.isfinite(x) and math.isfinite(y):
@@ -342,6 +342,27 @@ class HazardAccumulator:
             for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
                 self.impact_event_count += 1
                 if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
+                    continue
+                self.significant_impact_count += 1
+                cell = sample_cell(self.grid, event)
+                if cell is not None:
+                    self.impact_density[cell[0]][cell[1]] += 1.0
+
+    def accumulate_impacts_parquet(self, paths: list[Path], warnings: list[str]) -> None:
+        for path in paths:
+            if not path.exists():
+                continue
+            for event in iter_numeric_parquet(path, f"impact_events_parquet:{path}", warnings):
+                self.impact_event_count += 1
+                significant = event.get("significant_impact")
+                if isinstance(significant, bool):
+                    is_significant = significant
+                else:
+                    is_significant = (
+                        (numeric(event.get("incoming_normal_speed_mps")) or 0.0)
+                        >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
+                    )
+                if not is_significant:
                     continue
                 self.significant_impact_count += 1
                 cell = sample_cell(self.grid, event)
@@ -513,7 +534,7 @@ class HazardAccumulator:
                 )
             )
         else:
-            warnings.append("no impact-event CSV supplied; significant impact density layer was not created")
+            warnings.append("no impact-event input supplied; significant impact density layer was not created")
 
         return layers, warnings
 
@@ -538,6 +559,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
         type=Path,
         default=[],
         help="directory containing one impact-event CSV per ensemble member; may be repeated",
+    )
+    parser.add_argument(
+        "--impact-events-parquet",
+        action="append",
+        type=Path,
+        default=[],
+        help="batched impact-events Parquet table; may be repeated",
     )
     parser.add_argument("--diagnostics", type=Path, help="JSON diagnostics report")
     parser.add_argument("--output-dir", type=Path, required=True, help="directory for hazard layers and report")
@@ -580,7 +608,20 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     trajectory_paths = resolve_trajectory_paths(case, args.trajectory, args.ensemble_trajectories_dir)
     deposition_path = args.deposition or first_case_output_path(case, "ensemble_deposition_csv")
-    impact_event_paths = resolve_impact_event_paths(case, args.impact_events, args.ensemble_impact_events_dir)
+    explicit_csv_impact_inputs = bool(args.impact_events or args.ensemble_impact_events_dir)
+    explicit_parquet_impact_inputs = bool(args.impact_events_parquet)
+    impact_event_parquet_paths = resolve_impact_event_parquet_paths(
+        case,
+        args.impact_events_parquet,
+        suppress_case_defaults=explicit_csv_impact_inputs,
+    )
+    impact_event_paths = resolve_impact_event_paths(
+        case,
+        args.impact_events,
+        args.ensemble_impact_events_dir,
+        suppress_case_defaults=explicit_parquet_impact_inputs
+        or (bool(impact_event_parquet_paths) and not explicit_csv_impact_inputs),
+    )
     diagnostics_path = args.diagnostics or first_case_output_path(case, "diagnostics_json")
 
     input_warnings: list[str] = []
@@ -591,7 +632,14 @@ def main_with_args(argv: list[str] | None = None) -> int:
     if explicit_grid:
         grid, grid_source = explicit_grid, "explicit"
     else:
-        bounds = discover_bounds(trajectory_paths, deposition_path, impact_event_paths, args.cell_size, input_warnings)
+        bounds = discover_bounds(
+            trajectory_paths,
+            deposition_path,
+            impact_event_paths,
+            impact_event_parquet_paths,
+            args.cell_size,
+            input_warnings,
+        )
         grid, grid_source = bounds.to_grid(args.cell_size), "auto"
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
@@ -601,6 +649,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         trajectory_paths,
         deposition_path,
         impact_event_paths,
+        impact_event_parquet_paths,
     )
 
     accumulation_started = time.perf_counter()
@@ -609,6 +658,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     for trajectory_path in trajectory_paths:
         accumulator.accumulate_trajectory(trajectory_path, input_warnings)
     accumulator.accumulate_impacts(impact_event_paths, input_warnings)
+    accumulator.accumulate_impacts_parquet(impact_event_parquet_paths, input_warnings)
     stats = accumulator.stats()
     if not stats.trajectory_count and not stats.deposition_point_count and not stats.impact_event_count:
         raise SystemExit("no trajectory, deposition, or impact-event inputs found")
@@ -710,10 +760,12 @@ def resolve_impact_event_paths(
     case: dict[str, Any],
     explicit_impact_events: Path | None,
     explicit_dirs: list[Path],
+    *,
+    suppress_case_defaults: bool = False,
 ) -> list[Path]:
     paths = [explicit_impact_events] if explicit_impact_events else []
     dirs = list(explicit_dirs)
-    if not paths and not dirs:
+    if not paths and not dirs and not suppress_case_defaults:
         dirs = case_output_paths(case, "ensemble_impact_events_dir")
     for directory in dirs:
         paths.extend(csv_files_in_dir(directory))
@@ -721,6 +773,18 @@ def resolve_impact_event_paths(
         single = first_case_output_path(case, "impact_events_csv")
         if single:
             paths.append(single)
+    return paths
+
+
+def resolve_impact_event_parquet_paths(
+    case: dict[str, Any],
+    explicit_paths: list[Path],
+    *,
+    suppress_case_defaults: bool = False,
+) -> list[Path]:
+    paths = list(explicit_paths)
+    if not paths and not suppress_case_defaults:
+        paths = case_output_paths(case, "ensemble_impact_events_parquet")
     return paths
 
 
@@ -838,6 +902,7 @@ def load_hazard_probability_state(
     trajectory_paths: list[Path],
     deposition_path: Path | None,
     impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
 ) -> HazardProbabilityState | None:
     if config is None:
         return None
@@ -890,7 +955,11 @@ def load_hazard_probability_state(
                 "supply matching trajectory inputs or adjust filters"
             )
 
-    for trajectory_id in trajectory_ids_from_hazard_side_inputs(deposition_path, impact_event_paths):
+    for trajectory_id in trajectory_ids_from_hazard_side_inputs(
+        deposition_path,
+        impact_event_paths,
+        impact_event_parquet_paths,
+    ):
         if trajectory_id not in all_rows:
             raise SystemExit(f"trajectory id {trajectory_id!r} is missing from {config.metadata_path}")
 
@@ -961,6 +1030,7 @@ def discover_bounds(
     trajectory_paths: list[Path],
     deposition_path: Path | None,
     impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
     cell_size: float,
     warnings: list[str],
 ) -> GridBounds:
@@ -977,6 +1047,10 @@ def discover_bounds(
     for path in impact_event_paths:
         if path.exists():
             for row in iter_numeric_csv(path, f"impact_events:{path}", warnings, emit_warnings=False):
+                bounds.add_row(row)
+    for path in impact_event_parquet_paths:
+        if path.exists():
+            for row in iter_numeric_parquet(path, f"impact_events_parquet:{path}", warnings, emit_warnings=False):
                 bounds.add_row(row)
     return bounds
 
@@ -1015,7 +1089,47 @@ def iter_numeric_csv(
         warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
 
 
-def sample_cell(grid: GridSpec, sample: dict[str, float | str]) -> tuple[int, int] | None:
+def iter_numeric_parquet(
+    path: Path | None,
+    label: str,
+    warnings: list[str],
+    *,
+    emit_warnings: bool = True,
+) -> Any:
+    if path is None:
+        return
+    try:
+        import pyarrow.parquet as pq  # type: ignore
+    except ImportError as exc:
+        raise SystemExit("pyarrow is required for impact-event Parquet inputs") from exc
+    dropped = 0
+    parquet_file = pq.ParquetFile(path)
+    for batch in parquet_file.iter_batches(batch_size=65_536):
+        for row in batch.to_pylist():
+            parsed: dict[str, float | str | bool] = {}
+            row_bad = False
+            for key, value in row.items():
+                if value is None or value == "":
+                    continue
+                if isinstance(value, bool):
+                    parsed_value: float | str | bool = value
+                elif isinstance(value, (int, float)):
+                    parsed_value = float(value)
+                else:
+                    parsed_value = str(value)
+                if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
+                    row_bad = True
+                    continue
+                parsed[key] = parsed_value
+            if row_bad and ("x_m" in row or "y_m" in row):
+                dropped += 1
+                continue
+            yield parsed
+    if emit_warnings and dropped:
+        warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
+
+
+def sample_cell(grid: GridSpec, sample: dict[str, float | str | bool]) -> tuple[int, int] | None:
     x = numeric(sample.get("x_m"))
     y = numeric(sample.get("y_m"))
     if x is None or y is None:
@@ -1023,7 +1137,7 @@ def sample_cell(grid: GridSpec, sample: dict[str, float | str]) -> tuple[int, in
     return grid.cell(x, y)
 
 
-def numeric(value: float | str | None) -> float | None:
+def numeric(value: float | str | bool | None) -> float | None:
     return value if isinstance(value, float) and math.isfinite(value) else None
 
 
@@ -1104,12 +1218,15 @@ def trajectory_id_from_path_or_file(path: Path) -> str:
 def trajectory_ids_from_hazard_side_inputs(
     deposition_path: Path | None,
     impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
 ) -> set[str]:
     ids: set[str] = set()
     if deposition_path is not None:
         ids.update(trajectory_ids_from_csv_if_available(deposition_path))
     for path in impact_event_paths:
         ids.update(trajectory_ids_from_csv_if_available(path))
+    for path in impact_event_parquet_paths:
+        ids.update(trajectory_ids_from_parquet_if_available(path))
     return ids
 
 
@@ -1123,6 +1240,25 @@ def trajectory_ids_from_csv_if_available(path: Path) -> set[str]:
     if path.stem.startswith("trajectory_"):
         return {path.stem}
     return set()
+
+
+def trajectory_ids_from_parquet_if_available(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        import pyarrow.parquet as pq  # type: ignore
+    except ImportError as exc:
+        raise SystemExit("pyarrow is required for impact-event Parquet inputs") from exc
+    parquet_file = pq.ParquetFile(path)
+    if "trajectory_id" not in parquet_file.schema_arrow.names:
+        raise SystemExit(f"impact-event Parquet table must contain trajectory_id: {path}")
+    ids: set[str] = set()
+    for batch in parquet_file.iter_batches(columns=["trajectory_id"], batch_size=65_536):
+        for row in batch.to_pylist():
+            value = str(row.get("trajectory_id") or "").strip()
+            if value:
+                ids.add(value)
+    return ids
 
 
 class TerrainSampler:

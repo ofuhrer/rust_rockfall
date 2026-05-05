@@ -20,12 +20,16 @@ use crate::{
     terrain::{DemGrid, TerrainError},
     Vec3,
 };
+use arrow_array::{ArrayRef, BooleanArray, Float64Array, RecordBatch, StringArray, UInt64Array};
+use arrow_schema::{DataType, Field, Schema};
+use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterProperties};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    fs,
+    fs::{self, File},
     path::{Path, PathBuf},
     process::Command,
+    sync::Arc,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 use thiserror::Error;
@@ -41,6 +45,7 @@ pub fn free_flight_state(initial: BodyState, gravity_mps2: f64, time_s: f64) -> 
 
 pub const SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
 pub const TRAJECTORY_METADATA_SCHEMA_VERSION: &str = "trajectory_metadata_table_v1";
+pub const IMPACT_EVENTS_TABLE_SCHEMA_VERSION: &str = "impact_events_table_v1";
 const OUTPUT_FILE_WARNING_THRESHOLD: usize = 1_000;
 const OUTPUT_FILE_HIGH_WARNING_THRESHOLD: usize = 10_000;
 
@@ -314,6 +319,8 @@ pub struct OutputConfig {
     pub ensemble_trajectories_dir: Option<PathBuf>,
     #[serde(default)]
     pub ensemble_impact_events_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub ensemble_impact_events_parquet: Option<PathBuf>,
     #[serde(default)]
     pub impact_events_csv: Option<PathBuf>,
     #[serde(default)]
@@ -619,6 +626,10 @@ pub enum ValidationError {
     Csv(#[from] csv::Error),
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Arrow error: {0}")]
+    Arrow(#[from] arrow_schema::ArrowError),
+    #[error("Parquet error: {0}")]
+    Parquet(#[from] parquet::errors::ParquetError),
     #[error("simulation error: {0}")]
     Simulation(#[from] SimulationError),
     #[error("terrain error: {0}")]
@@ -1179,8 +1190,11 @@ fn file_output_manifest(
         path: path.as_ref().to_string_lossy().to_string(),
         file_count: 1,
         total_bytes: fs::metadata(path.as_ref())?.len(),
+        schema_version: None,
         row_count,
         skipped_empty_files,
+        compression: None,
+        row_group_count: None,
     })
 }
 
@@ -1606,6 +1620,14 @@ fn compute_ensemble_metrics(
             )?);
             timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
+        if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_impact_events_parquet(
+                path,
+                &ensemble.trajectories,
+            )?);
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        }
     }
     let mut runouts = ensemble
         .trajectories
@@ -1755,6 +1777,11 @@ fn compute_validation_ensemble_metrics(
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
+    if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+        let output_started = Instant::now();
+        output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+    }
 
     compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
     metrics.insert(
@@ -1886,6 +1913,11 @@ fn compute_release_zone_metrics(
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
         let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+    }
+    if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+        let output_started = Instant::now();
+        output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
 
@@ -2467,8 +2499,11 @@ fn write_ensemble_trajectory_dir(
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count: runs.len(),
         total_bytes,
+        schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(0),
+        compression: None,
+        row_group_count: None,
     })
 }
 
@@ -2499,8 +2534,247 @@ fn write_ensemble_impact_events_dir(
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count,
         total_bytes,
+        schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(skipped_empty_files),
+        compression: None,
+        row_group_count: None,
+    })
+}
+
+fn write_ensemble_impact_events_parquet(
+    path: impl AsRef<Path>,
+    runs: &[TrajectoryRun],
+) -> Result<OutputManifest, ValidationError> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut trajectory_id = Vec::new();
+    let mut impact_index = Vec::new();
+    let mut seed = Vec::new();
+    let mut significant_impact = Vec::new();
+    let mut scarring_depth_source = Vec::new();
+
+    let mut time_s = Vec::new();
+    let mut x_m = Vec::new();
+    let mut y_m = Vec::new();
+    let mut z_m = Vec::new();
+    let mut terrain_normal_x = Vec::new();
+    let mut terrain_normal_y = Vec::new();
+    let mut terrain_normal_z = Vec::new();
+    let mut effective_normal_x = Vec::new();
+    let mut effective_normal_y = Vec::new();
+    let mut effective_normal_z = Vec::new();
+    let mut incoming_vx_mps = Vec::new();
+    let mut incoming_vy_mps = Vec::new();
+    let mut incoming_vz_mps = Vec::new();
+    let mut post_contact_vx_mps = Vec::new();
+    let mut post_contact_vy_mps = Vec::new();
+    let mut post_contact_vz_mps = Vec::new();
+    let mut post_scarring_vx_mps = Vec::new();
+    let mut post_scarring_vy_mps = Vec::new();
+    let mut post_scarring_vz_mps = Vec::new();
+    let mut post_step_vx_mps = Vec::new();
+    let mut post_step_vy_mps = Vec::new();
+    let mut post_step_vz_mps = Vec::new();
+    let mut impact_angle_deg = Vec::new();
+    let mut incoming_normal_speed_mps = Vec::new();
+    let mut incoming_tangent_speed_mps = Vec::new();
+    let mut post_contact_normal_speed_mps = Vec::new();
+    let mut post_contact_tangent_speed_mps = Vec::new();
+    let mut post_scarring_normal_speed_mps = Vec::new();
+    let mut post_scarring_tangent_speed_mps = Vec::new();
+    let mut post_step_normal_speed_mps = Vec::new();
+    let mut post_step_tangent_speed_mps = Vec::new();
+    let mut pre_contact_translational_j = Vec::new();
+    let mut pre_contact_rotational_j = Vec::new();
+    let mut post_contact_translational_j = Vec::new();
+    let mut post_contact_rotational_j = Vec::new();
+    let mut post_scarring_translational_j = Vec::new();
+    let mut post_scarring_rotational_j = Vec::new();
+    let mut post_step_translational_j = Vec::new();
+    let mut post_step_rotational_j = Vec::new();
+    let mut scarring_depth_m = Vec::new();
+    let mut scarring_area_m2 = Vec::new();
+    let mut scarring_drag_force_n = Vec::new();
+    let mut scarring_uncapped_energy_loss_j = Vec::new();
+    let mut scarring_capped_energy_loss_j = Vec::new();
+    let mut cumulative_scarring_energy_loss_j = Vec::new();
+
+    for run in runs {
+        for event in &run.impact_events {
+            trajectory_id.push(run.summary.trajectory_id.clone());
+            impact_index.push(event.impact_index as u64);
+            seed.push(run.summary.seed);
+            significant_impact
+                .push(event.incoming_normal_speed_mps >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS);
+            scarring_depth_source
+                .push(scarring_depth_source_csv(event.scarring_depth_source).to_string());
+
+            time_s.push(event.time_s);
+            x_m.push(event.x_m);
+            y_m.push(event.y_m);
+            z_m.push(event.z_m);
+            terrain_normal_x.push(event.terrain_normal_x);
+            terrain_normal_y.push(event.terrain_normal_y);
+            terrain_normal_z.push(event.terrain_normal_z);
+            effective_normal_x.push(event.effective_normal_x);
+            effective_normal_y.push(event.effective_normal_y);
+            effective_normal_z.push(event.effective_normal_z);
+            incoming_vx_mps.push(event.incoming_vx_mps);
+            incoming_vy_mps.push(event.incoming_vy_mps);
+            incoming_vz_mps.push(event.incoming_vz_mps);
+            post_contact_vx_mps.push(event.post_contact_vx_mps);
+            post_contact_vy_mps.push(event.post_contact_vy_mps);
+            post_contact_vz_mps.push(event.post_contact_vz_mps);
+            post_scarring_vx_mps.push(event.post_scarring_vx_mps);
+            post_scarring_vy_mps.push(event.post_scarring_vy_mps);
+            post_scarring_vz_mps.push(event.post_scarring_vz_mps);
+            post_step_vx_mps.push(event.post_step_vx_mps);
+            post_step_vy_mps.push(event.post_step_vy_mps);
+            post_step_vz_mps.push(event.post_step_vz_mps);
+            impact_angle_deg.push(event.impact_angle_deg);
+            incoming_normal_speed_mps.push(event.incoming_normal_speed_mps);
+            incoming_tangent_speed_mps.push(event.incoming_tangent_speed_mps);
+            post_contact_normal_speed_mps.push(event.post_contact_normal_speed_mps);
+            post_contact_tangent_speed_mps.push(event.post_contact_tangent_speed_mps);
+            post_scarring_normal_speed_mps.push(event.post_scarring_normal_speed_mps);
+            post_scarring_tangent_speed_mps.push(event.post_scarring_tangent_speed_mps);
+            post_step_normal_speed_mps.push(event.post_step_normal_speed_mps);
+            post_step_tangent_speed_mps.push(event.post_step_tangent_speed_mps);
+            pre_contact_translational_j.push(event.pre_contact_translational_j);
+            pre_contact_rotational_j.push(event.pre_contact_rotational_j);
+            post_contact_translational_j.push(event.post_contact_translational_j);
+            post_contact_rotational_j.push(event.post_contact_rotational_j);
+            post_scarring_translational_j.push(event.post_scarring_translational_j);
+            post_scarring_rotational_j.push(event.post_scarring_rotational_j);
+            post_step_translational_j.push(event.post_step_translational_j);
+            post_step_rotational_j.push(event.post_step_rotational_j);
+            scarring_depth_m.push(event.scarring_depth_m);
+            scarring_area_m2.push(event.scarring_area_m2);
+            scarring_drag_force_n.push(event.scarring_drag_force_n);
+            scarring_uncapped_energy_loss_j.push(event.scarring_uncapped_energy_loss_j);
+            scarring_capped_energy_loss_j.push(event.scarring_capped_energy_loss_j);
+            cumulative_scarring_energy_loss_j.push(event.cumulative_scarring_energy_loss_j);
+        }
+    }
+
+    let row_count = trajectory_id.len();
+    let mut fields = vec![
+        Field::new("trajectory_id", DataType::Utf8, false),
+        Field::new("impact_index", DataType::UInt64, false),
+        Field::new("seed", DataType::UInt64, true),
+        Field::new("significant_impact", DataType::Boolean, false),
+        Field::new("scarring_depth_source", DataType::Utf8, false),
+    ];
+    let mut columns: Vec<ArrayRef> = vec![
+        Arc::new(StringArray::from(trajectory_id)),
+        Arc::new(UInt64Array::from(impact_index)),
+        Arc::new(UInt64Array::from(seed)),
+        Arc::new(BooleanArray::from(significant_impact)),
+        Arc::new(StringArray::from(scarring_depth_source)),
+    ];
+
+    macro_rules! add_f64_column {
+        ($name:literal, $values:ident) => {{
+            fields.push(Field::new($name, DataType::Float64, false));
+            columns.push(Arc::new(Float64Array::from($values)) as ArrayRef);
+        }};
+    }
+
+    add_f64_column!("time_s", time_s);
+    add_f64_column!("x_m", x_m);
+    add_f64_column!("y_m", y_m);
+    add_f64_column!("z_m", z_m);
+    add_f64_column!("terrain_normal_x", terrain_normal_x);
+    add_f64_column!("terrain_normal_y", terrain_normal_y);
+    add_f64_column!("terrain_normal_z", terrain_normal_z);
+    add_f64_column!("effective_normal_x", effective_normal_x);
+    add_f64_column!("effective_normal_y", effective_normal_y);
+    add_f64_column!("effective_normal_z", effective_normal_z);
+    add_f64_column!("incoming_vx_mps", incoming_vx_mps);
+    add_f64_column!("incoming_vy_mps", incoming_vy_mps);
+    add_f64_column!("incoming_vz_mps", incoming_vz_mps);
+    add_f64_column!("post_contact_vx_mps", post_contact_vx_mps);
+    add_f64_column!("post_contact_vy_mps", post_contact_vy_mps);
+    add_f64_column!("post_contact_vz_mps", post_contact_vz_mps);
+    add_f64_column!("post_scarring_vx_mps", post_scarring_vx_mps);
+    add_f64_column!("post_scarring_vy_mps", post_scarring_vy_mps);
+    add_f64_column!("post_scarring_vz_mps", post_scarring_vz_mps);
+    add_f64_column!("post_step_vx_mps", post_step_vx_mps);
+    add_f64_column!("post_step_vy_mps", post_step_vy_mps);
+    add_f64_column!("post_step_vz_mps", post_step_vz_mps);
+    add_f64_column!("impact_angle_deg", impact_angle_deg);
+    add_f64_column!("incoming_normal_speed_mps", incoming_normal_speed_mps);
+    add_f64_column!("incoming_tangent_speed_mps", incoming_tangent_speed_mps);
+    add_f64_column!(
+        "post_contact_normal_speed_mps",
+        post_contact_normal_speed_mps
+    );
+    add_f64_column!(
+        "post_contact_tangent_speed_mps",
+        post_contact_tangent_speed_mps
+    );
+    add_f64_column!(
+        "post_scarring_normal_speed_mps",
+        post_scarring_normal_speed_mps
+    );
+    add_f64_column!(
+        "post_scarring_tangent_speed_mps",
+        post_scarring_tangent_speed_mps
+    );
+    add_f64_column!("post_step_normal_speed_mps", post_step_normal_speed_mps);
+    add_f64_column!("post_step_tangent_speed_mps", post_step_tangent_speed_mps);
+    add_f64_column!("pre_contact_translational_j", pre_contact_translational_j);
+    add_f64_column!("pre_contact_rotational_j", pre_contact_rotational_j);
+    add_f64_column!("post_contact_translational_j", post_contact_translational_j);
+    add_f64_column!("post_contact_rotational_j", post_contact_rotational_j);
+    add_f64_column!(
+        "post_scarring_translational_j",
+        post_scarring_translational_j
+    );
+    add_f64_column!("post_scarring_rotational_j", post_scarring_rotational_j);
+    add_f64_column!("post_step_translational_j", post_step_translational_j);
+    add_f64_column!("post_step_rotational_j", post_step_rotational_j);
+    add_f64_column!("scarring_depth_m", scarring_depth_m);
+    add_f64_column!("scarring_area_m2", scarring_area_m2);
+    add_f64_column!("scarring_drag_force_n", scarring_drag_force_n);
+    add_f64_column!(
+        "scarring_uncapped_energy_loss_j",
+        scarring_uncapped_energy_loss_j
+    );
+    add_f64_column!(
+        "scarring_capped_energy_loss_j",
+        scarring_capped_energy_loss_j
+    );
+    add_f64_column!(
+        "cumulative_scarring_energy_loss_j",
+        cumulative_scarring_energy_loss_j
+    );
+
+    let schema = Arc::new(Schema::new(fields));
+    let batch = RecordBatch::try_new(schema.clone(), columns)?;
+    let properties = WriterProperties::builder()
+        .set_compression(Compression::UNCOMPRESSED)
+        .build();
+    let file = File::create(path)?;
+    let mut writer = ArrowWriter::try_new(file, schema, Some(properties))?;
+    writer.write(&batch)?;
+    let metadata = writer.close()?;
+
+    Ok(OutputManifest {
+        kind: "ensemble_impact_events".to_string(),
+        format: "parquet".to_string(),
+        path: path.to_string_lossy().to_string(),
+        file_count: 1,
+        total_bytes: fs::metadata(path)?.len(),
+        schema_version: Some(IMPACT_EVENTS_TABLE_SCHEMA_VERSION.to_string()),
+        row_count: Some(row_count),
+        skipped_empty_files: None,
+        compression: Some("uncompressed".to_string()),
+        row_group_count: Some(metadata.row_groups.len()),
     })
 }
 

@@ -366,7 +366,7 @@ Phase 1: schema design only
 - Keep existing CSV schemas unchanged.
 - Add manifest vocabulary for optional columnar outputs.
 
-Phase 2: impact-event Parquet writer
+Phase 2: impact-event Parquet writer (implemented)
 
 - Add opt-in `outputs.ensemble_impact_events_parquet`.
 - Write one row per impact event with `trajectory_id`, `seed`, and all existing
@@ -374,7 +374,7 @@ Phase 2: impact-event Parquet writer
 - Preserve `outputs.ensemble_impact_events_dir` exactly as-is.
 - Allow cases to write CSV, Parquet, both, or neither.
 
-Phase 3: hazard reader
+Phase 3: hazard reader (implemented for impact events)
 
 - Teach `scripts/build_hazard_layers.py` to read
   `ensemble_impact_events_parquet` when present or when explicitly passed.

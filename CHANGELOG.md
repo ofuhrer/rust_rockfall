@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- No unreleased changes.
+- Added opt-in batched Parquet impact-event output via `outputs.ensemble_impact_events_parquet` and `impact_events_table_v1`.
+- Added hazard-layer Parquet impact-event reader support with CSV/Parquet significant-impact density parity.
+- Added manifest metadata for columnar impact-event outputs, including schema version, row count, compression, and row-group count.
 
 ## v0.6.0
 

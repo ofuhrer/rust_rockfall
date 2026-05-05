@@ -36,6 +36,7 @@ Core documents:
 - `probabilistic_trajectory_metadata_design.md`: design and current implementation status for carrying per-trajectory release, block, scenario, and sampling-weight metadata into opt-in weighted hazard maps and future columnar outputs.
 - `probabilistic_hazard_framework_priorities.md`: prioritized roadmap for moving from unweighted diagnostic hazard layers toward explicit probabilistic hazard-map semantics.
 - `probabilistic_scenario_model_design.md`: scenario-level semantics for conditional source-zone hazard maps, source-frequency placeholders, block scenarios, probability modes, and normalization conventions.
+- `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
 - `verification_plan.md`: analytic and synthetic verification strategy.
 - `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.

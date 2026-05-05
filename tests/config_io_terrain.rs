@@ -983,6 +983,7 @@ fn ensemble_trajectory_dir_is_opt_in_and_deterministic() {
     let metadata = temp_path("ensemble_trajectory_metadata.csv");
     let ensemble_dir = temp_path("ensemble_trajectories_dir");
     let ensemble_impacts_dir = temp_path("ensemble_impacts_dir");
+    let ensemble_impacts_parquet = temp_path("ensemble_impacts.parquet");
     fs::write(
         &case_path,
         format!(
@@ -1014,13 +1015,15 @@ outputs:
   trajectory_metadata_csv: {}
   ensemble_trajectories_dir: {}
   ensemble_impact_events_dir: {}
+  ensemble_impact_events_parquet: {}
 "#,
             diagnostics.display(),
             manifest.display(),
             trajectory.display(),
             metadata.display(),
             ensemble_dir.display(),
-            ensemble_impacts_dir.display()
+            ensemble_impacts_dir.display(),
+            ensemble_impacts_parquet.display()
         ),
     )
     .unwrap();
@@ -1037,6 +1040,7 @@ outputs:
     assert!(second_file.exists());
     assert!(third_file.exists());
     assert!(first_impacts.exists());
+    assert!(ensemble_impacts_parquet.exists());
     assert!(manifest.exists());
     let manifest_json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
@@ -1044,7 +1048,7 @@ outputs:
     assert_eq!(manifest_json["case_id"], "ensemble_trajectory_output");
     assert_eq!(manifest_json["completion_status"], "passed");
     assert_eq!(manifest_json["seed_policy"]["global_seed"], 123);
-    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 5);
+    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 6);
     assert_eq!(
         manifest_json["trajectory_metadata"]["schema_version"],
         "trajectory_metadata_table_v1"
@@ -1099,6 +1103,26 @@ outputs:
         .any(|entry| entry["kind"] == "ensemble_trajectories"
             && entry["file_count"] == 3
             && entry["row_count"].as_u64().unwrap() > 0));
+    let csv_impact_row_count: usize = fs::read_dir(&ensemble_impacts_dir)
+        .unwrap()
+        .map(|entry| {
+            let path = entry.unwrap().path();
+            csv::Reader::from_path(path).unwrap().records().count()
+        })
+        .sum();
+    let parquet_manifest = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "ensemble_impact_events" && entry["format"] == "parquet")
+        .expect("ensemble impact-event parquet output manifest");
+    assert_eq!(parquet_manifest["schema_version"], "impact_events_table_v1");
+    assert_eq!(
+        parquet_manifest["row_count"].as_u64().unwrap(),
+        csv_impact_row_count as u64
+    );
+    assert_eq!(parquet_manifest["file_count"], 1);
+    assert_eq!(parquet_manifest["compression"], "uncompressed");
     let first_contents = fs::read_to_string(&first_file).unwrap();
     assert!(first_contents.starts_with("trajectory_id,time_s"));
     assert!(first_contents.contains("trajectory_000000"));
@@ -1124,6 +1148,7 @@ outputs:
     fs::remove_file(manifest).unwrap();
     fs::remove_file(trajectory).unwrap();
     fs::remove_file(metadata).unwrap();
+    fs::remove_file(ensemble_impacts_parquet).unwrap();
     fs::remove_file(first_file).unwrap();
     fs::remove_file(second_file).unwrap();
     fs::remove_file(third_file).unwrap();

@@ -141,8 +141,14 @@ pub struct OutputManifest {
     pub path: String,
     pub file_count: usize,
     pub total_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema_version: Option<String>,
     pub row_count: Option<usize>,
     pub skipped_empty_files: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compression: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_group_count: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
