@@ -315,3 +315,19 @@ still performs Python-level per-sample cell updates. The useful outcome is that
 trajectory CSV, impact CSV, and projected impact Parquet inputs now meet an
 internal batch interface, so a future trajectory Parquet reader or tiled reducer
 can be added without changing hazard semantics.
+
+## Consolidation Review
+
+The post-implementation cleanup tightened the boundary by making deposition
+inputs use the same typed-batch pattern as trajectory and impact inputs.
+Parsing now ends at `TrajectorySampleBatch`, `DepositionPointBatch`, and
+`ImpactEventBatch`; accumulation consumes those batches and no longer depends
+on raw CSV row dictionaries except for the shared low-level CSV parser and
+grid-bound discovery. Empty trajectory files intentionally preserve the legacy
+"one supplied trajectory file" counting behavior in unweighted mode, while
+weighted mode still rejects empty trajectory files because there is no
+trajectory id to join against metadata.
+
+The consolidation remains a semantic no-op: CSV trajectory input, CSV impact
+input, projected Parquet impact input, auto-grid mode, explicit-grid mode,
+weighted layers, and output filenames/schemas are unchanged.

@@ -32,6 +32,49 @@ class HazardLayerTests(unittest.TestCase):
         self.assertAlmostEqual(batch.samples[1].kinetic_j or 0.0, 10.0)
         self.assertAlmostEqual(batch.samples[2].speed_mps or 0.0, 0.5)
 
+    def test_trajectory_csv_batch_reader_tolerates_missing_optional_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "minimal_trajectory.csv"
+            path.write_text("time_s,x_m,y_m\n0.0,1.0,2.0\n")
+            warnings: list[str] = []
+            batch = hazard.read_trajectory_sample_batch(path, warnings)
+
+        self.assertIsNotNone(batch)
+        assert batch is not None
+        self.assertEqual(batch.trajectory_id, "minimal_trajectory")
+        self.assertEqual(len(batch.samples), 1)
+        self.assertAlmostEqual(batch.samples[0].x_m or 0.0, 1.0)
+        self.assertAlmostEqual(batch.samples[0].y_m or 0.0, 2.0)
+        self.assertIsNone(batch.samples[0].z_m)
+        self.assertIsNone(batch.samples[0].kinetic_j)
+        self.assertIsNone(batch.samples[0].speed_mps)
+        self.assertEqual(warnings, [])
+
+    def test_empty_trajectory_batch_preserves_legacy_counting_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "empty_trajectory.csv"
+            path.write_text("time_s,x_m,y_m,z_m\n")
+            warnings: list[str] = []
+            batch = hazard.read_trajectory_sample_batch(path, warnings)
+
+        self.assertIsNotNone(batch)
+        assert batch is not None
+        self.assertEqual(batch.trajectory_id, None)
+        self.assertEqual(batch.samples, ())
+        self.assertEqual(warnings, [])
+
+    def test_deposition_batch_reader_preserves_coordinates_and_properties(self) -> None:
+        warnings: list[str] = []
+        batch = hazard.read_deposition_batch(FIXTURE / "deposition.csv", warnings)
+
+        self.assertEqual(len(batch.points), 2)
+        self.assertAlmostEqual(batch.points[0].x_m or 0.0, 2.0)
+        self.assertAlmostEqual(batch.points[0].y_m or 0.0, 0.0)
+        self.assertIn("trajectory_id", batch.points[0].properties)
+        self.assertNotIn("x_m", batch.points[0].properties)
+        self.assertNotIn("y_m", batch.points[0].properties)
+        self.assertEqual(warnings, [])
+
     def test_impact_csv_batch_reader_preserves_significant_event_semantics(self) -> None:
         warnings: list[str] = []
         batches = list(hazard.read_impact_event_csv_batches([FIXTURE / "impacts.csv"], warnings))

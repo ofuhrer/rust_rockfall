@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -185,8 +185,15 @@ class TrajectorySampleBatch:
 
 
 @dataclass(frozen=True)
+class DepositionPoint:
+    x_m: float | None
+    y_m: float | None
+    properties: dict[str, float | str]
+
+
+@dataclass(frozen=True)
 class DepositionPointBatch:
-    points: tuple[dict[str, float | str], ...]
+    points: tuple[DepositionPoint, ...]
 
 
 @dataclass(frozen=True)
@@ -209,8 +216,11 @@ class GridBounds:
         x = row.get("x_m")
         y = row.get("y_m")
         if isinstance(x, float) and isinstance(y, float) and math.isfinite(x) and math.isfinite(y):
-            self.xs.append(x)
-            self.ys.append(y)
+            self.add_xy(x, y)
+
+    def add_xy(self, x: float, y: float) -> None:
+        self.xs.append(x)
+        self.ys.append(y)
 
     def to_grid(self, cell_size: float) -> GridSpec:
         if cell_size <= 0.0:
@@ -272,7 +282,7 @@ class HazardAccumulator:
         )
         self.deposition = zeros(grid)
         self.impact_density = zeros(grid)
-        self.deposition_points: list[dict[str, float | str]] = []
+        self.deposition_points: list[DepositionPoint] = []
         self.trajectory_count = 0
         self.trajectory_sample_count = 0
         self.deposition_point_count = 0
@@ -415,7 +425,7 @@ class HazardAccumulator:
         for point in batch.points:
             self.deposition_point_count += 1
             self.deposition_points.append(point)
-            cell = sample_cell(self.grid, point)
+            cell = sample_cell_from_xy(self.grid, point.x_m, point.y_m)
             if cell is not None:
                 self.deposition[cell[0]][cell[1]] += 1.0
 
@@ -1140,11 +1150,22 @@ def read_deposition_batch(path: Path | None, warnings: list[str]) -> DepositionP
     if path is None or not path.exists():
         return DepositionPointBatch(points=())
     return DepositionPointBatch(
-        points=tuple(iter_numeric_csv(path, f"deposition:{path}", warnings))
+        points=tuple(
+            deposition_point_from_row(row)
+            for row in iter_numeric_csv(path, f"deposition:{path}", warnings)
+        )
     )
 
 
-def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Any:
+def deposition_point_from_row(row: dict[str, float | str]) -> DepositionPoint:
+    return DepositionPoint(
+        x_m=numeric(row.get("x_m")),
+        y_m=numeric(row.get("y_m")),
+        properties={key: value for key, value in row.items() if key not in {"x_m", "y_m"}},
+    )
+
+
+def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Iterator[ImpactEventBatch]:
     for path in paths:
         if not path.exists():
             continue
@@ -1167,7 +1188,7 @@ def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Any
         )
 
 
-def read_impact_event_parquet_batches(paths: list[Path], warnings: list[str]) -> Any:
+def read_impact_event_parquet_batches(paths: list[Path], warnings: list[str]) -> Iterator[ImpactEventBatch]:
     for path in paths:
         if not path.exists():
             continue
@@ -1180,7 +1201,7 @@ def iter_numeric_csv(
     warnings: list[str],
     *,
     emit_warnings: bool = True,
-) -> Any:
+) -> Iterator[dict[str, float | str]]:
     if path is None:
         return
     dropped = 0
@@ -1231,13 +1252,12 @@ def add_parquet_xy_bounds(
             if x is None or y is None:
                 dropped += 1
                 continue
-            bounds.xs.append(x)
-            bounds.ys.append(y)
+            bounds.add_xy(x, y)
     if emit_warnings and dropped:
         warnings.append(f"dropped {dropped} non-finite coordinate rows from impact_events_parquet:{path}")
 
 
-def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Any:
+def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Iterator[ImpactEventBatch]:
     try:
         import pyarrow.parquet as pq  # type: ignore
     except ImportError as exc:
@@ -1300,12 +1320,6 @@ def finite_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return result if math.isfinite(result) else None
-
-
-def sample_cell(grid: GridSpec, sample: dict[str, float | str | bool]) -> tuple[int, int] | None:
-    x = numeric(sample.get("x_m"))
-    y = numeric(sample.get("y_m"))
-    return sample_cell_from_xy(grid, x, y)
 
 
 def sample_cell_from_xy(grid: GridSpec, x: float | None, y: float | None) -> tuple[int, int] | None:
@@ -1593,19 +1607,18 @@ def ascii_value(value: float) -> float:
     return value if math.isfinite(value) else NODATA
 
 
-def write_deposition_geojson(path: Path, depositions: list[dict[str, float | str]]) -> None:
+def write_deposition_geojson(path: Path, depositions: list[DepositionPoint]) -> None:
     features = []
     for point in depositions:
-        x = numeric(point.get("x_m"))
-        y = numeric(point.get("y_m"))
+        x = point.x_m
+        y = point.y_m
         if x is None or y is None:
             continue
-        properties = {key: value for key, value in point.items() if key not in {"x_m", "y_m"}}
         features.append(
             {
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [x, y]},
-                "properties": properties,
+                "properties": point.properties,
             }
         )
     write_text(path, json.dumps({"type": "FeatureCollection", "features": features}, indent=2) + "\n")
@@ -1675,7 +1688,7 @@ def write_core_hazard_outputs(
     prefix: str,
     grid: GridSpec,
     layers: list[RasterLayer],
-    deposition_points: list[dict[str, float | str]],
+    deposition_points: list[DepositionPoint],
     metadata: dict[str, Any],
 ) -> None:
     write_layers(output_dir, prefix, grid, layers)
