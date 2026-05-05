@@ -13,6 +13,8 @@ verification/results/**
 validation/results/**
 !validation/results/.gitkeep
 visualization/output/**
+visualization/reports/**
+!visualization/reports/.gitkeep
 trajectory.csv
 
 # Keep checked-in example configs and small validation fixtures.

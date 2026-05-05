@@ -71,6 +71,24 @@ python3 visualization/plot_case.py \
 
 The summary JSON reports simple runout and speed statistics, including median and p05/p95 percentiles. This is intended for deterministic, small ensembles and debugging. It is not a substitute for numerical validation metrics.
 
+## HTML Reports
+
+Generate a local report that collects standard v0 case metadata, pass/fail status, numerical metrics, links to raw JSON/CSV outputs, and available PNG plots:
+
+```bash
+cargo run -- verify --all
+cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+python3 visualization/build_report.py --render-plots
+```
+
+Open the generated report in a browser:
+
+```bash
+open visualization/reports/standard_v0/index.html
+```
+
+The report generator reads descriptions, expected behavior, metrics, tolerances, and references directly from the YAML case definitions. It does not duplicate case documentation and does not run simulations itself. The `--render-plots` option only refreshes PNG plots from existing trajectory CSVs.
+
 ## Terrain Support
 
 The current x-z terrain overlay supports:

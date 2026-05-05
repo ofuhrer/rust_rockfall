@@ -92,6 +92,15 @@ python3 visualization/plot_case.py \
 
 Visualization is for inspection and debugging only; numerical verification and validation remain authoritative.
 
+To build a local HTML report for the standard v0 verification/validation cases:
+
+```bash
+cargo run -- verify --all
+cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+python3 visualization/build_report.py --render-plots
+open visualization/reports/standard_v0/index.html
+```
+
 ## Local Git Hooks
 
 Optional hook templates are stored under `scripts/git-hooks/`. Install them with:
