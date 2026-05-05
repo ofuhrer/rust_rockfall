@@ -35,6 +35,8 @@ Core documents:
 - `performance_benchmark_profile_reference.md`: canonical smoke, standard, custom, and scale profile validation after the benchmark-profile refactor.
 - `parquet_impact_benchmark_results.md`: measured comparison of opt-in Parquet impact-event output against per-trajectory CSV impact-event output at 500/1000 release scale.
 - `columnar_output_design_decision.md`: design decision for opt-in batched Parquet/Arrow impact and trajectory outputs based on the 500/1000 synthetic benchmark.
+- `trajectory_parquet_next_step_decision.md`: benchmark-backed decision record on whether full trajectory CSV output is now the dominant bottleneck and whether opt-in trajectory Parquet is justified.
+- `hazard_accumulation_architecture_decision.md`: benchmark-backed decision record for the next hazard-accumulation scalability step before adding more output formats.
 - `probabilistic_trajectory_metadata_design.md`: design and current implementation status for carrying per-trajectory release, block, scenario, and sampling-weight metadata into opt-in weighted hazard maps and future columnar outputs.
 - `probabilistic_hazard_framework_priorities.md`: prioritized roadmap for moving from unweighted diagnostic hazard layers toward explicit probabilistic hazard-map semantics.
 - `probabilistic_scenario_model_design.md`: scenario-level semantics for conditional source-zone hazard maps, source-frequency placeholders, block scenarios, probability modes, and normalization conventions.

@@ -407,6 +407,13 @@ statistics changes did not consistently improve write time. This keeps the
 design priority unchanged: optimize or understand the existing impact-event
 table before adding `trajectory_samples_table_v1`.
 
+A follow-up trajectory-output assessment is recorded in
+`trajectory_parquet_next_step_decision.md`. That review found that trajectory
+CSV output is a meaningful file-count and hazard-read cost, but not yet the
+dominant writer-side bottleneck; any trajectory Parquet prototype should
+therefore remain opt-in and include projected hazard-reader support in the same
+change.
+
 ## Manifest and Schema Changes
 
 Add optional output fields:
