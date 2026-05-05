@@ -61,12 +61,13 @@ summary statistics. The most important distinction is the input source:
 
 - trajectory-derived layers (`reach_probability`, `max_kinetic_energy`,
   `max_jump_height`) only represent the trajectory CSV files supplied to the
-  script;
+  script. Use `outputs.ensemble_trajectories_dir` for full ensemble layers;
 - deposition-derived layers (`deposition_density`) can already represent the
   current validation ensemble, because validation writes an ensemble deposition
   CSV;
 - impact-derived layers (`significant_impact_density`) are only produced when
-  impact-event CSV output is available.
+  impact-event CSV output is available. Use
+  `outputs.ensemble_impact_events_dir` for full ensemble impact density.
 
 The probability/density rasters are normalized by the number of supplied samples
 for that layer. Maximum-value rasters record the largest sampled value in a
@@ -76,10 +77,28 @@ intensities.
 ## Current Limitations
 
 The current validation runner writes one representative full trajectory plus an
-ensemble deposition CSV. Therefore, deposition density already reflects the
-ensemble, but reach probability, maximum kinetic energy, and maximum jump height
-reflect only the supplied trajectory CSVs unless additional trajectory files are
+ensemble deposition CSV by default. Therefore, deposition density already
+reflects the ensemble. Reach probability, maximum kinetic energy, and maximum
+jump height become ensemble-based only when a case opts into
+`outputs.ensemble_trajectories_dir` or when additional trajectory files are
 passed explicitly with repeated `--trajectory` arguments.
+
+Opt-in full ensemble trajectory output:
+
+```yaml
+outputs:
+  trajectory_csv: validation/results/example_representative.csv
+  ensemble_deposition_csv: validation/results/example_deposition.csv
+  ensemble_trajectories_dir: validation/results/example_ensemble_trajectories
+  ensemble_impact_events_dir: validation/results/example_ensemble_impacts
+```
+
+The hazard builder automatically prefers `ensemble_trajectories_dir` and
+`ensemble_impact_events_dir` from a case file when those directories exist and
+contain CSV files. This is the recommended mode for scientifically meaningful
+small-to-medium ensemble reach, energy, jump-height, and significant-impact
+layers. Keep it disabled for default CI-scale runs unless the extra files are
+needed.
 
 The workflow supports analytic plane/paraboloid/step terrain and ESRI ASCII DEM
 terrain for jump-height estimation. Unsupported terrain metadata leaves
@@ -96,7 +115,8 @@ models. Those are explicitly outside the current simulator.
 For future Alpine/Swiss workflows, this layer can evolve without changing the
 trajectory kernel:
 
-- emit chunked full-ensemble trajectory outputs;
+- evolve the current opt-in per-trajectory ensemble CSV output toward chunked
+  full-ensemble trajectory outputs;
 - accumulate rasters tile-by-tile over DEM tiles and release-zone batches;
 - preserve deterministic trajectory IDs and seeds for reproducibility;
 - export GeoTIFF/Cloud-Optimized GeoTIFF and GeoPackage/GeoJSON products;

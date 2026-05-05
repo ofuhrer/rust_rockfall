@@ -167,6 +167,12 @@ python3 scripts/build_hazard_layers.py \
 
 Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, and significant impact density when impact events are available. These are hazard indicators only, not risk maps and not operational Swiss hazard products.
 
+For ensemble-based reach, energy, and jump-height layers, opt into
+`outputs.ensemble_trajectories_dir` in the case YAML. For ensemble impact
+density, opt into `outputs.ensemble_impact_events_dir`. Without those fields,
+trajectory-derived layers use the representative CSV while deposition density
+can still use the ensemble deposition CSV.
+
 ## Local Git Hooks
 
 Optional hook templates are stored under `scripts/git-hooks/`. Install them with:

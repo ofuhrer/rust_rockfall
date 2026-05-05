@@ -699,6 +699,81 @@ fn tschamut_validation_fixture_runs_reproducibly() {
     fs::remove_file(ensemble).unwrap();
 }
 
+#[test]
+fn ensemble_trajectory_dir_is_opt_in_and_deterministic() {
+    let case_path = temp_path("ensemble_trajectories.yaml");
+    let diagnostics = temp_path("ensemble_trajectories.json");
+    let trajectory = temp_path("ensemble_trajectories_representative.csv");
+    let ensemble_dir = temp_path("ensemble_trajectories_dir");
+    let ensemble_impacts_dir = temp_path("ensemble_impacts_dir");
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: ensemble_trajectory_output
+title: Ensemble trajectory output
+level: 3
+description: Temporary case that writes one full trajectory CSV per ensemble member.
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, -0.2]
+  perturbation: {{ position_uniform_m: 0.01, velocity_uniform_mps: 0.01 }}
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.3
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: {{ dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }}
+random: {{ seed: 123, ensemble_size: 3 }}
+expected:
+  metrics: [ensemble_mean_runout_m]
+outputs:
+  diagnostics_json: {}
+  trajectory_csv: {}
+  ensemble_trajectories_dir: {}
+  ensemble_impact_events_dir: {}
+"#,
+            diagnostics.display(),
+            trajectory.display(),
+            ensemble_dir.display(),
+            ensemble_impacts_dir.display()
+        ),
+    )
+    .unwrap();
+
+    let first = run_case_file(&case_path).unwrap();
+    let first_file = ensemble_dir.join("trajectory_000000.csv");
+    let second_file = ensemble_dir.join("trajectory_000001.csv");
+    let third_file = ensemble_dir.join("trajectory_000002.csv");
+    let first_impacts = ensemble_impacts_dir.join("trajectory_000000.csv");
+    assert_eq!(first.status, CaseStatus::Passed);
+    assert!(trajectory.exists());
+    assert!(first_file.exists());
+    assert!(second_file.exists());
+    assert!(third_file.exists());
+    assert!(first_impacts.exists());
+    let first_contents = fs::read_to_string(&first_file).unwrap();
+
+    let second = run_case_file(&case_path).unwrap();
+    assert_eq!(first.metrics, second.metrics);
+    assert_eq!(first_contents, fs::read_to_string(&first_file).unwrap());
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+    fs::remove_file(first_file).unwrap();
+    fs::remove_file(second_file).unwrap();
+    fs::remove_file(third_file).unwrap();
+    for entry in fs::read_dir(&ensemble_impacts_dir).unwrap() {
+        fs::remove_file(entry.unwrap().path()).unwrap();
+    }
+    fs::remove_dir(ensemble_dir).unwrap();
+    fs::remove_dir(ensemble_impacts_dir).unwrap();
+}
+
 fn minimal_config() -> SimulationConfig {
     SimulationConfig {
         block: SphereBlock::new(0.5, 10.0),

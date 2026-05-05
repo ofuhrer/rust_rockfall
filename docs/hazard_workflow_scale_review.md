@@ -49,9 +49,13 @@ Layer summaries:
 - `max_jump_height`: 20 valid cells, maximum `1.01 m`; representative
   trajectory only.
 
-Observation: the current rasterizer handled this small 10x ensemble easily. The
-dominant limitation is not runtime at this scale; it is that the validation
-runner does not yet emit full trajectory CSVs for every ensemble member.
+Observation: the current rasterizer handled this small 10x ensemble easily. At
+the time of this stress test, the dominant limitation was not runtime at this
+scale; it was that validation emitted ensemble deposition points but only one
+representative full trajectory by default. The follow-up implementation adds
+opt-in `outputs.ensemble_trajectories_dir` and
+`outputs.ensemble_impact_events_dir` for small-to-medium full-ensemble hazard
+layers.
 
 ### Repeated-Trajectory Rasterization Stress
 
@@ -138,10 +142,11 @@ workflow does not yet support grid alignment to an external reference raster.
 
 What breaks or degrades first:
 
-1. **Missing full ensemble trajectory output.** The current validation runner
-   writes one representative trajectory plus ensemble deposition points. This
-   prevents scientifically meaningful ensemble reach, energy, and jump-height
-   hazard rasters.
+1. **Full ensemble trajectory/impact output is now opt-in but still file-heavy.**
+   `outputs.ensemble_trajectories_dir` enables meaningful ensemble reach,
+   energy, and jump-height rasters, and `outputs.ensemble_impact_events_dir`
+   enables ensemble significant-impact density for small-to-medium cases. Both
+   write one CSV per trajectory and are not Swiss-scale storage solutions.
 2. **Text CSV I/O.** CSV is transparent and adequate for small cases, but large
    ensembles will spend time parsing text and writing large repeated grids.
 3. **In-memory rasterization.** The current script loads all supplied CSV rows
@@ -196,7 +201,9 @@ Candidate future formats:
 Minimum requirements before Switzerland-wide mapping:
 
 - deterministic release-zone generation from polygons or raster masks;
-- full ensemble trajectory/event output, preferably chunked;
+- full ensemble trajectory/event output, preferably chunked; the current
+  `ensemble_trajectories_dir` and `ensemble_impact_events_dir` are the first
+  inspectable versions of this;
 - tile-based raster accumulators that can merge partial products;
 - explicit CRS and reference-grid alignment;
 - DEM tiling and edge-overlap policy;
@@ -207,16 +214,18 @@ Minimum requirements before Switzerland-wide mapping:
 
 ## Prioritized Next Steps
 
-1. Add optional full-ensemble trajectory/event output with chunked files and
-   deterministic trajectory IDs.
-2. Refactor the hazard builder into a streaming/tiled accumulator that can merge
+1. Refactor the hazard builder into a streaming/tiled accumulator that can merge
    partial rasters.
+2. Evolve `ensemble_trajectories_dir` and `ensemble_impact_events_dir` toward
+   chunked full-ensemble trajectory and event outputs while preserving
+   deterministic trajectory IDs.
 3. Add CRS/reference-grid metadata fields to hazard-layer metadata and case
    schemas without requiring full GIS dependencies.
 4. Add GeoTIFF export behind an optional dependency or separate script.
 5. Define a minimal release-zone schema and deterministic source-cell sampling
    policy.
 
-The smallest high-impact next change is full-ensemble trajectory output plus a
-streaming reducer. Without that, deposition density can scale, but reach,
-energy, and jump-height layers remain representative-trajectory diagnostics.
+The smallest high-impact next change after opt-in ensemble trajectory and impact
+output is a streaming reducer. Without streaming and chunked storage, the new
+full ensemble layers are scientifically meaningful for small-to-medium cases but
+not yet suitable for Swiss-wide production runs.

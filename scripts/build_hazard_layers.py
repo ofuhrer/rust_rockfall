@@ -69,8 +69,22 @@ def main_with_args(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", type=Path, help="verification or validation YAML case")
     parser.add_argument("--trajectory", action="append", type=Path, default=[], help="trajectory CSV; may be repeated")
+    parser.add_argument(
+        "--ensemble-trajectories-dir",
+        action="append",
+        type=Path,
+        default=[],
+        help="directory containing one trajectory CSV per ensemble member; may be repeated",
+    )
     parser.add_argument("--deposition", type=Path, help="ensemble deposition CSV")
     parser.add_argument("--impact-events", type=Path, help="impact event CSV")
+    parser.add_argument(
+        "--ensemble-impact-events-dir",
+        action="append",
+        type=Path,
+        default=[],
+        help="directory containing one impact-event CSV per ensemble member; may be repeated",
+    )
     parser.add_argument("--diagnostics", type=Path, help="JSON diagnostics report")
     parser.add_argument("--output-dir", type=Path, required=True, help="directory for hazard layers and report")
     parser.add_argument("--cell-size", type=float, default=5.0, help="raster cell size in metres")
@@ -84,9 +98,9 @@ def main_with_args(argv: list[str] | None = None) -> int:
     output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    trajectory_paths = args.trajectory or case_output_paths(case, "trajectory_csv")
+    trajectory_paths = resolve_trajectory_paths(case, args.trajectory, args.ensemble_trajectories_dir)
     deposition_path = args.deposition or first_case_output_path(case, "ensemble_deposition_csv")
-    impact_events_path = args.impact_events or first_case_output_path(case, "impact_events_csv")
+    impact_event_paths = resolve_impact_event_paths(case, args.impact_events, args.ensemble_impact_events_dir)
     diagnostics_path = args.diagnostics or first_case_output_path(case, "diagnostics_json")
 
     input_warnings: list[str] = []
@@ -100,11 +114,10 @@ def main_with_args(argv: list[str] | None = None) -> int:
         if deposition_path and deposition_path.exists()
         else []
     )
-    impacts = (
-        sanitize_rows(read_numeric_csv(impact_events_path), f"impact_events:{impact_events_path}", input_warnings)
-        if impact_events_path and impact_events_path.exists()
-        else []
-    )
+    impacts = []
+    for path in impact_event_paths:
+        if path.exists():
+            impacts.extend(sanitize_rows(read_numeric_csv(path), f"impact_events:{path}", input_warnings))
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
 
     if not trajectories and not depositions and not impacts:
@@ -155,6 +168,46 @@ def case_output_paths(case: dict[str, Any], key: str) -> list[Path]:
         return []
     values = value if isinstance(value, list) else [value]
     return [ROOT / str(path) for path in values]
+
+
+def resolve_trajectory_paths(
+    case: dict[str, Any],
+    explicit_trajectories: list[Path],
+    explicit_dirs: list[Path],
+) -> list[Path]:
+    paths = list(explicit_trajectories)
+    dirs = list(explicit_dirs)
+    if not paths and not dirs:
+        dirs = case_output_paths(case, "ensemble_trajectories_dir")
+    for directory in dirs:
+        paths.extend(csv_files_in_dir(directory))
+    if not paths:
+        paths = case_output_paths(case, "trajectory_csv")
+    return paths
+
+
+def resolve_impact_event_paths(
+    case: dict[str, Any],
+    explicit_impact_events: Path | None,
+    explicit_dirs: list[Path],
+) -> list[Path]:
+    paths = [explicit_impact_events] if explicit_impact_events else []
+    dirs = list(explicit_dirs)
+    if not paths and not dirs:
+        dirs = case_output_paths(case, "ensemble_impact_events_dir")
+    for directory in dirs:
+        paths.extend(csv_files_in_dir(directory))
+    if not paths:
+        single = first_case_output_path(case, "impact_events_csv")
+        if single:
+            paths.append(single)
+    return paths
+
+
+def csv_files_in_dir(directory: Path) -> list[Path]:
+    if not directory.exists() or not directory.is_dir():
+        return []
+    return sorted(path for path in directory.glob("*.csv") if path.is_file())
 
 
 def first_case_output_path(case: dict[str, Any], key: str) -> Path | None:
@@ -608,7 +661,7 @@ def build_metadata(
         "limitations": [
             "Hazard layers are diagnostic research outputs, not operational hazard or risk maps.",
             "Reach, kinetic-energy, and jump-height layers are computed only from supplied trajectory CSVs.",
-            "Current validation runs write a representative full trajectory plus ensemble deposition points; full ensemble trajectory hazard layers require future full-trajectory ensemble export.",
+            "Use outputs.ensemble_trajectories_dir or repeated --trajectory inputs for scientifically meaningful ensemble reach, energy, and jump-height layers.",
             "Risk mapping requires exposure and vulnerability data and is outside this workflow.",
         ],
     }
@@ -741,7 +794,7 @@ def write_html_report(
   <h2>How to Read Hazard Layers</h2>
   <p>Probability and density layers are normalized diagnostic rasters. A value near 1 means all supplied samples for that layer occupied the cell; a value near 0 means few or none did. Maximum-energy and maximum-jump-height layers record the largest sampled value in each cell, not an expected value or design value.</p>
   <ul>
-    <li><strong>Reach probability</strong>: cells touched by supplied trajectory CSVs. With one representative trajectory it is a 0/1 path mask, not a full ensemble probability.</li>
+    <li><strong>Reach probability</strong>: cells touched by supplied trajectory CSVs. With <code>outputs.ensemble_trajectories_dir</code> it represents the full written ensemble; with one representative trajectory it is only a 0/1 path mask.</li>
     <li><strong>Deposition density</strong>: final-position density from ensemble deposition points.</li>
     <li><strong>Maximum kinetic energy</strong>: largest kinetic energy sampled in each cell from supplied trajectories.</li>
     <li><strong>Maximum jump height</strong>: largest sampled height above terrain plus block radius where terrain metadata can be evaluated.</li>

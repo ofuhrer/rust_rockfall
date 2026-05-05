@@ -48,6 +48,8 @@ KNOWN_OUTPUT_KEYS = {
     "trajectory_csv",
     "diagnostics_json",
     "ensemble_deposition_csv",
+    "ensemble_trajectories_dir",
+    "ensemble_impact_events_dir",
     "impact_events_csv",
     "impact_events_json",
 }
@@ -222,6 +224,8 @@ def check_schema_docs() -> list[str]:
         "scarring_depth_source",
         "impact_events_csv",
         "impact_events_json",
+        "ensemble_trajectories_dir",
+        "ensemble_impact_events_dir",
         "max_scarring_depth_m",
         "max_scarring_drag_force_n",
         "total_scarring_energy_loss_j",
@@ -286,6 +290,7 @@ def check_hazard_layer_metadata() -> list[str]:
         ROOT / "docs/hazard_workflow_scale_review.md",
         ROOT / "tests/test_hazard_layers.py",
         ROOT / "tests/fixtures/hazard/plane_case.yaml",
+        ROOT / "tests/fixtures/hazard/ensemble_case.yaml",
     ]
     for path in required_paths:
         if not path.exists():

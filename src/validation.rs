@@ -277,6 +277,10 @@ pub struct OutputConfig {
     #[serde(default)]
     pub ensemble_deposition_csv: Option<PathBuf>,
     #[serde(default)]
+    pub ensemble_trajectories_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub ensemble_impact_events_dir: Option<PathBuf>,
+    #[serde(default)]
     pub impact_events_csv: Option<PathBuf>,
     #[serde(default)]
     pub impact_events_json: Option<PathBuf>,
@@ -853,6 +857,14 @@ fn compute_ensemble_metrics(
         global_seed,
         &trajectory_ids,
     )?;
+    if case.observations.is_none() {
+        if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+            write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?;
+        }
+        if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+            write_ensemble_impact_events_dir(dir, &ensemble.trajectories)?;
+        }
+    }
     let mut runouts = ensemble
         .trajectories
         .iter()
@@ -943,6 +955,12 @@ fn compute_validation_ensemble_metrics(
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
         write_ensemble_deposition_csv(path, &deposition_rows)?;
     }
+    if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+        write_ensemble_trajectory_dir(dir, &runs)?;
+    }
+    if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+        write_ensemble_impact_events_dir(dir, &runs)?;
+    }
 
     compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
     metrics.insert(
@@ -983,6 +1001,51 @@ fn write_ensemble_deposition_csv(
     }
     writer.flush()?;
     Ok(())
+}
+
+fn write_ensemble_trajectory_dir(
+    dir: impl AsRef<Path>,
+    runs: &[TrajectoryRun],
+) -> Result<(), ValidationError> {
+    fs::create_dir_all(dir.as_ref())?;
+    for run in runs {
+        let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
+        let path = dir.as_ref().join(filename);
+        io::write_trajectory_csv(&path, &run.samples)?;
+    }
+    Ok(())
+}
+
+fn write_ensemble_impact_events_dir(
+    dir: impl AsRef<Path>,
+    runs: &[TrajectoryRun],
+) -> Result<(), ValidationError> {
+    fs::create_dir_all(dir.as_ref())?;
+    for run in runs {
+        if run.impact_events.is_empty() {
+            continue;
+        }
+        let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
+        let path = dir.as_ref().join(filename);
+        io::write_impact_events_csv(&path, &run.impact_events)?;
+    }
+    Ok(())
+}
+
+fn safe_filename(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.') {
+            output.push(ch);
+        } else {
+            output.push('_');
+        }
+    }
+    if output.is_empty() {
+        "trajectory".to_string()
+    } else {
+        output
+    }
 }
 
 fn compute_deposition_cloud_metrics(

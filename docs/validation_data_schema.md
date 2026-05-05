@@ -28,6 +28,8 @@ Required case fields:
 - optional `observations.release_points_csv`, `observations.deposition_points_csv`
 - `expected.metrics`, `expected.tolerances`
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
+- optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
+- optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
@@ -97,6 +99,17 @@ The CLI can report:
 - `scarring_zero_baseline_max_position_delta_m`
 
 Trajectory CSV diagnostics include `scarring_depth_m`, `scarring_drag_force_n`, and `scarring_energy_loss_j`. They are zero unless `soil_interaction_model: scarring_contact_v1` is active and an incoming impact produces a nonzero scar-depth diagnostic.
+
+When `outputs.ensemble_trajectories_dir` is set, validation writes deterministic
+per-trajectory CSV files named from the trajectory id. Existing representative
+`outputs.trajectory_csv` behavior is unchanged. Hazard-layer reach probability,
+maximum kinetic energy, and maximum jump height should use
+`outputs.ensemble_trajectories_dir` when the full ensemble is needed.
+
+When `outputs.ensemble_impact_events_dir` is set, validation writes deterministic
+per-trajectory impact-event CSV files for ensemble members that produced impact
+events. Hazard-layer significant-impact density should use this directory when
+full-ensemble impact density is needed.
 
 Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
 
