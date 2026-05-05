@@ -2,6 +2,8 @@
 
 This document compares the current independent `v0.3.0` model with the public theory available in the RAMMS::Rockfall manual, Leine et al. 2014, Leine et al. 2021, and Lu et al. 2019. It does not claim RAMMS equivalence and does not define proprietary implementation details.
 
+Implementation status: the first minimal opt-in soil interaction layer from this roadmap is implemented in `v0.4.0` as `scarring_contact_v1`. It covers impact-local scar-depth diagnostics and bounded translational energy loss only; slip-dependent friction, drag torque, terrain classes, and calibration remain future work.
+
 ## Theory Baseline
 
 ### State And Degrees Of Freedom

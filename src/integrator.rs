@@ -1,12 +1,12 @@
 use crate::{
     dynamics::{
-        apply_contact_friction, apply_rotational_contact_motion, ballistic_step,
-        contact_point_tangent_velocity, resolve_rotational_sphere_contact_with_normal,
-        resolve_sphere_contact_with_normal, rolling_residual, ContactModel,
-        RotationalContactSettings,
+        apply_contact_friction, apply_rotational_contact_motion, apply_scarring_energy_loss,
+        ballistic_step, contact_point_tangent_velocity,
+        resolve_rotational_sphere_contact_with_normal, resolve_sphere_contact_with_normal,
+        rolling_residual, ContactModel, RotationalContactSettings, ScarringSettings,
     },
     geometry::SphereBlock,
-    state::{BodyState, ContactState, TrajectorySample},
+    state::{BodyState, ContactState, TrajectoryDiagnostics, TrajectorySample},
     stochastic::{sample_contact_roughness, seeded_rng, ContactRoughness},
     terrain::Terrain,
 };
@@ -22,6 +22,7 @@ pub struct IntegratorSettings {
     pub rolling_resistance_coefficient: f64,
     pub stop_speed_mps: f64,
     pub contact_model: ContactModel,
+    pub scarring: ScarringSettings,
     pub roughness: ContactRoughness,
     pub roughness_seed: Option<u64>,
 }
@@ -53,6 +54,7 @@ pub fn simulate_fixed_step(
         time_s += settings.dt_s;
 
         let base_normal = terrain.normal(state.position_m.x, state.position_m.y);
+        let incoming_velocity = state.velocity_mps;
         let signed_distance_before_response =
             terrain.signed_distance_sphere(state.position_m, block.radius_m);
         let incoming =
@@ -96,6 +98,17 @@ pub fn simulate_fixed_step(
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
             ),
+        };
+        let scarring = if incoming {
+            apply_scarring_energy_loss(
+                &mut state,
+                block,
+                incoming_velocity,
+                base_normal,
+                settings.scarring,
+            )
+        } else {
+            Default::default()
         };
 
         let mut contact_state = if response.impacted {
@@ -174,14 +187,17 @@ pub fn simulate_fixed_step(
             response.rolling_residual_mps
         };
 
-        samples.push(TrajectorySample::from_state_with_contact_diagnostics(
+        samples.push(TrajectorySample::from_state_with_diagnostics(
             time_s,
             &state,
             &block,
             settings.gravity_mps2,
             contact_state,
-            contact_tangent_speed_mps,
-            rolling_residual_mps,
+            TrajectoryDiagnostics {
+                contact_tangent_speed_mps,
+                rolling_residual_mps,
+                scarring,
+            },
         ));
 
         if contact_state == ContactState::Stopped {

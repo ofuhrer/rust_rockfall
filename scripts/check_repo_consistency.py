@@ -24,6 +24,7 @@ ALLOWED_GENERATED = {
 }
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
+KNOWN_SOIL_INTERACTION_MODELS = {"none", "scarring_contact_v1"}
 KNOWN_CONTACT_STATES = {"airborne", "impact", "sliding", "rolling", "stopped"}
 KNOWN_TERRAIN_TYPES = {
     "plane",
@@ -60,6 +61,7 @@ KNOWN_METRICS = {
     "energy_monotonicity_violation_j",
     "seed_repeat_max_position_delta_m",
     "roughness_zero_baseline_max_position_delta_m",
+    "scarring_zero_baseline_max_position_delta_m",
     "different_seed_ensemble_runout_delta_m",
     "ensemble_mean_runout_m",
     "ensemble_median_runout_m",
@@ -84,6 +86,9 @@ KNOWN_METRICS = {
     "final_rolling_residual_mps",
     "final_contact_tangent_speed_mps",
     "final_angular_speed_radps",
+    "max_scarring_depth_m",
+    "max_scarring_drag_force_n",
+    "total_scarring_energy_loss_j",
 }
 
 
@@ -150,6 +155,12 @@ def check_yaml_cases() -> list[str]:
         if roughness_model not in KNOWN_ROUGHNESS_MODELS:
             errors.append(f"{rel}: unknown roughness_model {roughness_model!r}")
 
+        soil_interaction_model = parameters.get("soil_interaction_model", "none")
+        if soil_interaction_model not in KNOWN_SOIL_INTERACTION_MODELS:
+            errors.append(
+                f"{rel}: unknown soil_interaction_model {soil_interaction_model!r}"
+            )
+
         expected = data.get("expected", {}) or {}
         contact_state = expected.get("contact_state")
         if contact_state is not None and contact_state not in KNOWN_CONTACT_STATES:
@@ -183,6 +194,19 @@ def check_schema_docs() -> list[str]:
         "roughness_std_normal",
         "roughness_std_tangent",
         "roughness_std_angle",
+        "soil_interaction_model",
+        "scarring_contact_v1",
+        "soil_strength_pa",
+        "scarring_drag_coefficient",
+        "scarring_layer_density_kgpm3",
+        "scarring_max_depth_m",
+        "scarring_depth_m",
+        "scarring_drag_force_n",
+        "scarring_energy_loss_j",
+        "max_scarring_depth_m",
+        "max_scarring_drag_force_n",
+        "total_scarring_energy_loss_j",
+        "scarring_zero_baseline_max_position_delta_m",
         "final_rolling_residual_mps",
         "final_contact_tangent_speed_mps",
         "final_angular_speed_radps",
@@ -202,6 +226,11 @@ def check_schema_docs() -> list[str]:
             "roughness_std_normal",
             "roughness_std_tangent",
             "roughness_std_angle",
+            "soil_interaction_model",
+            "soil_strength_pa",
+            "scarring_drag_coefficient",
+            "scarring_layer_density_kgpm3",
+            "scarring_max_depth_m",
         } and term not in benchmark:
             errors.append(f"docs/benchmark_case_schema.yaml omits {term}")
     return errors
@@ -239,6 +268,11 @@ def check_contact_model_docs() -> list[str]:
         for model in KNOWN_CONTACT_MODELS:
             if model not in text:
                 errors.append(f"{path.relative_to(ROOT)} omits contact model {model}")
+        for model in KNOWN_SOIL_INTERACTION_MODELS:
+            if model not in text:
+                errors.append(
+                    f"{path.relative_to(ROOT)} omits soil interaction model {model}"
+                )
     terrain_model = ROOT / "docs/terrain_model.md"
     if not terrain_model.exists():
         errors.append("docs/terrain_model.md is missing")

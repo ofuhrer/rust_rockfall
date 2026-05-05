@@ -15,14 +15,14 @@ pub mod stochastic;
 pub mod terrain;
 pub mod validation;
 
-pub use dynamics::ContactModel;
+pub use dynamics::{ContactModel, ScarringDiagnostics, ScarringSettings, SoilInteractionModel};
 pub use geometry::SphereBlock;
 pub use simulation::{
     simulate_ensemble, simulate_one_trajectory, simulate_one_trajectory_with_terrain,
     EnsembleResult, SimulationConfig, SimulationResult, TerrainConfig, TrajectoryRequest,
     TrajectoryRun, TrajectorySummary,
 };
-pub use state::{BodyState, ContactState, TrajectorySample};
+pub use state::{BodyState, ContactState, TrajectoryDiagnostics, TrajectorySample};
 pub use stochastic::{ContactRoughness, RoughnessModel};
 
 /// Three-dimensional vector type used throughout the crate.

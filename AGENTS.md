@@ -26,6 +26,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Document any new equation, parameter, assumption, or limitation in the appropriate `docs/` file.
 - For contact-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, and consistency checks in the same change.
 - For roughness-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
+- For soil/scarring-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.

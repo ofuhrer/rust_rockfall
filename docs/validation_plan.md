@@ -4,7 +4,7 @@ Validation asks whether the current model is useful when compared with observati
 
 ## v0 Status
 
-Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact/scarring, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
+Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in minimal scarring_contact_v1 impact energy-loss diagnostics, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact, calibrated scarring with drag torque or slip-dependent friction, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
 
 ## Dataset Policy
 
@@ -29,14 +29,15 @@ Missing optional public observations cause a skipped report with instructions ra
 
 ## Metrics
 
-Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, deposition centroid error, deposition-cloud mean nearest-neighbor distance, deposition-cloud overlap fraction, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, and ensemble runout summaries where seeded perturbations are used.
+Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, deposition centroid error, deposition-cloud mean nearest-neighbor distance, deposition-cloud overlap fraction, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, scarring depth/drag/energy-loss diagnostics, and ensemble runout summaries where seeded perturbations are used.
 Roughness-specific verification metrics include zero-roughness baseline comparison and different-seed ensemble runout deltas.
+Scarring-specific verification metrics include zero-scarring baseline comparison, maximum scarring depth, maximum scarring drag force, and total scarring energy loss.
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
 
 ## Real-World Validation Interpretation
 
-The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the v0.3.0 workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
+The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the current workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
 
 Terrain representation is part of the validation assumption set. `validation_tschamut_proxy_plane` keeps the earlier fitted-plane terrain approximation as an explicit structural-error comparison, while `validation_tschamut_basic` uses the `idw_residual_dem_from_lps` clamped DEM proxy derived from public LPS ground points. Neither terrain is an official field DEM.
 

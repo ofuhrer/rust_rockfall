@@ -10,7 +10,7 @@ use rust_rockfall::{
         SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
     validation::{load_case, run_case_file, CaseStatus},
-    ContactModel, Vec3,
+    ContactModel, SoilInteractionModel, Vec3,
 };
 use std::{
     fs,
@@ -313,6 +313,7 @@ fn simulation_config_json_defaults_and_seeded_initial_state_are_deterministic() 
     assert_abs_diff_eq!(config.gravity_mps2, 9.81, epsilon = 1.0e-12);
     assert_abs_diff_eq!(config.normal_restitution, 0.25, epsilon = 1.0e-12);
     assert_eq!(config.contact_model, ContactModel::TranslationalV0);
+    assert_eq!(config.soil_interaction_model, SoilInteractionModel::None);
     assert_eq!(config.roughness_model, RoughnessModel::None);
     assert_eq!(config.initial_state(), config.initial_state());
 }
@@ -364,6 +365,34 @@ fn simulation_config_json_accepts_stochastic_contact_roughness() {
 }
 
 #[test]
+fn simulation_config_json_accepts_scarring_contact_model() {
+    let json = r#"{
+        "block": { "radius_m": 0.5, "mass_kg": 10.0 },
+        "initial_position_m": [0.0, 0.0, 2.0],
+        "initial_velocity_mps": [0.0, 0.0, -1.0],
+        "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0 },
+        "dt_s": 0.01,
+        "max_time_s": 1.0,
+        "soil_interaction_model": "scarring_contact_v1",
+        "soil_strength_pa": 100000.0,
+        "scarring_drag_coefficient": 1.0,
+        "scarring_layer_density_kgpm3": 1600.0,
+        "scarring_max_depth_m": 0.05
+    }"#;
+
+    let config: SimulationConfig = serde_json::from_str(json).unwrap();
+    assert_eq!(
+        config.soil_interaction_model,
+        SoilInteractionModel::ScarringContactV1
+    );
+    let result = config.run().unwrap();
+    assert!(result
+        .samples
+        .iter()
+        .any(|sample| sample.scarring_energy_loss_j > 0.0));
+}
+
+#[test]
 fn validation_yaml_rejects_unknown_contact_model() {
     let path = temp_path("bad_contact_model.yaml");
     fs::write(
@@ -393,6 +422,25 @@ terrain: { type: plane, parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 } }
 block: { mass: 1.0, radius: 0.5 }
 parameters:
   roughness_model: hidden_magic
+"#,
+    )
+    .unwrap();
+
+    assert!(load_case(&path).is_err());
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn validation_yaml_rejects_unknown_soil_interaction_model() {
+    let path = temp_path("bad_soil_interaction_model.yaml");
+    fs::write(
+        &path,
+        r#"
+case_id: bad_soil_interaction_model
+terrain: { type: plane, parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 } }
+block: { mass: 1.0, radius: 0.5 }
+parameters:
+  soil_interaction_model: hidden_magic
 "#,
     )
     .unwrap();
@@ -453,6 +501,20 @@ fn simulation_validation_rejects_non_positive_inputs() {
         config.run(),
         Err(SimulationError::NonPositive("roughness_std_angle"))
     ));
+
+    let mut config = minimal_config();
+    config.soil_strength_pa = -1.0;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("soil_strength_pa"))
+    ));
+
+    let mut config = minimal_config();
+    config.scarring_max_depth_m = Some(-0.1);
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::NonPositive("scarring_max_depth_m"))
+    ));
 }
 
 #[test]
@@ -480,6 +542,8 @@ fn read_config_reports_json_errors_and_write_csv_round_trips_samples() {
     );
     assert!(csv_text.contains("omega_x_radps"));
     assert!(csv_text.contains("rolling_residual_mps"));
+    assert!(csv_text.contains("scarring_depth_m"));
+    assert!(csv_text.contains("scarring_energy_loss_j"));
     fs::remove_file(csv_path).unwrap();
 }
 
@@ -573,6 +637,11 @@ fn minimal_config() -> SimulationConfig {
         friction_coefficient: 0.45,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
         roughness_model: RoughnessModel::None,
         roughness_std_normal: 0.0,
         roughness_std_tangent: 0.0,

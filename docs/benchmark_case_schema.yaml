@@ -26,6 +26,11 @@ parameters:
   friction_coefficient: 0.45
   rolling_resistance_coefficient: 0.0
   contact_model: translational_v0
+  soil_interaction_model: none # or scarring_contact_v1
+  soil_strength_pa: 0.0
+  scarring_drag_coefficient: 0.0
+  scarring_layer_density_kgpm3: 0.0
+  scarring_max_depth_m: null
   roughness_model: none
   roughness_std_normal: 0.0
   roughness_std_tangent: 0.0

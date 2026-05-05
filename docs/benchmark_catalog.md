@@ -1,6 +1,6 @@
 # Benchmark Catalog
 
-This catalog lists the current `v0.3.0` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
+This catalog lists the current `v0.4.0` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
 
 ## Level 0: Analytic Unit Tests
 
@@ -27,6 +27,10 @@ This catalog lists the current `v0.3.0` verification and validation cases. These
 - `synthetic_ascii_dem_fixture`: small ESRI ASCII grid loading and trajectory smoke test.
 - `synthetic_clamped_dem_terrain_variation`: opt-in clamped ESRI ASCII DEM trajectory over a small varied patch, including an initial boundary-clamped query.
 - `synthetic_contact_roughness_energy_stability`: bounded stochastic contact roughness remains dissipative within fixed-step numerical tolerance.
+- `synthetic_scarring_zero_baseline`: `scarring_contact_v1` with inert parameters exactly matches `soil_interaction_model: none`.
+- `synthetic_scarring_energy_dissipation`: fixed-depth scarring diagnostics produce positive bounded energy loss without positive total-energy jumps.
+- `synthetic_scarring_depth_velocity_scaling`: inferred scarring depth activates for finite normal impact speed without drag energy loss.
+- `synthetic_scarring_depth_soil_strength_scaling`: weak-soil scarring parameters produce a substantial inferred depth diagnostic.
 
 ## Level 2: Motion-Regime Tests
 
@@ -51,4 +55,4 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 - `validation_tschamut_proxy_plane`: limited public-data terrain comparison case using the earlier fitted-plane terrain proxy for the Tschamut 2014 subset.
 - `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations and the `idw_residual_dem_from_lps` clamped DEM proxy. It reports distribution-level runout and deposition-cloud mismatch only.
 
-Real-world validation remains partial and qualitative for v0.3.0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and production field DEM workflows.
+Real-world validation remains partial and qualitative for v0.4.0 because the simulator lacks block shape, advanced contact, calibrated scarring with drag torque/slip-dependent friction, roughness calibration, forest interaction, fragmentation, and production field DEM workflows.

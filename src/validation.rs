@@ -1,7 +1,7 @@
 //! Verification and validation helpers, case loading, and metric computation.
 
 use crate::{
-    dynamics::ContactModel,
+    dynamics::{ContactModel, SoilInteractionModel},
     geometry::SphereBlock,
     io,
     simulation::{
@@ -133,6 +133,16 @@ pub struct CaseParameters {
     #[serde(default)]
     pub contact_model: ContactModel,
     #[serde(default)]
+    pub soil_interaction_model: SoilInteractionModel,
+    #[serde(default)]
+    pub soil_strength_pa: f64,
+    #[serde(default)]
+    pub scarring_drag_coefficient: f64,
+    #[serde(default)]
+    pub scarring_layer_density_kgpm3: f64,
+    #[serde(default)]
+    pub scarring_max_depth_m: Option<f64>,
+    #[serde(default)]
     pub roughness_model: RoughnessModel,
     #[serde(default)]
     pub roughness_std_normal: f64,
@@ -151,6 +161,11 @@ impl Default for CaseParameters {
             friction_coefficient: default_friction(),
             rolling_resistance_coefficient: 0.0,
             contact_model: ContactModel::default(),
+            soil_interaction_model: SoilInteractionModel::default(),
+            soil_strength_pa: 0.0,
+            scarring_drag_coefficient: 0.0,
+            scarring_layer_density_kgpm3: 0.0,
+            scarring_max_depth_m: None,
             roughness_model: RoughnessModel::default(),
             roughness_std_normal: 0.0,
             roughness_std_tangent: 0.0,
@@ -429,6 +444,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
     compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
+    compute_scarring_comparison_metrics(case, &config, samples, &mut metrics)?;
 
     let requested_metrics = requested_metrics(case);
     if !requested_metrics.is_empty() {
@@ -505,6 +521,11 @@ fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, Val
         friction_coefficient: case.parameters.friction_coefficient,
         rolling_resistance_coefficient: case.parameters.rolling_resistance_coefficient,
         contact_model: case.parameters.contact_model,
+        soil_interaction_model: case.parameters.soil_interaction_model,
+        soil_strength_pa: case.parameters.soil_strength_pa,
+        scarring_drag_coefficient: case.parameters.scarring_drag_coefficient,
+        scarring_layer_density_kgpm3: case.parameters.scarring_layer_density_kgpm3,
+        scarring_max_depth_m: case.parameters.scarring_max_depth_m,
         roughness_model: case.parameters.roughness_model,
         roughness_std_normal: case.parameters.roughness_std_normal,
         roughness_std_tangent: case.parameters.roughness_std_tangent,
@@ -668,6 +689,27 @@ fn compute_metrics(
         "final_angular_speed_radps".to_string(),
         (last.omega_x_radps.powi(2) + last.omega_y_radps.powi(2) + last.omega_z_radps.powi(2))
             .sqrt(),
+    );
+    metrics.insert(
+        "max_scarring_depth_m".to_string(),
+        samples
+            .iter()
+            .map(|sample| sample.scarring_depth_m)
+            .fold(0.0_f64, f64::max),
+    );
+    metrics.insert(
+        "max_scarring_drag_force_n".to_string(),
+        samples
+            .iter()
+            .map(|sample| sample.scarring_drag_force_n)
+            .fold(0.0_f64, f64::max),
+    );
+    metrics.insert(
+        "total_scarring_energy_loss_j".to_string(),
+        samples
+            .iter()
+            .map(|sample| sample.scarring_energy_loss_j)
+            .sum(),
     );
 
     if let Some(expected_position) = expected.final_position_m {
@@ -1007,6 +1049,37 @@ fn compute_roughness_comparison_metrics(
     let baseline_result = baseline.run()?;
     metrics.insert(
         "roughness_zero_baseline_max_position_delta_m".to_string(),
+        max_position_delta(samples, &baseline_result.samples),
+    );
+    Ok(())
+}
+
+fn compute_scarring_comparison_metrics(
+    case: &BenchmarkCase,
+    config: &SimulationConfig,
+    samples: &[TrajectorySample],
+    metrics: &mut BTreeMap<String, f64>,
+) -> Result<(), ValidationError> {
+    if case.parameters.soil_interaction_model != SoilInteractionModel::ScarringContactV1 {
+        return Ok(());
+    }
+    if case.parameters.soil_strength_pa != 0.0
+        || case.parameters.scarring_drag_coefficient != 0.0
+        || case.parameters.scarring_layer_density_kgpm3 != 0.0
+        || case.parameters.scarring_max_depth_m.unwrap_or(0.0) != 0.0
+    {
+        return Ok(());
+    }
+
+    let mut baseline = config.clone();
+    baseline.soil_interaction_model = SoilInteractionModel::None;
+    baseline.soil_strength_pa = 0.0;
+    baseline.scarring_drag_coefficient = 0.0;
+    baseline.scarring_layer_density_kgpm3 = 0.0;
+    baseline.scarring_max_depth_m = None;
+    let baseline_result = baseline.run()?;
+    metrics.insert(
+        "scarring_zero_baseline_max_position_delta_m".to_string(),
         max_position_delta(samples, &baseline_result.samples),
     );
     Ok(())

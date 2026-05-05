@@ -1,6 +1,6 @@
 # Documentation Index
 
-Current project version: `v0.3.0`.
+Current project version: `v0.4.0`.
 
 The repository uses semantic versioning:
 
@@ -18,5 +18,6 @@ Core documents:
 - `implementation_plan.md`: phased implementation roadmap.
 - `literature_review.md`: public literature and grey-literature sources.
 - `model_review_v0_3.md`: rationale for the first opt-in impact roughness model.
+- `model_gap_analysis_v0_3.md`: theory-informed rationale for the minimal opt-in scarring model.
 
 Version notes are tracked in `../CHANGELOG.md`.

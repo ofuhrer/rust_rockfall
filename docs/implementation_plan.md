@@ -57,13 +57,23 @@
 
 ## Phase 6: Stochastic Ensembles
 
-- Status: active in `v0.3.0`.
+- Status: implemented in `v0.3.0`.
 - Objective: deterministic release perturbations, opt-in stochastic contact roughness, and ensemble summaries.
 - Methods: `ChaCha8Rng` seeded sampling; trajectory-specific seeds for release and impact roughness.
 - Modules: `stochastic`, `simulation`.
 - Tests: fixed seed reproduces identical samples; zero roughness matches baseline; nonzero roughness produces deterministic runout spread; dissipative roughness has bounded energy behavior.
 - Output: reproducible single-run perturbations and ensemble summary metrics.
 - Limitations: roughness is contact stochasticity, not a calibrated spatial terrain roughness law.
+
+## Phase 6b: Minimal Scarring Diagnostics
+
+- Status: active in `v0.4.0`.
+- Objective: add opt-in compactable-soil impact energy-loss diagnostics without changing default behavior.
+- Methods: estimate impact-local scar depth, sphere-cap area, drag force, and bounded translational energy loss.
+- Modules: `dynamics`, `integrator`, `simulation`, `state`, `validation`.
+- Tests: zero-effect baseline, nonnegative energy loss, depth scaling, deterministic diagnostics, and synthetic scarring verification cases.
+- Output: `scarring_depth_m`, `scarring_drag_force_n`, and `scarring_energy_loss_j` diagnostics.
+- Limitations: no calibrated soil classes, drag torque, slip-dependent friction, terrain deformation, or validation tuning.
 
 ## Phase 7: Validation Cases
 

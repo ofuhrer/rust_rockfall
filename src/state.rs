@@ -1,4 +1,4 @@
-use crate::{geometry::SphereBlock, Vec3};
+use crate::{dynamics::ScarringDiagnostics, geometry::SphereBlock, Vec3};
 use serde::{Deserialize, Serialize};
 
 /// Dynamic state of the simulated block center of mass.
@@ -56,6 +56,13 @@ impl EnergyDiagnostics {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct TrajectoryDiagnostics {
+    pub contact_tangent_speed_mps: f64,
+    pub rolling_residual_mps: f64,
+    pub scarring: ScarringDiagnostics,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrajectorySample {
     pub time_s: f64,
@@ -76,6 +83,9 @@ pub struct TrajectorySample {
     pub omega_z_radps: f64,
     pub contact_tangent_speed_mps: f64,
     pub rolling_residual_mps: f64,
+    pub scarring_depth_m: f64,
+    pub scarring_drag_force_n: f64,
+    pub scarring_energy_loss_j: f64,
 }
 
 impl TrajectorySample {
@@ -86,14 +96,13 @@ impl TrajectorySample {
         gravity_mps2: f64,
         contact_state: ContactState,
     ) -> Self {
-        Self::from_state_with_contact_diagnostics(
+        Self::from_state_with_diagnostics(
             time_s,
             state,
             block,
             gravity_mps2,
             contact_state,
-            0.0,
-            0.0,
+            TrajectoryDiagnostics::default(),
         )
     }
 
@@ -105,6 +114,28 @@ impl TrajectorySample {
         contact_state: ContactState,
         contact_tangent_speed_mps: f64,
         rolling_residual_mps: f64,
+    ) -> Self {
+        Self::from_state_with_diagnostics(
+            time_s,
+            state,
+            block,
+            gravity_mps2,
+            contact_state,
+            TrajectoryDiagnostics {
+                contact_tangent_speed_mps,
+                rolling_residual_mps,
+                scarring: ScarringDiagnostics::default(),
+            },
+        )
+    }
+
+    pub fn from_state_with_diagnostics(
+        time_s: f64,
+        state: &BodyState,
+        block: &SphereBlock,
+        gravity_mps2: f64,
+        contact_state: ContactState,
+        diagnostics: TrajectoryDiagnostics,
     ) -> Self {
         let energy = EnergyDiagnostics::from_state(state, block, gravity_mps2);
         Self {
@@ -124,8 +155,11 @@ impl TrajectorySample {
             omega_x_radps: state.angular_velocity_radps.x,
             omega_y_radps: state.angular_velocity_radps.y,
             omega_z_radps: state.angular_velocity_radps.z,
-            contact_tangent_speed_mps,
-            rolling_residual_mps,
+            contact_tangent_speed_mps: diagnostics.contact_tangent_speed_mps,
+            rolling_residual_mps: diagnostics.rolling_residual_mps,
+            scarring_depth_m: diagnostics.scarring.scarring_depth_m,
+            scarring_drag_force_n: diagnostics.scarring.scarring_drag_force_n,
+            scarring_energy_loss_j: diagnostics.scarring.scarring_energy_loss_j,
         }
     }
 }

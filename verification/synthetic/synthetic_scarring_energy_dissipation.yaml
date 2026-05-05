@@ -1,0 +1,37 @@
+case_id: synthetic_scarring_energy_dissipation
+title: Scarring contact dissipates impact energy
+level: 1
+description: Verifies that a fixed shallow scar depth produces positive local energy loss at impact without positive total-energy jumps.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [2.0, 0.0, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.4
+  soil_interaction_model: scarring_contact_v1
+  soil_strength_pa: 100000.0
+  scarring_drag_coefficient: 1.0
+  scarring_layer_density_kgpm3: 1600.0
+  scarring_max_depth_m: 0.05
+simulation: { dt: 0.01, t_max: 4.0, stop_velocity: 0.05 }
+random: { seed: 91, ensemble_size: 1 }
+expected:
+  metrics: [total_scarring_energy_loss_j, max_scarring_depth_m, max_scarring_drag_force_n, energy_monotonicity_violation_j]
+  minimums:
+    total_scarring_energy_loss_j: 1.0
+    max_scarring_depth_m: 0.049
+    max_scarring_drag_force_n: 1.0
+  maximums:
+    energy_monotonicity_violation_j: 0.01
+outputs:
+  diagnostics_json: verification/results/synthetic_scarring_energy_dissipation.json
+  trajectory_csv: verification/results/synthetic_scarring_energy_dissipation.csv
+references:
+  notes:
+    - "The scarring layer reduces post-contact translational kinetic energy only; it does not apply torque or terrain-category effects."

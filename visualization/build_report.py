@@ -62,7 +62,7 @@ PLOT_CAPTIONS = {
         "of distribution-level mismatch; it is not an operational hazard-skill score."
     ),
 }
-FALLBACK_MODEL_VERSION = "0.3.0"
+FALLBACK_MODEL_VERSION = "0.4.0"
 
 
 @dataclass
@@ -206,6 +206,10 @@ def case_order(case_id: str) -> int:
         "synthetic_ascii_dem_fixture": 260,
         "synthetic_clamped_dem_terrain_variation": 270,
         "synthetic_contact_roughness_energy_stability": 280,
+        "synthetic_scarring_zero_baseline": 290,
+        "synthetic_scarring_energy_dissipation": 300,
+        "synthetic_scarring_depth_velocity_scaling": 310,
+        "synthetic_scarring_depth_soil_strength_scaling": 320,
         "regime_bounce_to_slide_transition": 310,
         "regime_slide_to_stop_transition": 320,
         "regime_repeated_low_energy_impacts": 330,
@@ -309,7 +313,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rockfall v0.3.0 Verification and Validation Report</title>
+  <title>Rockfall v0.4.0 Verification and Validation Report</title>
   <style>
     :root {{
       --bg: #f8fafc;
@@ -380,7 +384,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
 </head>
 <body>
 <main>
-  <h1>Rockfall v0.3.0 Verification and Validation Report</h1>
+  <h1>Rockfall v0.4.0 Verification and Validation Report</h1>
   <p class="lede">Local diagnostic report assembled from checked-in YAML case definitions, JSON result reports, trajectory CSVs, and PNG plots. This is a browsing aid; numerical verification and validation commands remain authoritative.</p>
   <p class="meta">Generated: {escape(generated_at)}. Model version(s): {escape(model_versions)}. Cases: {len(reports)}. Status summary: {summary or "none"}. Plot root: <a href="{plot_root_link}">{escape(plot_root_label)}</a>.</p>
 
@@ -395,11 +399,11 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
       </ul>
     </section>
     <section class="intro-card">
-      <h2>Known Limitations Of v0.3.0</h2>
+      <h2>Known Limitations Of v0.4.0</h2>
       <ul>
         <li>Spherical blocks only; no polyhedral shape, fragmentation, or shape-dependent terrain contact.</li>
         <li>Simplified restitution/friction contact; opt-in contact roughness is not a calibrated spatial roughness field.</li>
-        <li>No scarring, forest interaction, fragmentation, or nonsmooth multi-contact solver.</li>
+        <li>Opt-in scarring_contact_v1 is a minimal impact-local energy-loss diagnostic; no calibrated scarring, drag torque, terrain categories, forest interaction, fragmentation, or nonsmooth multi-contact solver is implemented.</li>
         <li>DEM support is limited to small fixtures; no production GIS or calibrated terrain-class workflow is implemented.</li>
         <li>The opt-in rotational sphere model is experimental and its rolling resistance parameter is not field-calibrated.</li>
       </ul>
@@ -442,6 +446,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     links = render_links(report, report_dir)
     terrain = render_terrain_note(report)
     roughness = render_roughness_note(report)
+    scarring = render_scarring_note(report)
     validation_scope = render_validation_scope_note(report)
     scope = render_case_scope(report)
     metrics_table = render_metrics_table(report)
@@ -463,6 +468,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
   <p>{escape(description)}</p>
   {terrain}
   {roughness}
+  {scarring}
   {validation_scope}
   {scope}
   {links}
@@ -517,6 +523,27 @@ def render_roughness_note(report: CaseReport) -> str:
         "stochastic_contact_v1 perturbs impact contact normals and dissipative contact parameters "
         f"with std normal={escape(format_value(normal))}, tangent={escape(format_value(tangent))}, "
         f"angle={escape(format_value(angle))} rad. This is an opt-in verification model, not a calibrated terrain law.</p>"
+    )
+
+
+def render_scarring_note(report: CaseReport) -> str:
+    parameters = report.data.get("parameters", {})
+    if not isinstance(parameters, dict):
+        return ""
+    if parameters.get("soil_interaction_model", "none") != "scarring_contact_v1":
+        return ""
+    strength = parameters.get("soil_strength_pa", 0.0)
+    drag = parameters.get("scarring_drag_coefficient", 0.0)
+    density = parameters.get("scarring_layer_density_kgpm3", 0.0)
+    max_depth = parameters.get("scarring_max_depth_m")
+    max_depth_text = "inferred" if max_depth is None else f"{format_value(max_depth)} m"
+    return (
+        "<p class=\"notice\"><strong>Scarring model enabled:</strong> "
+        "scarring_contact_v1 applies an opt-in, impact-local compactable-soil energy-loss diagnostic "
+        "for spherical blocks. It is not calibrated and does not add drag torque, terrain categories, "
+        "or slip-dependent friction. "
+        f"soil_strength={escape(format_value(strength))} Pa, Cd={escape(format_value(drag))}, "
+        f"layer_density={escape(format_value(density))} kg/m3, max_depth={escape(max_depth_text)}.</p>"
     )
 
 

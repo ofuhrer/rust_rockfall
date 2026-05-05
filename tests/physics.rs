@@ -1,8 +1,9 @@
 use approx::{assert_abs_diff_eq, assert_relative_eq};
 use rust_rockfall::{
     dynamics::{
-        acceleration_from_gravity, apply_contact_friction, resolve_rotational_sphere_contact,
-        resolve_sphere_contact,
+        acceleration_from_gravity, apply_contact_friction, estimate_scarring_depth_m,
+        resolve_rotational_sphere_contact, resolve_sphere_contact, ScarringSettings,
+        SoilInteractionModel,
     },
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
@@ -32,6 +33,7 @@ fn free_flight_energy_is_conserved_without_contact() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::TranslationalV0,
+            scarring: ScarringSettings::default(),
             roughness: ContactRoughness::default(),
             roughness_seed: None,
         },
@@ -115,6 +117,7 @@ fn coulomb_friction_stops_sliding_on_horizontal_plane() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.05,
             contact_model: ContactModel::TranslationalV0,
+            scarring: ScarringSettings::default(),
             roughness: ContactRoughness::default(),
             roughness_seed: None,
         },
@@ -173,6 +176,11 @@ fn simple_inclined_plane_runout_is_finite_and_downslope() {
         friction_coefficient: 0.6,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
         roughness_model: RoughnessModel::None,
         roughness_std_normal: 0.0,
         roughness_std_tangent: 0.0,
@@ -255,6 +263,72 @@ fn stochastic_contact_roughness_does_not_create_energy_spikes() {
 }
 
 #[test]
+fn zero_effect_scarring_matches_no_soil_interaction_exactly() {
+    let baseline = scarring_test_config(SoilInteractionModel::None, 0.0, 0.0, 0.0, None);
+    let scarring_zero =
+        scarring_test_config(SoilInteractionModel::ScarringContactV1, 0.0, 0.0, 0.0, None);
+
+    assert_eq!(
+        baseline.run().unwrap().samples,
+        scarring_zero.run().unwrap().samples
+    );
+}
+
+#[test]
+fn scarring_depth_increases_with_normal_impact_speed() {
+    let slow = estimate_scarring_depth_m(50.0, 0.5, 2.0, 100_000.0, None);
+    let fast = estimate_scarring_depth_m(50.0, 0.5, 6.0, 100_000.0, None);
+
+    assert!(fast > slow);
+}
+
+#[test]
+fn scarring_depth_increases_as_soil_strength_decreases() {
+    let strong = estimate_scarring_depth_m(50.0, 0.5, 4.0, 200_000.0, None);
+    let weak = estimate_scarring_depth_m(50.0, 0.5, 4.0, 50_000.0, None);
+
+    assert!(weak > strong);
+}
+
+#[test]
+fn scarring_energy_loss_is_nonnegative_and_dissipative() {
+    let config = scarring_test_config(
+        SoilInteractionModel::ScarringContactV1,
+        100_000.0,
+        1.0,
+        1600.0,
+        Some(0.05),
+    );
+    let result = config.run().unwrap();
+    let total_scarring_loss: f64 = result
+        .samples
+        .iter()
+        .map(|sample| sample.scarring_energy_loss_j)
+        .sum();
+    let max_energy_increase = result
+        .samples
+        .windows(2)
+        .map(|pair| (pair[1].total_energy_j - pair[0].total_energy_j).max(0.0))
+        .fold(0.0_f64, f64::max);
+
+    assert!(total_scarring_loss > 0.0);
+    assert_abs_diff_eq!(max_energy_increase, 0.0, epsilon = 1.0e-6);
+}
+
+#[test]
+fn scarring_diagnostics_are_deterministic() {
+    let config = scarring_test_config(
+        SoilInteractionModel::ScarringContactV1,
+        100_000.0,
+        1.0,
+        1600.0,
+        Some(0.04),
+    );
+
+    assert_eq!(config.run().unwrap().samples, config.run().unwrap().samples);
+}
+
+#[test]
 fn vertical_rotational_impact_leaves_spin_unchanged() {
     let block = SphereBlock::new(0.5, 10.0);
     let terrain = Plane::horizontal(0.0);
@@ -292,6 +366,11 @@ fn roughness_test_config(
         friction_coefficient: 0.4,
         rolling_resistance_coefficient: 0.0,
         contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
         roughness_model,
         roughness_std_normal,
         roughness_std_tangent,
@@ -300,6 +379,27 @@ fn roughness_test_config(
         random_seed,
         release_perturbation: ReleasePerturbation::default(),
     }
+}
+
+fn scarring_test_config(
+    soil_interaction_model: SoilInteractionModel,
+    soil_strength_pa: f64,
+    scarring_drag_coefficient: f64,
+    scarring_layer_density_kgpm3: f64,
+    scarring_max_depth_m: Option<f64>,
+) -> SimulationConfig {
+    let mut config = roughness_test_config(RoughnessModel::None, 0.0, 0.0, 0.0, Some(123));
+    config.initial_position_m = [0.0, 0.0, 3.0];
+    config.initial_velocity_mps = [1.0, 0.0, -1.0];
+    config.max_time_s = 2.0;
+    config.normal_restitution = 0.35;
+    config.tangential_restitution = 0.85;
+    config.soil_interaction_model = soil_interaction_model;
+    config.soil_strength_pa = soil_strength_pa;
+    config.scarring_drag_coefficient = scarring_drag_coefficient;
+    config.scarring_layer_density_kgpm3 = scarring_layer_density_kgpm3;
+    config.scarring_max_depth_m = scarring_max_depth_m;
+    config
 }
 
 #[test]
@@ -376,6 +476,7 @@ fn rolling_sphere_incline_acceleration_matches_solid_sphere_solution() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::SphereRotationalV1,
+            scarring: ScarringSettings::default(),
             roughness: ContactRoughness::default(),
             roughness_seed: None,
         },
@@ -408,6 +509,7 @@ fn rolling_resistance_stops_horizontal_motion() {
             rolling_resistance_coefficient: 0.2,
             stop_speed_mps: 0.02,
             contact_model: ContactModel::SphereRotationalV1,
+            scarring: ScarringSettings::default(),
             roughness: ContactRoughness::default(),
             roughness_seed: None,
         },
@@ -445,6 +547,7 @@ fn insufficient_static_friction_slides_instead_of_rolling() {
             rolling_resistance_coefficient: 0.0,
             stop_speed_mps: 0.0,
             contact_model: ContactModel::SphereRotationalV1,
+            scarring: ScarringSettings::default(),
             roughness: ContactRoughness::default(),
             roughness_seed: None,
         },

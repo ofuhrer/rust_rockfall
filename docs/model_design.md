@@ -2,7 +2,7 @@
 
 ## Scope
 
-The `v0.3.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.4.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
 
 Supported now:
 
@@ -14,6 +14,7 @@ Supported now:
 - opt-in rotational sphere contact with rolling diagnostics
 - deterministic stochastic release perturbations
 - opt-in stochastic impact roughness
+- opt-in compactable-soil scarring energy-loss diagnostics
 - energy-budget trajectory diagnostics
 
 ## Terrain Representation
@@ -36,7 +37,7 @@ Deliberately left out:
 - proprietary implementation details
 - convex polyhedral contact
 - nonsmooth complementarity solver
-- compactable-soil scarring
+- calibrated scarring with drag torque, terrain categories, or slip-dependent friction
 - calibrated terrain roughness fields
 - forest, barriers, fragmentation, GIS production workflows, MPI/GPU/distributed execution
 
@@ -109,6 +110,45 @@ During sliding, the model constrains normal velocity to zero, applies gravity ta
 
 The stop criterion terminates motion when tangential speed is below the configured threshold and gravity tangent cannot overcome friction.
 
+## Soil Interaction And Scarring
+
+The default soil interaction model is `none`. The opt-in `scarring_contact_v1` model adds a deliberately small compactable-soil energy-loss layer at incoming impacts only. It is not a replacement for `contact_model`, and it does not attempt to reproduce RAMMS::ROCKFALL or Lu et al. 2019 in full.
+
+For an incoming impact, the model estimates normal impact speed:
+
+```text
+v_n^- = max(0, -v^- . n)
+```
+
+If `scarring_max_depth_m` is supplied, that nonnegative value is used as the scar depth and capped at one sphere radius. Otherwise the first implementation uses a Lu/RAMMS-style empirical scaling with mass, normal impact speed, and soil strength:
+
+```text
+d = 0.16 m^(1/4) ME^(-0.4) |v_n^-|^(0.8)
+```
+
+where `ME` is interpreted from `soil_strength_pa` after conversion to kPa. The cap at one radius is a v0.4.0 stability assumption for the simple sphere-cap area model, not a calibrated field law.
+
+The projected sphere-cap scar area is:
+
+```text
+A = pi (2 R d - d^2)
+```
+
+The model estimates a local drag force and bounded work:
+
+```text
+F_d = 0.5 C_d rho A |v^-|^2
+E_loss = min(F_d d, post_contact_translational_kinetic_energy)
+```
+
+The post-contact translational velocity magnitude is reduced to remove `E_loss` without changing direction. Angular velocity is not changed by scarring in this minimal model. The new diagnostics are:
+
+- `scarring_depth_m`
+- `scarring_drag_force_n`
+- `scarring_energy_loss_j`
+
+With `soil_interaction_model: none`, or with zero depth-producing/drag parameters, the scarring layer is required to be inert. Deferred features include calibrated soil classes, drag torque, slip-dependent scarring friction, terrain deformation, and non-spherical contact.
+
 ## Public API
 
 Primary entry point:
@@ -136,6 +176,7 @@ Important data types:
 - `BodyState`
 - `TrajectorySample`
 - `ContactModel`
+- `SoilInteractionModel`
 - `TrajectoryRequest`
 - `TrajectoryRun`
 - `TrajectorySummary`
@@ -149,7 +190,7 @@ rockfall run --config examples/inclined_plane.json --output trajectory.csv
 
 ## HPC-Readiness Boundaries
 
-The v0.3.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+The v0.4.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.

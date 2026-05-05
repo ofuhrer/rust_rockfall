@@ -1,5 +1,5 @@
 use crate::{
-    dynamics::ContactModel,
+    dynamics::{ContactModel, ScarringSettings, SoilInteractionModel},
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
     state::{BodyState, TrajectorySample},
@@ -38,6 +38,16 @@ pub struct SimulationConfig {
     pub rolling_resistance_coefficient: f64,
     #[serde(default)]
     pub contact_model: ContactModel,
+    #[serde(default)]
+    pub soil_interaction_model: SoilInteractionModel,
+    #[serde(default)]
+    pub soil_strength_pa: f64,
+    #[serde(default)]
+    pub scarring_drag_coefficient: f64,
+    #[serde(default)]
+    pub scarring_layer_density_kgpm3: f64,
+    #[serde(default)]
+    pub scarring_max_depth_m: Option<f64>,
     #[serde(default)]
     pub roughness_model: RoughnessModel,
     #[serde(default)]
@@ -225,6 +235,13 @@ impl SimulationConfig {
             rolling_resistance_coefficient: self.rolling_resistance_coefficient,
             stop_speed_mps: self.stop_speed_mps,
             contact_model: self.contact_model,
+            scarring: ScarringSettings {
+                soil_interaction_model: self.soil_interaction_model,
+                soil_strength_pa: self.soil_strength_pa,
+                scarring_drag_coefficient: self.scarring_drag_coefficient,
+                scarring_layer_density_kgpm3: self.scarring_layer_density_kgpm3,
+                scarring_max_depth_m: self.scarring_max_depth_m,
+            },
             roughness: ContactRoughness {
                 roughness_model: self.roughness_model,
                 roughness_std_normal: self.roughness_std_normal,
@@ -274,6 +291,15 @@ impl SimulationConfig {
             roughness_std_normal: self.roughness_std_normal,
             roughness_std_tangent: self.roughness_std_tangent,
             roughness_std_angle: self.roughness_std_angle,
+        }
+        .validate()
+        .map_err(SimulationError::NonPositive)?;
+        ScarringSettings {
+            soil_interaction_model: self.soil_interaction_model,
+            soil_strength_pa: self.soil_strength_pa,
+            scarring_drag_coefficient: self.scarring_drag_coefficient,
+            scarring_layer_density_kgpm3: self.scarring_layer_density_kgpm3,
+            scarring_max_depth_m: self.scarring_max_depth_m,
         }
         .validate()
         .map_err(SimulationError::NonPositive)?;

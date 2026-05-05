@@ -1,6 +1,6 @@
 # Validation Data and Case Schema
 
-This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs including opt-in `ascii_dem_clamped` terrain patches, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, opt-in stochastic contact roughness, seeded release perturbations, and CSV trajectory output.
+This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs including opt-in `ascii_dem_clamped` terrain patches, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, opt-in stochastic contact roughness, opt-in compactable-soil scarring diagnostics, seeded release perturbations, and CSV trajectory output.
 
 ## Case YAML
 
@@ -17,6 +17,11 @@ Required case fields:
 - optional `parameters.roughness_std_normal`: dimensionless dissipative normal-restitution perturbation scale, default `0.0`
 - optional `parameters.roughness_std_tangent`: dimensionless dissipative tangential-restitution/friction perturbation scale, default `0.0`
 - optional `parameters.roughness_std_angle`: contact-normal angular perturbation scale in radians, default `0.0`
+- optional `parameters.soil_interaction_model`: `none` by default, or `scarring_contact_v1`
+- optional `parameters.soil_strength_pa`: nonnegative soil-strength proxy in Pa for inferred scarring depth, default `0.0`
+- optional `parameters.scarring_drag_coefficient`: nonnegative dimensionless drag coefficient, default `0.0`
+- optional `parameters.scarring_layer_density_kgpm3`: nonnegative compacted-layer density in kg/m3, default `0.0`
+- optional `parameters.scarring_max_depth_m`: nonnegative explicit scar-depth cap/input in m, default omitted
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
 - optional `validation_scope.type` and `validation_scope.note` for real-world cases
@@ -79,6 +84,12 @@ The CLI can report:
 - `final_rolling_residual_mps`
 - `final_contact_tangent_speed_mps`
 - `final_angular_speed_radps`
+- `max_scarring_depth_m`
+- `max_scarring_drag_force_n`
+- `total_scarring_energy_loss_j`
+- `scarring_zero_baseline_max_position_delta_m`
+
+Trajectory CSV diagnostics include `scarring_depth_m`, `scarring_drag_force_n`, and `scarring_energy_loss_j`. They are zero unless `soil_interaction_model: scarring_contact_v1` is active and an incoming impact produces a nonzero scar-depth diagnostic.
 
 `expected.tolerances` compare error-style metrics against maximum allowed values. `expected.minimums` and `expected.maximums` bound direct metrics such as runout, max speed, or ensemble spread.
 

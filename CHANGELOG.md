@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.0
+
+- Added opt-in `scarring_contact_v1` soil interaction model for minimal compactable-soil impact energy-loss diagnostics.
+- Added scarring configuration fields, trajectory diagnostics, verification metrics, and synthetic scarring verification cases.
+- Kept default behavior unchanged with `soil_interaction_model: none`.
+- Updated schema, documentation, report generation, and consistency checks for versioned scarring fields.
+
 ## v0.3.0
 
 - Added opt-in `stochastic_contact_v1` impact roughness.

@@ -1,0 +1,34 @@
+case_id: synthetic_scarring_zero_baseline
+title: Zero scarring contact matches no soil interaction
+level: 1
+description: Verifies that opt-in scarring_contact_v1 with zero depth-producing and drag parameters is exactly inert relative to soil_interaction_model none.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: -0.15, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 4.0]
+  velocity: [3.0, 0.2, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+  soil_interaction_model: scarring_contact_v1
+  soil_strength_pa: 0.0
+  scarring_drag_coefficient: 0.0
+  scarring_layer_density_kgpm3: 0.0
+simulation: { dt: 0.01, t_max: 5.0, stop_velocity: 0.05 }
+random: { seed: 42, ensemble_size: 1 }
+expected:
+  metrics: [scarring_zero_baseline_max_position_delta_m, max_scarring_depth_m, total_scarring_energy_loss_j, runout_m]
+  tolerances:
+    scarring_zero_baseline_max_position_delta_m: 0.0
+    max_scarring_depth_m: 0.0
+    total_scarring_energy_loss_j: 0.0
+outputs:
+  diagnostics_json: verification/results/synthetic_scarring_zero_baseline.json
+  trajectory_csv: verification/results/synthetic_scarring_zero_baseline.csv
+references:
+  notes:
+    - "This is a backward-compatibility guard: enabling scarring_contact_v1 with inert parameters must not alter the trajectory."

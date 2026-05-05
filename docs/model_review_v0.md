@@ -12,6 +12,8 @@ The recommended next high-impact improvement is:
 
 This is a better next step than roughness or polyhedral shape because it fixes a core mechanics gap in the current sphere model while remaining compatible with the existing architecture and verification suite.
 
+Repository status note: this historical v0 review predates later opt-in models. Current supported contact models are `translational_v0` and `sphere_rotational_v1`. Current soil interaction models are `none` and `scarring_contact_v1`; scarring is documented in `docs/model_design.md` and was selected by the later v0.3.0 gap analysis.
+
 ## Current Model Formulation
 
 ### Block Representation

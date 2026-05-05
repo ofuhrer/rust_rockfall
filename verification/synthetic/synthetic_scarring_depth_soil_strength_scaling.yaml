@@ -1,0 +1,34 @@
+case_id: synthetic_scarring_depth_soil_strength_scaling
+title: Weak soil produces larger scarring depth
+level: 1
+description: Verifies that weak-soil parameters produce a substantial inferred scar depth under the same simple impact setup used by the velocity-scaling case.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 50.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 2.0]
+  velocity: [0.0, 0.0, -0.5]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 1.0
+  friction_coefficient: 0.0
+  soil_interaction_model: scarring_contact_v1
+  soil_strength_pa: 50000.0
+  scarring_drag_coefficient: 0.0
+  scarring_layer_density_kgpm3: 0.0
+simulation: { dt: 0.01, t_max: 1.0, stop_velocity: 0.0 }
+random: { seed: 93, ensemble_size: 1 }
+expected:
+  metrics: [max_scarring_depth_m, total_scarring_energy_loss_j]
+  minimums:
+    max_scarring_depth_m: 0.1
+  tolerances:
+    total_scarring_energy_loss_j: 0.0
+outputs:
+  diagnostics_json: verification/results/synthetic_scarring_depth_soil_strength_scaling.json
+  trajectory_csv: verification/results/synthetic_scarring_depth_soil_strength_scaling.csv
+references:
+  notes:
+    - "The exact weak-vs-strong comparison is covered by unit tests; this YAML case keeps the end-to-end diagnostic active."

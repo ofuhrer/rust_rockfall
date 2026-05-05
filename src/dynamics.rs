@@ -1,5 +1,6 @@
 use crate::{geometry::SphereBlock, state::BodyState, terrain::Terrain, Vec3};
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
 
 const ROLLING_RESIDUAL_TOLERANCE_MPS: f64 = 1.0e-6;
 
@@ -18,6 +19,65 @@ pub enum ContactModel {
     #[default]
     TranslationalV0,
     SphereRotationalV1,
+}
+
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SoilInteractionModel {
+    #[default]
+    None,
+    ScarringContactV1,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ScarringSettings {
+    #[serde(default)]
+    pub soil_interaction_model: SoilInteractionModel,
+    #[serde(default)]
+    pub soil_strength_pa: f64,
+    #[serde(default)]
+    pub scarring_drag_coefficient: f64,
+    #[serde(default)]
+    pub scarring_layer_density_kgpm3: f64,
+    #[serde(default)]
+    pub scarring_max_depth_m: Option<f64>,
+}
+
+impl Default for ScarringSettings {
+    fn default() -> Self {
+        Self {
+            soil_interaction_model: SoilInteractionModel::None,
+            soil_strength_pa: 0.0,
+            scarring_drag_coefficient: 0.0,
+            scarring_layer_density_kgpm3: 0.0,
+            scarring_max_depth_m: None,
+        }
+    }
+}
+
+impl ScarringSettings {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.soil_strength_pa < 0.0 {
+            return Err("soil_strength_pa");
+        }
+        if self.scarring_drag_coefficient < 0.0 {
+            return Err("scarring_drag_coefficient");
+        }
+        if self.scarring_layer_density_kgpm3 < 0.0 {
+            return Err("scarring_layer_density_kgpm3");
+        }
+        if self.scarring_max_depth_m.is_some_and(|depth| depth < 0.0) {
+            return Err("scarring_max_depth_m");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ScarringDiagnostics {
+    pub scarring_depth_m: f64,
+    pub scarring_drag_force_n: f64,
+    pub scarring_energy_loss_j: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -344,6 +404,90 @@ pub fn contact_point_tangent_velocity(state: &BodyState, normal: Vec3, radius_m:
 
 pub fn rolling_residual(state: &BodyState, normal: Vec3, radius_m: f64) -> f64 {
     contact_point_tangent_velocity(state, normal, radius_m).norm()
+}
+
+pub fn apply_scarring_energy_loss(
+    state: &mut BodyState,
+    block: SphereBlock,
+    incoming_velocity_mps: Vec3,
+    contact_normal: Vec3,
+    settings: ScarringSettings,
+) -> ScarringDiagnostics {
+    if settings.soil_interaction_model != SoilInteractionModel::ScarringContactV1 {
+        return ScarringDiagnostics::default();
+    }
+
+    let normal = unit_or(contact_normal, Vec3::new(0.0, 0.0, 1.0));
+    let normal_impact_speed_mps = (-incoming_velocity_mps.dot(&normal)).max(0.0);
+    if normal_impact_speed_mps <= 0.0 {
+        return ScarringDiagnostics::default();
+    }
+
+    let depth_m = estimate_scarring_depth_m(
+        block.mass_kg,
+        block.radius_m,
+        normal_impact_speed_mps,
+        settings.soil_strength_pa,
+        settings.scarring_max_depth_m,
+    );
+    if depth_m <= 0.0 {
+        return ScarringDiagnostics::default();
+    }
+
+    let scar_area_m2 = sphere_cap_projection_area_m2(block.radius_m, depth_m);
+    let impact_speed_mps = incoming_velocity_mps.norm();
+    let drag_force_n = 0.5
+        * settings.scarring_drag_coefficient.max(0.0)
+        * settings.scarring_layer_density_kgpm3.max(0.0)
+        * scar_area_m2
+        * impact_speed_mps
+        * impact_speed_mps;
+    let available_kinetic_j = 0.5 * block.mass_kg * state.velocity_mps.norm_squared();
+    let energy_loss_j = (drag_force_n * depth_m).clamp(0.0, available_kinetic_j);
+
+    if energy_loss_j > 0.0 && available_kinetic_j > 0.0 {
+        let retained_fraction = ((available_kinetic_j - energy_loss_j) / available_kinetic_j)
+            .max(0.0)
+            .sqrt();
+        state.velocity_mps *= retained_fraction;
+    }
+
+    ScarringDiagnostics {
+        scarring_depth_m: depth_m,
+        scarring_drag_force_n: drag_force_n,
+        scarring_energy_loss_j: energy_loss_j,
+    }
+}
+
+pub fn estimate_scarring_depth_m(
+    mass_kg: f64,
+    radius_m: f64,
+    normal_impact_speed_mps: f64,
+    soil_strength_pa: f64,
+    max_depth_m: Option<f64>,
+) -> f64 {
+    let cap_m = radius_m.max(0.0);
+    if cap_m <= 0.0 {
+        return 0.0;
+    }
+    if let Some(depth_m) = max_depth_m {
+        return depth_m.clamp(0.0, cap_m);
+    }
+    if mass_kg <= 0.0 || normal_impact_speed_mps <= 0.0 || soil_strength_pa <= 0.0 {
+        return 0.0;
+    }
+    let soil_strength_kpa = soil_strength_pa / 1000.0;
+    let depth_m = 0.16
+        * mass_kg.powf(0.25)
+        * soil_strength_kpa.powf(-0.4)
+        * normal_impact_speed_mps.powf(0.8);
+    depth_m.clamp(0.0, cap_m)
+}
+
+pub fn sphere_cap_projection_area_m2(radius_m: f64, depth_m: f64) -> f64 {
+    let radius_m = radius_m.max(0.0);
+    let depth_m = depth_m.clamp(0.0, 2.0 * radius_m);
+    PI * (2.0 * radius_m * depth_m - depth_m * depth_m).max(0.0)
 }
 
 fn contact_point_velocity(state: &BodyState, contact_offset: Vec3) -> Vec3 {

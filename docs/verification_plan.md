@@ -31,6 +31,7 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 - tangential restitution as limited by the current Coulomb impulse approximation
 - Coulomb contact friction and stopping
 - opt-in rotational sphere contact, rolling diagnostics, and rolling resistance
+- opt-in compactable-soil scarring depth, drag-force, and energy-loss diagnostics
 - terrain height/normal use in contact projection
 - deterministic seeded release perturbations
 - order-independent ensemble seed derivation
@@ -41,6 +42,7 @@ Free-flight tests use tight tolerances because the integrator uses exact constan
 - full 3D polyhedral rigid-body contact
 - nonsmooth complementarity solvers
 - calibrated spatial terrain roughness/scarring
+- scarring drag torque, slip-dependent friction, terrain categories, or calibration against soil observations
 - forest/deadwood interaction
 - fragmentation
 - operational hazard prediction
@@ -57,3 +59,14 @@ Verification cases must not be calibrated.
 - bounded energy behavior for dissipative roughened contact.
 
 These tests verify deterministic contact stochasticity only. They do not calibrate roughness against field terrain classes or validate hazard prediction.
+
+## Scarring Verification
+
+`v0.4.0` adds opt-in `scarring_contact_v1` soil interaction diagnostics. Verification covers:
+
+- zero-effect consistency with `soil_interaction_model: none`;
+- positive scarring depth and drag diagnostics in synthetic impact cases;
+- nonnegative, bounded scarring energy loss;
+- expected depth scaling with impact speed and soil strength through unit tests.
+
+These tests verify the minimal compactable-soil bookkeeping and energy removal only. They do not calibrate soil strength, do not represent terrain categories, and do not validate operational field behavior.

@@ -2,7 +2,7 @@
 
 `rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
 
-Current crate/model version: `v0.3.0`.
+Current crate/model version: `v0.4.0`.
 
 The project is literature-based and transparent by design. It does not contain RAMMS::ROCKFALL code, does not decompile or inspect proprietary binaries, and does not claim numerical equivalence with RAMMS::ROCKFALL or any other operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
 
@@ -19,9 +19,10 @@ The first model is intentionally small:
 - opt-in `sphere_rotational_v1` contact with rolling diagnostics
 - deterministic seeded release perturbations
 - opt-in `stochastic_contact_v1` impact roughness for seeded ensemble spread
+- opt-in `scarring_contact_v1` compactable-soil impact energy-loss diagnostics
 - CSV trajectory output from a CLI
 
-Unsupported in v0.3.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, compactable-soil scarring, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+Unsupported in v0.4.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
 
 ## Versioning
 
