@@ -143,3 +143,11 @@ python3 -m pip install matplotlib PyYAML
 ```
 
 Visualization is optional and is not part of CI.
+
+## Hazard-Layer Reports
+
+Map-style hazard-layer reports are generated outside this directory by
+`scripts/build_hazard_layers.py` and are documented in `docs/hazard_layers.md`.
+Those reports rasterize trajectory, deposition, and optional impact-event CSVs
+into diagnostic hazard indicators under `hazard/results/`. They remain separate
+from the case-review report above and do not include risk modelling.

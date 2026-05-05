@@ -95,6 +95,12 @@ Current status: architecture is HPC-ready by design, but MPI, GPU, distributed e
 
 Purpose: convert trajectories into reproducible spatial map products.
 
+Current status: a first lightweight post-processing workflow exists in
+`scripts/build_hazard_layers.py` and is documented in `docs/hazard_layers.md`.
+It writes CSV grids, ESRI ASCII grids, deposition GeoJSON, PNG plots, and a
+local HTML report for small synthetic and validation cases. It is intentionally
+diagnostic and currently limited by the trajectory outputs supplied to it.
+
 Future raster/vector outputs should include:
 
 - reach or runout probability rasters;

@@ -12,6 +12,7 @@ Core documents:
 
 - `model_design.md`: current equations, assumptions, model options, and API boundaries.
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
+- `hazard_layers.md`: first post-processing workflow for diagnostic reach, deposition, energy, jump-height, and impact-density layers.
 - `verification_plan.md`: analytic and synthetic verification strategy.
 - `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.

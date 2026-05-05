@@ -1,0 +1,24 @@
+case_id: hazard_fixture_plane
+title: Hazard layer fixture plane
+level: 4
+description: Small fixture for hazard-layer rasterization tests.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, 0.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 0.8
+  friction_coefficient: 0.3
+simulation: { dt: 0.1, t_max: 1.0, stop_velocity: 0.1 }
+random: { seed: 7, ensemble_size: 2 }
+outputs:
+  trajectory_csv:
+    - tests/fixtures/hazard/trajectory_a.csv
+    - tests/fixtures/hazard/trajectory_b.csv
+  ensemble_deposition_csv: tests/fixtures/hazard/deposition.csv
+  impact_events_csv: tests/fixtures/hazard/impacts.csv

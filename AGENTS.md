@@ -30,6 +30,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - For soil/scarring-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
+- Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
 
 ## Hard Boundaries
@@ -48,6 +49,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - Future hazard outputs should be designed around runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers.
 - Treat release-zone generation, DEM/GIS integration, ensemble orchestration, calibration/validation, and geospatial export as future workflow layers around the core simulator.
 - Keep risk modelling separate from hazard modelling; risk requires exposure and vulnerability inputs that are not part of the current core.
+- Treat hazard-layer generation as post-processing of simulation outputs, not core physics; document whether a layer comes from full trajectory ensembles, representative trajectories, deposition summaries, or impact-event logs.
 
 ## Code Expectations
 

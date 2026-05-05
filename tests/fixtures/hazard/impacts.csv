@@ -1,0 +1,3 @@
+impact_index,time_s,x_m,y_m,z_m,incoming_normal_speed_mps,scarring_energy_loss_j
+0,0.8,2.0,0.0,0.5,0.2,1.0
+1,0.9,3.0,1.0,0.5,0.01,0.1

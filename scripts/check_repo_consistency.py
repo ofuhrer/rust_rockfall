@@ -14,6 +14,7 @@ GENERATED_PREFIXES = (
     "verification/results/",
     "validation/results/",
     "calibration/results/",
+    "hazard/results/",
     "visualization/output/",
     "visualization/reports/standard_v0/",
 )
@@ -21,6 +22,7 @@ ALLOWED_GENERATED = {
     "verification/results/.gitkeep",
     "validation/results/.gitkeep",
     "calibration/results/.gitkeep",
+    "hazard/results/.gitkeep",
 }
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
@@ -112,6 +114,7 @@ def main() -> int:
     errors.extend(check_tschamut_validation_metadata())
     errors.extend(check_calibration_metadata())
     errors.extend(check_scarring_not_in_tschamut_workflows())
+    errors.extend(check_hazard_layer_metadata())
 
     if errors:
         for error in errors:
@@ -257,6 +260,7 @@ def check_documented_paths() -> list[str]:
     docs = [
         ROOT / "README.md",
         ROOT / "visualization/README.md",
+        ROOT / "hazard/README.md",
         ROOT / "AGENTS.md",
     ]
     pattern = re.compile(r"(?:python3|bash)\s+([A-Za-z0-9_./-]+)")
@@ -269,6 +273,39 @@ def check_documented_paths() -> list[str]:
             path = ROOT / token
             if "/" in token and not path.exists():
                 errors.append(f"{doc.relative_to(ROOT)} references missing path {token}")
+    return errors
+
+
+def check_hazard_layer_metadata() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "scripts/build_hazard_layers.py",
+        ROOT / "hazard/README.md",
+        ROOT / "hazard/results/.gitkeep",
+        ROOT / "docs/hazard_layers.md",
+        ROOT / "tests/test_hazard_layers.py",
+        ROOT / "tests/fixtures/hazard/plane_case.yaml",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"missing hazard-layer artifact {path.relative_to(ROOT)}")
+
+    docs = "\n".join(
+        path.read_text()
+        for path in (ROOT / "README.md", ROOT / "docs/hazard_layers.md", ROOT / "hazard/README.md")
+        if path.exists()
+    )
+    for term in (
+        "reach probability",
+        "deposition density",
+        "maximum kinetic energy",
+        "maximum jump height",
+        "significant impact density",
+        "risk",
+        "not operational",
+    ):
+        if term not in docs:
+            errors.append(f"hazard-layer docs omit {term!r}")
     return errors
 
 

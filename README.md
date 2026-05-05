@@ -59,6 +59,7 @@ Core documentation:
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
 - `docs/roadmap_hazard_mapping.md`
+- `docs/hazard_layers.md`
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`
 - `docs/benchmark_catalog.md`
@@ -151,6 +152,20 @@ open visualization/reports/standard_v0/index.html
 ```
 
 The HTML report is a diagnostic review layer. The `standard_v0` directory name is a stable v0-series output path; the report header and JSON diagnostics carry the exact current model version. It includes interpretation notes, known v0 limitations, plot captions, case-specific checked/not-checked scope, and neutral skipped status for optional public-data cases. Synthetic and analytic reports do not imply operational hazard validation.
+
+## Hazard Layers
+
+The first hazard-layer workflow consumes existing CSV/JSON outputs and writes diagnostic research rasters/vectors under `hazard/results/`:
+
+```bash
+cargo run -- validate --case validation/cases/validation_tschamut_baseline.yaml
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/validation_tschamut_baseline.yaml \
+  --output-dir hazard/results/tschamut_baseline \
+  --cell-size 5
+```
+
+Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, and significant impact density when impact events are available. These are hazard indicators only, not risk maps and not operational Swiss hazard products.
 
 ## Local Git Hooks
 

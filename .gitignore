@@ -14,6 +14,8 @@ validation/results/**
 !validation/results/.gitkeep
 calibration/results/**
 !calibration/results/.gitkeep
+hazard/results/**
+!hazard/results/.gitkeep
 visualization/output/**
 visualization/reports/**
 !visualization/reports/.gitkeep

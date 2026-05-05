@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added a lightweight hazard-layer post-processing workflow for reach probability, deposition density, maximum kinetic energy, maximum jump height, significant impact density, CSV/ASCII grid exports, deposition GeoJSON, PNG plots, and local HTML reports.
+- Added hazard-layer documentation and smoke-test fixtures while keeping the simulation physics unchanged.
+
 ## v0.4.0
 
 - Added opt-in `scarring_contact_v1` soil interaction model for minimal compactable-soil impact energy-loss diagnostics.
