@@ -35,6 +35,22 @@ PLOT_KINDS = (
     ("trajectory_xy", "Plan view"),
     ("energy", "Energy"),
 )
+PLOT_CAPTIONS = {
+    "trajectory_xz": (
+        "Vertical x-z section of the simulated trajectory. Start, impact, and final markers "
+        "support visual debugging; when available, the dashed line is the terrain surface offset "
+        "by the block radius, not an observed field profile."
+    ),
+    "trajectory_xy": (
+        "Plan-view x-y trajectory. For many v0 analytic cases the y coordinate is intentionally "
+        "constant, so a straight line can be the expected result rather than a plotting issue."
+    ),
+    "energy": (
+        "Kinetic, potential, and total mechanical energy versus time. Red time markers indicate "
+        "impact transitions. Use this plot to inspect conservation or dissipation trends; the "
+        "numeric tolerances in the JSON report remain authoritative."
+    ),
+}
 
 
 @dataclass
@@ -210,7 +226,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
     rows = "\n".join(render_case_nav(report) for report in reports)
     sections = "\n".join(render_case_section(report, report_dir) for report in reports)
     summary = ", ".join(
-        f"{escape(status)}: {count}" for status, count in sorted(status_counts.items())
+        f"{escape(status_label(status))}: {count}" for status, count in sorted(status_counts.items())
     )
     plot_root_link = rel_link(plot_root, report_dir)
     plot_root_label = path_label(plot_root)
@@ -230,7 +246,7 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
       --line: #d9e1ea;
       --pass: #0f7b4f;
       --fail: #b42318;
-      --skip: #8a5a00;
+      --skip: #38546a;
       --missing: #475569;
     }}
     body {{
@@ -255,18 +271,34 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
     .lede {{ color: var(--muted); max-width: 900px; }}
     .meta {{ color: var(--muted); font-size: 0.92rem; }}
     .card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin: 18px 0; }}
+    .intro-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 18px; }}
+    .intro-card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }}
+    .intro-card ul, .scope ul {{ margin: 8px 0 0 20px; padding: 0; }}
+    .scope {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 12px 0; }}
+    .scope-box {{ border: 1px solid var(--line); border-radius: 8px; background: #fbfdff; padding: 12px; }}
     .case-head {{ display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }}
     .badge {{ display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }}
     .status-passed {{ color: var(--pass); background: #e8f6ef; }}
     .status-failed {{ color: var(--fail); background: #fde8e7; }}
-    .status-skipped {{ color: var(--skip); background: #fff3cf; }}
+    .status-skipped {{ color: var(--skip); background: #eef4f8; }}
     .status-missing, .status-unknown {{ color: var(--missing); background: #e9eef5; }}
+    .case-skipped {{ border-left: 5px solid #9db4c5; }}
+    .case-failed {{ border-left: 5px solid var(--fail); }}
+    .case-passed {{ border-left: 5px solid #8bc9aa; }}
     .plots {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }}
     .plot {{ border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fbfdff; }}
     .plot img {{ display: block; width: 100%; height: auto; border-radius: 5px; border: 1px solid var(--line); }}
+    .caption {{ color: var(--muted); font-size: 0.86rem; margin-top: 7px; }}
+    .notice {{ background: #f3f7fb; border: 1px solid #cfdbe7; border-radius: 8px; color: #38546a; padding: 10px 12px; }}
     .links {{ display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }}
     .links a {{ background: #eef3f8; border-radius: 6px; padding: 5px 8px; }}
     .grid {{ display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.5fr); gap: 18px; }}
+    @media print {{
+      body {{ background: #ffffff; }}
+      main {{ max-width: none; padding: 16px; }}
+      .card, .intro-card, .plot, .scope-box {{ break-inside: avoid; }}
+      a {{ color: inherit; text-decoration: underline; }}
+    }}
     @media (max-width: 760px) {{
       main {{ padding: 22px 14px 40px; }}
       .case-head, .grid {{ display: block; }}
@@ -278,6 +310,27 @@ def render_html(reports: list[CaseReport], report_dir: Path, plot_root: Path) ->
   <h1>Rockfall v0 Verification and Validation Report</h1>
   <p class="lede">Local diagnostic report assembled from checked-in YAML case definitions, JSON result reports, trajectory CSVs, and PNG plots. This is a browsing aid; numerical verification and validation commands remain authoritative.</p>
   <p class="meta">Generated: {escape(generated_at)}. Cases: {len(reports)}. Status summary: {summary or "none"}. Plot root: <a href="{plot_root_link}">{escape(plot_root_label)}</a>.</p>
+
+  <div class="intro-grid">
+    <section class="intro-card">
+      <h2>How To Interpret This Report</h2>
+      <ul>
+        <li><strong>Passed</strong> means the current v0 implementation met the case-specific numerical tolerances in the JSON diagnostics.</li>
+        <li><strong>Skipped optional</strong> means required external validation data are not present locally; this is expected for public datasets that are downloaded separately.</li>
+        <li>Plots are diagnostic aids for spotting unexpected trajectories, energy trends, and contact markers. The metric tables and linked JSON reports are the source of truth.</li>
+        <li>Synthetic and analytic cases verify controlled behavior only. They do not demonstrate operational hazard-assessment skill.</li>
+      </ul>
+    </section>
+    <section class="intro-card">
+      <h2>Known Limitations Of v0</h2>
+      <ul>
+        <li>Spherical blocks only; no polyhedral shape, fragmentation, or shape-dependent terrain contact.</li>
+        <li>Simplified restitution/friction contact; no scarring, roughness field, forest interaction, or nonsmooth multi-contact solver.</li>
+        <li>DEM support is limited to small fixtures; no production GIS or calibrated terrain-class workflow is implemented.</li>
+        <li>The opt-in rotational sphere model is experimental and its rolling resistance parameter is not field-calibrated.</li>
+      </ul>
+    </section>
+  </div>
 
   <h2>Case Index</h2>
   <table>
@@ -313,6 +366,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     references = report.data.get("references", {})
     description = str(report.data.get("description") or "")
     links = render_links(report, report_dir)
+    scope = render_case_scope(report)
     metrics_table = render_metrics_table(report)
     plots = render_plots_html(report, report_dir)
     expected_block = render_expected_block(expected)
@@ -321,7 +375,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     failures = render_messages(report.diagnostics, "failures")
 
     return f"""
-<section class="card" id="{escape_attr(report.case_id)}">
+<section class="card case-{escape_attr(status_class(report.status))}" id="{escape_attr(report.case_id)}">
   <div class="case-head">
     <div>
       <h3>{escape(report.title)}</h3>
@@ -330,6 +384,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     <div>{status_badge(report.status)}</div>
   </div>
   <p>{escape(description)}</p>
+  {scope}
   {links}
   <div class="grid">
     <div>
@@ -408,15 +463,91 @@ def render_plots_html(report: CaseReport, report_dir: Path) -> str:
     for kind, label in PLOT_KINDS:
         path = report.plot_paths[kind]
         if path.exists():
+            caption = PLOT_CAPTIONS.get(kind, "")
             cards.append(
                 "<div class=\"plot\">"
                 f"<h4>{escape(label)}</h4>"
                 f"<a href=\"{rel_link(path, report_dir)}\"><img alt=\"{escape_attr(label)} for {escape_attr(report.case_id)}\" src=\"{rel_link(path, report_dir)}\"></a>"
+                f"<p class=\"caption\">{escape(caption)}</p>"
                 "</div>"
             )
     if not cards:
-        return "<p class=\"meta\">No PNG plots available for this case.</p>"
+        return f"<p class=\"notice\">{escape(no_plot_explanation(report))}</p>"
     return f"<div class=\"plots\">{''.join(cards)}</div>"
+
+
+def render_case_scope(report: CaseReport) -> str:
+    verifies, not_verified = case_scope(report)
+    verifies_items = "".join(f"<li>{escape(item)}</li>" for item in verifies)
+    not_verified_items = "".join(f"<li>{escape(item)}</li>" for item in not_verified)
+    return (
+        "<div class=\"scope\">"
+        f"<div class=\"scope-box\"><h4>What This Checks</h4><ul>{verifies_items}</ul></div>"
+        f"<div class=\"scope-box\"><h4>What This Does Not Check</h4><ul>{not_verified_items}</ul></div>"
+        "</div>"
+    )
+
+
+def case_scope(report: CaseReport) -> tuple[list[str], list[str]]:
+    explicit = report.data.get("report", {})
+    if isinstance(explicit, dict):
+        verifies = list_of_strings(explicit.get("verifies"))
+        not_verified = list_of_strings(explicit.get("does_not_verify"))
+        if verifies and not_verified:
+            return verifies, not_verified
+
+    description = str(report.data.get("description") or "").strip()
+    verifies = [description] if description else [f"Configured {level_label(report.level).lower()} behavior for this case."]
+    references = report.data.get("references", {})
+    if isinstance(references, dict):
+        notes = list_of_strings(references.get("notes"))
+        verifies.extend(notes[:1])
+
+    level_defaults = {
+        "0": [
+            "Field-scale runout, lateral dispersion, terrain roughness, block-shape effects, or operational hazard performance.",
+        ],
+        "1": [
+            "Real terrain validity, calibrated material parameters, vegetation, fragmentation, or operational hazard performance.",
+        ],
+        "2": [
+            "Complete rockfall regime physics beyond the contact states and diagnostics exposed by the current v0 model.",
+        ],
+        "3": [
+            "Probability calibration or real-world exceedance skill; these cases check deterministic stochastic plumbing and summary statistics.",
+        ],
+        "4": [
+            "Operational hazard skill; synthetic benchmarks are controlled regression cases, not field validation.",
+        ],
+        "5": [
+            "Operational hazard validity. v0 real-data cases are scaffolds or limited smoke tests until public observations are downloaded, processed, and independently reviewed.",
+        ],
+    }
+    return verifies, level_defaults.get(report.level, ["Behavior outside the case definition and configured metrics."])
+
+
+def list_of_strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    return []
+
+
+def no_plot_explanation(report: CaseReport) -> str:
+    if report.status == "skipped":
+        return (
+            "No plots are expected for this optional skipped case because required external validation "
+            "data are not present locally. Download and preprocess the public dataset before rendering plots."
+        )
+    if report.level == "3" and not nested_path(report.data, "outputs", "trajectory_csv"):
+        return (
+            "This stochastic case is metric-only for v0: it checks seeded reproducibility or ensemble "
+            "summary statistics without writing a per-trajectory CSV, so there is no trajectory plot to render."
+        )
+    if report.trajectory_path and not report.trajectory_path.exists():
+        return "No plots are available because the trajectory CSV has not been generated for this case."
+    return "No PNG plots are available for this case; review the linked diagnostics JSON and case YAML."
 
 
 def render_expected_block(expected: Any) -> str:
@@ -500,9 +631,23 @@ def path_label(path: Path) -> str:
 
 
 def status_badge(status: str) -> str:
-    safe = escape(status)
+    safe = escape(status_label(status))
     cls = "status-skipped" if status == "skipped" else f"status-{safe}"
     return f"<span class=\"badge {cls}\">{safe}</span>"
+
+
+def status_label(status: str) -> str:
+    return "skipped optional" if status == "skipped" else status
+
+
+def status_class(status: str) -> str:
+    if status == "skipped":
+        return "skipped"
+    if status == "failed":
+        return "failed"
+    if status == "passed":
+        return "passed"
+    return "unknown"
 
 
 def level_label(level: str) -> str:
