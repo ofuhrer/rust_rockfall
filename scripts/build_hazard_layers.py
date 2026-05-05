@@ -1810,7 +1810,6 @@ def build_hazard_manifest(
 
     terrain = case.get("terrain") or {}
     random = case.get("random") or {}
-    parameters = terrain.get("parameters") or {}
     output_file_count = sum(int(output["file_count"]) for output in outputs)
     output_bytes = sum(int(output["total_bytes"]) for output in outputs)
     inputs = metadata.get("inputs", {})
@@ -1835,13 +1834,7 @@ def build_hazard_manifest(
             "ensemble_size": random.get("ensemble_size", 1),
             "derivation": "hazard post-processing consumes existing simulation outputs; seed derivation is inherited from the source run",
         },
-        "terrain": {
-            "terrain_type": terrain.get("type"),
-            "path": terrain.get("path"),
-            "crs": None,
-            "vertical_datum": None,
-            "resolution_m": parameters.get("cell_size_m") or parameters.get("cellsize"),
-        },
+        "terrain": hazard_terrain_manifest(case, warnings),
         "outputs": outputs,
         "performance": {
             "total_wall_seconds": max(0.0, total_wall_seconds),
@@ -1912,6 +1905,61 @@ def build_hazard_manifest(
             for layer in layers
         ],
     }
+
+
+def hazard_terrain_manifest(case: dict[str, Any], warnings: list[str]) -> dict[str, Any]:
+    terrain = case.get("terrain") or {}
+    parameters = terrain.get("parameters") or {}
+    manifest: dict[str, Any] = {
+        "terrain_type": terrain.get("type"),
+        "path": terrain.get("path"),
+        "metadata_path": terrain.get("metadata_path"),
+        "crs": None,
+        "epsg": None,
+        "vertical_datum": None,
+        "resolution_m": parameters.get("cell_size_m") or parameters.get("cellsize"),
+        "extent": None,
+        "nodata": None,
+        "source_dataset": None,
+        "source_product": None,
+        "source_filename": None,
+        "license": None,
+        "processed_sha256": None,
+    }
+    metadata_path_text = terrain.get("metadata_path")
+    if not metadata_path_text:
+        return manifest
+
+    metadata_path = ROOT / str(metadata_path_text)
+    if not metadata_path.exists():
+        warnings.append(f"terrain metadata file not found for hazard manifest: {metadata_path_text}")
+        return manifest
+
+    try:
+        metadata = load_yaml(metadata_path)
+    except Exception as exc:  # pragma: no cover - defensive provenance path
+        warnings.append(f"terrain metadata could not be read for hazard manifest: {metadata_path_text}: {exc}")
+        return manifest
+
+    crs = metadata.get("coordinate_reference_system") or {}
+    raster = metadata.get("raster") or {}
+    preprocessing = metadata.get("preprocessing") or {}
+    manifest.update(
+        {
+            "crs": crs.get("horizontal_name"),
+            "epsg": crs.get("epsg"),
+            "vertical_datum": crs.get("vertical_datum"),
+            "resolution_m": raster.get("resolution_m") or manifest["resolution_m"],
+            "extent": metadata.get("extent_lv95_m") or preprocessing.get("crop_extent_lv95_m"),
+            "nodata": raster.get("nodata"),
+            "source_dataset": metadata.get("source_dataset"),
+            "source_product": metadata.get("source_product"),
+            "source_filename": metadata.get("source_filename"),
+            "license": metadata.get("license"),
+            "processed_sha256": preprocessing.get("processed_sha256"),
+        }
+    )
+    return manifest
 
 
 def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, Any]:

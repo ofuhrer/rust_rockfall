@@ -196,6 +196,47 @@ class HazardLayerTests(unittest.TestCase):
             self.assertFalse((output_dir / "index.html").exists())
             self.assertEqual(list(output_dir.glob("*.png")), [])
 
+    def test_hazard_manifest_includes_terrain_metadata_sidecar_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case_path = work / "terrain_metadata_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(FIXTURE / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            terrain = manifest["terrain"]
+            self.assertEqual(terrain["metadata_path"], str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"))
+            self.assertEqual(terrain["crs"], "CH1903+ / LV95")
+            self.assertEqual(terrain["epsg"], 2056)
+            self.assertEqual(terrain["vertical_datum"], "LN02")
+            self.assertEqual(terrain["resolution_m"], 2.0)
+            self.assertEqual(terrain["nodata"], -9999.0)
+            self.assertEqual(terrain["source_dataset"], "swisstopo_swissalti3d")
+            self.assertEqual(terrain["source_product"], "swissALTI3D")
+            self.assertEqual(terrain["extent"]["xmin"], 2600000.0)
+            self.assertEqual(manifest["warnings"], [])
+
     def test_plotted_mode_preserves_report_outputs_without_changing_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             no_plot_dir = Path(tmp) / "no_plots"

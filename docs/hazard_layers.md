@@ -274,6 +274,13 @@ Any hazard layer derived from swisstopo terrain should record:
 - whether each layer was derived from full ensemble trajectories,
   representative trajectories, deposition summaries, or impact-event logs.
 
+When a case includes `terrain.metadata_path`, the hazard-layer
+`run_manifest_v1` sidecar copies the same terrain CRS, vertical datum, extent,
+resolution, nodata, source, license, and checksum fields used by validation
+manifests. If hazard layers are built from ad hoc CLI inputs without a case
+metadata sidecar, the raster files remain numerically valid but CRS/provenance
+must be inherited from external workflow documentation.
+
 For exchange outside this repository, the target raster format should become
 GeoTIFF or Cloud-Optimized GeoTIFF so CRS, nodata, compression, and tiling are
 standardized. GeoJSON remains useful for small vector overlays, while GeoPackage
