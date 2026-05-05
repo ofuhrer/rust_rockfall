@@ -2551,57 +2551,59 @@ fn write_ensemble_impact_events_parquet(
         fs::create_dir_all(parent)?;
     }
 
-    let mut trajectory_id = Vec::new();
-    let mut impact_index = Vec::new();
-    let mut seed = Vec::new();
-    let mut significant_impact = Vec::new();
-    let mut scarring_depth_source = Vec::new();
+    let row_count: usize = runs.iter().map(|run| run.impact_events.len()).sum();
 
-    let mut time_s = Vec::new();
-    let mut x_m = Vec::new();
-    let mut y_m = Vec::new();
-    let mut z_m = Vec::new();
-    let mut terrain_normal_x = Vec::new();
-    let mut terrain_normal_y = Vec::new();
-    let mut terrain_normal_z = Vec::new();
-    let mut effective_normal_x = Vec::new();
-    let mut effective_normal_y = Vec::new();
-    let mut effective_normal_z = Vec::new();
-    let mut incoming_vx_mps = Vec::new();
-    let mut incoming_vy_mps = Vec::new();
-    let mut incoming_vz_mps = Vec::new();
-    let mut post_contact_vx_mps = Vec::new();
-    let mut post_contact_vy_mps = Vec::new();
-    let mut post_contact_vz_mps = Vec::new();
-    let mut post_scarring_vx_mps = Vec::new();
-    let mut post_scarring_vy_mps = Vec::new();
-    let mut post_scarring_vz_mps = Vec::new();
-    let mut post_step_vx_mps = Vec::new();
-    let mut post_step_vy_mps = Vec::new();
-    let mut post_step_vz_mps = Vec::new();
-    let mut impact_angle_deg = Vec::new();
-    let mut incoming_normal_speed_mps = Vec::new();
-    let mut incoming_tangent_speed_mps = Vec::new();
-    let mut post_contact_normal_speed_mps = Vec::new();
-    let mut post_contact_tangent_speed_mps = Vec::new();
-    let mut post_scarring_normal_speed_mps = Vec::new();
-    let mut post_scarring_tangent_speed_mps = Vec::new();
-    let mut post_step_normal_speed_mps = Vec::new();
-    let mut post_step_tangent_speed_mps = Vec::new();
-    let mut pre_contact_translational_j = Vec::new();
-    let mut pre_contact_rotational_j = Vec::new();
-    let mut post_contact_translational_j = Vec::new();
-    let mut post_contact_rotational_j = Vec::new();
-    let mut post_scarring_translational_j = Vec::new();
-    let mut post_scarring_rotational_j = Vec::new();
-    let mut post_step_translational_j = Vec::new();
-    let mut post_step_rotational_j = Vec::new();
-    let mut scarring_depth_m = Vec::new();
-    let mut scarring_area_m2 = Vec::new();
-    let mut scarring_drag_force_n = Vec::new();
-    let mut scarring_uncapped_energy_loss_j = Vec::new();
-    let mut scarring_capped_energy_loss_j = Vec::new();
-    let mut cumulative_scarring_energy_loss_j = Vec::new();
+    let mut trajectory_id = Vec::with_capacity(row_count);
+    let mut impact_index = Vec::with_capacity(row_count);
+    let mut seed = Vec::with_capacity(row_count);
+    let mut significant_impact = Vec::with_capacity(row_count);
+    let mut scarring_depth_source = Vec::with_capacity(row_count);
+
+    let mut time_s = Vec::with_capacity(row_count);
+    let mut x_m = Vec::with_capacity(row_count);
+    let mut y_m = Vec::with_capacity(row_count);
+    let mut z_m = Vec::with_capacity(row_count);
+    let mut terrain_normal_x = Vec::with_capacity(row_count);
+    let mut terrain_normal_y = Vec::with_capacity(row_count);
+    let mut terrain_normal_z = Vec::with_capacity(row_count);
+    let mut effective_normal_x = Vec::with_capacity(row_count);
+    let mut effective_normal_y = Vec::with_capacity(row_count);
+    let mut effective_normal_z = Vec::with_capacity(row_count);
+    let mut incoming_vx_mps = Vec::with_capacity(row_count);
+    let mut incoming_vy_mps = Vec::with_capacity(row_count);
+    let mut incoming_vz_mps = Vec::with_capacity(row_count);
+    let mut post_contact_vx_mps = Vec::with_capacity(row_count);
+    let mut post_contact_vy_mps = Vec::with_capacity(row_count);
+    let mut post_contact_vz_mps = Vec::with_capacity(row_count);
+    let mut post_scarring_vx_mps = Vec::with_capacity(row_count);
+    let mut post_scarring_vy_mps = Vec::with_capacity(row_count);
+    let mut post_scarring_vz_mps = Vec::with_capacity(row_count);
+    let mut post_step_vx_mps = Vec::with_capacity(row_count);
+    let mut post_step_vy_mps = Vec::with_capacity(row_count);
+    let mut post_step_vz_mps = Vec::with_capacity(row_count);
+    let mut impact_angle_deg = Vec::with_capacity(row_count);
+    let mut incoming_normal_speed_mps = Vec::with_capacity(row_count);
+    let mut incoming_tangent_speed_mps = Vec::with_capacity(row_count);
+    let mut post_contact_normal_speed_mps = Vec::with_capacity(row_count);
+    let mut post_contact_tangent_speed_mps = Vec::with_capacity(row_count);
+    let mut post_scarring_normal_speed_mps = Vec::with_capacity(row_count);
+    let mut post_scarring_tangent_speed_mps = Vec::with_capacity(row_count);
+    let mut post_step_normal_speed_mps = Vec::with_capacity(row_count);
+    let mut post_step_tangent_speed_mps = Vec::with_capacity(row_count);
+    let mut pre_contact_translational_j = Vec::with_capacity(row_count);
+    let mut pre_contact_rotational_j = Vec::with_capacity(row_count);
+    let mut post_contact_translational_j = Vec::with_capacity(row_count);
+    let mut post_contact_rotational_j = Vec::with_capacity(row_count);
+    let mut post_scarring_translational_j = Vec::with_capacity(row_count);
+    let mut post_scarring_rotational_j = Vec::with_capacity(row_count);
+    let mut post_step_translational_j = Vec::with_capacity(row_count);
+    let mut post_step_rotational_j = Vec::with_capacity(row_count);
+    let mut scarring_depth_m = Vec::with_capacity(row_count);
+    let mut scarring_area_m2 = Vec::with_capacity(row_count);
+    let mut scarring_drag_force_n = Vec::with_capacity(row_count);
+    let mut scarring_uncapped_energy_loss_j = Vec::with_capacity(row_count);
+    let mut scarring_capped_energy_loss_j = Vec::with_capacity(row_count);
+    let mut cumulative_scarring_energy_loss_j = Vec::with_capacity(row_count);
 
     for run in runs {
         for event in &run.impact_events {
@@ -2661,7 +2663,7 @@ fn write_ensemble_impact_events_parquet(
         }
     }
 
-    let row_count = trajectory_id.len();
+    debug_assert_eq!(trajectory_id.len(), row_count);
     let mut fields = vec![
         Field::new("trajectory_id", DataType::Utf8, false),
         Field::new("impact_index", DataType::UInt64, false),

@@ -399,6 +399,14 @@ Phase 5: benchmark comparison
   - Parquet trajectories plus Parquet impacts;
   - both CSV and Parquet enabled for debugging overhead measurement.
 
+Writer-side profiling after the first impact-event Parquet implementation found
+that projected Parquet reads are performance-positive for hazard accumulation,
+but Parquet writing remains slower than CSV at 300/500-release scale. A
+schema-neutral column-buffer preallocation was retained; compression and page
+statistics changes did not consistently improve write time. This keeps the
+design priority unchanged: optimize or understand the existing impact-event
+table before adding `trajectory_samples_table_v1`.
+
 ## Manifest and Schema Changes
 
 Add optional output fields:

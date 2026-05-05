@@ -209,6 +209,52 @@ slightly and did not make writing faster, so the Parquet writer remains
 uncompressed for now. The remaining write-time bottleneck is likely ArrowWriter
 encoding many impact-event diagnostic columns, not just raw byte volume.
 
+## Writer-Side Profiling Update
+
+The writer path was profiled with hazard generation disabled so the measured
+`output_write_seconds` isolates validation output writing:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes csv parquet \
+  --contact-models translational_v0 sphere_rotational_v1 \
+  --skip-hazard \
+  --output-root validation/results/parquet_writer_baseline_300_500
+```
+
+Baseline output-write timings were:
+
+| count | model | impact mode | output write s | files | bytes | impact rows |
+|---:|---|---|---:|---:|---:|---:|
+| 300 | translational | csv | 5.48 | 604 | 41,269,873 | 38,886 |
+| 300 | translational | parquet | 9.16 | 305 | 25,803,041 | 38,886 |
+| 300 | rotational | csv | 5.42 | 604 | 45,831,793 | 38,892 |
+| 300 | rotational | parquet | 11.16 | 305 | 30,005,783 | 38,892 |
+| 500 | translational | csv | 7.95 | 1,004 | 68,765,502 | 64,561 |
+| 500 | translational | parquet | 15.46 | 505 | 43,048,104 | 64,561 |
+| 500 | rotational | csv | 8.95 | 1,004 | 76,350,716 | 64,555 |
+| 500 | rotational | parquet | 17.95 | 505 | 50,050,942 | 64,555 |
+
+Two conservative writer-side changes were tested:
+
+- pre-sizing all impact-event column buffers from the known row count;
+- disabling Parquet page statistics metadata.
+
+Pre-sizing was retained because it removes repeated vector growth without
+changing the schema, file format, compression, or hazard semantics. The timing
+effect was noisy: it improved some Parquet cases but did not consistently make
+Parquet writing faster than CSV. Disabling page statistics reduced Parquet file
+size slightly but did not improve write time consistently, so it was rejected.
+
+The current conclusion is unchanged: Parquet impact events are already useful
+for reducing file count, reducing byte volume, and speeding projected hazard
+reads, but the Rust writer remains slower than the per-trajectory CSV writer for
+these small-to-intermediate synthetic runs. The bottleneck appears to be the
+wide Arrow/Parquet column encoding and metadata path rather than filesystem
+byte volume alone.
+
 ## Recommendation
 
 Immediate next engineering step:
