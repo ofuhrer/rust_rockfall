@@ -99,9 +99,13 @@ Held-out subset:
 
 The held-out objective is lower than the calibration objective for this split. That does not prove predictive skill; it mostly shows that this small grid has not visibly overfit the calibration subset. The selected parameters still over-run both partitions substantially when the generated calibration cases use the unbounded analytic proxy plane.
 
+## Terrain Update Note
+
+After the terrain-focused update, validation includes both `validation_tschamut_proxy_plane` and `validation_tschamut_basic`. The calibration grid above has not been rerun or retuned; this preserves the calibration/validation separation and avoids silently changing selected parameters. The updated validation comparison should be read as a fixed-parameter terrain sensitivity experiment, not as a new calibration result.
+
 ## Interpretation
 
-This experiment is useful because it exposes parameter sensitivity and model limitations. The active validation case with the bounded ASCII proxy terrain under-runs the first 10 validation runs. The calibration experiment uses the same fitted terrain as an analytic plane to avoid DEM-bound failures during energetic candidate trajectories, and the best grid candidate over-runs the calibration and holdout partitions.
+This experiment is useful because it exposes parameter sensitivity and model limitations. The active validation case with the bounded IDW residual DEM proxy terrain under-runs the first 10 validation runs. The calibration experiment uses the fitted terrain as an analytic plane to avoid DEM-bound failures during energetic candidate trajectories, and the best grid candidate over-runs the calibration and holdout partitions.
 
 That difference points to terrain representation and contact-mode limitations, not just parameter choice:
 

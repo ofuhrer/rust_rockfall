@@ -207,7 +207,8 @@ fn case_order(case_id: &str) -> u16 {
         "synthetic_step_terrain_single_drop" => 240,
         "synthetic_step_terrain_multi_bounce" => 250,
         "synthetic_ascii_dem_fixture" => 260,
-        "synthetic_contact_roughness_energy_stability" => 270,
+        "synthetic_clamped_dem_terrain_variation" => 270,
+        "synthetic_contact_roughness_energy_stability" => 280,
         "regime_bounce_to_slide_transition" => 310,
         "regime_slide_to_stop_transition" => 320,
         "regime_repeated_low_energy_impacts" => 330,
@@ -218,6 +219,7 @@ fn case_order(case_id: &str) -> u16 {
         "stochastic_contact_roughness_reproducibility" => 450,
         "stochastic_contact_roughness_ensemble_spread" => 460,
         "validation_synthetic_plane_basic" => 510,
+        "validation_tschamut_proxy_plane" => 580,
         "validation_tschamut_basic" => 590,
         _ => 1000,
     }

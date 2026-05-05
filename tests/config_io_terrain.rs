@@ -6,8 +6,8 @@ use rust_rockfall::{
     state::ContactState,
     stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::{
-        ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
-        StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
+        ChannelizedGully, ClampedDemGrid, DemGrid, GaussianBump, Paraboloid, Plane,
+        SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
     validation::{load_case, run_case_file, CaseStatus},
     ContactModel, Vec3,
@@ -137,6 +137,42 @@ fn dem_parser_reports_header_value_count_and_bounds_errors() {
 }
 
 #[test]
+fn clamped_dem_keeps_boundary_queries_finite_without_changing_strict_dem() {
+    let dem = DemGrid::from_ascii_grid_str(
+        "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        dem.try_height(-0.5, 0.5),
+        Err(TerrainError::OutOfBounds { .. })
+    ));
+
+    let clamped = ClampedDemGrid::from_grid(dem);
+    assert_abs_diff_eq!(clamped.height(-0.5, 0.5), 1.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(clamped.height(2.5, 1.5), 5.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(clamped.normal(-0.5, 0.5).norm(), 1.0, epsilon = 1.0e-12);
+}
+
+#[test]
+fn clamped_dem_normal_matches_planar_dem_interior_and_edge() {
+    let dem = DemGrid::from_ascii_grid_str(
+        "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
+    )
+    .unwrap();
+    let clamped = ClampedDemGrid::from_grid(dem);
+    let expected = Vec3::new(-1.0, -2.0, 1.0).normalize();
+    let interior = clamped.normal(1.0, 1.0);
+    let edge = clamped.normal(-0.5, 1.0);
+
+    assert_abs_diff_eq!(interior.x, expected.x, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(interior.y, expected.y, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(interior.z, expected.z, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(edge.x, expected.x, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(edge.y, expected.y, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(edge.z, expected.z, epsilon = 1.0e-12);
+}
+
+#[test]
 fn terrain_config_builds_each_supported_variant() {
     assert_abs_diff_eq!(
         TerrainConfig::Plane {
@@ -236,6 +272,26 @@ fn esri_ascii_grid_config_reads_from_file() {
     .build()
     .unwrap();
 
+    assert_abs_diff_eq!(terrain.height(0.5, 0.5), 2.0, epsilon = 1.0e-12);
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn clamped_esri_ascii_grid_config_reads_from_file() {
+    let path = temp_path("terrain_config_clamped.asc");
+    fs::write(
+        &path,
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n2 4\n0 2\n",
+    )
+    .unwrap();
+
+    let terrain = TerrainConfig::EsriAsciiGridClamped {
+        path: path.to_string_lossy().to_string(),
+    }
+    .build()
+    .unwrap();
+
+    assert_abs_diff_eq!(terrain.height(-1.0, 0.5), 1.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(terrain.height(0.5, 0.5), 2.0, epsilon = 1.0e-12);
     fs::remove_file(path).unwrap();
 }

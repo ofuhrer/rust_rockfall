@@ -25,6 +25,7 @@ This catalog lists the current `v0.3.0` verification and validation cases. These
 - `synthetic_step_terrain_single_drop`: drop across one terrain discontinuity.
 - `synthetic_step_terrain_multi_bounce`: repeated contacts after a step drop.
 - `synthetic_ascii_dem_fixture`: small ESRI ASCII grid loading and trajectory smoke test.
+- `synthetic_clamped_dem_terrain_variation`: opt-in clamped ESRI ASCII DEM trajectory over a small varied patch, including an initial boundary-clamped query.
 - `synthetic_contact_roughness_energy_stability`: bounded stochastic contact roughness remains dissipative within fixed-step numerical tolerance.
 
 ## Level 2: Motion-Regime Tests
@@ -47,6 +48,7 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 ## Level 5: Validation Scaffolds
 
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
-- `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations. It reports distribution-level runout and deposition-cloud mismatch only.
+- `validation_tschamut_proxy_plane`: limited public-data terrain comparison case using the earlier fitted-plane terrain proxy for the Tschamut 2014 subset.
+- `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations and the `idw_residual_dem_from_lps` clamped DEM proxy. It reports distribution-level runout and deposition-cloud mismatch only.
 
-Real-world validation remains partial and qualitative for v0.3.0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and calibrated DEM workflows.
+Real-world validation remains partial and qualitative for v0.3.0 because the simulator lacks block shape, advanced contact/scarring, roughness calibration, forest interaction, fragmentation, and production field DEM workflows.

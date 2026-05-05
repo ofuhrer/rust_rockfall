@@ -269,6 +269,21 @@ impl DemGrid {
         self.values_m[row_from_top * self.ncols + col]
     }
 
+    pub fn xmax_m(&self) -> f64 {
+        self.xllcorner_m + (self.ncols - 1) as f64 * self.cellsize_m
+    }
+
+    pub fn ymax_m(&self) -> f64 {
+        self.yllcorner_m + (self.nrows - 1) as f64 * self.cellsize_m
+    }
+
+    pub fn clamp_xy(&self, x_m: f64, y_m: f64) -> (f64, f64) {
+        (
+            x_m.clamp(self.xllcorner_m, self.xmax_m()),
+            y_m.clamp(self.yllcorner_m, self.ymax_m()),
+        )
+    }
+
     fn fractional_cell(
         &self,
         x_m: f64,
@@ -295,6 +310,32 @@ impl DemGrid {
             + (1.0 - tx) * ty * z01
             + tx * ty * z11)
     }
+
+    pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
+        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+        self.try_height(x_m, y_m)
+            .expect("clamped DEM query must be inside grid")
+    }
+
+    pub fn normal_clamped(&self, x_m: f64, y_m: f64) -> Vec3 {
+        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+        let h = 0.5 * self.cellsize_m.max(EPS);
+        let x0 = (x_m - h).max(self.xllcorner_m);
+        let x1 = (x_m + h).min(self.xmax_m());
+        let y0 = (y_m - h).max(self.yllcorner_m);
+        let y1 = (y_m + h).min(self.ymax_m());
+        let dzdx = if (x1 - x0).abs() > EPS {
+            (self.height_clamped(x1, y_m) - self.height_clamped(x0, y_m)) / (x1 - x0)
+        } else {
+            0.0
+        };
+        let dzdy = if (y1 - y0).abs() > EPS {
+            (self.height_clamped(x_m, y1) - self.height_clamped(x_m, y0)) / (y1 - y0)
+        } else {
+            0.0
+        };
+        Vec3::new(-dzdx, -dzdy, 1.0).normalize()
+    }
 }
 
 impl Terrain for DemGrid {
@@ -308,6 +349,33 @@ impl Terrain for DemGrid {
         let dzdx = (self.height(x_m + h, y_m) - self.height(x_m - h, y_m)) / (2.0 * h);
         let dzdy = (self.height(x_m, y_m + h) - self.height(x_m, y_m - h)) / (2.0 * h);
         Vec3::new(-dzdx, -dzdy, 1.0).normalize()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClampedDemGrid {
+    pub grid: DemGrid,
+}
+
+impl ClampedDemGrid {
+    pub fn from_ascii_grid(path: impl AsRef<Path>) -> Result<Self, TerrainError> {
+        Ok(Self {
+            grid: DemGrid::from_ascii_grid(path)?,
+        })
+    }
+
+    pub fn from_grid(grid: DemGrid) -> Self {
+        Self { grid }
+    }
+}
+
+impl Terrain for ClampedDemGrid {
+    fn height(&self, x_m: f64, y_m: f64) -> f64 {
+        self.grid.height_clamped(x_m, y_m)
+    }
+
+    fn normal(&self, x_m: f64, y_m: f64) -> Vec3 {
+        self.grid.normal_clamped(x_m, y_m)
     }
 }
 

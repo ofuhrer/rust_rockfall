@@ -9,12 +9,21 @@
   ],
   "source_run_count": 80,
   "terrain_proxy": {
-    "equation": "z_m = slope_x * x_m + slope_y * y_m + intercept_m",
+    "cellsize_m": 5.0,
+    "height_equation": "z_m = z_trend_m + IDW_residual_from_public_LPS_ground_points",
+    "idw_power": 2.0,
     "intercept_m": -15.009701417307735,
-    "note": "This is a transparent v0 proxy terrain fitted to public LPS terrain points. It is not an official field DEM and must not be interpreted as calibrated terrain reconstruction.",
+    "k_nearest": 24,
+    "ncols": 43,
+    "note": "This is a transparent terrain proxy built from public LPS ground points by adding inverse-distance-weighted residuals to a fitted trend plane. It is not an official field DEM and must not be interpreted as calibrated terrain reconstruction.",
+    "nrows": 46,
+    "padding_m": 45.0,
     "slope_x": -0.2531275637807767,
     "slope_y": 0.4065679284814367,
-    "type": "least_squares_plane_sampled_as_esri_ascii_grid"
+    "trend_equation": "z_trend_m = slope_x * x_m + slope_y * y_m + intercept_m",
+    "type": "idw_residual_dem_from_lps",
+    "xllcorner_m": -35.0,
+    "yllcorner_m": 85.0
   },
   "validation_subset_run_count": 10
 }

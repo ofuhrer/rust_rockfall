@@ -1,11 +1,11 @@
 trajectory_id,experiment_id,x_m,y_m,z_m,ground_z_m,vx_mps,vy_mps,vz_mps,block_id,mass_kg,radius_m,source
-v004,tschamut2014,33.400000,236.670000,72.934936,72.758270,0.743140,1.354700,0.769540,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v005,tschamut2014,34.445000,238.380000,73.387316,73.188982,0.243580,0.287100,0.158990,2,79.000000,0.198333,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v006,tschamut2014,37.142000,241.620000,74.000244,73.823577,-0.057787,-0.144860,-0.087951,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v007,tschamut2014,33.465000,237.720000,73.328713,73.168713,-0.272220,-0.281690,-0.169210,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v011,tschamut2014,28.729000,233.860000,72.974839,72.798173,0.466630,0.586490,0.006983,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v014,tschamut2014,30.182000,234.730000,72.944092,72.784092,0.048978,0.085119,0.037495,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v015,tschamut2014,29.956000,235.050000,73.148068,72.971401,-0.397760,-0.420800,0.070231,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v017,tschamut2014,29.842000,235.010000,73.143995,72.983995,0.420740,0.492640,0.356060,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v018,tschamut2014,30.448000,236.160000,73.474819,73.298153,0.103850,-0.024415,-0.048015,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
-v019,tschamut2014,29.316000,235.100000,73.352064,73.153731,0.358560,0.157470,0.021477,2,79.000000,0.198333,EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius
+v004,tschamut2014,33.400000,236.670000,76.276667,76.100000,0.743140,1.354700,0.769540,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v005,tschamut2014,34.445000,238.380000,77.298333,77.100000,0.243580,0.287100,0.158990,2,79.000000,0.198333,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v006,tschamut2014,37.142000,241.620000,78.276667,78.100000,-0.057787,-0.144860,-0.087951,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v007,tschamut2014,33.465000,237.720000,77.160000,77.000000,-0.272220,-0.281690,-0.169210,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v011,tschamut2014,28.729000,233.860000,75.776667,75.600000,0.466630,0.586490,0.006983,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v014,tschamut2014,30.182000,234.730000,75.560000,75.400000,0.048978,0.085119,0.037495,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v015,tschamut2014,29.956000,235.050000,75.876667,75.700000,-0.397760,-0.420800,0.070231,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v017,tschamut2014,29.842000,235.010000,75.860000,75.700000,0.420740,0.492640,0.356060,4,40.000000,0.160000,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v018,tschamut2014,30.448000,236.160000,76.876667,76.700000,0.103850,-0.024415,-0.048015,1,69.000000,0.176667,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius
+v019,tschamut2014,29.316000,235.100000,76.298333,76.100000,0.358560,0.157470,0.021477,2,79.000000,0.198333,EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius

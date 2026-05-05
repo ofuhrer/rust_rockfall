@@ -3,7 +3,7 @@ title: string
 level: 0
 description: string
 terrain:
-  type: plane
+  type: plane # or ascii_dem_clamped / esri_ascii_grid_clamped for bounded DEM patches
   parameters:
     z0_m: 0.0
     slope_x: 0.0

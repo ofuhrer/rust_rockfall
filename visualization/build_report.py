@@ -204,7 +204,8 @@ def case_order(case_id: str) -> int:
         "synthetic_step_terrain_single_drop": 240,
         "synthetic_step_terrain_multi_bounce": 250,
         "synthetic_ascii_dem_fixture": 260,
-        "synthetic_contact_roughness_energy_stability": 270,
+        "synthetic_clamped_dem_terrain_variation": 270,
+        "synthetic_contact_roughness_energy_stability": 280,
         "regime_bounce_to_slide_transition": 310,
         "regime_slide_to_stop_transition": 320,
         "regime_repeated_low_energy_impacts": 330,
@@ -215,6 +216,7 @@ def case_order(case_id: str) -> int:
         "stochastic_contact_roughness_reproducibility": 450,
         "stochastic_contact_roughness_ensemble_spread": 460,
         "validation_synthetic_plane_basic": 510,
+        "validation_tschamut_proxy_plane": 580,
         "validation_tschamut_basic": 590,
     }
     return orders.get(case_id, 1000)
@@ -438,6 +440,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     references = report.data.get("references", {})
     description = str(report.data.get("description") or "")
     links = render_links(report, report_dir)
+    terrain = render_terrain_note(report)
     roughness = render_roughness_note(report)
     validation_scope = render_validation_scope_note(report)
     scope = render_case_scope(report)
@@ -458,6 +461,7 @@ def render_case_section(report: CaseReport, report_dir: Path) -> str:
     <div>{status_badge(report.status)}</div>
   </div>
   <p>{escape(description)}</p>
+  {terrain}
   {roughness}
   {validation_scope}
   {scope}
@@ -513,6 +517,31 @@ def render_roughness_note(report: CaseReport) -> str:
         "stochastic_contact_v1 perturbs impact contact normals and dissipative contact parameters "
         f"with std normal={escape(format_value(normal))}, tangent={escape(format_value(tangent))}, "
         f"angle={escape(format_value(angle))} rad. This is an opt-in verification model, not a calibrated terrain law.</p>"
+    )
+
+
+def render_terrain_note(report: CaseReport) -> str:
+    terrain = report.data.get("terrain", {})
+    if not isinstance(terrain, dict):
+        return ""
+    terrain_type = terrain.get("type", terrain.get("kind", "unknown"))
+    details = [f"type={terrain_type}"]
+    if terrain.get("path"):
+        details.append(f"path={terrain.get('path')}")
+    parameters = terrain.get("parameters", {})
+    if isinstance(parameters, dict) and parameters:
+        compact = ", ".join(f"{key}={format_value(value)}" for key, value in parameters.items())
+        details.append(compact)
+    note = ""
+    if terrain_type in {"ascii_dem_clamped", "esri_ascii_grid_clamped"}:
+        note = (
+            " Queries outside the grid are clamped to the terrain boundary for this opt-in "
+            "limited-patch model; this avoids edge failures but is not a substitute for a larger "
+            "field DEM."
+        )
+    return (
+        "<p class=\"notice\"><strong>Terrain:</strong> "
+        f"{escape('; '.join(str(item) for item in details))}.{escape(note)}</p>"
     )
 
 

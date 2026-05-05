@@ -1,0 +1,61 @@
+case_id: validation_tschamut_proxy_plane
+title: Tschamut fitted-plane terrain comparison
+level: 5
+description: Comparison case for the public Tschamut subset using the earlier fitted-plane terrain proxy, retained to isolate the effect of the improved IDW residual terrain representation.
+terrain:
+  type: plane
+  parameters:
+    z0_m: -15.009701417307735
+    slope_x: -0.2531275637807767
+    slope_y: 0.4065679284814367
+block: { mass: 69.0, radius: 0.176667 }
+release:
+  position: [33.4, 236.67, 76.276667]
+  velocity: [0.74314, 1.3547, 0.76954]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
+random: { seed: 34014, ensemble_size: 6 }
+validation_scope:
+  type: distribution-level terrain-comparison
+  note: "This is a fitted-plane comparison baseline for the same public-derived Tschamut subset; it is not calibrated and is not expected to reproduce individual trajectories."
+observations:
+  release_points_csv: validation/data/processed/tschamut/release_points.csv
+  deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
+expected:
+  metrics:
+    - validation_release_count
+    - validation_simulated_trajectory_count
+    - observed_mean_runout_m
+    - simulated_mean_runout_m
+    - runout_distance_error_m
+    - deposition_centroid_error_m
+    - deposition_cloud_mean_nearest_error_m
+    - lateral_spread_error_m
+    - deposition_cloud_overlap_fraction
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/results/tschamut_proxy_plane_metrics.json
+  trajectory_csv: validation/results/tschamut_proxy_plane_trajectory.csv
+  ensemble_deposition_csv: validation/results/tschamut_proxy_plane_ensemble_deposition.csv
+references:
+  dataset: tschamut2014
+  literature:
+    - "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34."
+  notes:
+    - "Uses the same public-derived release and deposition CSVs as validation_tschamut_basic."
+    - "Terrain is only the least-squares trend plane fitted to public LPS terrain elevations, kept as a structural-error comparison baseline."
+    - "Block geometry is approximated as a sphere; roughness is synthetic and not calibrated to Tschamut."
+report:
+  verifies:
+    - "Runs the Tschamut validation workflow with the fitted-plane terrain baseline so terrain-model effects can be compared explicitly."
+    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.3.0 model."
+  does_not_verify:
+    - "Individual Tschamut trajectories, operational hazard skill, calibrated terrain roughness, real field DEM behavior, block shape effects, vegetation, or fragmentation."

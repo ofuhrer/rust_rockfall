@@ -8,8 +8,8 @@ use crate::{
         ReleasePerturbation, RoughnessModel,
     },
     terrain::{
-        ChannelizedGully, DemGrid, GaussianBump, Paraboloid, Plane, SinusoidalRoughSlope,
-        StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
+        ChannelizedGully, ClampedDemGrid, DemGrid, GaussianBump, Paraboloid, Plane,
+        SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
     Vec3,
 };
@@ -104,6 +104,9 @@ pub enum TerrainConfig {
         width_m: f64,
     },
     EsriAsciiGrid {
+        path: String,
+    },
+    EsriAsciiGridClamped {
         path: String,
     },
 }
@@ -448,6 +451,9 @@ impl TerrainConfig {
                 width_m: *width_m,
             })),
             TerrainConfig::EsriAsciiGrid { path } => Ok(Box::new(DemGrid::from_ascii_grid(path)?)),
+            TerrainConfig::EsriAsciiGridClamped { path } => {
+                Ok(Box::new(ClampedDemGrid::from_ascii_grid(path)?))
+            }
         }
     }
 }

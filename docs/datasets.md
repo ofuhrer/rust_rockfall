@@ -60,13 +60,13 @@ This writes:
 - `data/processed/tschamut2014/terrain.asc`
 - a small checked-in subset under `validation/data/processed/tschamut/`
 
-The Tschamut terrain file is a least-squares plane proxy sampled as ESRI ASCII grid from public LPS terrain elevations. It is not an official field DEM. Coordinates remain in the public LPS local horizontal coordinate system, and elevations are shifted by `-1600 m` to match the overview table convention.
+The Tschamut terrain file is an `idw_residual_dem_from_lps` ESRI ASCII grid proxy. It adds inverse-distance-weighted residuals from public LPS ground elevations to a least-squares trend plane. It is more realistic than the earlier fitted plane because it retains local terrain variation, but it is still not an official field DEM. Coordinates remain in the public LPS local horizontal coordinate system, and elevations are shifted by `-1600 m` to match the overview table convention.
 
 Dataset-specific conversions should write validation-ready CSV/GeoJSON under `data/processed/<dataset_id>/` and must document CRS, units, and inferred fields.
 
 ## Real-World Validation Status
 
-`validation/cases/tschamut_basic.yaml` is active with the small processed Tschamut subset under `validation/data/processed/tschamut/`. It compares ensemble-level runout and deposition-cloud summaries only.
+`validation/cases/tschamut_basic.yaml` is active with the small processed Tschamut subset under `validation/data/processed/tschamut/`. It uses the IDW residual DEM with opt-in clamped boundary access. `validation/cases/tschamut_proxy_plane.yaml` keeps the earlier fitted-plane approximation as an explicit comparison case. Both compare ensemble-level runout and deposition-cloud summaries only.
 
 The current simulator is not yet physically rich enough for calibrated comparison against shape-sensitive field experiments. Tschamut results should be interpreted as a transparent plausibility and deficiency check, not as operational validation.
 

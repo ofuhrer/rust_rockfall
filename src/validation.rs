@@ -579,6 +579,20 @@ fn build_terrain_config(terrain: &CaseTerrain) -> Result<TerrainConfig, Validati
                 .to_string_lossy()
                 .to_string(),
         }),
+        "esri_ascii_grid_clamped" | "ascii_dem_clamped" => {
+            Ok(TerrainConfig::EsriAsciiGridClamped {
+                path: terrain
+                    .path
+                    .as_ref()
+                    .ok_or_else(|| {
+                        ValidationError::Case(
+                            "terrain.path is required for clamped ESRI ASCII grid".to_string(),
+                        )
+                    })?
+                    .to_string_lossy()
+                    .to_string(),
+            })
+        }
         other => Err(ValidationError::Case(format!(
             "unsupported terrain type '{other}'"
         ))),

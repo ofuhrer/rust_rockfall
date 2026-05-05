@@ -1,6 +1,6 @@
 # Validation Data and Case Schema
 
-This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, opt-in stochastic contact roughness, seeded release perturbations, and CSV trajectory output.
+This repository uses one YAML case schema for verification and validation. The schema is intentionally small and maps directly onto the current model: spherical block, analytic plane/paraboloid/step terrain, small ESRI ASCII DEMs including opt-in `ascii_dem_clamped` terrain patches, fixed-step integration, impact restitution, Coulomb friction, optional rotational sphere contact, opt-in stochastic contact roughness, seeded release perturbations, and CSV trajectory output.
 
 ## Case YAML
 
@@ -32,6 +32,7 @@ The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 - `paraboloid`: `z0_m`, `ax`, `ay`
 - `step`: `step_x_m`, `high_z_m`, `low_z_m`
 - `esri_ascii_grid`: `path`
+- `ascii_dem_clamped` / `esri_ascii_grid_clamped`: `path`; bilinear ESRI ASCII grid with boundary-clamped queries for limited validation patches
 
 Other procedural terrains may exist in the codebase, but v0 verification cases focus on the model scope above.
 

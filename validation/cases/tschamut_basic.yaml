@@ -3,12 +3,12 @@ title: Tschamut public rockfall dataset limited validation
 level: 5
 description: Limited distribution-level comparison against a small processed subset of the public SLF/WSL EnviDat Tschamut 2014 LPS trajectory dataset.
 terrain:
-  type: ascii_dem
+  type: ascii_dem_clamped
   path: validation/data/processed/tschamut/terrain.asc
   parameters: {}
 block: { mass: 69.0, radius: 0.176667 }
 release:
-  position: [33.4, 236.67, 72.934936]
+  position: [33.4, 236.67, 76.276667]
   velocity: [0.74314, 1.3547, 0.76954]
 parameters:
   gravity: 9.81
@@ -49,11 +49,11 @@ references:
     - "Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014. EnviDat. https://doi.org/10.16904/envidat.34."
   notes:
     - "Uses a small checked-in derived subset from the public LPS trajectory table so normal CI does not download large raw data."
-    - "The terrain is a transparent least-squares proxy plane sampled as ESRI ASCII grid, not an official field DEM."
+    - "The terrain is an opt-in clamped ESRI ASCII grid built as an IDW residual terrain proxy from public LPS ground points; it is not an official field DEM."
     - "Block geometry is approximated as a sphere; roughness is synthetic and not calibrated to Tschamut."
 report:
   verifies:
     - "Loads public-derived Tschamut release and deposition points and runs deterministic seeded ensembles from them."
-    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.3.0 model."
+    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.3.0 model using the IDW residual terrain proxy."
   does_not_verify:
     - "Individual Tschamut trajectories, operational hazard skill, calibrated terrain roughness, block shape effects, vegetation, or fragmentation."

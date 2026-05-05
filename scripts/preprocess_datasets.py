@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import heapq
 import json
 import math
 import re
@@ -102,6 +103,7 @@ def preprocess_tschamut2014() -> None:
             for sample in samples
         ]
     )
+    residual_samples = terrain_residual_samples(trajectories, plane)
 
     processed_dir = ROOT / "data" / "processed" / "tschamut2014"
     validation_dir = ROOT / "validation" / "data" / "processed" / "tschamut"
@@ -109,7 +111,7 @@ def preprocess_tschamut2014() -> None:
     validation_dir.mkdir(parents=True, exist_ok=True)
 
     full_release_rows, full_deposition_rows, block_rows = tschamut_rows(
-        trajectories, overview, plane
+        trajectories, overview, plane, residual_samples
     )
     validation_ids = [row[0] for row in full_release_rows[:TSCHAMUT_VALIDATION_RUN_LIMIT]]
     validation_release_rows = [row for row in full_release_rows if row[0] in validation_ids]
@@ -151,10 +153,13 @@ def preprocess_tschamut2014() -> None:
     write_csv(processed_dir / "release_points.csv", release_header, full_release_rows)
     write_csv(processed_dir / "observed_deposition.csv", deposition_header, full_deposition_rows)
     write_csv(processed_dir / "block_metadata.csv", block_header, block_rows)
-    write_tschamut_terrain(processed_dir / "terrain.asc", trajectories, plane)
+    terrain_settings = write_tschamut_terrain(
+        processed_dir / "terrain.asc", trajectories, plane, residual_samples
+    )
     write_tschamut_metadata(
         processed_dir / "metadata.json",
         plane,
+        terrain_settings,
         len(full_release_rows),
         len(validation_release_rows),
     )
@@ -162,10 +167,11 @@ def preprocess_tschamut2014() -> None:
     write_csv(validation_dir / "release_points.csv", release_header, validation_release_rows)
     write_csv(validation_dir / "observed_deposition.csv", deposition_header, validation_deposition_rows)
     write_csv(validation_dir / "block_metadata.csv", block_header, block_rows)
-    write_tschamut_terrain(validation_dir / "terrain.asc", trajectories, plane)
+    write_tschamut_terrain(validation_dir / "terrain.asc", trajectories, plane, residual_samples)
     write_tschamut_metadata(
         validation_dir / "metadata.json",
         plane,
+        terrain_settings,
         len(full_release_rows),
         len(validation_release_rows),
     )
@@ -237,6 +243,7 @@ def tschamut_rows(
     trajectories: dict[str, list[dict[str, float]]],
     overview: dict[str, dict[str, float | str]],
     plane: tuple[float, float, float],
+    residual_samples: list[tuple[float, float, float]],
 ) -> tuple[list[list[str]], list[list[str]], list[list[str]]]:
     release_rows: list[list[str]] = []
     deposition_rows: list[list[str]] = []
@@ -251,8 +258,8 @@ def tschamut_rows(
         block_id = str(meta["block_id"])
         radius_m = float(meta["radius_m"])
         mass_kg = float(meta["mass_kg"])
-        release_ground = plane_height(plane, first["x_m"], first["y_m"])
-        deposition_ground = plane_height(plane, last["x_m"], last["y_m"])
+        release_ground = terrain_height(plane, residual_samples, first["x_m"], first["y_m"])
+        deposition_ground = terrain_height(plane, residual_samples, last["x_m"], last["y_m"])
         release_z = release_ground + radius_m
         deposition_z = deposition_ground + radius_m
         observed_runout = math.hypot(last["x_m"] - first["x_m"], last["y_m"] - first["y_m"])
@@ -270,7 +277,7 @@ def tschamut_rows(
                 block_id,
                 f"{mass_kg:.6f}",
                 f"{radius_m:.6f}",
-                "EnviDat tschamut2014 all_LPS_splined first sample; z projected to proxy terrain plus radius",
+                "EnviDat tschamut2014 all_LPS_splined first sample; z projected to IDW residual terrain plus radius",
             ]
         )
         deposition_rows.append(
@@ -288,7 +295,7 @@ def tschamut_rows(
                 block_id,
                 f"{mass_kg:.6f}",
                 f"{radius_m:.6f}",
-                "EnviDat tschamut2014 all_LPS_splined last sample; z projected to proxy terrain plus radius",
+                "EnviDat tschamut2014 all_LPS_splined last sample; z projected to IDW residual terrain plus radius",
             ]
         )
         blocks.setdefault(
@@ -345,15 +352,70 @@ def plane_height(plane: tuple[float, float, float], x_m: float, y_m: float) -> f
     return ax * x_m + ay * y_m + c
 
 
+def terrain_residual_samples(
+    trajectories: dict[str, list[dict[str, float]]],
+    plane: tuple[float, float, float],
+) -> list[tuple[float, float, float]]:
+    return [
+        (
+            sample["x_m"],
+            sample["y_m"],
+            sample["ground_z_m"] - plane_height(plane, sample["x_m"], sample["y_m"]),
+        )
+        for samples in trajectories.values()
+        for sample in samples
+    ]
+
+
+def idw_residual(
+    residual_samples: list[tuple[float, float, float]],
+    x_m: float,
+    y_m: float,
+    k_nearest: int = 24,
+    power: float = 2.0,
+) -> float:
+    nearest = heapq.nsmallest(
+        k_nearest,
+        (
+            ((x_m - sx) * (x_m - sx) + (y_m - sy) * (y_m - sy), residual)
+            for sx, sy, residual in residual_samples
+        ),
+        key=lambda item: item[0],
+    )
+    if not nearest:
+        return 0.0
+    if nearest[0][0] < 1.0e-12:
+        return nearest[0][1]
+    weighted_sum = 0.0
+    weight_total = 0.0
+    for distance2, residual in nearest:
+        weight = 1.0 / (math.pow(distance2, 0.5 * power) + 1.0e-12)
+        weighted_sum += weight * residual
+        weight_total += weight
+    return weighted_sum / weight_total
+
+
+def terrain_height(
+    plane: tuple[float, float, float],
+    residual_samples: list[tuple[float, float, float]],
+    x_m: float,
+    y_m: float,
+) -> float:
+    return plane_height(plane, x_m, y_m) + idw_residual(residual_samples, x_m, y_m)
+
+
 def write_tschamut_terrain(
     path: Path,
     trajectories: dict[str, list[dict[str, float]]],
     plane: tuple[float, float, float],
-) -> None:
+    residual_samples: list[tuple[float, float, float]],
+) -> dict[str, float | int | str]:
     xs = [sample["x_m"] for samples in trajectories.values() for sample in samples]
     ys = [sample["y_m"] for samples in trajectories.values() for sample in samples]
     cellsize = 5.0
-    pad = 30.0
+    pad = 45.0
+    k_nearest = 24
+    power = 2.0
     xll = math.floor((min(xs) - pad) / cellsize) * cellsize
     yll = math.floor((min(ys) - pad) / cellsize) * cellsize
     xmax = math.ceil((max(xs) + pad) / cellsize) * cellsize
@@ -372,16 +434,28 @@ def write_tschamut_terrain(
         row_from_bottom = nrows - 1 - row_from_top
         y = yll + row_from_bottom * cellsize
         values = [
-            f"{plane_height(plane, xll + col * cellsize, y):.6f}"
+            f"{terrain_height(plane, residual_samples, xll + col * cellsize, y):.6f}"
             for col in range(ncols)
         ]
         lines.append(" ".join(values))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return {
+        "type": "idw_residual_dem_from_lps",
+        "cellsize_m": cellsize,
+        "padding_m": pad,
+        "k_nearest": k_nearest,
+        "idw_power": power,
+        "xllcorner_m": xll,
+        "yllcorner_m": yll,
+        "ncols": ncols,
+        "nrows": nrows,
+    }
 
 
 def write_tschamut_metadata(
     path: Path,
     plane: tuple[float, float, float],
+    terrain_settings: dict[str, float | int | str],
     source_run_count: int,
     validation_run_count: int,
 ) -> None:
@@ -396,15 +470,17 @@ def write_tschamut_metadata(
             "terrain heights shifted by -1600 m for consistency with overview data."
         ),
         "terrain_proxy": {
-            "type": "least_squares_plane_sampled_as_esri_ascii_grid",
-            "equation": "z_m = slope_x * x_m + slope_y * y_m + intercept_m",
+            **terrain_settings,
+            "trend_equation": "z_trend_m = slope_x * x_m + slope_y * y_m + intercept_m",
+            "height_equation": "z_m = z_trend_m + IDW_residual_from_public_LPS_ground_points",
             "slope_x": ax,
             "slope_y": ay,
             "intercept_m": c,
             "note": (
-                "This is a transparent v0 proxy terrain fitted to public LPS terrain "
-                "points. It is not an official field DEM and must not be interpreted "
-                "as calibrated terrain reconstruction."
+                "This is a transparent terrain proxy built from public LPS ground "
+                "points by adding inverse-distance-weighted residuals to a fitted "
+                "trend plane. It is not an official field DEM and must not be "
+                "interpreted as calibrated terrain reconstruction."
             ),
         },
         "source_run_count": source_run_count,

@@ -7,7 +7,7 @@ The `v0.3.0` simulator is an independent, literature-based spherical-block model
 Supported now:
 
 - spherical block with explicit mass and radius
-- analytic terrain and small ESRI ASCII grids
+- analytic terrain, strict small ESRI ASCII grids, and opt-in clamped ESRI ASCII terrain patches
 - gravity-driven free flight
 - normal/tangential restitution at impact
 - Coulomb friction during contact
@@ -15,6 +15,20 @@ Supported now:
 - deterministic stochastic release perturbations
 - opt-in stochastic impact roughness
 - energy-budget trajectory diagnostics
+
+## Terrain Representation
+
+Terrain access is abstracted through the `Terrain` trait. Existing analytic terrain and strict `esri_ascii_grid` behavior remain unchanged. Strict ESRI ASCII grids use bilinear interpolation and intentionally fail on out-of-bounds access through `try_height`.
+
+The opt-in `ascii_dem_clamped` / `esri_ascii_grid_clamped` model wraps the same ESRI ASCII grid but clamps height and normal queries to the raster boundary. It is intended for limited real-data terrain patches where a trajectory may leave the small validation raster. This boundary policy is deterministic and lightweight, but it is an extrapolation assumption, not a production GIS workflow.
+
+For Tschamut, preprocessing now writes an `idw_residual_dem_from_lps` terrain proxy from public LPS ground points:
+
+```text
+z = slope_x x + slope_y y + intercept + IDW_residual(x, y)
+```
+
+This preserves more public-data terrain variation than a fitted plane while remaining reproducible and small enough for repository validation fixtures. It is not an official field DEM and is not calibrated terrain reconstruction. Details are in `docs/terrain_model.md`.
 
 Deliberately left out:
 

@@ -41,7 +41,7 @@ datasets:
       - Convert tab-separated trajectory and overview tables to common CSV schemas.
       - Derive release and deposition points from public overview or LPS trajectory tables.
       - Current validation subset derives release and deposition points from first and last samples of the public LPS trajectory table.
-      - Current terrain.asc is a least-squares proxy plane fitted to public LPS terrain elevations; it is not an official field DEM.
+      - Current terrain.asc is an idw_residual_dem_from_lps proxy built from public LPS terrain elevations plus a fitted trend plane; it is not an official field DEM.
       - Keep CH-1903 coordinates explicit in metadata; do not transform silently.
     resources:
       - id: slope_block_scans

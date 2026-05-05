@@ -38,6 +38,8 @@ Planned metrics include trajectory-envelope overlap, bounce-height time-series e
 
 The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the v0.3.0 workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
 
+Terrain representation is part of the validation assumption set. `validation_tschamut_proxy_plane` keeps the earlier fitted-plane terrain approximation as an explicit structural-error comparison, while `validation_tschamut_basic` uses the `idw_residual_dem_from_lps` clamped DEM proxy derived from public LPS ground points. Neither terrain is an official field DEM.
+
 For real-world cases:
 
 - distributions matter more than individual paths for the current model;

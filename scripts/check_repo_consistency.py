@@ -25,6 +25,22 @@ ALLOWED_GENERATED = {
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
 KNOWN_CONTACT_STATES = {"airborne", "impact", "sliding", "rolling", "stopped"}
+KNOWN_TERRAIN_TYPES = {
+    "plane",
+    "inclined_plane",
+    "paraboloid",
+    "step",
+    "step_terrain",
+    "v_shaped_valley",
+    "terraced_slope",
+    "sinusoidal_rough_slope",
+    "gaussian_bump",
+    "channelized_gully",
+    "esri_ascii_grid",
+    "ascii_dem",
+    "esri_ascii_grid_clamped",
+    "ascii_dem_clamped",
+}
 KNOWN_OUTPUT_KEYS = {"trajectory_csv", "diagnostics_json", "ensemble_deposition_csv"}
 KNOWN_METRICS = {
     "position_error_m",
@@ -120,6 +136,11 @@ def check_yaml_cases() -> list[str]:
     for path in case_paths:
         data = yaml.safe_load(path.read_text()) or {}
         rel = path.relative_to(ROOT)
+        terrain = data.get("terrain", {}) or {}
+        terrain_type = terrain.get("type", terrain.get("kind"))
+        if terrain_type not in KNOWN_TERRAIN_TYPES:
+            errors.append(f"{rel}: unknown terrain type {terrain_type!r}")
+
         parameters = data.get("parameters", {}) or {}
         contact_model = parameters.get("contact_model", "translational_v0")
         if contact_model not in KNOWN_CONTACT_MODELS:
@@ -167,6 +188,8 @@ def check_schema_docs() -> list[str]:
         "final_angular_speed_radps",
         "roughness_zero_baseline_max_position_delta_m",
         "different_seed_ensemble_runout_delta_m",
+        "ascii_dem_clamped",
+        "esri_ascii_grid_clamped",
     ]
     errors = []
     for term in required_schema_terms:
@@ -216,6 +239,14 @@ def check_contact_model_docs() -> list[str]:
         for model in KNOWN_CONTACT_MODELS:
             if model not in text:
                 errors.append(f"{path.relative_to(ROOT)} omits contact model {model}")
+    terrain_model = ROOT / "docs/terrain_model.md"
+    if not terrain_model.exists():
+        errors.append("docs/terrain_model.md is missing")
+    else:
+        terrain_text = terrain_model.read_text()
+        for term in ("ascii_dem_clamped", "idw_residual_dem_from_lps"):
+            if term not in terrain_text:
+                errors.append(f"docs/terrain_model.md omits {term}")
     return errors
 
 
