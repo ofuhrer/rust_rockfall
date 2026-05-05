@@ -37,6 +37,7 @@ Core documents:
 - `columnar_output_design_decision.md`: design decision for opt-in batched Parquet/Arrow impact and trajectory outputs based on the 500/1000 synthetic benchmark.
 - `trajectory_parquet_next_step_decision.md`: benchmark-backed decision record on whether full trajectory CSV output is now the dominant bottleneck and whether opt-in trajectory Parquet is justified.
 - `hazard_accumulation_architecture_decision.md`: benchmark-backed decision record for the next hazard-accumulation scalability step before adding more output formats.
+- `hazard_throughput_bottleneck_report.md`: first measured use of hazard input-throughput counters, identifying auto-grid bounds discovery and trajectory accumulation as the next optimization targets.
 - `probabilistic_trajectory_metadata_design.md`: design and current implementation status for carrying per-trajectory release, block, scenario, and sampling-weight metadata into opt-in weighted hazard maps and future columnar outputs.
 - `probabilistic_hazard_framework_priorities.md`: prioritized roadmap for moving from unweighted diagnostic hazard layers toward explicit probabilistic hazard-map semantics.
 - `probabilistic_scenario_model_design.md`: scenario-level semantics for conditional source-zone hazard maps, source-frequency placeholders, block scenarios, probability modes, and normalization conventions.
