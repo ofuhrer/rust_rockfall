@@ -7,6 +7,7 @@
 - Added manifest metadata for columnar impact-event outputs, including schema version, row count, compression, and row-group count.
 - Added a benchmark harness mode and results document comparing Parquet impact-event output with the existing CSV impact-event workflow.
 - Added explicit smoke/standard/scale/custom performance benchmark profiles and made the default standard profile a short no-plot local run.
+- Added a canonical post-refactor benchmark profile reference with measured smoke, standard, custom, and scale results.
 
 ## v0.6.0
 

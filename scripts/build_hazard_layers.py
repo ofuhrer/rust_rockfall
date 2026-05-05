@@ -352,22 +352,14 @@ class HazardAccumulator:
         for path in paths:
             if not path.exists():
                 continue
-            for event in iter_numeric_parquet(path, f"impact_events_parquet:{path}", warnings):
-                self.impact_event_count += 1
-                significant = event.get("significant_impact")
-                if isinstance(significant, bool):
-                    is_significant = significant
-                else:
-                    is_significant = (
-                        (numeric(event.get("incoming_normal_speed_mps")) or 0.0)
-                        >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
-                    )
-                if not is_significant:
-                    continue
-                self.significant_impact_count += 1
-                cell = sample_cell(self.grid, event)
-                if cell is not None:
-                    self.impact_density[cell[0]][cell[1]] += 1.0
+            stats = accumulate_impact_density_from_parquet(
+                path,
+                self.grid,
+                self.impact_density,
+                warnings,
+            )
+            self.impact_event_count += stats["impact_event_count"]
+            self.significant_impact_count += stats["significant_impact_count"]
 
     def stats(self) -> InputStats:
         return InputStats(
@@ -1050,8 +1042,7 @@ def discover_bounds(
                 bounds.add_row(row)
     for path in impact_event_parquet_paths:
         if path.exists():
-            for row in iter_numeric_parquet(path, f"impact_events_parquet:{path}", warnings, emit_warnings=False):
-                bounds.add_row(row)
+            add_parquet_xy_bounds(bounds, path, warnings, emit_warnings=False)
     return bounds
 
 
@@ -1127,6 +1118,105 @@ def iter_numeric_parquet(
             yield parsed
     if emit_warnings and dropped:
         warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
+
+
+def add_parquet_xy_bounds(
+    bounds: GridBounds,
+    path: Path,
+    warnings: list[str],
+    *,
+    emit_warnings: bool = True,
+) -> None:
+    try:
+        import pyarrow.parquet as pq  # type: ignore
+    except ImportError as exc:
+        raise SystemExit("pyarrow is required for impact-event Parquet inputs") from exc
+    parquet_file = pq.ParquetFile(path)
+    require_parquet_columns(parquet_file, path, ("x_m", "y_m"))
+    dropped = 0
+    for batch in parquet_file.iter_batches(columns=["x_m", "y_m"], batch_size=65_536):
+        xs = batch.column(0).to_pylist()
+        ys = batch.column(1).to_pylist()
+        for x_value, y_value in zip(xs, ys):
+            x = finite_float(x_value)
+            y = finite_float(y_value)
+            if x is None or y is None:
+                dropped += 1
+                continue
+            bounds.xs.append(x)
+            bounds.ys.append(y)
+    if emit_warnings and dropped:
+        warnings.append(f"dropped {dropped} non-finite coordinate rows from impact_events_parquet:{path}")
+
+
+def accumulate_impact_density_from_parquet(
+    path: Path,
+    grid: GridSpec,
+    impact_density: list[list[float]],
+    warnings: list[str],
+) -> dict[str, int]:
+    try:
+        import pyarrow.parquet as pq  # type: ignore
+    except ImportError as exc:
+        raise SystemExit("pyarrow is required for impact-event Parquet inputs") from exc
+    parquet_file = pq.ParquetFile(path)
+    names = set(parquet_file.schema_arrow.names)
+    require_parquet_columns(parquet_file, path, ("x_m", "y_m"))
+    use_significant_flag = "significant_impact" in names
+    if use_significant_flag:
+        columns = ["x_m", "y_m", "significant_impact"]
+    else:
+        require_parquet_columns(parquet_file, path, ("incoming_normal_speed_mps",))
+        columns = ["x_m", "y_m", "incoming_normal_speed_mps"]
+
+    impact_event_count = 0
+    significant_impact_count = 0
+    dropped = 0
+    for batch in parquet_file.iter_batches(columns=columns, batch_size=65_536):
+        xs = batch.column(0).to_pylist()
+        ys = batch.column(1).to_pylist()
+        significance_values = batch.column(2).to_pylist()
+        for x_value, y_value, significance_value in zip(xs, ys, significance_values):
+            impact_event_count += 1
+            if use_significant_flag:
+                is_significant = bool(significance_value) if significance_value is not None else False
+            else:
+                normal_speed = finite_float(significance_value) or 0.0
+                is_significant = normal_speed >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
+            if not is_significant:
+                continue
+            significant_impact_count += 1
+            x = finite_float(x_value)
+            y = finite_float(y_value)
+            if x is None or y is None:
+                dropped += 1
+                continue
+            cell = grid.cell(x, y)
+            if cell is not None:
+                impact_density[cell[0]][cell[1]] += 1.0
+    if dropped:
+        warnings.append(f"dropped {dropped} non-finite significant impact rows from impact_events_parquet:{path}")
+    return {
+        "impact_event_count": impact_event_count,
+        "significant_impact_count": significant_impact_count,
+    }
+
+
+def require_parquet_columns(parquet_file: Any, path: Path, columns: tuple[str, ...]) -> None:
+    names = set(parquet_file.schema_arrow.names)
+    missing = [column for column in columns if column not in names]
+    if missing:
+        raise SystemExit(f"impact-event Parquet table {path} is missing required columns: {', '.join(missing)}")
+
+
+def finite_float(value: Any) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
 
 
 def sample_cell(grid: GridSpec, sample: dict[str, float | str | bool]) -> tuple[int, int] | None:

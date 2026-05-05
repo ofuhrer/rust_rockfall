@@ -43,8 +43,12 @@ it for generated validation cases. This keeps routine benchmark timing focused
 on validation, output, and hazard-layer stages rather than repeated Cargo
 startup overhead.
 
-The default `standard` profile is intended to complete in roughly 20-30 seconds
-on a local development machine. It uses:
+The default `standard` profile is intended to complete comfortably within a
+routine local iteration window. On the 2026-05-05 Apple M1 reference run it
+completed in about 4.5 seconds after the local debug binary was already built.
+Cold builds or slower filesystems may take longer, but the benchmark matrix is
+designed to stay below the earlier 20-30 second target on a typical development
+machine. It uses:
 
 - release count: `10`;
 - contact models: `translational_v0`, `sphere_rotational_v1`;
@@ -77,6 +81,9 @@ The runner supports explicit profiles:
 impact events (`parquet` or `csv_parquet`) so the representative run exercises
 the columnar impact-event path explicitly.
 
+The canonical post-refactor profile validation is recorded in
+`docs/performance_benchmark_profile_reference.md`.
+
 ## Useful Commands
 
 Prepare generated cases without running them:
@@ -97,7 +104,7 @@ decisions:
 ```bash
 python3 scripts/run_performance_benchmark.py \
   --profile scale \
-  --output-root validation/results/parquet_impact_benchmark
+  --output-root validation/results/benchmark_reference_scale
 ```
 
 Run a custom local trial:

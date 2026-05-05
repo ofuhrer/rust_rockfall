@@ -129,12 +129,18 @@ and reuses it for generated cases, so default timing is not dominated by repeate
 Cargo startup. Use `scale` or `custom` when CSV impact-event output must be
 included.
 
+The post-refactor reference run completed the standard profile in about 4.5 s
+on an Apple M1 after the debug binary was available. The same run completed the
+scale profile in about 27m49s and generated 2.4 GB of ignored artifacts. See
+`performance_benchmark_profile_reference.md` for the canonical numbers and
+engineering conclusions.
+
 For larger data-format decisions, use the explicit scale profile:
 
 ```bash
 python3 scripts/run_performance_benchmark.py \
   --profile scale \
-  --output-root validation/results/parquet_impact_benchmark
+  --output-root validation/results/benchmark_reference_scale
 ```
 
 The scale profile uses release counts `500` and `1000`, includes CSV+Parquet

@@ -380,6 +380,8 @@ Phase 3: hazard reader (implemented for impact events)
   `ensemble_impact_events_parquet` when present or when explicitly passed.
 - Keep CSV impact-event directory support.
 - Compare hazard layers from CSV and Parquet inputs for numerical identity.
+- Use projected Parquet column reads for impact-density post-processing instead
+  of converting complete impact-event rows into Python dictionaries.
 
 Phase 4: trajectory Parquet writer
 

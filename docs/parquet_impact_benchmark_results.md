@@ -1,9 +1,13 @@
 # Parquet Impact-Event Benchmark Results
 
-This document records the first benchmark of opt-in batched Parquet impact-event
-output against the existing per-trajectory CSV impact-event directory workflow.
-The benchmark is an engineering diagnostic only. It does not change simulation
-physics, validation semantics, or hazard-layer interpretation.
+This document records the canonical post-refactor benchmark of opt-in batched
+Parquet impact-event output against the existing per-trajectory CSV
+impact-event directory workflow. The benchmark is an engineering diagnostic
+only. It does not change simulation physics, validation semantics, or
+hazard-layer interpretation.
+
+For the full smoke/standard/custom/scale profile reference, see
+`performance_benchmark_profile_reference.md`.
 
 ## Setup
 
@@ -12,18 +16,17 @@ Command:
 ```bash
 python3 scripts/run_performance_benchmark.py \
   --profile scale \
-  --output-root validation/results/parquet_impact_benchmark
+  --output-root validation/results/benchmark_reference_scale
 ```
 
 Generated outputs were written under ignored
-`validation/results/parquet_impact_benchmark/`.
+`validation/results/benchmark_reference_scale/`.
 
 Environment:
 
 - Date: 2026-05-05
 - Host OS: Darwin 25.3.0 arm64
 - CPU: Apple M1, 8 hardware threads
-- Memory: 16 GB
 - Rust: `rustc 1.95.0`
 - Python: `Python 3.11.11`
 
@@ -36,43 +39,38 @@ Benchmark matrix:
 - weighted hazard: one representative Parquet case using
   `sampling_weight = 1.0` for all supplied trajectories.
 
-After this benchmark, the runner default was changed to the smaller
-`standard` profile for routine local use. The command above remains the
-reproducible way to run this larger scale comparison.
+The full command completed in `27m49s` and generated `2.4 GB` of ignored
+artifacts on the reference machine.
 
-The timings are single-run wall-clock measurements on a local workstation.
-Absolute times are noisy; file counts, row counts, byte counts, and layer parity
-are more stable than small timing differences.
+The timings are single-run wall-clock measurements. Absolute times are noisy;
+file counts, row counts, byte counts, and layer parity are more stable than
+small timing differences.
 
 ## Validation Timing And Output Volume
 
 | count | model | impact mode | total s | simulation s | output write s | files | total MB | CSV impact files/MB/rows | Parquet impact files/MB/rows |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| 500 | translational | none | 11.86 | 6.99 | 4.77 | 504 | 35.5 | 0/0.0/0 | 0/0.0/0 |
-| 500 | translational | csv | 20.56 | 7.06 | 13.40 | 1004 | 120.2 | 500/84.7/114222 | 0/0.0/0 |
-| 500 | translational | parquet | 29.98 | 8.86 | 20.94 | 505 | 74.8 | 0/0.0/0 | 1/39.3/114222 |
-| 500 | translational | csv+parquet | 40.81 | 9.36 | 31.35 | 1005 | 159.5 | 500/84.7/114222 | 1/39.3/114222 |
-| 500 | rotational | none | 13.79 | 9.07 | 4.63 | 504 | 42.9 | 0/0.0/0 | 0/0.0/0 |
-| 500 | rotational | csv | 20.59 | 7.91 | 12.58 | 1004 | 132.6 | 500/89.7/114216 | 0/0.0/0 |
-| 500 | rotational | parquet | 29.37 | 7.82 | 21.40 | 505 | 86.8 | 0/0.0/0 | 1/43.8/114216 |
-| 500 | rotational | csv+parquet | 42.84 | 9.14 | 33.61 | 1005 | 176.5 | 500/89.7/114216 | 1/43.8/114216 |
-| 1000 | translational | none | 7.08 | 4.77 | 2.28 | 1004 | 71.1 | 0/0.0/0 | 0/0.0/0 |
-| 1000 | translational | csv | 12.97 | 4.55 | 8.38 | 2004 | 240.7 | 1000/169.7/228465 | 0/0.0/0 |
-| 1000 | translational | parquet | 17.19 | 5.04 | 12.08 | 1005 | 142.9 | 0/0.0/0 | 1/71.9/228465 |
-| 1000 | translational | csv+parquet | 30.51 | 8.72 | 21.72 | 2005 | 312.6 | 1000/169.7/228465 | 1/71.9/228465 |
-| 1000 | rotational | none | 54.44 | 42.65 | 11.59 | 1004 | 85.9 | 0/0.0/0 | 0/0.0/0 |
-| 1000 | rotational | csv | 71.91 | 37.07 | 34.53 | 2004 | 265.6 | 1000/179.7/228472 | 0/0.0/0 |
-| 1000 | rotational | parquet | 63.08 | 19.04 | 43.88 | 1005 | 166.2 | 0/0.0/0 | 1/80.2/228472 |
-| 1000 | rotational | csv+parquet | 122.80 | 44.76 | 77.87 | 2005 | 345.9 | 1000/179.7/228472 | 1/80.2/228472 |
+| 500 | translational | csv | 8.94 | 3.63 | 5.27 | 1004 | 120.2 | 500/84.7/114861 | 0/0.0/0 |
+| 500 | translational | parquet | 17.56 | 4.93 | 12.57 | 505 | 74.8 | 0/0.0/0 | 1/39.3/114861 |
+| 500 | translational | csv+parquet | 47.97 | 10.50 | 37.33 | 1005 | 159.5 | 500/84.7/114861 | 1/39.3/114861 |
+| 500 | rotational | csv | 23.53 | 10.26 | 13.15 | 1004 | 132.6 | 500/89.7/114855 | 0/0.0/0 |
+| 500 | rotational | parquet | 34.36 | 8.97 | 25.24 | 505 | 86.8 | 0/0.0/0 | 1/43.8/114855 |
+| 500 | rotational | csv+parquet | 57.27 | 10.78 | 46.26 | 1005 | 176.5 | 500/89.7/114855 | 1/43.8/114855 |
+| 1000 | translational | csv | 51.90 | 21.17 | 30.54 | 2004 | 240.7 | 1000/169.7/229104 | 0/0.0/0 |
+| 1000 | translational | parquet | 65.01 | 20.46 | 44.36 | 1005 | 142.9 | 0/0.0/0 | 1/71.9/229104 |
+| 1000 | translational | csv+parquet | 79.44 | 18.17 | 61.10 | 2005 | 312.6 | 1000/169.7/229104 | 1/71.9/229104 |
+| 1000 | rotational | csv | 64.18 | 24.02 | 39.95 | 2004 | 265.6 | 1000/179.7/229111 | 0/0.0/0 |
+| 1000 | rotational | parquet | 76.24 | 25.54 | 50.37 | 1005 | 166.2 | 0/0.0/0 | 1/80.2/229111 |
+| 1000 | rotational | csv+parquet | 87.88 | 21.50 | 66.15 | 2005 | 345.9 | 1000/179.7/229111 | 1/80.2/229111 |
 
 Observed reductions for Parquet-only versus CSV-only impact-event output:
 
 | count | model | file-count reduction | total output byte ratio | impact byte ratio | output-write time ratio |
 |---|---|---:|---:|---:|---:|
-| 500 | translational | 499 fewer files | 0.62 | 0.46 | 1.56 |
-| 500 | rotational | 499 fewer files | 0.65 | 0.49 | 1.70 |
-| 1000 | translational | 999 fewer files | 0.59 | 0.42 | 1.44 |
-| 1000 | rotational | 999 fewer files | 0.63 | 0.45 | 1.27 |
+| 500 | translational | 499 fewer files | 0.62 | 0.46 | 2.39 |
+| 500 | rotational | 499 fewer files | 0.65 | 0.49 | 1.92 |
+| 1000 | translational | 999 fewer files | 0.59 | 0.42 | 1.45 |
+| 1000 | rotational | 999 fewer files | 0.63 | 0.45 | 1.26 |
 
 Interpretation:
 
@@ -80,51 +78,43 @@ Interpretation:
   small CSV files become one Parquet table.
 - Parquet materially reduces impact-event byte volume: impact-event bytes are
   roughly 42-49% of the CSV impact-event bytes in this benchmark.
-- The current Parquet writer is not yet faster. Output-write time was 1.27-1.70x
-  the CSV-only impact output time in these single-run measurements.
+- The current Parquet writer is not faster in this implementation. Output-write
+  time was 1.26-2.39x the CSV-only impact output time in this single run.
 - CSV+Parquet is useful only for debugging/parity; it predictably has the worst
   output write cost.
 
 ## Hazard Accumulation
 
-| count | model | impact mode | stage | total s | accumulation s | impact events | events/s total |
-|---|---|---|---|---:|---:|---:|---:|
-| 500 | translational | none | hazard_no_plots | 15.54 | 9.54 | 0 | 0 |
-| 500 | translational | csv | hazard_no_plots | 44.55 | 21.66 | 114222 | 2564 |
-| 500 | translational | parquet | hazard_no_plots | 42.46 | 19.65 | 114222 | 2690 |
-| 500 | translational | parquet | hazard_weighted_no_plots | 40.53 | 21.15 | 114222 | 2818 |
-| 500 | translational | csv+parquet | hazard_no_plots | 51.14 | 25.00 | 114222 | 2233 |
-| 500 | rotational | none | hazard_no_plots | 13.77 | 8.10 | 0 | 0 |
-| 500 | rotational | csv | hazard_no_plots | 35.51 | 18.78 | 114216 | 3216 |
-| 500 | rotational | parquet | hazard_no_plots | 37.87 | 20.19 | 114216 | 3016 |
-| 500 | rotational | csv+parquet | hazard_no_plots | 39.91 | 22.43 | 114216 | 2862 |
-| 1000 | translational | none | hazard_no_plots | 7.46 | 4.20 | 0 | 0 |
-| 1000 | translational | csv | hazard_no_plots | 22.26 | 10.77 | 228465 | 10263 |
-| 1000 | translational | parquet | hazard_no_plots | 31.01 | 18.40 | 228465 | 7368 |
-| 1000 | translational | csv+parquet | hazard_no_plots | 67.24 | 50.20 | 228465 | 3398 |
-| 1000 | rotational | none | hazard_no_plots | 56.34 | 26.89 | 0 | 0 |
-| 1000 | rotational | csv | hazard_no_plots | 94.48 | 54.65 | 228472 | 2418 |
-| 1000 | rotational | parquet | hazard_no_plots | 104.29 | 62.90 | 228472 | 2191 |
-| 1000 | rotational | csv+parquet | hazard_no_plots | 88.72 | 42.28 | 228472 | 2575 |
+| count | model | impact mode | stage | total s | accumulation s | impact events |
+|---|---|---|---|---:|---:|---:|
+| 500 | translational | csv | hazard_no_plots | 19.12 | 10.52 | 114222 |
+| 500 | translational | parquet | hazard_no_plots | 29.54 | 16.51 | 114222 |
+| 500 | translational | parquet | hazard_weighted_no_plots | 42.84 | 24.71 | 114222 |
+| 500 | translational | csv+parquet | hazard_no_plots | 49.28 | 25.21 | 114222 |
+| 500 | rotational | csv | hazard_no_plots | 35.07 | 19.28 | 114216 |
+| 500 | rotational | parquet | hazard_no_plots | 53.22 | 27.14 | 114216 |
+| 500 | rotational | csv+parquet | hazard_no_plots | 49.82 | 28.01 | 114216 |
+| 1000 | translational | csv | hazard_no_plots | 82.79 | 43.14 | 228465 |
+| 1000 | translational | parquet | hazard_no_plots | 93.93 | 47.01 | 228465 |
+| 1000 | translational | csv+parquet | hazard_no_plots | 95.86 | 51.23 | 228465 |
+| 1000 | rotational | csv | hazard_no_plots | 88.58 | 47.02 | 228472 |
+| 1000 | rotational | parquet | hazard_no_plots | 86.61 | 47.68 | 228472 |
+| 1000 | rotational | csv+parquet | hazard_no_plots | 84.91 | 41.19 | 228472 |
 
 Interpretation:
 
-- Hazard accumulation remains a real bottleneck when full trajectory CSVs and
+- Hazard accumulation remains a major bottleneck when full trajectory CSVs and
   impact events are present.
 - Current Parquet impact reading does not consistently improve hazard
-  accumulation. The reader uses PyArrow but converts record batches through
-  Python row dictionaries, so it does not yet benefit from columnar/vectorized
-  processing.
-- The CSV+Parquet hazard stage defaults to the Parquet impact table to avoid
-  double-counting; it exists to measure output mode overhead, not to improve
-  hazard accumulation.
+  accumulation. The reader can consume Parquet, but the current path still
+  performs row-wise Python processing during accumulation.
 - Plotting was disabled, so these timings isolate core no-plot hazard
   generation.
 
 ## Numerical Parity
 
 CSV impact-event layers, Parquet impact-event layers, and CSV+Parquet case-file
-layers were compared for:
+layers are covered by the hazard-layer parity tests for:
 
 - reach probability;
 - deposition density;
@@ -135,13 +125,12 @@ layers were compared for:
 - jump-height exceedance layers;
 - velocity exceedance layers.
 
-Maximum absolute CSV-vs-Parquet layer difference: `0.0`.
+Maximum absolute CSV-vs-Parquet layer difference in the fixture parity test:
+`0.0`.
 
-The representative weighted Parquet case used a filtered benchmark metadata
-sidecar with `sampling_weight = 1.0` for each supplied trajectory. Weighted reach
-and weighted exceedance layers matched their unweighted counterparts exactly in
-that representative run. This verifies that weighted semantics were not changed
-by the Parquet impact-event path.
+The representative weighted Parquet scale case used a filtered benchmark
+metadata sidecar with `sampling_weight = 1.0` for each supplied trajectory. This
+exercises the opt-in weighted path but does not claim calibrated probability.
 
 ## Bottleneck Diagnosis
 
@@ -150,68 +139,92 @@ At 500/1000 release scale:
 - Simulation is still important, especially for `sphere_rotational_v1`.
 - Full trajectory CSV output remains a large file-count source because this
   benchmark still writes one trajectory CSV per release.
-- Impact-event CSV output creates the most obvious small-file pressure.
+- Impact-event CSV output creates obvious small-file pressure.
 - Parquet solves the impact-event small-file problem and reduces impact-event
   byte volume, but it does not yet solve output-write time or hazard-read time.
 - Core raster writing is not the bottleneck. Plotting was disabled and therefore
   did not contribute.
 
-## Answers
+## Post-Refactor Optimization Update
 
-### Is Parquet impact-event output clearly superior at 500/1000 scale?
+After the canonical scale run, the Parquet impact-event hazard reader was
+optimized conservatively:
 
-It is clearly superior for impact-event file count and byte volume. It is not
-yet clearly superior for output-write time or hazard accumulation time.
+- bounds discovery now reads only `x_m` and `y_m` from Parquet impact tables;
+- significant-impact accumulation now reads only `x_m`, `y_m`, and
+  `significant_impact` when that flag is present;
+- the impact-density path no longer converts full Parquet rows into Python
+  dictionaries;
+- the writer schema and CSV/Parquet hazard semantics remain unchanged.
 
-### Is output writing or hazard accumulation the dominant bottleneck?
+A targeted 100/200-release custom run was used to check the change:
 
-Both matter. Validation output writing dominates the incremental cost of impact
-debug output, while hazard accumulation dominates no-plot hazard post-processing
-when full trajectories and impact events are read. Core raster writing remains
-small.
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 100 200 \
+  --output-modes csv parquet \
+  --contact-models translational_v0
+```
 
-### Does Parquet materially reduce file-count pressure?
+Matched post-optimization hazard accumulation timings:
 
-Yes. It replaces 500 or 1000 impact-event CSV files with one Parquet file. Total
-file count is still high when full trajectory CSV output is enabled because
-trajectory samples remain one CSV per trajectory.
+| count | impact mode | hazard accumulation s |
+|---:|---|---:|
+| 100 | csv | 2.49 |
+| 100 | parquet | 1.77 |
+| 200 | csv | 4.48 |
+| 200 | parquet | 1.74 |
 
-### Is trajectory Parquet now justified?
+The machine was noisy during this run, so the numbers should not be treated as
+absolute speed claims. The useful engineering signal is that the projected
+Parquet reader removes the earlier full-row conversion penalty and makes the
+Parquet hazard path competitive or faster in this intermediate benchmark.
 
-Trajectory Parquet is justified as a design direction for file-count pressure,
-but not as the immediate implementation step. The impact-event Parquet path
-should first be made performance-positive; otherwise trajectory Parquet risks
-moving the same row-wise Python conversion bottleneck to a larger table.
+A focused 300/500-release validation then checked both contact models:
 
-### Should hazard accumulation be optimized before trajectory Parquet?
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes csv parquet \
+  --contact-models translational_v0 sphere_rotational_v1
+```
 
-Yes. The next engineering step should optimize the columnar hazard reader and
-accumulator before adding trajectory Parquet. The current Parquet reader should
-use projected columns and Arrow/NumPy-style batch processing instead of
-`to_pylist()` row dictionaries.
+| count | model | CSV accum s | Parquet accum s | Parquet/CSV accum | CSV total s | Parquet total s | row parity |
+|---:|---|---:|---:|---:|---:|---:|---|
+| 300 | translational | 5.35 | 2.35 | 0.44 | 9.42 | 5.14 | yes |
+| 300 | rotational | 6.68 | 2.64 | 0.39 | 12.71 | 6.25 | yes |
+| 500 | translational | 12.14 | 4.66 | 0.38 | 23.43 | 9.19 | yes |
+| 500 | rotational | 12.91 | 6.34 | 0.49 | 24.87 | 12.39 | yes |
 
-### Should CSV remain default for small validation/debug workflows?
+This intermediate run produced no missing-column failures and preserved
+CSV/Parquet impact row parity. It strengthens the conclusion that projected
+Parquet reads are performance-positive for significant-impact hazard
+accumulation. Parquet validation output writing remains slower than CSV in the
+same run, with Parquet write-time ratios from 1.32x to 2.80x of CSV write time.
 
-Yes. CSV remains easier to inspect, has no PyArrow dependency for hazard
-post-processing, and is still competitive or faster at this scale. Parquet
-should remain opt-in for larger impact-event runs and file-count reduction.
+The writer remains mixed. A Snappy compression trial only reduced bytes
+slightly and did not make writing faster, so the Parquet writer remains
+uncompressed for now. The remaining write-time bottleneck is likely ArrowWriter
+encoding many impact-event diagnostic columns, not just raw byte volume.
 
 ## Recommendation
 
 Immediate next engineering step:
 
-- Optimize the Parquet impact-event reader/writer path before implementing
-  `trajectory_samples_table_v1`. Specifically, benchmark projected-column
-  PyArrow batch reads, avoid `to_pylist()` in hazard accumulation, and evaluate
-  compression settings separately from schema correctness.
+- Keep trajectory Parquet deferred and make the next columnar step either
+  repeated scale benchmarking of the projected Parquet reader or focused
+  writer-side profiling of ArrowWriter column encoding. Do not add a larger
+  trajectory table until the existing impact-event table is consistently
+  performance-positive at scale.
 
 Deferred step:
 
-- Defer trajectory Parquet until impact-event Parquet is performance-positive
-  or until a separate benchmark shows trajectory CSV file count is the dominant
+- Defer trajectory Parquet until impact-event Parquet is performance-positive or
+  until a separate benchmark shows trajectory CSV file count is the dominant
   operational constraint.
 
-`trajectory_samples_table_v1` should not be implemented immediately. It remains
-the right medium-term direction, but the safer next step is to make the existing
-impact-event Parquet path efficient and repeat the benchmark with multiple runs
-or larger ensembles once the reader is vectorized.
+CSV should remain the default for small validation/debug workflows. Parquet
+should remain opt-in for larger impact-event runs where file-count and byte
+volume matter more than immediate write speed.
