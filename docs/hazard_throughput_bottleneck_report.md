@@ -92,3 +92,49 @@ Deferred:
 The safest next implementation slice is therefore an explicit-grid benchmark
 mode/update for the synthetic benchmark runner, followed by a focused
 trajectory-accumulation optimization pass.
+
+## Explicit-Grid Follow-Up
+
+The benchmark runner now supports `--hazard-grid explicit`, `auto`, and `both`.
+The smoke, standard, and scale profiles use `explicit` by default. Explicit
+mode derives the hazard grid from the generated synthetic DEM extent:
+
+- `xmin = 2601000 m`, `ymin = 1201000 m`;
+- `ncols = terrain_size`, `nrows = terrain_size`;
+- `cell_size = synthetic DEM cell_size`.
+
+Follow-up command:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes trajectories parquet \
+  --contact-models translational_v0 sphere_rotational_v1 \
+  --hazard-plots no-plots \
+  --weighted-hazard none \
+  --hazard-grid both \
+  --output-root validation/results/hazard_explicit_grid_300_500
+```
+
+Measured result:
+
+- Auto-grid hazard-stage wall time averaged about `10.0 s` across the eight
+  hazard rows.
+- Explicit-grid hazard-stage wall time averaged about `6.8 s`.
+- Bounds discovery dropped to `0.0 s` in explicit mode by construction.
+- Total hazard wall time improved in seven of eight paired rows. The remaining
+  pair was essentially flat because explicit mode used the full synthetic DEM
+  extent, while auto-grid used a smaller padded trajectory extent.
+
+Interpretation:
+
+- Explicit-grid mode removes the avoidable pre-scan and is the right default
+  for controlled synthetic benchmarks and pilot-style runs.
+- Explicit and auto grids can have different extents. The benchmark should use
+  explicit mode for timing comparisons, while auto mode remains available for
+  quick inspection and convenience.
+- With bounds discovery removed, trajectory accumulation remains the dominant
+  hazard-stage code path. The next optimization should target trajectory sample
+  accumulation or a projected trajectory-reader interface, not impact
+  accumulation.

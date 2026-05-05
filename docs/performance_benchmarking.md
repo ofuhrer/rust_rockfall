@@ -81,6 +81,11 @@ After running a case with ensemble trajectory output, build hazard layers as usu
 python3 scripts/build_hazard_layers.py \
   --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml \
   --output-dir hazard/results/swissalti3d_hazard_statistics \
+  --grid-xmin <xmin> \
+  --grid-ymin <ymin> \
+  --grid-ncols <ncols> \
+  --grid-nrows <nrows> \
+  --grid-cell-size 2 \
   --cell-size 2 \
   --no-plots
 ```
@@ -91,6 +96,11 @@ trajectory count, impact-event count, input row counts, file/table scan counts,
 and coarse rows-per-second diagnostics. Use this to compare
 representative-trajectory runs against full-ensemble runs, explicit-grid mode
 against auto-grid mode, and plotting enabled versus `--no-plots`.
+
+Use explicit-grid mode for controlled benchmarks and pilot-style runs when the
+terrain extent and resolution are known. Auto-grid mode remains useful for
+quick inspection, but it performs an additional input scan to discover bounds,
+which can dominate small-to-medium hazard-stage timings.
 
 Use `--no-plots` for benchmark and larger workflow runs. Omit it only when a local PNG/HTML diagnostic report is needed for inspection.
 
@@ -152,8 +162,11 @@ output, Parquet impact-event output, a shorter synthetic horizon, and one
 representative sampling-weighted hazard stage. It is intended for routine local
 iteration. The runner builds the local debug `rockfall` binary once when needed
 and reuses it for generated cases, so default timing is not dominated by repeated
-Cargo startup. Use `scale` or `custom` when CSV impact-event output must be
-included.
+Cargo startup. The benchmark profiles use explicit hazard grids by default so
+hazard timing focuses on accumulation rather than avoidable bounds discovery.
+Use `--hazard-grid auto` to preserve auto-grid behavior or `--hazard-grid both`
+to compare both modes. Use `scale` or `custom` when CSV impact-event output
+must be included.
 
 The post-refactor reference run completed the standard profile in about 4.5 s
 on an Apple M1 after the debug binary was available. The same run completed the

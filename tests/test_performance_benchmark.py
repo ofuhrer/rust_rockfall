@@ -44,6 +44,11 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             self.assertNotIn("ensemble_impact_events_parquet", case["outputs"])
 
             full_output = next(run for run in runs if run.mode_name == "trajectories_csv_parquet_impacts")
+            self.assertEqual(full_output.grid_xmin, 2_601_000.0)
+            self.assertEqual(full_output.grid_ymin, 1_201_000.0)
+            self.assertEqual(full_output.grid_ncols, 16)
+            self.assertEqual(full_output.grid_nrows, 16)
+            self.assertEqual(full_output.grid_cell_size, 2.0)
             full_case = yaml.safe_load(full_output.case_path.read_text())
             self.assertIn("ensemble_trajectories_dir", full_case["outputs"])
             self.assertIn("ensemble_impact_events_dir", full_case["outputs"])
@@ -57,6 +62,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
         self.assertEqual(smoke.contact_models, ("translational_v0",))
         self.assertEqual(smoke.output_modes, ("trajectories", "parquet"))
         self.assertEqual(smoke.hazard_plots, "no-plots")
+        self.assertEqual(smoke.hazard_grid, "explicit")
 
         standard = perf.resolve_benchmark_config(perf.parse_args([]))
         self.assertEqual(standard.profile, "standard")
@@ -65,6 +71,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
         self.assertEqual(standard.output_modes, ("trajectories", "parquet"))
         self.assertEqual(standard.hazard_plots, "no-plots")
         self.assertEqual(standard.weighted_hazard, "representative")
+        self.assertEqual(standard.hazard_grid, "explicit")
         self.assertEqual(standard.t_max, 3.0)
         self.assertNotIn("csv", standard.output_modes)
         self.assertNotIn("csv_parquet", standard.output_modes)
@@ -73,6 +80,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
         self.assertEqual(scale.counts, (500, 1000))
         self.assertIn("csv_parquet", scale.output_modes)
         self.assertEqual(scale.weighted_hazard, "representative")
+        self.assertEqual(scale.hazard_grid, "explicit")
 
     def test_custom_profile_requires_counts_and_modes(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires --counts and --output-modes"):
@@ -97,6 +105,25 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
         self.assertEqual(custom.counts, (3, 4))
         self.assertEqual(custom.output_modes, ("trajectories", "parquet"))
         self.assertEqual(custom.contact_models, ("translational_v0",))
+        self.assertEqual(custom.hazard_grid, "explicit")
+
+        auto = perf.resolve_benchmark_config(
+            perf.parse_args(
+                [
+                    "--profile",
+                    "custom",
+                    "--counts",
+                    "3",
+                    "--output-modes",
+                    "trajectories",
+                    "--weighted-hazard",
+                    "none",
+                    "--hazard-grid",
+                    "auto",
+                ]
+            )
+        )
+        self.assertEqual(auto.hazard_grid, "auto")
 
     def test_benchmark_selection_rejects_empty_and_incompatible_modes(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least one contact model"):
@@ -173,9 +200,15 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                 case_path=output_root / "case.yaml",
                 manifest_path=manifest,
                 diagnostics_path=output_root / "metrics.json",
+                grid_xmin=0.0,
+                grid_ymin=0.0,
+                grid_ncols=10,
+                grid_nrows=10,
+                grid_cell_size=1.0,
             )
 
             row = perf.row_from_manifest(run=run, stage="validation", manifest_path=manifest)
+            self.assertEqual(row["hazard_grid_source"], "")
             self.assertEqual(row["trajectories_per_second"], 10.0)
             self.assertEqual(row["impacts_per_second"], 4.0)
             self.assertEqual(row["output_bytes"], 1024)

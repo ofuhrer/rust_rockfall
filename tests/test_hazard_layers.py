@@ -554,6 +554,55 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(asc_header[0], "ncols 6")
             self.assertEqual(asc_header[1], "nrows 4")
 
+    def test_explicit_grid_can_match_auto_grid_when_extent_is_identical(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            auto_dir = work / "auto"
+            explicit_dir = work / "explicit"
+            base_args = [
+                "--case",
+                str(FIXTURE / "plane_case.yaml"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*base_args, "--output-dir", str(auto_dir)]),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        *base_args,
+                        "--output-dir",
+                        str(explicit_dir),
+                        "--grid-xmin",
+                        "-1.0",
+                        "--grid-ymin",
+                        "-1.0",
+                        "--grid-ncols",
+                        "5",
+                        "--grid-nrows",
+                        "3",
+                        "--grid-cell-size",
+                        "1.0",
+                    ]
+                ),
+                0,
+            )
+
+            for layer in (
+                "reach_probability",
+                "deposition_density",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "significant_impact_density",
+            ):
+                self.assertEqual(
+                    read_layer(auto_dir / f"hazard_fixture_plane_{layer}.csv", layer),
+                    read_layer(explicit_dir / f"hazard_fixture_plane_{layer}.csv", layer),
+                )
+
     def test_tschamut_swissalti3d_pilot_preparation_uses_synthetic_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)

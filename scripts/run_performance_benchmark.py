@@ -45,6 +45,7 @@ class BenchmarkProfile:
     output_modes: tuple[str, ...]
     hazard_plots: str
     weighted_hazard: str
+    hazard_grid: str
     terrain_size: int = 80
     cell_size: float = 2.0
     dt: float = 0.02
@@ -58,6 +59,7 @@ PROFILES: dict[str, BenchmarkProfile] = {
         output_modes=("trajectories", "parquet"),
         hazard_plots="no-plots",
         weighted_hazard="none",
+        hazard_grid="explicit",
         terrain_size=24,
         t_max=1.0,
     ),
@@ -67,6 +69,7 @@ PROFILES: dict[str, BenchmarkProfile] = {
         output_modes=("trajectories", "parquet"),
         hazard_plots="no-plots",
         weighted_hazard="representative",
+        hazard_grid="explicit",
         t_max=3.0,
     ),
     "scale": BenchmarkProfile(
@@ -75,6 +78,7 @@ PROFILES: dict[str, BenchmarkProfile] = {
         output_modes=("summary_only", "trajectories", "csv", "parquet", "csv_parquet"),
         hazard_plots="no-plots",
         weighted_hazard="representative",
+        hazard_grid="explicit",
     ),
 }
 
@@ -90,6 +94,11 @@ class BenchmarkRun:
     case_path: Path
     manifest_path: Path
     diagnostics_path: Path
+    grid_xmin: float
+    grid_ymin: float
+    grid_ncols: int
+    grid_nrows: int
+    grid_cell_size: float
 
 
 @dataclass(frozen=True)
@@ -100,6 +109,7 @@ class ResolvedBenchmarkConfig:
     output_modes: tuple[str, ...]
     hazard_plots: str
     weighted_hazard: str
+    hazard_grid: str
     terrain_size: int
     cell_size: float
     dt: float
@@ -157,6 +167,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--hazard-grid",
+        choices=("explicit", "auto", "both"),
+        help=(
+            "hazard grid mode for trajectory-output stages; explicit uses the generated synthetic DEM extent, "
+            "auto preserves build_hazard_layers.py bounds discovery, both runs both modes"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="create synthetic inputs and cases but do not execute cargo or hazard-layer commands",
@@ -182,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             print(
                 f"prepared {len(runs)} {config.profile} benchmark cases under {args.output_root} "
-                f"(counts={list(config.counts)}, output_modes={list(config.output_modes)})"
+                f"(counts={list(config.counts)}, output_modes={list(config.output_modes)}, "
+                f"hazard_grid={config.hazard_grid})"
             )
             return 0
         rows = run_benchmark_matrix(
@@ -191,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
             skip_hazard=args.skip_hazard,
             hazard_plots=config.hazard_plots,
             weighted_hazard=config.weighted_hazard,
+            hazard_grid=config.hazard_grid,
         )
         write_summary_reports(args.output_root, rows)
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
@@ -212,6 +232,7 @@ def resolve_benchmark_config(args: argparse.Namespace) -> ResolvedBenchmarkConfi
     output_modes = tuple(args.output_modes) if args.output_modes is not None else base.output_modes
     hazard_plots = args.hazard_plots if args.hazard_plots is not None else base.hazard_plots
     weighted_hazard = args.weighted_hazard if args.weighted_hazard is not None else base.weighted_hazard
+    hazard_grid = args.hazard_grid if args.hazard_grid is not None else base.hazard_grid
     terrain_size = args.terrain_size if args.terrain_size is not None else base.terrain_size
     cell_size = args.cell_size if args.cell_size is not None else base.cell_size
     dt = args.dt if args.dt is not None else base.dt
@@ -234,6 +255,7 @@ def resolve_benchmark_config(args: argparse.Namespace) -> ResolvedBenchmarkConfi
         output_modes=output_modes,
         hazard_plots=hazard_plots,
         weighted_hazard=weighted_hazard,
+        hazard_grid=hazard_grid,
         terrain_size=terrain_size,
         cell_size=cell_size,
         dt=dt,
@@ -335,8 +357,13 @@ def prepare_benchmark_inputs(
                         impact_output_mode=impact_output_mode,
                         case_path=case_path,
                         manifest_path=manifest_path,
-                        diagnostics_path=diagnostics_path,
-                    )
+                    diagnostics_path=diagnostics_path,
+                    grid_xmin=2_601_000.0,
+                    grid_ymin=1_201_000.0,
+                    grid_ncols=terrain_size,
+                    grid_nrows=terrain_size,
+                    grid_cell_size=cell_size,
+                )
                 )
     return runs
 
@@ -348,10 +375,12 @@ def run_benchmark_matrix(
     skip_hazard: bool,
     hazard_plots: str,
     weighted_hazard: str,
+    hazard_grid: str,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     weighted_representative_run = False
     rockfall_command = ensure_rockfall_command()
+    grid_modes = ("auto", "explicit") if hazard_grid == "both" else (hazard_grid,)
     for run in runs:
         subprocess.run(
             [str(rockfall_command), "validate", "--case", str(run.case_path)],
@@ -360,17 +389,43 @@ def run_benchmark_matrix(
         )
         rows.append(row_from_manifest(run=run, stage="validation", manifest_path=run.manifest_path))
         if not skip_hazard and run.write_trajectories:
-            if hazard_plots in ("both", "with-plots"):
-                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=False, weighted=False))
-            if hazard_plots in ("both", "no-plots"):
-                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=True, weighted=False))
-            if weighted_hazard == "all" or (
-                weighted_hazard == "representative"
-                and not weighted_representative_run
-                and run.impact_output_mode in {"parquet", "csv_parquet"}
-            ):
-                rows.append(run_hazard_stage(run, output_root=output_root, no_plots=True, weighted=True))
-                weighted_representative_run = True
+            for grid_mode in grid_modes:
+                if hazard_plots in ("both", "with-plots"):
+                    rows.append(
+                        run_hazard_stage(
+                            run,
+                            output_root=output_root,
+                            no_plots=False,
+                            weighted=False,
+                            grid_mode=grid_mode,
+                        )
+                    )
+                if hazard_plots in ("both", "no-plots"):
+                    rows.append(
+                        run_hazard_stage(
+                            run,
+                            output_root=output_root,
+                            no_plots=True,
+                            weighted=False,
+                            grid_mode=grid_mode,
+                        )
+                    )
+                if weighted_hazard == "all" or (
+                    weighted_hazard == "representative"
+                    and grid_mode == grid_modes[0]
+                    and not weighted_representative_run
+                    and run.impact_output_mode in {"parquet", "csv_parquet"}
+                ):
+                    rows.append(
+                        run_hazard_stage(
+                            run,
+                            output_root=output_root,
+                            no_plots=True,
+                            weighted=True,
+                            grid_mode=grid_mode,
+                        )
+                    )
+                    weighted_representative_run = True
     return rows
 
 
@@ -409,8 +464,16 @@ def validate_benchmark_selection(
         )
 
 
-def run_hazard_stage(run: BenchmarkRun, *, output_root: Path, no_plots: bool, weighted: bool) -> dict[str, Any]:
-    suffix = "hazard_weighted_no_plots" if weighted else ("hazard_no_plots" if no_plots else "hazard_with_plots")
+def run_hazard_stage(
+    run: BenchmarkRun,
+    *,
+    output_root: Path,
+    no_plots: bool,
+    weighted: bool,
+    grid_mode: str,
+) -> dict[str, Any]:
+    plot_suffix = "no_plots" if no_plots else "with_plots"
+    suffix = f"hazard_{grid_mode}_{'weighted_' if weighted else ''}{plot_suffix}"
     output_dir = output_root / "hazard" / run.run_id / suffix
     case_path = make_weighted_hazard_case(run, output_root) if weighted else run.case_path
     command = [
@@ -423,6 +486,23 @@ def run_hazard_stage(run: BenchmarkRun, *, output_root: Path, no_plots: bool, we
         "--cell-size",
         "2.0",
     ]
+    if grid_mode == "explicit":
+        command.extend(
+            [
+                "--grid-xmin",
+                str(run.grid_xmin),
+                "--grid-ymin",
+                str(run.grid_ymin),
+                "--grid-ncols",
+                str(run.grid_ncols),
+                "--grid-nrows",
+                str(run.grid_nrows),
+                "--grid-cell-size",
+                str(run.grid_cell_size),
+            ]
+        )
+    elif grid_mode != "auto":
+        raise ValueError(f"unsupported hazard grid mode: {grid_mode}")
     if no_plots:
         command.append("--no-plots")
     subprocess.run(command, cwd=ROOT, check=True)
@@ -505,6 +585,7 @@ def row_from_manifest(run: BenchmarkRun, *, stage: str, manifest_path: Path) -> 
     return {
         "run_id": run.run_id,
         "stage": stage,
+        "hazard_grid_source": none_to_empty((manifest.get("grid") or {}).get("source")),
         "release_count": run.release_count,
         "contact_model": run.contact_model,
         "trajectory_output": run.write_trajectories,
@@ -559,6 +640,7 @@ def write_summary_reports(output_root: Path, rows: list[dict[str, Any]]) -> None
     fieldnames = [
         "run_id",
         "stage",
+        "hazard_grid_source",
         "release_count",
         "contact_model",
         "trajectory_output",

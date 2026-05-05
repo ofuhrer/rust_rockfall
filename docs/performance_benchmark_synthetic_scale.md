@@ -58,6 +58,7 @@ machine. It uses:
   - full ensemble trajectories plus Parquet impact-event output;
 - hazard layers for trajectory-output cases:
   - `--no-plots` only;
+  - explicit grid mode using the generated synthetic DEM extent;
 - one representative sampling-weighted hazard stage.
 
 This standard run is intentionally smaller than the exploratory scale matrix and
@@ -73,13 +74,24 @@ The runner supports explicit profiles:
 - `standard`: default routine profile, targeting short local iteration.
 - `scale`: larger exploratory profile with counts `500` and `1000`, both contact
   models, CSV, Parquet, CSV+Parquet impact modes, no-plot hazard layers, and one
-  representative weighted hazard stage. This can take many minutes and produce
-  gigabytes of ignored artifacts.
+  representative weighted hazard stage. It uses explicit hazard grids by
+  default. This can take many minutes and produce gigabytes of ignored
+  artifacts.
 - `custom`: requires user-provided `--counts` and `--output-modes`.
 
 `--weighted-hazard representative` requires an output mode that writes Parquet
 impact events (`parquet` or `csv_parquet`) so the representative run exercises
 the columnar impact-event path explicitly.
+
+Hazard grid modes:
+
+- `--hazard-grid explicit` (profile default): use the generated DEM extent and
+  resolution for hazard post-processing. This removes the repeated bounds scan
+  and is recommended for controlled benchmark comparisons.
+- `--hazard-grid auto`: preserve the convenience behavior of
+  `scripts/build_hazard_layers.py`, which scans inputs to discover bounds.
+- `--hazard-grid both`: run both modes for the same validation outputs so their
+  timings can be compared directly.
 
 The canonical post-refactor profile validation is recorded in
 `docs/performance_benchmark_profile_reference.md`.
@@ -117,6 +129,20 @@ python3 scripts/run_performance_benchmark.py \
   --contact-models translational_v0
 ```
 
+Compare auto-grid and explicit-grid hazard timing:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes trajectories parquet \
+  --contact-models translational_v0 sphere_rotational_v1 \
+  --hazard-plots no-plots \
+  --weighted-hazard none \
+  --hazard-grid both \
+  --output-root validation/results/hazard_explicit_grid_300_500
+```
+
 Run the selected profile but skip hazard post-processing:
 
 ```bash
@@ -152,6 +178,10 @@ The summary files collect:
 - simulation time;
 - output writing time;
 - hazard-layer time;
+- hazard grid source (`auto` or `explicit`);
+- bounds-discovery time;
+- trajectory, impact, and normalization accumulation time;
+- input row counts and diagnostic rows-per-second rates;
 - trajectory count;
 - impact-event count;
 - output file count;
