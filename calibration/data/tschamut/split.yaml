@@ -1,0 +1,95 @@
+dataset_id: tschamut2014
+doi: https://doi.org/10.16904/envidat.34
+method: Within each block_id, sort trajectory_id by SHA-256(seed, block_id, trajectory_id);
+  take the first calibration_per_block for calibration and the next holdout_per_block
+  for holdout.
+seed: 70314
+calibration_per_block: 6
+holdout_per_block: 6
+calibration_ids:
+- v020
+- v023
+- v028
+- v032
+- v033
+- v034
+- v038
+- v055
+- v065
+- v068
+- v069
+- v076
+- v083
+- v093
+- v095
+- v101
+- v105
+- v107
+holdout_ids:
+- v006
+- v007
+- v017
+- v021
+- v031
+- v037
+- v041
+- v042
+- v045
+- v049
+- v052
+- v053
+- v058
+- v066
+- v067
+- v073
+- v074
+- v086
+unused_ids:
+- v004
+- v005
+- v011
+- v014
+- v015
+- v018
+- v019
+- v022
+- v024
+- v025
+- v026
+- v027
+- v029
+- v030
+- v035
+- v036
+- v039
+- v040
+- v043
+- v044
+- v046
+- v047
+- v048
+- v050
+- v051
+- v057
+- v063
+- v064
+- v070
+- v072
+- v075
+- v077
+- v078
+- v079
+- v080
+- v081
+- v088
+- v090
+- v092
+- v097
+- v099
+- v104
+- v109
+- v111
+leakage_check:
+  intersection_size: 0
+  calibration_count: 18
+  holdout_count: 18

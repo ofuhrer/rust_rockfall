@@ -95,6 +95,16 @@ cargo run -- verify --all
 
 Optional large public-data validation cases skip gracefully until data have been downloaded and preprocessed.
 
+## Calibration
+
+Calibration experiments are separate from validation and live under `calibration/`. The first controlled Tschamut experiment can be reproduced with:
+
+```bash
+python3 scripts/run_tschamut_calibration.py
+```
+
+It writes ignored intermediate files under `calibration/results/` and committed summaries under `calibration/experiments/tschamut_v0_3/`. The resulting parameters are research diagnostics only, not project defaults and not operational hazard parameters.
+
 ## Visualization
 
 Optional diagnostic visualization tools live under `visualization/`. They consume existing CSV trajectory and JSON report outputs and generate PNG plots without adding dependencies to the Rust core:

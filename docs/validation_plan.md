@@ -63,8 +63,10 @@ These criteria support future large ensemble execution without making current va
 - Verification tests must not be calibrated.
 - Validation tests may reveal model deficiencies.
 - Calibration experiments must be explicitly separated from validation cases.
+- Calibration experiments live under `calibration/`; generated intermediate outputs live under ignored `calibration/results/`.
 - All tuned parameters must record dataset, objective function, parameter bounds, resulting values, and holdout validation dataset.
 - Do not tune secretly to match one dataset.
 - Roughness parameters must not be tuned inside validation cases; any future calibration must live in an explicit calibration experiment with recorded objective, bounds, dataset, and holdout policy.
+- The Tschamut v0.3.0 calibration experiment is documented in `docs/tschamut_calibration.md`; its selected parameters are research diagnostics and must not become defaults without a separate versioned model decision.
 
 Validation results must describe the model version, parameters, preprocessing, and limitations.

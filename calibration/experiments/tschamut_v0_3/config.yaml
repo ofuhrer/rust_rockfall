@@ -1,0 +1,58 @@
+experiment_id: tschamut_v0_3
+title: "Calibration experiment (Tschamut, research use only)"
+model_version: "0.3.0"
+dataset:
+  id: tschamut2014
+  doi: https://doi.org/10.16904/envidat.34
+  release_points_csv: data/processed/tschamut2014/release_points.csv
+  deposition_points_csv: data/processed/tschamut2014/observed_deposition.csv
+  terrain_ascii_grid: data/processed/tschamut2014/terrain.asc
+  terrain_metadata_json: data/processed/tschamut2014/metadata.json
+split:
+  path: calibration/data/tschamut/split.yaml
+  seed: 70314
+  calibration_per_block: 6
+  holdout_per_block: 6
+simulation:
+  dt: 0.02
+  t_max: 18.0
+  max_steps: 900
+  stop_velocity: 0.1
+random:
+  seed: 43030
+  ensemble_size: 4
+fixed_parameters:
+  gravity: 9.81
+  contact_model: translational_v0
+  roughness_model: stochastic_contact_v1
+parameter_grid:
+  normal_restitution: [0.25, 0.4]
+  tangential_restitution: [0.85, 0.95]
+  friction_coefficient: [0.2, 0.35]
+  roughness_profile:
+    - id: low
+      roughness_std_normal: 0.04
+      roughness_std_tangent: 0.04
+      roughness_std_angle: 0.04
+    - id: moderate
+      roughness_std_normal: 0.08
+      roughness_std_tangent: 0.06
+      roughness_std_angle: 0.08
+objective:
+  description: "Weighted normalized distribution-level mismatch; lower is better."
+  weights:
+    runout_distance_error_m: 0.45
+    deposition_centroid_error_m: 0.25
+    deposition_cloud_mean_nearest_error_m: 0.2
+    lateral_spread_error_m: 0.1
+  normalization: observed_mean_runout_m
+outputs:
+  generated_results_dir: calibration/results/tschamut_v0_3
+  candidate_results_csv: calibration/experiments/tschamut_v0_3/candidate_results.csv
+  selected_parameters_yaml: calibration/experiments/tschamut_v0_3/selected_parameters.yaml
+  summary_json: calibration/experiments/tschamut_v0_3/summary.json
+  report_html: calibration/experiments/tschamut_v0_3/report.html
+notes:
+  - "This is a controlled research calibration, not validation and not operational calibration."
+  - "The active validation case validation/cases/tschamut_basic.yaml is not modified by this experiment."
+  - "The v0.3.0 model uses a proxy terrain and spherical blocks, so residual mismatch is expected."

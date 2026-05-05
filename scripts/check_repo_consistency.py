@@ -13,12 +13,14 @@ ROOT = Path(__file__).resolve().parents[1]
 GENERATED_PREFIXES = (
     "verification/results/",
     "validation/results/",
+    "calibration/results/",
     "visualization/output/",
     "visualization/reports/standard_v0/",
 )
 ALLOWED_GENERATED = {
     "verification/results/.gitkeep",
     "validation/results/.gitkeep",
+    "calibration/results/.gitkeep",
 }
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
@@ -78,6 +80,7 @@ def main() -> int:
     errors.extend(check_contact_model_docs())
     errors.extend(check_version_consistency())
     errors.extend(check_tschamut_validation_metadata())
+    errors.extend(check_calibration_metadata())
 
     if errors:
         for error in errors:
@@ -274,6 +277,52 @@ def check_tschamut_validation_metadata() -> list[str]:
     report_text = report.read_text()
     if "Real-world validation" not in report_text:
         errors.append("visualization/build_report.py omits real-world validation wording")
+    return errors
+
+
+def check_calibration_metadata() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+    errors = []
+    required_paths = [
+        ROOT / "calibration/experiments/tschamut_v0_3/config.yaml",
+        ROOT / "calibration/data/tschamut/split.yaml",
+        ROOT / "calibration/experiments/tschamut_v0_3/candidate_results.csv",
+        ROOT / "calibration/experiments/tschamut_v0_3/selected_parameters.yaml",
+        ROOT / "calibration/experiments/tschamut_v0_3/summary.json",
+        ROOT / "docs/tschamut_calibration.md",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"missing calibration artifact {path.relative_to(ROOT)}")
+
+    split_path = ROOT / "calibration/data/tschamut/split.yaml"
+    if split_path.exists():
+        split = yaml.safe_load(split_path.read_text()) or {}
+        calibration_ids = set(split.get("calibration_ids", []))
+        holdout_ids = set(split.get("holdout_ids", []))
+        intersection = calibration_ids & holdout_ids
+        if intersection:
+            errors.append(f"calibration split leaks ids across partitions: {sorted(intersection)}")
+        if (split.get("leakage_check") or {}).get("intersection_size") != 0:
+            errors.append("calibration split leakage_check.intersection_size is not zero")
+
+    selected_path = ROOT / "calibration/experiments/tschamut_v0_3/selected_parameters.yaml"
+    if selected_path.exists():
+        selected = yaml.safe_load(selected_path.read_text()) or {}
+        if selected.get("dataset_id") != "tschamut2014":
+            errors.append("selected calibration parameters do not reference tschamut2014")
+        if not selected.get("parameters"):
+            errors.append("selected calibration parameters omit parameter values")
+
+    docs = (ROOT / "docs/validation_plan.md").read_text() + "\n" + (
+        ROOT / "docs/tschamut_calibration.md"
+    ).read_text()
+    for term in ("calibration", "holdout", "objective", "not operational"):
+        if term not in docs:
+            errors.append(f"calibration docs omit {term!r}")
     return errors
 
 

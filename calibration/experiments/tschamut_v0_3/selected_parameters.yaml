@@ -1,0 +1,15 @@
+experiment_id: tschamut_v0_3
+dataset_id: tschamut2014
+model_version: 0.3.0
+selected_candidate_id: candidate_011
+calibration_objective: 0.45976039125212004
+holdout_objective: 0.3660187629476325
+parameters:
+  normal_restitution: 0.4
+  tangential_restitution: 0.85
+  friction_coefficient: 0.35
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+caveat: Research calibration only; not an operational parameter set.
