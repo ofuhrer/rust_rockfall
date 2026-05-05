@@ -109,6 +109,19 @@ pub struct RotationalContactSettings {
     pub stop_speed_mps: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ContactParameters {
+    pub normal_restitution: f64,
+    pub tangential_restitution: f64,
+    pub friction_coefficient: f64,
+    pub rolling_resistance_coefficient: f64,
+    pub scarring: ScarringSettings,
+}
+
+pub trait ContactParameterProvider: Send + Sync {
+    fn parameters_at(&self, x_m: f64, y_m: f64, base: ContactParameters) -> ContactParameters;
+}
+
 pub fn gravity_vector(gravity_mps2: f64) -> Vec3 {
     Vec3::new(0.0, 0.0, -gravity_mps2)
 }

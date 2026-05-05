@@ -178,8 +178,18 @@ auto-discovered bounds.
 
 Future Swiss pilot workflows should use authoritative swisstopo geodata,
 especially swissALTI3D for bare-earth terrain. The current repository contains
-metadata and a small tile-metadata fixture only; it does not download or commit
-national swisstopo datasets. See `docs/swisstopo_data_strategy.md`.
+metadata fixtures and a tiny synthetic swissALTI3D-style validation crop only;
+it does not download or commit national swisstopo datasets. Run
+`cargo run -- validate --case validation/cases/swissalti3d_pilot.yaml` to
+exercise the terrain-source metadata and manifest contract, or
+`cargo run -- validate --case validation/cases/swissalti3d_release_zone_pilot.yaml`
+to also exercise deterministic source-area release generation, or
+`cargo run -- validate --case validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml`
+to include the opt-in terrain/material-class parameter lookup fixture. Run
+`cargo run -- validate --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml`
+before building additive exceedance hazard layers for the same synthetic pilot
+stack. See
+`docs/swisstopo_data_strategy.md` and `docs/swiss_terrain_ingestion_pilot.md`.
 
 For ensemble-based reach, energy, and jump-height layers, opt into
 `outputs.ensemble_trajectories_dir` in the case YAML. For ensemble impact

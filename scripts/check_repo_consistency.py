@@ -121,6 +121,10 @@ KNOWN_METRICS = {
     "max_scarring_depth_m",
     "max_scarring_drag_force_n",
     "total_scarring_energy_loss_j",
+    "release_zone_point_count",
+    "release_zone_extent_area_m2",
+    "release_zone_mean_runout_m",
+    "release_zone_max_runout_m",
 }
 
 
@@ -273,6 +277,22 @@ def check_schema_docs() -> list[str]:
         "different_seed_ensemble_runout_delta_m",
         "ascii_dem_clamped",
         "esri_ascii_grid_clamped",
+        "metadata_path",
+        "release_zone",
+        "generated_release_points_csv",
+        "deterministic_grid",
+        "terrain_classes",
+        "class_grid_path",
+        "restitution_n",
+        "restitution_t",
+        "friction_mu",
+        "rolling_resistance",
+        "hazard_layers",
+        "kinetic_energy_exceedance_j",
+        "jump_height_exceedance_m",
+        "velocity_exceedance_mps",
+        "EPSG:2056",
+        "LN02",
     ]
     errors = []
     for term in required_schema_terms:
@@ -360,9 +380,19 @@ def check_swisstopo_geodata_metadata() -> list[str]:
     errors = []
     required_paths = [
         ROOT / "docs/swisstopo_data_strategy.md",
+        ROOT / "docs/swiss_terrain_ingestion_pilot.md",
         ROOT / "docs/swisstopo_terrain_tile_schema.yaml",
         ROOT / "data/processed/swisstopo/README.md",
         ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml",
+        ROOT / "validation/cases/swissalti3d_pilot.yaml",
+        ROOT / "validation/cases/swissalti3d_release_zone_pilot.yaml",
+        ROOT / "validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml",
+        ROOT / "validation/cases/swissalti3d_hazard_statistics_pilot.yaml",
+        ROOT / "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc",
+        ROOT / "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml",
+        ROOT / "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml",
+        ROOT / "validation/data/processed/swisstopo_pilot/terrain_classes.asc",
+        ROOT / "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml",
     ]
     for path in required_paths:
         if not path.exists():
@@ -451,6 +481,100 @@ def check_swisstopo_geodata_metadata() -> list[str]:
             errors.append("sample swissALTI3D tile metadata references wrong source_dataset")
         if sample.get("source_file_present") is not False:
             errors.append("sample swissALTI3D tile metadata must remain metadata-only")
+    pilot_case_path = ROOT / "validation/cases/swissalti3d_pilot.yaml"
+    if pilot_case_path.exists():
+        pilot_case = yaml.safe_load(pilot_case_path.read_text()) or {}
+        terrain = pilot_case.get("terrain", {}) or {}
+        if terrain.get("metadata_path") != "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml":
+            errors.append("swissalti3d_pilot case must reference the checked-in terrain metadata sidecar")
+        if terrain.get("type") not in {"ascii_dem_clamped", "esri_ascii_grid_clamped"}:
+            errors.append("swissalti3d_pilot case should use clamped small DEM terrain")
+
+    pilot_metadata_path = ROOT / "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml"
+    if pilot_metadata_path.exists():
+        pilot = yaml.safe_load(pilot_metadata_path.read_text()) or {}
+        crs = pilot.get("coordinate_reference_system", {}) or {}
+        raster = pilot.get("raster", {}) or {}
+        extent = pilot.get("extent_lv95_m", {}) or {}
+        if pilot.get("source_dataset") != "swisstopo_swissalti3d":
+            errors.append("pilot terrain metadata references wrong source_dataset")
+        if crs.get("epsg") != 2056 or crs.get("vertical_datum") != "LN02":
+            errors.append("pilot terrain metadata must use EPSG:2056 and LN02")
+        if raster.get("resolution_m", 0) <= 0:
+            errors.append("pilot terrain metadata must have positive raster.resolution_m")
+        if extent.get("xmax", 0) <= extent.get("xmin", 0) or extent.get("ymax", 0) <= extent.get("ymin", 0):
+            errors.append("pilot terrain metadata must have a finite positive extent")
+
+    release_zone_case_path = ROOT / "validation/cases/swissalti3d_release_zone_pilot.yaml"
+    if release_zone_case_path.exists():
+        release_case = yaml.safe_load(release_zone_case_path.read_text()) or {}
+        release_zone = release_case.get("release_zone", {}) or {}
+        if release_zone.get("metadata_path") != "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml":
+            errors.append("swissalti3d_release_zone_pilot case must reference the checked-in release-zone metadata sidecar")
+        if not release_zone.get("generated_release_points_csv"):
+            errors.append("swissalti3d_release_zone_pilot should write generated release-point audit CSV")
+        if release_case.get("terrain", {}).get("metadata_path") != "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml":
+            errors.append("swissalti3d_release_zone_pilot must share the checked-in terrain metadata sidecar")
+
+    release_zone_path = ROOT / "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml"
+    if release_zone_path.exists():
+        release_zone = yaml.safe_load(release_zone_path.read_text()) or {}
+        crs = release_zone.get("coordinate_reference_system", {}) or {}
+        sampling = release_zone.get("sampling", {}) or {}
+        geometry = release_zone.get("geometry", {}) or {}
+        if crs.get("epsg") != 2056 or crs.get("vertical_datum") != "LN02":
+            errors.append("pilot release-zone metadata must use EPSG:2056 and LN02")
+        if geometry.get("type") != "polygon":
+            errors.append("pilot release-zone metadata must use polygon geometry")
+        if sampling.get("mode") != "deterministic_grid":
+            errors.append("pilot release-zone metadata must use deterministic_grid sampling")
+        if sampling.get("count", 0) <= 0:
+            errors.append("pilot release-zone metadata must request at least one release point")
+
+    terrain_class_case_path = ROOT / "validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml"
+    if terrain_class_case_path.exists():
+        class_case = yaml.safe_load(terrain_class_case_path.read_text()) or {}
+        terrain_classes = class_case.get("terrain_classes", {}) or {}
+        if terrain_classes.get("metadata_path") != "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml":
+            errors.append("swissalti3d terrain-class pilot must reference the checked-in terrain-class metadata sidecar")
+        if class_case.get("release_zone", {}).get("metadata_path") != "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml":
+            errors.append("swissalti3d terrain-class pilot must share the checked-in release-zone sidecar")
+
+    terrain_class_metadata_path = ROOT / "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml"
+    if terrain_class_metadata_path.exists():
+        class_metadata = yaml.safe_load(terrain_class_metadata_path.read_text()) or {}
+        crs = class_metadata.get("coordinate_reference_system", {}) or {}
+        raster = class_metadata.get("raster", {}) or {}
+        classes = class_metadata.get("classes", []) or []
+        if crs.get("epsg") != 2056 or crs.get("vertical_datum") != "LN02":
+            errors.append("pilot terrain-class metadata must use EPSG:2056 and LN02")
+        if class_metadata.get("class_grid_path") != "terrain_classes.asc":
+            errors.append("pilot terrain-class metadata must reference terrain_classes.asc")
+        if raster.get("resolution_m", 0) <= 0:
+            errors.append("pilot terrain-class metadata must have positive raster.resolution_m")
+        if len(classes) < 2:
+            errors.append("pilot terrain-class metadata should declare at least two classes")
+        for class_entry in classes:
+            if not class_entry.get("name"):
+                errors.append("pilot terrain-class metadata has unnamed class")
+
+    hazard_statistics_case_path = ROOT / "validation/cases/swissalti3d_hazard_statistics_pilot.yaml"
+    if hazard_statistics_case_path.exists():
+        hazard_case = yaml.safe_load(hazard_statistics_case_path.read_text()) or {}
+        statistics = ((hazard_case.get("hazard_layers") or {}).get("statistics") or {})
+        for key in (
+            "kinetic_energy_exceedance_j",
+            "jump_height_exceedance_m",
+            "velocity_exceedance_mps",
+        ):
+            values = statistics.get(key) or []
+            if not values:
+                errors.append(f"swissalti3d hazard-statistics pilot omits {key}")
+            elif any(value < 0 for value in values):
+                errors.append(f"swissalti3d hazard-statistics pilot has negative {key}")
+        outputs = hazard_case.get("outputs") or {}
+        if not outputs.get("ensemble_trajectories_dir"):
+            errors.append("swissalti3d hazard-statistics pilot must write ensemble_trajectories_dir")
     return errors
 
 

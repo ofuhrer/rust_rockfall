@@ -1,0 +1,43 @@
+case_id: validation_swissalti3d_release_zone_pilot
+title: swissALTI3D-style source-area release pilot
+level: 5
+description: Small deterministic validation case that combines LV95/LN02 terrain-source metadata with a synthetic source-area polygon and generated release points. It tests source-area provenance and orchestration only; it does not change simulation physics.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc
+  metadata_path: validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml
+block: { mass: 20.0, radius: 0.25 }
+release:
+  position: [2600001.0, 1200001.0, 1001.25]
+  velocity: [0.8, -0.2, 0.0]
+release_zone:
+  metadata_path: validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml
+  generated_release_points_csv: validation/results/swissalti3d_release_zone_points.csv
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.45
+simulation: { dt: 0.01, t_max: 0.5, max_steps: 50, stop_velocity: 0.05 }
+random: { seed: 2056, ensemble_size: 1 }
+expected:
+  metrics:
+    - release_zone_point_count
+    - release_zone_extent_area_m2
+    - release_zone_mean_runout_m
+    - release_zone_max_runout_m
+  values:
+    release_zone_point_count: 4.0
+    release_zone_extent_area_m2: 16.0
+  maximums:
+    release_zone_mean_runout_m: 2.0
+    release_zone_max_runout_m: 2.0
+outputs:
+  diagnostics_json: validation/results/swissalti3d_release_zone_pilot_metrics.json
+  manifest_json: validation/results/swissalti3d_release_zone_pilot_manifest.json
+  ensemble_deposition_csv: validation/results/swissalti3d_release_zone_deposition.csv
+references:
+  dataset: swisstopo_swissalti3d
+  notes:
+    - "Synthetic source-area fixture; not a real Swiss release-zone inventory."
+    - "The generated releases are for provenance and hazard-workflow plumbing only."

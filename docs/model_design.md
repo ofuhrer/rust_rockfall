@@ -23,6 +23,31 @@ Terrain access is abstracted through the `Terrain` trait. Existing analytic terr
 
 The opt-in `ascii_dem_clamped` / `esri_ascii_grid_clamped` model wraps the same ESRI ASCII grid but clamps height and normal queries to the raster boundary. It is intended for limited real-data terrain patches where a trajectory may leave the small validation raster. This boundary policy is deterministic and lightweight, but it is an extrapolation assumption, not a production GIS workflow.
 
+Validation and benchmark cases can attach a terrain-source metadata sidecar with
+`terrain.metadata_path`. The first Swiss pilot uses a tiny synthetic
+swissALTI3D-style ESRI ASCII crop with LV95/EPSG:2056 and LN02 metadata. The
+metadata parser validates CRS, vertical datum, extent, resolution, nodata,
+source/provenance, and consistency with the DEM header, then records those fields
+in `run_manifest_v1`. This is a provenance contract around existing terrain
+loading, not new terrain physics and not a full GIS ingestion layer.
+
+Swiss pilot cases can also attach `release_zone.metadata_path` with a small
+LV95/LN02 polygon source-area fixture. The current runtime supports only
+`sampling.mode: deterministic_grid`, validates CRS compatibility with the terrain
+metadata when available, generates reproducible release points, and records the
+release-zone summary in `run_manifest_v1`. This is an orchestration layer around
+independent single-trajectory runs; it does not change the trajectory kernel,
+contact laws, or default manual release-point behavior.
+
+Swiss pilot cases can attach `terrain_classes.metadata_path` with an aligned
+categorical raster. At each contact evaluation the integrator asks the optional
+class provider for local overrides to existing parameters such as normal and
+tangential restitution, friction, rolling resistance, and scarring coefficients.
+If no class provider is configured, the query is outside the class grid, the cell
+is nodata, or a class omits a parameter, the global case value is used. This is a
+provenance-tracked spatial parameter lookup, not a new physics model or a
+calibration result.
+
 For Tschamut, preprocessing now writes an `idw_residual_dem_from_lps` terrain proxy from public LPS ground points:
 
 ```text

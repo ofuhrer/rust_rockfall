@@ -3,7 +3,8 @@ use crate::{
         apply_contact_friction, apply_rotational_contact_motion, apply_scarring_energy_loss,
         ballistic_step, contact_point_tangent_velocity,
         resolve_rotational_sphere_contact_with_normal, resolve_sphere_contact_with_normal,
-        rolling_residual, ContactModel, RotationalContactSettings, ScarringSettings,
+        rolling_residual, ContactModel, ContactParameterProvider, ContactParameters,
+        RotationalContactSettings, ScarringSettings,
     },
     geometry::SphereBlock,
     state::{
@@ -51,6 +52,16 @@ pub fn simulate_fixed_step_with_events(
     terrain: &dyn Terrain,
     settings: IntegratorSettings,
 ) -> IntegrationResult {
+    simulate_fixed_step_with_events_and_contact_parameters(initial, block, terrain, settings, None)
+}
+
+pub fn simulate_fixed_step_with_events_and_contact_parameters(
+    initial: BodyState,
+    block: SphereBlock,
+    terrain: &dyn Terrain,
+    settings: IntegratorSettings,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+) -> IntegrationResult {
     let mut state = initial;
     let mut time_s = 0.0;
     let mut samples = Vec::new();
@@ -73,6 +84,19 @@ pub fn simulate_fixed_step_with_events(
         ballistic_step(&mut state, settings.dt_s, settings.gravity_mps2);
         time_s += settings.dt_s;
 
+        let base_parameters = ContactParameters {
+            normal_restitution: settings.normal_restitution,
+            tangential_restitution: settings.tangential_restitution,
+            friction_coefficient: settings.friction_coefficient,
+            rolling_resistance_coefficient: settings.rolling_resistance_coefficient,
+            scarring: settings.scarring,
+        };
+        let local_parameters = contact_parameters
+            .map(|provider| {
+                provider.parameters_at(state.position_m.x, state.position_m.y, base_parameters)
+            })
+            .unwrap_or(base_parameters);
+
         let base_normal = terrain.normal(state.position_m.x, state.position_m.y);
         let pre_contact_state = state;
         let incoming_velocity = state.velocity_mps;
@@ -83,18 +107,18 @@ pub fn simulate_fixed_step_with_events(
         let effective_contact = if incoming {
             sample_contact_roughness(
                 base_normal,
-                settings.normal_restitution,
-                settings.tangential_restitution,
-                settings.friction_coefficient,
+                local_parameters.normal_restitution,
+                local_parameters.tangential_restitution,
+                local_parameters.friction_coefficient,
                 settings.roughness,
                 roughness_rng.as_mut(),
             )
         } else {
             sample_contact_roughness(
                 base_normal,
-                settings.normal_restitution,
-                settings.tangential_restitution,
-                settings.friction_coefficient,
+                local_parameters.normal_restitution,
+                local_parameters.tangential_restitution,
+                local_parameters.friction_coefficient,
                 ContactRoughness::default(),
                 None,
             )
@@ -127,7 +151,7 @@ pub fn simulate_fixed_step_with_events(
                 block,
                 incoming_velocity,
                 base_normal,
-                settings.scarring,
+                local_parameters.scarring,
             )
         } else {
             Default::default()
@@ -155,7 +179,7 @@ pub fn simulate_fixed_step_with_events(
                         terrain,
                         settings.dt_s,
                         settings.gravity_mps2,
-                        settings.friction_coefficient,
+                        local_parameters.friction_coefficient,
                         settings.stop_speed_mps,
                     );
                     if stopped {
@@ -172,8 +196,9 @@ pub fn simulate_fixed_step_with_events(
                         RotationalContactSettings {
                             dt_s: settings.dt_s,
                             gravity_mps2: settings.gravity_mps2,
-                            friction_coefficient: settings.friction_coefficient,
-                            rolling_resistance_coefficient: settings.rolling_resistance_coefficient,
+                            friction_coefficient: local_parameters.friction_coefficient,
+                            rolling_resistance_coefficient: local_parameters
+                                .rolling_resistance_coefficient,
                             stop_speed_mps: settings.stop_speed_mps,
                         },
                     );

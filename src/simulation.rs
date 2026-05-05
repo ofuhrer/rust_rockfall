@@ -1,7 +1,10 @@
 use crate::{
-    dynamics::{ContactModel, ScarringSettings, SoilInteractionModel},
+    dynamics::{ContactModel, ContactParameterProvider, ScarringSettings, SoilInteractionModel},
     geometry::SphereBlock,
-    integrator::{simulate_fixed_step_with_events, IntegratorSettings},
+    integrator::{
+        simulate_fixed_step_with_events, simulate_fixed_step_with_events_and_contact_parameters,
+        IntegratorSettings,
+    },
     state::{BodyState, ImpactEvent, TrajectorySample},
     stochastic::{
         derive_trajectory_seed, sample_release, stable_hash64, ContactRoughness,
@@ -228,6 +231,14 @@ impl SimulationConfig {
         &self,
         terrain: &dyn Terrain,
     ) -> Result<SimulationResult, SimulationError> {
+        self.run_with_terrain_and_contact_parameters(terrain, None)
+    }
+
+    pub fn run_with_terrain_and_contact_parameters(
+        &self,
+        terrain: &dyn Terrain,
+        contact_parameters: Option<&dyn ContactParameterProvider>,
+    ) -> Result<SimulationResult, SimulationError> {
         self.validate()?;
         let settings = IntegratorSettings {
             dt_s: self.dt_s,
@@ -254,8 +265,17 @@ impl SimulationConfig {
             },
             roughness_seed: self.random_seed,
         };
-        let result =
-            simulate_fixed_step_with_events(self.initial_state(), self.block, terrain, settings);
+        let result = if let Some(contact_parameters) = contact_parameters {
+            simulate_fixed_step_with_events_and_contact_parameters(
+                self.initial_state(),
+                self.block,
+                terrain,
+                settings,
+                Some(contact_parameters),
+            )
+        } else {
+            simulate_fixed_step_with_events(self.initial_state(), self.block, terrain, settings)
+        };
         Ok(SimulationResult {
             samples: result.samples,
             impact_events: result.impact_events,
@@ -327,9 +347,19 @@ pub fn simulate_one_trajectory_with_terrain(
     request: TrajectoryRequest,
     terrain: &dyn Terrain,
 ) -> Result<TrajectoryRun, SimulationError> {
+    simulate_one_trajectory_with_terrain_and_contact_parameters(config, request, terrain, None)
+}
+
+pub fn simulate_one_trajectory_with_terrain_and_contact_parameters(
+    config: &SimulationConfig,
+    request: TrajectoryRequest,
+    terrain: &dyn Terrain,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+) -> Result<TrajectoryRun, SimulationError> {
     let mut trajectory_config = config.clone();
     trajectory_config.random_seed = request.seed;
-    let result = trajectory_config.run_with_terrain(terrain)?;
+    let result =
+        trajectory_config.run_with_terrain_and_contact_parameters(terrain, contact_parameters)?;
     let summary = summarize_trajectory(&request.trajectory_id, request.seed, &result.samples)?;
     Ok(TrajectoryRun {
         request,
@@ -345,6 +375,16 @@ pub fn simulate_ensemble(
     global_seed: u64,
     trajectory_ids: &[String],
 ) -> Result<EnsembleResult, SimulationError> {
+    simulate_ensemble_with_contact_parameters(config, case_id, global_seed, trajectory_ids, None)
+}
+
+pub fn simulate_ensemble_with_contact_parameters(
+    config: &SimulationConfig,
+    case_id: impl Into<String>,
+    global_seed: u64,
+    trajectory_ids: &[String],
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+) -> Result<EnsembleResult, SimulationError> {
     let case_id = case_id.into();
     let terrain = config.terrain.build()?;
     let mut trajectories = Vec::with_capacity(trajectory_ids.len());
@@ -354,10 +394,11 @@ pub fn simulate_ensemble(
             case_id.clone(),
             trajectory_id.clone(),
         );
-        trajectories.push(simulate_one_trajectory_with_terrain(
+        trajectories.push(simulate_one_trajectory_with_terrain_and_contact_parameters(
             config,
             request,
             terrain.as_ref(),
+            contact_parameters,
         )?);
     }
     Ok(EnsembleResult {

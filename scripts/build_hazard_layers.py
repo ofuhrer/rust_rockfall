@@ -66,6 +66,28 @@ class RasterLayer:
 
 
 @dataclass(frozen=True)
+class HazardStatisticConfig:
+    kinetic_energy_exceedance_j: tuple[float, ...] = ()
+    jump_height_exceedance_m: tuple[float, ...] = ()
+    velocity_exceedance_mps: tuple[float, ...] = ()
+
+    @property
+    def enabled(self) -> bool:
+        return bool(
+            self.kinetic_energy_exceedance_j
+            or self.jump_height_exceedance_m
+            or self.velocity_exceedance_mps
+        )
+
+    def as_dict(self) -> dict[str, list[float]]:
+        return {
+            "kinetic_energy_exceedance_j": list(self.kinetic_energy_exceedance_j),
+            "jump_height_exceedance_m": list(self.jump_height_exceedance_m),
+            "velocity_exceedance_mps": list(self.velocity_exceedance_mps),
+        }
+
+
+@dataclass(frozen=True)
 class InputStats:
     trajectory_count: int = 0
     trajectory_sample_count: int = 0
@@ -107,13 +129,29 @@ class GridBounds:
 
 
 class HazardAccumulator:
-    def __init__(self, grid: GridSpec, terrain: "TerrainSampler", block_radius_m: float) -> None:
+    def __init__(
+        self,
+        grid: GridSpec,
+        terrain: "TerrainSampler",
+        block_radius_m: float,
+        statistics: HazardStatisticConfig,
+    ) -> None:
         self.grid = grid
         self.terrain = terrain
         self.block_radius_m = block_radius_m
+        self.statistics = statistics
         self.reach = zeros(grid)
         self.max_ke = nodata_grid(grid)
         self.max_jump = nodata_grid(grid)
+        self.kinetic_exceedance = {
+            threshold: zeros(grid) for threshold in statistics.kinetic_energy_exceedance_j
+        }
+        self.jump_exceedance = {
+            threshold: zeros(grid) for threshold in statistics.jump_height_exceedance_m
+        }
+        self.velocity_exceedance = {
+            threshold: zeros(grid) for threshold in statistics.velocity_exceedance_mps
+        }
         self.deposition = zeros(grid)
         self.impact_density = zeros(grid)
         self.deposition_points: list[dict[str, float | str]] = []
@@ -130,6 +168,15 @@ class HazardAccumulator:
             return
         self.trajectory_count += 1
         occupied: set[tuple[int, int]] = set()
+        kinetic_exceeded: dict[float, set[tuple[int, int]]] = {
+            threshold: set() for threshold in self.kinetic_exceedance
+        }
+        jump_exceeded: dict[float, set[tuple[int, int]]] = {
+            threshold: set() for threshold in self.jump_exceedance
+        }
+        velocity_exceeded: dict[float, set[tuple[int, int]]] = {
+            threshold: set() for threshold in self.velocity_exceedance
+        }
         for sample in iter_numeric_csv(path, f"trajectory:{path}", warnings):
             self.trajectory_sample_count += 1
             cell = sample_cell(self.grid, sample)
@@ -140,14 +187,28 @@ class HazardAccumulator:
             kinetic = numeric(sample.get("kinetic_j"))
             if kinetic is not None:
                 self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
+                for threshold in kinetic_exceeded:
+                    if kinetic >= threshold:
+                        kinetic_exceeded[threshold].add(cell)
+            speed = numeric(sample.get("speed_mps"))
+            if speed is not None:
+                for threshold in velocity_exceeded:
+                    if speed >= threshold:
+                        velocity_exceeded[threshold].add(cell)
             jump = jump_height(sample, self.terrain, self.block_radius_m)
             if jump is None and not self.terrain_warning_emitted:
                 self.warnings.append("maximum jump height omitted where terrain could not be evaluated")
                 self.terrain_warning_emitted = True
             elif jump is not None:
                 self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
+                for threshold in jump_exceeded:
+                    if jump >= threshold:
+                        jump_exceeded[threshold].add(cell)
         for row, col in occupied:
             self.reach[row][col] += 1.0
+        increment_exceedance_grids(self.kinetic_exceedance, kinetic_exceeded)
+        increment_exceedance_grids(self.jump_exceedance, jump_exceeded)
+        increment_exceedance_grids(self.velocity_exceedance, velocity_exceeded)
 
     def accumulate_deposition(self, path: Path | None, warnings: list[str]) -> None:
         if path is None or not path.exists():
@@ -205,6 +266,48 @@ class HazardAccumulator:
                     nodata=True,
                 )
             )
+            for threshold, values in self.kinetic_exceedance.items():
+                scale_grid(values, 1.0 / self.trajectory_count)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("kinetic_energy_exceedance", threshold, "j"),
+                        f"Kinetic energy exceedance >= {threshold:g} J",
+                        "fraction of supplied trajectories",
+                        values,
+                        note=(
+                            "Trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if kinetic_j >= {threshold:g} J in that cell."
+                        ),
+                    )
+                )
+            for threshold, values in self.jump_exceedance.items():
+                scale_grid(values, 1.0 / self.trajectory_count)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("jump_height_exceedance", threshold, "m"),
+                        f"Jump height exceedance >= {threshold:g} m",
+                        "fraction of supplied trajectories",
+                        values,
+                        note=(
+                            "Trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if jump height >= {threshold:g} m in that cell."
+                        ),
+                    )
+                )
+            for threshold, values in self.velocity_exceedance.items():
+                scale_grid(values, 1.0 / self.trajectory_count)
+                layers.append(
+                    RasterLayer(
+                        exceedance_layer_key("velocity_exceedance", threshold, "mps"),
+                        f"Velocity exceedance >= {threshold:g} m/s",
+                        "fraction of supplied trajectories",
+                        values,
+                        note=(
+                            "Trajectory-level exceedance probability: a cell is counted once per "
+                            f"trajectory if speed_mps >= {threshold:g} m/s in that cell."
+                        ),
+                    )
+                )
         else:
             warnings.append("no trajectory CSVs supplied; reach, energy, and jump-height layers were not created")
 
@@ -269,6 +372,27 @@ def main_with_args(argv: list[str] | None = None) -> int:
     parser.add_argument("--grid-nrows", type=int, help="explicit output grid row count")
     parser.add_argument("--grid-cell-size", type=float, help="explicit output grid cell size in metres")
     parser.add_argument("--prefix", help="output filename prefix; defaults to case_id or hazard_layers")
+    parser.add_argument(
+        "--kinetic-energy-exceedance-j",
+        action="append",
+        type=float,
+        default=[],
+        help="add trajectory-level kinetic-energy exceedance probability layer for this threshold in J; may be repeated",
+    )
+    parser.add_argument(
+        "--jump-height-exceedance-m",
+        action="append",
+        type=float,
+        default=[],
+        help="add trajectory-level jump-height exceedance probability layer for this threshold in m; may be repeated",
+    )
+    parser.add_argument(
+        "--velocity-exceedance-mps",
+        action="append",
+        type=float,
+        default=[],
+        help="add trajectory-level velocity exceedance probability layer for this threshold in m/s; may be repeated",
+    )
     parser.add_argument("--no-plots", action="store_true", help="skip PNG rendering")
     args = parser.parse_args(argv)
 
@@ -294,8 +418,9 @@ def main_with_args(argv: list[str] | None = None) -> int:
         grid, grid_source = bounds.to_grid(args.cell_size), "auto"
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
+    statistic_config = parse_hazard_statistics(case, args)
 
-    accumulator = HazardAccumulator(grid, terrain, block_radius_m)
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config)
     accumulator.accumulate_deposition(deposition_path, input_warnings)
     for trajectory_path in trajectory_paths:
         accumulator.accumulate_trajectory(trajectory_path, input_warnings)
@@ -310,7 +435,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", accumulator.deposition_points)
 
     metadata_path = output_dir / f"{prefix}_metadata.json"
-    metadata = build_metadata(case, diagnostics, grid, grid_source, layers, warnings, stats)
+    metadata = build_metadata(case, diagnostics, grid, grid_source, layers, warnings, stats, statistic_config)
     write_text(metadata_path, json.dumps(metadata, indent=2, sort_keys=True) + "\n")
 
     plot_paths: dict[str, str] = {}
@@ -327,6 +452,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         layers,
         plot_paths,
         warnings,
+        statistic_config,
     )
     write_text(output_dir / f"{prefix}_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -427,6 +553,43 @@ def parse_explicit_grid(args: argparse.Namespace) -> GridSpec | None:
     )
 
 
+def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> HazardStatisticConfig:
+    configured = case.get("hazard_layers") or {}
+    statistics = configured.get("statistics") or configured
+    return HazardStatisticConfig(
+        kinetic_energy_exceedance_j=validated_thresholds(
+            list_from_config(statistics.get("kinetic_energy_exceedance_j"))
+            + list(args.kinetic_energy_exceedance_j),
+            "kinetic_energy_exceedance_j",
+        ),
+        jump_height_exceedance_m=validated_thresholds(
+            list_from_config(statistics.get("jump_height_exceedance_m"))
+            + list(args.jump_height_exceedance_m),
+            "jump_height_exceedance_m",
+        ),
+        velocity_exceedance_mps=validated_thresholds(
+            list_from_config(statistics.get("velocity_exceedance_mps"))
+            + list(args.velocity_exceedance_mps),
+            "velocity_exceedance_mps",
+        ),
+    )
+
+
+def list_from_config(value: Any) -> list[float]:
+    if value is None:
+        return []
+    values = value if isinstance(value, list) else [value]
+    return [float(item) for item in values]
+
+
+def validated_thresholds(values: list[float], name: str) -> tuple[float, ...]:
+    unique = sorted(set(values))
+    for value in unique:
+        if not math.isfinite(value) or value < 0.0:
+            raise SystemExit(f"{name} thresholds must be finite and nonnegative")
+    return tuple(unique)
+
+
 def discover_bounds(
     trajectory_paths: list[Path],
     deposition_path: Path | None,
@@ -510,6 +673,21 @@ def scale_grid(values: list[list[float]], factor: float) -> None:
         for col_index, value in enumerate(row):
             if value != NODATA:
                 values[row_index][col_index] = value * factor
+
+
+def increment_exceedance_grids(
+    grids: dict[float, list[list[float]]],
+    exceeded: dict[float, set[tuple[int, int]]],
+) -> None:
+    for threshold, cells in exceeded.items():
+        grid = grids[threshold]
+        for row, col in cells:
+            grid[row][col] += 1.0
+
+
+def exceedance_layer_key(prefix: str, threshold: float, suffix: str) -> str:
+    threshold_text = f"{threshold:g}".replace("-", "neg_").replace(".", "p")
+    return f"{prefix}_{threshold_text}{suffix}"
 
 
 def jump_height(sample: dict[str, float | str], terrain: "TerrainSampler", radius_m: float) -> float | None:
@@ -717,6 +895,7 @@ def build_metadata(
     layers: list[RasterLayer],
     warnings: list[str],
     stats: InputStats,
+    statistic_config: HazardStatisticConfig,
 ) -> dict[str, Any]:
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -740,6 +919,7 @@ def build_metadata(
             "impact_event_count": stats.impact_event_count,
             "significant_impact_count": stats.significant_impact_count,
         },
+        "hazard_statistics": statistic_config.as_dict(),
         "layers": [
             {
                 "key": layer.key,
@@ -755,6 +935,7 @@ def build_metadata(
             "Hazard layers are diagnostic research outputs, not operational hazard or risk maps.",
             "Reach, kinetic-energy, and jump-height layers are computed only from supplied trajectory CSVs.",
             "Use outputs.ensemble_trajectories_dir or repeated --trajectory inputs for scientifically meaningful ensemble reach, energy, and jump-height layers.",
+            "Exceedance layers are trajectory-level exceedance probabilities, not return-period or risk layers.",
             "Risk mapping requires exposure and vulnerability data and is outside this workflow.",
         ],
     }
@@ -770,6 +951,7 @@ def build_hazard_manifest(
     layers: list[RasterLayer],
     plot_paths: dict[str, str],
     warnings: list[str],
+    statistic_config: HazardStatisticConfig,
 ) -> dict[str, Any]:
     outputs: list[dict[str, Any]] = []
     for layer in layers:
@@ -808,6 +990,10 @@ def build_hazard_manifest(
         "warnings": warnings,
         "grid": dict(metadata.get("grid", {}), source=grid_source),
         "inputs": metadata.get("inputs", {}),
+        "hazard_statistics": {
+            "configured": statistic_config.as_dict(),
+            "generated_layer_names": [layer.key for layer in layers if "exceedance" in layer.key],
+        },
         "layers": [
             {
                 "key": layer.key,
@@ -833,7 +1019,7 @@ def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, 
 
 
 def layer_source(layer_key: str) -> str:
-    if layer_key in {"reach_probability", "max_kinetic_energy", "max_jump_height"}:
+    if layer_key in {"reach_probability", "max_kinetic_energy", "max_jump_height"} or "exceedance" in layer_key:
         return "trajectory_csv"
     if layer_key == "deposition_density":
         return "ensemble_deposition_csv"
@@ -872,7 +1058,7 @@ def validate_layers(layers: list[RasterLayer]) -> list[str]:
         summary = summarize_layer(layer)
         if summary["valid_cell_count"] == 0:
             warnings.append(f"{layer.key} has no valid cells")
-        if layer.key in {"reach_probability", "deposition_density", "significant_impact_density"}:
+        if layer.key in {"reach_probability", "deposition_density", "significant_impact_density"} or "exceedance" in layer.key:
             maximum = summary["maximum"]
             minimum = summary["minimum"]
             if isinstance(maximum, float) and maximum > 1.0 + 1e-12:
@@ -967,12 +1153,13 @@ def write_html_report(
   <p><span class="badge">research hazard layer</span> <span class="badge">not operational risk</span></p>
   <p>This report converts existing rockfall simulation outputs into first-pass spatial hazard layers. It does not add physics, does not include exposure or vulnerability, and must not be interpreted as an operational Swiss hazard or risk map.</p>
   <h2>How to Read Hazard Layers</h2>
-  <p>Probability and density layers are normalized diagnostic rasters. A value near 1 means all supplied samples for that layer occupied the cell; a value near 0 means few or none did. Maximum-energy and maximum-jump-height layers record the largest sampled value in each cell, not an expected value or design value.</p>
+  <p>Probability and density layers are normalized diagnostic rasters. A value near 1 means all supplied samples for that layer occupied the cell; a value near 0 means few or none did. Maximum-energy and maximum-jump-height layers record the largest sampled value in each cell, not an expected value or design value. Exceedance layers count each trajectory at most once per cell and threshold.</p>
   <ul>
     <li><strong>Reach probability</strong>: cells touched by supplied trajectory CSVs. With <code>outputs.ensemble_trajectories_dir</code> it represents the full written ensemble; with one representative trajectory it is only a 0/1 path mask.</li>
     <li><strong>Deposition density</strong>: final-position density from ensemble deposition points.</li>
     <li><strong>Maximum kinetic energy</strong>: largest kinetic energy sampled in each cell from supplied trajectories.</li>
     <li><strong>Maximum jump height</strong>: largest sampled height above terrain plus block radius where terrain metadata can be evaluated.</li>
+    <li><strong>Exceedance probability</strong>: fraction of supplied trajectories that exceeded a configured kinetic-energy, jump-height, or velocity threshold in each cell.</li>
     <li><strong>Significant impact density</strong>: normalized locations of impact events above the configured normal-speed threshold.</li>
   </ul>
   <h2>Inputs</h2>

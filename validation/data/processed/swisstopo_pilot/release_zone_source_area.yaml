@@ -1,0 +1,34 @@
+# Synthetic LV95/LN02 source-area fixture for the Swiss release-zone pilot.
+# The polygon is not real swisstopo data. It is intentionally tiny and lies
+# inside the checked-in swissALTI3D-style DEM fixture.
+schema_version: 1
+zone_id: swissalti3d_pilot_source_area
+title: Synthetic swissALTI3D-style release source area
+source_dataset: synthetic_swiss_release_zone_fixture
+source_url: null
+license: synthetic fixture for repository tests; real source-area inputs must retain their own license/provenance
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+geometry:
+  type: polygon
+  coordinates:
+    - [2600001.0, 1200001.0]
+    - [2600005.0, 1200001.0]
+    - [2600005.0, 1200005.0]
+    - [2600001.0, 1200005.0]
+sampling:
+  mode: deterministic_grid
+  count: 4
+  seed: 2056001
+  initial_velocity_mps: [0.8, -0.2, 0.0]
+  z_offset_m: 0.05
+  point_id_prefix: swiss_pilot_release
+provenance:
+  intended_use: swiss_release_zone_pilot_ci_fixture
+  notes:
+    - Synthetic source-area polygon for deterministic release generation tests.
+    - Exercises CRS compatibility, source-area provenance, and run manifest release-zone metadata.

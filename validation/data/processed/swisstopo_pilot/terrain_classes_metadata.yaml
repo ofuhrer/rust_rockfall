@@ -1,0 +1,49 @@
+# Synthetic LV95/LN02 terrain/material-class fixture for the Swiss pilot.
+# The class grid is intentionally tiny and aligned with the checked-in
+# swissALTI3D-style DEM fixture. It is not real swisstopo or geological data.
+schema_version: 1
+layer_id: swissalti3d_pilot_material_classes
+source_dataset: synthetic_swiss_terrain_class_fixture
+source_url: null
+license: synthetic fixture for repository tests; real terrain/material classes must retain source license/provenance
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: ESRI ASCII GRID
+  resolution_m: 2.0
+  width_px: 4
+  height_px: 4
+  nodata: -9999.0
+extent_lv95_m:
+  xmin: 2600000.0
+  ymin: 1200000.0
+  xmax: 2600008.0
+  ymax: 1200008.0
+class_grid_path: terrain_classes.asc
+classes:
+  - id: 1
+    name: synthetic_bedrock
+    parameter_overrides:
+      restitution_n: 0.32
+      restitution_t: 0.90
+      friction_mu: 0.35
+      rolling_resistance: 0.0
+  - id: 2
+    name: synthetic_talus
+    parameter_overrides:
+      restitution_n: 0.18
+      restitution_t: 0.70
+      friction_mu: 0.55
+      rolling_resistance: 0.02
+      soil_strength_pa: 60000.0
+      scarring_drag_coefficient: 0.4
+      scarring_layer_density_kgpm3: 1600.0
+provenance:
+  intended_use: swiss_terrain_class_pilot_ci_fixture
+  notes:
+    - Synthetic categorical raster aligned with the swissALTI3D-style DEM fixture.
+    - Exercises terrain-dependent parameter lookup, class coverage summaries, and manifest provenance.

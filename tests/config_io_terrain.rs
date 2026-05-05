@@ -1,5 +1,6 @@
 use approx::assert_abs_diff_eq;
 use rust_rockfall::{
+    geodata::{ReleaseZoneMetadata, TerrainClassMap, TerrainClassMetadata, TerrainSourceMetadata},
     geometry::SphereBlock,
     io,
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
@@ -10,7 +11,8 @@ use rust_rockfall::{
         SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
     validation::{load_case, run_case_file, CaseStatus},
-    ContactModel, SoilInteractionModel, Vec3,
+    ContactModel, ContactParameterProvider, ContactParameters, ScarringSettings,
+    SoilInteractionModel, Vec3,
 };
 use std::{
     fs,
@@ -294,6 +296,54 @@ fn clamped_esri_ascii_grid_config_reads_from_file() {
     assert_abs_diff_eq!(terrain.height(-1.0, 0.5), 1.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(terrain.height(0.5, 0.5), 2.0, epsilon = 1.0e-12);
     fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn swiss_terrain_metadata_parses_and_validates_against_dem() {
+    let metadata = TerrainSourceMetadata::from_yaml_file(
+        "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml",
+    )
+    .unwrap();
+    let dem = DemGrid::from_ascii_grid(
+        "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc",
+    )
+    .unwrap();
+
+    assert_eq!(metadata.coordinate_reference_system.epsg, 2056);
+    assert_eq!(metadata.coordinate_reference_system.vertical_datum, "LN02");
+    assert_abs_diff_eq!(metadata.raster.resolution_m, 2.0, epsilon = 1.0e-12);
+    assert_eq!(metadata.raster.nodata, Some(-9999.0));
+    metadata.validate_against_dem(&dem).unwrap();
+}
+
+#[test]
+fn swiss_terrain_metadata_rejects_bad_crs_and_extent() {
+    let bad_crs = r#"
+schema_version: 1
+tile_id: bad
+source_dataset: swisstopo_swissalti3d
+source_product: swissALTI3D
+source_filename: bad.asc
+source_file_present: false
+download_status: processed_fixture
+license: synthetic
+coordinate_reference_system:
+  epsg: 4326
+  horizontal_name: WGS84
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster: { format: ESRI ASCII GRID, resolution_m: 2.0, width_px: 2, height_px: 2, nodata: -9999.0 }
+extent_lv95_m: { xmin: 0.0, ymin: 0.0, xmax: 4.0, ymax: 4.0 }
+preprocessing: { status: converted_to_internal_dem, crop_extent_lv95_m: null, resampling_method: none, raw_sha256: null, processed_sha256: null, tool: null, processed_utc: null }
+provenance: { intended_use: test, notes: [] }
+"#;
+    assert!(TerrainSourceMetadata::from_yaml_str(bad_crs).is_err());
+
+    let bad_extent = bad_crs
+        .replace("epsg: 4326", "epsg: 2056")
+        .replace("xmax: 4.0", "xmax: 5.0");
+    assert!(TerrainSourceMetadata::from_yaml_str(&bad_extent).is_err());
 }
 
 #[test]
@@ -959,6 +1009,274 @@ outputs:
     }
     fs::remove_dir(ensemble_dir).unwrap();
     fs::remove_dir(ensemble_impacts_dir).unwrap();
+}
+
+#[test]
+fn swissalti3d_pilot_case_writes_terrain_provenance_manifest() {
+    let diagnostics = PathBuf::from("validation/results/swissalti3d_pilot_metrics.json");
+    let trajectory = PathBuf::from("validation/results/swissalti3d_pilot_trajectory.csv");
+    let manifest = PathBuf::from("validation/results/swissalti3d_pilot_manifest.json");
+    let _ = fs::remove_file(&diagnostics);
+    let _ = fs::remove_file(&trajectory);
+    let _ = fs::remove_file(&manifest);
+
+    let report = run_case_file("validation/cases/swissalti3d_pilot.yaml").unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert!(manifest.exists());
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(manifest_json["terrain"]["epsg"], 2056);
+    assert_eq!(manifest_json["terrain"]["vertical_datum"], "LN02");
+    assert_eq!(
+        manifest_json["terrain"]["source_dataset"],
+        "swisstopo_swissalti3d"
+    );
+    assert_eq!(
+        manifest_json["terrain"]["metadata_path"],
+        "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml"
+    );
+    assert_eq!(manifest_json["terrain"]["extent"]["xmin"], 2600000.0);
+
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+    fs::remove_file(manifest).unwrap();
+}
+
+#[test]
+fn release_zone_metadata_parses_and_samples_deterministically() {
+    let release_zone = ReleaseZoneMetadata::from_yaml_file(
+        "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml",
+    )
+    .unwrap();
+
+    assert_eq!(release_zone.zone_id, "swissalti3d_pilot_source_area");
+    assert_eq!(release_zone.coordinate_reference_system.epsg, 2056);
+    assert_abs_diff_eq!(release_zone.area_m2(), 16.0, epsilon = 1.0e-12);
+
+    let first = release_zone.sample_points().unwrap();
+    let second = release_zone.sample_points().unwrap();
+    assert_eq!(first, second);
+    assert_eq!(first.len(), 4);
+    assert!(first.iter().all(|point| point.x_m >= 2600001.0
+        && point.x_m <= 2600005.0
+        && point.y_m >= 1200001.0
+        && point.y_m <= 1200005.0));
+}
+
+#[test]
+fn release_zone_rejects_invalid_polygon_and_unsupported_crs() {
+    let invalid_polygon = r#"
+schema_version: 1
+zone_id: invalid
+source_dataset: synthetic
+license: fixture
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+geometry:
+  type: polygon
+  coordinates:
+    - [2600001.0, 1200001.0]
+    - [2600002.0, 1200001.0]
+sampling:
+  mode: deterministic_grid
+  count: 1
+  seed: 1
+provenance:
+  intended_use: test
+"#;
+    assert!(ReleaseZoneMetadata::from_yaml_str(invalid_polygon).is_err());
+
+    let unsupported_crs = invalid_polygon
+        .replace(
+            "- [2600002.0, 1200001.0]",
+            "- [2600002.0, 1200001.0]\n    - [2600001.0, 1200002.0]",
+        )
+        .replace("epsg: 2056", "epsg: 4326");
+    assert!(ReleaseZoneMetadata::from_yaml_str(&unsupported_crs).is_err());
+}
+
+#[test]
+fn release_zone_crs_and_extent_match_swissalti3d_terrain_metadata() {
+    let terrain = TerrainSourceMetadata::from_yaml_file(
+        "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml",
+    )
+    .unwrap();
+    let release_zone = ReleaseZoneMetadata::from_yaml_file(
+        "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml",
+    )
+    .unwrap();
+
+    release_zone
+        .validate_against_terrain_source(&terrain)
+        .unwrap();
+
+    let outside = serde_yaml::to_string(&release_zone)
+        .unwrap()
+        .replace("2600005.0", "2600015.0");
+    let outside = ReleaseZoneMetadata::from_yaml_str(&outside).unwrap();
+    assert!(outside.validate_against_terrain_source(&terrain).is_err());
+}
+
+#[test]
+fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
+    let diagnostics =
+        PathBuf::from("validation/results/swissalti3d_release_zone_pilot_metrics.json");
+    let manifest = PathBuf::from("validation/results/swissalti3d_release_zone_pilot_manifest.json");
+    let releases = PathBuf::from("validation/results/swissalti3d_release_zone_points.csv");
+    let deposition = PathBuf::from("validation/results/swissalti3d_release_zone_deposition.csv");
+    for path in [&diagnostics, &manifest, &releases, &deposition] {
+        let _ = fs::remove_file(path);
+    }
+
+    let report = run_case_file("validation/cases/swissalti3d_release_zone_pilot.yaml").unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert_eq!(report.metrics["release_zone_point_count"], 4.0);
+    assert!(manifest.exists());
+    assert!(releases.exists());
+    assert!(deposition.exists());
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["release_zone"]["zone_id"],
+        "swissalti3d_pilot_source_area"
+    );
+    assert_eq!(manifest_json["release_zone"]["epsg"], 2056);
+    assert_eq!(manifest_json["release_zone"]["generated_release_points"], 4);
+    assert_eq!(
+        manifest_json["release_zone"]["metadata_path"],
+        "validation/data/processed/swisstopo_pilot/release_zone_source_area.yaml"
+    );
+    let release_csv = fs::read_to_string(&releases).unwrap();
+    assert!(release_csv.contains("source_zone_id"));
+    assert!(release_csv.contains("swissalti3d_pilot_source_area"));
+
+    for path in [&diagnostics, &manifest, &releases, &deposition] {
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn terrain_class_metadata_parses_and_matches_swissalti3d_dem() {
+    let terrain = TerrainSourceMetadata::from_yaml_file(
+        "validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml",
+    )
+    .unwrap();
+    let class_map = TerrainClassMap::from_metadata_file(
+        "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml",
+    )
+    .unwrap();
+
+    class_map.validate_against_terrain_source(&terrain).unwrap();
+    assert_eq!(
+        class_map.metadata.layer_id,
+        "swissalti3d_pilot_material_classes"
+    );
+    assert_eq!(class_map.coverage().len(), 2);
+    assert_eq!(class_map.class_id_at(2600001.0, 1200001.0), Some(1));
+}
+
+#[test]
+fn terrain_class_metadata_rejects_bad_crs_and_unknown_class_id() {
+    let text = fs::read_to_string(
+        "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml",
+    )
+    .unwrap();
+    let bad_crs = text.replace("epsg: 2056", "epsg: 4326");
+    assert!(TerrainClassMetadata::from_yaml_str(&bad_crs).is_err());
+
+    let metadata = TerrainClassMetadata::from_yaml_str(&text).unwrap();
+    let unknown_grid = r#"
+ncols 4
+nrows 4
+xllcorner 2600000
+yllcorner 1200000
+cellsize 2
+NODATA_value -9999
+2 2 1 1
+2 9 1 1
+1 1 2 2
+1 1 2 2
+"#;
+    let grid =
+        rust_rockfall::geodata::TerrainClassGrid::from_ascii_grid_str(unknown_grid.trim()).unwrap();
+    assert!(TerrainClassMap::from_metadata_and_grid(metadata, grid).is_err());
+}
+
+#[test]
+fn terrain_class_lookup_overrides_only_configured_parameters() {
+    let class_map = TerrainClassMap::from_metadata_file(
+        "validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml",
+    )
+    .unwrap();
+    let base = ContactParameters {
+        normal_restitution: 0.2,
+        tangential_restitution: 0.8,
+        friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        scarring: ScarringSettings::default(),
+    };
+
+    let bedrock = class_map.parameters_at(2600001.0, 1200001.0, base);
+    assert_abs_diff_eq!(bedrock.normal_restitution, 0.32);
+    assert_abs_diff_eq!(bedrock.tangential_restitution, 0.90);
+    assert_abs_diff_eq!(bedrock.friction_coefficient, 0.35);
+    assert_eq!(bedrock.scarring, base.scarring);
+
+    let talus = class_map.parameters_at(2600005.0, 1200003.0, base);
+    assert_abs_diff_eq!(talus.normal_restitution, 0.18);
+    assert_abs_diff_eq!(talus.friction_coefficient, 0.55);
+    assert_abs_diff_eq!(talus.scarring.soil_strength_pa, 60000.0);
+
+    let outside = class_map.parameters_at(2599990.0, 1199990.0, base);
+    assert_eq!(outside, base);
+}
+
+#[test]
+fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
+    let diagnostics = PathBuf::from(
+        "validation/results/swissalti3d_release_zone_terrain_classes_pilot_metrics.json",
+    );
+    let manifest = PathBuf::from(
+        "validation/results/swissalti3d_release_zone_terrain_classes_pilot_manifest.json",
+    );
+    let releases = PathBuf::from("validation/results/swissalti3d_terrain_class_release_points.csv");
+    let deposition = PathBuf::from("validation/results/swissalti3d_terrain_class_deposition.csv");
+    for path in [&diagnostics, &manifest, &releases, &deposition] {
+        let _ = fs::remove_file(path);
+    }
+
+    let report =
+        run_case_file("validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml")
+            .unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert_eq!(report.metrics["release_zone_point_count"], 4.0);
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["terrain_classes"]["layer_id"],
+        "swissalti3d_pilot_material_classes"
+    );
+    assert_eq!(manifest_json["terrain_classes"]["epsg"], 2056);
+    assert_eq!(
+        manifest_json["terrain_classes"]["class_coverage"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert!(releases.exists());
+    assert!(deposition.exists());
+
+    for path in [&diagnostics, &manifest, &releases, &deposition] {
+        fs::remove_file(path).unwrap();
+    }
 }
 
 fn minimal_config() -> SimulationConfig {

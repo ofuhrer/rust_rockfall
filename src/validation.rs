@@ -1,20 +1,23 @@
 //! Verification and validation helpers, case loading, and metric computation.
 
 use crate::{
-    dynamics::{ContactModel, SoilInteractionModel},
+    dynamics::{ContactModel, ContactParameterProvider, SoilInteractionModel},
+    geodata::{GeodataError, ReleaseZoneMetadata, TerrainClassMap, TerrainSourceMetadata},
     geometry::SphereBlock,
     io,
     manifest::{
-        OutputManifest, RunManifest, SeedPolicyManifest, TerrainManifest,
+        OutputManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
+        TerrainClassCoverageManifest, TerrainClassManifest, TerrainExtentManifest, TerrainManifest,
         RUN_MANIFEST_SCHEMA_VERSION,
     },
     simulation::{
-        simulate_ensemble, simulate_one_trajectory_with_terrain, SimulationConfig, SimulationError,
-        TerrainConfig, TrajectoryRequest, TrajectoryRun,
+        simulate_ensemble_with_contact_parameters,
+        simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
+        SimulationError, TerrainConfig, TrajectoryRequest, TrajectoryRun,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
-    terrain::TerrainError,
+    terrain::{DemGrid, TerrainError},
     Vec3,
 };
 use serde::{Deserialize, Serialize};
@@ -58,6 +61,10 @@ pub struct BenchmarkCase {
     #[serde(default)]
     pub release: CaseRelease,
     #[serde(default)]
+    pub release_zone: Option<ReleaseZoneConfig>,
+    #[serde(default)]
+    pub terrain_classes: Option<TerrainClassConfig>,
+    #[serde(default)]
     pub parameters: CaseParameters,
     #[serde(default)]
     pub simulation: CaseSimulation,
@@ -85,6 +92,8 @@ pub struct CaseTerrain {
     pub parameters: BTreeMap<String, f64>,
     #[serde(default)]
     pub path: Option<PathBuf>,
+    #[serde(default)]
+    pub metadata_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -124,6 +133,18 @@ pub struct CasePerturbation {
     pub position_uniform_m: f64,
     #[serde(default)]
     pub velocity_uniform_mps: f64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct ReleaseZoneConfig {
+    pub metadata_path: PathBuf,
+    #[serde(default)]
+    pub generated_release_points_csv: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct TerrainClassConfig {
+    pub metadata_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -409,6 +430,19 @@ pub struct EnsembleDepositionPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeneratedReleasePointRecord {
+    pub release_id: String,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    pub vx_mps: f64,
+    pub vy_mps: f64,
+    pub vz_mps: f64,
+    pub source_zone_id: String,
+    pub seed: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CaseReport {
     pub case_id: String,
     pub status: CaseStatus,
@@ -444,6 +478,8 @@ pub enum ValidationError {
     Simulation(#[from] SimulationError),
     #[error("terrain error: {0}")]
     Terrain(#[from] TerrainError),
+    #[error("geodata metadata error: {0}")]
+    Geodata(#[from] GeodataError),
     #[error("I/O helper error: {0}")]
     Output(#[from] io::IoError),
     #[error("case {0} has no trajectory samples")]
@@ -465,6 +501,15 @@ pub fn run_case_file(path: impl AsRef<Path>) -> Result<CaseReport, ValidationErr
 pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut warnings = Vec::new();
     let mut output_entries = Vec::new();
+    let terrain_source = load_terrain_source_metadata(case)?;
+    let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
+    let terrain_class_map = load_terrain_class_map(case, terrain_source.as_ref())?;
+    let mut release_zone_manifest = release_zone_source
+        .as_ref()
+        .map(|source| release_zone_manifest(case.release_zone.as_ref(), source, 0));
+    let terrain_class_manifest = terrain_class_map
+        .as_ref()
+        .map(|class_map| terrain_class_manifest(case.terrain_classes.as_ref(), class_map));
     let observations = match load_observations(case, &mut warnings)? {
         ObservationLoad::Loaded(data) => data,
         ObservationLoad::MissingRequired(path) => {
@@ -486,7 +531,15 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 )?);
             }
             if let Some(path) = &case.outputs.manifest_json {
-                write_run_manifest(path, case, &report, output_entries)?;
+                write_run_manifest(
+                    path,
+                    case,
+                    &report,
+                    output_entries,
+                    terrain_source.as_ref(),
+                    release_zone_manifest.as_ref(),
+                    terrain_class_manifest.as_ref(),
+                )?;
             }
             return Ok(report);
         }
@@ -503,7 +556,12 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     }
 
     let config = build_simulation_config(case)?;
-    let result = config.run()?;
+    let terrain = config.terrain.build()?;
+    let class_provider = terrain_class_map
+        .as_ref()
+        .map(|class_map| class_map as &dyn ContactParameterProvider);
+    let result =
+        config.run_with_terrain_and_contact_parameters(terrain.as_ref(), class_provider)?;
     if let Some(path) = &case.outputs.trajectory_csv {
         io::write_trajectory_csv(path, &result.samples)?;
         output_entries.push(file_output_manifest(
@@ -543,7 +601,6 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         .last()
         .ok_or_else(|| ValidationError::EmptyTrajectory(case.case_id.clone()))?;
 
-    let terrain = config.terrain.build()?;
     let mut metrics = compute_metrics(MetricContext {
         samples,
         impact_events: &result.impact_events,
@@ -554,17 +611,41 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         observations: &observations.deposition_points,
         expected: &case.expected,
     });
-    compute_ensemble_metrics(case, &mut metrics, &mut warnings, &mut output_entries)?;
+    compute_ensemble_metrics(
+        case,
+        class_provider,
+        &mut metrics,
+        &mut warnings,
+        &mut output_entries,
+    )?;
     compute_validation_ensemble_metrics(
         case,
         &config,
+        class_provider,
         &observations,
         &mut metrics,
         &mut warnings,
         &mut output_entries,
     )?;
-    compute_observed_trajectory_metrics(case, &config, &observations, &mut metrics)?;
-    compute_observed_contact_metrics(case, &config, &observations, &mut metrics)?;
+    if let Some(source) = release_zone_source.as_ref() {
+        release_zone_manifest = compute_release_zone_metrics(
+            case,
+            &config,
+            class_provider,
+            source,
+            &mut metrics,
+            &mut warnings,
+            &mut output_entries,
+        )?;
+    }
+    compute_observed_trajectory_metrics(
+        case,
+        &config,
+        class_provider,
+        &observations,
+        &mut metrics,
+    )?;
+    compute_observed_contact_metrics(case, &config, class_provider, &observations, &mut metrics)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
     compute_scarring_comparison_metrics(case, &config, samples, &mut metrics)?;
 
@@ -605,7 +686,15 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     }
 
     if let Some(path) = &case.outputs.manifest_json {
-        write_run_manifest(path, case, &report, output_entries)?;
+        write_run_manifest(
+            path,
+            case,
+            &report,
+            output_entries,
+            terrain_source.as_ref(),
+            release_zone_manifest.as_ref(),
+            terrain_class_manifest.as_ref(),
+        )?;
     }
 
     Ok(report)
@@ -624,8 +713,18 @@ fn write_run_manifest(
     case: &BenchmarkCase,
     report: &CaseReport,
     outputs: Vec<OutputManifest>,
+    terrain_source: Option<&TerrainSourceMetadata>,
+    release_zone: Option<&ReleaseZoneManifest>,
+    terrain_classes: Option<&TerrainClassManifest>,
 ) -> Result<(), ValidationError> {
-    let manifest = build_run_manifest(case, report, outputs);
+    let manifest = build_run_manifest(
+        case,
+        report,
+        outputs,
+        terrain_source,
+        release_zone,
+        terrain_classes,
+    );
     if let Some(parent) = path.as_ref().parent() {
         fs::create_dir_all(parent)?;
     }
@@ -637,6 +736,9 @@ fn build_run_manifest(
     case: &BenchmarkCase,
     report: &CaseReport,
     outputs: Vec<OutputManifest>,
+    terrain_source: Option<&TerrainSourceMetadata>,
+    release_zone: Option<&ReleaseZoneManifest>,
+    terrain_classes: Option<&TerrainClassManifest>,
 ) -> RunManifest {
     RunManifest {
         schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
@@ -653,17 +755,9 @@ fn build_run_manifest(
                 "single trajectories use random.seed directly; ensembles derive trajectory seeds from global seed, case ID, and trajectory ID"
                     .to_string(),
         },
-        terrain: TerrainManifest {
-            terrain_type: case.terrain.terrain_type.clone(),
-            path: case
-                .terrain
-                .path
-                .as_ref()
-                .map(|path| path.to_string_lossy().to_string()),
-            crs: None,
-            vertical_datum: None,
-            resolution_m: terrain_resolution_m(&case.terrain),
-        },
+        terrain: terrain_manifest(&case.terrain, terrain_source),
+        release_zone: release_zone.cloned(),
+        terrain_classes: terrain_classes.cloned(),
         outputs,
         warnings: report.warnings.clone(),
     }
@@ -683,6 +777,181 @@ fn terrain_resolution_m(terrain: &CaseTerrain) -> Option<f64> {
         .get("cell_size_m")
         .copied()
         .or_else(|| terrain.parameters.get("cellsize").copied())
+}
+
+fn load_terrain_source_metadata(
+    case: &BenchmarkCase,
+) -> Result<Option<TerrainSourceMetadata>, ValidationError> {
+    let Some(metadata_path) = &case.terrain.metadata_path else {
+        return Ok(None);
+    };
+    let metadata = TerrainSourceMetadata::from_yaml_file(metadata_path)?;
+    if let Some(dem_path) = &case.terrain.path {
+        if matches!(
+            case.terrain.terrain_type.as_str(),
+            "esri_ascii_grid" | "ascii_dem" | "esri_ascii_grid_clamped" | "ascii_dem_clamped"
+        ) {
+            let dem = DemGrid::from_ascii_grid(dem_path)?;
+            metadata.validate_against_dem(&dem)?;
+        }
+    }
+    Ok(Some(metadata))
+}
+
+fn load_release_zone_metadata(
+    case: &BenchmarkCase,
+    terrain_source: Option<&TerrainSourceMetadata>,
+) -> Result<Option<ReleaseZoneMetadata>, ValidationError> {
+    let Some(release_zone) = &case.release_zone else {
+        return Ok(None);
+    };
+    let metadata = ReleaseZoneMetadata::from_yaml_file(&release_zone.metadata_path)?;
+    if let Some(terrain_source) = terrain_source {
+        metadata.validate_against_terrain_source(terrain_source)?;
+    }
+    Ok(Some(metadata))
+}
+
+fn load_terrain_class_map(
+    case: &BenchmarkCase,
+    terrain_source: Option<&TerrainSourceMetadata>,
+) -> Result<Option<TerrainClassMap>, ValidationError> {
+    let Some(terrain_classes) = &case.terrain_classes else {
+        return Ok(None);
+    };
+    let class_map = TerrainClassMap::from_metadata_file(&terrain_classes.metadata_path)?;
+    if let Some(terrain_source) = terrain_source {
+        class_map.validate_against_terrain_source(terrain_source)?;
+    }
+    Ok(Some(class_map))
+}
+
+fn terrain_manifest(
+    terrain: &CaseTerrain,
+    source: Option<&TerrainSourceMetadata>,
+) -> TerrainManifest {
+    let metadata_path = terrain
+        .metadata_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+    let path = terrain
+        .path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+
+    if let Some(source) = source {
+        return TerrainManifest {
+            terrain_type: terrain.terrain_type.clone(),
+            path,
+            metadata_path,
+            crs: Some(source.coordinate_reference_system.horizontal_name.clone()),
+            epsg: Some(source.coordinate_reference_system.epsg),
+            vertical_datum: Some(source.coordinate_reference_system.vertical_datum.clone()),
+            resolution_m: Some(source.raster.resolution_m),
+            extent: Some(TerrainExtentManifest {
+                xmin: source.extent_lv95_m.xmin,
+                ymin: source.extent_lv95_m.ymin,
+                xmax: source.extent_lv95_m.xmax,
+                ymax: source.extent_lv95_m.ymax,
+            }),
+            nodata: source.raster.nodata,
+            source_dataset: Some(source.source_dataset.clone()),
+            source_product: Some(source.source_product.clone()),
+            source_url: source.source_url.clone(),
+            source_filename: Some(source.source_filename.clone()),
+            license: Some(source.license.clone()),
+            download_status: Some(source.download_status.clone()),
+            preprocessing_status: Some(source.preprocessing.status.clone()),
+            provenance_notes: source.provenance.notes.clone(),
+        };
+    }
+
+    TerrainManifest {
+        terrain_type: terrain.terrain_type.clone(),
+        path,
+        metadata_path,
+        crs: None,
+        epsg: None,
+        vertical_datum: None,
+        resolution_m: terrain_resolution_m(terrain),
+        extent: None,
+        nodata: None,
+        source_dataset: None,
+        source_product: None,
+        source_url: None,
+        source_filename: None,
+        license: None,
+        download_status: None,
+        preprocessing_status: None,
+        provenance_notes: Vec::new(),
+    }
+}
+
+fn release_zone_manifest(
+    config: Option<&ReleaseZoneConfig>,
+    source: &ReleaseZoneMetadata,
+    generated_release_points: usize,
+) -> ReleaseZoneManifest {
+    let extent = source.extent();
+    ReleaseZoneManifest {
+        zone_id: source.zone_id.clone(),
+        metadata_path: config.map(|config| config.metadata_path.to_string_lossy().to_string()),
+        crs: source.coordinate_reference_system.horizontal_name.clone(),
+        epsg: source.coordinate_reference_system.epsg,
+        vertical_datum: source.coordinate_reference_system.vertical_datum.clone(),
+        sampling_mode: source.sampling.mode.clone(),
+        seed: source.sampling.seed,
+        requested_release_points: source.sampling.count,
+        generated_release_points,
+        extent: TerrainExtentManifest {
+            xmin: extent.xmin,
+            ymin: extent.ymin,
+            xmax: extent.xmax,
+            ymax: extent.ymax,
+        },
+        area_m2: source.area_m2(),
+        source_dataset: source.source_dataset.clone(),
+        source_url: source.source_url.clone(),
+        license: source.license.clone(),
+        provenance_notes: source.provenance.notes.clone(),
+    }
+}
+
+fn terrain_class_manifest(
+    config: Option<&TerrainClassConfig>,
+    class_map: &TerrainClassMap,
+) -> TerrainClassManifest {
+    let metadata = &class_map.metadata;
+    TerrainClassManifest {
+        layer_id: metadata.layer_id.clone(),
+        metadata_path: config.map(|config| config.metadata_path.to_string_lossy().to_string()),
+        class_grid_path: metadata.class_grid_path.to_string_lossy().to_string(),
+        crs: metadata.coordinate_reference_system.horizontal_name.clone(),
+        epsg: metadata.coordinate_reference_system.epsg,
+        vertical_datum: metadata.coordinate_reference_system.vertical_datum.clone(),
+        resolution_m: metadata.raster.resolution_m,
+        extent: TerrainExtentManifest {
+            xmin: metadata.extent_lv95_m.xmin,
+            ymin: metadata.extent_lv95_m.ymin,
+            xmax: metadata.extent_lv95_m.xmax,
+            ymax: metadata.extent_lv95_m.ymax,
+        },
+        nodata: metadata.raster.nodata,
+        source_dataset: metadata.source_dataset.clone(),
+        source_url: metadata.source_url.clone(),
+        license: metadata.license.clone(),
+        class_coverage: class_map
+            .coverage()
+            .into_iter()
+            .map(|coverage| TerrainClassCoverageManifest {
+                class_id: coverage.class_id,
+                name: coverage.name,
+                cell_count: coverage.cell_count,
+                coverage_fraction: coverage.coverage_fraction,
+            })
+            .collect(),
+        provenance_notes: metadata.provenance.notes.clone(),
+    }
 }
 
 fn file_output_manifest(
@@ -1040,6 +1309,7 @@ fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
 
 fn compute_ensemble_metrics(
     case: &BenchmarkCase,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
     output_entries: &mut Vec<OutputManifest>,
@@ -1048,8 +1318,11 @@ fn compute_ensemble_metrics(
     if case.random.seed.is_some() {
         let config_a = build_simulation_config(case)?;
         let config_b = build_simulation_config(case)?;
-        let a = config_a.run()?;
-        let b = config_b.run()?;
+        let terrain = config_a.terrain.build()?;
+        let a = config_a
+            .run_with_terrain_and_contact_parameters(terrain.as_ref(), contact_parameters)?;
+        let b = config_b
+            .run_with_terrain_and_contact_parameters(terrain.as_ref(), contact_parameters)?;
         metrics.insert(
             "seed_repeat_max_position_delta_m".to_string(),
             max_position_delta(&a.samples, &b.samples),
@@ -1081,11 +1354,12 @@ fn compute_ensemble_metrics(
         .collect::<Vec<_>>();
     let mut ensemble_config = build_simulation_config(case)?;
     ensemble_config.random_seed = None;
-    let ensemble = simulate_ensemble(
+    let ensemble = simulate_ensemble_with_contact_parameters(
         &ensemble_config,
         case.case_id.clone(),
         global_seed,
         &trajectory_ids,
+        contact_parameters,
     )?;
     if case.observations.is_none() {
         warn_large_debug_outputs(case, ensemble_size, warnings);
@@ -1135,11 +1409,12 @@ fn compute_ensemble_metrics(
     );
 
     if let Some(seed) = case.random.seed {
-        let alternate = simulate_ensemble(
+        let alternate = simulate_ensemble_with_contact_parameters(
             &ensemble_config,
             case.case_id.clone(),
             seed.wrapping_add(1),
             &trajectory_ids,
+            contact_parameters,
         )?;
         metrics.insert(
             "different_seed_ensemble_runout_delta_m".to_string(),
@@ -1152,6 +1427,7 @@ fn compute_ensemble_metrics(
 fn compute_validation_ensemble_metrics(
     case: &BenchmarkCase,
     base_config: &SimulationConfig,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
@@ -1182,8 +1458,12 @@ fn compute_validation_ensemble_metrics(
             let member_id = format!("{}_member_{member_index:03}", release.trajectory_id);
             let request =
                 TrajectoryRequest::from_global_seed(global_seed, case.case_id.clone(), member_id);
-            let run =
-                simulate_one_trajectory_with_terrain(&release_config, request, terrain.as_ref())?;
+            let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+                &release_config,
+                request,
+                terrain.as_ref(),
+                contact_parameters,
+            )?;
             deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
             runs.push(run);
         }
@@ -1218,9 +1498,115 @@ fn compute_validation_ensemble_metrics(
     Ok(())
 }
 
+fn compute_release_zone_metrics(
+    case: &BenchmarkCase,
+    base_config: &SimulationConfig,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+    release_zone: &ReleaseZoneMetadata,
+    metrics: &mut BTreeMap<String, f64>,
+    warnings: &mut Vec<String>,
+    output_entries: &mut Vec<OutputManifest>,
+) -> Result<Option<ReleaseZoneManifest>, ValidationError> {
+    let Some(release_zone_config) = &case.release_zone else {
+        return Ok(None);
+    };
+    let release_points = release_zone.sample_points()?;
+    warn_large_debug_outputs(case, release_points.len(), warnings);
+    let terrain = base_config.terrain.build()?;
+    let mut runs = Vec::with_capacity(release_points.len());
+    let mut deposition_rows = Vec::with_capacity(release_points.len());
+    let mut generated_records = Vec::with_capacity(release_points.len());
+
+    for point in &release_points {
+        let z_m =
+            terrain.height(point.x_m, point.y_m) + base_config.block.radius_m + point.z_offset_m;
+        generated_records.push(GeneratedReleasePointRecord {
+            release_id: point.release_id.clone(),
+            x_m: point.x_m,
+            y_m: point.y_m,
+            z_m,
+            vx_mps: point.vx_mps,
+            vy_mps: point.vy_mps,
+            vz_mps: point.vz_mps,
+            source_zone_id: release_zone.zone_id.clone(),
+            seed: release_zone.sampling.seed,
+        });
+
+        let mut release_config = base_config.clone();
+        release_config.initial_position_m = [point.x_m, point.y_m, z_m];
+        release_config.initial_velocity_mps = [point.vx_mps, point.vy_mps, point.vz_mps];
+        release_config.random_seed = None;
+        let request = TrajectoryRequest::from_global_seed(
+            release_zone.sampling.seed,
+            case.case_id.clone(),
+            point.release_id.clone(),
+        );
+        let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+            &release_config,
+            request,
+            terrain.as_ref(),
+            contact_parameters,
+        )?;
+        deposition_rows.push(ensemble_deposition_row(&point.release_id, &run));
+        runs.push(run);
+    }
+
+    if let Some(path) = &release_zone_config.generated_release_points_csv {
+        write_generated_release_points_csv(path, &generated_records)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "generated_release_points",
+            "csv",
+            Some(generated_records.len()),
+            None,
+        )?);
+    }
+    if let Some(path) = &case.outputs.ensemble_deposition_csv {
+        write_ensemble_deposition_csv(path, &deposition_rows)?;
+        output_entries.push(file_output_manifest(
+            path,
+            "release_zone_deposition",
+            "csv",
+            Some(deposition_rows.len()),
+            None,
+        )?);
+    }
+    if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+        output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
+    }
+    if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+        output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+    }
+
+    let mut runouts = runs
+        .iter()
+        .map(|run| run.summary.runout_m)
+        .collect::<Vec<_>>();
+    runouts.sort_by(f64::total_cmp);
+    metrics.insert(
+        "release_zone_point_count".to_string(),
+        release_points.len() as f64,
+    );
+    metrics.insert(
+        "release_zone_extent_area_m2".to_string(),
+        release_zone.area_m2(),
+    );
+    metrics.insert("release_zone_mean_runout_m".to_string(), mean(&runouts));
+    metrics.insert(
+        "release_zone_max_runout_m".to_string(),
+        runouts.last().copied().unwrap_or(0.0),
+    );
+    Ok(Some(release_zone_manifest(
+        Some(release_zone_config),
+        release_zone,
+        release_points.len(),
+    )))
+}
+
 fn compute_observed_trajectory_metrics(
     case: &BenchmarkCase,
     base_config: &SimulationConfig,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
 ) -> Result<(), ValidationError> {
@@ -1285,7 +1671,12 @@ fn compute_observed_trajectory_metrics(
 
         let request =
             TrajectoryRequest::from_global_seed(0, case.case_id.clone(), trajectory_id.clone());
-        let run = simulate_one_trajectory_with_terrain(&config, request, terrain.as_ref())?;
+        let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+            &config,
+            request,
+            terrain.as_ref(),
+            contact_parameters,
+        )?;
         if run.samples.is_empty() {
             continue;
         }
@@ -1379,6 +1770,7 @@ fn compute_observed_trajectory_metrics(
 fn compute_observed_contact_metrics(
     case: &BenchmarkCase,
     base_config: &SimulationConfig,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
 ) -> Result<(), ValidationError> {
@@ -1418,7 +1810,12 @@ fn compute_observed_contact_metrics(
             case.case_id.clone(),
             observed.source_segment_id.clone(),
         );
-        let run = simulate_one_trajectory_with_terrain(&config, request, terrain.as_ref())?;
+        let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+            &config,
+            request,
+            terrain.as_ref(),
+            contact_parameters,
+        )?;
         let Some(simulated_impact) = first_significant_impact_event(&run.impact_events) else {
             continue;
         };
@@ -1518,6 +1915,21 @@ fn ensemble_deposition_row(release_id: &str, run: &TrajectoryRun) -> EnsembleDep
 fn write_ensemble_deposition_csv(
     path: impl AsRef<Path>,
     points: &[EnsembleDepositionPoint],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for point in points {
+        writer.serialize(point)?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
+fn write_generated_release_points_csv(
+    path: impl AsRef<Path>,
+    points: &[GeneratedReleasePointRecord],
 ) -> Result<(), ValidationError> {
     if let Some(parent) = path.as_ref().parent() {
         fs::create_dir_all(parent)?;
@@ -2242,6 +2654,8 @@ mod tests {
                 radius: Some(0.5),
             },
             release: CaseRelease::default(),
+            release_zone: None,
+            terrain_classes: None,
             parameters: CaseParameters::default(),
             simulation: CaseSimulation::default(),
             random: CaseRandom::default(),

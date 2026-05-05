@@ -1,0 +1,46 @@
+# Small swissALTI3D-style pilot metadata fixture.
+# The DEM is synthetic but uses LV95/LN02-style coordinates to test the
+# ingestion metadata contract without committing raw swisstopo data.
+schema_version: 1
+tile_id: swissalti3d_pilot_synthetic_lv95_crop
+source_dataset: swisstopo_swissalti3d
+source_product: swissALTI3D
+source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+source_filename: synthetic_swissalti3d_style_crop.asc
+source_file_present: false
+download_status: processed_fixture
+license: synthetic fixture for repository tests; real swisstopo data remain subject to swisstopo terms
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: ESRI ASCII GRID
+  resolution_m: 2.0
+  width_px: 4
+  height_px: 4
+  nodata: -9999.0
+extent_lv95_m:
+  xmin: 2600000.0
+  ymin: 1200000.0
+  xmax: 2600008.0
+  ymax: 1200008.0
+preprocessing:
+  status: converted_to_internal_dem
+  crop_extent_lv95_m:
+    xmin: 2600000.0
+    ymin: 1200000.0
+    xmax: 2600008.0
+    ymax: 1200008.0
+  resampling_method: none
+  raw_sha256: null
+  processed_sha256: null
+  tool: hand-written synthetic fixture
+  processed_utc: null
+provenance:
+  intended_use: swiss_terrain_ingestion_pilot_ci_fixture
+  notes:
+    - Synthetic DEM values; do not interpret as real swisstopo elevation.
+    - Exercises CRS, vertical datum, extent, nodata, and manifest provenance handling.

@@ -17,6 +17,11 @@ Current layers:
   cell, where the terrain can be evaluated from case metadata.
 - `significant_impact_density`: fraction of impact events per cell whose
   incoming normal speed is at least `0.05 m/s`.
+- optional trajectory-level exceedance probability layers for configured
+  thresholds:
+  - `kinetic_energy_exceedance_<threshold>j`
+  - `jump_height_exceedance_<threshold>m`
+  - `velocity_exceedance_<threshold>mps`
 
 Exports:
 
@@ -70,6 +75,31 @@ python3 scripts/build_hazard_layers.py \
   --grid-cell-size 5
 ```
 
+For RAMMS-like diagnostic interpretation, add opt-in exceedance layers. These
+layers are additive and leave the existing reach, deposition, maximum-energy,
+jump-height, and impact-density layers unchanged:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml \
+  --output-dir hazard/results/swissalti3d_hazard_statistics \
+  --cell-size 2 \
+  --kinetic-energy-exceedance-j 5 \
+  --kinetic-energy-exceedance-j 10 \
+  --jump-height-exceedance-m 0.05 \
+  --velocity-exceedance-mps 1.0
+```
+
+The same thresholds can be stored in a case file:
+
+```yaml
+hazard_layers:
+  statistics:
+    kinetic_energy_exceedance_j: [5.0, 10.0]
+    jump_height_exceedance_m: [0.05, 0.10]
+    velocity_exceedance_mps: [0.5, 1.0]
+```
+
 ## How to Read the Layers
 
 The generated HTML report includes a short interpretation section and per-layer
@@ -88,7 +118,8 @@ summary statistics. The most important distinction is the input source:
 The probability/density rasters are normalized by the number of supplied samples
 for that layer. Maximum-value rasters record the largest sampled value in a
 cell; they are not expected values, design values, or calibrated hazard
-intensities.
+intensities. Exceedance rasters are normalized by trajectory count: a cell is
+counted at most once per trajectory for each configured threshold.
 
 ## Current Limitations
 
@@ -122,6 +153,13 @@ inputs into accumulators. In explicit-grid mode it skips the bounds scan and
 streams directly into the provided grid. Full trajectory and impact rows are not
 retained in memory; deposition points are still retained for the small GeoJSON
 debug export.
+
+Exceedance layers are also streaming-friendly. During each trajectory pass, the
+builder only stores the set of cells where that one trajectory exceeded each
+configured threshold; it does not retain all per-cell kinetic-energy,
+jump-height, or velocity samples. Percentile rasters remain future work because
+exact per-cell percentiles require heavier state or approximate streaming
+quantile sketches.
 
 The workflow supports analytic plane/paraboloid/step terrain and ESRI ASCII DEM
 terrain for jump-height estimation. Unsupported terrain metadata leaves

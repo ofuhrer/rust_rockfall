@@ -9,6 +9,9 @@ terrain:
     slope_x: 0.0
     slope_y: 0.0
   path: null
+  metadata_path: null # optional Swiss/swisstopo-style terrain-source metadata sidecar
+terrain_classes:
+  metadata_path: null # optional aligned LV95/LN02 categorical raster metadata sidecar
 block:
   mass: 10.0
   radius: 0.5
@@ -19,6 +22,9 @@ release:
   perturbation:
     position_uniform_m: 0.0
     velocity_uniform_mps: 0.0
+release_zone:
+  metadata_path: null # optional LV95/LN02 polygon source-area metadata sidecar
+  generated_release_points_csv: null # optional generated release-point audit output
 parameters:
   gravity: 9.81
   normal_restitution: 0.25
@@ -43,6 +49,11 @@ simulation:
 random:
   seed: 1
   ensemble_size: 1
+hazard_layers:
+  statistics:
+    kinetic_energy_exceedance_j: []
+    jump_height_exceedance_m: []
+    velocity_exceedance_mps: []
 validation_scope:
   type: null
   note: null

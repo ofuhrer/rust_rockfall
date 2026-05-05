@@ -8,8 +8,12 @@ Required case fields:
 
 - `case_id`, `title`, `level`, `description`
 - `terrain.type`, `terrain.parameters`, and optionally `terrain.path`
+- optional `terrain.metadata_path` for Swiss/swisstopo-style terrain-source metadata sidecars
+- optional `terrain_classes.metadata_path` for an aligned LV95/LN02 categorical raster metadata sidecar
 - `block.mass`, `block.radius`
 - `release.position`, `release.velocity`, optional `release.perturbation`
+- optional `release_zone.metadata_path` for a small LV95/LN02 source-area polygon metadata sidecar
+- optional `release_zone.generated_release_points_csv` for the deterministic generated release-point audit table
 - `parameters.gravity`, `normal_restitution`, `tangential_restitution`, `friction_coefficient`
 - optional `parameters.contact_model`: `translational_v0` by default, or `sphere_rotational_v1`
 - optional `parameters.rolling_resistance_coefficient`: dimensionless, default `0.0`, used by `sphere_rotational_v1`
@@ -31,8 +35,42 @@ Required case fields:
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
+- optional `hazard_layers.statistics.kinetic_energy_exceedance_j`, `jump_height_exceedance_m`, and `velocity_exceedance_mps` for additive hazard post-processing thresholds
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
+
+## Hazard-Layer Statistics
+
+`hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. Existing validation pass/fail semantics are unchanged.
+
+## Release-Zone Metadata
+
+Swiss pilot source-area cases can opt into `release_zone.metadata_path`. This is an orchestration feature, not new physics: the simulator still runs independent spherical-block trajectories from generated starting points.
+
+The current `schema_version: 1` release-zone metadata contract supports only small fixtures:
+
+- `coordinate_reference_system.epsg: 2056` (`EPSG:2056`) and `vertical_datum: LN02`
+- `geometry.type: polygon` with LV95 metre coordinates
+- `sampling.mode: deterministic_grid`
+- `sampling.count`, `sampling.seed`, `sampling.initial_velocity_mps`, optional `sampling.z_offset_m`, and `sampling.point_id_prefix`
+- `source_dataset`, optional `source_url`, `license`, and `provenance.notes`
+
+When both `terrain.metadata_path` and `release_zone.metadata_path` are present, validation checks that CRS/vertical datum match and that the release polygon lies inside the small pilot DEM footprint. Generated release points are recorded in `run_manifest_v1` and can optionally be written to `release_zone.generated_release_points_csv`.
+
+## Terrain-Class Metadata
+
+Swiss pilot cases can opt into `terrain_classes.metadata_path` to attach a small aligned terrain/material-class raster. This is not a new contact law. It only selects local values for existing parameters where a class override is explicitly provided; otherwise the global case parameters are used.
+
+The current `schema_version: 1` terrain-class metadata contract supports only small fixtures:
+
+- `coordinate_reference_system.epsg: 2056` (`EPSG:2056`) and `vertical_datum: LN02`
+- `class_grid_path` pointing to an ESRI ASCII categorical raster beside the metadata file
+- raster dimensions, resolution, nodata, and `extent_lv95_m` aligned with the DEM metadata
+- `classes` with integer `id`, human-readable `name`, and optional `parameter_overrides`
+- optional overrides: `restitution_n`, `restitution_t`, `friction_mu`, `rolling_resistance`, `soil_strength_pa`, `scarring_drag_coefficient`, `scarring_layer_density_kgpm3`, and `scarring_max_depth_m`
+- `source_dataset`, optional `source_url`, `license`, and `provenance.notes`
+
+Scarring parameter overrides only affect runs where the case already opts into `soil_interaction_model: scarring_contact_v1`; terrain classes do not enable scarring by themselves. Validation rejects unknown class IDs in the raster and rejects CRS, resolution, extent, or grid-shape mismatches against `terrain.metadata_path` when both sidecars are present. `run_manifest_v1` records the class layer id, metadata path, grid path, CRS, extent, source/license fields, provenance notes, and per-class coverage histogram.
 
 ## Implemented Terrain Types
 
@@ -46,6 +84,18 @@ The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 - `channelized_gully`: `z0_m`, `slope_x`, `depth_m`, `width_m`
 - `esri_ascii_grid`: `path`
 - `ascii_dem_clamped` / `esri_ascii_grid_clamped`: `path`; bilinear ESRI ASCII grid with boundary-clamped queries for limited validation patches
+
+For Swiss terrain-ingestion pilot cases, add `terrain.metadata_path` pointing to a YAML sidecar with CRS/provenance metadata. The current runtime parser validates the small `schema_version: 1` metadata contract:
+
+- `source_dataset: swisstopo_swissalti3d`
+- `coordinate_reference_system.epsg: 2056` (`EPSG:2056`)
+- `coordinate_reference_system.vertical_datum: LN02`
+- coordinate and height units in metres
+- `raster.resolution_m`, `width_px`, `height_px`, and optional `nodata`
+- `extent_lv95_m` footprint matching raster dimensions and resolution
+- source filename, source product, license/data-origin note, preprocessing status, and provenance notes
+
+When the terrain is an ESRI ASCII grid, validation also checks the metadata dimensions, cell size, nodata value, and LV95 footprint against the DEM header. The pilot fixture and documentation are in `validation/cases/swissalti3d_pilot.yaml` and `docs/swiss_terrain_ingestion_pilot.md`.
 
 ## Report Metrics
 
@@ -105,6 +155,10 @@ The CLI can report:
 - `deposition_centroid_error_m`
 - `deposition_cloud_mean_nearest_error_m`
 - `deposition_cloud_overlap_fraction`
+- `release_zone_point_count`
+- `release_zone_extent_area_m2`
+- `release_zone_mean_runout_m`
+- `release_zone_max_runout_m`
 - `lateral_spread_error_m`
 - `max_rolling_residual_mps`
 - `final_rolling_residual_mps`
@@ -132,7 +186,17 @@ When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model
 version, git hash, config fingerprint, seed policy, terrain source, output file
 summaries, warnings, and completion status. It does not replace diagnostics JSON
-or change pass/fail semantics.
+or change pass/fail semantics. If `terrain.metadata_path` is present, the
+manifest terrain section includes CRS/EPSG, vertical datum, LV95 extent,
+resolution, nodata, source dataset/product, source filename/URL, license,
+download/preprocessing status, and provenance notes. If `release_zone` is
+present, the manifest includes release-zone id, metadata path, CRS/EPSG,
+vertical datum, deterministic sampling mode and seed, requested/generated
+release-point counts, polygon extent/area, source/license fields, and
+provenance notes. If `terrain_classes` is present, the manifest includes
+terrain-class layer id, metadata path, class-grid path, CRS/EPSG, vertical datum,
+resolution, extent, nodata, source/license fields, class coverage histogram, and
+provenance notes.
 
 Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
 

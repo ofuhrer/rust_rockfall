@@ -80,6 +80,89 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("How to Read Hazard Layers", html)
             self.assertIn("Reach probability", html)
 
+    def test_exceedance_layers_are_additive_and_manifested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline_dir = Path(tmp) / "baseline"
+            exceedance_dir = Path(tmp) / "exceedance"
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(baseline_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(exceedance_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--kinetic-energy-exceedance-j",
+                        "10",
+                        "--jump-height-exceedance-m",
+                        "0.4",
+                        "--velocity-exceedance-mps",
+                        "1.5",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            baseline_reach = read_layer(
+                baseline_dir / "hazard_fixture_plane_reach_probability.csv",
+                "reach_probability",
+            )
+            exceedance_reach = read_layer(
+                exceedance_dir / "hazard_fixture_plane_reach_probability.csv",
+                "reach_probability",
+            )
+            self.assertEqual(baseline_reach, exceedance_reach)
+
+            kinetic = read_layer(
+                exceedance_dir / "hazard_fixture_plane_kinetic_energy_exceedance_10j.csv",
+                "kinetic_energy_exceedance_10j",
+            )
+            self.assertAlmostEqual(max(kinetic.values()), 1.0)
+            self.assertAlmostEqual(sum(value for value in kinetic.values() if value > 0.0), 1.0)
+
+            jump = read_layer(
+                exceedance_dir / "hazard_fixture_plane_jump_height_exceedance_0p4m.csv",
+                "jump_height_exceedance_0p4m",
+            )
+            self.assertGreater(max(jump.values()), 0.0)
+
+            velocity = read_layer(
+                exceedance_dir / "hazard_fixture_plane_velocity_exceedance_1p5mps.csv",
+                "velocity_exceedance_1p5mps",
+            )
+            self.assertAlmostEqual(max(velocity.values()), 0.5)
+
+            metadata = json.loads((exceedance_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((exceedance_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertEqual(metadata["hazard_statistics"]["kinetic_energy_exceedance_j"], [10.0])
+            self.assertIn(
+                "kinetic_energy_exceedance_10j",
+                manifest["hazard_statistics"]["generated_layer_names"],
+            )
+            self.assertTrue(
+                any(layer["key"] == "velocity_exceedance_1p5mps" for layer in manifest["layers"])
+            )
+
     def test_explicit_grid_mode_records_reference_grid_in_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

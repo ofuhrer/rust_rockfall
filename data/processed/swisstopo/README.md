@@ -12,3 +12,11 @@ Current fixture:
 
 - `sample_swissalti3d_tile_metadata.yaml`: schema-style example for one
   swissALTI3D pilot tile. It is metadata only; no source raster is committed.
+
+Runtime pilot fixture:
+
+- `../../../validation/data/processed/swisstopo_pilot/` contains a tiny synthetic
+  swissALTI3D-style ESRI ASCII crop, terrain-source metadata, source-area
+  metadata, and terrain/material-class metadata used by the Swiss pilot
+  validation cases. These files are synthetic test data, not swisstopo raw
+  products or calibrated terrain classes.

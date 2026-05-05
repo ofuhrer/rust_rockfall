@@ -77,6 +77,13 @@ The sample metadata fixture lives at
 `data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml`. It is metadata
 only and does not imply that the referenced raw swisstopo tile is present.
 
+The first runtime pilot fixture lives at
+`validation/data/processed/swisstopo_pilot/`. It contains a tiny synthetic
+swissALTI3D-style ESRI ASCII crop and a matching metadata sidecar. The fixture is
+not real swisstopo elevation data; it exists to validate CRS, LN02 height,
+extent, nodata, provenance, and manifest handling before manually supplied real
+terrain crops are introduced.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the
@@ -95,6 +102,19 @@ Rust core. The recommended boundary is:
 This keeps the single-trajectory simulator deterministic and free of file I/O
 side effects while allowing a later Python/GDAL or Rust/GDAL adapter outside the
 kernel.
+
+The current implementation supports this boundary through `terrain.metadata_path`
+and optional `release_zone.metadata_path` in validation/benchmark YAML. The
+terrain parser validates `EPSG:2056`, `LN02`, metre units, finite LV95 extent,
+raster resolution/dimensions, nodata handling, source/provenance fields, and
+consistency with small ESRI ASCII DEM headers. The release-zone parser validates
+an LV95/LN02 polygon fixture, deterministic grid sampling metadata, and CRS
+compatibility with the terrain sidecar. The optional `terrain_classes.metadata_path`
+parser validates an aligned categorical raster and declared class ids, then uses
+those classes only to select local values for existing contact/scarring
+parameters. The generated `run_manifest_v1` records the validated terrain-source,
+release-zone, and terrain-class metadata. Details are in
+`docs/swiss_terrain_ingestion_pilot.md`.
 
 ## First Swiss Pilot Workflow
 
