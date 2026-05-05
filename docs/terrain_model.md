@@ -30,7 +30,7 @@ z = z_trend + IDW_residual(public LPS ground points)
 
 The trend plane uses all public LPS ground elevations from the selected EnviDat resource. Residuals are interpolated with inverse-distance weighting (`k_nearest = 24`, `idw_power = 2`) on a `5 m` ESRI ASCII grid with `45 m` padding around the trajectory points.
 
-This is still not an official field DEM. It is a reproducible public-data terrain proxy that preserves more local relief than a plane and is suitable for v0.3.0 structural-error experiments.
+This is still not an official field DEM. It is a reproducible public-data terrain proxy that preserves more local relief than a plane and is suitable for v0-series structural-error experiments.
 
 ## Boundary Policy
 

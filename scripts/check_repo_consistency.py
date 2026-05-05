@@ -102,6 +102,7 @@ def main() -> int:
     errors.extend(check_version_consistency())
     errors.extend(check_tschamut_validation_metadata())
     errors.extend(check_calibration_metadata())
+    errors.extend(check_scarring_not_in_tschamut_workflows())
 
     if errors:
         for error in errors:
@@ -304,6 +305,8 @@ def check_version_consistency() -> list[str]:
     report_generator = (ROOT / "visualization/build_report.py").read_text()
     if f'FALLBACK_MODEL_VERSION = "{version}"' not in report_generator:
         errors.append("visualization/build_report.py fallback version disagrees with Cargo.toml")
+    if f"Rockfall v{version} Verification and Validation Report" not in report_generator:
+        errors.append("visualization/build_report.py report title/header disagrees with Cargo.toml")
     if "model_version" not in report_generator:
         errors.append("visualization/build_report.py does not render model_version")
     return errors
@@ -328,6 +331,8 @@ def check_tschamut_validation_metadata() -> list[str]:
     case = yaml.safe_load((ROOT / "validation/cases/tschamut_basic.yaml").read_text()) or {}
     if (case.get("references") or {}).get("dataset") != "tschamut2014":
         errors.append("validation/cases/tschamut_basic.yaml does not reference dataset tschamut2014")
+    if (case.get("parameters") or {}).get("soil_interaction_model", "none") != "none":
+        errors.append("validation/cases/tschamut_basic.yaml must keep soil_interaction_model none")
     observations = case.get("observations") or {}
     for key in ("release_points_csv", "deposition_points_csv"):
         path = observations.get(key)
@@ -342,6 +347,28 @@ def check_tschamut_validation_metadata() -> list[str]:
     report_text = report.read_text()
     if "Real-world validation" not in report_text:
         errors.append("visualization/build_report.py omits real-world validation wording")
+    return errors
+
+
+def check_scarring_not_in_tschamut_workflows() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+    errors = []
+    for path in sorted((ROOT / "validation/cases").glob("tschamut*.yaml")):
+        data = yaml.safe_load(path.read_text()) or {}
+        model = (data.get("parameters") or {}).get("soil_interaction_model", "none")
+        if model != "none":
+            errors.append(
+                f"{path.relative_to(ROOT)} must not enable scarring without an explicit calibration/validation decision"
+            )
+    for path in sorted((ROOT / "calibration/experiments").glob("tschamut_v0_3/*.yaml")):
+        data = yaml.safe_load(path.read_text()) or {}
+        if "scarring_contact_v1" in path.read_text() or data.get("soil_interaction_model"):
+            errors.append(
+                f"{path.relative_to(ROOT)} must remain a v0.3.0 calibration artifact without scarring"
+            )
     return errors
 
 

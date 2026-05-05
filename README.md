@@ -128,7 +128,7 @@ python3 visualization/build_report.py --render-plots
 open visualization/reports/standard_v0/index.html
 ```
 
-The HTML report is a diagnostic review layer. It includes interpretation notes, known v0 limitations, plot captions, case-specific checked/not-checked scope, and neutral skipped status for optional public-data cases. Synthetic and analytic reports do not imply operational hazard validation.
+The HTML report is a diagnostic review layer. The `standard_v0` directory name is a stable v0-series output path; the report header and JSON diagnostics carry the exact current model version. It includes interpretation notes, known v0 limitations, plot captions, case-specific checked/not-checked scope, and neutral skipped status for optional public-data cases. Synthetic and analytic reports do not imply operational hazard validation.
 
 ## Local Git Hooks
 

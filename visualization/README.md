@@ -99,6 +99,8 @@ Open the generated report in a browser:
 open visualization/reports/standard_v0/index.html
 ```
 
+The `standard_v0` directory name is retained as a stable output path for the v0-series report. It is not the model version; the report header and JSON diagnostics show the exact version, such as `v0.4.0`.
+
 The report generator reads descriptions, expected behavior, metrics, tolerances, and references directly from the YAML case definitions. It does not duplicate case documentation and does not run simulations itself. The `--render-plots` option only refreshes PNG plots from existing trajectory CSVs.
 
 The report is meant for scientific inspection:
@@ -108,6 +110,7 @@ The report is meant for scientific inspection:
 - trajectory and energy plots include captions explaining the diagnostic purpose of each figure;
 - stochastic cases that produce only summary metrics explain why no trajectory plot is expected;
 - roughness-enabled cases are marked as opt-in and uncalibrated;
+- scarring-enabled verification cases are marked as opt-in and uncalibrated;
 - synthetic cases are described as verification/regression checks, not evidence of operational hazard skill.
 
 For a PDF copy, open the HTML report in a browser and use the browser print/save-as-PDF command. The report CSS is kept print-friendly, but the HTML and linked JSON/CSV artifacts remain the primary local outputs.

@@ -1,6 +1,6 @@
 # Tschamut Calibration Experiment
 
-This document describes `calibration/experiments/tschamut_v0_3`, a first controlled calibration experiment for the public Tschamut 2014 dataset. It is explicitly separate from validation. It does not modify `validation/cases/tschamut_basic.yaml`, does not claim predictive skill, and does not produce operational hazard parameters. It is not operational calibration.
+This historical document describes `calibration/experiments/tschamut_v0_3`, a first controlled calibration experiment for the public Tschamut 2014 dataset. It is explicitly separate from validation. It does not modify `validation/cases/tschamut_basic.yaml`, does not claim predictive skill, and does not produce operational hazard parameters. It is not operational calibration. The experiment remains a v0.3.0 calibration artifact and does not use the v0.4.0 `scarring_contact_v1` soil interaction model.
 
 ## Dataset Split
 

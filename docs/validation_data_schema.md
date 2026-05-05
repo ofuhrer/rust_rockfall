@@ -36,10 +36,13 @@ The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 - `plane`: `z0_m`, `slope_x`, `slope_y`
 - `paraboloid`: `z0_m`, `ax`, `ay`
 - `step`: `step_x_m`, `high_z_m`, `low_z_m`
+- `v_shaped_valley`: `z0_m`, `slope_x`, `side_slope_abs_y`
+- `terraced_slope`: `z0_m`, `slope_x`, `terrace_width_m`, `terrace_height_m`
+- `sinusoidal_rough_slope`: `z0_m`, `slope_x`, `amplitude_m`, `wavelength_m`
+- `gaussian_bump`: `z0_m`, `slope_x`, `center_x_m`, `center_y_m`, `height_m`, `sigma_m`
+- `channelized_gully`: `z0_m`, `slope_x`, `depth_m`, `width_m`
 - `esri_ascii_grid`: `path`
 - `ascii_dem_clamped` / `esri_ascii_grid_clamped`: `path`; bilinear ESRI ASCII grid with boundary-clamped queries for limited validation patches
-
-Other procedural terrains may exist in the codebase, but v0 verification cases focus on the model scope above.
 
 ## Report Metrics
 
