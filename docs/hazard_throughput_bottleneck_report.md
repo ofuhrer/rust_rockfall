@@ -138,3 +138,43 @@ Interpretation:
   hazard-stage code path. The next optimization should target trajectory sample
   accumulation or a projected trajectory-reader interface, not impact
   accumulation.
+
+## Trajectory Accumulation Profiling Follow-Up
+
+A conservative local-loop optimization was tested after explicit-grid support:
+the trajectory accumulator cached grid constants and inlined per-sample cell,
+maxima, exceedance, and jump-height work while preserving the existing batch
+interface. The benchmark command was:
+
+```bash
+python3 scripts/run_performance_benchmark.py \
+  --profile custom \
+  --counts 300 500 \
+  --output-modes trajectories parquet \
+  --contact-models translational_v0 sphere_rotational_v1 \
+  --hazard-plots no-plots \
+  --weighted-hazard none \
+  --hazard-grid explicit \
+  --output-root validation/results/trajectory_accumulation_optimization_300_500
+```
+
+The result was mixed and the change was not retained:
+
+- Average explicit-grid trajectory accumulation changed only from about
+  `5.52 s` to `5.40 s` across the eight rows.
+- Average explicit-grid hazard-stage time was effectively unchanged
+  (`6.00 s` before, `6.02 s` after).
+- Several paired Parquet-impact rows became slower, while one large apparent
+  improvement was dominated by a noisy previous outlier.
+
+Interpretation:
+
+- Simple helper inlining and attribute caching are not a stable optimization
+  target for the current Python accumulator.
+- The remaining bottleneck is still Python-level per-sample raster updates, but
+  it likely needs a more structural change: vectorized/batched trajectory cell
+  indexing, per-trajectory occupied-cell reduction, or a projected trajectory
+  input path that feeds the reducer in larger arrays.
+- Trajectory Parquet should still wait until the hazard builder has a reader
+  path that can use projected/batched trajectory columns rather than converting
+  back to row-wise Python objects.
