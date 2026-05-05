@@ -283,6 +283,7 @@ def check_hazard_layer_metadata() -> list[str]:
         ROOT / "hazard/README.md",
         ROOT / "hazard/results/.gitkeep",
         ROOT / "docs/hazard_layers.md",
+        ROOT / "docs/hazard_workflow_scale_review.md",
         ROOT / "tests/test_hazard_layers.py",
         ROOT / "tests/fixtures/hazard/plane_case.yaml",
     ]

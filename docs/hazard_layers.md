@@ -54,6 +54,25 @@ Open the generated report locally:
 open hazard/results/tschamut_baseline/index.html
 ```
 
+## How to Read the Layers
+
+The generated HTML report includes a short interpretation section and per-layer
+summary statistics. The most important distinction is the input source:
+
+- trajectory-derived layers (`reach_probability`, `max_kinetic_energy`,
+  `max_jump_height`) only represent the trajectory CSV files supplied to the
+  script;
+- deposition-derived layers (`deposition_density`) can already represent the
+  current validation ensemble, because validation writes an ensemble deposition
+  CSV;
+- impact-derived layers (`significant_impact_density`) are only produced when
+  impact-event CSV output is available.
+
+The probability/density rasters are normalized by the number of supplied samples
+for that layer. Maximum-value rasters record the largest sampled value in a
+cell; they are not expected values, design values, or calibrated hazard
+intensities.
+
 ## Current Limitations
 
 The current validation runner writes one representative full trajectory plus an
@@ -84,3 +103,6 @@ trajectory kernel:
 - add scenario uncertainty layers for release, terrain, and material-parameter
   ensembles;
 - keep calibration/validation metadata attached to every generated map product.
+
+The first scaling review is documented in
+`docs/hazard_workflow_scale_review.md`.

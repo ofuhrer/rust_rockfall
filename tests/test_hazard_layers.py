@@ -41,6 +41,11 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(metadata["inputs"]["trajectory_count"], 2)
             self.assertEqual(metadata["inputs"]["deposition_point_count"], 2)
             self.assertEqual(metadata["inputs"]["impact_event_count"], 2)
+            reach_summary = next(
+                layer["summary"] for layer in metadata["layers"] if layer["key"] == "reach_probability"
+            )
+            self.assertEqual(reach_summary["nonzero_cell_count"], 4)
+            self.assertAlmostEqual(reach_summary["maximum"], 1.0)
 
             reach = read_layer(output_dir / "hazard_fixture_plane_reach_probability.csv", "reach_probability")
             self.assertAlmostEqual(max(reach.values()), 1.0)
@@ -66,7 +71,35 @@ class HazardLayerTests(unittest.TestCase):
 
             html = (output_dir / "index.html").read_text()
             self.assertIn("not operational risk", html)
+            self.assertIn("How to Read Hazard Layers", html)
             self.assertIn("Reach probability", html)
+
+    def test_nonfinite_coordinate_rows_are_dropped_with_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory = work / "trajectory.csv"
+            trajectory.write_text(
+                "time_s,x_m,y_m,z_m,kinetic_j,contact_state\n"
+                "0.0,nan,0.0,1.0,1.0,airborne\n"
+                "1.0,1.0,0.0,1.0,2.0,airborne\n"
+            )
+            output_dir = work / "hazard"
+            status = hazard.main_with_args(
+                [
+                    "--trajectory",
+                    str(trajectory),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                    "--prefix",
+                    "nonfinite",
+                ]
+            )
+            self.assertEqual(status, 0)
+            metadata = json.loads((output_dir / "nonfinite_metadata.json").read_text())
+            self.assertIn("dropped 1 non-finite coordinate rows", "\n".join(metadata["warnings"]))
 
 
 def read_layer(path: Path, key: str) -> dict[tuple[int, int], float]:

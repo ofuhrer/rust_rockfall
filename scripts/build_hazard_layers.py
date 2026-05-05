@@ -13,7 +13,6 @@ import csv
 import html
 import json
 import math
-import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,9 +89,22 @@ def main_with_args(argv: list[str] | None = None) -> int:
     impact_events_path = args.impact_events or first_case_output_path(case, "impact_events_csv")
     diagnostics_path = args.diagnostics or first_case_output_path(case, "diagnostics_json")
 
-    trajectories = [(path.stem, read_numeric_csv(path)) for path in trajectory_paths if path.exists()]
-    depositions = read_numeric_csv(deposition_path) if deposition_path and deposition_path.exists() else []
-    impacts = read_numeric_csv(impact_events_path) if impact_events_path and impact_events_path.exists() else []
+    input_warnings: list[str] = []
+    trajectories = [
+        (path.stem, sanitize_rows(read_numeric_csv(path), f"trajectory:{path}", input_warnings))
+        for path in trajectory_paths
+        if path.exists()
+    ]
+    depositions = (
+        sanitize_rows(read_numeric_csv(deposition_path), f"deposition:{deposition_path}", input_warnings)
+        if deposition_path and deposition_path.exists()
+        else []
+    )
+    impacts = (
+        sanitize_rows(read_numeric_csv(impact_events_path), f"impact_events:{impact_events_path}", input_warnings)
+        if impact_events_path and impact_events_path.exists()
+        else []
+    )
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
 
     if not trajectories and not depositions and not impacts:
@@ -103,6 +115,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
 
     layers, warnings = build_layers(grid, trajectories, depositions, impacts, terrain, block_radius_m)
+    warnings = input_warnings + warnings + validate_layers(layers)
     write_layers(output_dir, prefix, grid, layers)
     write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", depositions)
 
@@ -168,6 +181,30 @@ def read_numeric_csv(path: Path | None) -> list[dict[str, float | str]]:
     return rows
 
 
+def sanitize_rows(
+    rows: list[dict[str, float | str]],
+    label: str,
+    warnings: list[str],
+) -> list[dict[str, float | str]]:
+    sanitized: list[dict[str, float | str]] = []
+    dropped = 0
+    for row in rows:
+        clean: dict[str, float | str] = {}
+        row_bad = False
+        for key, value in row.items():
+            if isinstance(value, float) and not math.isfinite(value):
+                row_bad = True
+                continue
+            clean[key] = value
+        if row_bad and ("x_m" in row or "y_m" in row):
+            dropped += 1
+            continue
+        sanitized.append(clean)
+    if dropped:
+        warnings.append(f"dropped {dropped} non-finite coordinate rows from {label}")
+    return sanitized
+
+
 def build_grid(
     trajectories: list[tuple[str, list[dict[str, float | str]]]],
     depositions: list[dict[str, float | str]],
@@ -201,7 +238,7 @@ def build_grid(
 def append_xy(xs: list[float], ys: list[float], row: dict[str, float | str]) -> None:
     x = row.get("x_m")
     y = row.get("y_m")
-    if isinstance(x, float) and isinstance(y, float):
+    if isinstance(x, float) and isinstance(y, float) and math.isfinite(x) and math.isfinite(y):
         xs.append(x)
         ys.append(y)
 
@@ -319,7 +356,7 @@ def sample_cell(grid: GridSpec, sample: dict[str, float | str]) -> tuple[int, in
 
 
 def numeric(value: float | str | None) -> float | None:
-    return value if isinstance(value, float) else None
+    return value if isinstance(value, float) and math.isfinite(value) else None
 
 
 def zeros(grid: GridSpec) -> list[list[float]]:
@@ -501,8 +538,12 @@ def write_ascii_grid(path: Path, grid: GridSpec, layer: RasterLayer) -> None:
         f"NODATA_value {NODATA:.12g}",
     ]
     for row in layer.values:
-        lines.append(" ".join(f"{value:.12g}" for value in row))
+        lines.append(" ".join(f"{ascii_value(value):.12g}" for value in row))
     write_text(path, "\n".join(lines) + "\n")
+
+
+def ascii_value(value: float) -> float:
+    return value if math.isfinite(value) else NODATA
 
 
 def write_deposition_geojson(path: Path, depositions: list[dict[str, float | str]]) -> None:
@@ -554,7 +595,13 @@ def build_metadata(
             "impact_event_count": len(impacts),
         },
         "layers": [
-            {"key": layer.key, "title": layer.title, "units": layer.units, "note": layer.note}
+            {
+                "key": layer.key,
+                "title": layer.title,
+                "units": layer.units,
+                "note": layer.note,
+                "summary": summarize_layer(layer),
+            }
             for layer in layers
         ],
         "warnings": warnings,
@@ -565,6 +612,46 @@ def build_metadata(
             "Risk mapping requires exposure and vulnerability data and is outside this workflow.",
         ],
     }
+
+
+def summarize_layer(layer: RasterLayer) -> dict[str, float | int | None]:
+    values = [
+        value
+        for row in layer.values
+        for value in row
+        if math.isfinite(value) and (not layer.nodata or value != NODATA)
+    ]
+    if not values:
+        return {
+            "valid_cell_count": 0,
+            "minimum": None,
+            "maximum": None,
+            "sum": 0.0,
+            "nonzero_cell_count": 0,
+        }
+    return {
+        "valid_cell_count": len(values),
+        "minimum": min(values),
+        "maximum": max(values),
+        "sum": math.fsum(values),
+        "nonzero_cell_count": sum(1 for value in values if value != 0.0),
+    }
+
+
+def validate_layers(layers: list[RasterLayer]) -> list[str]:
+    warnings: list[str] = []
+    for layer in layers:
+        summary = summarize_layer(layer)
+        if summary["valid_cell_count"] == 0:
+            warnings.append(f"{layer.key} has no valid cells")
+        if layer.key in {"reach_probability", "deposition_density", "significant_impact_density"}:
+            maximum = summary["maximum"]
+            minimum = summary["minimum"]
+            if isinstance(maximum, float) and maximum > 1.0 + 1e-12:
+                warnings.append(f"{layer.key} has values greater than 1.0")
+            if isinstance(minimum, float) and minimum < -1e-12:
+                warnings.append(f"{layer.key} has negative values")
+    return warnings
 
 
 def render_png_layers(output_dir: Path, prefix: str, grid: GridSpec, layers: list[RasterLayer]) -> dict[str, str]:
@@ -605,6 +692,10 @@ def write_html_report(
     title = str(case.get("title") or metadata.get("case_id") or "Hazard Layers")
     rows = []
     for layer in layers:
+        summary = next(
+            (entry.get("summary", {}) for entry in metadata.get("layers", []) if entry.get("key") == layer.key),
+            {},
+        )
         rows.append(
             "<tr>"
             f"<td>{html.escape(layer.title)}</td>"
@@ -612,6 +703,7 @@ def write_html_report(
             f"<td><a href=\"{prefix}_{layer.key}.csv\">CSV grid</a> | "
             f"<a href=\"{prefix}_{layer.key}.asc\">ASCII grid</a></td>"
             f"<td>{html.escape(layer.note)}</td>"
+            f"<td>{html.escape(format_summary(summary))}</td>"
             "</tr>"
         )
     plots = []
@@ -646,6 +738,15 @@ def write_html_report(
   <h1>{html.escape(title)} Hazard Layers</h1>
   <p><span class="badge">research hazard layer</span> <span class="badge">not operational risk</span></p>
   <p>This report converts existing rockfall simulation outputs into first-pass spatial hazard layers. It does not add physics, does not include exposure or vulnerability, and must not be interpreted as an operational Swiss hazard or risk map.</p>
+  <h2>How to Read Hazard Layers</h2>
+  <p>Probability and density layers are normalized diagnostic rasters. A value near 1 means all supplied samples for that layer occupied the cell; a value near 0 means few or none did. Maximum-energy and maximum-jump-height layers record the largest sampled value in each cell, not an expected value or design value.</p>
+  <ul>
+    <li><strong>Reach probability</strong>: cells touched by supplied trajectory CSVs. With one representative trajectory it is a 0/1 path mask, not a full ensemble probability.</li>
+    <li><strong>Deposition density</strong>: final-position density from ensemble deposition points.</li>
+    <li><strong>Maximum kinetic energy</strong>: largest kinetic energy sampled in each cell from supplied trajectories.</li>
+    <li><strong>Maximum jump height</strong>: largest sampled height above terrain plus block radius where terrain metadata can be evaluated.</li>
+    <li><strong>Significant impact density</strong>: normalized locations of impact events above the configured normal-speed threshold.</li>
+  </ul>
   <h2>Inputs</h2>
   <ul>
     <li>Case: <code>{html.escape(str(metadata.get("case_id") or "unspecified"))}</code></li>
@@ -658,7 +759,7 @@ def write_html_report(
   </ul>
   <h2>Layer Exports</h2>
   <table>
-    <thead><tr><th>Layer</th><th>Units</th><th>Files</th><th>Interpretation</th></tr></thead>
+    <thead><tr><th>Layer</th><th>Units</th><th>Files</th><th>Interpretation</th><th>Summary</th></tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
   <p>Deposition points are also exported as <a href="{prefix}_deposition_points.geojson">GeoJSON</a>. Run metadata are in <a href="{prefix}_metadata.json">JSON</a>.</p>
@@ -677,6 +778,23 @@ def write_html_report(
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
+
+
+def format_summary(summary: dict[str, Any]) -> str:
+    valid = summary.get("valid_cell_count", 0)
+    nonzero = summary.get("nonzero_cell_count", 0)
+    minimum = summary.get("minimum")
+    maximum = summary.get("maximum")
+    total = summary.get("sum")
+    if valid == 0:
+        return "no valid cells"
+    return f"valid={valid}, nonzero={nonzero}, min={format_number(minimum)}, max={format_number(maximum)}, sum={format_number(total)}"
+
+
+def format_number(value: Any) -> str:
+    if isinstance(value, (int, float)):
+        return f"{value:.6g}"
+    return "n/a"
 
 
 if __name__ == "__main__":
