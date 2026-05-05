@@ -168,6 +168,27 @@ class InputStats:
     significant_impact_count: int = 0
 
 
+@dataclass
+class BoundsDiscoveryStats:
+    trajectory_files_scanned: int = 0
+    deposition_files_scanned: int = 0
+    impact_csv_files_scanned: int = 0
+    impact_parquet_tables_scanned: int = 0
+    trajectory_rows_scanned: int = 0
+    deposition_rows_scanned: int = 0
+    impact_csv_rows_scanned: int = 0
+    impact_parquet_rows_scanned: int = 0
+
+    @property
+    def total_rows_scanned(self) -> int:
+        return (
+            self.trajectory_rows_scanned
+            + self.deposition_rows_scanned
+            + self.impact_csv_rows_scanned
+            + self.impact_parquet_rows_scanned
+        )
+
+
 @dataclass(frozen=True)
 class TrajectorySample:
     x_m: float | None
@@ -198,9 +219,19 @@ class DepositionPointBatch:
 
 @dataclass(frozen=True)
 class ImpactEventBatch:
+    source_path: Path
     event_count: int
     significant_event_count: int
     significant_points: tuple[tuple[float, float], ...]
+
+
+@dataclass(frozen=True)
+class HazardAccumulationTimings:
+    bounds_discovery_seconds: float = 0.0
+    deposition_accumulation_seconds: float = 0.0
+    trajectory_accumulation_seconds: float = 0.0
+    impact_accumulation_seconds: float = 0.0
+    normalization_seconds: float = 0.0
 
 
 @dataclass
@@ -699,8 +730,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
         grid, grid_source = explicit_grid, "explicit"
+        bounds_discovery_seconds = 0.0
+        bounds_stats = BoundsDiscoveryStats()
     else:
-        bounds = discover_bounds(
+        bounds_started = time.perf_counter()
+        bounds, bounds_stats = discover_bounds(
             trajectory_paths,
             deposition_path,
             impact_event_paths,
@@ -708,6 +742,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             args.cell_size,
             input_warnings,
         )
+        bounds_discovery_seconds = time.perf_counter() - bounds_started
         grid, grid_source = bounds.to_grid(args.cell_size), "auto"
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
@@ -722,21 +757,29 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     accumulation_started = time.perf_counter()
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config, probability_state)
+    deposition_started = time.perf_counter()
     accumulator.accumulate_deposition(read_deposition_batch(deposition_path, input_warnings))
+    deposition_accumulation_seconds = time.perf_counter() - deposition_started
+    trajectory_started = time.perf_counter()
     for trajectory_path in trajectory_paths:
         batch = read_trajectory_sample_batch(trajectory_path, input_warnings)
         if batch is not None:
             accumulator.accumulate_trajectory(batch)
+    trajectory_accumulation_seconds = time.perf_counter() - trajectory_started
+    impact_started = time.perf_counter()
     for batch in read_impact_event_csv_batches(impact_event_paths, input_warnings):
         accumulator.accumulate_impacts(batch)
     for batch in read_impact_event_parquet_batches(impact_event_parquet_paths, input_warnings):
         accumulator.accumulate_impacts(batch)
+    impact_accumulation_seconds = time.perf_counter() - impact_started
     stats = accumulator.stats()
     if not stats.trajectory_count and not stats.deposition_point_count and not stats.impact_event_count:
         raise SystemExit("no trajectory, deposition, or impact-event inputs found")
 
+    normalization_started = time.perf_counter()
     layers, warnings = accumulator.layers()
     warnings = input_warnings + warnings + validate_layers(layers)
+    normalization_seconds = time.perf_counter() - normalization_started
     accumulation_seconds = time.perf_counter() - accumulation_started
 
     core_write_started = time.perf_counter()
@@ -779,6 +822,20 @@ def main_with_args(argv: list[str] | None = None) -> int:
         core_output_write_seconds=core_output_write_seconds,
         plot_render_seconds=plot_render_seconds,
         plots_enabled=plots_enabled,
+        input_file_counts={
+            "trajectory_files_scanned": sum(1 for path in trajectory_paths if path.exists()),
+            "deposition_files_scanned": 1 if deposition_path is not None and deposition_path.exists() else 0,
+            "impact_csv_files_scanned": sum(1 for path in impact_event_paths if path.exists()),
+            "impact_parquet_tables_scanned": sum(1 for path in impact_event_parquet_paths if path.exists()),
+        },
+        bounds_stats=bounds_stats,
+        timings=HazardAccumulationTimings(
+            bounds_discovery_seconds=bounds_discovery_seconds,
+            deposition_accumulation_seconds=deposition_accumulation_seconds,
+            trajectory_accumulation_seconds=trajectory_accumulation_seconds,
+            impact_accumulation_seconds=impact_accumulation_seconds,
+            normalization_seconds=normalization_seconds,
+        ),
     )
     write_text(output_dir / f"{prefix}_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -1105,25 +1162,38 @@ def discover_bounds(
     impact_event_parquet_paths: list[Path],
     cell_size: float,
     warnings: list[str],
-) -> GridBounds:
+) -> tuple[GridBounds, BoundsDiscoveryStats]:
     if cell_size <= 0.0:
         raise SystemExit("--cell-size must be positive")
     bounds = GridBounds.empty()
+    stats = BoundsDiscoveryStats()
     for path in trajectory_paths:
         if path.exists():
+            stats.trajectory_files_scanned += 1
             for row in iter_numeric_csv(path, f"trajectory:{path}", warnings, emit_warnings=False):
+                stats.trajectory_rows_scanned += 1
                 bounds.add_row(row)
     if deposition_path and deposition_path.exists():
+        stats.deposition_files_scanned += 1
         for row in iter_numeric_csv(deposition_path, f"deposition:{deposition_path}", warnings, emit_warnings=False):
+            stats.deposition_rows_scanned += 1
             bounds.add_row(row)
     for path in impact_event_paths:
         if path.exists():
+            stats.impact_csv_files_scanned += 1
             for row in iter_numeric_csv(path, f"impact_events:{path}", warnings, emit_warnings=False):
+                stats.impact_csv_rows_scanned += 1
                 bounds.add_row(row)
     for path in impact_event_parquet_paths:
         if path.exists():
-            add_parquet_xy_bounds(bounds, path, warnings, emit_warnings=False)
-    return bounds
+            stats.impact_parquet_tables_scanned += 1
+            stats.impact_parquet_rows_scanned += add_parquet_xy_bounds(
+                bounds,
+                path,
+                warnings,
+                emit_warnings=False,
+            )
+    return bounds, stats
 
 
 def read_trajectory_sample_batch(path: Path, warnings: list[str]) -> TrajectorySampleBatch | None:
@@ -1182,6 +1252,7 @@ def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Ite
             if x is not None and y is not None:
                 significant_points.append((x, y))
         yield ImpactEventBatch(
+            source_path=path,
             event_count=event_count,
             significant_event_count=significant_event_count,
             significant_points=tuple(significant_points),
@@ -1235,7 +1306,7 @@ def add_parquet_xy_bounds(
     warnings: list[str],
     *,
     emit_warnings: bool = True,
-) -> None:
+) -> int:
     try:
         import pyarrow.parquet as pq  # type: ignore
     except ImportError as exc:
@@ -1243,10 +1314,12 @@ def add_parquet_xy_bounds(
     parquet_file = pq.ParquetFile(path)
     require_parquet_columns(parquet_file, path, ("x_m", "y_m"))
     dropped = 0
+    row_count = 0
     for batch in parquet_file.iter_batches(columns=["x_m", "y_m"], batch_size=65_536):
         xs = batch.column(0).to_pylist()
         ys = batch.column(1).to_pylist()
         for x_value, y_value in zip(xs, ys):
+            row_count += 1
             x = finite_float(x_value)
             y = finite_float(y_value)
             if x is None or y is None:
@@ -1255,6 +1328,7 @@ def add_parquet_xy_bounds(
             bounds.add_xy(x, y)
     if emit_warnings and dropped:
         warnings.append(f"dropped {dropped} non-finite coordinate rows from impact_events_parquet:{path}")
+    return row_count
 
 
 def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Iterator[ImpactEventBatch]:
@@ -1297,6 +1371,7 @@ def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Iterat
                 continue
             significant_points.append((x, y))
         yield ImpactEventBatch(
+            source_path=path,
             event_count=impact_event_count,
             significant_event_count=significant_impact_count,
             significant_points=tuple(significant_points),
@@ -1330,6 +1405,10 @@ def sample_cell_from_xy(grid: GridSpec, x: float | None, y: float | None) -> tup
 
 def numeric(value: float | str | bool | None) -> float | None:
     return value if isinstance(value, float) and math.isfinite(value) else None
+
+
+def safe_rate_or_none(count: int, seconds: float) -> float | None:
+    return count / seconds if count > 0 and seconds > 0.0 else None
 
 
 def zeros(grid: GridSpec) -> list[list[float]]:
@@ -1714,6 +1793,9 @@ def build_hazard_manifest(
     core_output_write_seconds: float,
     plot_render_seconds: float,
     plots_enabled: bool,
+    input_file_counts: dict[str, int],
+    bounds_stats: BoundsDiscoveryStats,
+    timings: HazardAccumulationTimings,
 ) -> dict[str, Any]:
     outputs: list[dict[str, Any]] = []
     for layer in layers:
@@ -1736,6 +1818,10 @@ def build_hazard_manifest(
     core_output_write_seconds = max(0.0, core_output_write_seconds)
     plot_render_seconds = max(0.0, plot_render_seconds)
     output_write_seconds = core_output_write_seconds + plot_render_seconds
+    trajectory_sample_rows = int(inputs.get("trajectory_sample_count", 0) or 0)
+    deposition_rows = int(inputs.get("deposition_point_count", 0) or 0)
+    impact_rows = int(inputs.get("impact_event_count", 0) or 0)
+    total_hazard_input_rows = trajectory_sample_rows + deposition_rows + impact_rows
     return {
         "schema_version": "run_manifest_v1",
         "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
@@ -1768,8 +1854,39 @@ def build_hazard_manifest(
             "core_output_write_seconds": core_output_write_seconds,
             "plot_render_seconds": plot_render_seconds,
             "plots_enabled": plots_enabled,
+            "bounds_discovery_seconds": max(0.0, timings.bounds_discovery_seconds),
+            "deposition_accumulation_seconds": max(0.0, timings.deposition_accumulation_seconds),
+            "trajectory_accumulation_seconds": max(0.0, timings.trajectory_accumulation_seconds),
+            "impact_accumulation_seconds": max(0.0, timings.impact_accumulation_seconds),
+            "normalization_seconds": max(0.0, timings.normalization_seconds),
             "trajectory_count": int(inputs.get("trajectory_count", 0) or 0),
             "impact_event_count": int(inputs.get("impact_event_count", 0) or 0),
+            "trajectory_sample_rows_read": trajectory_sample_rows,
+            "deposition_rows_read": deposition_rows,
+            "impact_event_rows_read": impact_rows,
+            "total_hazard_input_rows_read": total_hazard_input_rows,
+            **input_file_counts,
+            "bounds_trajectory_files_scanned": bounds_stats.trajectory_files_scanned,
+            "bounds_deposition_files_scanned": bounds_stats.deposition_files_scanned,
+            "bounds_impact_csv_files_scanned": bounds_stats.impact_csv_files_scanned,
+            "bounds_impact_parquet_tables_scanned": bounds_stats.impact_parquet_tables_scanned,
+            "bounds_input_rows_scanned": bounds_stats.total_rows_scanned,
+            "trajectory_rows_per_second": safe_rate_or_none(
+                trajectory_sample_rows,
+                timings.trajectory_accumulation_seconds,
+            ),
+            "deposition_rows_per_second": safe_rate_or_none(
+                deposition_rows,
+                timings.deposition_accumulation_seconds,
+            ),
+            "impact_rows_per_second": safe_rate_or_none(
+                impact_rows,
+                timings.impact_accumulation_seconds,
+            ),
+            "hazard_input_rows_per_second": safe_rate_or_none(
+                total_hazard_input_rows,
+                accumulation_seconds,
+            ),
             "output_file_count": output_file_count,
             "output_bytes": output_bytes,
         },

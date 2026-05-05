@@ -31,14 +31,35 @@ These measurements are wall-clock diagnostics. They are useful for comparing wor
 - `core_output_write_seconds`
 - `plot_render_seconds`
 - `plots_enabled`
+- `bounds_discovery_seconds`
+- `deposition_accumulation_seconds`
+- `trajectory_accumulation_seconds`
+- `impact_accumulation_seconds`
+- `normalization_seconds`
 - `trajectory_count`
 - `impact_event_count`
+- `trajectory_sample_rows_read`
+- `deposition_rows_read`
+- `impact_event_rows_read`
+- `total_hazard_input_rows_read`
+- `trajectory_files_scanned`
+- `deposition_files_scanned`
+- `impact_csv_files_scanned`
+- `impact_parquet_tables_scanned`
+- `bounds_input_rows_scanned`
+- `trajectory_rows_per_second`
+- `deposition_rows_per_second`
+- `impact_rows_per_second`
+- `hazard_input_rows_per_second`
 - `output_file_count`
 - `output_bytes`
 
 Validation manifests set hazard-specific timings to `null` or omit them. Hazard-layer manifests set the simulation-specific timings to `0.0` because they consume existing CSV/JSON files rather than running the Rust kernel. For hazard manifests, `hazard_layer_seconds` is retained as a backward-compatible alias for `accumulation_seconds`; `output_write_seconds` is the sum of `core_output_write_seconds` and `plot_render_seconds`.
 
 Older manifests without `performance` remain readable; the field is optional.
+Older hazard manifests without the row-throughput counters also remain
+readable. The rows-per-second fields are diagnostic timing ratios, not stable
+validation metrics.
 
 ## CI-Safe Smoke Benchmark
 
@@ -64,7 +85,12 @@ python3 scripts/build_hazard_layers.py \
   --no-plots
 ```
 
-The generated hazard manifest records accumulation time, core output writing time, optional plot/report rendering time, output file count, output bytes, trajectory count, and impact-event count. Use this to compare representative-trajectory runs against full-ensemble runs, explicit-grid mode against auto-grid mode, and plotting enabled versus `--no-plots`.
+The generated hazard manifest records accumulation time, core output writing
+time, optional plot/report rendering time, output file count, output bytes,
+trajectory count, impact-event count, input row counts, file/table scan counts,
+and coarse rows-per-second diagnostics. Use this to compare
+representative-trajectory runs against full-ensemble runs, explicit-grid mode
+against auto-grid mode, and plotting enabled versus `--no-plots`.
 
 Use `--no-plots` for benchmark and larger workflow runs. Omit it only when a local PNG/HTML diagnostic report is needed for inspection.
 

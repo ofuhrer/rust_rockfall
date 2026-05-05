@@ -331,3 +331,13 @@ trajectory id to join against metadata.
 The consolidation remains a semantic no-op: CSV trajectory input, CSV impact
 input, projected Parquet impact input, auto-grid mode, explicit-grid mode,
 weighted layers, and output filenames/schemas are unchanged.
+
+## Throughput Instrumentation
+
+The next lightweight instrumentation slice adds hazard-manifest counters and
+coarse phase timings without changing layer values. The manifest records input
+row counts, file/table scan counts, bounds-discovery time, deposition,
+trajectory, impact, and normalization timing, plus diagnostic rows-per-second
+ratios. These fields are intended to guide future trajectory Parquet,
+vectorized accumulation, or tiled reducer decisions; they are not validation
+criteria and should be compared only within the same local benchmark context.

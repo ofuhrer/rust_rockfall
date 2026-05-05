@@ -179,6 +179,9 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             self.assertEqual(row["trajectories_per_second"], 10.0)
             self.assertEqual(row["impacts_per_second"], 4.0)
             self.assertEqual(row["output_bytes"], 1024)
+            self.assertEqual(row["bounds_discovery_seconds"], "")
+            self.assertEqual(row["trajectory_sample_rows_read"], 0)
+            self.assertEqual(row["hazard_input_rows_per_second"], "")
 
             perf.write_summary_reports(output_root, [row])
             summary_csv = output_root / "summary.csv"
