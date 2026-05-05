@@ -25,7 +25,7 @@ Required case fields:
 - `simulation.dt`, `t_max`, `max_steps`, `stop_velocity`
 - `random.seed`, `ensemble_size`
 - optional `validation_scope.type` and `validation_scope.note` for real-world cases
-- optional `observations.release_points_csv`, `observations.deposition_points_csv`
+- optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`
 - `expected.metrics`, `expected.tolerances`
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.ensemble_deposition_csv`
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
@@ -83,6 +83,14 @@ The CLI can report:
 - `lateral_deviation_m`
 - `validation_release_count`
 - `validation_simulated_trajectory_count`
+- `validation_trajectory_count`
+- `observed_trajectory_sample_count`
+- `trajectory_shape_mean_error_m`
+- `trajectory_shape_p95_error_m`
+- `trajectory_shape_max_error_m`
+- `trajectory_final_position_mean_error_m`
+- `trajectory_energy_mean_relative_error`
+- `trajectory_max_jump_height_mean_error_m`
 - `observed_mean_runout_m`
 - `simulated_mean_runout_m`
 - `deposition_centroid_error_m`
@@ -169,4 +177,9 @@ Observed trajectory CSV required fields:
 - `y_m`
 - `z_m`
 
-Optional fields include velocity components, angular velocity, contact-point tangential speed, rolling residual, speed, bounce height, contact state, block mass, shape class, terrain class, forest/obstacle metadata, CRS, and preprocessing notes.
+Optional fields include `vx_mps`, `vy_mps`, `vz_mps`, `speed_mps`, `kinetic_j`, angular velocity, contact-point tangential speed, rolling residual, bounce height, contact state, block mass, shape class, terrain class, forest/obstacle metadata, CRS, and preprocessing notes.
+
+When `observations.trajectory_csv` is present, validation groups samples by
+`trajectory_id`, simulates each matching release from `observations.release_points_csv`
+when available, interpolates simulated samples to observed times, and reports
+trajectory-shape, kinetic-energy, final-position, and proxy jump-height errors.

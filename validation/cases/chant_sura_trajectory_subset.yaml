@@ -1,0 +1,64 @@
+case_id: validation_chant_sura_trajectory_subset
+title: Chant Sura first-flight trajectory subset
+level: 5
+description: Minimal public Chant Sura trajectory-validation case using first monotonic reconstructed flight segments from three EnviDat output trajectories. This checks trajectory shape, translational kinetic-energy evolution, and proxy jump-height consistency for the current spherical model without using the case for calibration.
+terrain:
+  type: plane
+  parameters: { z0_m: 2378.5, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2380.85]
+  velocity: [1.17599999905, -4.33600000013, -4.23375]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.005, t_max: 1.1, max_steps: 220, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: trajectory-level
+  note: "Compares short reconstructed first-flight segments only. The terrain is a flat clearance proxy because the large Chant Sura input DEM is optional and not included in the checked-in subset."
+observations:
+  release_points_csv: validation/data/processed/chant_sura_2020/release_points.csv
+  trajectory_csv: validation/data/processed/chant_sura_2020/observed_trajectories.csv
+expected:
+  metrics:
+    - validation_trajectory_count
+    - observed_trajectory_sample_count
+    - trajectory_shape_mean_error_m
+    - trajectory_shape_p95_error_m
+    - trajectory_shape_max_error_m
+    - trajectory_final_position_mean_error_m
+    - trajectory_energy_mean_relative_error
+    - trajectory_max_jump_height_mean_error_m
+  values:
+    validation_trajectory_count: 3.0
+    observed_trajectory_sample_count: 153.0
+  maximums:
+    trajectory_shape_mean_error_m: 0.002
+    trajectory_shape_p95_error_m: 0.005
+    trajectory_shape_max_error_m: 0.01
+    trajectory_final_position_mean_error_m: 0.01
+    trajectory_energy_mean_relative_error: 0.001
+    trajectory_max_jump_height_mean_error_m: 0.01
+outputs:
+  diagnostics_json: validation/results/chant_sura_trajectory_subset_metrics.json
+  trajectory_csv: validation/results/chant_sura_trajectory_subset_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  literature:
+    - "Caviezel, A. et al. (2020). Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland. EnviDat. https://doi.org/10.16904/envidat.174."
+    - "Caviezel, A. et al. (2021). The relevance of rock shape over mass. Nature Communications."
+  notes:
+    - "Uses Output/txt trajectory files from the public EnviDat output archive."
+    - "Only first monotonic time segments are used because trajectory text files concatenate jump segments with local time resets."
+    - "Equivalent sphere radii are inferred from mass using density 2670 kg/m3; original EOTA shapes are documented but not used by this model."
+    - "This is trajectory/physics validation, not deposition validation, calibration, or operational hazard assessment."
+report:
+  verifies:
+    - "Short-flight translational kinematics against public reconstructed trajectory samples."
+    - "Translational kinetic-energy evolution for the sphere approximation."
+    - "Proxy jump-height consistency relative to the explicit flat clearance plane."
+  does_not_verify:
+    - "Full Chant Sura runout, deposition, impact-contact dynamics, shape-dependent motion, calibrated terrain interaction, or operational hazard skill."

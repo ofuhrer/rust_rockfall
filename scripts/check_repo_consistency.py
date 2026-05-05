@@ -87,6 +87,14 @@ KNOWN_METRICS = {
     "lateral_deviation_m",
     "validation_release_count",
     "validation_simulated_trajectory_count",
+    "validation_trajectory_count",
+    "observed_trajectory_sample_count",
+    "trajectory_shape_mean_error_m",
+    "trajectory_shape_p95_error_m",
+    "trajectory_shape_max_error_m",
+    "trajectory_final_position_mean_error_m",
+    "trajectory_energy_mean_relative_error",
+    "trajectory_max_jump_height_mean_error_m",
     "observed_mean_runout_m",
     "simulated_mean_runout_m",
     "deposition_centroid_error_m",
@@ -113,6 +121,7 @@ def main() -> int:
     errors.extend(check_documented_paths())
     errors.extend(check_contact_model_docs())
     errors.extend(check_version_consistency())
+    errors.extend(check_chant_sura_validation_metadata())
     errors.extend(check_tschamut_validation_metadata())
     errors.extend(check_calibration_metadata())
     errors.extend(check_scarring_not_in_tschamut_workflows())
@@ -405,6 +414,52 @@ def check_tschamut_validation_metadata() -> list[str]:
     report_text = report.read_text()
     if "Real-world validation" not in report_text:
         errors.append("visualization/build_report.py omits real-world validation wording")
+    return errors
+
+
+def check_chant_sura_validation_metadata() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+    errors = []
+    registry = yaml.safe_load((ROOT / "data/datasets.yaml").read_text()) or {}
+    datasets = {dataset.get("id"): dataset for dataset in registry.get("datasets", [])}
+    dataset = datasets.get("chant_sura_2020")
+    if not dataset:
+        errors.append("data/datasets.yaml omits chant_sura_2020 metadata")
+    else:
+        for key in ("source_url", "doi", "license", "citation", "local_path", "processed_path"):
+            if not dataset.get(key):
+                errors.append(f"chant_sura_2020 dataset metadata omits {key}")
+
+    case_path = ROOT / "validation/cases/chant_sura_trajectory_subset.yaml"
+    if not case_path.exists():
+        errors.append("validation/cases/chant_sura_trajectory_subset.yaml is missing")
+    else:
+        case = yaml.safe_load(case_path.read_text()) or {}
+        if (case.get("references") or {}).get("dataset") != "chant_sura_2020":
+            errors.append("chant_sura_trajectory_subset does not reference dataset chant_sura_2020")
+        observations = case.get("observations") or {}
+        for key in ("release_points_csv", "trajectory_csv"):
+            path = observations.get(key)
+            if not path:
+                errors.append(f"chant_sura_trajectory_subset omits observations.{key}")
+            elif not (ROOT / path).exists():
+                errors.append(
+                    f"chant_sura_trajectory_subset references missing observations.{key}: {path}"
+                )
+        if "validation_scope" not in case:
+            errors.append("chant_sura_trajectory_subset omits validation_scope")
+
+    strategy = ROOT / "docs/dataset_strategy.md"
+    if not strategy.exists():
+        errors.append("docs/dataset_strategy.md is missing")
+    else:
+        text = strategy.read_text()
+        for term in ("Chant Sura", "trajectory", "calibration", "Tschamut", "hazard"):
+            if term not in text:
+                errors.append(f"docs/dataset_strategy.md omits {term!r}")
     return errors
 
 

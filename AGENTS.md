@@ -13,6 +13,7 @@ Use this document to decide how to work. Use the docs to decide what to build.
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`
 - Long-term hazard-mapping roadmap: `docs/roadmap_hazard_mapping.md`
+- Dataset roles and validation boundaries: `docs/dataset_strategy.md`
 - Required validation approach: `docs/validation_plan.md`
 - Source material: `background/`
 
@@ -28,6 +29,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - For contact-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, and consistency checks in the same change.
 - For roughness-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - For soil/scarring-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
+- For dataset or validation-case changes, update `data/datasets.yaml`, preprocessing scripts, validation-ready schema/docs, and `docs/dataset_strategy.md` together so calibration, trajectory validation, deposition validation, and hazard mapping stay separated.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.

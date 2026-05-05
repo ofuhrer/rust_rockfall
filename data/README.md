@@ -19,5 +19,4 @@ Large public datasets are not committed. Use `scripts/download_datasets.py` to d
 - Do not commit large raw files.
 - Do not tune simulator parameters secretly to match one dataset.
 
-The included `synthetic_plane_basic` fixture is synthetic and exists only for CI-style validation of data loading and metrics.
-
+The included `synthetic_plane_basic` fixture is synthetic and exists only for CI-style validation of data loading and metrics. The checked-in `chant_sura_2020` subset is a small public trajectory-validation fixture; the checked-in `tschamut2014` subset is a deposition/runout validation fixture. See `../docs/dataset_strategy.md` for dataset roles.

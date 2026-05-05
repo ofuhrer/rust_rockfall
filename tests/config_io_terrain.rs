@@ -676,6 +676,83 @@ outputs:
 }
 
 #[test]
+fn validation_compares_observed_trajectory_shape_and_energy() {
+    let case_path = temp_path("observed_trajectory_case.yaml");
+    let observations = temp_path("observed_trajectory.csv");
+    let releases = temp_path("observed_trajectory_releases.csv");
+    let diagnostics = temp_path("observed_trajectory_metrics.json");
+    let trajectory = temp_path("observed_trajectory_output.csv");
+
+    fs::write(
+        &observations,
+        "trajectory_id,experiment_id,time_s,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,speed_mps,kinetic_j\n\
+         obs_001,synthetic,0.0,0.0,0.0,2.0,1.0,0.0,0.0,1.0,5.0\n\
+         obs_001,synthetic,0.1,0.1,0.0,1.95095,1.0,0.0,-0.981,1.4008429605062802,9.811805\n",
+    )
+    .unwrap();
+    fs::write(
+        &releases,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,mass_kg,radius_m\n\
+         obs_001,synthetic,0.0,0.0,2.0,1.0,0.0,0.0,10.0,0.5\n",
+    )
+    .unwrap();
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: observed_trajectory_case
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 2.0]
+  velocity: [1.0, 0.0, 0.0]
+simulation: {{ dt: 0.05, t_max: 0.1, stop_velocity: 0.01 }}
+observations:
+  release_points_csv: {}
+  trajectory_csv: {}
+expected:
+  metrics:
+    - validation_trajectory_count
+    - observed_trajectory_sample_count
+    - trajectory_shape_mean_error_m
+    - trajectory_energy_mean_relative_error
+outputs:
+  diagnostics_json: {}
+  trajectory_csv: {}
+"#,
+            releases.display(),
+            observations.display(),
+            diagnostics.display(),
+            trajectory.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert_abs_diff_eq!(
+        report.metrics["validation_trajectory_count"],
+        1.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        report.metrics["observed_trajectory_sample_count"],
+        2.0,
+        epsilon = 1.0e-12
+    );
+    assert!(report.metrics["trajectory_shape_mean_error_m"] < 1.0e-12);
+    assert!(report.metrics["trajectory_energy_mean_relative_error"] < 1.0e-12);
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(observations).unwrap();
+    fs::remove_file(releases).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+}
+
+#[test]
 fn tschamut_validation_fixture_runs_reproducibly() {
     let output = PathBuf::from("validation/results/tschamut_basic_metrics.json");
     let trajectory = PathBuf::from("validation/results/tschamut_basic_trajectory.csv");

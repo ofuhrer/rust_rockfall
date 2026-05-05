@@ -12,8 +12,10 @@ Core documents:
 
 - `model_design.md`: current equations, assumptions, model options, and API boundaries.
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
+- `dataset_strategy.md`: multi-dataset roles for physics calibration, trajectory validation, deposition validation, and hazard mapping.
 - `hazard_layers.md`: first post-processing workflow for diagnostic reach, deposition, energy, jump-height, and impact-density layers.
 - `hazard_workflow_scale_review.md`: stress-test observations, bottlenecks, DEM/GIS gaps, and Swiss-scale requirements for hazard-layer generation.
+- `hazard_layer_scientific_analysis.md`: scientific interpretation of current ensemble hazard-layer outputs and Swiss-scale readiness gaps.
 - `verification_plan.md`: analytic and synthetic verification strategy.
 - `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.

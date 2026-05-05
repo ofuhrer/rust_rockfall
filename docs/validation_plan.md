@@ -15,12 +15,13 @@ Real-world validation is partial and qualitative. The current simulator is a sph
 - Do not commit large raw data.
 - Keep large real-data validation optional; small license-compatible derived fixtures may be checked in for CI smoke tests.
 
-The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`.
+The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`.
 
 ## Commands
 
 ```bash
 cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
+cargo run -- validate --case validation/cases/chant_sura_trajectory_subset.yaml
 cargo run -- validate --case validation/cases/tschamut_basic.yaml
 cargo run -- validate --all
 ```
@@ -29,13 +30,15 @@ Missing optional public observations cause a skipped report with instructions ra
 
 ## Metrics
 
-Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, deposition centroid error, deposition-cloud mean nearest-neighbor distance, deposition-cloud overlap fraction, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, scarring depth/drag/energy-loss diagnostics, and ensemble runout summaries where seeded perturbations are used.
+Implemented validation metrics include deposition-point distance error, runout distance error, lateral deviation, deposition centroid error, deposition-cloud mean nearest-neighbor distance, deposition-cloud overlap fraction, trajectory-shape error, trajectory kinetic-energy relative error, trajectory proxy jump-height error, final speed, impact count, max speed, max bounce height, energy diagnostics, rolling residual/contact diagnostics, scarring depth/drag/energy-loss diagnostics, and ensemble runout summaries where seeded perturbations are used.
 Roughness-specific verification metrics include zero-roughness baseline comparison and different-seed ensemble runout deltas.
 Scarring-specific verification metrics include zero-scarring baseline comparison, maximum scarring depth, maximum scarring drag force, and total scarring energy loss.
 
 Planned metrics include trajectory-envelope overlap, bounce-height time-series error, velocity and angular-velocity time-series error, runout exceedance probability, and deposition-density skill scores.
 
 ## Real-World Validation Interpretation
+
+Chant Sura is the primary trajectory/physics reference dataset. The current checked-in case uses three short first-flight reconstructed segments from the public EnviDat `Output.7z` archive. It compares trajectory shape, translational kinetic-energy evolution, and proxy jump-height consistency. Because it uses a flat clearance plane and not the large Chant Sura input DEM, it does not validate full terrain interaction, complete runout, deposition, or shape-dependent motion.
 
 The Tschamut 2014 case is a limited distribution-level comparison against public-derived release and deposition points. It validates only that the current workflow can ingest public observations, run deterministic ensembles, and report interpretable mismatch metrics. It does not validate individual paths or operational hazard skill.
 

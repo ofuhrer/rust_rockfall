@@ -54,6 +54,7 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 ## Level 5: Validation Scaffolds
 
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
+- `validation_chant_sura_trajectory_subset`: primary trajectory/physics validation fixture using three short public Chant Sura reconstructed first-flight segments. It compares trajectory-shape error, translational kinetic-energy relative error, and proxy jump-height error, but does not validate full runout, deposition, or shape-dependent dynamics.
 - `validation_tschamut_proxy_plane`: limited public-data terrain comparison case using the earlier fitted-plane terrain proxy for the Tschamut 2014 subset.
 - `validation_tschamut_basic`: limited active public-data validation case using a small processed subset of SLF/WSL EnviDat Tschamut 2014 LPS release/deposition observations and the `idw_residual_dem_from_lps` clamped DEM proxy. It reports distribution-level runout and deposition-cloud mismatch only.
 

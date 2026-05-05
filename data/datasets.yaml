@@ -132,7 +132,7 @@ datasets:
       - Adrian Ringenbach
       - Marc Christen
       - Perry Bartelt
-    coordinate_system: "Site geodata; CRS to be confirmed from input archive."
+    coordinate_system: "Output trajectories use Swiss projected coordinates consistent with LV95-scale eastings/northings; input archive CRS metadata still needs explicit extraction before DEM-based validation."
     data_types:
       - DEM and orthophoto
       - deposition points
@@ -147,10 +147,11 @@ datasets:
       - geospatial files
       - sensor streams
       - xlsx
-    download_status: metadata_only
+    download_status: small_processed_trajectory_subset_checked_in
     local_path: data/raw/chant_sura_2020
     processed_path: data/processed/chant_sura_2020
     intended_validation_use:
+      - primary trajectory and physics validation dataset
       - shape and mass sensitivity
       - reconstructed trajectory comparison
       - deposition and runout metrics
@@ -158,6 +159,10 @@ datasets:
     preprocessing_notes:
       - Prefer Input and Output archives before large Experimental Runs or Video archives.
       - WSL Data Policy must be reviewed before committing derived files.
+      - Current checked-in subset uses Output/txt reconstructed trajectories RF16W200r1, RF16W800r1, and RF18W200r1.
+      - Only the first monotonic time segment is used because the public output text files concatenate jump segments with local time resets.
+      - Current validation uses a flat clearance-plane proxy; it does not yet use the large Input.7z DEM.
+      - EOTA shape files are summarized as metadata for future non-spherical model development; v0.4.0 still uses equivalent spheres.
     resources:
       - id: experimental_runs
         name: Experimental Runs Archive

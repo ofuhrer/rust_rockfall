@@ -21,11 +21,18 @@ Current implemented metrics:
 - `simulated_mean_runout_m`
 - `validation_release_count`
 - `validation_simulated_trajectory_count`
+- `validation_trajectory_count`
+- `observed_trajectory_sample_count`
+- `trajectory_shape_mean_error_m`
+- `trajectory_shape_p95_error_m`
+- `trajectory_shape_max_error_m`
+- `trajectory_final_position_mean_error_m`
+- `trajectory_energy_mean_relative_error`
+- `trajectory_max_jump_height_mean_error_m`
 
 Planned metrics:
 
 - trajectory envelope overlap
-- bounce-height error
 - velocity and angular-velocity time-series error
 - kinetic-energy error at impact points
 - runout exceedance probability

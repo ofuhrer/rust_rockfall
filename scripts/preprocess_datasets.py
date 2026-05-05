@@ -14,7 +14,9 @@ import heapq
 import json
 import math
 import re
+import shutil
 import statistics
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -22,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TSCHAMUT_VALIDATION_RUN_LIMIT = 10
+CHANT_SURA_TRAJECTORY_IDS = ["RF16W200r1", "RF16W800r1", "RF18W200r1"]
 
 
 def write_synthetic_fixture() -> None:
@@ -177,6 +180,271 @@ def preprocess_tschamut2014() -> None:
     )
     print(f"wrote Tschamut processed data to {processed_dir}")
     print(f"wrote Tschamut validation subset to {validation_dir}")
+
+
+def preprocess_chant_sura_2020() -> None:
+    raw_dir = ROOT / "data" / "raw" / "chant_sura_2020"
+    output_archive = raw_dir / "output.7z"
+    eota_archive = raw_dir / "eota.7z"
+    if not output_archive.exists():
+        raise SystemExit(
+            "missing Chant Sura output archive; run "
+            "`python3 scripts/download_datasets.py --dataset chant_sura_2020 "
+            "--resource output_archive` first"
+        )
+    if shutil.which("bsdtar") is None:
+        raise SystemExit("Chant Sura preprocessing requires bsdtar/libarchive for .7z extraction")
+
+    trajectory_rows: list[list[str]] = []
+    release_rows: list[list[str]] = []
+    block_rows_by_id: dict[str, list[str]] = {}
+    for trajectory_id in CHANT_SURA_TRAJECTORY_IDS:
+        member = f"Output/txt/{trajectory_id}.txt"
+        text = extract_archive_member(output_archive, member)
+        segment = first_monotonic_chant_sura_segment(text)
+        if not segment:
+            raise SystemExit(f"no trajectory samples parsed from {member}")
+        first = segment[0]
+        mass_kg = infer_mass_kg(first)
+        radius_m = equivalent_sphere_radius_m(mass_kg)
+        block_id = chant_sura_block_id(trajectory_id)
+        release_rows.append(
+            [
+                trajectory_id,
+                "chant_sura_2020_first_flight_subset",
+                fmt(first["x"]),
+                fmt(first["y"]),
+                fmt(first["z"]),
+                fmt(first["v_x"]),
+                fmt(first["v_y"]),
+                fmt(first["v_z"]),
+                fmt(mass_kg),
+                fmt(radius_m),
+            ]
+        )
+        block_rows_by_id.setdefault(
+            block_id,
+            [
+                block_id,
+                fmt(mass_kg),
+                fmt(radius_m),
+                "equivalent_sphere_from_mass",
+                "radius inferred with density 2670 kg/m3; original EOTA shape data are not used by the v0.4.0 sphere model",
+            ],
+        )
+        for sample in segment:
+            trajectory_rows.append(
+                [
+                    trajectory_id,
+                    "chant_sura_2020_first_flight_subset",
+                    fmt(sample["time"]),
+                    fmt(sample["x"]),
+                    fmt(sample["y"]),
+                    fmt(sample["z"]),
+                    fmt(sample["v_x"]),
+                    fmt(sample["v_y"]),
+                    fmt(sample["v_z"]),
+                    fmt(sample["v"]),
+                    fmt(sample["Ekin"]),
+                    fmt(sample["Erot"]),
+                    fmt(sample["Etot"]),
+                    fmt(sample.get("omega_x", 0.0)),
+                    fmt(sample.get("omega_y", 0.0)),
+                    fmt(sample.get("omega_z", 0.0)),
+                ]
+            )
+
+    shape_rows = chant_sura_shape_rows(eota_archive) if eota_archive.exists() else []
+
+    for out in (
+        ROOT / "data" / "processed" / "chant_sura_2020",
+        ROOT / "validation" / "data" / "processed" / "chant_sura_2020",
+    ):
+        out.mkdir(parents=True, exist_ok=True)
+        write_csv(
+            out / "release_points.csv",
+            [
+                "trajectory_id",
+                "experiment_id",
+                "x_m",
+                "y_m",
+                "z_m",
+                "vx_mps",
+                "vy_mps",
+                "vz_mps",
+                "mass_kg",
+                "radius_m",
+            ],
+            release_rows,
+        )
+        write_csv(
+            out / "observed_trajectories.csv",
+            [
+                "trajectory_id",
+                "experiment_id",
+                "time_s",
+                "x_m",
+                "y_m",
+                "z_m",
+                "vx_mps",
+                "vy_mps",
+                "vz_mps",
+                "speed_mps",
+                "kinetic_j",
+                "rotational_j",
+                "total_energy_j",
+                "omega_x_radps",
+                "omega_y_radps",
+                "omega_z_radps",
+            ],
+            trajectory_rows,
+        )
+        write_csv(
+            out / "block_metadata.csv",
+            ["block_id", "mass_kg", "radius_m", "shape_class", "notes"],
+            list(block_rows_by_id.values()),
+        )
+        if shape_rows:
+            write_csv(
+                out / "rock_shapes.csv",
+                ["shape_file", "point_count", "min_x_m", "max_x_m", "min_y_m", "max_y_m", "min_z_m", "max_z_m", "role"],
+                shape_rows,
+            )
+        write_chant_sura_metadata(out / "metadata.json", len(CHANT_SURA_TRAJECTORY_IDS), len(trajectory_rows), bool(shape_rows))
+    print("wrote Chant Sura validation subset to data/processed/chant_sura_2020 and validation/data/processed/chant_sura_2020")
+
+
+def extract_archive_member(archive: Path, member: str) -> str:
+    result = subprocess.run(
+        ["bsdtar", "-xOf", str(archive), member],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"failed to extract {member} from {archive}: {result.stderr.strip()}")
+    return result.stdout
+
+
+def first_monotonic_chant_sura_segment(text: str) -> list[dict[str, float]]:
+    rows = csv.DictReader(text.splitlines())
+    segment: list[dict[str, float]] = []
+    previous_time = -math.inf
+    for row in rows:
+        try:
+            parsed = {key: float(value) for key, value in row.items() if key is not None and value not in {None, ""}}
+        except ValueError:
+            continue
+        time_s = parsed.get("time")
+        if time_s is None:
+            continue
+        if segment and time_s < previous_time:
+            break
+        segment.append(parsed)
+        previous_time = time_s
+    return segment
+
+
+def infer_mass_kg(sample: dict[str, float]) -> float:
+    speed = sample["v"]
+    if speed <= 0.0:
+        raise SystemExit("cannot infer mass from non-positive speed")
+    return 2.0 * sample["Ekin"] / (speed * speed)
+
+
+def equivalent_sphere_radius_m(mass_kg: float, density_kgpm3: float = 2670.0) -> float:
+    volume_m3 = mass_kg / density_kgpm3
+    return (3.0 * volume_m3 / (4.0 * math.pi)) ** (1.0 / 3.0)
+
+
+def chant_sura_block_id(trajectory_id: str) -> str:
+    match = re.search(r"W(\d+)", trajectory_id)
+    return f"W{match.group(1)}" if match else "unknown"
+
+
+def chant_sura_shape_rows(eota_archive: Path) -> list[list[str]]:
+    rows: list[list[str]] = []
+    listing = subprocess.run(
+        ["bsdtar", "-tf", str(eota_archive)],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if listing.returncode != 0:
+        return rows
+    for member in listing.stdout.splitlines():
+        if not member.endswith(".pts"):
+            continue
+        text = extract_archive_member(eota_archive, member)
+        points = []
+        for line in text.splitlines():
+            parts = line.split()
+            if len(parts) < 3:
+                continue
+            try:
+                points.append((float(parts[0]), float(parts[1]), float(parts[2])))
+            except ValueError:
+                continue
+        if not points:
+            continue
+        xs, ys, zs = zip(*points)
+        rows.append(
+            [
+                member,
+                str(len(points)),
+                fmt(min(xs)),
+                fmt(max(xs)),
+                fmt(min(ys)),
+                fmt(max(ys)),
+                fmt(min(zs)),
+                fmt(max(zs)),
+                "public EOTA shape geometry; documented for future non-spherical model development",
+            ]
+        )
+    return rows
+
+
+def write_chant_sura_metadata(
+    path: Path,
+    trajectory_count: int,
+    sample_count: int,
+    includes_shape_summary: bool,
+) -> None:
+    metadata = {
+        "dataset_id": "chant_sura_2020",
+        "doi": "https://doi.org/10.16904/envidat.174",
+        "license": "WSL Data Policy",
+        "source_files": [
+            "Output/txt/RF16W200r1.txt",
+            "Output/txt/RF16W800r1.txt",
+            "Output/txt/RF18W200r1.txt",
+        ],
+        "coordinate_system": "LV95 / Swiss projected coordinates inferred from EnviDat output trajectory magnitudes; no CRS transformation is applied.",
+        "subset": "first monotonic time segment from three reconstructed trajectory files",
+        "trajectory_count": trajectory_count,
+        "trajectory_sample_count": sample_count,
+        "includes_shape_summary": includes_shape_summary,
+        "available_but_not_committed": {
+            "dem": "Input.7z contains site input data but is large and remains optional/raw-only.",
+            "full_output_archive": "Output.7z contains reconstructed trajectory text files for the campaign.",
+            "experimental_runs": "ExperimentalRuns.7z is large and not required for the minimal validation subset.",
+        },
+        "assumptions": [
+            "Mass is inferred from published Ekin and speed columns per trajectory sample.",
+            "Sphere radius is an equivalent-volume proxy using density 2670 kg/m3; original shapes are not used by the v0.4.0 sphere model.",
+            "Only the first monotonic time segment is used because the public text files concatenate jump segments with local time resets.",
+            "This subset is intended for trajectory-shape, energy-evolution, and proxy jump-height checks, not deposition validation.",
+        ],
+    }
+    path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def fmt(value: float) -> str:
+    return f"{value:.12g}"
 
 
 def read_tschamut_overview(path: Path) -> dict[str, dict[str, float | str]]:
@@ -499,6 +767,8 @@ def main() -> int:
         print("wrote synthetic fixture")
     elif args.dataset == "tschamut2014":
         preprocess_tschamut2014()
+    elif args.dataset == "chant_sura_2020":
+        preprocess_chant_sura_2020()
     else:
         inventory_archives(args.dataset)
 

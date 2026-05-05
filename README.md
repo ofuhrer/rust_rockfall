@@ -59,6 +59,7 @@ Core documentation:
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
 - `docs/roadmap_hazard_mapping.md`
+- `docs/dataset_strategy.md`
 - `docs/hazard_layers.md`
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`

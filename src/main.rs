@@ -253,6 +253,7 @@ fn case_order(case_id: &str) -> u16 {
         "stochastic_contact_roughness_reproducibility" => 450,
         "stochastic_contact_roughness_ensemble_spread" => 460,
         "validation_synthetic_plane_basic" => 510,
+        "validation_chant_sura_trajectory_subset" => 560,
         "validation_tschamut_proxy_plane" => 580,
         "validation_tschamut_basic" => 590,
         "validation_tschamut_baseline" => 600,

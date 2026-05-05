@@ -333,6 +333,26 @@ pub struct ReleasePoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ObservedTrajectorySample {
+    pub trajectory_id: String,
+    pub experiment_id: String,
+    pub time_s: f64,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    #[serde(default)]
+    pub vx_mps: Option<f64>,
+    #[serde(default)]
+    pub vy_mps: Option<f64>,
+    #[serde(default)]
+    pub vz_mps: Option<f64>,
+    #[serde(default)]
+    pub speed_mps: Option<f64>,
+    #[serde(default)]
+    pub kinetic_j: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EnsembleDepositionPoint {
     pub release_id: String,
     pub trajectory_id: String,
@@ -460,6 +480,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     });
     compute_ensemble_metrics(case, &mut metrics, &mut warnings)?;
     compute_validation_ensemble_metrics(case, &config, &observations, &mut metrics, &mut warnings)?;
+    compute_observed_trajectory_metrics(case, &config, &observations, &mut metrics)?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
     compute_scarring_comparison_metrics(case, &config, samples, &mut metrics)?;
 
@@ -974,6 +995,156 @@ fn compute_validation_ensemble_metrics(
     Ok(())
 }
 
+fn compute_observed_trajectory_metrics(
+    case: &BenchmarkCase,
+    base_config: &SimulationConfig,
+    observations: &ObservationData,
+    metrics: &mut BTreeMap<String, f64>,
+) -> Result<(), ValidationError> {
+    if observations.trajectory_samples.is_empty() {
+        return Ok(());
+    }
+
+    let terrain = base_config.terrain.build()?;
+    let releases = observations
+        .release_points
+        .iter()
+        .map(|release| (release.trajectory_id.as_str(), release))
+        .collect::<BTreeMap<_, _>>();
+    let mut grouped: BTreeMap<String, Vec<&ObservedTrajectorySample>> = BTreeMap::new();
+    for sample in &observations.trajectory_samples {
+        grouped
+            .entry(sample.trajectory_id.clone())
+            .or_default()
+            .push(sample);
+    }
+
+    let mut position_errors = Vec::new();
+    let mut final_position_errors = Vec::new();
+    let mut relative_energy_errors = Vec::new();
+    let mut max_jump_errors = Vec::new();
+    let mut compared_trajectory_count = 0_usize;
+
+    for (trajectory_id, mut observed_samples) in grouped {
+        observed_samples.sort_by(|a, b| a.time_s.total_cmp(&b.time_s));
+        let Some(first_observed) = observed_samples.first().copied() else {
+            continue;
+        };
+
+        let mut config = base_config.clone();
+        config.initial_position_m = [first_observed.x_m, first_observed.y_m, first_observed.z_m];
+        config.initial_velocity_mps = [
+            first_observed
+                .vx_mps
+                .unwrap_or(base_config.initial_velocity_mps[0]),
+            first_observed
+                .vy_mps
+                .unwrap_or(base_config.initial_velocity_mps[1]),
+            first_observed
+                .vz_mps
+                .unwrap_or(base_config.initial_velocity_mps[2]),
+        ];
+        if let Some(release) = releases.get(trajectory_id.as_str()) {
+            config.initial_position_m = [release.x_m, release.y_m, release.z_m];
+            config.initial_velocity_mps = [release.vx_mps, release.vy_mps, release.vz_mps];
+            if let (Some(radius_m), Some(mass_kg)) = (release.radius_m, release.mass_kg) {
+                config.block = SphereBlock::new(radius_m, mass_kg);
+            }
+        }
+        config.max_time_s = observed_samples
+            .last()
+            .map(|sample| sample.time_s)
+            .unwrap_or(config.max_time_s)
+            .max(config.dt_s);
+        config.random_seed = None;
+
+        let request =
+            TrajectoryRequest::from_global_seed(0, case.case_id.clone(), trajectory_id.clone());
+        let run = simulate_one_trajectory_with_terrain(&config, request, terrain.as_ref())?;
+        if run.samples.is_empty() {
+            continue;
+        }
+        compared_trajectory_count += 1;
+
+        let mut observed_max_jump = 0.0_f64;
+        for observed in &observed_samples {
+            let simulated = interpolate_sample(&run.samples, observed.time_s);
+            position_errors.push(distance3(
+                [simulated.x_m, simulated.y_m, simulated.z_m],
+                [observed.x_m, observed.y_m, observed.z_m],
+            ));
+            if let Some(observed_kinetic) = observed.kinetic_j {
+                if observed_kinetic > 0.0 {
+                    relative_energy_errors
+                        .push((simulated.kinetic_j - observed_kinetic).abs() / observed_kinetic);
+                }
+            }
+            observed_max_jump = observed_max_jump.max(observed_clearance(
+                observed,
+                terrain.as_ref(),
+                config.block.radius_m,
+            ));
+        }
+
+        let simulated_max_jump =
+            max_bounce_height(&run.samples, terrain.as_ref(), config.block.radius_m);
+        max_jump_errors.push((simulated_max_jump - observed_max_jump).abs());
+
+        if let (Some(simulated_last), Some(observed_last)) =
+            (run.samples.last(), observed_samples.last())
+        {
+            final_position_errors.push(distance3(
+                [simulated_last.x_m, simulated_last.y_m, simulated_last.z_m],
+                [observed_last.x_m, observed_last.y_m, observed_last.z_m],
+            ));
+        }
+    }
+
+    metrics.insert(
+        "validation_trajectory_count".to_string(),
+        compared_trajectory_count as f64,
+    );
+    metrics.insert(
+        "observed_trajectory_sample_count".to_string(),
+        observations.trajectory_samples.len() as f64,
+    );
+    if !position_errors.is_empty() {
+        position_errors.sort_by(f64::total_cmp);
+        metrics.insert(
+            "trajectory_shape_mean_error_m".to_string(),
+            mean(&position_errors),
+        );
+        metrics.insert(
+            "trajectory_shape_p95_error_m".to_string(),
+            percentile(&position_errors, 0.95),
+        );
+        metrics.insert(
+            "trajectory_shape_max_error_m".to_string(),
+            position_errors.last().copied().unwrap_or_default(),
+        );
+    }
+    if !final_position_errors.is_empty() {
+        metrics.insert(
+            "trajectory_final_position_mean_error_m".to_string(),
+            mean(&final_position_errors),
+        );
+    }
+    if !relative_energy_errors.is_empty() {
+        metrics.insert(
+            "trajectory_energy_mean_relative_error".to_string(),
+            mean(&relative_energy_errors),
+        );
+    }
+    if !max_jump_errors.is_empty() {
+        metrics.insert(
+            "trajectory_max_jump_height_mean_error_m".to_string(),
+            mean(&max_jump_errors),
+        );
+    }
+
+    Ok(())
+}
+
 fn ensemble_deposition_row(release_id: &str, run: &TrajectoryRun) -> EnsembleDepositionPoint {
     let final_position = run.summary.final_position_m;
     EnsembleDepositionPoint {
@@ -1255,6 +1426,7 @@ fn evaluate_failures(
 struct ObservationData {
     deposition_points: Vec<DepositionPoint>,
     release_points: Vec<ReleasePoint>,
+    trajectory_samples: Vec<ObservedTrajectorySample>,
 }
 
 enum ObservationLoad {
@@ -1284,6 +1456,12 @@ fn load_observations(
         }
         data.deposition_points = read_deposition_points(path)?;
     }
+    if let Some(path) = &observations.trajectory_csv {
+        if !path.exists() {
+            return Ok(ObservationLoad::MissingRequired(path.clone()));
+        }
+        data.trajectory_samples = read_observed_trajectory_samples(path)?;
+    }
     if data.deposition_points.len() > 1 && data.release_points.is_empty() {
         warnings.push(format!(
             "case {} has {} observed deposition points; current metrics use the first point",
@@ -1310,6 +1488,17 @@ fn read_release_points(path: &Path) -> Result<Vec<ReleasePoint>, ValidationError
         points.push(record?);
     }
     Ok(points)
+}
+
+fn read_observed_trajectory_samples(
+    path: &Path,
+) -> Result<Vec<ObservedTrajectorySample>, ValidationError> {
+    let mut reader = csv::Reader::from_path(path)?;
+    let mut samples = Vec::new();
+    for record in reader.deserialize() {
+        samples.push(record?);
+    }
+    Ok(samples)
 }
 
 fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, ValidationError> {
@@ -1413,6 +1602,52 @@ fn max_position_delta(a: &[TrajectorySample], b: &[TrajectorySample]) -> f64 {
             )
         })
         .fold(0.0_f64, f64::max)
+}
+
+fn interpolate_sample(samples: &[TrajectorySample], time_s: f64) -> TrajectorySample {
+    if time_s <= samples[0].time_s {
+        return samples[0].clone();
+    }
+    for pair in samples.windows(2) {
+        let left = &pair[0];
+        let right = &pair[1];
+        if time_s <= right.time_s {
+            let span = (right.time_s - left.time_s).max(f64::EPSILON);
+            let weight = ((time_s - left.time_s) / span).clamp(0.0, 1.0);
+            return interpolate_trajectory_sample(left, right, weight);
+        }
+    }
+    samples
+        .last()
+        .cloned()
+        .unwrap_or_else(|| samples[0].clone())
+}
+
+fn interpolate_trajectory_sample(
+    left: &TrajectorySample,
+    right: &TrajectorySample,
+    weight: f64,
+) -> TrajectorySample {
+    let lerp = |a: f64, b: f64| a * (1.0 - weight) + b * weight;
+    let mut sample = left.clone();
+    sample.time_s = lerp(left.time_s, right.time_s);
+    sample.x_m = lerp(left.x_m, right.x_m);
+    sample.y_m = lerp(left.y_m, right.y_m);
+    sample.z_m = lerp(left.z_m, right.z_m);
+    sample.vx_mps = lerp(left.vx_mps, right.vx_mps);
+    sample.vy_mps = lerp(left.vy_mps, right.vy_mps);
+    sample.vz_mps = lerp(left.vz_mps, right.vz_mps);
+    sample.speed_mps = lerp(left.speed_mps, right.speed_mps);
+    sample.kinetic_j = lerp(left.kinetic_j, right.kinetic_j);
+    sample
+}
+
+fn observed_clearance(
+    sample: &ObservedTrajectorySample,
+    terrain: &dyn crate::terrain::Terrain,
+    radius_m: f64,
+) -> f64 {
+    (sample.z_m - terrain.height(sample.x_m, sample.y_m) - radius_m).max(0.0)
 }
 
 fn max_runout_delta(

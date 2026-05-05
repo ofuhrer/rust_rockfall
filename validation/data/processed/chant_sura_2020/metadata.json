@@ -1,0 +1,26 @@
+{
+  "assumptions": [
+    "Mass is inferred from published Ekin and speed columns per trajectory sample.",
+    "Sphere radius is an equivalent-volume proxy using density 2670 kg/m3; original shapes are not used by the v0.4.0 sphere model.",
+    "Only the first monotonic time segment is used because the public text files concatenate jump segments with local time resets.",
+    "This subset is intended for trajectory-shape, energy-evolution, and proxy jump-height checks, not deposition validation."
+  ],
+  "available_but_not_committed": {
+    "dem": "Input.7z contains site input data but is large and remains optional/raw-only.",
+    "experimental_runs": "ExperimentalRuns.7z is large and not required for the minimal validation subset.",
+    "full_output_archive": "Output.7z contains reconstructed trajectory text files for the campaign."
+  },
+  "coordinate_system": "LV95 / Swiss projected coordinates inferred from EnviDat output trajectory magnitudes; no CRS transformation is applied.",
+  "dataset_id": "chant_sura_2020",
+  "doi": "https://doi.org/10.16904/envidat.174",
+  "includes_shape_summary": true,
+  "license": "WSL Data Policy",
+  "source_files": [
+    "Output/txt/RF16W200r1.txt",
+    "Output/txt/RF16W800r1.txt",
+    "Output/txt/RF18W200r1.txt"
+  ],
+  "subset": "first monotonic time segment from three reconstructed trajectory files",
+  "trajectory_count": 3,
+  "trajectory_sample_count": 153
+}
