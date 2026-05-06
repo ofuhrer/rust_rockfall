@@ -136,7 +136,11 @@ only for touching or penetrating contact without advancing a trajectory.
 An additional test-only synthetic harness queries a simple analytic terrain for
 height and normal, constructs the explicit contact point, and then calls the
 same contact-preparation layer. It is a pre-runtime verification aid only, not a
-public simulation path.
+public simulation path. A still narrower mini fixed-step harness, compiled only
+for tests, advances at most one ballistic prediction against analytic terrain
+before delegating to that same preparation layer. It does not perform persistent
+contact, projection, orientation evolution, runtime diagnostics, validation, or
+benchmark execution.
 Separated dry-run states are reported without impulse, including states moving
 toward future contact. The contact-gap tolerance is fixed at `1.0e-9 m` as a
 deterministic pre-runtime scaffold convention, not as a calibrated contact

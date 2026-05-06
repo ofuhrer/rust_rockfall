@@ -1167,6 +1167,25 @@ struct ShapeContactV0SyntheticTerrainInput {
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0MiniFixedStepInput {
+    pre_step_state: BodyState,
+    dt_s: f64,
+    gravity_mps2: f64,
+    settings: ShapeContactV0ImpulseSettings,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone)]
+struct ShapeContactV0MiniFixedStepResult {
+    pre_step_state: BodyState,
+    predicted_state: BodyState,
+    terrain_contact_point_m: [f64; 3],
+    terrain_normal_world: [f64; 3],
+    contact: ShapeContactV0ContactResult,
+}
+
+#[cfg(test)]
 fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -1191,6 +1210,84 @@ fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
         ),
         terrain_normal_world,
         settings: input.settings,
+    })
+}
+
+#[cfg(test)]
+fn shape_contact_v0_mini_fixed_step<T: crate::terrain::Terrain>(
+    scaffold: &ShapeContactV0Scaffold,
+    terrain: &T,
+    input: ShapeContactV0MiniFixedStepInput,
+) -> Result<ShapeContactV0MiniFixedStepResult, ShapeMetadataError> {
+    validate_positive(input.dt_s, "dt_s")?;
+    validate_positive(input.gravity_mps2, "gravity_mps2")?;
+    ensure_close(
+        input.settings.gravity_mps2,
+        input.gravity_mps2,
+        "settings.gravity_mps2",
+        "mini_fixed_step.gravity_mps2",
+    )?;
+    let acceleration_mps2 = Vec3::new(0.0, 0.0, -input.gravity_mps2);
+    let mut predicted_state = input.pre_step_state;
+    predicted_state.position_m = input.pre_step_state.position_m
+        + input.pre_step_state.velocity_mps * input.dt_s
+        + 0.5 * acceleration_mps2 * input.dt_s * input.dt_s;
+    predicted_state.velocity_mps =
+        input.pre_step_state.velocity_mps + acceleration_mps2 * input.dt_s;
+    validate_finite_triplet(
+        [
+            predicted_state.position_m.x,
+            predicted_state.position_m.y,
+            predicted_state.position_m.z,
+        ],
+        "predicted_state.position_m",
+    )?;
+    validate_finite_triplet(
+        [
+            predicted_state.velocity_mps.x,
+            predicted_state.velocity_mps.y,
+            predicted_state.velocity_mps.z,
+        ],
+        "predicted_state.velocity_mps",
+    )?;
+
+    let terrain_query_x_m = predicted_state.position_m.x;
+    let terrain_query_y_m = predicted_state.position_m.y;
+    let terrain_height_m = terrain.height(terrain_query_x_m, terrain_query_y_m);
+    validate_finite_triplet(
+        [terrain_query_x_m, terrain_query_y_m, terrain_height_m],
+        "terrain_query_contact_point",
+    )?;
+    let terrain_normal_world = terrain.normal(terrain_query_x_m, terrain_query_y_m);
+    validate_finite_triplet(
+        [
+            terrain_normal_world.x,
+            terrain_normal_world.y,
+            terrain_normal_world.z,
+        ],
+        "terrain_normal_world",
+    )?;
+    let contact = shape_contact_v0_synthetic_terrain_step(
+        scaffold,
+        terrain,
+        ShapeContactV0SyntheticTerrainInput {
+            pre_state: predicted_state,
+            terrain_query_x_m,
+            terrain_query_y_m,
+            settings: input.settings,
+        },
+    )?;
+
+    Ok(ShapeContactV0MiniFixedStepResult {
+        pre_step_state: input.pre_step_state,
+        predicted_state,
+        terrain_contact_point_m: [terrain_query_x_m, terrain_query_y_m, terrain_height_m],
+        terrain_normal_world: [
+            terrain_normal_world.x,
+            terrain_normal_world.y,
+            terrain_normal_world.z,
+        ],
+        contact,
     })
 }
 
@@ -1328,6 +1425,20 @@ mod tests {
             tangential_restitution,
             friction_coefficient,
             gravity_mps2: 9.81,
+        }
+    }
+
+    fn settings_with_gravity(
+        normal_restitution: f64,
+        tangential_restitution: f64,
+        friction_coefficient: f64,
+        gravity_mps2: f64,
+    ) -> ShapeContactV0ImpulseSettings {
+        ShapeContactV0ImpulseSettings {
+            normal_restitution,
+            tangential_restitution,
+            friction_coefficient,
+            gravity_mps2,
         }
     }
 
@@ -2006,5 +2117,223 @@ mod tests {
             first.impulse_result.diagnostic.support_corner_signs,
             second.impulse_result.diagnostic.support_corner_signs
         );
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_airborne_step_has_no_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let pre_step_state = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(0.0, 0.0, 0.0));
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state,
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.5, 1.0, 0.0, 10.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.pre_step_state, pre_step_state);
+        assert_close(result.predicted_state.position_m.z, 2.95, 1.0e-12);
+        assert_close(result.predicted_state.velocity_mps.z, -1.0, 1.0e-12);
+        assert_eq!(
+            result.contact.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingToward
+        );
+        assert!(!result.contact.impulse_result.diagnostic.impacted);
+        assert_eq!(
+            result.contact.impulse_result.post_state,
+            result.predicted_state
+        );
+        assert_close(result.contact.support_signed_gap_m, 1.95, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_reaching_touching_contact_impacts() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 1.05), Vec3::new(0.0, 0.0, 0.0)),
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.5, 1.0, 0.0, 10.0),
+            },
+        )
+        .unwrap();
+
+        assert_close(result.predicted_state.position_m.z, 1.0, 1.0e-12);
+        assert_eq!(result.terrain_contact_point_m, [0.0, 0.0, 0.0]);
+        assert_eq!(
+            result.contact.contact_regime,
+            ShapeContactV0ContactRegime::Touching
+        );
+        assert!(result.contact.impulse_result.diagnostic.impacted);
+        assert_close(result.contact.support_signed_gap_m, 0.0, 1.0e-12);
+        assert!(
+            result
+                .contact
+                .impulse_result
+                .diagnostic
+                .post_contact_normal_velocity_mps
+                > 0.0
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_reaching_penetrating_contact_impacts() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, 0.0)),
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.5, 1.0, 0.0, 10.0),
+            },
+        )
+        .unwrap();
+
+        assert_close(result.predicted_state.position_m.z, 0.95, 1.0e-12);
+        assert_eq!(
+            result.contact.contact_regime,
+            ShapeContactV0ContactRegime::Penetrating
+        );
+        assert!(result.contact.impulse_result.diagnostic.impacted);
+        assert_close(result.contact.support_signed_gap_m, -0.05, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_separated_moving_toward_waits_for_contact() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 1.55), Vec3::new(0.0, 0.0, 0.0)),
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.5, 1.0, 0.0, 10.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.contact.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingToward
+        );
+        assert_close(result.contact.support_signed_gap_m, 0.5, 1.0e-12);
+        assert!(!result.contact.impulse_result.diagnostic.impacted);
+        assert_close(
+            result.contact.impulse_result.diagnostic.normal_impulse_n_s,
+            0.0,
+            1.0e-12,
+        );
+        assert_eq!(
+            result.contact.impulse_result.post_state,
+            result.predicted_state
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_captures_terrain_normal() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane {
+            z0_m: 0.0,
+            slope_x: 0.0,
+            slope_y: 1.0,
+        };
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state: BodyState::new(Vec3::new(0.0, 2.0, 5.0), Vec3::new(0.0, 0.0, 0.0)),
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.5, 1.0, 0.0, 10.0),
+            },
+        )
+        .unwrap();
+        let expected_normal = plane.normal(
+            result.predicted_state.position_m.x,
+            result.predicted_state.position_m.y,
+        );
+
+        assert_close(result.terrain_contact_point_m[2], 2.0, 1.0e-12);
+        assert_close(result.terrain_normal_world[0], expected_normal.x, 1.0e-12);
+        assert_close(result.terrain_normal_world[1], expected_normal.y, 1.0e-12);
+        assert_close(result.terrain_normal_world[2], expected_normal.z, 1.0e-12);
+        assert_eq!(
+            result
+                .contact
+                .impulse_result
+                .diagnostic
+                .support_corner_signs,
+            [1, 1, -1]
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_dissipative_contact_does_not_create_energy() {
+        let scaffold = test_scaffold(3.0, [2.0, 3.0, 4.0]);
+        let plane = Plane::horizontal(1.0);
+        let mut pre_step_state =
+            BodyState::new(Vec3::new(0.0, 0.0, 3.05), Vec3::new(3.0, -1.0, 0.0));
+        pre_step_state.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
+        let result = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state,
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings_with_gravity(0.4, 0.0, 0.8, 10.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.contact.contact_regime,
+            ShapeContactV0ContactRegime::Touching
+        );
+        assert!(result.contact.impulse_result.diagnostic.impacted);
+        assert!(
+            result
+                .contact
+                .impulse_result
+                .diagnostic
+                .energy
+                .contact_energy_delta_j
+                <= 1.0e-10
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_mini_fixed_step_rejects_gravity_mismatch() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let error = shape_contact_v0_mini_fixed_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0MiniFixedStepInput {
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(0.0, 0.0, 0.0)),
+                dt_s: 0.1,
+                gravity_mps2: 10.0,
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("settings.gravity_mps2"));
+        assert!(error.contains("mini_fixed_step.gravity_mps2"));
     }
 }

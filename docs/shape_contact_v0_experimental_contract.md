@@ -388,6 +388,13 @@ plane, one scaffold-owned impulse update. The test-only dry-run wrapper calls
 this same preparation layer. It does not advance a trajectory, write validation
 outputs, enable public benchmark cases, or change existing model behavior.
 
+A test-only mini fixed-step harness may advance one synthetic ballistic
+prediction against analytic terrain, query height and normal at the predicted
+position, construct the explicit contact point, and then call the same internal
+preparation layer. This is not a public runtime path and is not validation
+evidence. Persistent contact, projection/correction, orientation evolution,
+runtime diagnostic output, and benchmark execution remain deferred.
+
 A test-only synthetic harness may query a simple analytic terrain for height and
 normal, construct the explicit terrain contact point, and then call the same
 preparation layer. This harness is integrator-adjacent only because it exercises

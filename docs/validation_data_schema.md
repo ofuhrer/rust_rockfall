@@ -181,7 +181,11 @@ terrain contact point, terrain normal, support gap diagnostic, and one
 scaffold-owned impulse update for touching or penetrating contact without
 producing validation or benchmark outputs. A test-only synthetic harness can
 query simple analytic terrain height and normal before calling the same
-preparation layer, but it is not a public validation path. Separated dry-run states remain
+preparation layer, but it is not a public validation path. A `#[cfg(test)]`
+mini fixed-step harness can advance one synthetic ballistic prediction before
+calling that preparation layer; it writes no outputs and is not validation
+evidence. Persistent contact handling, projection, orientation evolution, and
+runtime diagnostic emission remain deferred. Separated dry-run states remain
 non-impulsive, even when moving toward future contact. The contact-gap tolerance
 is fixed at `1.0e-9 m` as a deterministic pre-runtime scaffold convention, not a
 calibrated contact parameter. The runtime diagnostic schema is still incomplete
