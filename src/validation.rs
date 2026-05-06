@@ -651,14 +651,16 @@ fn trajectory_metadata_row(
         orientation,
         density,
     ) = if let Some(shape) = shape_metadata {
-        let moments = shape.computed_principal_moments_kg_m2().ok();
+        let moments = shape
+            .computed_principal_moments_kg_m2()
+            .expect("validated passive shape metadata has computable principal moments");
         (
             shape.shape_class_or_default(),
             Some(shape.shape_id.clone()),
             Some(shape.shape_type.as_str().to_string()),
             shape_equivalent_radius_m(shape),
             shape_principal_lengths_m(shape),
-            moments,
+            Some(moments),
             Some(shape.orientation.initial_quaternion_wxyz),
             shape.mass_properties.density_kgpm3,
         )
@@ -1236,10 +1238,9 @@ fn shape_metadata_manifest(
     case: &BenchmarkCase,
     metadata: &BlockShapeMetadata,
 ) -> ShapeMetadataManifest {
-    let moments =
-        metadata
-            .computed_principal_moments_kg_m2()
-            .unwrap_or([f64::NAN, f64::NAN, f64::NAN]);
+    let moments = metadata
+        .computed_principal_moments_kg_m2()
+        .expect("validated passive shape metadata has computable principal moments");
     ShapeMetadataManifest {
         schema_version: crate::shape::SHAPE_METADATA_SCHEMA_VERSION.to_string(),
         metadata_path: case
@@ -1250,7 +1251,10 @@ fn shape_metadata_manifest(
         shape_type: metadata.shape_type.as_str().to_string(),
         shape_class: metadata.shape_class_or_default(),
         active_contact_shape: "sphere".to_string(),
-        active_contact_radius_m: case.block.radius.unwrap_or(f64::NAN),
+        active_contact_radius_m: case
+            .block
+            .radius
+            .expect("validated case with shape metadata has active block radius"),
         mass_kg: metadata.mass_properties.mass_kg,
         density_kgpm3: metadata.mass_properties.density_kgpm3,
         equivalent_radius_m: shape_equivalent_radius_m(metadata),
