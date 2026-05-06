@@ -577,6 +577,9 @@ pub fn select_box_support_point(
     validate_unit_quaternion(orientation_wxyz, "orientation_wxyz")?;
     let normal = terrain_normal_world / normal_norm;
     let direction_body = rotate_vector_by_quaternion_conjugate(-normal, orientation_wxyz);
+    // Deterministic scaffold policy: exact zero support-direction components
+    // choose the positive corner sign. This is not a validated face-contact
+    // model; it only makes pre-runtime support selection reproducible.
     let support_corner_signs = [
         deterministic_sign(direction_body.x),
         deterministic_sign(direction_body.y),
@@ -637,12 +640,13 @@ pub fn shape_contact_v0_energy_diagnostic(
     })
 }
 
-/// Low-level analytic impulse helper for isolated tests.
+/// Crate-internal low-level analytic impulse helper.
 ///
-/// Runtime shape-contact paths should prefer
+/// Shape-contact paths must prefer
 /// [`ShapeContactV0Scaffold::apply_support_impulse`] so support geometry, mass,
-/// and inertia all come from the same validated scaffold.
-pub fn shape_contact_v0_apply_support_impulse(
+/// and inertia all come from the same validated scaffold. This helper remains
+/// internal to avoid public callers mixing those quantities by hand.
+pub(crate) fn shape_contact_v0_apply_support_impulse(
     support: &ShapeContactV0SupportDiagnostic,
     input: ShapeContactV0ImpulseInput,
 ) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {

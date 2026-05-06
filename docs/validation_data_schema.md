@@ -169,11 +169,15 @@ that radius is supplied.
 This metadata is passive for `translational_v0` and `sphere_rotational_v1`.
 The experimental `shape_contact_v0` scaffold recognizes the metadata only when
 explicitly selected, requires compatible `principal_dimensions` sidecars using
-`mass_property_model: box_principal_dimensions`, and exposes an isolated
-analytic impulse helper for tests only. It still stops before fixed-step
-simulation and public validation runs. Its scaffold-owned preparation path
-keeps support selection, mass, and inertia tied to the validated sidecar; a
-test-only single-contact wrapper exercises this path before runtime wiring.
+`mass_property_model: box_principal_dimensions`, and exposes scaffold-owned
+analytic impulse preparation for tests only. It still stops before fixed-step
+simulation and public validation runs. The raw low-level impulse kernel is
+crate-internal test support rather than a public validation API. The
+scaffold-owned preparation path keeps support selection, mass, and inertia tied
+to the validated sidecar; a test-only single-contact wrapper exercises this path
+before runtime wiring. Support-corner tie breaks are deterministic: exact zero
+components in the body-frame support direction choose the positive corner sign.
+That policy is reproducibility scaffolding, not a validated face-contact law.
 Current default contact, inertia, trajectory integration, and validation
 semantics remain spherical and continue to use `block.radius` and the current
 spherical moment of inertia.

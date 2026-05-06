@@ -122,12 +122,16 @@ a = (5/7) g_t
 The experimental `shape_contact_v0` label is recognized only as a
 verification-first scaffold. It requires compatible passive shape metadata and
 currently exposes analytic `principal_dimensions_box_v0` inertia/support
-helpers plus an isolated single-support impulse helper for analytic tests, but
-that helper is not wired into fixed-step simulation or public benchmarks. A
-scaffold-owned preparation API couples support selection, mass, and inertia so
-future runtime wiring cannot mix shape geometry and mass properties from
-different sources. A test-only single-contact state-transition wrapper exercises
-that path before any fixed-step integrator wiring.
+helpers plus a scaffold-owned single-support impulse preparation path for
+analytic tests, but that path is not wired into fixed-step simulation or public
+benchmarks. The raw low-level impulse kernel is crate-internal test support; it
+is not a public integration API. Runtime-facing shape-contact work must route
+through the scaffold-owned API so support selection, mass, and inertia cannot
+come from different sources. A test-only single-contact state-transition wrapper
+exercises that path before any fixed-step integrator wiring. Support-corner
+selection uses a deterministic scaffold policy: exact zero components in the
+body-frame support direction choose the positive corner sign. This tie-break is
+not a physically validated face-contact model.
 Existing
 `translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
 unchanged.

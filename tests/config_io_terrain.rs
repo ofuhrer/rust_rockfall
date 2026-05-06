@@ -6,9 +6,8 @@ use rust_rockfall::{
     manifest::RunManifest,
     shape::{
         box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2, select_box_support_point,
-        shape_contact_v0_apply_support_impulse, shape_contact_v0_energy_diagnostic,
-        sphere_principal_moments_kg_m2, BlockShapeMetadata, BlockShapeType,
-        ShapeContactV0ImpulseInput, ShapeContactV0ImpulseSettings, ShapeContactV0Scaffold,
+        shape_contact_v0_energy_diagnostic, sphere_principal_moments_kg_m2, BlockShapeMetadata,
+        BlockShapeType, ShapeContactV0ImpulseSettings, ShapeContactV0Scaffold,
     },
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::{BodyState, ContactState},
@@ -310,6 +309,21 @@ orientation:
     assert!(error.contains("identity orientation only"));
 }
 
+fn shape_contact_v0_test_scaffold(
+    mass_kg: f64,
+    principal_dimensions_m: [f64; 3],
+) -> ShapeContactV0Scaffold {
+    ShapeContactV0Scaffold {
+        active_contact_model: "shape_contact_v0".to_string(),
+        active_shape_type: "principal_dimensions_box_v0".to_string(),
+        shape_id: "test_box".to_string(),
+        mass_kg,
+        principal_dimensions_m,
+        principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+        orientation_wxyz: [1.0, 0.0, 0.0, 0.0],
+    }
+}
+
 #[test]
 fn shape_contact_v0_support_point_selection_is_deterministic() {
     let support = select_box_support_point(
@@ -327,6 +341,53 @@ fn shape_contact_v0_support_point_selection_is_deterministic() {
     assert_abs_diff_eq!(support.support_point_m[1], 22.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(support.support_point_m[2], 27.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(support.orientation_norm_error, 0.0, epsilon = 1.0e-12);
+}
+
+#[test]
+fn shape_contact_v0_support_tie_break_flat_upward_normal_uses_positive_zero_signs() {
+    let support = select_box_support_point(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 1.0),
+        [2.0, 4.0, 6.0],
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+
+    assert_eq!(support.support_corner_signs, [1, 1, -1]);
+}
+
+#[test]
+fn shape_contact_v0_support_tie_break_inclined_normal_with_zero_component() {
+    let support = select_box_support_point(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 1.0),
+        [2.0, 4.0, 6.0],
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+
+    assert_eq!(support.support_corner_signs, [1, -1, -1]);
+}
+
+#[test]
+fn shape_contact_v0_support_tie_break_near_zero_components_use_raw_sign() {
+    let positive_near_zero = select_box_support_point(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(-1.0e-15, 0.0, 1.0),
+        [2.0, 4.0, 6.0],
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+    let negative_near_zero = select_box_support_point(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(1.0e-15, 0.0, 1.0),
+        [2.0, 4.0, 6.0],
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+
+    assert_eq!(positive_near_zero.support_corner_signs, [1, 1, -1]);
+    assert_eq!(negative_near_zero.support_corner_signs, [-1, 1, -1]);
 }
 
 #[test]
@@ -349,27 +410,19 @@ fn shape_contact_v0_energy_diagnostic_is_accounting_only() {
 fn shape_contact_v0_impulse_matches_normal_restitution() {
     let mass_kg = 2.0;
     let principal_dimensions_m = [2.0, 2.0, 2.0];
-    let support = select_box_support_point(
-        Vec3::new(0.0, 0.0, 1.0),
-        Vec3::new(0.0, 0.0, 1.0),
-        principal_dimensions_m,
-        [1.0, 0.0, 0.0, 0.0],
-    )
-    .unwrap();
-    let result = shape_contact_v0_apply_support_impulse(
-        &support,
-        ShapeContactV0ImpulseInput {
-            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
-            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
-            mass_kg,
-            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
-            normal_restitution: 0.5,
-            tangential_restitution: 1.0,
-            friction_coefficient: 0.0,
-            gravity_mps2: 9.81,
-        },
-    )
-    .unwrap();
+    let scaffold = shape_contact_v0_test_scaffold(mass_kg, principal_dimensions_m);
+    let result = scaffold
+        .apply_support_impulse(
+            BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+            Vec3::new(0.0, 0.0, 1.0),
+            ShapeContactV0ImpulseSettings {
+                normal_restitution: 0.5,
+                tangential_restitution: 1.0,
+                friction_coefficient: 0.0,
+                gravity_mps2: 9.81,
+            },
+        )
+        .unwrap();
 
     assert!(result.diagnostic.impacted);
     assert_abs_diff_eq!(
@@ -394,29 +447,21 @@ fn shape_contact_v0_impulse_does_not_create_energy_for_dissipative_contact() {
     let mass_kg = 3.0;
     let principal_dimensions_m = [2.0, 3.0, 4.0];
     let center = Vec3::new(0.0, 0.0, 3.0);
-    let support = select_box_support_point(
-        center,
-        Vec3::new(0.0, 0.0, 1.0),
-        principal_dimensions_m,
-        [1.0, 0.0, 0.0, 0.0],
-    )
-    .unwrap();
     let mut pre = BodyState::new(center, Vec3::new(3.0, -1.0, -2.0));
     pre.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
-    let result = shape_contact_v0_apply_support_impulse(
-        &support,
-        ShapeContactV0ImpulseInput {
-            pre_state: pre,
-            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
-            mass_kg,
-            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
-            normal_restitution: 0.4,
-            tangential_restitution: 0.0,
-            friction_coefficient: 0.8,
-            gravity_mps2: 9.81,
-        },
-    )
-    .unwrap();
+    let scaffold = shape_contact_v0_test_scaffold(mass_kg, principal_dimensions_m);
+    let result = scaffold
+        .apply_support_impulse(
+            pre,
+            Vec3::new(0.0, 0.0, 1.0),
+            ShapeContactV0ImpulseSettings {
+                normal_restitution: 0.4,
+                tangential_restitution: 0.0,
+                friction_coefficient: 0.8,
+                gravity_mps2: 9.81,
+            },
+        )
+        .unwrap();
 
     assert!(result.diagnostic.impacted);
     assert!(
@@ -431,27 +476,19 @@ fn shape_contact_v0_impulse_respects_coulomb_cap() {
     let mass_kg = 2.0;
     let principal_dimensions_m = [2.0, 2.0, 2.0];
     let center = Vec3::new(0.0, 0.0, 1.0);
-    let support = select_box_support_point(
-        center,
-        Vec3::new(0.0, 0.0, 1.0),
-        principal_dimensions_m,
-        [1.0, 0.0, 0.0, 0.0],
-    )
-    .unwrap();
-    let result = shape_contact_v0_apply_support_impulse(
-        &support,
-        ShapeContactV0ImpulseInput {
-            pre_state: BodyState::new(center, Vec3::new(6.0, 0.0, -2.0)),
-            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
-            mass_kg,
-            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
-            normal_restitution: 0.2,
-            tangential_restitution: 0.0,
-            friction_coefficient: 0.01,
-            gravity_mps2: 9.81,
-        },
-    )
-    .unwrap();
+    let scaffold = shape_contact_v0_test_scaffold(mass_kg, principal_dimensions_m);
+    let result = scaffold
+        .apply_support_impulse(
+            BodyState::new(center, Vec3::new(6.0, 0.0, -2.0)),
+            Vec3::new(0.0, 0.0, 1.0),
+            ShapeContactV0ImpulseSettings {
+                normal_restitution: 0.2,
+                tangential_restitution: 0.0,
+                friction_coefficient: 0.01,
+                gravity_mps2: 9.81,
+            },
+        )
+        .unwrap();
 
     assert!(result.diagnostic.coulomb_friction_cap_n_s > 0.0);
     assert!(
@@ -471,27 +508,19 @@ fn shape_contact_v0_impulse_handles_zero_initial_tangent_speed() {
     let mass_kg = 2.0;
     let principal_dimensions_m = [2.0, 2.0, 2.0];
     let center = Vec3::new(0.0, 0.0, 1.0);
-    let support = select_box_support_point(
-        center,
-        Vec3::new(0.0, 0.0, 1.0),
-        principal_dimensions_m,
-        [1.0, 0.0, 0.0, 0.0],
-    )
-    .unwrap();
-    let result = shape_contact_v0_apply_support_impulse(
-        &support,
-        ShapeContactV0ImpulseInput {
-            pre_state: BodyState::new(center, Vec3::new(0.0, 0.0, -2.0)),
-            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
-            mass_kg,
-            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
-            normal_restitution: 0.0,
-            tangential_restitution: 0.0,
-            friction_coefficient: 0.0,
-            gravity_mps2: 9.81,
-        },
-    )
-    .unwrap();
+    let scaffold = shape_contact_v0_test_scaffold(mass_kg, principal_dimensions_m);
+    let result = scaffold
+        .apply_support_impulse(
+            BodyState::new(center, Vec3::new(0.0, 0.0, -2.0)),
+            Vec3::new(0.0, 0.0, 1.0),
+            ShapeContactV0ImpulseSettings {
+                normal_restitution: 0.0,
+                tangential_restitution: 0.0,
+                friction_coefficient: 0.0,
+                gravity_mps2: 9.81,
+            },
+        )
+        .unwrap();
 
     assert_abs_diff_eq!(
         result.diagnostic.pre_contact_tangential_speed_mps,
@@ -508,21 +537,6 @@ fn shape_contact_v0_impulse_handles_zero_initial_tangent_speed() {
         .post_contact_tangential_speed_mps
         .is_finite());
     assert_abs_diff_eq!(result.diagnostic.coulomb_cap_ratio, 0.0, epsilon = 1.0e-12);
-}
-
-fn shape_contact_v0_test_scaffold(
-    mass_kg: f64,
-    principal_dimensions_m: [f64; 3],
-) -> ShapeContactV0Scaffold {
-    ShapeContactV0Scaffold {
-        active_contact_model: "shape_contact_v0".to_string(),
-        active_shape_type: "principal_dimensions_box_v0".to_string(),
-        shape_id: "test_box".to_string(),
-        mass_kg,
-        principal_dimensions_m,
-        principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
-        orientation_wxyz: [1.0, 0.0, 0.0, 0.0],
-    }
 }
 
 #[test]

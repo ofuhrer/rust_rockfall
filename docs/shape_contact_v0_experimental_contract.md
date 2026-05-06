@@ -357,3 +357,19 @@ The first scaffold slice should remain limited to:
 
 Public benchmark execution should come only after those verification and
 compatibility gates pass.
+
+## Pre-Dry-Run Guardrails
+
+Before any integrator-adjacent dry run, the public API must expose the
+scaffold-owned preparation path as the normal shape-contact route. The raw
+low-level impulse kernel is crate-internal analytic/test support so callers
+cannot mix support geometry, mass, and inertia from unrelated sources.
+
+The support-corner tie-break policy is frozen for the scaffold: the selected
+corner is based on the sign of the body-frame support direction, and exact zero
+components choose the positive corner sign. Near-zero values are not snapped by
+tolerance; their raw sign is used. This policy makes tests reproducible and is
+not a physically validated face-contact model.
+
+`shape_contact_v0` remains blocked from fixed-step simulation, public validation,
+and benchmark execution until a later explicitly reviewed wiring slice.
