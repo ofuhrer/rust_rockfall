@@ -91,13 +91,19 @@ Current role:
 - grouped failure modes by block, runout class, impact count, trajectory
   length, and contact model;
 - passive shape sidecar validation for single-block subsets.
+- registration-sensitivity closure via
+  `scripts/collect_tschamut_registration_sensitivity.py` before any
+  physics-selection use.
 
 Critical limitations:
 
 - no tuning is allowed after seeing results;
 - passive shape sidecars do not affect dynamics;
 - the public observations and terrain require explicit registration QA before
-  scientific interpretation.
+  scientific interpretation;
+- current public Tschamut outputs remain diagnostic-only until the
+  registration-sensitivity table is generated and stable across the three
+  required transforms.
 
 ### Chant Sura
 

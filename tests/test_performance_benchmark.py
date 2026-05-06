@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 import scripts.run_performance_benchmark as perf
+import scripts.collect_tschamut_registration_sensitivity as tschamut_sensitivity
 import scripts.validate_public_benchmark_manifest as benchmark_manifest
 
 
@@ -87,6 +88,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                         "run_subset": "all_usable_public_runs",
                         "contact_model": "translational_v0",
                         "classification": "under_run_persists",
+                        "grouped_metrics": {"signed_runout_error_m": -30.0},
                         "summary_metric_provenance": "fixture metrics",
                     },
                     {
@@ -94,6 +96,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                         "run_subset": "all_usable_public_runs",
                         "contact_model": "translational_v0",
                         "classification": "under_run_persists",
+                        "grouped_metrics": {"signed_runout_error_m": -30.0},
                         "summary_metric_provenance": "fixture metrics",
                     },
                 ],
@@ -115,10 +118,15 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                     {
                         "transform_method": method,
                         "run_subset": "all_usable_public_runs",
-                        "contact_model": "translational_v0",
-                        "classification": "under_run_persists",
+                        "contact_model": contact_model,
+                        "classification": classification,
+                        "grouped_metrics": {"signed_runout_error_m": signed_error_m},
                         "summary_metric_provenance": "fixture metrics",
                     }
+                    for contact_model, classification, signed_error_m in [
+                        ("translational_v0", "under_run_persists", -30.0),
+                        ("sphere_rotational_v1", "over_run_persists", 100.0),
+                    ]
                     for method in [
                         "scan_surface_fit_v1",
                         "bbox_align_v1",
@@ -128,6 +136,143 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             }
         )
         self.assertEqual(benchmark_manifest.validate_manifest(ready_manifest), [])
+
+    def test_tschamut_registration_sensitivity_collector_requires_all_transforms(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scan_root = self._write_tschamut_transform_fixture(
+                root,
+                "scan_surface_fit_v1",
+                baseline_signed_error_m=-35.0,
+                rotational_signed_error_m=105.0,
+            )
+            report = tschamut_sensitivity.build_report(
+                [tschamut_sensitivity.TransformInput("scan_surface_fit_v1", scan_root)],
+                run_subset="all_usable_public_runs",
+            )
+
+        self.assertFalse(report["classification_stability_reported"])
+        self.assertFalse(report["physics_selection_allowed"])
+        self.assertTrue(any("bbox_align_v1" in item for item in report["missing_evidence"]))
+        self.assertEqual(len(report["classification_sensitivity"]), 2)
+
+    def test_tschamut_registration_sensitivity_collector_reports_stable_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inputs = []
+            for method in (
+                "scan_surface_fit_v1",
+                "bbox_align_v1",
+                "overview_offset_v1",
+            ):
+                fixture_root = self._write_tschamut_transform_fixture(
+                    root,
+                    method,
+                    baseline_signed_error_m=-32.0,
+                    rotational_signed_error_m=100.0,
+                )
+                inputs.append(tschamut_sensitivity.TransformInput(method, fixture_root))
+            report = tschamut_sensitivity.build_report(inputs, run_subset="all_usable_public_runs")
+
+        self.assertTrue(report["classification_stability_reported"])
+        self.assertTrue(report["classification_stable_across_transforms"])
+        self.assertTrue(report["physics_selection_allowed"])
+        rows = report["classification_sensitivity"]
+        self.assertEqual(len(rows), 6)
+        self.assertTrue(
+            all(
+                row["classification"] in {"under_run_high_deposition_overlap", "over_run_no_deposition_overlap"}
+                for row in rows
+            )
+        )
+
+        manifest = {
+            "schema_version": benchmark_manifest.SCHEMA_VERSION,
+            "benchmark_id": "tschamut",
+            "dataset_id": "tschamut2014",
+            "selected_ids": ["v004"],
+            "excluded_ids_with_reasons": [],
+            "provenance": {"source": "fixture"},
+            "generated_cases": ["validation/results/fixture/cases/baseline.yaml"],
+            "command_provenance": {"script": "scripts/prepare_tschamut_public_benchmark.py"},
+            "limitations": ["fixture only"],
+            "registration_sensitivity": {
+                "required_before_physics_selection": True,
+                "physics_selection_allowed": True,
+                "methods_compared": list(tschamut_sensitivity.REQUIRED_TRANSFORMS),
+                "classification_stability_required": True,
+                "classification_stability_reported": True,
+                "decision_gate": "fixture gate",
+                "classification_sensitivity": rows,
+            },
+        }
+        self.assertEqual(benchmark_manifest.validate_manifest(manifest), [])
+
+    def _write_tschamut_transform_fixture(
+        self,
+        root: Path,
+        method: str,
+        *,
+        baseline_signed_error_m: float,
+        rotational_signed_error_m: float,
+    ) -> Path:
+        fixture_root = root / method
+        validation_dir = fixture_root / "validation"
+        validation_dir.mkdir(parents=True)
+        manifest = {
+            "schema_version": benchmark_manifest.SCHEMA_VERSION,
+            "benchmark_id": "tschamut",
+            "dataset_id": "tschamut2014",
+            "selected_ids": ["v004"],
+            "excluded_ids_with_reasons": [],
+            "provenance": {"source": "fixture"},
+            "generated_cases": ["case.yaml"],
+            "command_provenance": {"transform_method": method},
+            "limitations": ["fixture"],
+            "transform": {"method": method},
+        }
+        (fixture_root / "preparation_manifest.json").write_text(json.dumps(manifest))
+        self._write_tschamut_metrics(
+            validation_dir / "validation_tschamut_public_benchmark_baseline_metrics.json",
+            baseline_signed_error_m,
+            overlap=0.8,
+            contact_model="translational_v0",
+        )
+        self._write_tschamut_metrics(
+            validation_dir / "validation_tschamut_public_benchmark_rotational_metrics.json",
+            rotational_signed_error_m,
+            overlap=0.0,
+            contact_model="sphere_rotational_v1",
+        )
+        return fixture_root
+
+    def _write_tschamut_metrics(
+        self,
+        path: Path,
+        signed_error_m: float,
+        *,
+        overlap: float,
+        contact_model: str,
+    ) -> None:
+        observed = 100.0
+        path.write_text(
+            json.dumps(
+                {
+                    "metrics": {
+                        "observed_mean_runout_m": observed,
+                        "simulated_mean_runout_m": observed + signed_error_m,
+                        "runout_distance_error_m": abs(signed_error_m),
+                        "deposition_centroid_error_m": abs(signed_error_m),
+                        "deposition_cloud_mean_nearest_error_m": abs(signed_error_m) / 2.0,
+                        "deposition_cloud_overlap_fraction": overlap,
+                        "lateral_spread_error_m": 1.0,
+                        "validation_release_count": 1.0,
+                        "validation_simulated_trajectory_count": 6.0,
+                    },
+                    "parameters": {"contact_model": contact_model},
+                }
+            )
+        )
 
     def test_prepare_benchmark_inputs_generates_tiny_opt_in_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

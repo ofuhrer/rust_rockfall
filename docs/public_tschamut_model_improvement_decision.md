@@ -15,8 +15,10 @@ subsets give the same broad result:
 - `sphere_rotational_v1` over-runs strongly;
 - registration quality is improved, but public Tschamut must not be used for
   physics selection until classification stability is reported across
-  `scan_surface_fit_v1`, `bbox_align_v1`, and `overview_offset_v1`; current
-  preparation manifests therefore keep `physics_selection_allowed: false`;
+  `scan_surface_fit_v1`, `bbox_align_v1`, and `overview_offset_v1`. The
+  collector workflow now defines that table, but current preparation manifests
+  therefore keep `physics_selection_allowed: false` until the fallback-transform
+  validation evidence is generated and stable;
 - no restitution, friction, roughness, scarring, terrain-class, or release
   parameters have been tuned.
 

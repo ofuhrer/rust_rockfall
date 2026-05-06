@@ -324,8 +324,10 @@ No-go conditions are not triggered for grouped diagnostic reporting:
 - coordinate registration uncertainty is reduced, but a registration
   sensitivity table across `scan_surface_fit_v1`, `bbox_align_v1`, and
   `overview_offset_v1` is still required before Tschamut is used for physics
-  selection, and current preparation manifests must keep
-  `physics_selection_allowed: false`;
+  selection. `scripts/collect_tschamut_registration_sensitivity.py` now defines
+  the required table from generated metrics, but the fallback-transform
+  validation runs have not yet been reported here. Current preparation manifests
+  must therefore keep `physics_selection_allowed: false`;
 - exclusions are reproducible rather than manual model-result filtering;
 - grouped metrics are informative enough to guide the next design step.
 

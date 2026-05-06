@@ -59,6 +59,11 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
   generated cases remain ignored.
 - `scripts/prepare_chant_sura_public_benchmark.py`: fixture-backed manifest
   scaffold for the checked-in Chant Sura trajectory/contact subsets.
+- `scripts/collect_tschamut_registration_sensitivity.py`: generated-metrics
+  collector for the public Tschamut registration gate. It compares
+  `scan_surface_fit_v1`, `bbox_align_v1`, and `overview_offset_v1` across
+  `translational_v0` and `sphere_rotational_v1` without running simulations or
+  tuning parameters.
 - `scripts/prepare_chant_sura_eota221_benchmark.py`: passive EOTA221 shape
   metadata manifest scaffold for future shape-contact validation readiness.
 - `scripts/prepare_mel_de_la_niva_benchmark.py`: metadata-only scaffold for the

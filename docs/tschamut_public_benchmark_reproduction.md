@@ -191,6 +191,52 @@ Tschamut under-run/over-run outcomes should therefore not be used to select
 contact physics until the same no-tuning benchmark is reported across those
 registration transforms in a classification-sensitivity table.
 
+### Registration-Sensitivity Closure Workflow
+
+The registration gate is now executable without changing model parameters. The
+workflow prepares three independent generated benchmark roots, runs the same two
+no-tuning validation cases for each transform, and then collects a
+transform-by-transform classification table:
+
+```bash
+for transform in scan_surface_fit_v1 bbox_align_v1 overview_offset_v1; do
+  python3 scripts/prepare_tschamut_public_benchmark.py \
+    --output-root validation/results/tschamut_registration_sensitivity/${transform} \
+    --run-limit 80 \
+    --ensemble-size 6 \
+    --seed 34014 \
+    --padding-m 250 \
+    --transform-method ${transform} \
+    --force
+
+  cargo run -- validate \
+    --case validation/results/tschamut_registration_sensitivity/${transform}/cases/tschamut_public_benchmark_baseline.yaml
+  cargo run -- validate \
+    --case validation/results/tschamut_registration_sensitivity/${transform}/cases/tschamut_public_benchmark_rotational.yaml
+done
+
+python3 scripts/collect_tschamut_registration_sensitivity.py \
+  --input scan_surface_fit_v1=validation/results/tschamut_registration_sensitivity/scan_surface_fit_v1 \
+  --input bbox_align_v1=validation/results/tschamut_registration_sensitivity/bbox_align_v1 \
+  --input overview_offset_v1=validation/results/tschamut_registration_sensitivity/overview_offset_v1 \
+  --run-subset all_usable_public_runs \
+  --output-json validation/results/tschamut_registration_sensitivity/classification_sensitivity.json \
+  --output-md validation/results/tschamut_registration_sensitivity/classification_sensitivity.md
+```
+
+The collector reads only generated metrics and reports
+`physics_selection_allowed: true` only when all required transform/contact rows
+are present and the combined runout/deposition classification is stable across
+transforms for both `translational_v0` and `sphere_rotational_v1`. The public
+benchmark manifest validator also rejects any Tschamut preparation manifest that
+claims `physics_selection_allowed: true` without a completed table containing
+grouped metrics and rows for all three transforms and both contact models.
+
+As of this committed documentation state, only the `scan_surface_fit_v1`
+all-runs result is documented as executed. The gate therefore remains closed:
+public Tschamut is valid for diagnostic failure-mode discussion, but not yet for
+contact-physics selection.
+
 ## Commands Run
 
 Validation:

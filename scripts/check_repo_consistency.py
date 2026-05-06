@@ -913,6 +913,7 @@ def check_public_benchmark_framework() -> list[str]:
 
     for script in (
         "scripts/prepare_tschamut_public_benchmark.py",
+        "scripts/collect_tschamut_registration_sensitivity.py",
         "scripts/prepare_chant_sura_public_benchmark.py",
         "scripts/prepare_chant_sura_eota221_benchmark.py",
         "scripts/prepare_mel_de_la_niva_benchmark.py",

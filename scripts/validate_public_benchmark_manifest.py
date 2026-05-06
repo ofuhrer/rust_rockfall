@@ -124,6 +124,7 @@ def validate_tschamut_physics_selection_table(
         return
 
     grouped: dict[tuple[str, str], dict[str, set[str]]] = {}
+    required_contact_models = {"translational_v0", "sphere_rotational_v1"}
     required_row_keys = {
         "transform_method",
         "run_subset",
@@ -143,6 +144,12 @@ def validate_tschamut_physics_selection_table(
                     f"registration_sensitivity.classification_sensitivity[{index}].{key} "
                     "must be present and nonempty"
                 )
+        grouped_metrics = row.get("grouped_metrics")
+        if not isinstance(grouped_metrics, dict) or not grouped_metrics:
+            errors.append(
+                f"registration_sensitivity.classification_sensitivity[{index}].grouped_metrics "
+                "must be a nonempty object"
+            )
         method = row.get("transform_method")
         if method not in required_methods:
             errors.append(
@@ -156,6 +163,17 @@ def validate_tschamut_physics_selection_table(
         if run_subset and contact_model and classification:
             group = grouped.setdefault((run_subset, contact_model), {})
             group.setdefault(method, set()).add(classification)
+
+    run_subsets = {run_subset for run_subset, _ in grouped}
+    for run_subset in run_subsets:
+        missing_contact_models = required_contact_models.difference(
+            contact_model for subset, contact_model in grouped if subset == run_subset
+        )
+        if missing_contact_models:
+            errors.append(
+                "registration_sensitivity.classification_sensitivity missing contact models "
+                f"{sorted(missing_contact_models)} for run_subset={run_subset!r}"
+            )
 
     for (run_subset, contact_model), by_method in grouped.items():
         for method, classifications_for_method in by_method.items():
