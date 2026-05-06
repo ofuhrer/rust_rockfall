@@ -25,6 +25,7 @@ Core documents:
 - `public_tschamut_all_runs_grouped_validation.md`: Work Package 1 all-usable public Tschamut grouped-validation report covering all 80 processed shared LPS/overview runs, exclusions, QA, hazard structure, and next-step criteria.
 - `active_shape_contact_design.md`: design-only Work Package 2 plan for a minimal opt-in active shape-contact model evaluated against WP1 Tschamut and Chant Sura evidence before implementation.
 - `shape_contact_v0_experimental_contract.md`: frozen experimental contract for the first `shape_contact_v0` feasibility prototype, including implementation boundaries, diagnostics, no-tuning gates, falsification rules, and explicit deferrals.
+- `shape_contact_v0_runtime_wiring_plan.md`: design-only plan for the smallest future fixed-step integrator wiring slice, including call path, diagnostic writer, manifest requirements, runtime guards, tests, and stop conditions.
 - `shape_aware_block_scaffold_design.md`: design-only plan for an opt-in passive block shape, orientation, and inertia metadata scaffold before any non-spherical contact physics.
 - `shape_metadata_application_plan.md`: practical plan for attaching passive public block-shape metadata to Tschamut and Chant Sura validation cases without changing dynamics or tuning parameters.
 - `public_tschamut_shape_metadata_milestone.md`: concise scientific milestone report after the registered public Tschamut benchmark, passive shape scaffold, Tschamut sidecars, and inertness validation.
