@@ -156,7 +156,8 @@ share generated products separately from the source repository when needed.
 - Passive shape metadata is validated and propagated but does not affect
   dynamics.
 - Terrain/material effects and shape/contact effects remain confounded.
-- Mel de la Niva remains metadata-only and is not yet a runnable benchmark.
+- Mel de la Niva is now opt-in runnable as a path-endpoint/deposition smoke
+  benchmark only; timed trajectory validation remains incomplete.
 - GeoTIFF export is uncompressed float64 and intentionally not COG.
 - Annual frequencies, physical source probabilities, exposure, vulnerability,
   and risk are not implemented.

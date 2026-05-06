@@ -13,6 +13,8 @@ import yaml
 
 import scripts.run_performance_benchmark as perf
 import scripts.collect_tschamut_registration_sensitivity as tschamut_sensitivity
+import scripts.prepare_mel_de_la_niva_benchmark as mel_benchmark
+import scripts.summarize_chant_sura_contact_diagnostics as chant_diag
 import scripts.validate_public_benchmark_manifest as benchmark_manifest
 
 
@@ -273,6 +275,133 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                 }
             )
         )
+
+    def test_chant_sura_contact_diagnostic_summary_reports_proxy_limits(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline_metrics = root / "heldout_baseline_metrics.json"
+            rotational_metrics = root / "heldout_rotational_metrics.json"
+            contact_events = root / "observed_contact_events_heldout.csv"
+            self._write_chant_metrics(
+                baseline_metrics,
+                shape_error=10.0,
+                energy_error=0.5,
+                jump_error=2.0,
+                rebound_error=1.0,
+            )
+            self._write_chant_metrics(
+                rotational_metrics,
+                shape_error=6.0,
+                energy_error=0.25,
+                jump_error=2.5,
+                rebound_error=1.2,
+            )
+            contact_events.write_text(
+                "incoming_speed_mps,outgoing_speed_mps,pre_impact_kinetic_j,post_impact_kinetic_j\n"
+                "3.0,1.0,90.0,10.0\n"
+            )
+            report = chant_diag.build_report(
+                case_specs=[
+                    chant_diag.CaseSpec("heldout", "translational_v0", baseline_metrics),
+                    chant_diag.CaseSpec("heldout", "sphere_rotational_v1", rotational_metrics),
+                ],
+                contact_event_files={"heldout": contact_events},
+            )
+
+        self.assertEqual(report["schema_version"], "chant_sura_contact_diagnostic_summary_v1")
+        self.assertFalse(report["proxy_confidence"]["direct_impact_sensor_events"])
+        heldout_change = next(row for row in report["relative_changes"] if row["subset"] == "heldout")
+        self.assertLess(heldout_change["shape_error_relative_change"], 0.0)
+        self.assertLess(heldout_change["energy_error_relative_change"], 0.0)
+        self.assertIn("segment-boundary", report["proxy_confidence"]["interpretation"])
+
+    def _write_chant_metrics(
+        self,
+        path: Path,
+        *,
+        shape_error: float,
+        energy_error: float,
+        jump_error: float,
+        rebound_error: float,
+    ) -> None:
+        path.write_text(
+            json.dumps(
+                {
+                    "metrics": {
+                        "trajectory_shape_mean_error_m": shape_error,
+                        "trajectory_energy_mean_relative_error": energy_error,
+                        "trajectory_jump_height_envelope_error_m": jump_error,
+                        "impact_timing_mean_error_s": 0.1,
+                        "rebound_velocity_mean_error_mps": rebound_error,
+                        "contact_event_compared_count": 1,
+                        "observed_contact_event_count": 1,
+                        "post_impact_energy_change_mean_error_j": 80.0,
+                    }
+                }
+            )
+        )
+
+    def test_mel_de_la_niva_helpers_parse_public_size_and_velocity_policy(self) -> None:
+        self.assertEqual(mel_benchmark.parse_size_dimensions("[11.6; 9.0; 3.5]"), [11.6, 9.0, 3.5])
+        trajectory = mel_benchmark.LasTrajectorySummary(
+            trajectory_id="fixture_bl1",
+            first_xyz=(0.0, 0.0, 10.0),
+            last_xyz=(3.0, 4.0, 10.0),
+            point_count=2,
+            bounds=(0.0, 0.0, 3.0, 4.0),
+        )
+        vx, vy, vz = mel_benchmark.initial_velocity_from_path(trajectory, 2.0)
+
+        self.assertAlmostEqual(vx, 1.2)
+        self.assertAlmostEqual(vy, 1.6)
+        self.assertAlmostEqual(vz, 0.0)
+
+    def test_mel_de_la_niva_archive_summary_records_checksum_status(self) -> None:
+        summary = mel_benchmark.archive_summary(mel_benchmark.ARCHIVES[0])
+
+        self.assertIn("checksum_matches", summary)
+        self.assertIn("download_url", summary)
+
+    def test_mel_de_la_niva_runnable_archives_require_matching_checksums(self) -> None:
+        archive_status = [
+            {"id": "trajectories", "path": "trajectories.zip", "exists": True, "checksum_matches": True},
+            {"id": "gis_shapes", "path": "gis.zip", "exists": True, "checksum_matches": False, "md5": "a", "md5_on_disk": "b"},
+            {"id": "sfm_rasters", "path": "sfm.zip", "exists": False, "checksum_matches": None},
+        ]
+        errors = mel_benchmark.runnable_archive_errors(archive_status)
+
+        self.assertTrue(any("checksum mismatch" in error for error in errors))
+        self.assertTrue(any("missing required runnable archive" in error for error in errors))
+
+    def test_mel_de_la_niva_matching_records_distance_and_runout_definition(self) -> None:
+        trajectory = mel_benchmark.LasTrajectorySummary(
+            trajectory_id="mel_de_la_niva_bl1",
+            first_xyz=(0.0, 0.0, 10.0),
+            last_xyz=(3.0, 4.0, 5.0),
+            point_count=2,
+            bounds=(0.0, 0.0, 3.0, 4.0),
+        )
+        deposition = mel_benchmark.DepositionPoint(
+            x_m=6.0,
+            y_m=8.0,
+            year=2015,
+            size_text="[2.0; 1.0; 1.0]",
+            dimensions_m=[2.0, 1.0, 1.0],
+        )
+
+        matched = mel_benchmark.match_trajectory_depositions([trajectory], [deposition])
+        self.assertAlmostEqual(matched[0].match_distance_m, 5.0)
+        _, deposition_rows = mel_benchmark.build_release_and_deposition_rows(
+            matched,
+            initial_speed_mps=1.0,
+        )
+
+        self.assertEqual(
+            deposition_rows[0]["observed_runout_definition"],
+            "horizontal_release_to_matched_2015_deposited_block_point_m",
+        )
+        self.assertEqual(deposition_rows[0]["deposition_match_distance_m"], "5.000000")
+        self.assertIn("no hard threshold", deposition_rows[0]["deposition_match_policy"])
 
     def test_prepare_benchmark_inputs_generates_tiny_opt_in_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

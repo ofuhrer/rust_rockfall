@@ -915,6 +915,7 @@ def check_public_benchmark_framework() -> list[str]:
         "scripts/prepare_tschamut_public_benchmark.py",
         "scripts/collect_tschamut_registration_sensitivity.py",
         "scripts/prepare_chant_sura_public_benchmark.py",
+        "scripts/summarize_chant_sura_contact_diagnostics.py",
         "scripts/prepare_chant_sura_eota221_benchmark.py",
         "scripts/prepare_mel_de_la_niva_benchmark.py",
         "scripts/validate_public_benchmark_manifest.py",

@@ -66,13 +66,20 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
   tuning parameters.
 - `scripts/prepare_chant_sura_eota221_benchmark.py`: passive EOTA221 shape
   metadata manifest scaffold for future shape-contact validation readiness.
-- `scripts/prepare_mel_de_la_niva_benchmark.py`: metadata-only scaffold for the
-  public high-energy Mel de la Niva benchmark; it records expected Zenodo
-  archives and ignored raw-cache paths but does not generate runnable cases.
+- `scripts/prepare_mel_de_la_niva_benchmark.py`: metadata-only by default for
+  the public high-energy Mel de la Niva benchmark; it records expected Zenodo
+  archives and ignored raw-cache paths. With `--make-runnable` and verified
+  public trajectory/GIS/SfM DSM archives present, it generates ignored baseline
+  and `sphere_rotational_v1` path-endpoint/deposition smoke cases.
+- `scripts/summarize_chant_sura_contact_diagnostics.py`: read-only diagnostic
+  summarizer for Chant Sura contact metrics. It consolidates shape, energy,
+  rebound, jump-envelope, timing, and proxy-event summaries without rerunning
+  simulations.
 - `docs/public_benchmark_results_baseline.md`: no-tuning baseline execution
   inventory across currently supported public benchmark workflows: runnable
-  Tschamut and Chant Sura, passive EOTA221 shape QA, and metadata-only Mel de la
-  Niva.
+  Tschamut and Chant Sura, passive EOTA221 shape QA, and Mel de la Niva as
+  metadata-only by default with an opt-in runnable smoke scaffold when verified
+  public archives are cached locally.
 - `docs/model_benchmark_execution_report.md`: consolidated expert-review
   execution package that freezes the current benchmark inventory, public
   Tschamut all-runs metrics, Chant Sura contact metrics, hazard-layer examples,

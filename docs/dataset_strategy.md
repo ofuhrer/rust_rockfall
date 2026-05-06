@@ -13,7 +13,7 @@ public measurements at the right level of evidence.
 | Chant Sura EOTA221 shape experiments | `chant_sura_2020` / benchmark `chant_sura_eota221` | Passive shape/orientation metadata and future shape-contact validation readiness | Public EOTA point files and published EOTA111/EOTA221 shape classes are summarized as passive metadata. The current scaffold validates provenance and shape grouping, not shape-aware dynamics. | Active shape-contact validation, parameter tuning, or claims that the current equivalent-sphere model reproduces EOTA221 behavior |
 | Lu / Chant Sura scarring tables | `chant_sura_esurf_2019_impacts` | Impact-level scarring calibration | Public scar-depth and jump-energy tables constrain `scarring_contact_v1` at the single-impact level. | Trajectory validation or hazard-map validation |
 | Tschamut 2014 | `tschamut2014` | Deposition/runout validation and grouped failure-mode analysis | Public release/deposition observations support proxy and public swissALTI3D benchmark workflows, scan-surface registration, 10-run, 25-run, and all-usable-run grouped analysis, and passive block-shape sidecars for single-block subsets. | Impact-level calibration, hidden release/terrain tuning, or operational hazard skill |
-| Mel de la Niva 2015 | `mel_de_la_niva_2015` | External high-energy/generalization benchmark | Metadata-only public benchmark scaffold records Zenodo resources, LV03/EPSG:21781 coordinate expectations, large raw-cache policy, and future ingestion requirements. | Current CI validation, small-block calibration, or operational hazard skill |
+| Mel de la Niva 2015 | `mel_de_la_niva_2015` | External high-energy/generalization benchmark | Public benchmark scaffold records Zenodo resources, LV03/EPSG:21781 coordinate expectations, large raw-cache policy, and an opt-in runnable path-endpoint/deposition smoke package when public trajectory/GIS/SfM DSM archives are locally cached. | Current CI validation, small-block calibration, timed trajectory validation, or operational hazard skill |
 | Synthetic analytic fixtures | `synthetic_*` | Verification | Closed-form or controlled checks for mechanics, terrain handling, stochastic reproducibility, scarring diagnostics, and hazard-layer post-processing. | Real-world validation |
 
 The unified ingestion and reporting rules for these public benchmarks are in
@@ -146,9 +146,11 @@ default-model decision.
 - The EOTA221 benchmark is currently a passive metadata benchmark. It should
   not be used to infer shape-aware skill before active shape-contact physics is
   explicitly implemented and versioned.
-- Mel de la Niva is metadata-only in the repository. Its public archives are
-  large and must be downloaded intentionally into ignored raw-data paths before
-  any runnable validation case is created.
+- Mel de la Niva is runnable only through an explicit local preprocessing step.
+  Its public archives are large and ignored; generated cases must record archive
+  checksums, LV03 CRS handling, endpoint/deposition assumptions, and exclusions.
+  The first runnable package is a path-endpoint/deposition smoke benchmark
+  because the public LAS trajectory files used here do not carry timing fields.
 - Scarring calibration uses impact-level quantities, while Tschamut validation
   uses trajectory/deposition quantities. Parameters must not be transferred
   without explicit comparative experiments.

@@ -154,6 +154,34 @@ Held-out fixture results:
 
 The held-out result supports generalization of the trajectory-level improvement: rotational contact again lowers shape and kinetic-energy error. It still does not improve jump-height envelope, rebound velocity, or impact timing, so it strengthens the opt-in recommendation without justifying a default change.
 
+## Diagnostic Summary Workflow
+
+The contact diagnostics can be consolidated without rerunning simulations:
+
+```bash
+python3 scripts/summarize_chant_sura_contact_diagnostics.py \
+  --output-root validation/results/chant_sura_contact_diagnostics
+```
+
+Generated ignored artifacts:
+
+- `validation/results/chant_sura_contact_diagnostics/chant_sura_contact_diagnostics.json`
+- `validation/results/chant_sura_contact_diagnostics/chant_sura_contact_diagnostics.md`
+
+The summary reads existing `validation/results/chant_sura_contact*metrics.json`
+files and the checked-in processed contact-proxy CSV files. It does not tune
+parameters or recompute trajectories. Its purpose is to keep the diagnostic
+structure explicit before any future shape/contact implementation:
+
+- trajectory-shape and kinetic-energy metrics are the strongest current evidence
+  for the opt-in `sphere_rotational_v1` trajectory/contact recommendation;
+- rebound velocity, jump-height envelope, and impact timing remain proxy-limited
+  and do not show a robust rotational improvement;
+- segment-boundary contact events are labelled as local-time-reset proxies, not
+  direct impact-sensor observations;
+- the held-out subset remains the most important guard against selecting and
+  evaluating a model on the same Chant Sura trajectories.
+
 ## Interpretation
 
 This fixture answers a narrower question than full field validation:

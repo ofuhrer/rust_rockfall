@@ -14,7 +14,7 @@ Executed or prepared benchmarks:
 | Tschamut 2014 | Runnable all-usable public benchmark | `translational_v0`, `sphere_rotational_v1` | deposition/runout metrics, grouped failure modes, explicit-grid hazard layers |
 | Chant Sura | Runnable checked-in fixture benchmark | first-flight, contact, extended contact, held-out contact; default and rotational where available | trajectory/contact, energy, jump-height, rebound, timing metrics |
 | Chant Sura EOTA221 | Passive metadata benchmark | no active shape-contact physics | EOTA111/EOTA221 provenance and passive shape QA |
-| Mel de la Niva | Metadata-only scaffold | no runnable case yet | public archive inventory and prerequisites for future ingestion |
+| Mel de la Niva | Opt-in runnable scaffold | path-endpoint/deposition smoke cases when public raw archives are locally cached | public archive inventory, LV03 DSM crop, generated baseline/rotational cases, and explicit limitations |
 
 The generated manifests and result products are ignored artifacts under
 `validation/results/public_benchmarks/`, `validation/results/`, and
@@ -86,7 +86,7 @@ python3 scripts/build_hazard_layers.py \
 | Tschamut 2014 | `run_manifest_v1` and hazard manifests written for both contact modes | EnviDat observations, public swissALTI3D tile checksum, `scan_surface_fit_v1`, LV95/EPSG:2056 terrain crop, explicit hazard grid | all 80 processed shared LPS/overview runs included; 31 overview rows remain data-availability exclusions from the processed public intersection |
 | Chant Sura | preparation manifest written from checked-in processed fixtures | EnviDat DOI/license recorded; RF16 DEM contact fixtures retain EPSG:2056 metadata where available | deterministic model-selection, extended, and held-out fixtures already recorded |
 | Chant Sura EOTA221 | passive shape manifest written | EOTA111 and EOTA221 shape rows recorded from public shape summary | no active validation run; metadata QA only |
-| Mel de la Niva | metadata-only manifest written | Zenodo DOI/license and EPSG:21781/LV03 archive expectations recorded | no raw archives present; no runnable case or exclusions yet |
+| Mel de la Niva | opt-in runnable smoke manifest written when public archives are locally cached | Zenodo DOI/license, archive checksums, EPSG:21781/LV03 CRS, and generated DSM crop provenance recorded | both public LAS trajectories selected; timing limitation recorded |
 
 ## Tschamut Results
 
@@ -179,22 +179,35 @@ Interpretation:
 
 ## Mel de la Niva Status
 
-The current Mel de la Niva workflow is metadata-only:
+The Mel de la Niva workflow now has an opt-in runnable package:
 
 | Item | Status |
 | --- | --- |
 | Zenodo public source | recorded |
 | License | CC BY 4.0 recorded |
-| Expected CRS | EPSG:21781 / LV03 from archive names |
-| Raw archives present | 0 of 6 |
-| Runnable validation cases | none |
-| Terrain/hazard layers | not generated |
+| CRS | EPSG:21781 / LV03 retained for the first generated package |
+| Required raw archives for runnable package | trajectory LAS, GIS shapes, SfM DSM |
+| Runnable validation cases | generated under ignored `validation/results/public_benchmarks/mel_de_la_niva_runnable/cases/` |
+| Terrain/hazard layers | DSM crop generated; hazard layers not part of the first smoke package |
 
-Before Mel de la Niva can produce baseline simulation metrics, the project must
-download selected public archives into ignored `data/raw/mel_de_la_niva_2015`,
-define whether the generated package remains in LV03 or transforms to
-LV95/EPSG:2056, derive a terrain crop and trajectory/deposition references, and
-record exclusions before any model result is inspected.
+The first package should be generated explicitly:
+
+```bash
+python3 scripts/prepare_mel_de_la_niva_benchmark.py \
+  --download-runnable-archives \
+  --make-runnable \
+  --output-root validation/results/public_benchmarks/mel_de_la_niva_runnable
+```
+
+It is not a calibrated high-energy validation result. The LAS trajectory files
+used by this package do not carry timing fields, so the workflow compares
+path-endpoint/deposition references and preserves the timing limitation in the
+manifest. `observed_runout_m` is horizontal release-to-matched-deposited-block
+endpoint displacement. The package records nearest-neighbor deposition match
+distances and applies no hard match threshold in this first smoke workflow, so
+those matches remain QA evidence rather than strong field-validation evidence.
+The generated active block masses use a documented 2670 kg/m3 density
+assumption, not measured Mel de la Niva block densities.
 
 ## Cross-Dataset Stress Matrix
 
@@ -205,7 +218,7 @@ record exclusions before any model result is inspected.
 | Deposition/runout realism | Tschamut | default under-runs; rotational sphere over-runs |
 | Shape/orientation behavior | Chant Sura EOTA221, Tschamut sidecars | passive metadata is available; no active shape-contact validation yet |
 | Hazard-footprint realism | Tschamut | explicit-grid diagnostic layers expose compact default footprint versus broad rotational footprint |
-| External high-energy generalization | Mel de la Niva | public source identified, but runnable workflow not yet implemented |
+| External high-energy generalization | Mel de la Niva | first runnable endpoint/deposition smoke workflow implemented; timed trajectory validation remains incomplete |
 | Lateral-spread issues | Tschamut | rotational sphere has larger lateral-spread error and broader hazard footprint |
 | Terrain/material sensitivity | Tschamut, future Mel de la Niva | remains confounded with contact and shape effects; no calibration performed |
 
@@ -216,7 +229,7 @@ record exclusions before any model result is inspected.
 | Tschamut 2014 | yes, for no-tuning grouped deposition/runout diagnostics | no | bounded by `scan_surface_fit_v1`, not dominant in current result | mixed-block all-runs case remains passive/no single sidecar | no, explicit-grid hazard layers generated | no |
 | Chant Sura | yes, for small trajectory/contact fixtures | yes, full-campaign runout not included | low for checked-in RF16 fixture, but subset is small | EOTA summary exists but active dynamics absent | yes, hazard layers are not the primary product | no |
 | Chant Sura EOTA221 | yes, for passive shape QA | yes | not applicable as standalone trajectory workflow | no for basic EOTA111/EOTA221 shape rows; yes for run-level orientation histories | not applicable | no |
-| Mel de la Niva | no runnable case | yes, metadata-only scaffold | unresolved CRS/package strategy | raw block-shape ingestion not done | yes | no |
+| Mel de la Niva | opt-in generated cases | yes, runnable smoke scaffold | LV03 retained; timing incomplete | raw block-shape ingestion not active | yes | no |
 
 ## Major Failure Modes Observed
 

@@ -28,7 +28,7 @@ It does not tune parameters, change defaults, change physics, implement annualiz
 | Tschamut 2014 public benchmark | Deposition, runout, grouped failure modes, hazard footprint | Runnable public workflow; all 80 processed shared LPS/overview runs analyzed | `docs/public_tschamut_all_runs_grouped_validation.md` |
 | Chant Sura | Trajectory/contact realism, energy, jump, rebound timing | Runnable checked-in fixtures | `docs/chant_sura_contact_validation.md`, `docs/chant_sura_contact_generalization.md` |
 | Chant Sura EOTA221 | Passive shape/orientation metadata QA | Metadata QA only; no active shape-contact dynamics | `docs/public_benchmark_results_baseline.md` |
-| Mel de la Niva | External high-energy/generalization target | Metadata-only scaffold; no runnable case yet | `docs/public_benchmark_framework.md` |
+| Mel de la Niva | External high-energy/generalization target | Opt-in runnable path-endpoint/deposition smoke scaffold; timed trajectory validation incomplete | `docs/public_benchmark_framework.md` |
 | Hazard layers | Diagnostic and labelled Level 1/2 map products | Runnable from validation outputs; CSV/ASCII/GeoJSON/GeoTIFF additive outputs | `docs/hazard_layers.md` |
 | Probabilistic Phase 1 smoke | End-to-end Level 1/2 semantics smoke | CI-safe fixture | `validation/cases/probabilistic_phase1_smoke.yaml` |
 | GeoTIFF export smoke | GIS raster interoperability for existing hazard layers | Opt-in, additive, tested against CSV/ASCII values | `docs/hazard_layers.md` |
@@ -267,7 +267,9 @@ The benchmark framework records:
 - Public Tschamut results remain a no-tuning diagnostic benchmark, not a calibrated reproduction.
 - Chant Sura fixtures are small and contact-focused.
 - EOTA221 is passive shape QA only.
-- Mel de la Niva is not yet runnable.
+- Mel de la Niva is opt-in runnable as a path-endpoint/deposition smoke
+  workflow, but not yet a timed trajectory or calibrated high-energy validation
+  benchmark.
 - Annualized hazard maps, physical source-frequency models, exposure, vulnerability, and risk are out of scope.
 - Current non-spherical shape metadata does not alter contact physics.
 - Current hazard maps are conditional or sampling-weighted diagnostics unless explicitly supported by future frequency metadata.

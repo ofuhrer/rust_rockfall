@@ -153,8 +153,9 @@ Mel de la Niva is the external generalization benchmark. The public Zenodo
 dataset contains LV03/EPSG:21781 3D trajectories, block shapes, GIS path and
 deposition shapefiles, SfM rasters/orthophotos, videos, and simulation
 benchmark resources. The checked-in repository records metadata and a
-preparation scaffold only; it does not download the roughly gigabyte-scale raw
-package.
+preparation scaffold. The scaffold now has an opt-in `--make-runnable` mode that
+uses locally cached public trajectory, GIS, and SfM DSM archives to generate an
+ignored path-endpoint/deposition smoke benchmark.
 
 Current role:
 
@@ -166,10 +167,19 @@ Current role:
 Critical limitations:
 
 - raw archives are large and remain ignored;
-- first ingestion must define an explicit LV03-to-LV95 transform or keep LV03
-  consistently through the generated package;
+- first runnable ingestion keeps LV03/EPSG:21781 consistently through the
+  generated package;
+- first runnable deposition matching is nearest-neighbor only, records
+  match-distance QA fields, and applies no hard threshold yet;
+- `observed_runout_m` in the first package is horizontal
+  release-to-matched-deposited-block endpoint displacement;
+- generated block masses use a 2670 kg/m3 density assumption for smoke-package
+  mass estimates, not measured Mel de la Niva block densities;
 - the event scale differs from the small-block validation datasets, so it must
   not be used as a hidden parameter-tuning target.
+- public LAS trajectory files in the first runnable package do not carry
+  timestamps, so trajectory dynamics remain incomplete; the package validates
+  reproducible ingestion and endpoint/deposition workflow mechanics first.
 
 ## Grouped Validation Contract
 
@@ -236,8 +246,8 @@ reproducible enough to run and inspect.
 
 The first unified no-tuning execution inventory is in
 `docs/public_benchmark_results_baseline.md`. It records the current runnable
-baseline for Tschamut and Chant Sura, passive EOTA221 shape QA, and the
-metadata-only Mel de la Niva status.
+baseline for Tschamut and Chant Sura, passive EOTA221 shape QA, and the opt-in
+Mel de la Niva runnable smoke status.
 
 ## Implementation Roadmap
 

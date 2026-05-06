@@ -185,11 +185,10 @@ still a terrain-scan registration, not a surveyed control-point adjustment.
 
 The preparation manifest now treats registration sensitivity as a physics
 selection gate. It records the transform inputs, compares `scan_surface_fit_v1`,
-`bbox_align_v1`, and `overview_offset_v1`, and explicitly marks classification
-stability as not yet reported with `physics_selection_allowed: false`. Public
-Tschamut under-run/over-run outcomes should therefore not be used to select
-contact physics until the same no-tuning benchmark is reported across those
-registration transforms in a classification-sensitivity table.
+`bbox_align_v1`, and `overview_offset_v1`. Public Tschamut under-run/over-run
+outcomes should not be used to select contact physics unless the same no-tuning
+benchmark is stable across those registration transforms in a
+classification-sensitivity table.
 
 ### Registration-Sensitivity Closure Workflow
 
@@ -236,6 +235,84 @@ As of this committed documentation state, only the `scan_surface_fit_v1`
 all-runs result is documented as executed. The gate therefore remains closed:
 public Tschamut is valid for diagnostic failure-mode discussion, but not yet for
 contact-physics selection.
+
+### Completed Registration-Sensitivity Execution
+
+The closure workflow was executed for the all-usable public-run subset with
+unchanged defaults, no tuning, deterministic seed `34014`, ensemble size `6`,
+and padding `250 m`. The generated artifacts remain ignored:
+
+- `validation/results/tschamut_registration_sensitivity/bbox_align_v1/`
+- `validation/results/tschamut_registration_sensitivity/overview_offset_v1/`
+- `validation/results/tschamut_registration_sensitivity/classification_sensitivity.json`
+- `validation/results/tschamut_registration_sensitivity/classification_sensitivity.md`
+
+Commands run:
+
+```bash
+python3 scripts/prepare_tschamut_public_benchmark.py \
+  --output-root validation/results/tschamut_registration_sensitivity/bbox_align_v1 \
+  --run-limit 80 \
+  --ensemble-size 6 \
+  --seed 34014 \
+  --padding-m 250 \
+  --transform-method bbox_align_v1 \
+  --force
+cargo run -- validate \
+  --case validation/results/tschamut_registration_sensitivity/bbox_align_v1/cases/tschamut_public_benchmark_baseline.yaml
+cargo run -- validate \
+  --case validation/results/tschamut_registration_sensitivity/bbox_align_v1/cases/tschamut_public_benchmark_rotational.yaml
+
+python3 scripts/prepare_tschamut_public_benchmark.py \
+  --output-root validation/results/tschamut_registration_sensitivity/overview_offset_v1 \
+  --run-limit 80 \
+  --ensemble-size 6 \
+  --seed 34014 \
+  --padding-m 250 \
+  --transform-method overview_offset_v1 \
+  --force
+cargo run -- validate \
+  --case validation/results/tschamut_registration_sensitivity/overview_offset_v1/cases/tschamut_public_benchmark_baseline.yaml
+cargo run -- validate \
+  --case validation/results/tschamut_registration_sensitivity/overview_offset_v1/cases/tschamut_public_benchmark_rotational.yaml
+
+python3 scripts/collect_tschamut_registration_sensitivity.py \
+  --input scan_surface_fit_v1=validation/results/tschamut_public_benchmark_all \
+  --input bbox_align_v1=validation/results/tschamut_registration_sensitivity/bbox_align_v1 \
+  --input overview_offset_v1=validation/results/tschamut_registration_sensitivity/overview_offset_v1 \
+  --run-subset all_usable_public_runs \
+  --output-json validation/results/tschamut_registration_sensitivity/classification_sensitivity.json \
+  --output-md validation/results/tschamut_registration_sensitivity/classification_sensitivity.md
+```
+
+Classification summary:
+
+| Transform | Contact model | Classification | Signed runout error (m) | Deposition overlap |
+| --- | --- | --- | ---: | ---: |
+| `scan_surface_fit_v1` | `translational_v0` | `under_run_high_deposition_overlap` | -35.003 | 0.838 |
+| `bbox_align_v1` | `translational_v0` | `under_run_partial_deposition_overlap` | -46.795 | 0.583 |
+| `overview_offset_v1` | `translational_v0` | `under_run_low_deposition_overlap` | -80.026 | 0.240 |
+| `scan_surface_fit_v1` | `sphere_rotational_v1` | `over_run_no_deposition_overlap` | 104.552 | 0.000 |
+| `bbox_align_v1` | `sphere_rotational_v1` | `over_run_no_deposition_overlap` | 78.833 | 0.000 |
+| `overview_offset_v1` | `sphere_rotational_v1` | `over_run_partial_deposition_overlap` | 55.802 | 0.640 |
+
+The stable result is the sign of the runout mismatch:
+`translational_v0` under-runs and `sphere_rotational_v1` over-runs across all
+three transforms. The unstable result is the combined runout/deposition
+classification: runout magnitude and deposition-overlap class vary materially by
+transform. The collector therefore reports:
+
+```text
+classification_stability_reported = true
+classification_stable_across_transforms = false
+physics_selection_allowed = false
+```
+
+Implication: public Tschamut remains diagnostic failure-mode evidence and a
+future non-regression benchmark, not contact-physics selection evidence. The
+next physics decision should lean on Chant Sura/contact benchmarks, with
+Tschamut used conservatively to check whether candidate changes avoid worsening
+known under-run, over-run, and deposition-overlap failure modes.
 
 ## Commands Run
 

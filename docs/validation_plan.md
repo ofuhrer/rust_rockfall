@@ -52,11 +52,15 @@ registration, explicit-grid hazard layers, and grouped no-tuning analysis. It
 is still a benchmark reproduction and failure-mode workflow, not operational
 hazard validation.
 
-Mel de la Niva is registered as a future external high-energy/generalization
-benchmark. Its public Zenodo data are large and currently metadata-only in this
-repository. A runnable Mel de la Niva case must not be added until the raw
-archives, CRS strategy, terrain crop, trajectory/deposition references, and
-exclusion rules are recorded in a preparation manifest.
+Mel de la Niva is registered as an external high-energy/generalization
+benchmark. Its public Zenodo data are large and remain ignored locally. The
+first runnable package is opt-in and generated under `validation/results/` from
+the public trajectory, GIS, and SfM DSM archives. It records checksums, retains
+LV03/EPSG:21781 coordinates, crops the public DSM, and builds baseline and
+`sphere_rotational_v1` path-endpoint/deposition smoke cases. Because the LAS
+trajectory archive used by the first package lacks timestamps, this is
+reproducible workflow validation and external failure-mode evidence, not timed
+trajectory validation or calibration.
 
 The Tschamut `scarring_contact_v1` comparison in `docs/tschamut_scarring_experiment.md` is an explicit comparative experiment. It applies impact-level Chant Sura scarring parameters to Tschamut without changing the original validation case and without tuning to Tschamut runout. Such experiments are useful for understanding model directionality, but they are not evidence of predictive skill unless calibration and held-out validation are separately designed.
 

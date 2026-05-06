@@ -30,7 +30,7 @@ Core documents:
 - `swisstopo_terrain_tile_schema.yaml`: schema-style metadata example for future swisstopo terrain tile ingestion.
 - `dataset_strategy.md`: multi-dataset roles for physics calibration, trajectory validation, deposition validation, and hazard mapping.
 - `public_benchmark_framework.md`: unified public benchmark ingestion, provenance, grouped-validation, and no-tuning workflow for Tschamut, Chant Sura, Chant Sura EOTA221, and Mel de la Niva.
-- `public_benchmark_results_baseline.md`: first no-tuning execution inventory for the unified public benchmark framework, including Tschamut all-runs metrics, Chant Sura contact metrics, passive EOTA221 QA, and Mel de la Niva metadata-only status.
+- `public_benchmark_results_baseline.md`: first no-tuning execution inventory for the unified public benchmark framework, including Tschamut all-runs metrics, Chant Sura contact metrics, passive EOTA221 QA, and Mel de la Niva opt-in runnable smoke status.
 - `model_benchmark_execution_report.md`: expert-review benchmark execution package summarizing executed datasets, commands, grouped metrics, hazard-layer examples, probabilistic smoke evidence, provenance, and reproducibility limits.
 - `model_overall_assessment_report.md`: strategic current-model maturity assessment covering strengths, weaknesses, systematic failure modes, hazard-map readiness, GIS readiness, and operational limitations.
 - `expert_review_briefing.md`: concise practitioner-facing briefing with the key evidence, review questions, pending decisions, and materials for external scientific and operational discussion.
