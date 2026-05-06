@@ -201,6 +201,92 @@ datasets:
         format: xlsx
         raw_file: esurf-7-199-2019-t02.xlsx
 
+  - id: mel_de_la_niva_2015
+    name: Highly energetic rockfalls - Dataset of the 2015 event from the Mel de la Niva, Switzerland
+    source_url: https://zenodo.org/records/7257979
+    api_url: https://zenodo.org/api/records/7257979
+    doi: https://doi.org/10.5281/zenodo.7257979
+    license: Creative Commons Attribution 4.0 International
+    license_id: cc-by-4.0
+    citation: "Noël, F. et al. (2022). Highly energetic rockfalls: Dataset of the 2015 event from the Mel de la Niva, Switzerland. Zenodo. https://doi.org/10.5281/zenodo.7257979"
+    authors:
+      - François Noël
+      - Synnøve Flugekvam Nordang
+      - Michel Jaboyedoff
+      - Julien Travelletti
+      - Battista Matasci
+      - Michaël Digout
+      - Alexandre Vogel
+      - Raphaël Mayoraz
+    coordinate_system: "Archive filenames indicate EPSG:21781 / CH1903 LV03 for reconstructed trajectories, GIS shapes, and SfM rasters."
+    data_types:
+      - digital surface model and orthophoto from structure-from-motion photogrammetry
+      - reconstructed 3D trajectories
+      - block 3D shapes
+      - GIS rockfall path segments and deposited blocks
+      - event videos
+      - public simulation benchmark resources
+    file_formats:
+      - zip
+      - shapefile
+      - geospatial rasters
+      - video
+    download_status: metadata_only
+    local_path: data/raw/mel_de_la_niva_2015
+    processed_path: data/processed/mel_de_la_niva_2015
+    intended_validation_use:
+      - external high-energy/generalization benchmark
+      - trajectory-path and impact-path validation after smaller benchmarks are stable
+      - block-shape and high-energy terrain-interaction stress test
+    preprocessing_notes:
+      - Do not commit raw Zenodo archives; the full dataset is roughly gigabyte scale.
+      - Preserve EPSG:21781/LV03 coordinates or transform consistently to LV95/EPSG:2056 with documented parameters.
+      - Treat event videos as optional QA inputs, not required CI fixtures.
+      - Use only for no-tuning generalization and failure-mode analysis; do not calibrate current small-block parameters to this event.
+    resources:
+      - id: trajectories
+        name: 3d_trajectories_epsg21781_lv03.zip
+        url: https://zenodo.org/records/7257979/files/3d_trajectories_epsg21781_lv03.zip?download=1
+        format: zip
+        size_bytes: 166000
+        checksum: md5:dba538e90510c30eaa8cf9fcbdadad99
+        raw_file: 3d_trajectories_epsg21781_lv03.zip
+      - id: blocks_3d_shapes
+        name: blocks_3d_shapes.zip
+        url: https://zenodo.org/records/7257979/files/blocks_3d_shapes.zip?download=1
+        format: zip
+        size_bytes: 9100000
+        checksum: md5:b291875db502a8478a8e6fbecdd08d75
+        raw_file: blocks_3d_shapes.zip
+      - id: gis_shapes
+        name: gis_shapes_epsg21781_lv03.zip
+        url: https://zenodo.org/records/7257979/files/gis_shapes_epsg21781_lv03.zip?download=1
+        format: zip
+        size_bytes: 10100000
+        checksum: md5:b88775690c74aff171f341a3681df4f8
+        raw_file: gis_shapes_epsg21781_lv03.zip
+      - id: sfm_rasters
+        name: sfm_rasters_epsg21781_lv03.zip
+        url: https://zenodo.org/records/7257979/files/sfm_rasters_epsg21781_lv03.zip?download=1
+        format: zip
+        size_bytes: 74100000
+        checksum: md5:a17874b6c82d8739e2eda21455780515
+        raw_file: sfm_rasters_epsg21781_lv03.zip
+      - id: simulation_benchmark
+        name: rockfall_simulation_benchmark.zip
+        url: https://zenodo.org/records/7257979/files/rockfall_simulation_benchmark.zip?download=1
+        format: zip
+        size_bytes: 516300000
+        checksum: md5:2faf71e9c40a7c31ed8987d931db1791
+        raw_file: rockfall_simulation_benchmark.zip
+      - id: videos
+        name: videos_BEG_SA_and_Valais_canton.zip
+        url: https://zenodo.org/records/7257979/files/videos_BEG_SA_and_Valais_canton.zip?download=1
+        format: zip
+        size_bytes: 488300000
+        checksum: md5:7fc42e2e2cb4a685ceb3af668656752e
+        raw_file: videos_BEG_SA_and_Valais_canton.zip
+
   - id: schiers_deadwood_2022
     name: Shape still matters - experimental quantification of deadwood effects on rockfall dynamics
     source_url: https://www.envidat.ch/metadata/shape_still_matters

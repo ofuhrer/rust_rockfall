@@ -9,10 +9,17 @@ public measurements at the right level of evidence.
 
 | Dataset | Repository ID | Primary role | Current use | Not used for |
 | --- | --- | --- | --- | --- |
-| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. Small RF16 DEM-backed segmented contact fixtures compare trajectory shape, jump-height envelope, impact timing, rebound velocity, and post-impact energy change across model-selection and held-out subsets. EOTA shapes are recorded for future non-spherical models. | Calibration, operational hazard mapping, full runout/deposition validation, or shape-effect validation in v0.5.0 |
+| Chant Sura / Flüelapass campaign | `chant_sura_2020` | Trajectory and physics validation | Short reconstructed first-flight segments compare trajectory shape, translational kinetic energy, and proxy jump height. Small RF16 DEM-backed segmented contact fixtures compare trajectory shape, jump-height envelope, impact timing, rebound velocity, and post-impact energy change across model-selection and held-out subsets. EOTA shapes are recorded for future non-spherical models. A public benchmark scaffold now records these fixtures under the unified public benchmark workflow. | Calibration, operational hazard mapping, full runout/deposition validation, or active shape-effect validation in v0.6.0 |
+| Chant Sura EOTA221 shape experiments | `chant_sura_2020` / benchmark `chant_sura_eota221` | Passive shape/orientation metadata and future shape-contact validation readiness | Public EOTA point files and published EOTA111/EOTA221 shape classes are summarized as passive metadata. The current scaffold validates provenance and shape grouping, not shape-aware dynamics. | Active shape-contact validation, parameter tuning, or claims that the current equivalent-sphere model reproduces EOTA221 behavior |
 | Lu / Chant Sura scarring tables | `chant_sura_esurf_2019_impacts` | Impact-level scarring calibration | Public scar-depth and jump-energy tables constrain `scarring_contact_v1` at the single-impact level. | Trajectory validation or hazard-map validation |
-| Tschamut 2014 | `tschamut2014` | Deposition-level validation | Public release/deposition subset compares ensemble runout and deposition-cloud metrics on a transparent terrain proxy. | Impact-level calibration, shape validation, or operational hazard skill |
+| Tschamut 2014 | `tschamut2014` | Deposition/runout validation and grouped failure-mode analysis | Public release/deposition observations support proxy and public swissALTI3D benchmark workflows, scan-surface registration, 10-run, 25-run, and all-usable-run grouped analysis, and passive block-shape sidecars for single-block subsets. | Impact-level calibration, hidden release/terrain tuning, or operational hazard skill |
+| Mel de la Niva 2015 | `mel_de_la_niva_2015` | External high-energy/generalization benchmark | Metadata-only public benchmark scaffold records Zenodo resources, LV03/EPSG:21781 coordinate expectations, large raw-cache policy, and future ingestion requirements. | Current CI validation, small-block calibration, or operational hazard skill |
 | Synthetic analytic fixtures | `synthetic_*` | Verification | Closed-form or controlled checks for mechanics, terrain handling, stochastic reproducibility, scarring diagnostics, and hazard-layer post-processing. | Real-world validation |
+
+The unified ingestion and reporting rules for these public benchmarks are in
+`docs/public_benchmark_framework.md`. That document defines the shared
+directory contract, preparation-manifest fields, grouped validation vocabulary,
+and no-tuning leakage controls.
 
 ## Operational Swiss Geodata
 
@@ -118,7 +125,10 @@ default-model decision.
   stopping and runout behavior, with current conclusions limited by the terrain
   proxy.
 - **Shape effects:** Chant Sura and EOTA shape data can constrain future
-  non-spherical models, but v0.5.0 does not yet use those shapes dynamically.
+  non-spherical models, but v0.6.0 does not yet use those shapes dynamically.
+- **External high-energy generalization:** Mel de la Niva can test whether
+  conclusions from small-block experiments carry to a much larger public event,
+  but only after a separate CRS-consistent ingestion package is prepared.
 - **Hazard-map layers:** Synthetic and Tschamut cases exercise hazard-layer
   post-processing; real hazard-map validation requires larger ensembles, real
   DEMs, CRS-aware exports, and release-zone workflows.
@@ -133,6 +143,12 @@ default-model decision.
 - The segmented-contact fixture improves contact observability but is still a
   small RF16-only subset. It does not replace full-campaign trajectory,
   deposition, or shape validation.
+- The EOTA221 benchmark is currently a passive metadata benchmark. It should
+  not be used to infer shape-aware skill before active shape-contact physics is
+  explicitly implemented and versioned.
+- Mel de la Niva is metadata-only in the repository. Its public archives are
+  large and must be downloaded intentionally into ignored raw-data paths before
+  any runnable validation case is created.
 - Scarring calibration uses impact-level quantities, while Tschamut validation
   uses trajectory/deposition quantities. Parameters must not be transferred
   without explicit comparative experiments.
@@ -150,6 +166,9 @@ default-model decision.
 - Use Lu/ESurf impact tables for scarring calibration only.
 - Use Tschamut as deposition-level validation only unless a separate
   trajectory-focused preprocessing pipeline is added.
+- Use Mel de la Niva as a later external generalization benchmark only after
+  coordinate-system handling and exclusion rules are recorded in a preparation
+  manifest.
 - Keep swisstopo operational input geodata separate from experimental
   calibration and validation datasets.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and

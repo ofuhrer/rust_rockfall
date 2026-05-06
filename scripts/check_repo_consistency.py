@@ -140,6 +140,7 @@ def main() -> int:
     errors.extend(check_version_consistency())
     errors.extend(check_chant_sura_validation_metadata())
     errors.extend(check_tschamut_validation_metadata())
+    errors.extend(check_public_benchmark_framework())
     errors.extend(check_calibration_metadata())
     errors.extend(check_scarring_not_in_tschamut_workflows())
     errors.extend(check_hazard_layer_metadata())
@@ -851,6 +852,61 @@ def check_chant_sura_validation_metadata() -> list[str]:
         for term in ("held-out", "model-selection", "sphere_rotational_v1", "translational_v0"):
             if term not in text:
                 errors.append(f"docs/chant_sura_contact_generalization.md omits {term!r}")
+    return errors
+
+
+def check_public_benchmark_framework() -> list[str]:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return ["PyYAML is required; install with `python3 -m pip install PyYAML`"]
+
+    errors = []
+    framework = ROOT / "docs/public_benchmark_framework.md"
+    if not framework.exists():
+        return ["docs/public_benchmark_framework.md is missing"]
+    text = framework.read_text()
+    for term in (
+        "Tschamut",
+        "Chant Sura",
+        "EOTA221",
+        "Mel de la Niva",
+        "no-tuning",
+        "provenance",
+        "grouped",
+    ):
+        if term not in text:
+            errors.append(f"docs/public_benchmark_framework.md omits {term!r}")
+
+    registry = yaml.safe_load((ROOT / "data/datasets.yaml").read_text()) or {}
+    dataset_ids = {dataset.get("id") for dataset in registry.get("datasets", [])}
+    for dataset_id in ("tschamut2014", "chant_sura_2020", "mel_de_la_niva_2015"):
+        if dataset_id not in dataset_ids:
+            errors.append(f"data/datasets.yaml omits public benchmark dataset {dataset_id}")
+
+    benchmark_dirs = (
+        "tschamut",
+        "chant_sura",
+        "chant_sura_eota221",
+        "mel_de_la_niva",
+    )
+    for benchmark_id in benchmark_dirs:
+        readme = ROOT / "validation/benchmarks" / benchmark_id / "README.md"
+        if not readme.exists():
+            errors.append(f"validation/benchmarks/{benchmark_id}/README.md is missing")
+
+    for script in (
+        "scripts/prepare_tschamut_public_benchmark.py",
+        "scripts/prepare_chant_sura_public_benchmark.py",
+        "scripts/prepare_chant_sura_eota221_benchmark.py",
+        "scripts/prepare_mel_de_la_niva_benchmark.py",
+    ):
+        if not (ROOT / script).exists():
+            errors.append(f"{script} is missing")
+
+    readme = ROOT / "docs/README.md"
+    if readme.exists() and "public_benchmark_framework.md" not in readme.read_text():
+        errors.append("docs/README.md omits public_benchmark_framework.md")
     return errors
 
 

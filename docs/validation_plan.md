@@ -15,7 +15,7 @@ Real-world validation is partial and qualitative. The current simulator is a sph
 - Do not commit large raw data.
 - Keep large real-data validation optional; small license-compatible derived fixtures may be checked in for CI smoke tests.
 
-The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`. swisstopo entries are operational input geodata for future Swiss hazard-map workflows, not experimental validation datasets.
+The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`. The unified public benchmark preparation and grouped-validation contract is documented in `docs/public_benchmark_framework.md`. swisstopo entries are operational input geodata for future Swiss hazard-map workflows, not experimental validation datasets.
 
 ## Commands
 
@@ -46,6 +46,18 @@ The Tschamut 2014 case is a limited distribution-level comparison against public
 
 Terrain representation is part of the validation assumption set. `validation_tschamut_proxy_plane` keeps the earlier fitted-plane terrain approximation as an explicit structural-error comparison, while `validation_tschamut_basic` uses the `idw_residual_dem_from_lps` clamped DEM proxy derived from public LPS ground points. Neither terrain is an official field DEM.
 
+The registered public Tschamut benchmark workflow extends this smoke-test role
+with public EnviDat observations, public swissALTI3D terrain, documented
+registration, explicit-grid hazard layers, and grouped no-tuning analysis. It
+is still a benchmark reproduction and failure-mode workflow, not operational
+hazard validation.
+
+Mel de la Niva is registered as a future external high-energy/generalization
+benchmark. Its public Zenodo data are large and currently metadata-only in this
+repository. A runnable Mel de la Niva case must not be added until the raw
+archives, CRS strategy, terrain crop, trajectory/deposition references, and
+exclusion rules are recorded in a preparation manifest.
+
 The Tschamut `scarring_contact_v1` comparison in `docs/tschamut_scarring_experiment.md` is an explicit comparative experiment. It applies impact-level Chant Sura scarring parameters to Tschamut without changing the original validation case and without tuning to Tschamut runout. Such experiments are useful for understanding model directionality, but they are not evidence of predictive skill unless calibration and held-out validation are separately designed.
 
 For real-world cases:
@@ -54,6 +66,11 @@ For real-world cases:
 - mismatch is expected and should identify missing physics, such as block shape, calibrated roughness, vegetation, and richer terrain representation;
 - roughness parameters in validation cases are generic model settings, not tuned Tschamut calibration;
 - a passing status means the workflow completed and reported metrics, not that the model is field-accurate.
+- each public benchmark must be interpreted according to its declared role:
+  Chant Sura for trajectory/contact realism, Chant Sura EOTA221 for passive
+  shape-readiness and future shape-contact tests, Tschamut for deposition and
+  grouped runout failures, and Mel de la Niva for later external high-energy
+  generalization.
 
 ## Reproducibility Criteria
 
@@ -65,6 +82,9 @@ Validation and benchmark workflows must preserve deterministic reproducibility:
 - ensemble trajectory seeds are derived from global seed, case ID, and trajectory ID;
 - per-trajectory results are independent of execution order;
 - optional real-world validation cases must skip cleanly when data are absent rather than changing deterministic test behavior.
+- public benchmark preparation manifests must record selected run IDs,
+  excluded runs, CRS/registration assumptions, data provenance, and deterministic
+  seed policy before validation outputs are interpreted.
 
 These criteria support future large ensemble execution without making current validation depend on MPI, GPUs, or distributed schedulers.
 

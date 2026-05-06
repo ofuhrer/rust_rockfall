@@ -53,6 +53,17 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 
 ## Level 5: Validation Scaffolds
 
+- `validation/benchmarks/*`: tracked public benchmark scaffolds for Tschamut,
+  Chant Sura, Chant Sura EOTA221, and Mel de la Niva. These directories define
+  benchmark roles and preparation-manifest contracts. Large raw archives and
+  generated cases remain ignored.
+- `scripts/prepare_chant_sura_public_benchmark.py`: fixture-backed manifest
+  scaffold for the checked-in Chant Sura trajectory/contact subsets.
+- `scripts/prepare_chant_sura_eota221_benchmark.py`: passive EOTA221 shape
+  metadata manifest scaffold for future shape-contact validation readiness.
+- `scripts/prepare_mel_de_la_niva_benchmark.py`: metadata-only scaffold for the
+  public high-energy Mel de la Niva benchmark; it records expected Zenodo
+  archives and ignored raw-cache paths but does not generate runnable cases.
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
 - `validation_swissalti3d_pilot`: tiny synthetic swissALTI3D-style ESRI ASCII crop with LV95/EPSG:2056 and LN02 metadata. It verifies the terrain-source metadata path, DEM/header consistency checks, and `run_manifest_v1` terrain provenance fields without committing raw swisstopo data.
 - `validation_swissalti3d_release_zone_pilot`: same tiny Swiss terrain fixture with an opt-in synthetic LV95/LN02 source-area polygon. It verifies deterministic release-point generation, CRS compatibility with terrain metadata, generated-release audit CSV output, source-area deposition summaries, and `run_manifest_v1` release-zone provenance fields.
