@@ -34,6 +34,7 @@ Core documents:
 - `model_benchmark_execution_report.md`: expert-review benchmark execution package summarizing executed datasets, commands, grouped metrics, hazard-layer examples, probabilistic smoke evidence, provenance, and reproducibility limits.
 - `model_overall_assessment_report.md`: strategic current-model maturity assessment covering strengths, weaknesses, systematic failure modes, hazard-map readiness, GIS readiness, and operational limitations.
 - `expert_review_briefing.md`: concise practitioner-facing briefing with the key evidence, review questions, pending decisions, and materials for external scientific and operational discussion.
+- `expert_review_release_note.md`: release/tag preparation note for the proposed `v0.6.0-expert-review-baseline` frozen review state, including included scope, exclusions, commands, artifact policy, reviewer workflow, and version-bump assessment.
 - `chant_sura_contact_validation.md`: DEM-backed segmented Chant Sura trajectory/contact validation setup, metrics, and model-comparison results.
 - `chant_sura_contact_generalization.md`: held-out Chant Sura split and generalization test for `sphere_rotational_v1`.
 - `contact_model_decision.md`: decision record recommending `sphere_rotational_v1` for trajectory-validation experiments while preserving `translational_v0` as the default.
