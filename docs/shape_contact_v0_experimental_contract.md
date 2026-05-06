@@ -118,7 +118,7 @@ Per-contact or impact-event row fields:
 | `active_shape_type` | string | Must be `principal_dimensions_box_v0` for the first runtime slice. |
 | `shape_id` | string | Shape sidecar identifier used to build the active scaffold. |
 | `contact_regime` | enum | One of `separated_moving_away`, `separated_moving_toward`, `touching`, or `penetrating` from the support-gap gate. |
-| `shape_contact_regime_label` | enum | One of `non_impulsive_separated`, `non_impulsive_touching`, `non_impulsive_penetrating`, `impulsive_touching`, or `impulsive_penetrating`. |
+| `shape_contact_regime_label` | enum | Non-null fixed v1 label serialized exactly as one of `non_impulsive_separated`, `non_impulsive_touching`, `non_impulsive_penetrating`, `impulsive_touching`, or `impulsive_penetrating`. |
 | `support_signed_gap_m` | m | Signed gap from selected support point to the terrain contact plane along the terrain normal. Positive values are separated. |
 | `contact_gap_tolerance_m` | m | Must record the active deterministic tolerance, initially `1.0e-9`. |
 | `terrain_contact_point_x_m`, `terrain_contact_point_y_m`, `terrain_contact_point_z_m` | m | Explicit terrain point used for support-gap calculation. |
