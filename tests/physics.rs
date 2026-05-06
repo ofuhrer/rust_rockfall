@@ -8,7 +8,7 @@ use rust_rockfall::{
     },
     geometry::SphereBlock,
     integrator::{simulate_fixed_step, IntegratorSettings},
-    simulation::{SimulationConfig, TerrainConfig},
+    simulation::{SimulationConfig, StopReason, TerrainConfig},
     state::{BodyState, ContactState, EnergyDiagnostics},
     stochastic::{sample_release, ContactRoughness, ReleasePerturbation, RoughnessModel},
     terrain::{Plane, Terrain},
@@ -127,6 +127,106 @@ fn coulomb_friction_stops_sliding_on_horizontal_plane() {
     let last = samples.last().unwrap();
     assert_eq!(last.contact_state, ContactState::Stopped);
     assert!(last.speed_mps <= 0.05);
+}
+
+#[test]
+fn stop_state_records_low_velocity_stop_provenance() {
+    let config = SimulationConfig {
+        block: SphereBlock::new(0.5, 10.0),
+        initial_position_m: [0.0, 0.0, 0.5],
+        initial_velocity_mps: [1.0, 0.0, 0.0],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::Plane {
+            z0_m: 0.0,
+            slope_x: 0.0,
+            slope_y: 0.0,
+        },
+        dt_s: 0.01,
+        max_time_s: 5.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.0,
+        tangential_restitution: 1.0,
+        friction_coefficient: 0.5,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.05,
+        random_seed: None,
+        release_perturbation: ReleasePerturbation::default(),
+    };
+
+    let result = config.run().unwrap();
+    let stop_state = result.stop_state.expect("stop-state provenance");
+
+    assert_eq!(stop_state.stop_reason, StopReason::ExplicitStoppedState);
+    assert_eq!(stop_state.final_contact_state, ContactState::Stopped);
+    assert!(stop_state.termination_flags.low_velocity);
+    assert!(!stop_state.termination_flags.t_max);
+    assert!(stop_state.final_speed_mps <= config.stop_speed_mps);
+    assert!(
+        stop_state.final_kinetic_j <= 0.5 * config.block.mass_kg * config.stop_speed_mps.powi(2)
+    );
+    assert!(stop_state.low_energy_contact_count >= 1);
+    assert_abs_diff_eq!(stop_state.terrain_normal_z.unwrap(), 1.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(
+        stop_state.terrain_slope_abs.unwrap(),
+        0.0,
+        epsilon = 1.0e-12
+    );
+}
+
+#[test]
+fn stop_state_records_tmax_airborne_termination() {
+    let config = SimulationConfig {
+        block: SphereBlock::new(0.5, 10.0),
+        initial_position_m: [0.0, 0.0, 100.0],
+        initial_velocity_mps: [1.0, 0.0, 0.0],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::Plane {
+            z0_m: -1000.0,
+            slope_x: 0.0,
+            slope_y: 0.0,
+        },
+        dt_s: 0.01,
+        max_time_s: 0.1,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.0,
+        tangential_restitution: 1.0,
+        friction_coefficient: 0.0,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.0,
+        random_seed: None,
+        release_perturbation: ReleasePerturbation::default(),
+    };
+
+    let result = config.run().unwrap();
+    let stop_state = result.stop_state.expect("stop-state provenance");
+
+    assert_eq!(stop_state.stop_reason, StopReason::TMaxReachedAirborne);
+    assert_eq!(stop_state.final_contact_state, ContactState::Airborne);
+    assert!(stop_state.termination_flags.t_max);
+    assert!(stop_state.termination_flags.max_steps);
+    assert!(!stop_state.termination_flags.low_velocity);
+    assert_eq!(stop_state.low_energy_contact_count, 0);
+    assert!(stop_state.last_significant_impact_time_s.is_none());
 }
 
 #[test]

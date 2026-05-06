@@ -63,17 +63,40 @@ class StoppingBehaviorDiagnosticsTests(unittest.TestCase):
                             "kinetic_j": "0.0",
                             "contact_state": "stopped",
                         },
+                        {
+                            "trajectory_id": "b",
+                            "time_s": "0.0",
+                            "x_m": "0.0",
+                            "y_m": "0.0",
+                            "z_m": "0.5",
+                            "speed_mps": "0.04",
+                            "kinetic_j": "0.001",
+                            "contact_state": "impact",
+                        },
+                        {
+                            "trajectory_id": "b",
+                            "time_s": "0.1",
+                            "x_m": "0.01",
+                            "y_m": "0.0",
+                            "z_m": "0.5",
+                            "speed_mps": "0.03",
+                            "kinetic_j": "0.001",
+                            "contact_state": "sliding",
+                        },
                     ]
                 )
 
             row = stopping.summarize_trajectory_csv(stopping.InputSpec("fixture", path))
 
-        self.assertEqual(row["trajectory_count"], 1)
-        self.assertEqual(row["final_status_counts"], {"stopped": 1})
-        self.assertEqual(row["stop_reason_counts"], {"explicit_stopped_state": 1})
-        self.assertEqual(row["impact_count_total"], 1)
+        self.assertEqual(row["trajectory_count"], 2)
+        self.assertEqual(row["final_status_counts"], {"sliding": 1, "stopped": 1})
+        self.assertEqual(
+            row["stop_reason_counts"],
+            {"explicit_stopped_state": 1, "final_speed_below_stop_threshold_proxy": 1},
+        )
+        self.assertEqual(row["impact_count_total"], 2)
         self.assertEqual(row["significant_impact_count_total"], 1)
-        self.assertEqual(row["low_energy_contact_count_total"], 1)
+        self.assertEqual(row["low_energy_contact_count_total"], 3)
         self.assertAlmostEqual(row["distance_last_significant_impact_to_final_mean_m"], 4.472135955)
         self.assertFalse(row["terrain_slope_near_stop_available"])
         self.assertTrue(row["instrumentation_gaps"])
@@ -130,6 +153,65 @@ class StoppingBehaviorDiagnosticsTests(unittest.TestCase):
         self.assertEqual(row["impact_count_total"], 12)
         self.assertIsNone(row["final_speed_mean_mps"])
         self.assertTrue(row["instrumentation_gaps"])
+
+    def test_manifest_summary_prefers_explicit_stop_state_when_available(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "run_manifest_v1",
+                        "performance": {
+                            "trajectory_count": 1,
+                            "impact_event_count": 2,
+                        },
+                        "stop_state": {
+                            "stop_reason": "t_max_reached_airborne",
+                            "final_contact_state": "airborne",
+                            "final_speed_mps": 1.25,
+                            "final_kinetic_j": 7.8125,
+                            "termination_flags": {
+                                "low_velocity": False,
+                                "max_steps": True,
+                                "t_max": True,
+                                "domain_exit": False,
+                                "terrain_error": False,
+                            },
+                            "last_significant_impact_time_s": None,
+                            "last_significant_impact_x_m": None,
+                            "last_significant_impact_y_m": None,
+                            "last_significant_impact_z_m": None,
+                            "distance_last_significant_impact_to_final_m": None,
+                            "low_energy_contact_count": 0,
+                            "terrain_normal_x": 0.0,
+                            "terrain_normal_y": 0.0,
+                            "terrain_normal_z": 1.0,
+                            "terrain_slope_abs": 0.0,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            row = stopping.summarize_manifest(stopping.InputSpec("manifest", path))
+
+        self.assertTrue(row["explicit_stop_state_available"])
+        self.assertEqual(row["stop_reason"], "t_max_reached_airborne")
+        self.assertEqual(row["final_contact_state"], "airborne")
+        self.assertEqual(row["stop_reason_counts"], {"t_max_reached_airborne": 1})
+        self.assertEqual(row["final_status_counts"], {"airborne": 1})
+        self.assertEqual(row["final_speed_mean_mps"], 1.25)
+        self.assertEqual(row["final_kinetic_mean_j"], 7.8125)
+        self.assertTrue(row["termination_t_max"])
+        self.assertTrue(row["termination_max_steps"])
+        self.assertFalse(row["termination_low_velocity"])
+        self.assertTrue(row["terrain_slope_near_stop_available"])
+        self.assertEqual(row["terrain_normal_z"], 1.0)
+        self.assertEqual(row["low_energy_contact_count_total"], 0)
+        self.assertIn(
+            "no significant impact reached",
+            "; ".join(row["instrumentation_gaps"]),
+        )
 
 
 if __name__ == "__main__":

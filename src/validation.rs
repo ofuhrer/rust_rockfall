@@ -19,8 +19,8 @@ use crate::{
     simulation::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
-        SimulationError, SimulationResult, TerrainConfig, TrajectoryRequest, TrajectoryRun,
-        DEFAULT_STOP_SPEED_MPS,
+        SimulationError, SimulationResult, StopStateProvenance, TerrainConfig, TrajectoryRequest,
+        TrajectoryRun, DEFAULT_STOP_SPEED_MPS,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -566,6 +566,8 @@ pub struct CaseReport {
     pub failures: Vec<String>,
     pub warnings: Vec<String>,
     pub parameters: SimulationConfig,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_state: Option<StopStateProvenance>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1102,6 +1104,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         failures,
         warnings,
         parameters: config,
+        stop_state: result.stop_state.clone(),
     };
 
     let trajectory_metadata_manifest = if let Some(path) = &case.outputs.trajectory_metadata_csv {
@@ -1253,6 +1256,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         trajectory_metadata,
         outputs,
         performance: Some(performance),
+        stop_state: report.stop_state.clone(),
         warnings: report.warnings.clone(),
     }
 }
@@ -3758,6 +3762,7 @@ fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, V
         failures: Vec::new(),
         warnings: vec![warning],
         parameters: build_simulation_config(case)?,
+        stop_state: None,
     })
 }
 

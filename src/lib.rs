@@ -36,7 +36,8 @@ pub use simulation::{
     simulate_ensemble, simulate_ensemble_with_contact_parameters, simulate_one_trajectory,
     simulate_one_trajectory_with_terrain,
     simulate_one_trajectory_with_terrain_and_contact_parameters, EnsembleResult, SimulationConfig,
-    SimulationResult, TerrainConfig, TrajectoryRequest, TrajectoryRun, TrajectorySummary,
+    SimulationResult, StopReason, StopStateProvenance, TerminationFlags, TerrainConfig,
+    TrajectoryRequest, TrajectoryRun, TrajectorySummary,
 };
 pub use state::{
     BodyState, ContactState, ImpactEvent, ImpactStageEnergy, TrajectoryDiagnostics,

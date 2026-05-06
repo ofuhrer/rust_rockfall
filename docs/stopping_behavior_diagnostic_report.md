@@ -36,7 +36,10 @@ The additive stopping-diagnostic schema records:
 | `contact_model` | Contact-model label inferred from path/label. | inferred from path/label |
 | `trajectory_count` | Number of trajectories or deposition rows summarized. | output rows / manifest |
 | `final_status_counts` | Final `contact_state` counts when trajectory rows are available. | trajectory CSV |
-| `stop_reason_counts` | Conservative inferred stop/status reason. | trajectory/deposition CSV |
+| `explicit_stop_state_available` | Whether an explicit simulator `stop_state` record was available. | run manifest |
+| `stop_reason`, `final_contact_state` | Explicit stop reason and final contact state when instrumented. | run manifest |
+| `termination_low_velocity`, `termination_max_steps`, `termination_t_max`, `termination_domain_exit`, `termination_terrain_error` | Explicit termination flags when instrumented. | run manifest |
+| `stop_reason_counts` | Explicit stop reason when present, otherwise conservative inferred stop/status reason. | manifest / trajectory/deposition CSV |
 | `final_speed_mean_mps`, `final_speed_p95_mps`, `final_speed_max_mps` | Final speed summary. | trajectory/deposition CSV |
 | `final_kinetic_mean_j`, `final_kinetic_max_j` | Final translational kinetic-energy summary. | trajectory CSV |
 | `impact_count_total`, `impact_count_mean` | Count of rows with `contact_state == impact`, or aggregate manifest impact count. | trajectory CSV / manifest |
@@ -44,13 +47,41 @@ The additive stopping-diagnostic schema records:
 | `low_energy_contact_count_total` | Contact rows with `speed_mps <= 0.05`. | trajectory CSV |
 | `distance_last_significant_impact_to_final_mean_m`, `..._max_m` | Horizontal distance from last significant-impact proxy to final point. | trajectory CSV |
 | `runout_mean_m`, `runout_max_m` | Runout summary when deposition rows are available. | deposition CSV |
-| `terrain_slope_near_stop_available` | Whether terrain slope/normal near stop was directly available. | currently false |
+| `terrain_normal_x`, `terrain_normal_y`, `terrain_normal_z`, `terrain_slope_abs` | Terrain normal/slope at the final position when instrumented. | run manifest |
+| `terrain_slope_near_stop_available` | Whether terrain slope/normal near stop was directly available. | manifest / script output |
 | `instrumentation_gaps` | Explicit limits for each source. | script output |
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
-diagnostics. Current outputs do not contain an explicit simulator stop-reason
-field, nor do trajectory CSV rows contain incoming normal speed. The script
-therefore does not claim exact physical stop modes.
+diagnostics when generated from legacy trajectory/deposition CSVs. New
+run-manifest `stop_state` records provide explicit stop reason, final contact
+state, termination flags, final speed/kinetic energy, low-energy contact count,
+last significant-impact provenance when present, and final terrain normal/slope.
+The summarizer prefers those explicit fields and falls back to proxy inference
+for older outputs.
+
+## Additive Instrumentation
+
+The simulator now emits optional `stop_state` provenance on single-run
+simulation results, validation diagnostics, and run manifests. This is an
+additive reporting field only: it does not change contact physics, stopping
+thresholds, defaults, validation cases, or baselines.
+
+The explicit stop-state record includes:
+
+- `stop_reason` and `final_contact_state`;
+- `final_speed_mps` and `final_kinetic_j`;
+- termination flags for `low_velocity`, `max_steps`, `t_max`,
+  `domain_exit`, and `terrain_error`;
+- last significant impact time/location and horizontal distance to the final
+  position when an impact exceeds the explicit incoming-normal-speed threshold;
+- `low_energy_contact_count`;
+- terrain normal and terrain slope at the final position when terrain is
+  available.
+
+Current domain-exit and terrain-error flags remain false because the fixed-step
+integrator does not yet expose those termination modes as separate outcomes.
+Ensemble-level aggregation is also still deferred; current manifest `stop_state`
+describes the primary single-run trajectory.
 
 ## Evidence Inspected
 
@@ -127,51 +158,39 @@ The local diagnostic run inspected these existing outputs:
 Existing outputs are sufficient for a first additive diagnostic summary, but
 not for a complete stopping-behavior interpretation.
 
-Missing or weak fields:
+Missing or weak fields in legacy/generated summary inputs:
 
-- explicit simulator stop reason;
-- whether the run ended because of low velocity, max steps, domain exit, or
-  output truncation;
+- explicit simulator stop reason in older outputs without manifest `stop_state`;
 - per-row incoming normal speed in trajectory CSVs;
-- terrain slope and terrain normal at final stop;
 - last significant impact information in deposition rows;
 - distance from last significant impact to final deposition point for ensemble
   deposition outputs unless full trajectory or impact-event directories are
   scanned;
-- normalized per-trajectory impact summaries in manifests.
+- normalized per-trajectory impact summaries in ensemble manifests;
+- explicit domain-exit and terrain-error termination modes from the integrator.
 
 These are instrumentation gaps, not reasons to tune parameters.
 
 ## Recommendation
 
-Next scientific package: stopping instrumentation, then terrain/material
-interaction protocol.
+Next scientific package: terrain/material interaction protocol using the new
+stopping instrumentation.
 
 Do not proceed directly to terrain/material calibration yet. The current
-diagnostic summary shows that stopping/runout differences are central, but the
-outputs do not yet record enough per-trajectory stop-state provenance to
-separate low-speed physical stopping, output truncation, domain exit, repeated
-small impacts, and terrain/material effects.
+diagnostic summary shows that stopping/runout differences are central. The new
+explicit provenance makes low-speed stopping, output truncation, repeated small
+contacts, and terrain slope near stop easier to separate, while domain-exit and
+terrain-error termination modes still need future integrator exposure.
 
-The next implementation should therefore add additive stop-state provenance to
-manifests and/or trajectory summaries without changing dynamics:
-
-- explicit `stop_reason`;
-- final contact state;
-- final speed and kinetic energy;
-- last significant impact time/location;
-- distance from last significant impact to final position;
-- terrain normal/slope at final position where terrain is available;
-- low-energy contact counts;
-- domain/max-step/low-velocity termination flags.
-
-Only after those fields exist should a terrain/material interaction protocol be
-designed. That protocol must remain no-tuning until a reviewed calibration
-split and acceptance criteria exist.
+The next implementation should use the additive stop-state provenance to design
+a terrain/material interaction protocol. That protocol must remain no-tuning
+until a reviewed calibration split and acceptance criteria exist, and it should
+not use Tschamut or Mel de la Niva as physics-selection evidence.
 
 ## Decision
 
 `shape_contact_v0` remains paused. Held-out Chant Sura remains blocked. Public
 Tschamut and Mel de la Niva remain diagnostic/non-regression evidence only.
 
-Immediate next direction: additive stopping instrumentation, not new physics.
+Immediate next direction: no-tuning terrain/material interaction protocol, not
+new physics or calibration.

@@ -67,6 +67,7 @@ fn run_manifest_without_performance_section_remains_backward_compatible() {
     assert!(manifest.trajectory_metadata.is_none());
     assert!(manifest.shape_metadata.is_none());
     assert!(manifest.performance.is_none());
+    assert!(manifest.stop_state.is_none());
 
     let text_with_legacy_metadata = text.replace(
         "\"terrain_classes\": null,\n      \"outputs\": []",

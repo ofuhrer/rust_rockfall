@@ -372,6 +372,7 @@ mod tests {
             failures: vec![],
             warnings: vec!["diagnostic warning".to_string()],
             parameters,
+            stop_state: None,
         };
 
         let line = format_case_report_json_line(Path::new("case.yaml"), &report).unwrap();

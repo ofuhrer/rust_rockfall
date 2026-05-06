@@ -1,5 +1,6 @@
 //! Run manifest records for reproducible batch and hazard workflows.
 
+use crate::simulation::StopStateProvenance;
 use serde::{Deserialize, Serialize};
 
 pub const RUN_MANIFEST_SCHEMA_VERSION: &str = "run_manifest_v1";
@@ -28,6 +29,8 @@ pub struct RunManifest {
     pub outputs: Vec<OutputManifest>,
     #[serde(default)]
     pub performance: Option<PerformanceManifest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_state: Option<StopStateProvenance>,
     pub warnings: Vec<String>,
 }
 

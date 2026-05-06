@@ -5,7 +5,7 @@ use crate::{
         simulate_fixed_step_with_events, simulate_fixed_step_with_events_and_contact_parameters,
         IntegratorSettings,
     },
-    state::{BodyState, ImpactEvent, TrajectorySample},
+    state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{
         derive_trajectory_seed, sample_release, stable_hash64, ContactRoughness,
         ReleasePerturbation, RoughnessModel,
@@ -68,6 +68,8 @@ pub struct SimulationConfig {
 }
 
 pub const DEFAULT_STOP_SPEED_MPS: f64 = 0.10;
+pub const STOP_SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
+pub const STOP_LOW_ENERGY_CONTACT_SPEED_MPS: f64 = 0.05;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -131,6 +133,8 @@ pub struct SimulationResult {
     pub samples: Vec<TrajectorySample>,
     #[serde(default)]
     pub impact_events: Vec<ImpactEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_state: Option<StopStateProvenance>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -175,7 +179,48 @@ pub struct TrajectoryRun {
     pub samples: Vec<TrajectorySample>,
     #[serde(default)]
     pub impact_events: Vec<ImpactEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_state: Option<StopStateProvenance>,
     pub summary: TrajectorySummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StopReason {
+    ExplicitStoppedState,
+    FinalSpeedBelowStopThreshold,
+    TMaxReachedAirborne,
+    TMaxReachedInContactState,
+    TMaxReachedOther,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TerminationFlags {
+    pub low_velocity: bool,
+    pub max_steps: bool,
+    pub t_max: bool,
+    pub domain_exit: bool,
+    pub terrain_error: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StopStateProvenance {
+    pub stop_reason: StopReason,
+    pub final_contact_state: ContactState,
+    pub final_speed_mps: f64,
+    pub final_kinetic_j: f64,
+    pub termination_flags: TerminationFlags,
+    pub last_significant_impact_time_s: Option<f64>,
+    pub last_significant_impact_x_m: Option<f64>,
+    pub last_significant_impact_y_m: Option<f64>,
+    pub last_significant_impact_z_m: Option<f64>,
+    pub distance_last_significant_impact_to_final_m: Option<f64>,
+    pub low_energy_contact_count: usize,
+    pub terrain_normal_x: Option<f64>,
+    pub terrain_normal_y: Option<f64>,
+    pub terrain_normal_z: Option<f64>,
+    pub terrain_slope_abs: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -286,9 +331,12 @@ impl SimulationConfig {
         } else {
             simulate_fixed_step_with_events(self.initial_state(), self.block, terrain, settings)
         };
+        let stop_state =
+            build_stop_state_provenance(&result.samples, &result.impact_events, terrain, &settings);
         Ok(SimulationResult {
             samples: result.samples,
             impact_events: result.impact_events,
+            stop_state,
         })
     }
 
@@ -405,6 +453,7 @@ pub fn simulate_one_trajectory_with_terrain_and_contact_parameters(
         request,
         samples: result.samples,
         impact_events: result.impact_events,
+        stop_state: result.stop_state,
         summary,
     })
 }
@@ -479,6 +528,87 @@ pub fn summarize_trajectory(
         runout_m,
         max_speed_mps,
         max_kinetic_energy_j,
+    })
+}
+
+fn build_stop_state_provenance(
+    samples: &[TrajectorySample],
+    impact_events: &[ImpactEvent],
+    terrain: &dyn Terrain,
+    settings: &IntegratorSettings,
+) -> Option<StopStateProvenance> {
+    let last = samples.last()?;
+    let step_count = samples.len().saturating_sub(1);
+    let configured_max_steps = (settings.max_time_s / settings.dt_s + 1.0e-12).floor() as usize;
+    let t_max_reached = last.time_s + 1.0e-12 >= settings.max_time_s;
+    let max_steps_reached = step_count >= configured_max_steps;
+    let low_velocity = last.speed_mps <= settings.stop_speed_mps;
+    let final_contact_state = last.contact_state;
+    let stop_reason = if final_contact_state == ContactState::Stopped {
+        StopReason::ExplicitStoppedState
+    } else if t_max_reached && final_contact_state == ContactState::Airborne {
+        StopReason::TMaxReachedAirborne
+    } else if low_velocity {
+        StopReason::FinalSpeedBelowStopThreshold
+    } else if t_max_reached
+        && matches!(
+            final_contact_state,
+            ContactState::Impact | ContactState::Sliding | ContactState::Rolling
+        )
+    {
+        StopReason::TMaxReachedInContactState
+    } else if t_max_reached {
+        StopReason::TMaxReachedOther
+    } else {
+        StopReason::Unknown
+    };
+
+    let last_significant_impact = impact_events.iter().rev().find(|event| {
+        event.incoming_normal_speed_mps >= STOP_SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
+    });
+    let distance_last_significant_impact_to_final_m = last_significant_impact
+        .map(|event| ((last.x_m - event.x_m).powi(2) + (last.y_m - event.y_m).powi(2)).sqrt());
+    let low_energy_contact_count = samples
+        .iter()
+        .filter(|sample| {
+            matches!(
+                sample.contact_state,
+                ContactState::Impact
+                    | ContactState::Sliding
+                    | ContactState::Rolling
+                    | ContactState::Stopped
+            ) && sample.speed_mps <= STOP_LOW_ENERGY_CONTACT_SPEED_MPS
+        })
+        .count();
+    let normal = terrain.normal(last.x_m, last.y_m);
+    let terrain_slope_abs = if normal.z.abs() > 1.0e-12 {
+        Some((normal.x.hypot(normal.y) / normal.z.abs()).abs())
+    } else {
+        None
+    };
+
+    Some(StopStateProvenance {
+        stop_reason,
+        final_contact_state,
+        final_speed_mps: last.speed_mps,
+        final_kinetic_j: last.kinetic_j,
+        termination_flags: TerminationFlags {
+            low_velocity,
+            max_steps: max_steps_reached && final_contact_state != ContactState::Stopped,
+            t_max: t_max_reached && final_contact_state != ContactState::Stopped,
+            domain_exit: false,
+            terrain_error: false,
+        },
+        last_significant_impact_time_s: last_significant_impact.map(|event| event.time_s),
+        last_significant_impact_x_m: last_significant_impact.map(|event| event.x_m),
+        last_significant_impact_y_m: last_significant_impact.map(|event| event.y_m),
+        last_significant_impact_z_m: last_significant_impact.map(|event| event.z_m),
+        distance_last_significant_impact_to_final_m,
+        low_energy_contact_count,
+        terrain_normal_x: Some(normal.x),
+        terrain_normal_y: Some(normal.y),
+        terrain_normal_z: Some(normal.z),
+        terrain_slope_abs,
     })
 }
 

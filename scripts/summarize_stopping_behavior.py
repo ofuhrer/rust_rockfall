@@ -296,6 +296,67 @@ def summarize_deposition_csv(
 def summarize_manifest(spec: InputSpec) -> dict[str, object]:
     manifest = json.loads(spec.path.read_text(encoding="utf-8"))
     performance = manifest.get("performance") or {}
+    stop_state = manifest.get("stop_state") or {}
+    if stop_state:
+        final_contact_state = stop_state.get("final_contact_state")
+        stop_reason = stop_state.get("stop_reason")
+        termination = stop_state.get("termination_flags") or {}
+        trajectory_count = safe_int(performance.get("trajectory_count"))
+        gaps = []
+        if trajectory_count not in (None, 1):
+            gaps.append(
+                "manifest stop_state describes the primary single-run trajectory; ensemble stop-state aggregation is not yet instrumented"
+            )
+        if stop_state.get("last_significant_impact_time_s") is None:
+            gaps.append("no significant impact reached the explicit incoming-normal-speed threshold")
+        if not all(
+            stop_state.get(field) is not None
+            for field in ("terrain_normal_x", "terrain_normal_y", "terrain_normal_z")
+        ):
+            gaps.append("terrain normal at final position is unavailable")
+        return {
+            "source_label": spec.label,
+            "source_kind": "run_manifest_v1",
+            "source_path": str(spec.path),
+            "dataset_role": infer_role(spec.label, spec.path),
+            "contact_model": infer_contact_model(spec.label, spec.path),
+            "row_count": None,
+            "trajectory_count": trajectory_count,
+            "explicit_stop_state_available": True,
+            "stop_reason": stop_reason,
+            "final_contact_state": final_contact_state,
+            "termination_low_velocity": bool(termination.get("low_velocity")),
+            "termination_max_steps": bool(termination.get("max_steps")),
+            "termination_t_max": bool(termination.get("t_max")),
+            "termination_domain_exit": bool(termination.get("domain_exit")),
+            "termination_terrain_error": bool(termination.get("terrain_error")),
+            "last_significant_impact_time_s": stop_state.get("last_significant_impact_time_s"),
+            "terrain_normal_x": stop_state.get("terrain_normal_x"),
+            "terrain_normal_y": stop_state.get("terrain_normal_y"),
+            "terrain_normal_z": stop_state.get("terrain_normal_z"),
+            "terrain_slope_abs": stop_state.get("terrain_slope_abs"),
+            "final_status_counts": ({final_contact_state: 1} if final_contact_state else {}),
+            "stop_reason_counts": ({stop_reason: 1} if stop_reason else {}),
+            "final_speed_mean_mps": safe_float(stop_state.get("final_speed_mps")),
+            "final_speed_p95_mps": safe_float(stop_state.get("final_speed_mps")),
+            "final_speed_max_mps": safe_float(stop_state.get("final_speed_mps")),
+            "final_kinetic_mean_j": safe_float(stop_state.get("final_kinetic_j")),
+            "final_kinetic_max_j": safe_float(stop_state.get("final_kinetic_j")),
+            "impact_count_total": safe_int(performance.get("impact_event_count")),
+            "impact_count_mean": None,
+            "significant_impact_count_total": None,
+            "low_energy_contact_count_total": safe_int(stop_state.get("low_energy_contact_count")),
+            "distance_last_significant_impact_to_final_mean_m": safe_float(
+                stop_state.get("distance_last_significant_impact_to_final_m")
+            ),
+            "distance_last_significant_impact_to_final_max_m": safe_float(
+                stop_state.get("distance_last_significant_impact_to_final_m")
+            ),
+            "runout_mean_m": None,
+            "runout_max_m": None,
+            "terrain_slope_near_stop_available": stop_state.get("terrain_slope_abs") is not None,
+            "instrumentation_gaps": gaps,
+        }
     gaps = [
         "manifest performance fields give aggregate counts only, not per-trajectory stopping state",
         "final speed, final kinetic energy, and last significant impact distance require trajectory/deposition outputs",
@@ -335,6 +396,19 @@ FIELDNAMES = [
     "contact_model",
     "trajectory_count",
     "row_count",
+    "explicit_stop_state_available",
+    "stop_reason",
+    "final_contact_state",
+    "termination_low_velocity",
+    "termination_max_steps",
+    "termination_t_max",
+    "termination_domain_exit",
+    "termination_terrain_error",
+    "last_significant_impact_time_s",
+    "terrain_normal_x",
+    "terrain_normal_y",
+    "terrain_normal_z",
+    "terrain_slope_abs",
     "final_status_counts",
     "stop_reason_counts",
     "final_speed_mean_mps",
