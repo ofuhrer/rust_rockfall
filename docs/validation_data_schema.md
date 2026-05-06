@@ -49,6 +49,11 @@ requires `schema_version: benchmark_case_v1` for checked-in validation and
 verification cases and reports unknown keys, but runtime case loading remains
 legacy-compatible for now.
 
+`cargo run -- validate` keeps the legacy tab-separated output by default. Use
+`--json-lines` with `verify`, `validate`, or `benchmark` for opt-in detailed
+case-status records containing `completion_status`, `execution_status`,
+`scientific_status`, warnings, failures, and metrics.
+
 Restitution coefficients must be finite values in `[0, 1]`. Values above
 `1.0` are rejected instead of being silently clamped by the contact solver,
 so reported case parameters match the active physics. Friction and the

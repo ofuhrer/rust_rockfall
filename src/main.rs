@@ -35,6 +35,8 @@ enum Command {
         case: Option<PathBuf>,
         #[arg(long)]
         all: bool,
+        #[arg(long)]
+        json_lines: bool,
     },
     /// Run validation cases from validation/cases/.
     Validate {
@@ -42,6 +44,8 @@ enum Command {
         case: Option<PathBuf>,
         #[arg(long)]
         all: bool,
+        #[arg(long)]
+        json_lines: bool,
     },
     /// Run lightweight synthetic benchmark cases.
     Benchmark {
@@ -49,6 +53,8 @@ enum Command {
         case: Option<PathBuf>,
         #[arg(long)]
         all: bool,
+        #[arg(long)]
+        json_lines: bool,
     },
 }
 
@@ -77,13 +83,26 @@ fn main() -> Result<(), CliError> {
             impact_events_csv,
             impact_events_json,
         } => run_simulation(config, output, impact_events_csv, impact_events_json),
-        Command::Verify { case, all } => run_case_command(case, all, Path::new("verification")),
-        Command::Validate { case, all } => {
-            run_case_command(case, all, Path::new("validation/cases"))
-        }
-        Command::Benchmark { case, all } => {
-            run_case_command(case, all, Path::new("verification/synthetic/benchmarks"))
-        }
+        Command::Verify {
+            case,
+            all,
+            json_lines,
+        } => run_case_command(case, all, json_lines, Path::new("verification")),
+        Command::Validate {
+            case,
+            all,
+            json_lines,
+        } => run_case_command(case, all, json_lines, Path::new("validation/cases")),
+        Command::Benchmark {
+            case,
+            all,
+            json_lines,
+        } => run_case_command(
+            case,
+            all,
+            json_lines,
+            Path::new("verification/synthetic/benchmarks"),
+        ),
     }
 }
 
@@ -120,7 +139,12 @@ fn run_simulation(
     Ok(())
 }
 
-fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(), CliError> {
+fn run_case_command(
+    case: Option<PathBuf>,
+    all: bool,
+    json_lines: bool,
+    root: &Path,
+) -> Result<(), CliError> {
     let case_paths = if all {
         collect_yaml_cases(root)?
     } else if let Some(case) = case {
@@ -135,8 +159,12 @@ fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(),
     let mut skipped = 0usize;
     for path in case_paths {
         let report = validation::run_case_file(&path)?;
-        let metrics_json = serde_json::to_string(&report.metrics)?;
-        println!("{}\t{:?}\t{}", path.display(), report.status, metrics_json);
+        if json_lines {
+            println!("{}", format_case_report_json_line(&path, &report)?);
+        } else {
+            let metrics_json = serde_json::to_string(&report.metrics)?;
+            println!("{}\t{:?}\t{}", path.display(), report.status, metrics_json);
+        }
         match report.status {
             validation::CaseStatus::Failed => failed += 1,
             validation::CaseStatus::Skipped => skipped += 1,
@@ -151,6 +179,22 @@ fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(),
         eprintln!("{skipped} case(s) skipped because optional data were unavailable");
     }
     Ok(())
+}
+
+fn format_case_report_json_line(
+    path: &Path,
+    report: &validation::CaseReport,
+) -> Result<String, serde_json::Error> {
+    serde_json::to_string(&serde_json::json!({
+        "path": path,
+        "case_id": report.case_id,
+        "completion_status": report.status,
+        "execution_status": report.execution_status,
+        "scientific_status": report.scientific_status,
+        "warnings": report.warnings,
+        "failures": report.failures,
+        "metrics": report.metrics,
+    }))
 }
 
 fn collect_yaml_cases(root: &Path) -> Result<Vec<PathBuf>, CliError> {
@@ -300,5 +344,43 @@ mod tests {
         ));
 
         fs::remove_dir(root).unwrap();
+    }
+
+    #[test]
+    fn detailed_case_output_includes_execution_and_scientific_status() {
+        let parameters = serde_json::from_str(
+            r#"{
+                "block": { "radius_m": 0.5, "mass_kg": 1.0 },
+                "initial_position_m": [0.0, 0.0, 1.0],
+                "initial_velocity_mps": [0.0, 0.0, 0.0],
+                "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0 },
+                "dt_s": 0.01,
+                "max_time_s": 0.01
+            }"#,
+        )
+        .unwrap();
+        let report = validation::CaseReport {
+            case_id: "status_fixture".to_string(),
+            status: validation::CaseStatus::Passed,
+            execution_status: validation::ExecutionStatus::Completed,
+            scientific_status: validation::ScientificStatus::MeetsAcceptanceThresholds,
+            timestamp_unix_s: 0,
+            model_version: "test".to_string(),
+            git_hash: None,
+            metrics: Default::default(),
+            tolerances: Default::default(),
+            failures: vec![],
+            warnings: vec!["diagnostic warning".to_string()],
+            parameters,
+        };
+
+        let line = format_case_report_json_line(Path::new("case.yaml"), &report).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&line).unwrap();
+
+        assert_eq!(json["path"], "case.yaml");
+        assert_eq!(json["completion_status"], "passed");
+        assert_eq!(json["execution_status"], "completed");
+        assert_eq!(json["scientific_status"], "meets_acceptance_thresholds");
+        assert_eq!(json["warnings"][0], "diagnostic warning");
     }
 }
