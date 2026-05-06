@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +18,18 @@ import scripts.prepare_tschamut_swissalti3d_pilot as tschamut_pilot
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "hazard"
 SWISS_PILOT = ROOT / "validation" / "data" / "processed" / "swisstopo_pilot"
+PHASE1_SMOKE_CASE = ROOT / "validation" / "cases" / "probabilistic_phase1_smoke.yaml"
+PHASE1_SMOKE_OUTPUTS = [
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_metrics.json",
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_manifest.json",
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectory.csv",
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectory_metadata.csv",
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_release_points.csv",
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_deposition.csv",
+]
+PHASE1_SMOKE_DIRS = [
+    ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectories",
+]
 
 
 class HazardLayerTests(unittest.TestCase):
@@ -631,6 +645,117 @@ class HazardLayerTests(unittest.TestCase):
                     ]
                 )
 
+    def test_phase1_smoke_example_runs_validation_and_labelled_hazard_package(self) -> None:
+        cleanup_phase1_smoke_outputs()
+        self.addCleanup(cleanup_phase1_smoke_outputs)
+        subprocess.run(
+            ["cargo", "run", "--quiet", "--", "validate", "--case", str(PHASE1_SMOKE_CASE)],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        trajectory_metadata = ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectory_metadata.csv"
+        self.assertTrue(trajectory_metadata.exists())
+        first_metadata_row = read_first_metadata_row(trajectory_metadata)
+        self.assertEqual(first_metadata_row["map_product_id"], "phase1_smoke_map")
+        self.assertEqual(first_metadata_row["source_zone_id"], "swissalti3d_pilot_source_area")
+        self.assertEqual(first_metadata_row["scenario_id"], "phase1_smoke_scenario")
+        self.assertEqual(first_metadata_row["block_scenario_id"], "phase1_smoke_block")
+        self.assertEqual(first_metadata_row["terrain_material_assumption_id"], "uniform_global_parameters")
+        self.assertEqual(first_metadata_row["model_configuration_id"], "translational_v0")
+        self.assertEqual(first_metadata_row["sampling_weight"], "1.0")
+        self.assertEqual(first_metadata_row["probability_mode"], "sampling_weighted_conditional")
+        self.assertEqual(first_metadata_row["normalization_scope"], "conditioned_on_scenario")
+        self.assertEqual(first_metadata_row["annual_frequency_per_year"], "")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            unlabelled_case = yaml_load(PHASE1_SMOKE_CASE)
+            unlabelled_case.pop("hazard_map_package", None)
+            unlabelled_case_path = work / "probabilistic_phase1_smoke_unlabelled.yaml"
+            write_yaml(unlabelled_case_path, unlabelled_case)
+            unweighted_case = yaml_load(PHASE1_SMOKE_CASE)
+            unweighted_case.pop("hazard_map_package", None)
+            unweighted_case.pop("hazard_probability", None)
+            unweighted_case_path = work / "probabilistic_phase1_smoke_unweighted.yaml"
+            write_yaml(unweighted_case_path, unweighted_case)
+            unweighted_dir = work / "unweighted"
+            unlabelled_dir = work / "unlabelled"
+            labelled_dir = work / "labelled"
+            package_path = work / "map_package_manifest.json"
+            representative_trajectory = (
+                ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectory.csv"
+            )
+            ensemble_trajectory_dir = (
+                ROOT / "validation" / "results" / "probabilistic_phase1_smoke_trajectories"
+            )
+
+            common = [
+                "--trajectory",
+                str(representative_trajectory),
+                "--ensemble-trajectories-dir",
+                str(ensemble_trajectory_dir),
+                "--cell-size",
+                "2.0",
+                "--no-plots",
+            ]
+            self.assertEqual(
+                hazard.main_with_args(
+                    ["--case", str(unweighted_case_path), "--output-dir", str(unweighted_dir), *common]
+                ),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args(
+                    ["--case", str(unlabelled_case_path), "--output-dir", str(unlabelled_dir), *common]
+                ),
+                0,
+            )
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(PHASE1_SMOKE_CASE),
+                        "--output-dir",
+                        str(labelled_dir),
+                        "--map-package-manifest-json",
+                        str(package_path),
+                        *common,
+                    ]
+                ),
+                0,
+            )
+
+            for weighted_key, unweighted_key in (
+                ("weighted_reach_probability", "reach_probability"),
+                ("weighted_kinetic_energy_exceedance_5j", "kinetic_energy_exceedance_5j"),
+                ("weighted_jump_height_exceedance_0p05m", "jump_height_exceedance_0p05m"),
+                ("weighted_velocity_exceedance_1mps", "velocity_exceedance_1mps"),
+            ):
+                self.assertEqual(
+                    read_layer(unlabelled_dir / f"probabilistic_phase1_smoke_{weighted_key}.csv", weighted_key),
+                    read_layer(unweighted_dir / f"probabilistic_phase1_smoke_{unweighted_key}.csv", unweighted_key),
+                )
+                self.assertEqual(
+                    read_layer(unlabelled_dir / f"probabilistic_phase1_smoke_{weighted_key}.csv", weighted_key),
+                    read_layer(labelled_dir / f"probabilistic_phase1_smoke_{weighted_key}.csv", weighted_key),
+                )
+
+            manifest = json.loads((labelled_dir / "probabilistic_phase1_smoke_manifest.json").read_text())
+            package = json.loads(package_path.read_text())
+            self.assertEqual(manifest["hazard_map_package"]["map_product_id"], "phase1_smoke_map")
+            self.assertEqual(manifest["hazard_map_package"]["probability_mode"], "sampling_weighted_conditional")
+            self.assertEqual(manifest["hazard_map_package"]["scenario_ids"], ["phase1_smoke_scenario"])
+            self.assertFalse(manifest["hazard_map_package"]["annual_frequency_fields_present"])
+            self.assertTrue(manifest["layer_semantics"])
+            self.assertTrue(all(not layer["is_annualized"] for layer in manifest["layer_semantics"]))
+            self.assertEqual(package["schema_version"], "map_package_manifest_v1")
+            self.assertEqual(package["map_product_id"], "phase1_smoke_map")
+            self.assertEqual(package["probability_mode"], "sampling_weighted_conditional")
+            self.assertEqual(package["operational_status"], "research_diagnostic")
+            self.assertTrue(all(not layer["is_annualized"] for layer in package["layer_semantics"]))
+
     def test_sampling_weighted_layers_reject_negative_weights(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -1105,6 +1230,18 @@ def write_metadata_csv(path: Path, rows: list[dict[str, str]]) -> None:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def read_first_metadata_row(path: Path) -> dict[str, str]:
+    with path.open(newline="") as file:
+        return dict(next(csv.DictReader(file)))
+
+
+def cleanup_phase1_smoke_outputs() -> None:
+    for path in PHASE1_SMOKE_OUTPUTS:
+        path.unlink(missing_ok=True)
+    for path in PHASE1_SMOKE_DIRS:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 if __name__ == "__main__":

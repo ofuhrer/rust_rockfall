@@ -1,0 +1,25 @@
+# Tiny synthetic source-zone sidecar for the Phase 1 probabilistic hazard smoke.
+# This is not real source-zone inventory data and has no operational meaning.
+schema_version: source_zone_metadata_v1
+source_zone_id: swissalti3d_pilot_source_area
+crs_epsg: 2056
+vertical_datum: LN02
+geometry:
+  type: polygon
+  vertices:
+    - [2600001.0, 1200001.0]
+    - [2600005.0, 1200001.0]
+    - [2600005.0, 1200005.0]
+    - [2600001.0, 1200005.0]
+release_sampling_policy:
+  mode: deterministic_grid
+  seed: 2056001
+  release_count: 4
+  release_cell_id_prefix: swiss_pilot_release
+provenance:
+  source: synthetic Phase 1 smoke fixture derived from the checked-in swissALTI3D-style pilot source area
+  license: synthetic fixture for repository tests
+  notes:
+    - Demonstrates source-zone metadata joins only.
+    - Not a scientific benchmark or operational hazard product.
+annual_release_frequency_per_year: null

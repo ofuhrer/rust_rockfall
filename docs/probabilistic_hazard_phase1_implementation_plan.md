@@ -85,6 +85,18 @@ Implemented in Slice D:
 - `annual_frequency` and `physical_probability` remain rejected by the hazard
   builder in Phase 1.
 
+Implemented in Slice E:
+
+- checked-in tiny smoke source-zone and scenario sidecars under
+  `validation/data/processed/probabilistic_phase1/`;
+- checked-in validation case
+  `validation/cases/probabilistic_phase1_smoke.yaml`;
+- end-to-end tests that run validation, inspect `trajectory_metadata_table_v1`,
+  build weighted hazard layers, write labelled hazard and map-package manifests,
+  and verify labelled/unlabelled raster parity;
+- all generated validation and hazard products remain under ignored result
+  directories or temporary test directories.
+
 ## Phase 1 Schema Additions
 
 ### Map Package Identity
@@ -478,6 +490,12 @@ Deliverables:
   compatibility.
 
 No large raw data or generated outputs are committed.
+
+Implementation status: complete. The smoke fixture demonstrates the full Phase
+1 path from validated source-zone/scenario metadata through trajectory metadata
+propagation and labelled hazard package writing. It is explicitly a CI-safe
+semantics fixture, not a benchmark, calibration case, scientific validation
+result, or operational hazard product.
 
 ## Required Tests
 

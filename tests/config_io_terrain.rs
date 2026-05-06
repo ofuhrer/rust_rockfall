@@ -1906,6 +1906,84 @@ outputs:
 }
 
 #[test]
+fn probabilistic_phase1_smoke_case_propagates_scenario_metadata() {
+    let diagnostics = PathBuf::from("validation/results/probabilistic_phase1_smoke_metrics.json");
+    let manifest = PathBuf::from("validation/results/probabilistic_phase1_smoke_manifest.json");
+    let metadata =
+        PathBuf::from("validation/results/probabilistic_phase1_smoke_trajectory_metadata.csv");
+    let trajectory = PathBuf::from("validation/results/probabilistic_phase1_smoke_trajectory.csv");
+    let releases =
+        PathBuf::from("validation/results/probabilistic_phase1_smoke_release_points.csv");
+    let deposition = PathBuf::from("validation/results/probabilistic_phase1_smoke_deposition.csv");
+    let trajectories = PathBuf::from("validation/results/probabilistic_phase1_smoke_trajectories");
+    for path in [
+        &diagnostics,
+        &manifest,
+        &metadata,
+        &trajectory,
+        &releases,
+        &deposition,
+    ] {
+        let _ = fs::remove_file(path);
+    }
+    let _ = fs::remove_dir_all(&trajectories);
+
+    let report = run_case_file("validation/cases/probabilistic_phase1_smoke.yaml").unwrap();
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert!(manifest.exists());
+    assert!(metadata.exists());
+    assert!(trajectory.exists());
+    assert_eq!(fs::read_dir(&trajectories).unwrap().count(), 4);
+
+    let row = read_first_csv_row(&metadata);
+    assert_eq!(row["map_product_id"], "phase1_smoke_map");
+    assert_eq!(row["source_zone_id"], "swissalti3d_pilot_source_area");
+    assert_eq!(row["scenario_id"], "phase1_smoke_scenario");
+    assert_eq!(row["release_cell_id"], row["release_id"]);
+    assert_eq!(row["block_scenario_id"], "phase1_smoke_block");
+    assert_eq!(
+        row["terrain_material_assumption_id"],
+        "uniform_global_parameters"
+    );
+    assert_eq!(row["model_configuration_id"], "translational_v0");
+    assert_eq!(row["sampling_weight"], "1.0");
+    assert_eq!(row["probability_mode"], "sampling_weighted_conditional");
+    assert_eq!(row["normalization_scope"], "conditioned_on_scenario");
+    assert_eq!(row["annual_frequency_per_year"], "");
+
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["map_product_id"],
+        "phase1_smoke_map"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["source_zone_id"],
+        "swissalti3d_pilot_source_area"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["scenario_id"],
+        "phase1_smoke_scenario"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["probability_mode"],
+        "sampling_weighted_conditional"
+    );
+
+    for path in [
+        &diagnostics,
+        &manifest,
+        &metadata,
+        &trajectory,
+        &releases,
+        &deposition,
+    ] {
+        let _ = fs::remove_file(path);
+    }
+    let _ = fs::remove_dir_all(&trajectories);
+}
+
+#[test]
 fn probabilistic_metadata_requires_source_zone_sidecar() {
     let case_path = temp_path("probabilistic_metadata_missing_source.yaml");
     let metadata = temp_path("probabilistic_metadata_missing_source.csv");

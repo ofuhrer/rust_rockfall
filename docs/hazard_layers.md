@@ -179,6 +179,27 @@ hazard manifest paths, layer semantics, limitations, and
 Phase 1 hazard builder. Existing runs without `hazard_map_package` remain
 diagnostic and are not relabelled probabilistic.
 
+A complete tiny Phase 1 smoke case is checked in at
+`validation/cases/probabilistic_phase1_smoke.yaml`. It uses synthetic fixture
+metadata only and writes generated files under ignored result directories:
+
+```bash
+cargo run -- validate --case validation/cases/probabilistic_phase1_smoke.yaml
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/probabilistic_phase1_smoke.yaml \
+  --trajectory validation/results/probabilistic_phase1_smoke_trajectory.csv \
+  --ensemble-trajectories-dir validation/results/probabilistic_phase1_smoke_trajectories \
+  --output-dir hazard/results/probabilistic_phase1_smoke \
+  --cell-size 2 \
+  --no-plots
+```
+
+The explicit `--trajectory` plus `--ensemble-trajectories-dir` arguments make
+the hazard input set match the trajectory metadata table exactly: one
+representative trajectory plus the generated source-zone trajectories. This is
+important for the smoke fixture because all `sampling_weight` values are `1.0`,
+so weighted and unweighted trajectory-derived layers should match.
+
 Hazard manifests also record additive artifact identity metadata. Generated
 single-file outputs include SHA-256 checksums, and `input_artifacts` records the
 case, diagnostics, trajectory CSV collection, deposition CSV, impact-event CSV
