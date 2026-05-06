@@ -361,10 +361,11 @@ compatibility gates pass.
 
 ## Pre-Dry-Run Guardrails
 
-Before any integrator-adjacent dry run, the public API must expose the
-scaffold-owned preparation path as the normal shape-contact route. The raw
-low-level impulse kernel is crate-internal analytic/test support so callers
-cannot mix support geometry, mass, and inertia from unrelated sources.
+Before any integrator-adjacent dry run, crate-internal shape-contact code must
+use the scaffold-owned preparation path as the normal route. Public APIs must
+not expose an ungated impulse application path. The raw low-level impulse kernel
+is crate-internal analytic/test support so callers cannot mix support geometry,
+mass, and inertia from unrelated sources.
 
 The support-corner tie-break policy is frozen for the scaffold: the selected
 corner is based on the sign of the body-frame support direction, and exact zero
@@ -394,12 +395,15 @@ Contact-gap semantics are:
 - `separated_moving_toward`: support signed gap is positive and contact-point
   normal velocity is negative; no impulse is applied because contact has not
   occurred yet.
-- `touching`: support signed gap is within the fixed dry-run tolerance; the
-  scaffold-owned impulse path may apply an impulse only if contact-point normal
-  velocity is incoming.
+- `touching`: support signed gap is within the fixed contact-gap tolerance of
+  `1.0e-9 m`; the scaffold-owned impulse path may apply an impulse only if
+  contact-point normal velocity is incoming.
 - `penetrating`: support signed gap is negative beyond tolerance; the
   scaffold-owned impulse path may apply an impulse only if contact-point normal
   velocity is incoming.
+
+The contact-gap tolerance is a deterministic pre-runtime scaffold convention,
+not a calibrated contact parameter.
 
 The preparation-layer diagnostics remain incomplete for public runtime use; full
 orientation evolution, support-corner changes through time, projection energy,

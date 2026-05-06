@@ -239,7 +239,8 @@ impl ShapeContactV0Scaffold {
         Ok(ShapeContactV0PreparedImpulse { support, input })
     }
 
-    pub fn apply_support_impulse(
+    #[allow(dead_code)]
+    pub(crate) fn apply_support_impulse(
         &self,
         pre_state: BodyState,
         terrain_normal_world: Vec3,
@@ -677,10 +678,10 @@ pub fn shape_contact_v0_energy_diagnostic(
 
 /// Crate-internal low-level analytic impulse helper.
 ///
-/// Shape-contact paths must prefer
-/// [`ShapeContactV0Scaffold::apply_support_impulse`] so support geometry, mass,
-/// and inertia all come from the same validated scaffold. This helper remains
-/// internal to avoid public callers mixing those quantities by hand.
+/// Shape-contact runtime-adjacent paths must prefer
+/// [`shape_contact_v0_prepare_contact`] so support-gap classification gates
+/// impulse application. This helper remains internal to avoid public callers
+/// mixing support geometry, mass, and inertia by hand.
 pub(crate) fn shape_contact_v0_apply_support_impulse(
     support: &ShapeContactV0SupportDiagnostic,
     input: ShapeContactV0ImpulseInput,
@@ -1322,6 +1323,33 @@ mod tests {
     }
 
     #[test]
+    fn shape_contact_v0_test_step_matches_normal_restitution() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert!(result.diagnostic.impacted);
+        assert_close(
+            result.diagnostic.pre_contact_normal_velocity_mps,
+            -2.0,
+            1.0e-12,
+        );
+        assert_close(
+            result.diagnostic.post_contact_normal_velocity_mps,
+            1.0,
+            1.0e-12,
+        );
+        assert_close(result.diagnostic.tangential_impulse_norm_n_s, 0.0, 1.0e-12);
+    }
+
+    #[test]
     fn shape_contact_v0_test_step_tangential_impulse_respects_coulomb_cap() {
         let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
         let result = shape_contact_v0_test_contact_step(
@@ -1368,6 +1396,32 @@ mod tests {
     }
 
     #[test]
+    fn shape_contact_v0_test_step_zero_initial_tangent_speed_is_finite() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 0.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_close(
+            result.diagnostic.pre_contact_tangential_speed_mps,
+            0.0,
+            1.0e-12,
+        );
+        assert_close(result.diagnostic.tangential_impulse_norm_n_s, 0.0, 1.0e-12);
+        assert!(result
+            .diagnostic
+            .post_contact_tangential_speed_mps
+            .is_finite());
+        assert_close(result.diagnostic.coulomb_cap_ratio, 0.0, 1.0e-12);
+    }
+
+    #[test]
     fn shape_contact_v0_test_step_dissipative_contact_does_not_create_energy() {
         let scaffold = test_scaffold(3.0, [2.0, 3.0, 4.0]);
         let mut pre_state = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(3.0, -1.0, -2.0));
@@ -1403,6 +1457,52 @@ mod tests {
             SHAPE_CONTACT_V0_MODEL
         );
         assert_close(quaternion_norm(scaffold.orientation_wxyz), 1.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_couples_support_mass_and_inertia() {
+        let scaffold = test_scaffold(12.0, [2.0, 4.0, 6.0]);
+        let pre_state = BodyState::new(Vec3::new(10.0, 20.0, 30.0), Vec3::new(0.0, 0.0, -1.0));
+        let support = scaffold
+            .support_point(pre_state.position_m, Vec3::new(0.0, 0.0, 1.0))
+            .unwrap();
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state,
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.25, 0.5, 0.1),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(support.support_corner_signs, [1, 1, -1]);
+        assert_close(support.support_point_m[0], 11.0, 1.0e-12);
+        assert_close(support.support_point_m[1], 22.0, 1.0e-12);
+        assert_close(support.support_point_m[2], 27.0, 1.0e-12);
+        assert_eq!(result.diagnostic.support_point_m, support.support_point_m);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_rejects_invalid_orientation() {
+        let mut scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        scaffold.orientation_wxyz = [
+            std::f64::consts::FRAC_1_SQRT_2,
+            0.0,
+            std::f64::consts::FRAC_1_SQRT_2,
+            0.0,
+        ];
+        let error = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 0.0, 0.0),
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("identity orientation only"));
     }
 
     #[test]

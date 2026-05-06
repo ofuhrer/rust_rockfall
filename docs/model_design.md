@@ -134,7 +134,9 @@ explicit terrain contact point and normal, computes support gap and
 contact-point velocity diagnostics, and applies a scaffold-owned impulse update
 only for touching or penetrating contact without advancing a trajectory.
 Separated dry-run states are reported without impulse, including states moving
-toward future contact. Support-corner
+toward future contact. The contact-gap tolerance is fixed at `1.0e-9 m` as a
+deterministic pre-runtime scaffold convention, not as a calibrated contact
+parameter. Support-corner
 selection uses a deterministic scaffold policy: exact zero components in the
 body-frame support direction choose the positive corner sign. This tie-break is
 not a physically validated face-contact model. The diagnostic schema is still

@@ -180,8 +180,10 @@ before runtime wiring. An internal contact-adjacent dry run can combine a
 terrain contact point, terrain normal, support gap diagnostic, and one
 scaffold-owned impulse update for touching or penetrating contact without
 producing validation or benchmark outputs. Separated dry-run states remain
-non-impulsive, even when moving toward future contact. The runtime diagnostic
-schema is still incomplete before public `shape_contact_v0` use.
+non-impulsive, even when moving toward future contact. The contact-gap tolerance
+is fixed at `1.0e-9 m` as a deterministic pre-runtime scaffold convention, not a
+calibrated contact parameter. The runtime diagnostic schema is still incomplete
+before public `shape_contact_v0` use.
 Support-corner tie breaks are deterministic: exact zero components in the
 body-frame support direction choose the positive corner sign. That policy is
 reproducibility scaffolding, not a validated face-contact law.
