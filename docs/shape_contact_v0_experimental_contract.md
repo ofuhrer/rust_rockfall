@@ -380,6 +380,25 @@ The first dry-run adapter is internal test support only. It accepts a validated
 `ShapeContactV0Scaffold`, pre-contact body state, explicit terrain contact
 point, terrain normal, and existing restitution/friction settings. It computes
 the scaffold support point, support signed gap relative to the supplied contact
-plane, contact-point velocity diagnostics, and one scaffold-owned impulse
-update. It does not advance a trajectory, write validation outputs, enable
-public benchmark cases, or change existing model behavior.
+plane, contact-point velocity diagnostics, and, when the support point is
+touching or penetrating the contact plane, one scaffold-owned impulse update. It
+does not advance a trajectory, write validation outputs, enable public benchmark
+cases, or change existing model behavior.
+
+Dry-run contact-gap semantics are:
+
+- `separated_moving_away`: support signed gap is positive and contact-point
+  normal velocity is nonnegative; no impulse is applied.
+- `separated_moving_toward`: support signed gap is positive and contact-point
+  normal velocity is negative; no impulse is applied because contact has not
+  occurred yet.
+- `touching`: support signed gap is within the fixed dry-run tolerance; the
+  scaffold-owned impulse path may apply an impulse only if contact-point normal
+  velocity is incoming.
+- `penetrating`: support signed gap is negative beyond tolerance; the
+  scaffold-owned impulse path may apply an impulse only if contact-point normal
+  velocity is incoming.
+
+The dry-run diagnostics remain incomplete for public runtime use; full
+orientation evolution, support-corner changes through time, projection energy,
+and manifest/runtime diagnostic rows are still deferred.

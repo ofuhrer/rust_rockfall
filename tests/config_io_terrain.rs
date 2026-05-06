@@ -550,31 +550,18 @@ fn shape_contact_v0_scaffold_owned_impulse_couples_support_mass_and_inertia() {
         gravity_mps2: 9.81,
     };
 
-    let prepared = scaffold
-        .impulse_input(pre, Vec3::new(0.0, 0.0, 1.0), settings)
+    let support = scaffold
+        .support_point(pre.position_m, Vec3::new(0.0, 0.0, 1.0))
         .unwrap();
-
-    assert_abs_diff_eq!(prepared.input.mass_kg, scaffold.mass_kg, epsilon = 1.0e-12);
-    for (actual, expected) in prepared
-        .input
-        .principal_moments_kg_m2
-        .iter()
-        .zip(scaffold.principal_moments_kg_m2)
-    {
-        assert_abs_diff_eq!(*actual, expected, epsilon = 1.0e-12);
-    }
-    assert_eq!(prepared.support.support_corner_signs, [1, 1, -1]);
-    assert_abs_diff_eq!(prepared.support.support_point_m[0], 11.0, epsilon = 1.0e-12);
-    assert_abs_diff_eq!(prepared.support.support_point_m[1], 22.0, epsilon = 1.0e-12);
-    assert_abs_diff_eq!(prepared.support.support_point_m[2], 27.0, epsilon = 1.0e-12);
+    assert_eq!(support.support_corner_signs, [1, 1, -1]);
+    assert_abs_diff_eq!(support.support_point_m[0], 11.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(support.support_point_m[1], 22.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(support.support_point_m[2], 27.0, epsilon = 1.0e-12);
 
     let result = scaffold
         .apply_support_impulse(pre, Vec3::new(0.0, 0.0, 1.0), settings)
         .unwrap();
-    assert_eq!(
-        result.diagnostic.support_point_m,
-        prepared.support.support_point_m
-    );
+    assert_eq!(result.diagnostic.support_point_m, support.support_point_m);
 }
 
 #[test]

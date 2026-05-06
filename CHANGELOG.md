@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added a pre-runtime, opt-in `shape_contact_v0` scaffold for analytic
+  box-shape metadata validation, support selection, impulse diagnostics, and
+  internal dry-run checks. It remains blocked from fixed-step simulation,
+  validation, and benchmarks; existing contact models and defaults are
+  unchanged.
 - Fixed persistent `translational_v0` sliding integration so tangential gravity
   is applied once per step after ballistic stepping. This is targeted as the
   `v0.6.1` patch-candidate physics bug fix and changes default numerical

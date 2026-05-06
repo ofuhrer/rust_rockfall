@@ -27,10 +27,9 @@ pub use geometry::SphereBlock;
 pub use shape::{
     select_box_support_point, shape_contact_v0_energy_diagnostic, BlockShapeMetadata,
     BlockShapeType, MassPropertyModel, ShapeContactV0EnergyDiagnostic,
-    ShapeContactV0ImpulseDiagnostic, ShapeContactV0ImpulseInput, ShapeContactV0ImpulseResult,
-    ShapeContactV0ImpulseSettings, ShapeContactV0PreparedImpulse, ShapeContactV0Scaffold,
-    ShapeContactV0SupportDiagnostic, ShapeDimensions, ShapeMassProperties, ShapeOrientation,
-    ShapeProvenance, SHAPE_CONTACT_V0_ACTIVE_SHAPE, SHAPE_CONTACT_V0_MODEL,
+    ShapeContactV0ImpulseDiagnostic, ShapeContactV0ImpulseResult, ShapeContactV0ImpulseSettings,
+    ShapeContactV0Scaffold, ShapeContactV0SupportDiagnostic, ShapeDimensions, ShapeMassProperties,
+    ShapeOrientation, ShapeProvenance, SHAPE_CONTACT_V0_ACTIVE_SHAPE, SHAPE_CONTACT_V0_MODEL,
     SHAPE_METADATA_SCHEMA_VERSION,
 };
 pub use simulation::{

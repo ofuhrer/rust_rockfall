@@ -131,10 +131,13 @@ come from different sources. A test-only single-contact state-transition wrapper
 exercises that path before any fixed-step integrator wiring. An internal
 contact-adjacent dry run also accepts an explicit terrain contact point and
 normal, computes support gap and contact-point velocity diagnostics, and applies
-one scaffold-owned impulse update without advancing a trajectory. Support-corner
+a scaffold-owned impulse update only for touching or penetrating contact without
+advancing a trajectory. Separated dry-run states are reported without impulse,
+including states moving toward future contact. Support-corner
 selection uses a deterministic scaffold policy: exact zero components in the
 body-frame support direction choose the positive corner sign. This tie-break is
-not a physically validated face-contact model.
+not a physically validated face-contact model. The diagnostic schema is still
+incomplete for public runtime use.
 Existing
 `translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
 unchanged.
