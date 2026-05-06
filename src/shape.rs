@@ -1022,6 +1022,71 @@ fn shape_contact_v0_test_contact_step(
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0DryRunInput {
+    pre_state: BodyState,
+    terrain_contact_point_m: Vec3,
+    terrain_normal_world: Vec3,
+    settings: ShapeContactV0ImpulseSettings,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone)]
+struct ShapeContactV0DryRunResult {
+    terrain_contact_point_m: [f64; 3],
+    support_signed_gap_m: f64,
+    impulse_result: ShapeContactV0ImpulseResult,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_contact_dry_run(
+    scaffold: &ShapeContactV0Scaffold,
+    input: ShapeContactV0DryRunInput,
+) -> Result<ShapeContactV0DryRunResult, ShapeMetadataError> {
+    validate_finite_triplet(
+        [
+            input.terrain_contact_point_m.x,
+            input.terrain_contact_point_m.y,
+            input.terrain_contact_point_m.z,
+        ],
+        "terrain_contact_point_m",
+    )?;
+    validate_finite_triplet(
+        [
+            input.terrain_normal_world.x,
+            input.terrain_normal_world.y,
+            input.terrain_normal_world.z,
+        ],
+        "terrain_normal_world",
+    )?;
+    let normal_norm = input.terrain_normal_world.norm();
+    if normal_norm == 0.0 {
+        return Err(ShapeMetadataError::Invalid(
+            "terrain_normal_world must be nonzero".to_string(),
+        ));
+    }
+    let normal = input.terrain_normal_world / normal_norm;
+    let prepared =
+        scaffold.impulse_input(input.pre_state, input.terrain_normal_world, input.settings)?;
+    let support_point = Vec3::new(
+        prepared.support.support_point_m[0],
+        prepared.support.support_point_m[1],
+        prepared.support.support_point_m[2],
+    );
+    let support_signed_gap_m = (support_point - input.terrain_contact_point_m).dot(&normal);
+    let impulse_result = shape_contact_v0_apply_support_impulse(&prepared.support, prepared.input)?;
+    Ok(ShapeContactV0DryRunResult {
+        terrain_contact_point_m: [
+            input.terrain_contact_point_m.x,
+            input.terrain_contact_point_m.y,
+            input.terrain_contact_point_m.z,
+        ],
+        support_signed_gap_m,
+        impulse_result,
+    })
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -1168,5 +1233,153 @@ mod tests {
             SHAPE_CONTACT_V0_MODEL
         );
         assert_close(quaternion_norm(scaffold.orientation_wxyz), 1.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_separating_state_has_no_normal_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, 0.5));
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state,
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 0.0, 1.0),
+            },
+        )
+        .unwrap();
+
+        assert!(!result.impulse_result.diagnostic.impacted);
+        assert_close(result.support_signed_gap_m, 0.0, 1.0e-12);
+        assert_close(
+            result.impulse_result.diagnostic.normal_impulse_n_s,
+            0.0,
+            1.0e-12,
+        );
+        assert_eq!(result.impulse_result.post_state, pre_state);
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_incoming_contact_rebounds_along_normal() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert!(result.impulse_result.diagnostic.impacted);
+        assert_close(
+            result
+                .impulse_result
+                .diagnostic
+                .post_contact_normal_velocity_mps,
+            1.0,
+            1.0e-12,
+        );
+        assert!(
+            result
+                .impulse_result
+                .diagnostic
+                .post_contact_normal_velocity_mps
+                > 0.0
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_handles_inclined_normal_deterministically() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let normal = Vec3::new(0.0, 1.0, 1.0);
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), -2.0 * normal.normalize()),
+                terrain_contact_point_m: Vec3::new(1.0, -1.0, 0.0),
+                terrain_normal_world: normal,
+                settings: settings(0.25, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.impulse_result.diagnostic.support_corner_signs,
+            [1, -1, -1]
+        );
+        assert_close(result.support_signed_gap_m, 0.0, 1.0e-12);
+        assert!(
+            result
+                .impulse_result
+                .diagnostic
+                .post_contact_normal_velocity_mps
+                > 0.0
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_flat_tie_break_remains_reproducible() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let first = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -1.0)),
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+        let second = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -1.0)),
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            first.impulse_result.diagnostic.support_corner_signs,
+            [1, 1, -1]
+        );
+        assert_eq!(
+            first.impulse_result.diagnostic.support_corner_signs,
+            second.impulse_result.diagnostic.support_corner_signs
+        );
+        assert_eq!(first.terrain_contact_point_m, [1.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_dissipative_contact_does_not_create_energy() {
+        let scaffold = test_scaffold(3.0, [2.0, 3.0, 4.0]);
+        let mut pre_state = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(3.0, -1.0, -2.0));
+        pre_state.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state,
+                terrain_contact_point_m: Vec3::new(1.0, 1.5, 1.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.4, 0.0, 0.8),
+            },
+        )
+        .unwrap();
+
+        assert!(result.impulse_result.diagnostic.impacted);
+        assert!(
+            result
+                .impulse_result
+                .diagnostic
+                .energy
+                .contact_energy_delta_j
+                <= 1.0e-10
+        );
     }
 }

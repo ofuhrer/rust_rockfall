@@ -175,9 +175,12 @@ simulation and public validation runs. The raw low-level impulse kernel is
 crate-internal test support rather than a public validation API. The
 scaffold-owned preparation path keeps support selection, mass, and inertia tied
 to the validated sidecar; a test-only single-contact wrapper exercises this path
-before runtime wiring. Support-corner tie breaks are deterministic: exact zero
-components in the body-frame support direction choose the positive corner sign.
-That policy is reproducibility scaffolding, not a validated face-contact law.
+before runtime wiring. An internal contact-adjacent dry run can also combine a
+terrain contact point, terrain normal, support gap diagnostic, and one
+scaffold-owned impulse update without producing validation or benchmark outputs.
+Support-corner tie breaks are deterministic: exact zero components in the
+body-frame support direction choose the positive corner sign. That policy is
+reproducibility scaffolding, not a validated face-contact law.
 Current default contact, inertia, trajectory integration, and validation
 semantics remain spherical and continue to use `block.radius` and the current
 spherical moment of inertia.

@@ -128,7 +128,10 @@ benchmarks. The raw low-level impulse kernel is crate-internal test support; it
 is not a public integration API. Runtime-facing shape-contact work must route
 through the scaffold-owned API so support selection, mass, and inertia cannot
 come from different sources. A test-only single-contact state-transition wrapper
-exercises that path before any fixed-step integrator wiring. Support-corner
+exercises that path before any fixed-step integrator wiring. An internal
+contact-adjacent dry run also accepts an explicit terrain contact point and
+normal, computes support gap and contact-point velocity diagnostics, and applies
+one scaffold-owned impulse update without advancing a trajectory. Support-corner
 selection uses a deterministic scaffold policy: exact zero components in the
 body-frame support direction choose the positive corner sign. This tie-break is
 not a physically validated face-contact model.

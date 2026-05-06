@@ -373,3 +373,13 @@ not a physically validated face-contact model.
 
 `shape_contact_v0` remains blocked from fixed-step simulation, public validation,
 and benchmark execution until a later explicitly reviewed wiring slice.
+
+## Contact-Adjacent Dry Run
+
+The first dry-run adapter is internal test support only. It accepts a validated
+`ShapeContactV0Scaffold`, pre-contact body state, explicit terrain contact
+point, terrain normal, and existing restitution/friction settings. It computes
+the scaffold support point, support signed gap relative to the supplied contact
+plane, contact-point velocity diagnostics, and one scaffold-owned impulse
+update. It does not advance a trajectory, write validation outputs, enable
+public benchmark cases, or change existing model behavior.
