@@ -47,6 +47,13 @@ Restitution coefficients must be finite values in `[0, 1]`. Values above
 so reported case parameters match the active physics. Friction and the
 optional rolling-resistance coefficient must be finite and nonnegative.
 
+ESRI ASCII DEMs use the standard GIS convention: `xllcorner` and `yllcorner`
+are the outer lower-left cell corner, raster values are samples at cell
+centers, and `extent_lv95_m` describes the full outer raster footprint. Strict
+`ascii_dem` interpolation accepts cell-center-domain queries; the opt-in
+`ascii_dem_clamped` variant clamps out-of-domain queries to the nearest cell
+center before interpolating.
+
 If `t_max` and `max_steps` are both supplied, the runner uses the shorter
 horizon: `min(t_max, max_steps * dt)`. YAML case defaults are intentionally
 small for smoke tests (`dt = 0.01 s`, `t_max = 1.0 s`, and

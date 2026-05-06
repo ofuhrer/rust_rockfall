@@ -6,6 +6,11 @@
   is applied once per step after ballistic stepping. This is targeted as the
   `v0.6.1` patch-candidate physics bug fix and changes default numerical
   results for sliding contact cases.
+- Adopted the standard ESRI/GIS DEM convention for ASCII grids:
+  `xllcorner`/`yllcorner` are outer lower-left cell corners, raster values are
+  cell-center samples, and metadata extents record the full outer footprint.
+  This can change DEM-backed validation metrics and the `Chant Sura` contact
+  timing tolerance was refreshed accordingly.
 - Added an expert-review baseline release-preparation note for the proposed
   `v0.6.0-expert-review-baseline` tag, without creating the tag or changing the
   project version.

@@ -6,6 +6,10 @@ Status: minimal `v0.5.x` pilot contract. This document describes the first swiss
 
 The immediate goal is to make Swiss terrain inputs, source areas, and terrain/material classes auditable before adding larger geospatial workflows. The pilot supports small manually supplied or synthetic ESRI ASCII DEM crops with a required terrain-source metadata sidecar. The metadata sidecar records CRS, vertical datum, extent, resolution, nodata handling, source/provenance, license/data-origin notes, and preprocessing status.
 
+The pilot follows the standard ESRI/GIS raster convention: `xllcorner` and
+`yllcorner` define the outer lower-left cell corner, elevation values are
+cell-center samples, and the LV95 extent records the full outer footprint.
+
 Raw swisstopo products remain out of git. The checked-in pilot fixture is synthetic but uses LV95/LN02-style coordinates so validation and manifests exercise the same metadata contract expected for future swissALTI3D crops.
 
 ## Files

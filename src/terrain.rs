@@ -304,18 +304,42 @@ impl DemGrid {
         }
     }
 
+    pub fn xmin_center_m(&self) -> f64 {
+        self.xllcorner_m + 0.5 * self.cellsize_m
+    }
+
+    pub fn ymin_center_m(&self) -> f64 {
+        self.yllcorner_m + 0.5 * self.cellsize_m
+    }
+
+    pub fn xmax_center_m(&self) -> f64 {
+        self.xllcorner_m + (self.ncols as f64 - 0.5) * self.cellsize_m
+    }
+
+    pub fn ymax_center_m(&self) -> f64 {
+        self.yllcorner_m + (self.nrows as f64 - 0.5) * self.cellsize_m
+    }
+
     pub fn xmax_m(&self) -> f64 {
-        self.xllcorner_m + (self.ncols - 1) as f64 * self.cellsize_m
+        self.xmax_center_m()
     }
 
     pub fn ymax_m(&self) -> f64 {
-        self.yllcorner_m + (self.nrows - 1) as f64 * self.cellsize_m
+        self.ymax_center_m()
+    }
+
+    pub fn footprint_xmax_m(&self) -> f64 {
+        self.xllcorner_m + self.ncols as f64 * self.cellsize_m
+    }
+
+    pub fn footprint_ymax_m(&self) -> f64 {
+        self.yllcorner_m + self.nrows as f64 * self.cellsize_m
     }
 
     pub fn clamp_xy(&self, x_m: f64, y_m: f64) -> (f64, f64) {
         (
-            x_m.clamp(self.xllcorner_m, self.xmax_m()),
-            y_m.clamp(self.yllcorner_m, self.ymax_m()),
+            x_m.clamp(self.xmin_center_m(), self.xmax_center_m()),
+            y_m.clamp(self.ymin_center_m(), self.ymax_center_m()),
         )
     }
 
@@ -324,11 +348,17 @@ impl DemGrid {
         x_m: f64,
         y_m: f64,
     ) -> Result<(usize, usize, f64, f64), TerrainError> {
-        let fx = (x_m - self.xllcorner_m) / self.cellsize_m;
-        let fy = (y_m - self.yllcorner_m) / self.cellsize_m;
-        if fx < 0.0 || fy < 0.0 || fx > (self.ncols - 1) as f64 || fy > (self.nrows - 1) as f64 {
+        let fx = (x_m - self.xmin_center_m()) / self.cellsize_m;
+        let fy = (y_m - self.ymin_center_m()) / self.cellsize_m;
+        let max_fx = (self.ncols - 1) as f64;
+        let max_fy = (self.nrows - 1) as f64;
+        let tolerance = EPS.max(1.0e-8);
+        if fx < -tolerance || fy < -tolerance || fx > max_fx + tolerance || fy > max_fy + tolerance
+        {
             return Err(TerrainError::OutOfBounds { x_m, y_m });
         }
+        let fx = fx.clamp(0.0, max_fx);
+        let fy = fy.clamp(0.0, max_fy);
         let col0 = fx.floor().min((self.ncols - 2) as f64) as usize;
         let row0 = fy.floor().min((self.nrows - 2) as f64) as usize;
         Ok((col0, row0, fx - col0 as f64, fy - row0 as f64))
@@ -349,10 +379,10 @@ impl DemGrid {
     pub fn try_normal(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
         self.fractional_cell(x_m, y_m)?;
         let h = 0.5 * self.cellsize_m.max(EPS);
-        let x0 = (x_m - h).max(self.xllcorner_m);
-        let x1 = (x_m + h).min(self.xmax_m());
-        let y0 = (y_m - h).max(self.yllcorner_m);
-        let y1 = (y_m + h).min(self.ymax_m());
+        let x0 = (x_m - h).max(self.xmin_center_m());
+        let x1 = (x_m + h).min(self.xmax_center_m());
+        let y0 = (y_m - h).max(self.ymin_center_m());
+        let y1 = (y_m + h).min(self.ymax_center_m());
         let dzdx = if (x1 - x0).abs() > EPS {
             (self.try_height(x1, y_m)? - self.try_height(x0, y_m)?) / (x1 - x0)
         } else {
@@ -456,7 +486,14 @@ mod tests {
         )
         .unwrap();
 
-        assert_relative_eq!(dem.try_height(0.5, 0.5).unwrap(), 2.0, epsilon = 1.0e-12);
-        assert_relative_eq!(dem.try_height(0.0, 0.0).unwrap(), 0.0, epsilon = 1.0e-12);
+        assert_relative_eq!(dem.try_height(0.5, 0.5).unwrap(), 0.0, epsilon = 1.0e-12);
+        assert_relative_eq!(dem.try_height(1.0, 1.0).unwrap(), 2.0, epsilon = 1.0e-12);
+        assert_relative_eq!(dem.try_height(1.5, 1.5).unwrap(), 4.0, epsilon = 1.0e-12);
+        assert!(matches!(
+            dem.try_height(0.0, 0.0),
+            Err(TerrainError::OutOfBounds { .. })
+        ));
+        assert_relative_eq!(dem.footprint_xmax_m(), 2.0, epsilon = 1.0e-12);
+        assert_relative_eq!(dem.footprint_ymax_m(), 2.0, epsilon = 1.0e-12);
     }
 }

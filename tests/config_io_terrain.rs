@@ -358,6 +358,11 @@ fn dem_parser_reports_header_value_count_and_bounds_errors() {
         dem.try_height(-0.1, 0.0),
         Err(TerrainError::OutOfBounds { .. })
     ));
+    assert!(matches!(
+        dem.try_height(0.0, 0.0),
+        Err(TerrainError::OutOfBounds { .. })
+    ));
+    assert_abs_diff_eq!(dem.try_height(1.5, 1.5).unwrap(), 4.0, epsilon = 1.0e-12);
 
     let dem_with_nodata = DemGrid::from_ascii_grid_str(
         "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 -9999\n0 2\n",
@@ -385,8 +390,8 @@ fn clamped_dem_keeps_boundary_queries_finite_without_changing_strict_dem() {
     ));
 
     let clamped = ClampedDemGrid::from_grid(dem);
-    assert_abs_diff_eq!(clamped.height(-0.5, 0.5), 1.0, epsilon = 1.0e-12);
-    assert_abs_diff_eq!(clamped.height(2.5, 1.5), 5.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(clamped.height(-0.5, 0.5), 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(clamped.height(3.5, 1.5), 4.0, epsilon = 1.0e-12);
     assert_abs_diff_eq!(clamped.normal(-0.5, 0.5).norm(), 1.0, epsilon = 1.0e-12);
 }
 
@@ -396,11 +401,11 @@ fn clamped_dem_normal_matches_planar_dem_interior_and_edge() {
         "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
     )
     .unwrap();
-    let strict_edge = dem.normal(0.0, 1.0);
+    let strict_edge = dem.normal(0.5, 1.5);
     let clamped = ClampedDemGrid::from_grid(dem);
     let expected = Vec3::new(-1.0, -2.0, 1.0).normalize();
-    let interior = clamped.normal(1.0, 1.0);
-    let edge = clamped.normal(-0.5, 1.0);
+    let interior = clamped.normal(1.5, 1.5);
+    let edge = clamped.normal(-0.5, 1.5);
 
     assert_abs_diff_eq!(strict_edge.x, expected.x, epsilon = 1.0e-12);
     assert_abs_diff_eq!(strict_edge.y, expected.y, epsilon = 1.0e-12);
@@ -513,7 +518,8 @@ fn esri_ascii_grid_config_reads_from_file() {
     .build()
     .unwrap();
 
-    assert_abs_diff_eq!(terrain.height(0.5, 0.5), 2.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(terrain.height(0.5, 0.5), 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(terrain.height(1.0, 1.0), 2.0, epsilon = 1.0e-12);
     fs::remove_file(path).unwrap();
 }
 
@@ -532,8 +538,9 @@ fn clamped_esri_ascii_grid_config_reads_from_file() {
     .build()
     .unwrap();
 
-    assert_abs_diff_eq!(terrain.height(-1.0, 0.5), 1.0, epsilon = 1.0e-12);
-    assert_abs_diff_eq!(terrain.height(0.5, 0.5), 2.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(terrain.height(-1.0, 0.5), 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(terrain.height(0.5, 0.5), 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(terrain.height(1.0, 1.0), 2.0, epsilon = 1.0e-12);
     fs::remove_file(path).unwrap();
 }
 
@@ -1732,6 +1739,11 @@ fn terrain_class_metadata_parses_and_matches_swissalti3d_dem() {
     );
     assert_eq!(class_map.coverage().len(), 2);
     assert_eq!(class_map.class_id_at(2600001.0, 1200001.0), Some(1));
+    assert_eq!(
+        class_map.class_id_at(2600007.999999, 1200007.999999),
+        Some(1)
+    );
+    assert_eq!(class_map.class_id_at(2600008.0, 1200008.0), None);
 }
 
 #[test]

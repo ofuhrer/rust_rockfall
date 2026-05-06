@@ -55,7 +55,7 @@ expected:
     trajectory_max_jump_height_mean_error_m: 8.0
     trajectory_jump_height_envelope_error_m: 8.0
     impact_timing_mean_error_s: 0.8
-    impact_timing_p95_error_s: 1.0
+    impact_timing_p95_error_s: 1.1
     rebound_velocity_mean_error_mps: 20.0
     rebound_velocity_p95_error_mps: 25.0
     post_impact_energy_change_mean_error_j: 25000.0

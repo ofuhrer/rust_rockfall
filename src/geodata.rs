@@ -768,8 +768,8 @@ impl TerrainClassGrid {
     pub fn class_id_at(&self, x_m: f64, y_m: f64) -> Option<i32> {
         if x_m < self.xllcorner_m
             || y_m < self.yllcorner_m
-            || x_m > self.xllcorner_m + self.ncols as f64 * self.cellsize_m
-            || y_m > self.yllcorner_m + self.nrows as f64 * self.cellsize_m
+            || x_m >= self.xllcorner_m + self.ncols as f64 * self.cellsize_m
+            || y_m >= self.yllcorner_m + self.nrows as f64 * self.cellsize_m
         {
             return None;
         }

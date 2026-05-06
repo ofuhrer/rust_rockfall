@@ -15,7 +15,7 @@ The Tschamut review and calibration therefore identified terrain representation 
 
 ## Chosen Increment
 
-The new opt-in terrain path is `ascii_dem_clamped` / `esri_ascii_grid_clamped`. It wraps the existing ESRI ASCII grid reader and keeps the same bilinear interpolation inside the grid. Queries outside the grid are clamped to the nearest grid boundary before evaluating height and normals.
+The new opt-in terrain path is `ascii_dem_clamped` / `esri_ascii_grid_clamped`. It wraps the existing ESRI ASCII grid reader and keeps the same bilinear interpolation inside the grid. ESRI ASCII `xllcorner` and `yllcorner` are interpreted as the outer lower-left cell corner, raster values are cell-center samples, and metadata extents describe the full outer footprint. Queries outside the cell-center interpolation domain are clamped to the nearest cell center before evaluating height and normals.
 
 This is deliberately modest. It does not introduce heavy GIS dependencies, resampling libraries, spatial indexes, or multiresolution terrain. It gives validation cases a bounded terrain-patch policy while preserving the strict `ascii_dem` behavior for tests that should fail on out-of-bounds access.
 
@@ -34,7 +34,7 @@ This is still not an official field DEM. It is a reproducible public-data terrai
 
 ## Boundary Policy
 
-`ascii_dem_clamped` clamps `(x, y)` to the raster bounds for height and finite-difference normal queries. This avoids edge panics in limited-patch validation cases and allows trajectories to finish gracefully. The trade-off is that motion beyond the raster edge sees an extrapolated boundary height and one-sided/flat boundary normal. This can affect runout and must be reported when used.
+`ascii_dem_clamped` clamps `(x, y)` to the nearest raster cell center for height and finite-difference normal queries. This avoids edge panics in limited-patch validation cases and allows trajectories to finish gracefully. The trade-off is that motion beyond the raster edge sees an extrapolated boundary height and one-sided/flat boundary normal. This can affect runout and must be reported when used.
 
 Strict `ascii_dem` remains available and unchanged for verification fixtures where out-of-bounds access should remain an error.
 
