@@ -5,9 +5,11 @@ modelling. Slice B is implemented as metadata parsers and validators in
 `src/probabilistic.rs`; Slice C is implemented as opt-in validation-case
 propagation into `trajectory_metadata_table_v1` and run manifests. Slice D is
 implemented as opt-in hazard-manifest labelling and `map_package_manifest_v1`
-writing. Later slices remain planned. This document does not tune parameters,
-change defaults, add physics, add active shape-contact, add regional tiling, or
-claim annualized/operational hazard validity.
+writing. Slice E is implemented as a tiny end-to-end smoke example. Phase 1 is
+closed for Level 1 conditional and Level 2 sampling-weighted map semantics. This
+document does not tune parameters, change defaults, add physics, add active
+shape-contact, add regional tiling, or claim annualized/operational hazard
+validity.
 
 ## Objective
 
@@ -41,11 +43,10 @@ Already implemented:
 - public benchmark evidence showing that map semantics should not wait for new
   physics.
 
-Still missing:
-
-- source/release/scenario id propagation into all relevant map products;
-- generated examples that distinguish diagnostic, conditional, weighted,
-  physical, and annual layers.
+Phase 1 now covers the metadata and labelling path needed to distinguish
+diagnostic outputs from conditional and sampling-weighted map packages. Physical
+probability and annual-frequency labels remain schema-visible only; generated
+Phase 1 maps reject them rather than producing ambiguous products.
 
 Implemented in Slice B:
 
@@ -554,10 +555,17 @@ Phase 1 is complete when:
 - exposure, vulnerability, and risk mapping;
 - operational hazard-map validity claims.
 
-## Recommended Next Action
+## Phase 1 Closure And Next Action
 
-Implement **Slice B** first if code work is requested next. It is the safest
-boundary: parse and validate source-zone, scenario, and map-package metadata
-without changing simulation physics, defaults, or hazard-layer numerical
-outputs. Then implement Slice C and Slice D only after the parser rejects
-ambiguous probability configurations reliably.
+Phase 1 Slices B-E are complete. The implemented path validates source-zone,
+scenario-table, and map-package metadata, propagates scenario/source-zone labels
+into trajectory metadata, labels hazard manifests and package manifests, and
+exercises the full flow with a CI-safe smoke case. Existing diagnostic and
+unweighted workflows remain unchanged by default.
+
+The recommended next implementation slice is **Phase 2A: GIS-ready GeoTIFF/COG
+export for existing labelled hazard rasters**. Phase 1 has made map semantics
+auditable, but the produced rasters are still primarily CSV/ASCII/debug-review
+artifacts. CRS-bearing raster export is the next practical product gap for
+reviewable Swiss pilot maps, and it can be implemented without changing physics,
+defaults, probability semantics, or hazard raster values.

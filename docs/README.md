@@ -14,6 +14,7 @@ Core documents:
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
 - `probabilistic_hazard_mapping_development_roadmap.md`: staged development roadmap reframing the project around transparent, reproducible probabilistic hazard-map production for selected Swiss regions.
 - `probabilistic_hazard_phase1_implementation_plan.md`: concrete Level 1-2 implementation plan for map semantics, source-zone identity, scenario tables, probability labels, normalization rules, and validation slices.
+- `probabilistic_hazard_phase1_closure.md`: closure record for Phase 1 Slices B-E, defining implemented Level 1/2 probabilistic map semantics, smoke-example coverage, compatibility guarantees, and the recommended Phase 2A GIS export step.
 - `swisstopo_data_strategy.md`: authoritative Swiss geodata roles, swissALTI3D terrain-ingestion metadata, and first pilot workflow design.
 - `swiss_terrain_ingestion_pilot.md`: minimal runtime terrain-source, release-zone, and terrain-class metadata contracts with checked-in swissALTI3D-style pilot fixtures.
 - `tschamut_swissalti3d_pilot.md`: local/private Tschamut real-site pilot workflow using a manually supplied swissALTI3D-style DEM crop, source-area metadata, optional terrain classes, and existing hazard layers.

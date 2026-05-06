@@ -459,6 +459,14 @@ rather than define the main development sequence.
 Objective: make every future map layer explicit about what probability, scenario,
 and source-zone quantity it represents.
 
+Status: complete for Level 1 conditional and Level 2 sampling-weighted
+semantics. The repository now includes source-zone, scenario-table, and
+map-package parsers/validators; opt-in propagation into
+`trajectory_metadata_table_v1`; labelled hazard manifests and
+`map_package_manifest_v1` output; and a CI-safe smoke example. `physical_probability`
+and `annual_frequency` remain schema-visible but unsupported for generated Phase
+1 map products.
+
 Deliverables:
 
 - map-semantics schema covering unweighted, sampling-weighted, physical

@@ -13,7 +13,9 @@ validated source-zone, scenario-table, map-product, probability-mode, and
 normalization metadata into the trajectory metadata sidecar. Physical
 probability models, annual frequencies, block-size sampling, trajectory
 Parquet/Arrow output, new physics, and validation semantic changes are not
-implemented.
+implemented. Phase 1 map-package labelling and the CI-safe smoke example are
+implemented separately in the hazard-layer workflow; they consume this metadata
+without changing trajectory or hazard raster numerics.
 
 ## Purpose
 
