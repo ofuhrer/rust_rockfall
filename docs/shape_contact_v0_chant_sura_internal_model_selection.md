@@ -89,10 +89,25 @@ debug signals, but they must not be overinterpreted because the runtime scaffold
 still lacks projection correction, persistent contact, orientation evolution,
 multi-contact, and a validated trajectory-to-shape join.
 
+## Follow-Up Rebound Audit
+
+The follow-up diagnostic audit is recorded in
+`docs/shape_contact_v0_rebound_diagnostic_audit.md`. It keeps the same
+no-tuning result and identifies two blockers:
+
+- the selected first significant simulated contact for `RF16W200r1_impact_00`
+  occurs at `0.005 s`, while the observed segment-boundary proxy is at
+  `0.250 s`;
+- both compared contact proxies have simulated rebound speeds substantially
+  above the observed proxy speeds, while contact energy remains dissipative.
+
+The audit does not identify a safe parameter-free fix inside the current
+contract. It therefore keeps the decision at `failed_uncertain`.
+
 ## Recommendation
 
-Do not run held-out Chant Sura yet. First decide whether the rebound-velocity
-failure and unresolved shape mapping can be addressed without adding tuned
-parameters or changing the frozen evaluation contract. If not, pause
-`shape_contact_v0` public progression and pivot to better shape provenance,
-terrain/material interaction, or stopping-behavior diagnostics.
+Do not run held-out Chant Sura yet. Pause `shape_contact_v0` runtime
+progression until rebound behavior and trajectory-to-EOTA shape provenance can
+be resolved without tuned parameters or changes to the frozen evaluation
+contract. If they cannot be resolved, pivot to terrain/material interaction or
+stopping-behavior diagnostics rather than adding more shape-contact machinery.

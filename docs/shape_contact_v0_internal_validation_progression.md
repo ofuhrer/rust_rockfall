@@ -48,5 +48,9 @@ rebound-velocity error worsened beyond the 10% gate and the repository still
 lacks an auditable trajectory-to-EOTA shape mapping. Held-out Chant Sura should
 not be run until that failure is reviewed.
 
+A follow-up rebound/provenance audit is recorded in
+`docs/shape_contact_v0_rebound_diagnostic_audit.md`. It finds no safe no-tuning
+fix inside the current contract and keeps held-out Chant Sura blocked.
+
 Tschamut and Mel de la Niva remain diagnostic non-regression smoke evidence
 only.

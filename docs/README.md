@@ -28,6 +28,7 @@ Core documents:
 - `shape_contact_v0_runtime_wiring_plan.md`: design-only plan for the smallest future fixed-step integrator wiring slice, including call path, diagnostic writer, manifest requirements, runtime guards, tests, and stop conditions.
 - `shape_contact_v0_internal_validation_progression.md`: internal-only smoke-case gate for `shape_contact_v0`, recording the tracked `validation/internal` fixture, frozen diagnostics, public-exclusion rules, and Chant Sura decision boundary.
 - `shape_contact_v0_chant_sura_internal_model_selection.md`: internal-only Chant Sura model-selection result for `shape_contact_v0`, including frozen-gate metrics, diagnostic/provenance checks, and the current failed/uncertain decision.
+- `shape_contact_v0_rebound_diagnostic_audit.md`: internal-only audit of the Chant Sura `shape_contact_v0` rebound failure and unresolved trajectory-to-EOTA shape provenance blocker.
 - `shape_aware_block_scaffold_design.md`: design-only plan for an opt-in passive block shape, orientation, and inertia metadata scaffold before any non-spherical contact physics.
 - `shape_metadata_application_plan.md`: practical plan for attaching passive public block-shape metadata to Tschamut and Chant Sura validation cases without changing dynamics or tuning parameters.
 - `public_tschamut_shape_metadata_milestone.md`: concise scientific milestone report after the registered public Tschamut benchmark, passive shape scaffold, Tschamut sidecars, and inertness validation.

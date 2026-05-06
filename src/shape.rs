@@ -2195,11 +2195,13 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     struct ChantSuraObservedContactRow {
+        event_id: String,
         source_segment_id: String,
         impact_time_s: f64,
         outgoing_vx_mps: f64,
         outgoing_vy_mps: f64,
         outgoing_vz_mps: f64,
+        outgoing_speed_mps: f64,
     }
 
     #[derive(Debug, Deserialize)]
@@ -2225,6 +2227,34 @@ mod tests {
         time_s: f64,
         post_velocity_mps: Vec3,
         incoming_normal_speed_mps: f64,
+        row: ShapeContactV0RuntimeDiagnosticRowV1,
+    }
+
+    #[derive(Debug, Clone)]
+    struct InternalChantSuraContactAuditRow {
+        event_id: String,
+        source_segment_id: String,
+        observed_impact_time_s: f64,
+        selected_impact_time_s: f64,
+        timing_error_s: f64,
+        observed_rebound_speed_mps: f64,
+        simulated_rebound_speed_mps: f64,
+        rebound_velocity_error_mps: f64,
+        incoming_normal_speed_mps: f64,
+        normal_velocity_pre_mps: f64,
+        normal_velocity_post_mps: f64,
+        tangential_speed_pre_mps: f64,
+        tangential_speed_post_mps: f64,
+        normal_impulse_n_s: f64,
+        tangential_impulse_norm_n_s: f64,
+        coulomb_friction_cap_n_s: f64,
+        coulomb_cap_ratio: Option<f64>,
+        support_corner_signs: [i8; 3],
+        support_signed_gap_m: f64,
+        contact_energy_delta_j: f64,
+        total_energy_delta_j: f64,
+        rotational_to_translational_energy_ratio_pre: Option<f64>,
+        rotational_to_translational_energy_ratio_post: Option<f64>,
     }
 
     #[derive(Debug, Clone)]
@@ -2249,6 +2279,7 @@ mod tests {
         shape_metadata_sha256: String,
         diagnostic_sidecar_sha256: String,
         diagnostic_sidecar_row_count: usize,
+        contact_audit_rows: Vec<InternalChantSuraContactAuditRow>,
         shape_assignment_limitation: String,
     }
 
@@ -2513,6 +2544,7 @@ mod tests {
                     post_velocity_mps: mini_step.contact.impulse_result.post_state.velocity_mps,
                     incoming_normal_speed_mps: (-row.contact_point_normal_velocity_pre_mps)
                         .max(0.0),
+                    row: row.clone(),
                 });
             }
             writer.write_row(row);
@@ -2711,6 +2743,7 @@ mod tests {
 
         let mut impact_timing_errors = Vec::new();
         let mut rebound_velocity_errors = Vec::new();
+        let mut contact_audit_rows = Vec::new();
         for observed in &observed_contacts {
             if let Some(sim) = simulated.get(&observed.source_segment_id) {
                 let max_time_s = (observed.impact_time_s + 4.0 * validation_case.simulation.dt)
@@ -2718,16 +2751,51 @@ mod tests {
                 if let Some(impact) =
                     first_internal_chant_sura_significant_impact(&sim.impacts, max_time_s)
                 {
-                    impact_timing_errors.push((impact.time_s - observed.impact_time_s).abs());
-                    rebound_velocity_errors.push(
-                        (impact.post_velocity_mps
-                            - Vec3::new(
-                                observed.outgoing_vx_mps,
-                                observed.outgoing_vy_mps,
-                                observed.outgoing_vz_mps,
-                            ))
-                        .norm(),
-                    );
+                    let timing_error_s = (impact.time_s - observed.impact_time_s).abs();
+                    let rebound_velocity_error_mps = (impact.post_velocity_mps
+                        - Vec3::new(
+                            observed.outgoing_vx_mps,
+                            observed.outgoing_vy_mps,
+                            observed.outgoing_vz_mps,
+                        ))
+                    .norm();
+                    impact_timing_errors.push(timing_error_s);
+                    rebound_velocity_errors.push(rebound_velocity_error_mps);
+                    contact_audit_rows.push(InternalChantSuraContactAuditRow {
+                        event_id: observed.event_id.clone(),
+                        source_segment_id: observed.source_segment_id.clone(),
+                        observed_impact_time_s: observed.impact_time_s,
+                        selected_impact_time_s: impact.time_s,
+                        timing_error_s,
+                        observed_rebound_speed_mps: observed.outgoing_speed_mps,
+                        simulated_rebound_speed_mps: impact.post_velocity_mps.norm(),
+                        rebound_velocity_error_mps,
+                        incoming_normal_speed_mps: impact.incoming_normal_speed_mps,
+                        normal_velocity_pre_mps: impact.row.contact_point_normal_velocity_pre_mps,
+                        normal_velocity_post_mps: impact.row.contact_point_normal_velocity_post_mps,
+                        tangential_speed_pre_mps: impact.row.contact_point_tangential_speed_pre_mps,
+                        tangential_speed_post_mps: impact
+                            .row
+                            .contact_point_tangential_speed_post_mps,
+                        normal_impulse_n_s: impact.row.normal_impulse_n_s,
+                        tangential_impulse_norm_n_s: impact.row.tangential_impulse_norm_n_s,
+                        coulomb_friction_cap_n_s: impact.row.coulomb_friction_cap_n_s,
+                        coulomb_cap_ratio: impact.row.coulomb_cap_ratio,
+                        support_corner_signs: [
+                            impact.row.support_corner_sign_x,
+                            impact.row.support_corner_sign_y,
+                            impact.row.support_corner_sign_z,
+                        ],
+                        support_signed_gap_m: impact.row.support_signed_gap_m,
+                        contact_energy_delta_j: impact.row.contact_energy_delta_j,
+                        total_energy_delta_j: impact.row.total_energy_delta_j,
+                        rotational_to_translational_energy_ratio_pre: impact
+                            .row
+                            .rotational_to_translational_energy_ratio_pre,
+                        rotational_to_translational_energy_ratio_post: impact
+                            .row
+                            .rotational_to_translational_energy_ratio_post,
+                    });
                 }
             }
         }
@@ -2906,6 +2974,7 @@ mod tests {
             shape_metadata_sha256,
             diagnostic_sidecar_sha256: sidecar.json_lines_sha256.unwrap(),
             diagnostic_sidecar_row_count: sidecar.row_count,
+            contact_audit_rows,
             shape_assignment_limitation:
                 "EOTA221 aspect ratio is derived from checked-in rock_shapes.csv, scaled to W200 mass with the existing 2670 kg/m3 density assumption; trajectory-to-EOTA mapping is unresolved."
                     .to_string(),
@@ -4695,6 +4764,188 @@ mod tests {
             .gate_reasons
             .iter()
             .any(|reason| reason.contains("trajectory-to-EOTA shape mapping remains unresolved")));
+        assert_eq!(report.contact_audit_rows.len(), 2);
+        let first_contact = &report.contact_audit_rows[0];
+        assert_eq!(first_contact.event_id, "RF16W200r1_impact_00");
+        assert_eq!(first_contact.source_segment_id, "RF16W200r1_seg00");
+        assert_close(first_contact.observed_impact_time_s, 0.25, 1.0e-12);
+        assert_close(first_contact.selected_impact_time_s, 0.005, 1.0e-12);
+        assert_close(first_contact.timing_error_s, 0.245, 1.0e-12);
+        assert_close(
+            first_contact.observed_rebound_speed_mps,
+            3.0123488132,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.simulated_rebound_speed_mps,
+            6.099047679132298,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.rebound_velocity_error_mps,
+            5.977105522136159,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.incoming_normal_speed_mps,
+            0.46511110388818633,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.normal_velocity_pre_mps,
+            -0.46511110388818633,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.normal_velocity_post_mps,
+            0.30346344172887685,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.tangential_speed_pre_mps,
+            6.18950074722775,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.tangential_speed_post_mps,
+            5.267737859967124,
+            1.0e-12,
+        );
+        assert_close(first_contact.normal_impulse_n_s, 44.70432726439479, 1.0e-12);
+        assert_close(
+            first_contact.tangential_impulse_norm_n_s,
+            20.116947268977658,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.coulomb_friction_cap_n_s,
+            20.116947268977658,
+            1.0e-12,
+        );
+        assert_close(first_contact.coulomb_cap_ratio.unwrap(), 1.0, 1.0e-12);
+        assert_eq!(first_contact.support_corner_signs, [-1, 1, -1]);
+        assert_close(
+            first_contact.support_signed_gap_m,
+            -0.1525511096319957,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact.contact_energy_delta_j,
+            -118.7756231976673,
+            1.0e-9,
+        );
+        assert_close(
+            first_contact.total_energy_delta_j,
+            -118.7756231976673,
+            1.0e-9,
+        );
+        assert_close(
+            first_contact
+                .rotational_to_translational_energy_ratio_pre
+                .unwrap(),
+            0.0,
+            1.0e-12,
+        );
+        assert_close(
+            first_contact
+                .rotational_to_translational_energy_ratio_post
+                .unwrap(),
+            0.005287026517088907,
+            1.0e-12,
+        );
+
+        let second_contact = &report.contact_audit_rows[1];
+        assert_eq!(second_contact.event_id, "RF16W200r1_impact_01");
+        assert_eq!(second_contact.source_segment_id, "RF16W200r1_seg01");
+        assert_close(second_contact.observed_impact_time_s, 1.1, 1.0e-12);
+        assert_close(second_contact.selected_impact_time_s, 1.06, 1.0e-12);
+        assert_close(second_contact.timing_error_s, 0.04, 1.0e-12);
+        assert_close(
+            second_contact.observed_rebound_speed_mps,
+            4.27025144916,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.simulated_rebound_speed_mps,
+            8.150858209390572,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.rebound_velocity_error_mps,
+            8.39818196749281,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.incoming_normal_speed_mps,
+            5.002945870324606,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.normal_velocity_pre_mps,
+            -5.002945870324606,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.normal_velocity_post_mps,
+            1.129619667077851,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.tangential_speed_pre_mps,
+            7.977765196649321,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.tangential_speed_post_mps,
+            6.015354567176827,
+            1.0e-12,
+        );
+        assert_close(second_contact.normal_impulse_n_s, 563.0712824400459, 1.0e-9);
+        assert_close(
+            second_contact.tangential_impulse_norm_n_s,
+            49.02470902563877,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.coulomb_friction_cap_n_s,
+            253.3820770980207,
+            1.0e-9,
+        );
+        assert_close(
+            second_contact.coulomb_cap_ratio.unwrap(),
+            0.1934813605883955,
+            1.0e-12,
+        );
+        assert_eq!(second_contact.support_corner_signs, [1, 1, -1]);
+        assert_close(
+            second_contact.support_signed_gap_m,
+            -0.034286029111621236,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact.contact_energy_delta_j,
+            -1377.1188839087263,
+            1.0e-9,
+        );
+        assert_close(
+            second_contact.total_energy_delta_j,
+            -1377.1188839087263,
+            1.0e-9,
+        );
+        assert_close(
+            second_contact
+                .rotational_to_translational_energy_ratio_pre
+                .unwrap(),
+            0.0,
+            1.0e-12,
+        );
+        assert_close(
+            second_contact
+                .rotational_to_translational_energy_ratio_post
+                .unwrap(),
+            0.13730854060071299,
+            1.0e-12,
+        );
     }
 
     #[test]
