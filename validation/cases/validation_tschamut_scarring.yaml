@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_tschamut_scarring
 title: Tschamut with scarring_contact_v1 (experimental)
 level: 5

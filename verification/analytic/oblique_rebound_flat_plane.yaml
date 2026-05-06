@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_oblique_rebound_flat_plane
 title: Oblique rebound on a flat plane
 level: 0

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: string
 title: string
 level: 0
@@ -66,6 +67,14 @@ hazard_probability:
     scenario_ids: []
     block_mass_kg_min: null
     block_mass_kg_max: null
+hazard_map_package:
+  map_product_id: null # optional labelled Phase 1 hazard-map package metadata
+  probability_mode: null
+  normalization_scope: null
+  source_zone_metadata_path: null
+  scenario_table_path: null
+  map_package_manifest_json: null
+  limitations: []
 validation_scope:
   type: null
   note: null

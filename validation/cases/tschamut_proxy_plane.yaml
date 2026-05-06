@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_tschamut_proxy_plane
 title: Tschamut fitted-plane terrain comparison
 level: 5

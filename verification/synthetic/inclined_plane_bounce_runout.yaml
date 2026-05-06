@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_inclined_plane_bounce_runout
 title: Inclined-plane bounce and runout
 level: 1

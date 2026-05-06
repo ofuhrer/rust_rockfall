@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_scarring_zero_baseline
 title: Zero scarring contact matches no soil interaction
 level: 1

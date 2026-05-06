@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_step_terrain_multi_bounce
 title: Step terrain multi-bounce
 level: 1

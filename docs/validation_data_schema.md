@@ -6,6 +6,7 @@ This repository uses one YAML case schema for verification and validation. The s
 
 Required case fields:
 
+- `schema_version: benchmark_case_v1`
 - `case_id`, `title`, `level`, `description`
 - `terrain.type`, `terrain.parameters`, and optionally `terrain.path`
 - optional `terrain.metadata_path` for Swiss/swisstopo-style terrain-source metadata sidecars
@@ -39,8 +40,14 @@ Required case fields:
 - optional `outputs.impact_events_csv` and `outputs.impact_events_json` for one row/object per terrain impact
 - optional `hazard_layers.statistics.kinetic_energy_exceedance_j`, `jump_height_exceedance_m`, and `velocity_exceedance_mps` for additive hazard post-processing thresholds
 - optional top-level `hazard_probability` block for opt-in sampling-weighted conditional hazard-layer post-processing
+- optional top-level `hazard_map_package` block for labelled Phase 1 map-package metadata
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
+
+`scripts/audit_case_schema.py` provides the strict migration audit path. It
+requires `schema_version: benchmark_case_v1` for checked-in validation and
+verification cases and reports unknown keys, but runtime case loading remains
+legacy-compatible for now.
 
 Restitution coefficients must be finite values in `[0, 1]`. Values above
 `1.0` are rejected instead of being silently clamped by the contact solver,

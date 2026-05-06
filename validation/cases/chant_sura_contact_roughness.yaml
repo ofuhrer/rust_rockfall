@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_chant_sura_contact_roughness
 title: Chant Sura segmented contact with stochastic_contact_v1
 level: 5

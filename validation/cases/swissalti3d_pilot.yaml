@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_swissalti3d_pilot
 title: swissALTI3D-style terrain ingestion pilot
 level: 5

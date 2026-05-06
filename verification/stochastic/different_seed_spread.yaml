@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: stochastic_different_seed_spread
 title: Different seed spread
 level: 3

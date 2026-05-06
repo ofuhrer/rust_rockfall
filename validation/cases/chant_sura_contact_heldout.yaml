@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_chant_sura_contact_heldout
 title: Chant Sura held-out DEM-backed contact subset
 level: 5

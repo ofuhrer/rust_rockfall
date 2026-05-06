@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_synthetic_plane_basic
 title: Synthetic plane validation smoke case
 level: 5

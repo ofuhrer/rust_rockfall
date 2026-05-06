@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_energy_conservation_no_dissipation
 title: Energy conservation without dissipation
 level: 0

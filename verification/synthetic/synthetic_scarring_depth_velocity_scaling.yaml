@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_scarring_depth_velocity_scaling
 title: Scarring depth responds to impact velocity
 level: 1

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: probabilistic_phase1_smoke
 title: Phase 1 probabilistic hazard-map semantics smoke
 level: 4

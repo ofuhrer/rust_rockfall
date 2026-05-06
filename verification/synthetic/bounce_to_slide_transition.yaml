@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: regime_bounce_to_slide_transition
 title: Bounce-to-slide transition
 level: 2

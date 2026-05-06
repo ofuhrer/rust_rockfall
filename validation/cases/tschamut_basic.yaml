@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_tschamut_basic
 title: Tschamut public rockfall dataset limited validation
 level: 5

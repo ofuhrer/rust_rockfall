@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_vertical_rebound
 title: Vertical rebound on a horizontal plane
 level: 0

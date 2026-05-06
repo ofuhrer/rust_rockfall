@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_performance_smoke
 title: CI-safe performance instrumentation smoke case
 level: 4

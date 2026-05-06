@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_tschamut_baseline
 title: Tschamut baseline comparison for scarring experiment
 level: 5

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_flat_plane_rebound
 title: Flat-plane rebound sanity case
 level: 1

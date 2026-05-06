@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: regime_slide_to_stop_transition
 title: Slide-to-stop transition
 level: 2

@@ -133,6 +133,7 @@ KNOWN_METRICS = {
 def main() -> int:
     errors: list[str] = []
     errors.extend(check_staged_generated_outputs())
+    errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
     errors.extend(check_schema_docs())
     errors.extend(check_documented_paths())
@@ -187,6 +188,21 @@ def check_staged_generated_outputs() -> list[str]:
         if path.startswith("data/private/") or path.startswith("validation/private/"):
             errors.append(f"private local data or generated private case is tracked: {path}")
     return errors
+
+
+def check_strict_case_schema_audit() -> list[str]:
+    audit = subprocess.run(
+        [sys.executable, "scripts/audit_case_schema.py"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if audit.returncode == 0:
+        return []
+    output = "\n".join(part for part in (audit.stdout, audit.stderr) if part).strip()
+    return [f"strict YAML case schema audit failed:\n{output}"]
 
 
 def check_yaml_cases() -> list[str]:

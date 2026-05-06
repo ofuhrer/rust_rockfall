@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_no_motion_threshold
 title: Static no-motion threshold on a shallow incline
 level: 0

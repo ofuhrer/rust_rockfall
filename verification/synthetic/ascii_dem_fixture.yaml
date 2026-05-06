@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_ascii_dem_fixture
 title: Tiny ESRI ASCII DEM fixture
 level: 1

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_free_fall
 title: Free fall without terrain contact
 level: 0

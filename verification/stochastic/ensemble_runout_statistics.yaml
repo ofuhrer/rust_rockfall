@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: stochastic_ensemble_runout_statistics
 title: Ensemble runout statistics
 level: 3

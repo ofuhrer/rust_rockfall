@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_chant_sura_contact_extended_roughness
 title: Chant Sura extended contact with stochastic_contact_v1
 level: 5

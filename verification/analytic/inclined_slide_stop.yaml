@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_inclined_slide_stop
 title: Inclined-plane slide to stop
 level: 0

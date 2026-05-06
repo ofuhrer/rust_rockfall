@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_paraboloid_basin_capture
 title: Paraboloid basin capture
 level: 1

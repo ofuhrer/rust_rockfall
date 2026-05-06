@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: synthetic_step_terrain_single_drop
 title: Step terrain single drop
 level: 1

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_chant_sura_contact_heldout_rotational
 title: Chant Sura held-out contact with sphere_rotational_v1
 level: 5

@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: stochastic_contact_roughness_ensemble_spread
 title: Stochastic contact roughness creates ensemble spread
 level: 3

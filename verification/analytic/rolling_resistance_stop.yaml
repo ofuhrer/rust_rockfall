@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: analytic_rolling_resistance_stop
 title: Horizontal rolling resistance stop
 level: 0

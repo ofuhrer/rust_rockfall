@@ -1,3 +1,4 @@
+schema_version: benchmark_case_v1
 case_id: validation_chant_sura_contact
 title: Chant Sura DEM-backed segmented contact subset
 level: 5
