@@ -232,6 +232,8 @@ The first internal smoke scaffold is test-only. It:
 - calls `shape_contact_v0_prepare_contact`;
 - maps one row to `shape_contact_runtime_diagnostic_v1`;
 - collects the row in memory and serializes JSON Lines in tests;
+- builds an internal diagnostic-sidecar manifest fixture with sidecar kind,
+  schema version, row count, optional path, and deterministic in-memory hash;
 - builds a manifest-shaped `shape_contact_v0` object with projection,
   persistent-contact, orientation-evolution, multi-contact, tuned-parameter, and
   default-change flags all disabled.
@@ -239,3 +241,8 @@ The first internal smoke scaffold is test-only. It:
 This scaffold is not a public runtime mode and is not validation evidence. It
 does not write files, create validation cases, run public benchmarks, or permit
 ordinary `shape_contact_v0` simulation.
+
+The sidecar scaffold is preferred over overloading impact-event output because
+shape-contact rows include support geometry, contact-regime labels, projection
+status, and active shape provenance that are not part of the existing
+spherical-impact event contract.

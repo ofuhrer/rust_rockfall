@@ -1305,6 +1305,34 @@ impl ShapeContactV0RuntimeDiagnosticWriterV1 {
         }
         Ok(lines.join("\n"))
     }
+
+    fn to_sidecar_manifest(
+        &self,
+        diagnostic_sidecar_path: Option<String>,
+    ) -> Result<ShapeContactV0DiagnosticSidecarManifestV1, serde_json::Error> {
+        let json_lines = self.to_json_lines()?;
+        Ok(ShapeContactV0DiagnosticSidecarManifestV1 {
+            diagnostic_sidecar_kind: "shape_contact_runtime_diagnostic_jsonl_v1".to_string(),
+            diagnostic_sidecar_path,
+            schema_version: "shape_contact_runtime_diagnostic_v1".to_string(),
+            row_count: self.rows.len(),
+            json_lines_hash64: Some(format!(
+                "{:016x}",
+                crate::stochastic::stable_hash64(json_lines.as_bytes())
+            )),
+        })
+    }
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct ShapeContactV0DiagnosticSidecarManifestV1 {
+    diagnostic_sidecar_kind: String,
+    diagnostic_sidecar_path: Option<String>,
+    schema_version: String,
+    row_count: usize,
+    json_lines_hash64: Option<String>,
 }
 
 #[cfg(test)]
@@ -1359,6 +1387,24 @@ struct ShapeContactV0RuntimeSmokeResult {
     terrain_normal_world: [f64; 3],
     writer: ShapeContactV0RuntimeDiagnosticWriterV1,
     manifest: ShapeContactV0RuntimeSmokeManifestV1,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
+struct ShapeContactV0RuntimeSmokeManifestPackageV1 {
+    shape_contact_v0: ShapeContactV0RuntimeSmokeManifestV1,
+    diagnostic_sidecar: ShapeContactV0DiagnosticSidecarManifestV1,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_runtime_smoke_manifest_package(
+    result: &ShapeContactV0RuntimeSmokeResult,
+) -> Result<ShapeContactV0RuntimeSmokeManifestPackageV1, serde_json::Error> {
+    Ok(ShapeContactV0RuntimeSmokeManifestPackageV1 {
+        shape_contact_v0: result.manifest.clone(),
+        diagnostic_sidecar: result.writer.to_sidecar_manifest(None)?,
+    })
 }
 
 #[cfg(test)]
@@ -2943,6 +2989,49 @@ mod tests {
     }
 
     #[test]
+    fn shape_contact_v0_runtime_diagnostic_sidecar_manifest_records_rows_and_hash() {
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        for row in shape_contact_v0_runtime_diagnostic_fixture_rows() {
+            writer.write_row(row);
+        }
+
+        let json_lines = writer.to_json_lines().unwrap();
+        let sidecar = writer
+            .to_sidecar_manifest(Some("shape_contact_runtime_diagnostics.jsonl".to_string()))
+            .unwrap();
+
+        assert_eq!(
+            sidecar.diagnostic_sidecar_kind,
+            "shape_contact_runtime_diagnostic_jsonl_v1"
+        );
+        assert_eq!(
+            sidecar.diagnostic_sidecar_path.as_deref(),
+            Some("shape_contact_runtime_diagnostics.jsonl")
+        );
+        assert_eq!(
+            sidecar.schema_version,
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert_eq!(sidecar.row_count, 3);
+        let expected_hash = format!(
+            "{:016x}",
+            crate::stochastic::stable_hash64(json_lines.as_bytes())
+        );
+        assert_eq!(
+            sidecar.json_lines_hash64.as_deref(),
+            Some(expected_hash.as_str())
+        );
+
+        let manifest_json = serde_json::to_value(&sidecar).unwrap();
+        assert_eq!(manifest_json["row_count"], 3);
+        assert_eq!(
+            manifest_json["diagnostic_sidecar_kind"],
+            "shape_contact_runtime_diagnostic_jsonl_v1"
+        );
+        assert!(manifest_json["json_lines_hash64"].as_str().is_some());
+    }
+
+    #[test]
     fn shape_contact_v0_runtime_smoke_flat_touching_incoming_emits_diagnostic_row() {
         let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
         let plane = Plane::horizontal(0.0);
@@ -3192,6 +3281,65 @@ mod tests {
         assert_eq!(manifest["projection_correction_enabled"], false);
         assert_eq!(manifest["persistent_contact_enabled"], false);
         assert_eq!(manifest["orientation_evolution_enabled"], false);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_manifest_references_diagnostic_sidecar() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        let package = shape_contact_v0_runtime_smoke_manifest_package(&result).unwrap();
+        assert_eq!(
+            package.shape_contact_v0.active_contact_model,
+            SHAPE_CONTACT_V0_MODEL
+        );
+        assert_eq!(
+            package.diagnostic_sidecar.diagnostic_sidecar_kind,
+            "shape_contact_runtime_diagnostic_jsonl_v1"
+        );
+        assert_eq!(package.diagnostic_sidecar.diagnostic_sidecar_path, None);
+        assert_eq!(
+            package.diagnostic_sidecar.schema_version,
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert_eq!(package.diagnostic_sidecar.row_count, 1);
+        assert!(package
+            .diagnostic_sidecar
+            .json_lines_hash64
+            .as_deref()
+            .is_some());
+
+        let package_json = serde_json::to_value(&package).unwrap();
+        assert_eq!(
+            package_json["shape_contact_v0"]["active_contact_model"],
+            SHAPE_CONTACT_V0_MODEL
+        );
+        assert_eq!(
+            package_json["diagnostic_sidecar"]["diagnostic_sidecar_kind"],
+            "shape_contact_runtime_diagnostic_jsonl_v1"
+        );
+        assert_eq!(
+            package_json["diagnostic_sidecar"]["diagnostic_sidecar_path"],
+            serde_json::Value::Null
+        );
+        assert_eq!(package_json["diagnostic_sidecar"]["row_count"], 1);
     }
 
     #[test]
