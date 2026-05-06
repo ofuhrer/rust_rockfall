@@ -240,8 +240,8 @@ impl ShapeContactV0Scaffold {
         Ok(ShapeContactV0PreparedImpulse { support, input })
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn apply_support_impulse(
+    #[cfg(test)]
+    fn apply_ungated_support_impulse_for_tests(
         &self,
         pre_state: BodyState,
         terrain_normal_world: Vec3,
@@ -678,13 +678,13 @@ pub fn shape_contact_v0_energy_diagnostic(
     })
 }
 
-/// Crate-internal low-level analytic impulse helper.
+/// Module-internal low-level analytic impulse helper.
 ///
 /// Shape-contact runtime-adjacent paths must prefer
 /// [`shape_contact_v0_prepare_contact`] so support-gap classification gates
-/// impulse application. This helper remains internal to avoid public callers
+/// impulse application. This helper remains private to avoid public callers
 /// mixing support geometry, mass, and inertia by hand.
-pub(crate) fn shape_contact_v0_apply_support_impulse(
+fn shape_contact_v0_apply_support_impulse(
     support: &ShapeContactV0SupportDiagnostic,
     input: ShapeContactV0ImpulseInput,
 ) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
@@ -1051,8 +1051,7 @@ pub(crate) const SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M: f64 = 1.0e-9;
 /// This is the single pre-runtime path that owns terrain/contact context,
 /// support selection, signed support-gap classification, and impulse
 /// application. Future integrator-adjacent code should route through this
-/// helper instead of calling [`ShapeContactV0Scaffold::apply_support_impulse`]
-/// directly.
+/// helper instead of low-level impulse assembly directly.
 #[allow(dead_code)]
 pub(crate) fn shape_contact_v0_prepare_contact(
     scaffold: &ShapeContactV0Scaffold,
@@ -1139,7 +1138,11 @@ fn shape_contact_v0_test_contact_step(
     scaffold: &ShapeContactV0Scaffold,
     input: ShapeContactV0TestContactStepInput,
 ) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
-    scaffold.apply_support_impulse(input.pre_state, input.terrain_normal_world, input.settings)
+    scaffold.apply_ungated_support_impulse_for_tests(
+        input.pre_state,
+        input.terrain_normal_world,
+        input.settings,
+    )
 }
 
 #[cfg(test)]
@@ -1188,7 +1191,7 @@ struct ShapeContactV0MiniFixedStepResult {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 enum ShapeContactV0RuntimeRegimeLabelV1 {
     NonImpulsiveSeparated,
@@ -2016,6 +2019,150 @@ mod tests {
             step_index,
             time_s: step_index as f64 * 0.1,
         }
+    }
+
+    const INTERNAL_SHAPE_CONTACT_V0_SMOKE_CASE_PATH: &str =
+        "validation/internal/shape_contact_v0_internal_smoke.yaml";
+
+    #[derive(Debug, Deserialize)]
+    struct InternalShapeContactV0SmokeCase {
+        schema_version: String,
+        case_id: String,
+        internal_only: bool,
+        block_shape: InternalBlockShapeRef,
+        parameters: InternalSmokeParameters,
+        simulation: InternalSmokeSimulation,
+        internal_smoke_cases: Vec<InternalSmokeScenario>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalBlockShapeRef {
+        metadata_path: std::path::PathBuf,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalSmokeParameters {
+        contact_model: String,
+        gravity: f64,
+        normal_restitution: f64,
+        tangential_restitution: f64,
+        friction_coefficient: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalSmokeSimulation {
+        dt: f64,
+        max_steps: u64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalSmokeScenario {
+        case_label: String,
+        terrain: InternalSmokeTerrain,
+        pre_step_position_m: [f64; 3],
+        pre_step_velocity_mps: [f64; 3],
+        step_index: u64,
+        expected_contact_regime: String,
+        expected_shape_contact_regime_label: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalSmokeTerrain {
+        z0_m: f64,
+        slope_x: f64,
+        slope_y: f64,
+    }
+
+    fn load_internal_shape_contact_v0_smoke_case() -> InternalShapeContactV0SmokeCase {
+        let text = fs::read_to_string(INTERNAL_SHAPE_CONTACT_V0_SMOKE_CASE_PATH).unwrap();
+        serde_yaml::from_str(&text).unwrap()
+    }
+
+    fn shape_contact_v0_contact_regime_name(regime: ShapeContactV0ContactRegime) -> &'static str {
+        match regime {
+            ShapeContactV0ContactRegime::SeparatedMovingAway => "separated_moving_away",
+            ShapeContactV0ContactRegime::SeparatedMovingToward => "separated_moving_toward",
+            ShapeContactV0ContactRegime::Touching => "touching",
+            ShapeContactV0ContactRegime::Penetrating => "penetrating",
+        }
+    }
+
+    fn shape_contact_v0_regime_label_name(label: ShapeContactV0RuntimeRegimeLabelV1) -> String {
+        serde_json::to_value(label)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    fn run_internal_shape_contact_v0_smoke_case() -> (
+        InternalShapeContactV0SmokeCase,
+        Vec<ShapeContactV0RuntimeSmokeResult>,
+    ) {
+        let case = load_internal_shape_contact_v0_smoke_case();
+        assert_eq!(case.schema_version, "internal_shape_contact_v0_smoke_v1");
+        assert_eq!(case.case_id, "internal_shape_contact_v0_smoke");
+        assert!(case.internal_only);
+        assert_eq!(case.parameters.contact_model, SHAPE_CONTACT_V0_MODEL);
+        assert_eq!(
+            case.simulation.max_steps as usize,
+            case.internal_smoke_cases.len()
+        );
+
+        let mut results = Vec::new();
+        for scenario in &case.internal_smoke_cases {
+            let terrain = Plane {
+                z0_m: scenario.terrain.z0_m,
+                slope_x: scenario.terrain.slope_x,
+                slope_y: scenario.terrain.slope_y,
+            };
+            let result = shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+                &case.block_shape.metadata_path,
+                &terrain,
+                ShapeContactV0RuntimeSmokeInput {
+                    contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                    pre_step_state: BodyState::new(
+                        Vec3::new(
+                            scenario.pre_step_position_m[0],
+                            scenario.pre_step_position_m[1],
+                            scenario.pre_step_position_m[2],
+                        ),
+                        Vec3::new(
+                            scenario.pre_step_velocity_mps[0],
+                            scenario.pre_step_velocity_mps[1],
+                            scenario.pre_step_velocity_mps[2],
+                        ),
+                    ),
+                    dt_s: case.simulation.dt,
+                    gravity_mps2: case.parameters.gravity,
+                    settings: ShapeContactV0ImpulseSettings {
+                        normal_restitution: case.parameters.normal_restitution,
+                        tangential_restitution: case.parameters.tangential_restitution,
+                        friction_coefficient: case.parameters.friction_coefficient,
+                        gravity_mps2: case.parameters.gravity,
+                    },
+                    step_index: scenario.step_index,
+                    time_s: scenario.step_index as f64 * case.simulation.dt,
+                },
+            )
+            .unwrap();
+
+            let row = &result.writer.rows()[0];
+            assert_eq!(
+                shape_contact_v0_contact_regime_name(row.contact_regime),
+                scenario.expected_contact_regime,
+                "{} contact_regime",
+                scenario.case_label
+            );
+            assert_eq!(
+                shape_contact_v0_regime_label_name(row.shape_contact_regime_label),
+                scenario.expected_shape_contact_regime_label,
+                "{} shape_contact_regime_label",
+                scenario.case_label
+            );
+            results.push(result);
+        }
+        (case, results)
     }
 
     fn shape_contact_v0_internal_integrator_smoke_fixture() -> Vec<ShapeContactV0RuntimeSmokeResult>
@@ -3597,6 +3744,95 @@ mod tests {
             "non_impulsive_penetrating"
         );
         assert!(rows[3]["terrain_normal_x"].as_f64().unwrap().abs() > 0.0);
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_validation_case_is_explicit_and_not_public_discovered() {
+        let case = load_internal_shape_contact_v0_smoke_case();
+        let path = std::path::Path::new(INTERNAL_SHAPE_CONTACT_V0_SMOKE_CASE_PATH);
+
+        assert!(path.exists());
+        assert_eq!(
+            path.parent().unwrap(),
+            std::path::Path::new("validation/internal")
+        );
+        assert_eq!(case.schema_version, "internal_shape_contact_v0_smoke_v1");
+        assert_eq!(case.case_id, "internal_shape_contact_v0_smoke");
+        assert!(case.internal_only);
+        assert_eq!(case.parameters.contact_model, SHAPE_CONTACT_V0_MODEL);
+        assert!(
+            !std::path::Path::new("validation/cases/shape_contact_v0_internal_smoke.yaml").exists()
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_validation_case_still_rejects_public_runner() {
+        let error = crate::validation::run_case_file(INTERNAL_SHAPE_CONTACT_V0_SMOKE_CASE_PATH)
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("shape_contact_v0 is a verification scaffold"));
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_validation_case_runs_frozen_internal_gates() {
+        let (_case, results) = run_internal_shape_contact_v0_smoke_case();
+        assert_eq!(results.len(), 4);
+
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        for result in &results {
+            assert_eq!(result.writer.rows().len(), 1);
+            let row = &result.writer.rows()[0];
+            assert_eq!(row.projection_energy_delta_j, None);
+            assert!(!row.projection_applied);
+            assert_close(row.total_energy_delta_j, row.contact_energy_delta_j, 1.0e-9);
+            assert!(
+                row.contact_energy_delta_j <= 1.0e-9,
+                "dissipative internal smoke contact created energy: {}",
+                row.contact_energy_delta_j
+            );
+            assert!(result.manifest.shape_metadata_path.is_some());
+            let shape_sha256 = result.manifest.shape_metadata_sha256.as_deref().unwrap();
+            assert_eq!(shape_sha256.len(), 64);
+            writer.write_row(row.clone());
+        }
+
+        let json_lines = writer.to_json_lines().unwrap();
+        let rows = json_lines
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(rows.len(), 4);
+        for row in &rows {
+            assert_shape_contact_runtime_diagnostic_fields(row);
+            assert_eq!(row["projection_energy_delta_j"], serde_json::Value::Null);
+            assert_eq!(row["projection_applied"], false);
+        }
+        assert_eq!(rows[0]["shape_contact_regime_label"], "impulsive_touching");
+        assert_eq!(
+            rows[1]["shape_contact_regime_label"],
+            "non_impulsive_separated"
+        );
+        assert_eq!(
+            rows[2]["shape_contact_regime_label"],
+            "non_impulsive_penetrating"
+        );
+        assert!(rows[3]["terrain_normal_x"].as_f64().unwrap().abs() > 0.0);
+
+        let sidecar = writer
+            .to_sidecar_manifest(Some(
+                "shape_contact_v0_internal_smoke_diagnostics.jsonl".to_string(),
+            ))
+            .unwrap();
+        assert_eq!(sidecar.row_count, 4);
+        assert_eq!(
+            sidecar.schema_version,
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert!(sidecar.json_lines_sha256.as_deref().is_some());
+        assert!(sidecar
+            .no_public_output_warning
+            .contains("not public validation or benchmark output"));
     }
 
     #[test]

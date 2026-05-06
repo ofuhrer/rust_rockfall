@@ -244,9 +244,10 @@ tests. It:
   persistent-contact, orientation-evolution, multi-contact, tuned-parameter, and
   default-change flags all disabled.
 - provides a named Rust-side fixture,
-  `shape_contact_v0_internal_integrator_smoke`, covering touching incoming,
-  separated, penetrating moving-away, and inclined-normal cases without creating
-  public validation YAML.
+  `shape_contact_v0_internal_integrator_smoke`, and a tracked internal case
+  contract at `validation/internal/shape_contact_v0_internal_smoke.yaml`,
+  covering touching incoming, separated, penetrating moving-away, and
+  inclined-normal cases without creating public validation YAML.
 
 This scaffold is not reachable from normal CLI validation, verification, or
 benchmark flows and is not validation evidence. It does not write files, create
@@ -262,7 +263,9 @@ spherical-impact event contract.
 
 After the internal integrator-smoke and synthetic verification gates, the
 project allows only the named Rust-side fixture
-`shape_contact_v0_internal_integrator_smoke` as an internal validation-style
-smoke case. Do not add `shape_contact_v0` YAML under public `validation/cases/`
-or include it in `cargo run -- validate --all` until a later boundary review
-explicitly approves public runtime diagnostics and manifest writing.
+`shape_contact_v0_internal_integrator_smoke` and its tracked internal case
+contract at `validation/internal/shape_contact_v0_internal_smoke.yaml` as an
+internal validation-style smoke case. Do not add `shape_contact_v0` YAML under
+public `validation/cases/` or include it in `cargo run -- validate --all` until
+a later boundary review explicitly approves public runtime diagnostics and
+manifest writing.

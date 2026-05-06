@@ -236,6 +236,12 @@ status, warnings, and limitations. These fields are a future diagnostic contract
 only; current validation loading still rejects public `shape_contact_v0`
 execution.
 
+The only tracked validation-style `shape_contact_v0` case is
+`validation/internal/shape_contact_v0_internal_smoke.yaml`. It is internal-only
+and outside public `validate --all` discovery. It may be loaded only by focused
+Rust smoke tests that assert diagnostic rows, sidecar manifests, and public
+runner rejection; it is not public validation or benchmark evidence.
+
 ## Implemented Terrain Types
 
 - `plane`: `z0_m`, `slope_x`, `slope_y`

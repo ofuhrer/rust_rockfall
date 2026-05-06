@@ -1,0 +1,72 @@
+schema_version: internal_shape_contact_v0_smoke_v1
+case_id: internal_shape_contact_v0_smoke
+internal_only: true
+title: Internal shape_contact_v0 smoke case
+description: >
+  Internal-only shape_contact_v0 validation-style smoke fixture. This case is
+  excluded from public validate --all discovery and exists only to exercise the
+  fixed-step prediction boundary, contact-preparation layer, diagnostic row
+  mapping, and sidecar manifest contract without claiming validation skill.
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 69.0, radius: 0.176667 }
+block_shape:
+  metadata_path: data/processed/tschamut2014/shape_metadata/block_1_st_leonard.yaml
+release:
+  position: [0.0, 0.0, 0.4]
+  velocity: [0.0, 0.0, -1.6595]
+parameters:
+  contact_model: shape_contact_v0
+  gravity: 9.81
+  normal_restitution: 0.5
+  tangential_restitution: 0.0
+  friction_coefficient: 0.4
+simulation: { dt: 0.1, t_max: 0.4, max_steps: 4, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+validation_scope:
+  type: internal-shape-contact-smoke
+  note: "Internal diagnostic smoke only; not public validation, benchmark evidence, tuning, or operational evidence."
+references:
+  dataset: internal_shape_contact_v0_smoke
+  notes:
+    - "Uses checked-in public Tschamut block-1 passive shape metadata only as a file-backed metadata sidecar."
+    - "Does not use Tschamut trajectories, outcomes, or validation metrics."
+    - "No parameters are tuned to this fixture."
+    - "Excluded from cargo run -- validate --all because it is outside validation/cases/."
+report:
+  verifies:
+    - "Internal shape_contact_v0 diagnostic row and sidecar manifest plumbing."
+    - "File-backed shape metadata path and SHA-256 provenance."
+    - "Separated, touching, penetrating-moving-away, and inclined-normal synthetic contact regimes."
+  does_not_verify:
+    - "Public validation skill, Chant Sura performance, Tschamut performance, operational hazard skill, persistent contact, projection correction, orientation evolution, or shape-contact calibration."
+internal_smoke_cases:
+  - case_label: touching_incoming
+    terrain: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+    pre_step_position_m: [0.0, 0.0, 0.4]
+    pre_step_velocity_mps: [0.0, 0.0, -1.6595]
+    step_index: 1
+    expected_contact_regime: touching
+    expected_shape_contact_regime_label: impulsive_touching
+  - case_label: separated_moving_toward
+    terrain: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+    pre_step_position_m: [0.0, 0.0, 1.2]
+    pre_step_velocity_mps: [0.0, 0.0, -1.0]
+    step_index: 2
+    expected_contact_regime: separated_moving_toward
+    expected_shape_contact_regime_label: non_impulsive_separated
+  - case_label: penetrating_moving_away
+    terrain: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+    pre_step_position_m: [0.0, 0.0, 0.0]
+    pre_step_velocity_mps: [0.0, 0.0, 1.4905]
+    step_index: 3
+    expected_contact_regime: penetrating
+    expected_shape_contact_regime_label: non_impulsive_penetrating
+  - case_label: inclined_normal
+    terrain: { z0_m: 0.0, slope_x: 0.2, slope_y: -0.1 }
+    pre_step_position_m: [0.0, 0.0, 1.2]
+    pre_step_velocity_mps: [0.0, 0.0, -1.6595]
+    step_index: 4
+    expected_contact_regime: separated_moving_toward
+    expected_shape_contact_regime_label: non_impulsive_separated
