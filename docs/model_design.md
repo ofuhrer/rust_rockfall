@@ -133,14 +133,16 @@ fixed-step integrator wiring. The internal contact-adjacent dry run accepts an
 explicit terrain contact point and normal, computes support gap and
 contact-point velocity diagnostics, and applies a scaffold-owned impulse update
 only for touching or penetrating contact without advancing a trajectory.
-An additional test-only synthetic harness queries a simple analytic terrain for
+An additional internal synthetic harness queries a simple analytic terrain for
 height and normal, constructs the explicit contact point, and then calls the
 same contact-preparation layer. It is a pre-runtime verification aid only, not a
-public simulation path. A still narrower mini fixed-step harness, compiled only
-for tests, advances at most one ballistic prediction against analytic terrain
-before delegating to that same preparation layer. It does not perform persistent
-contact, projection, orientation evolution, runtime diagnostics, validation, or
-benchmark execution.
+public simulation path. A still narrower mini fixed-step harness advances at
+most one ballistic prediction against analytic terrain before delegating to that
+same preparation layer. The current internal runtime-smoke path can collect an
+in-memory `shape_contact_runtime_diagnostic_v1` row and manifest-shaped
+sidecar record for this single synthetic step, but it does not perform
+persistent contact, projection, orientation evolution, validation, benchmark
+execution, or public output writing.
 The frozen pre-runtime diagnostic contract for future wiring is
 `shape_contact_runtime_diagnostic_v1`: runtime rows must expose contact regime,
 support gap, terrain normal, support point/corner, contact-point speeds,

@@ -2,10 +2,10 @@
 
 This document defines the smallest safe future slice for wiring
 `shape_contact_v0` into the fixed-step integrator. It is primarily a design
-plan. The repository also contains a test-only internal runtime-smoke scaffold
-that exercises one synthetic ballistic-to-contact step and diagnostic mapping
-without enabling public simulation, validation, benchmarks, or any new physics
-behavior.
+plan. The repository also contains a compiled internal runtime-smoke scaffold,
+covered by tests, that exercises one synthetic ballistic-to-contact step and
+diagnostic mapping without enabling public simulation, validation, benchmarks,
+or any new physics behavior.
 
 The implementation must remain opt-in and experimental. Existing
 `translational_v0` and `sphere_rotational_v1` behavior, defaults, verification
@@ -57,8 +57,8 @@ No future integrator code should call the low-level impulse kernel directly.
   - carry an optional scaffold and diagnostic sink into the integrator;
   - keep default validation rejecting public `shape_contact_v0` runs.
 - `src/shape.rs`
-  - promote the test-only runtime row/writer shape into crate-internal code only
-    if needed;
+  - keep runtime row, writer, sidecar, and smoke-harness shapes internal rather
+    than public API;
   - keep field names and enum labels identical to
     `shape_contact_runtime_diagnostic_v1`.
 - `src/manifest.rs`
@@ -222,7 +222,8 @@ manifest provenance, and backward-compatibility gates have passed review.
 
 ## Current Internal Smoke Scaffold
 
-The first internal smoke scaffold is test-only. It:
+The first internal smoke scaffold is module-internal and exercised by focused
+tests. It:
 
 - requires `contact_model = shape_contact_v0`;
 - builds a `ShapeContactV0Scaffold` from compatible in-memory
@@ -238,9 +239,10 @@ The first internal smoke scaffold is test-only. It:
   persistent-contact, orientation-evolution, multi-contact, tuned-parameter, and
   default-change flags all disabled.
 
-This scaffold is not a public runtime mode and is not validation evidence. It
-does not write files, create validation cases, run public benchmarks, or permit
-ordinary `shape_contact_v0` simulation.
+This scaffold is not reachable from normal CLI validation, verification, or
+benchmark flows and is not validation evidence. It does not write files, create
+validation cases, run public benchmarks, or permit ordinary
+`shape_contact_v0` simulation.
 
 The sidecar scaffold is preferred over overloading impact-event output because
 shape-contact rows include support geometry, contact-regime labels, projection

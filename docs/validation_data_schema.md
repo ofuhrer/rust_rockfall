@@ -170,8 +170,8 @@ This metadata is passive for `translational_v0` and `sphere_rotational_v1`.
 The experimental `shape_contact_v0` scaffold recognizes the metadata only when
 explicitly selected, requires compatible `principal_dimensions` sidecars using
 `mass_property_model: box_principal_dimensions`, and exposes scaffold-owned
-analytic contact preparation for tests only. It still stops before fixed-step
-simulation and public validation runs. The raw low-level impulse kernel is
+analytic contact preparation only through internal verification paths. It still
+stops before fixed-step simulation and public validation runs. The raw low-level impulse kernel is
 crate-internal test support rather than a public validation API. The
 crate-internal preparation layer keeps terrain/contact context, support
 selection, mass, inertia, contact-regime classification, and diagnostics tied to
@@ -179,15 +179,17 @@ the validated sidecar; a test-only single-contact wrapper exercises this path
 before runtime wiring. An internal contact-adjacent dry run can combine a
 terrain contact point, terrain normal, support gap diagnostic, and one
 scaffold-owned impulse update for touching or penetrating contact without
-producing validation or benchmark outputs. A test-only synthetic harness can
+producing validation or benchmark outputs. An internal synthetic harness can
 query simple analytic terrain height and normal before calling the same
-preparation layer, but it is not a public validation path. A `#[cfg(test)]`
-mini fixed-step harness can advance one synthetic ballistic prediction before
-calling that preparation layer; it writes no outputs and is not validation
-evidence. Persistent contact handling, projection, orientation evolution, and
-runtime diagnostic emission remain deferred. Separated dry-run states remain
-non-impulsive, even when moving toward future contact. The contact-gap tolerance
-is fixed at `1.0e-9 m` as a deterministic pre-runtime scaffold convention, not a
+preparation layer, but it is not a public validation path. The internal
+runtime-smoke scaffold can advance one synthetic ballistic prediction, collect
+an in-memory `shape_contact_runtime_diagnostic_v1` row, and build a
+manifest-shaped diagnostic sidecar record; it writes no outputs and is not
+validation evidence. Persistent contact handling, projection, orientation
+evolution, and public runtime diagnostic emission remain deferred. Separated
+dry-run states remain non-impulsive, even when moving toward future contact.
+The contact-gap tolerance is fixed at `1.0e-9 m` as a deterministic
+pre-runtime scaffold convention, not a
 calibrated contact parameter. The runtime diagnostic implementation is still
 incomplete before public `shape_contact_v0` use.
 Support-corner tie breaks are deterministic: exact zero components in the

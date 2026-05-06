@@ -1158,7 +1158,7 @@ fn shape_contact_v0_contact_dry_run(
     scaffold.prepare_contact(input)
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 struct ShapeContactV0SyntheticTerrainInput {
     pre_state: BodyState,
@@ -1167,7 +1167,7 @@ struct ShapeContactV0SyntheticTerrainInput {
     settings: ShapeContactV0ImpulseSettings,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 struct ShapeContactV0MiniFixedStepInput {
     pre_step_state: BodyState,
@@ -1176,7 +1176,7 @@ struct ShapeContactV0MiniFixedStepInput {
     settings: ShapeContactV0ImpulseSettings,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct ShapeContactV0MiniFixedStepResult {
     pre_step_state: BodyState,
@@ -1186,7 +1186,7 @@ struct ShapeContactV0MiniFixedStepResult {
     contact: ShapeContactV0ContactResult,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 enum ShapeContactV0RuntimeRegimeLabelV1 {
@@ -1197,7 +1197,6 @@ enum ShapeContactV0RuntimeRegimeLabelV1 {
     ImpulsivePenetrating,
 }
 
-#[cfg(test)]
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq)]
 struct ShapeContactV0RuntimeDiagnosticRowV1 {
@@ -1267,7 +1266,7 @@ struct ShapeContactV0RuntimeDiagnosticRowV1 {
     projection_applied: bool,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct ShapeContactV0RuntimeDiagnosticIdentity<'a> {
     case_id: &'a str,
@@ -1278,13 +1277,13 @@ struct ShapeContactV0RuntimeDiagnosticIdentity<'a> {
     impact_index: Option<u64>,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 struct ShapeContactV0RuntimeDiagnosticWriterV1 {
     rows: Vec<ShapeContactV0RuntimeDiagnosticRowV1>,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 impl ShapeContactV0RuntimeDiagnosticWriterV1 {
     fn new() -> Self {
         Self::default()
@@ -1324,7 +1323,6 @@ impl ShapeContactV0RuntimeDiagnosticWriterV1 {
     }
 }
 
-#[cfg(test)]
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct ShapeContactV0DiagnosticSidecarManifestV1 {
@@ -1335,7 +1333,7 @@ struct ShapeContactV0DiagnosticSidecarManifestV1 {
     json_lines_hash64: Option<String>,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 struct ShapeContactV0RuntimeSmokeInput {
     contact_model: crate::dynamics::ContactModel,
@@ -1347,7 +1345,6 @@ struct ShapeContactV0RuntimeSmokeInput {
     time_s: f64,
 }
 
-#[cfg(test)]
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq)]
 struct ShapeContactV0RuntimeSmokeManifestV1 {
@@ -1377,7 +1374,6 @@ struct ShapeContactV0RuntimeSmokeManifestV1 {
     limitations: Vec<String>,
 }
 
-#[cfg(test)]
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct ShapeContactV0RuntimeSmokeResult {
@@ -1389,7 +1385,6 @@ struct ShapeContactV0RuntimeSmokeResult {
     manifest: ShapeContactV0RuntimeSmokeManifestV1,
 }
 
-#[cfg(test)]
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq)]
 struct ShapeContactV0RuntimeSmokeManifestPackageV1 {
@@ -1397,7 +1392,7 @@ struct ShapeContactV0RuntimeSmokeManifestPackageV1 {
     diagnostic_sidecar: ShapeContactV0DiagnosticSidecarManifestV1,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_runtime_smoke_manifest_package(
     result: &ShapeContactV0RuntimeSmokeResult,
 ) -> Result<ShapeContactV0RuntimeSmokeManifestPackageV1, serde_json::Error> {
@@ -1407,7 +1402,7 @@ fn shape_contact_v0_runtime_smoke_manifest_package(
     })
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_runtime_smoke_manifest(
     scaffold: &ShapeContactV0Scaffold,
 ) -> ShapeContactV0RuntimeSmokeManifestV1 {
@@ -1436,21 +1431,22 @@ fn shape_contact_v0_runtime_smoke_manifest(
         runtime_diagnostic_schema_version: "shape_contact_runtime_diagnostic_v1".to_string(),
         experimental_status: "internal_runtime_smoke_only".to_string(),
         warnings: vec![
-            "shape_contact_v0 runtime smoke is internal and not public validation evidence"
+            "shape_contact_v0 runtime smoke is opt-in internal verification plumbing"
                 .to_string(),
-            "shape_contact_v0 remains uncalibrated, non-operational, and not benchmark-ready"
+            "shape_contact_v0 is uncalibrated, non-operational, not RAMMS-equivalent, and not benchmark-validated"
                 .to_string(),
         ],
         limitations: vec![
-            "projection correction is disabled".to_string(),
-            "persistent contact is disabled".to_string(),
-            "orientation evolution is disabled".to_string(),
-            "multi-contact is disabled".to_string(),
+            "missing projection correction".to_string(),
+            "missing persistent contact".to_string(),
+            "missing orientation evolution".to_string(),
+            "missing multi-contact".to_string(),
+            "missing public benchmark evidence".to_string(),
         ],
     }
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_internal_runtime_smoke_step<T: crate::terrain::Terrain>(
     metadata: &BlockShapeMetadata,
     terrain: &T,
@@ -1512,7 +1508,7 @@ fn shape_contact_v0_internal_runtime_smoke_step<T: crate::terrain::Terrain>(
     })
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -1540,7 +1536,7 @@ fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
     })
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_regime_label_v1(
     contact_regime: ShapeContactV0ContactRegime,
     impulse_applied: bool,
@@ -1565,7 +1561,7 @@ fn shape_contact_v0_regime_label_v1(
     }
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_runtime_diagnostic_row_v1(
     scaffold: &ShapeContactV0Scaffold,
     input: &ShapeContactV0ContactInput,
@@ -1690,7 +1686,7 @@ fn shape_contact_v0_runtime_diagnostic_row_v1(
     })
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn positive_ratio_or_none(numerator: f64, denominator: f64) -> Option<f64> {
     if denominator > 0.0 {
         Some(numerator / denominator)
@@ -1699,7 +1695,7 @@ fn positive_ratio_or_none(numerator: f64, denominator: f64) -> Option<f64> {
     }
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 fn shape_contact_v0_mini_fixed_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -3281,6 +3277,42 @@ mod tests {
         assert_eq!(manifest["projection_correction_enabled"], false);
         assert_eq!(manifest["persistent_contact_enabled"], false);
         assert_eq!(manifest["orientation_evolution_enabled"], false);
+        let warnings = manifest["warnings"].as_array().unwrap();
+        let warning_text = warnings
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" ");
+        for required in [
+            "opt-in",
+            "uncalibrated",
+            "non-operational",
+            "not RAMMS-equivalent",
+            "not benchmark-validated",
+        ] {
+            assert!(
+                warning_text.contains(required),
+                "manifest warnings missing {required}: {warning_text}"
+            );
+        }
+        let limitations = manifest["limitations"].as_array().unwrap();
+        let limitation_text = limitations
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" ");
+        for required in [
+            "missing projection correction",
+            "missing persistent contact",
+            "missing orientation evolution",
+            "missing multi-contact",
+            "missing public benchmark evidence",
+        ] {
+            assert!(
+                limitation_text.contains(required),
+                "manifest limitations missing {required}: {limitation_text}"
+            );
+        }
     }
 
     #[test]
