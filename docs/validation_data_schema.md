@@ -172,7 +172,8 @@ explicitly selected, requires compatible `principal_dimensions` sidecars using
 `mass_property_model: box_principal_dimensions`, and exposes an isolated
 analytic impulse helper for tests only. It still stops before fixed-step
 simulation and public validation runs. Its scaffold-owned preparation path
-keeps support selection, mass, and inertia tied to the validated sidecar.
+keeps support selection, mass, and inertia tied to the validated sidecar; a
+test-only single-contact wrapper exercises this path before runtime wiring.
 Current default contact, inertia, trajectory integration, and validation
 semantics remain spherical and continue to use `block.radius` and the current
 spherical moment of inertia.

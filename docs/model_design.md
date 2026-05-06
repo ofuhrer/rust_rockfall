@@ -126,7 +126,8 @@ helpers plus an isolated single-support impulse helper for analytic tests, but
 that helper is not wired into fixed-step simulation or public benchmarks. A
 scaffold-owned preparation API couples support selection, mass, and inertia so
 future runtime wiring cannot mix shape geometry and mass properties from
-different sources.
+different sources. A test-only single-contact state-transition wrapper exercises
+that path before any fixed-step integrator wiring.
 Existing
 `translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
 unchanged.

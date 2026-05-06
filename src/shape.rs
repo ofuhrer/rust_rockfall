@@ -1000,3 +1000,169 @@ fn clamp_vector_norm(vector: Vec3, max_norm: f64) -> Vec3 {
         vector
     }
 }
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0TestContactStepInput {
+    pre_state: BodyState,
+    terrain_normal_world: Vec3,
+    settings: ShapeContactV0ImpulseSettings,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_test_contact_step(
+    scaffold: &ShapeContactV0Scaffold,
+    input: ShapeContactV0TestContactStepInput,
+) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
+    scaffold.apply_support_impulse(input.pre_state, input.terrain_normal_world, input.settings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_close(actual: f64, expected: f64, epsilon: f64) {
+        assert!(
+            (actual - expected).abs() <= epsilon,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn test_scaffold(mass_kg: f64, principal_dimensions_m: [f64; 3]) -> ShapeContactV0Scaffold {
+        ShapeContactV0Scaffold {
+            active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
+            active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
+            shape_id: "unit_test_box".to_string(),
+            mass_kg,
+            principal_dimensions_m,
+            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+            orientation_wxyz: default_identity_quaternion(),
+        }
+    }
+
+    fn settings(
+        normal_restitution: f64,
+        tangential_restitution: f64,
+        friction_coefficient: f64,
+    ) -> ShapeContactV0ImpulseSettings {
+        ShapeContactV0ImpulseSettings {
+            normal_restitution,
+            tangential_restitution,
+            friction_coefficient,
+            gravity_mps2: 9.81,
+        }
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_off_center_normal_impact_updates_angular_velocity() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert!(result.diagnostic.impacted);
+        let impulse = result.diagnostic.normal_impulse_n_s;
+        assert!(impulse > 0.0);
+        assert_close(
+            result.post_state.angular_velocity_radps.x,
+            impulse / scaffold.principal_moments_kg_m2[0],
+            1.0e-12,
+        );
+        assert_close(
+            result.post_state.angular_velocity_radps.y,
+            -impulse / scaffold.principal_moments_kg_m2[1],
+            1.0e-12,
+        );
+        assert_close(result.post_state.angular_velocity_radps.z, 0.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_tangential_impulse_respects_coulomb_cap() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(6.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.2, 0.0, 0.01),
+            },
+        )
+        .unwrap();
+
+        assert!(result.diagnostic.coulomb_friction_cap_n_s > 0.0);
+        assert_close(
+            result.diagnostic.tangential_impulse_norm_n_s,
+            result.diagnostic.coulomb_friction_cap_n_s,
+            1.0e-12,
+        );
+        assert!(result.diagnostic.coulomb_cap_ratio <= 1.0 + 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_zero_incoming_normal_velocity_has_no_normal_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(1.0, 0.0, 0.0));
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state,
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 0.0, 1.0),
+            },
+        )
+        .unwrap();
+
+        assert!(!result.diagnostic.impacted);
+        assert_close(
+            result.diagnostic.pre_contact_normal_velocity_mps,
+            0.0,
+            1.0e-12,
+        );
+        assert_close(result.diagnostic.normal_impulse_n_s, 0.0, 1.0e-12);
+        assert_eq!(result.post_state, pre_state);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_dissipative_contact_does_not_create_energy() {
+        let scaffold = test_scaffold(3.0, [2.0, 3.0, 4.0]);
+        let mut pre_state = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(3.0, -1.0, -2.0));
+        pre_state.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state,
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.4, 0.0, 0.8),
+            },
+        )
+        .unwrap();
+
+        assert!(result.diagnostic.energy.contact_energy_delta_j <= 1.0e-10);
+    }
+
+    #[test]
+    fn shape_contact_v0_test_step_identity_quaternion_remains_normalized() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let result = shape_contact_v0_test_contact_step(
+            &scaffold,
+            ShapeContactV0TestContactStepInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.0, 0.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.diagnostic.active_contact_model,
+            SHAPE_CONTACT_V0_MODEL
+        );
+        assert_close(quaternion_norm(scaffold.orientation_wxyz), 1.0, 1.0e-12);
+    }
+}

@@ -7,9 +7,10 @@ recognizes `shape_contact_v0`, validates compatible metadata, and exposes pure
 box-inertia/support/energy diagnostic helpers plus an isolated single-support
 impulse helper for analytic tests. The scaffold owns preparation of impulse
 inputs so support geometry, mass, and inertia come from the same validated
-shape metadata. The helper is still not wired into fixed-step simulation, and
-the patch does not change defaults, validation baselines, terrain/material
-assumptions, or existing model behavior.
+shape metadata. A test-only single-contact state-transition wrapper exercises
+the same path before runtime wiring. The helper is still not wired into
+fixed-step simulation, and the patch does not change defaults, validation
+baselines, terrain/material assumptions, or existing model behavior.
 
 ## Purpose
 
@@ -349,7 +350,9 @@ The first scaffold slice should remain limited to:
 4. add isolated contact impulse scaffolding with energy accounting;
 5. route impulse preparation through the validated scaffold so support point,
    mass, and inertia remain coupled;
-6. add analytic verification and backward-compatibility tests before running
+6. add a test-only single-contact state-transition wrapper for controlled
+   verification before fixed-step integrator wiring;
+7. add analytic verification and backward-compatibility tests before running
    public benchmarks.
 
 Public benchmark execution should come only after those verification and
