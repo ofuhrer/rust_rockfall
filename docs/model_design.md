@@ -133,6 +133,10 @@ fixed-step integrator wiring. The internal contact-adjacent dry run accepts an
 explicit terrain contact point and normal, computes support gap and
 contact-point velocity diagnostics, and applies a scaffold-owned impulse update
 only for touching or penetrating contact without advancing a trajectory.
+An additional test-only synthetic harness queries a simple analytic terrain for
+height and normal, constructs the explicit contact point, and then calls the
+same contact-preparation layer. It is a pre-runtime verification aid only, not a
+public simulation path.
 Separated dry-run states are reported without impulse, including states moving
 toward future contact. The contact-gap tolerance is fixed at `1.0e-9 m` as a
 deterministic pre-runtime scaffold convention, not as a calibrated contact

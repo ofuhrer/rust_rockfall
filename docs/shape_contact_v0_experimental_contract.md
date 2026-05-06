@@ -388,6 +388,12 @@ plane, one scaffold-owned impulse update. The test-only dry-run wrapper calls
 this same preparation layer. It does not advance a trajectory, write validation
 outputs, enable public benchmark cases, or change existing model behavior.
 
+A test-only synthetic harness may query a simple analytic terrain for height and
+normal, construct the explicit terrain contact point, and then call the same
+preparation layer. This harness is integrator-adjacent only because it exercises
+terrain-query context; it still does not step a trajectory or enable public
+runtime execution.
+
 Contact-gap semantics are:
 
 - `separated_moving_away`: support signed gap is positive and contact-point

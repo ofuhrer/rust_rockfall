@@ -1157,6 +1157,43 @@ fn shape_contact_v0_contact_dry_run(
     scaffold.prepare_contact(input)
 }
 
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0SyntheticTerrainInput {
+    pre_state: BodyState,
+    terrain_query_x_m: f64,
+    terrain_query_y_m: f64,
+    settings: ShapeContactV0ImpulseSettings,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
+    scaffold: &ShapeContactV0Scaffold,
+    terrain: &T,
+    input: ShapeContactV0SyntheticTerrainInput,
+) -> Result<ShapeContactV0ContactResult, ShapeMetadataError> {
+    let terrain_height_m = terrain.height(input.terrain_query_x_m, input.terrain_query_y_m);
+    validate_finite_triplet(
+        [
+            input.terrain_query_x_m,
+            input.terrain_query_y_m,
+            terrain_height_m,
+        ],
+        "terrain_query_contact_point",
+    )?;
+    let terrain_normal_world = terrain.normal(input.terrain_query_x_m, input.terrain_query_y_m);
+    scaffold.prepare_contact(ShapeContactV0ContactInput {
+        pre_state: input.pre_state,
+        terrain_contact_point_m: Vec3::new(
+            input.terrain_query_x_m,
+            input.terrain_query_y_m,
+            terrain_height_m,
+        ),
+        terrain_normal_world,
+        settings: input.settings,
+    })
+}
+
 #[allow(dead_code)]
 pub(crate) fn shape_contact_v0_no_impulse_result(
     support: &ShapeContactV0SupportDiagnostic,
@@ -1260,6 +1297,7 @@ pub(crate) fn shape_contact_v0_no_impulse_result(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::terrain::{Plane, Terrain};
 
     fn assert_close(actual: f64, expected: f64, epsilon: f64) {
         assert!(
@@ -1778,6 +1816,195 @@ mod tests {
                 .energy
                 .contact_energy_delta_j
                 <= 1.0e-10
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_flat_plane_separated_has_no_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.5), Vec3::new(0.0, 0.0, 0.25));
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state,
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.0,
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingAway
+        );
+        assert!(!result.impulse_result.diagnostic.impacted);
+        assert_close(result.support_signed_gap_m, 0.5, 1.0e-12);
+        assert_eq!(result.impulse_result.post_state, pre_state);
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_flat_plane_touching_incoming_impacts() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.0,
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.contact_regime, ShapeContactV0ContactRegime::Touching);
+        assert!(result.impulse_result.diagnostic.impacted);
+        assert_close(result.support_signed_gap_m, 0.0, 1.0e-12);
+        assert!(
+            result
+                .impulse_result
+                .diagnostic
+                .post_contact_normal_velocity_mps
+                > 0.0
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_flat_plane_penetrating_incoming_impacts() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.25);
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.0,
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.contact_regime,
+            ShapeContactV0ContactRegime::Penetrating
+        );
+        assert!(result.impulse_result.diagnostic.impacted);
+        assert_close(result.support_signed_gap_m, -0.25, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_inclined_plane_uses_terrain_normal() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane {
+            z0_m: 0.0,
+            slope_x: 0.0,
+            slope_y: 1.0,
+        };
+        let normal = plane.normal(0.0, -1.0);
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state: BodyState::new(Vec3::new(0.0, 0.0, 2.0), -2.0 * normal),
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.0,
+                settings: settings(0.25, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.contact_regime, ShapeContactV0ContactRegime::Touching);
+        assert_eq!(
+            result.impulse_result.diagnostic.support_corner_signs,
+            [1, 1, -1]
+        );
+        assert_close(result.support_signed_gap_m, 0.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_separated_moving_toward_has_no_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.5), Vec3::new(0.0, 0.0, -2.0));
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state,
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.0,
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            result.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingToward
+        );
+        assert!(!result.impulse_result.diagnostic.impacted);
+        assert_close(
+            result.impulse_result.diagnostic.normal_impulse_n_s,
+            0.0,
+            1.0e-12,
+        );
+        assert_eq!(result.impulse_result.post_state, pre_state);
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_dissipative_contact_does_not_create_energy() {
+        let scaffold = test_scaffold(3.0, [2.0, 3.0, 4.0]);
+        let plane = Plane::horizontal(1.0);
+        let mut pre_state = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(3.0, -1.0, -2.0));
+        pre_state.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
+        let result = shape_contact_v0_synthetic_terrain_step(
+            &scaffold,
+            &plane,
+            ShapeContactV0SyntheticTerrainInput {
+                pre_state,
+                terrain_query_x_m: 1.0,
+                terrain_query_y_m: 1.5,
+                settings: settings(0.4, 0.0, 0.8),
+            },
+        )
+        .unwrap();
+
+        assert!(result.impulse_result.diagnostic.impacted);
+        assert!(
+            result
+                .impulse_result
+                .diagnostic
+                .energy
+                .contact_energy_delta_j
+                <= 1.0e-10
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_synthetic_flat_tie_break_remains_reproducible() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let input = ShapeContactV0SyntheticTerrainInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -1.0)),
+            terrain_query_x_m: 1.0,
+            terrain_query_y_m: 1.0,
+            settings: settings(0.0, 1.0, 0.0),
+        };
+        let first = shape_contact_v0_synthetic_terrain_step(&scaffold, &plane, input).unwrap();
+        let second = shape_contact_v0_synthetic_terrain_step(&scaffold, &plane, input).unwrap();
+
+        assert_eq!(
+            first.impulse_result.diagnostic.support_corner_signs,
+            [1, 1, -1]
+        );
+        assert_eq!(
+            first.impulse_result.diagnostic.support_corner_signs,
+            second.impulse_result.diagnostic.support_corner_signs
         );
     }
 }

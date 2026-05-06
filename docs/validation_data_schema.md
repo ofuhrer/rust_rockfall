@@ -179,7 +179,9 @@ the validated sidecar; a test-only single-contact wrapper exercises this path
 before runtime wiring. An internal contact-adjacent dry run can combine a
 terrain contact point, terrain normal, support gap diagnostic, and one
 scaffold-owned impulse update for touching or penetrating contact without
-producing validation or benchmark outputs. Separated dry-run states remain
+producing validation or benchmark outputs. A test-only synthetic harness can
+query simple analytic terrain height and normal before calling the same
+preparation layer, but it is not a public validation path. Separated dry-run states remain
 non-impulsive, even when moving toward future contact. The contact-gap tolerance
 is fixed at `1.0e-9 m` as a deterministic pre-runtime scaffold convention, not a
 calibrated contact parameter. The runtime diagnostic schema is still incomplete
