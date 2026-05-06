@@ -20,6 +20,7 @@ Core documents:
 - `public_tschamut_model_improvement_decision.md`: no-tuning decision record choosing the next scientific model-improvement direction after the registered public Tschamut benchmark.
 - `public_tschamut_failure_mode_analysis.md`: grouped public Tschamut failure-mode analysis by block, runout class, impact count, trajectory length, hazard-layer structure, and contact model.
 - `public_tschamut_all_runs_grouped_validation.md`: Work Package 1 all-usable public Tschamut grouped-validation report covering all 80 processed shared LPS/overview runs, exclusions, QA, hazard structure, and next-step criteria.
+- `active_shape_contact_design.md`: design-only Work Package 2 plan for a minimal opt-in active shape-contact model evaluated against WP1 Tschamut and Chant Sura evidence before implementation.
 - `shape_aware_block_scaffold_design.md`: design-only plan for an opt-in passive block shape, orientation, and inertia metadata scaffold before any non-spherical contact physics.
 - `shape_metadata_application_plan.md`: practical plan for attaching passive public block-shape metadata to Tschamut and Chant Sura validation cases without changing dynamics or tuning parameters.
 - `public_tschamut_shape_metadata_milestone.md`: concise scientific milestone report after the registered public Tschamut benchmark, passive shape scaffold, Tschamut sidecars, and inertness validation.
