@@ -34,6 +34,14 @@ PHASE1_SMOKE_DIRS = [
 ]
 
 
+def matplotlib_available() -> bool:
+    try:
+        import matplotlib  # type: ignore  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 class HazardLayerTests(unittest.TestCase):
     def test_trajectory_csv_batch_reader_preserves_samples_and_id(self) -> None:
         warnings: list[str] = []
@@ -390,7 +398,11 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("not operational risk", html)
             self.assertIn("How to Read Hazard Layers", html)
             self.assertIn("Reach probability", html)
-            self.assertGreater(len(list(plotted_dir.glob("*.png"))), 0)
+            png_files = list(plotted_dir.glob("*.png"))
+            if matplotlib_available():
+                self.assertGreater(len(png_files), 0)
+            else:
+                self.assertEqual(png_files, [])
 
             manifest = json.loads((plotted_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertTrue(manifest["performance"]["plots_enabled"])

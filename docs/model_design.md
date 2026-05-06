@@ -123,7 +123,10 @@ The experimental `shape_contact_v0` label is recognized only as a
 verification-first scaffold. It requires compatible passive shape metadata and
 currently exposes analytic `principal_dimensions_box_v0` inertia/support
 helpers plus an isolated single-support impulse helper for analytic tests, but
-that helper is not wired into fixed-step simulation or public benchmarks.
+that helper is not wired into fixed-step simulation or public benchmarks. A
+scaffold-owned preparation API couples support selection, mass, and inertia so
+future runtime wiring cannot mix shape geometry and mass properties from
+different sources.
 Existing
 `translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
 unchanged.

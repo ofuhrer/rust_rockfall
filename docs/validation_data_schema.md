@@ -171,9 +171,11 @@ The experimental `shape_contact_v0` scaffold recognizes the metadata only when
 explicitly selected, requires compatible `principal_dimensions` sidecars using
 `mass_property_model: box_principal_dimensions`, and exposes an isolated
 analytic impulse helper for tests only. It still stops before fixed-step
-simulation and public validation runs. Current default contact, inertia,
-trajectory integration, and validation semantics remain spherical and continue
-to use `block.radius` and the current spherical moment of inertia.
+simulation and public validation runs. Its scaffold-owned preparation path
+keeps support selection, mass, and inertia tied to the validated sidecar.
+Current default contact, inertia, trajectory integration, and validation
+semantics remain spherical and continue to use `block.radius` and the current
+spherical moment of inertia.
 
 ## Implemented Terrain Types
 

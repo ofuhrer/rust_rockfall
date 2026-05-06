@@ -218,6 +218,36 @@ impl ShapeContactV0Scaffold {
             self.orientation_wxyz,
         )
     }
+
+    pub fn impulse_input(
+        &self,
+        pre_state: BodyState,
+        terrain_normal_world: Vec3,
+        settings: ShapeContactV0ImpulseSettings,
+    ) -> Result<ShapeContactV0PreparedImpulse, ShapeMetadataError> {
+        let support = self.support_point(pre_state.position_m, terrain_normal_world)?;
+        let input = ShapeContactV0ImpulseInput {
+            pre_state,
+            terrain_normal_world,
+            mass_kg: self.mass_kg,
+            principal_moments_kg_m2: self.principal_moments_kg_m2,
+            normal_restitution: settings.normal_restitution,
+            tangential_restitution: settings.tangential_restitution,
+            friction_coefficient: settings.friction_coefficient,
+            gravity_mps2: settings.gravity_mps2,
+        };
+        Ok(ShapeContactV0PreparedImpulse { support, input })
+    }
+
+    pub fn apply_support_impulse(
+        &self,
+        pre_state: BodyState,
+        terrain_normal_world: Vec3,
+        settings: ShapeContactV0ImpulseSettings,
+    ) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
+        let prepared = self.impulse_input(pre_state, terrain_normal_world, settings)?;
+        shape_contact_v0_apply_support_impulse(&prepared.support, prepared.input)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -266,6 +296,20 @@ pub struct ShapeContactV0ImpulseDiagnostic {
 pub struct ShapeContactV0ImpulseResult {
     pub post_state: BodyState,
     pub diagnostic: ShapeContactV0ImpulseDiagnostic,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0PreparedImpulse {
+    pub support: ShapeContactV0SupportDiagnostic,
+    pub input: ShapeContactV0ImpulseInput,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0ImpulseSettings {
+    pub normal_restitution: f64,
+    pub tangential_restitution: f64,
+    pub friction_coefficient: f64,
+    pub gravity_mps2: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -593,6 +637,11 @@ pub fn shape_contact_v0_energy_diagnostic(
     })
 }
 
+/// Low-level analytic impulse helper for isolated tests.
+///
+/// Runtime shape-contact paths should prefer
+/// [`ShapeContactV0Scaffold::apply_support_impulse`] so support geometry, mass,
+/// and inertia all come from the same validated scaffold.
 pub fn shape_contact_v0_apply_support_impulse(
     support: &ShapeContactV0SupportDiagnostic,
     input: ShapeContactV0ImpulseInput,

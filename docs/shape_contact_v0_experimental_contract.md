@@ -5,9 +5,11 @@ document freezes the first active shape-contact prototype boundary,
 diagnostics, evaluation plan, and falsification criteria. The current scaffold
 recognizes `shape_contact_v0`, validates compatible metadata, and exposes pure
 box-inertia/support/energy diagnostic helpers plus an isolated single-support
-impulse helper for analytic tests; it does not wire active contact impulses
-into fixed-step simulation, change defaults, change validation baselines,
-change terrain/material assumptions, or change existing model behavior.
+impulse helper for analytic tests. The scaffold owns preparation of impulse
+inputs so support geometry, mass, and inertia come from the same validated
+shape metadata. The helper is still not wired into fixed-step simulation, and
+the patch does not change defaults, validation baselines, terrain/material
+assumptions, or existing model behavior.
 
 ## Purpose
 
@@ -345,7 +347,9 @@ The first scaffold slice should remain limited to:
 3. initialize and validate deterministic quaternion orientation for the opt-in
    model path;
 4. add isolated contact impulse scaffolding with energy accounting;
-5. add analytic verification and backward-compatibility tests before running
+5. route impulse preparation through the validated scaffold so support point,
+   mass, and inertia remain coupled;
+6. add analytic verification and backward-compatibility tests before running
    public benchmarks.
 
 Public benchmark execution should come only after those verification and
