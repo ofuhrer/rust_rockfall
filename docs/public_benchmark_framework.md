@@ -221,6 +221,11 @@ Generated outputs are ignored. A successful preparation manifest does not mean
 the model is scientifically validated; it means the benchmark package is
 reproducible enough to run and inspect.
 
+The first unified no-tuning execution inventory is in
+`docs/public_benchmark_results_baseline.md`. It records the current runnable
+baseline for Tschamut and Chant Sura, passive EOTA221 shape QA, and the
+metadata-only Mel de la Niva status.
+
 ## Implementation Roadmap
 
 1. Keep Tschamut as the deposition/runout benchmark and finish all-usable-run
