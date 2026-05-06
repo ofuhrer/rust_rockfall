@@ -1311,7 +1311,31 @@ impl ShapeContactV0RuntimeDiagnosticWriterV1 {
         diagnostic_sidecar_path: Option<String>,
     ) -> Result<ShapeContactV0DiagnosticSidecarManifestV1, serde_json::Error> {
         let json_lines = self.to_json_lines()?;
-        Ok(ShapeContactV0DiagnosticSidecarManifestV1 {
+        Ok(self.sidecar_manifest_for_json_lines(diagnostic_sidecar_path, &json_lines))
+    }
+
+    fn write_json_lines_sidecar(
+        &self,
+        diagnostic_sidecar_path: &Path,
+    ) -> Result<ShapeContactV0DiagnosticSidecarManifestV1, ShapeMetadataError> {
+        let json_lines = self.to_json_lines().map_err(|err| {
+            ShapeMetadataError::Invalid(format!(
+                "shape_contact_runtime_diagnostic_v1 serialization failed: {err}"
+            ))
+        })?;
+        fs::write(diagnostic_sidecar_path, json_lines.as_bytes())?;
+        Ok(self.sidecar_manifest_for_json_lines(
+            Some(diagnostic_sidecar_path.display().to_string()),
+            &json_lines,
+        ))
+    }
+
+    fn sidecar_manifest_for_json_lines(
+        &self,
+        diagnostic_sidecar_path: Option<String>,
+        json_lines: &str,
+    ) -> ShapeContactV0DiagnosticSidecarManifestV1 {
+        ShapeContactV0DiagnosticSidecarManifestV1 {
             diagnostic_sidecar_kind: "shape_contact_runtime_diagnostic_jsonl_v1".to_string(),
             diagnostic_sidecar_path,
             schema_version: "shape_contact_runtime_diagnostic_v1".to_string(),
@@ -1320,7 +1344,11 @@ impl ShapeContactV0RuntimeDiagnosticWriterV1 {
                 "{:016x}",
                 crate::stochastic::stable_hash64(json_lines.as_bytes())
             )),
-        })
+            json_lines_sha256: Some(sha256_hex(json_lines.as_bytes())),
+            no_public_output_warning:
+                "internal shape_contact_v0 smoke sidecar; not public validation or benchmark output"
+                    .to_string(),
+        }
     }
 }
 
@@ -1332,6 +1360,8 @@ struct ShapeContactV0DiagnosticSidecarManifestV1 {
     schema_version: String,
     row_count: usize,
     json_lines_hash64: Option<String>,
+    json_lines_sha256: Option<String>,
+    no_public_output_warning: String,
 }
 
 #[allow(dead_code)]
@@ -1953,20 +1983,91 @@ mod tests {
         }
     }
 
-    fn write_test_shape_metadata_file(
-        metadata: &BlockShapeMetadata,
-        name: &str,
-    ) -> std::path::PathBuf {
+    fn temp_shape_contact_path(name: &str, extension: &str) -> std::path::PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!(
-            "rust_rockfall_shape_contact_v0_{nonce}_{name}.yaml"
-        ));
+        std::env::temp_dir().join(format!(
+            "rust_rockfall_shape_contact_v0_{nonce}_{name}.{extension}"
+        ))
+    }
+
+    fn write_test_shape_metadata_file(
+        metadata: &BlockShapeMetadata,
+        name: &str,
+    ) -> std::path::PathBuf {
+        let path = temp_shape_contact_path(name, "yaml");
         let yaml = serde_yaml::to_string(metadata).unwrap();
         fs::write(&path, yaml).unwrap();
         path
+    }
+
+    fn runtime_smoke_input(
+        pre_step_state: BodyState,
+        step_index: u64,
+    ) -> ShapeContactV0RuntimeSmokeInput {
+        ShapeContactV0RuntimeSmokeInput {
+            contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+            pre_step_state,
+            dt_s: 0.1,
+            gravity_mps2: 9.81,
+            settings: settings(0.5, 0.0, 0.4),
+            step_index,
+            time_s: step_index as f64 * 0.1,
+        }
+    }
+
+    fn shape_contact_v0_internal_integrator_smoke_fixture() -> Vec<ShapeContactV0RuntimeSmokeResult>
+    {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let metadata_path = write_test_shape_metadata_file(&metadata, "internal_integrator_smoke");
+        let flat = Plane::horizontal(0.0);
+        let inclined = Plane {
+            z0_m: 0.0,
+            slope_x: 0.2,
+            slope_y: -0.1,
+        };
+        let cases = vec![
+            shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+                &metadata_path,
+                &flat,
+                runtime_smoke_input(
+                    BodyState::new(Vec3::new(0.0, 0.0, 1.2), Vec3::new(0.0, 0.0, -1.5095)),
+                    1,
+                ),
+            )
+            .unwrap(),
+            shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+                &metadata_path,
+                &flat,
+                runtime_smoke_input(
+                    BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(0.0, 0.0, -1.0)),
+                    2,
+                ),
+            )
+            .unwrap(),
+            shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+                &metadata_path,
+                &flat,
+                runtime_smoke_input(
+                    BodyState::new(Vec3::new(0.0, 0.0, 0.8), Vec3::new(0.0, 0.0, 1.4905)),
+                    3,
+                ),
+            )
+            .unwrap(),
+            shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+                &metadata_path,
+                &inclined,
+                runtime_smoke_input(
+                    BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(0.0, 0.0, -1.0)),
+                    4,
+                ),
+            )
+            .unwrap(),
+        ];
+        fs::remove_file(&metadata_path).unwrap();
+        cases
     }
 
     fn settings(
@@ -3066,6 +3167,14 @@ mod tests {
             sidecar.json_lines_hash64.as_deref(),
             Some(expected_hash.as_str())
         );
+        let expected_sha256 = sha256_hex(json_lines.as_bytes());
+        assert_eq!(
+            sidecar.json_lines_sha256.as_deref(),
+            Some(expected_sha256.as_str())
+        );
+        assert!(sidecar
+            .no_public_output_warning
+            .contains("not public validation or benchmark output"));
 
         let manifest_json = serde_json::to_value(&sidecar).unwrap();
         assert_eq!(manifest_json["row_count"], 3);
@@ -3074,6 +3183,44 @@ mod tests {
             "shape_contact_runtime_diagnostic_jsonl_v1"
         );
         assert!(manifest_json["json_lines_hash64"].as_str().is_some());
+        assert!(manifest_json["json_lines_sha256"].as_str().is_some());
+        assert!(manifest_json["no_public_output_warning"]
+            .as_str()
+            .unwrap()
+            .contains("not public validation or benchmark output"));
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_diagnostic_sidecar_writes_json_lines_file() {
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        for row in shape_contact_v0_runtime_diagnostic_fixture_rows() {
+            writer.write_row(row);
+        }
+        let sidecar_path = temp_shape_contact_path("sidecar", "jsonl");
+
+        let sidecar = writer.write_json_lines_sidecar(&sidecar_path).unwrap();
+        let json_lines = fs::read_to_string(&sidecar_path).unwrap();
+        fs::remove_file(&sidecar_path).unwrap();
+
+        assert_eq!(sidecar.row_count, 3);
+        let sidecar_path_string = sidecar_path.display().to_string();
+        assert_eq!(
+            sidecar.diagnostic_sidecar_path.as_deref(),
+            Some(sidecar_path_string.as_str())
+        );
+        let expected_sha256 = sha256_hex(json_lines.as_bytes());
+        assert_eq!(
+            sidecar.json_lines_sha256.as_deref(),
+            Some(expected_sha256.as_str())
+        );
+        let rows = json_lines.lines().collect::<Vec<_>>();
+        assert_eq!(rows.len(), 3);
+        let first: serde_json::Value = serde_json::from_str(rows[0]).unwrap();
+        assert_shape_contact_runtime_diagnostic_fields(&first);
+        assert_eq!(
+            first["shape_contact_row_id"],
+            "trajectory_000001:shape_contact:7"
+        );
     }
 
     #[test]
@@ -3405,6 +3552,51 @@ mod tests {
         assert!(sha256
             .chars()
             .all(|character| character.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_integrator_smoke_fixture_writes_sidecar() {
+        let results = shape_contact_v0_internal_integrator_smoke_fixture();
+        assert_eq!(results.len(), 4);
+
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        for result in &results {
+            assert_eq!(result.writer.rows().len(), 1);
+            writer.write_row(result.writer.rows()[0].clone());
+            assert!(result.manifest.shape_metadata_path.is_some());
+            let sha256 = result.manifest.shape_metadata_sha256.as_deref().unwrap();
+            assert_eq!(sha256.len(), 64);
+        }
+
+        let sidecar_path = temp_shape_contact_path("internal_integrator_smoke_sidecar", "jsonl");
+        let sidecar = writer.write_json_lines_sidecar(&sidecar_path).unwrap();
+        let json_lines = fs::read_to_string(&sidecar_path).unwrap();
+        fs::remove_file(&sidecar_path).unwrap();
+        assert_eq!(sidecar.row_count, 4);
+        let expected_sha256 = sha256_hex(json_lines.as_bytes());
+        assert_eq!(
+            sidecar.json_lines_sha256.as_deref(),
+            Some(expected_sha256.as_str())
+        );
+        assert!(sidecar
+            .no_public_output_warning
+            .contains("not public validation or benchmark output"));
+
+        let rows = json_lines
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0]["shape_contact_regime_label"], "impulsive_touching");
+        assert_eq!(
+            rows[1]["shape_contact_regime_label"],
+            "non_impulsive_separated"
+        );
+        assert_eq!(
+            rows[2]["shape_contact_regime_label"],
+            "non_impulsive_penetrating"
+        );
+        assert!(rows[3]["terrain_normal_x"].as_f64().unwrap().abs() > 0.0);
     }
 
     #[test]

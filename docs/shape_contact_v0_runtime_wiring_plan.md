@@ -235,12 +235,18 @@ tests. It:
   that helper;
 - calls `shape_contact_v0_prepare_contact`;
 - maps one row to `shape_contact_runtime_diagnostic_v1`;
-- collects the row in memory and serializes JSON Lines in tests;
+- collects rows in memory and can write an internal JSON Lines sidecar to a
+  temporary test path;
 - builds an internal diagnostic-sidecar manifest fixture with sidecar kind,
-  schema version, row count, optional path, and deterministic in-memory hash;
+  schema version, row count, optional path, deterministic in-memory hash,
+  SHA-256, and an explicit non-public-output warning;
 - builds a manifest-shaped `shape_contact_v0` object with projection,
   persistent-contact, orientation-evolution, multi-contact, tuned-parameter, and
   default-change flags all disabled.
+- provides a named Rust-side fixture,
+  `shape_contact_v0_internal_integrator_smoke`, covering touching incoming,
+  separated, penetrating moving-away, and inclined-normal cases without creating
+  public validation YAML.
 
 This scaffold is not reachable from normal CLI validation, verification, or
 benchmark flows and is not validation evidence. It does not write files, create
@@ -251,3 +257,12 @@ The sidecar scaffold is preferred over overloading impact-event output because
 shape-contact rows include support geometry, contact-regime labels, projection
 status, and active shape provenance that are not part of the existing
 spherical-impact event contract.
+
+## Internal Validation-Case Decision
+
+After the internal integrator-smoke and synthetic verification gates, the
+project allows only the named Rust-side fixture
+`shape_contact_v0_internal_integrator_smoke` as an internal validation-style
+smoke case. Do not add `shape_contact_v0` YAML under public `validation/cases/`
+or include it in `cargo run -- validate --all` until a later boundary review
+explicitly approves public runtime diagnostics and manifest writing.

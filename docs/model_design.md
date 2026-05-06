@@ -142,7 +142,9 @@ integrator-owned fixed-step prediction helper before delegating to that same
 preparation layer. The current internal integrator-smoke path can collect an
 in-memory `shape_contact_runtime_diagnostic_v1` row and manifest-shaped
 sidecar record for this single synthetic step, including file-backed shape
-metadata path and SHA-256 provenance in tests, but it does not perform
+metadata path and SHA-256 provenance in tests. Internal tests can write the
+diagnostic rows to a temporary JSON Lines sidecar with a manifest checksum, but
+this is still not public validation output. The scaffold does not perform
 persistent contact, projection, orientation evolution, validation, benchmark
 execution, or public output writing.
 The frozen pre-runtime diagnostic contract for future wiring is

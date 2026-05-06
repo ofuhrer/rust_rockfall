@@ -186,11 +186,12 @@ integrator-smoke scaffold can advance one synthetic ballistic prediction
 through an integrator-owned fixed-step prediction helper, collect an in-memory
 `shape_contact_runtime_diagnostic_v1` row, and build a manifest-shaped
 diagnostic sidecar record. Tests can use file-backed shape metadata so
-`shape_metadata_path` and `shape_metadata_sha256` are real. The scaffold writes
-no outputs and is not validation evidence. Persistent contact handling,
-projection, orientation evolution, and public runtime diagnostic emission
-remain deferred. Separated dry-run states remain non-impulsive, even when
-moving toward future contact.
+`shape_metadata_path` and `shape_metadata_sha256` are real. Internal tests can
+write a temporary JSON Lines sidecar and manifest checksum, but those files are
+not public validation outputs and are not committed. Persistent contact
+handling, projection, orientation evolution, and public runtime diagnostic
+emission remain deferred. Separated dry-run states remain non-impulsive, even
+when moving toward future contact.
 The contact-gap tolerance is fixed at `1.0e-9 m` as a deterministic
 pre-runtime scaffold convention, not a
 calibrated contact parameter. The runtime diagnostic implementation is still
