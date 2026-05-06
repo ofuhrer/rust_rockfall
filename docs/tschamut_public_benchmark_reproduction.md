@@ -186,9 +186,10 @@ still a terrain-scan registration, not a surveyed control-point adjustment.
 The preparation manifest now treats registration sensitivity as a physics
 selection gate. It records the transform inputs, compares `scan_surface_fit_v1`,
 `bbox_align_v1`, and `overview_offset_v1`, and explicitly marks classification
-stability as not yet reported. Public Tschamut under-run/over-run outcomes
-should therefore not be used to select contact physics until the same no-tuning
-benchmark is reported across those registration transforms.
+stability as not yet reported with `physics_selection_allowed: false`. Public
+Tschamut under-run/over-run outcomes should therefore not be used to select
+contact physics until the same no-tuning benchmark is reported across those
+registration transforms in a classification-sensitivity table.
 
 ## Commands Run
 

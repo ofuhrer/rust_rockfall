@@ -181,6 +181,59 @@ fn translational_post_ballistic_sliding_applies_tangent_gravity_once() {
 }
 
 #[test]
+fn translational_incline_sliding_matches_analytic_tangent_acceleration() {
+    let terrain = Plane {
+        z0_m: 0.0,
+        slope_x: -0.5,
+        slope_y: 0.0,
+    };
+    let block = SphereBlock::new(0.5, 10.0);
+    let dt_s = 0.01;
+    let max_time_s = 0.2;
+    let gravity_mps2 = 9.81;
+    let normal = terrain.normal(0.0, 0.0);
+    let gravity = Vec3::new(0.0, 0.0, -gravity_mps2);
+    let normal_acc = gravity.dot(&normal) * normal;
+    let tangent_acc = gravity - normal_acc;
+    let initial = BodyState::new(
+        Vec3::new(0.0, 0.0, block.radius_m / normal.z),
+        Vec3::zeros(),
+    );
+
+    let samples = simulate_fixed_step(
+        initial,
+        block,
+        &terrain,
+        IntegratorSettings {
+            dt_s,
+            max_time_s,
+            gravity_mps2,
+            normal_restitution: 0.0,
+            tangential_restitution: 1.0,
+            friction_coefficient: 0.0,
+            rolling_resistance_coefficient: 0.0,
+            stop_speed_mps: 0.0,
+            contact_model: ContactModel::TranslationalV0,
+            scarring: ScarringSettings::default(),
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
+        },
+    );
+
+    let last = samples.last().unwrap();
+    let last_velocity = Vec3::new(last.vx_mps, last.vy_mps, last.vz_mps);
+    let expected_tangent_speed = tangent_acc.norm() * last.time_s;
+
+    assert_eq!(last.contact_state, ContactState::Sliding);
+    assert_abs_diff_eq!(last_velocity.dot(&normal), 0.0, epsilon = 1.0e-10);
+    assert_abs_diff_eq!(
+        last_velocity.dot(&tangent_acc.normalize()),
+        expected_tangent_speed,
+        epsilon = 1.0e-10
+    );
+}
+
+#[test]
 fn fixed_seed_reproduces_release_sample() {
     let initial = BodyState::new(Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0));
     let perturbation = ReleasePerturbation {

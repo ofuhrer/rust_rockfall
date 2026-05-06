@@ -98,6 +98,86 @@ def validate_tschamut_registration_sensitivity(data: dict[str, Any], errors: lis
         errors.append("registration_sensitivity.classification_stability_required must be true")
     if "decision_gate" not in sensitivity:
         errors.append("registration_sensitivity.decision_gate must be present")
+    physics_selection_allowed = sensitivity.get("physics_selection_allowed")
+    if not isinstance(physics_selection_allowed, bool):
+        errors.append("registration_sensitivity.physics_selection_allowed must be a boolean")
+    if physics_selection_allowed is True:
+        validate_tschamut_physics_selection_table(sensitivity, required_methods, errors)
+
+
+def validate_tschamut_physics_selection_table(
+    sensitivity: dict[str, Any],
+    required_methods: set[str],
+    errors: list[str],
+) -> None:
+    if sensitivity.get("classification_stability_reported") is not True:
+        errors.append(
+            "registration_sensitivity.classification_stability_reported must be true "
+            "when physics_selection_allowed is true"
+        )
+    table = sensitivity.get("classification_sensitivity")
+    if not isinstance(table, list) or not table:
+        errors.append(
+            "registration_sensitivity.classification_sensitivity must be a nonempty list "
+            "when physics_selection_allowed is true"
+        )
+        return
+
+    grouped: dict[tuple[str, str], dict[str, set[str]]] = {}
+    required_row_keys = {
+        "transform_method",
+        "run_subset",
+        "contact_model",
+        "classification",
+        "summary_metric_provenance",
+    }
+    for index, row in enumerate(table):
+        if not isinstance(row, dict):
+            errors.append(
+                f"registration_sensitivity.classification_sensitivity[{index}] must be an object"
+            )
+            continue
+        for key in required_row_keys:
+            if not str(row.get(key, "")).strip():
+                errors.append(
+                    f"registration_sensitivity.classification_sensitivity[{index}].{key} "
+                    "must be present and nonempty"
+                )
+        method = row.get("transform_method")
+        if method not in required_methods:
+            errors.append(
+                f"registration_sensitivity.classification_sensitivity[{index}].transform_method "
+                "must be one of scan_surface_fit_v1, bbox_align_v1, overview_offset_v1"
+            )
+            continue
+        run_subset = str(row.get("run_subset", "")).strip()
+        contact_model = str(row.get("contact_model", "")).strip()
+        classification = str(row.get("classification", "")).strip()
+        if run_subset and contact_model and classification:
+            group = grouped.setdefault((run_subset, contact_model), {})
+            group.setdefault(method, set()).add(classification)
+
+    for (run_subset, contact_model), by_method in grouped.items():
+        for method, classifications_for_method in by_method.items():
+            if len(classifications_for_method) > 1:
+                errors.append(
+                    "registration_sensitivity.classification_sensitivity has conflicting "
+                    f"classifications for method={method!r}, run_subset={run_subset!r}, "
+                    f"contact_model={contact_model!r}"
+                )
+        missing = required_methods.difference(by_method)
+        if missing:
+            errors.append(
+                "registration_sensitivity.classification_sensitivity missing methods "
+                f"{sorted(missing)} for run_subset={run_subset!r}, contact_model={contact_model!r}"
+            )
+            continue
+        classifications = {next(iter(values)) for values in by_method.values() if values}
+        if len(classifications) > 1:
+            errors.append(
+                "registration_sensitivity.classification_sensitivity classifications are not stable "
+                f"for run_subset={run_subset!r}, contact_model={contact_model!r}"
+            )
 
 
 def normalized_selected_ids(data: dict[str, Any]) -> Any:

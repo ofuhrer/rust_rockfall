@@ -51,10 +51,21 @@ TOP_LEVEL_KEYS = {
 
 NESTED_KEYS = {
     "terrain": {"type", "kind", "parameters", "path", "metadata_path"},
+    "terrain.parameters": {
+        "z0_m",
+        "slope_x",
+        "slope_y",
+        "ax",
+        "ay",
+        "step_x_m",
+        "high_z_m",
+        "low_z_m",
+    },
     "terrain_classes": {"metadata_path"},
     "block": {"mass", "radius"},
     "block_shape": {"metadata_path"},
     "release": {"position", "velocity", "angular_velocity", "perturbation"},
+    "release.perturbation": {"position_uniform_m", "velocity_uniform_mps"},
     "release_zone": {"metadata_path", "generated_release_points_csv"},
     "parameters": {
         "gravity",
@@ -84,12 +95,23 @@ NESTED_KEYS = {
         "scenario_id",
     },
     "hazard_layers": {"statistics"},
+    "hazard_layers.statistics": {
+        "kinetic_energy_exceedance_j",
+        "jump_height_exceedance_m",
+        "velocity_exceedance_mps",
+    },
     "hazard_probability": {
         "probability_model",
         "metadata_path",
         "weight_column",
         "normalization_convention",
         "filters",
+    },
+    "hazard_probability.filters": {
+        "source_zone_ids",
+        "scenario_ids",
+        "block_mass_kg_min",
+        "block_mass_kg_max",
     },
     "hazard_map_package": {
         "map_product_id",
@@ -140,6 +162,13 @@ NESTED_KEYS = {
     "report": {"verifies", "does_not_verify"},
 }
 
+ARBITRARY_METRIC_MAPS = {
+    "expected.values",
+    "expected.minimums",
+    "expected.maximums",
+    "expected.tolerances",
+}
+
 DEFAULT_CASE_GLOBS = ("verification/**/*.yaml", "validation/cases/*.yaml")
 
 
@@ -148,6 +177,33 @@ def default_case_paths(root: Path = ROOT) -> list[Path]:
     for pattern in DEFAULT_CASE_GLOBS:
         paths.extend(root.glob(pattern))
     return sorted(path for path in paths if path.is_file())
+
+
+def audit_mapping(data: dict[str, Any], rel_path: str, path: str = "") -> list[str]:
+    errors: list[str] = []
+    if path in ARBITRARY_METRIC_MAPS:
+        return errors
+
+    allowed = TOP_LEVEL_KEYS if path == "" else NESTED_KEYS.get(path)
+    if allowed is not None:
+        for key, value in data.items():
+            if key not in allowed:
+                dotted = key if path == "" else f"{path}.{key}"
+                if path == "":
+                    errors.append(f"{rel_path}: unknown top-level key {key!r}")
+                else:
+                    errors.append(f"{rel_path}: unknown {dotted}")
+                continue
+            if isinstance(value, dict):
+                child_path = key if path == "" else f"{path}.{key}"
+                errors.extend(audit_mapping(value, rel_path, child_path))
+        return errors
+
+    for key, value in data.items():
+        if isinstance(value, dict):
+            child_path = key if path == "" else f"{path}.{key}"
+            errors.extend(audit_mapping(value, rel_path, child_path))
+    return errors
 
 
 def audit_case_data(data: dict[str, Any], rel_path: str) -> list[str]:
@@ -161,16 +217,7 @@ def audit_case_data(data: dict[str, Any], rel_path: str) -> list[str]:
             f"expected {SUPPORTED_SCHEMA_VERSION!r}"
         )
 
-    for key in data:
-        if key not in TOP_LEVEL_KEYS:
-            errors.append(f"{rel_path}: unknown top-level key {key!r}")
-
-    for section, allowed in NESTED_KEYS.items():
-        value = data.get(section)
-        if isinstance(value, dict):
-            for key in value:
-                if key not in allowed:
-                    errors.append(f"{rel_path}: unknown {section}.{key}")
+    errors.extend(audit_mapping(data, rel_path))
     return errors
 
 

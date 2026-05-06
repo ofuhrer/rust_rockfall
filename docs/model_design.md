@@ -21,11 +21,11 @@ Supported now:
 
 ## Terrain Representation
 
-Terrain access is abstracted through the `Terrain` trait. Existing analytic terrain and strict `esri_ascii_grid` behavior remain unchanged. Strict ESRI ASCII grids use bilinear interpolation and intentionally fail on out-of-bounds access through `try_height`. The `Terrain` trait itself is currently infallible, so strict DEM use through `height`, `normal`, or the integrator will panic on out-of-bounds or nodata queries; use the clamped DEM variant only when deterministic boundary extrapolation is an explicit validation assumption.
+Terrain access is abstracted through the `Terrain` trait. Analytic terrain remains unchanged. ESRI ASCII grids follow the standard GIS convention: `xllcorner` and `yllcorner` define the outer lower-left cell corner, raster values are sampled at cell centers, and metadata extents describe the full outer footprint. Strict ESRI ASCII grids use bilinear interpolation over the cell-center domain and intentionally fail on out-of-bounds access through `try_height`. The `Terrain` trait itself is currently infallible, so strict DEM use through `height`, `normal`, or the integrator will panic on out-of-bounds or nodata queries; use the clamped DEM variant only when deterministic boundary extrapolation is an explicit validation assumption.
 
 ESRI ASCII `NODATA_value` cells are not interpolated as elevations. Any bilinear query touching a nodata or non-finite corner returns a terrain error through `try_height`; clamped terrain still fails if the clamped stencil touches nodata. This keeps small DEM fixtures auditable and prevents silent smoothing over raster holes, but it is not a full GIS nodata-repair workflow.
 
-The opt-in `ascii_dem_clamped` / `esri_ascii_grid_clamped` model wraps the same ESRI ASCII grid but clamps height and normal queries to the raster boundary. It is intended for limited real-data terrain patches where a trajectory may leave the small validation raster. This boundary policy is deterministic and lightweight, but it is an extrapolation assumption, not a production GIS workflow.
+The opt-in `ascii_dem_clamped` / `esri_ascii_grid_clamped` model wraps the same ESRI ASCII grid but clamps height and normal queries to the nearest valid cell centers before interpolation. It is intended for limited real-data terrain patches where a trajectory may leave the small validation raster. This boundary policy is deterministic and lightweight, but it is an extrapolation assumption, not a production GIS workflow.
 
 Validation and benchmark cases can attach a terrain-source metadata sidecar with
 `terrain.metadata_path`. The first Swiss pilot uses a tiny synthetic

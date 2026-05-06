@@ -431,6 +431,7 @@ def registration_sensitivity_gate(qa: dict[str, Any]) -> dict[str, Any]:
     required_methods = ["bbox_align_v1", "overview_offset_v1", "scan_surface_fit_v1"]
     return {
         "required_before_physics_selection": True,
+        "physics_selection_allowed": False,
         "methods_compared": methods,
         "required_methods": required_methods,
         "classification_stability_required": True,

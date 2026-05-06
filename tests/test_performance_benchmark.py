@@ -40,6 +40,7 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
             "limitations": ["fixture only"],
             "registration_sensitivity": {
                 "required_before_physics_selection": True,
+                "physics_selection_allowed": False,
                 "methods_compared": [
                     "scan_surface_fit_v1",
                     "bbox_align_v1",
@@ -60,6 +61,73 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                 for error in benchmark_manifest.validate_manifest(bad_manifest)
             )
         )
+
+        physics_selection_manifest = json.loads(json.dumps(manifest))
+        physics_selection_manifest["registration_sensitivity"].update(
+            {
+                "physics_selection_allowed": True,
+                "classification_stability_reported": True,
+            }
+        )
+        self.assertTrue(
+            any(
+                "classification_sensitivity" in error
+                for error in benchmark_manifest.validate_manifest(physics_selection_manifest)
+            )
+        )
+
+        missing_method_manifest = json.loads(json.dumps(manifest))
+        missing_method_manifest["registration_sensitivity"].update(
+            {
+                "physics_selection_allowed": True,
+                "classification_stability_reported": True,
+                "classification_sensitivity": [
+                    {
+                        "transform_method": "scan_surface_fit_v1",
+                        "run_subset": "all_usable_public_runs",
+                        "contact_model": "translational_v0",
+                        "classification": "under_run_persists",
+                        "summary_metric_provenance": "fixture metrics",
+                    },
+                    {
+                        "transform_method": "bbox_align_v1",
+                        "run_subset": "all_usable_public_runs",
+                        "contact_model": "translational_v0",
+                        "classification": "under_run_persists",
+                        "summary_metric_provenance": "fixture metrics",
+                    },
+                ],
+            }
+        )
+        self.assertTrue(
+            any(
+                "missing methods" in error
+                for error in benchmark_manifest.validate_manifest(missing_method_manifest)
+            )
+        )
+
+        ready_manifest = json.loads(json.dumps(manifest))
+        ready_manifest["registration_sensitivity"].update(
+            {
+                "physics_selection_allowed": True,
+                "classification_stability_reported": True,
+                "classification_sensitivity": [
+                    {
+                        "transform_method": method,
+                        "run_subset": "all_usable_public_runs",
+                        "contact_model": "translational_v0",
+                        "classification": "under_run_persists",
+                        "summary_metric_provenance": "fixture metrics",
+                    }
+                    for method in [
+                        "scan_surface_fit_v1",
+                        "bbox_align_v1",
+                        "overview_offset_v1",
+                    ]
+                ],
+            }
+        )
+        self.assertEqual(benchmark_manifest.validate_manifest(ready_manifest), [])
 
     def test_prepare_benchmark_inputs_generates_tiny_opt_in_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
