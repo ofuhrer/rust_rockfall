@@ -2,10 +2,11 @@
 
 This document defines the smallest safe future slice for wiring
 `shape_contact_v0` into the fixed-step integrator. It is primarily a design
-plan. The repository also contains a compiled internal runtime-smoke scaffold,
-covered by tests, that exercises one synthetic ballistic-to-contact step and
-diagnostic mapping without enabling public simulation, validation, benchmarks,
-or any new physics behavior.
+plan. The repository also contains a compiled internal integrator-smoke
+scaffold, covered by tests, that exercises one synthetic ballistic-to-contact
+step through an integrator-owned fixed-step prediction and diagnostic mapping
+without enabling public simulation, validation, benchmarks, or any new physics
+behavior.
 
 The implementation must remain opt-in and experimental. Existing
 `translational_v0` and `sphere_rotational_v1` behavior, defaults, verification
@@ -226,10 +227,12 @@ The first internal smoke scaffold is module-internal and exercised by focused
 tests. It:
 
 - requires `contact_model = shape_contact_v0`;
-- builds a `ShapeContactV0Scaffold` from compatible in-memory
-  `shape_metadata_v1`;
-- advances one synthetic ballistic step;
-- queries analytic terrain height and normal at the predicted position;
+- builds a `ShapeContactV0Scaffold` from compatible `shape_metadata_v1`,
+  including a file-backed smoke test that records metadata path and SHA-256;
+- advances one synthetic ballistic step through an integrator-owned helper that
+  uses the same fixed-step ballistic prediction and terrain-query convention;
+- queries analytic terrain height and normal at the predicted position through
+  that helper;
 - calls `shape_contact_v0_prepare_contact`;
 - maps one row to `shape_contact_runtime_diagnostic_v1`;
 - collects the row in memory and serializes JSON Lines in tests;

@@ -458,14 +458,15 @@ this same preparation layer. It does not advance a trajectory, write validation
 outputs, enable public benchmark cases, or change existing model behavior.
 
 An internal mini fixed-step smoke harness may advance one synthetic ballistic
-prediction against analytic terrain, query height and normal at the predicted
-position, construct the explicit contact point, and then call the same internal
-preparation layer. It may collect an in-memory
-`shape_contact_runtime_diagnostic_v1` row and manifest-shaped sidecar record for
-that single synthetic step. This is not a public runtime path and is not
-validation evidence. Persistent contact, projection/correction, orientation
-evolution, public runtime diagnostic output, and benchmark execution remain
-deferred.
+prediction against analytic terrain through an integrator-owned fixed-step
+prediction helper, query height and normal at the predicted position, construct
+the explicit contact point, and then call the same internal preparation layer.
+It may collect an in-memory `shape_contact_runtime_diagnostic_v1` row and
+manifest-shaped sidecar record for that single synthetic step. A file-backed
+metadata smoke test may record real shape metadata path and SHA-256 provenance.
+This is not a public runtime path and is not validation evidence. Persistent
+contact, projection/correction, orientation evolution, public runtime
+diagnostic output, and benchmark execution remain deferred.
 
 An internal synthetic harness may query a simple analytic terrain for height and
 normal, construct the explicit terrain contact point, and then call the same

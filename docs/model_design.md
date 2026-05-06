@@ -137,10 +137,12 @@ An additional internal synthetic harness queries a simple analytic terrain for
 height and normal, constructs the explicit contact point, and then calls the
 same contact-preparation layer. It is a pre-runtime verification aid only, not a
 public simulation path. A still narrower mini fixed-step harness advances at
-most one ballistic prediction against analytic terrain before delegating to that
-same preparation layer. The current internal runtime-smoke path can collect an
+most one ballistic prediction against analytic terrain through an
+integrator-owned fixed-step prediction helper before delegating to that same
+preparation layer. The current internal integrator-smoke path can collect an
 in-memory `shape_contact_runtime_diagnostic_v1` row and manifest-shaped
-sidecar record for this single synthetic step, but it does not perform
+sidecar record for this single synthetic step, including file-backed shape
+metadata path and SHA-256 provenance in tests, but it does not perform
 persistent contact, projection, orientation evolution, validation, benchmark
 execution, or public output writing.
 The frozen pre-runtime diagnostic contract for future wiring is

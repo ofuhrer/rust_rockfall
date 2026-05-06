@@ -6,6 +6,7 @@
 
 use crate::{geometry::SphereBlock, state::BodyState, Vec3};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 use thiserror::Error;
 
@@ -1405,12 +1406,14 @@ fn shape_contact_v0_runtime_smoke_manifest_package(
 #[allow(dead_code)]
 fn shape_contact_v0_runtime_smoke_manifest(
     scaffold: &ShapeContactV0Scaffold,
+    shape_metadata_path: Option<String>,
+    shape_metadata_sha256: Option<String>,
 ) -> ShapeContactV0RuntimeSmokeManifestV1 {
     ShapeContactV0RuntimeSmokeManifestV1 {
         active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
         active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
-        shape_metadata_path: None,
-        shape_metadata_sha256: None,
+        shape_metadata_path,
+        shape_metadata_sha256,
         shape_id: scaffold.shape_id.clone(),
         mass_kg: scaffold.mass_kg,
         principal_dimensions_m: scaffold.principal_dimensions_m,
@@ -1451,6 +1454,39 @@ fn shape_contact_v0_internal_runtime_smoke_step<T: crate::terrain::Terrain>(
     metadata: &BlockShapeMetadata,
     terrain: &T,
     input: ShapeContactV0RuntimeSmokeInput,
+) -> Result<ShapeContactV0RuntimeSmokeResult, ShapeMetadataError> {
+    shape_contact_v0_internal_runtime_smoke_step_with_provenance(
+        metadata, terrain, input, None, None,
+    )
+}
+
+#[allow(dead_code)]
+fn shape_contact_v0_internal_integrator_smoke_step_from_metadata_file<
+    T: crate::terrain::Terrain,
+>(
+    metadata_path: &Path,
+    terrain: &T,
+    input: ShapeContactV0RuntimeSmokeInput,
+) -> Result<ShapeContactV0RuntimeSmokeResult, ShapeMetadataError> {
+    let text = fs::read_to_string(metadata_path)?;
+    let metadata: BlockShapeMetadata = serde_yaml::from_str(&text)?;
+    metadata.validate()?;
+    shape_contact_v0_internal_runtime_smoke_step_with_provenance(
+        &metadata,
+        terrain,
+        input,
+        Some(metadata_path.display().to_string()),
+        Some(sha256_hex(text.as_bytes())),
+    )
+}
+
+#[allow(dead_code)]
+fn shape_contact_v0_internal_runtime_smoke_step_with_provenance<T: crate::terrain::Terrain>(
+    metadata: &BlockShapeMetadata,
+    terrain: &T,
+    input: ShapeContactV0RuntimeSmokeInput,
+    shape_metadata_path: Option<String>,
+    shape_metadata_sha256: Option<String>,
 ) -> Result<ShapeContactV0RuntimeSmokeResult, ShapeMetadataError> {
     if input.contact_model != crate::dynamics::ContactModel::ShapeContactV0 {
         return Err(ShapeMetadataError::Invalid(
@@ -1504,7 +1540,11 @@ fn shape_contact_v0_internal_runtime_smoke_step<T: crate::terrain::Terrain>(
         terrain_contact_point_m: mini_step.terrain_contact_point_m,
         terrain_normal_world: mini_step.terrain_normal_world,
         writer,
-        manifest: shape_contact_v0_runtime_smoke_manifest(&scaffold),
+        manifest: shape_contact_v0_runtime_smoke_manifest(
+            &scaffold,
+            shape_metadata_path,
+            shape_metadata_sha256,
+        ),
     })
 }
 
@@ -1696,6 +1736,13 @@ fn positive_ratio_or_none(numerator: f64, denominator: f64) -> Option<f64> {
 }
 
 #[allow(dead_code)]
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut digest = Sha256::new();
+    digest.update(bytes);
+    format!("{:x}", digest.finalize())
+}
+
+#[allow(dead_code)]
 fn shape_contact_v0_mini_fixed_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -1709,13 +1756,14 @@ fn shape_contact_v0_mini_fixed_step<T: crate::terrain::Terrain>(
         "settings.gravity_mps2",
         "mini_fixed_step.gravity_mps2",
     )?;
-    let acceleration_mps2 = Vec3::new(0.0, 0.0, -input.gravity_mps2);
-    let mut predicted_state = input.pre_step_state;
-    predicted_state.position_m = input.pre_step_state.position_m
-        + input.pre_step_state.velocity_mps * input.dt_s
-        + 0.5 * acceleration_mps2 * input.dt_s * input.dt_s;
-    predicted_state.velocity_mps =
-        input.pre_step_state.velocity_mps + acceleration_mps2 * input.dt_s;
+    let prediction = crate::integrator::shape_contact_v0_integrator_smoke_prediction(
+        input.pre_step_state,
+        terrain,
+        input.dt_s,
+        input.gravity_mps2,
+    )
+    .map_err(|message| ShapeMetadataError::Invalid(message.to_string()))?;
+    let predicted_state = prediction.predicted_state;
     validate_finite_triplet(
         [
             predicted_state.position_m.x,
@@ -1733,41 +1781,25 @@ fn shape_contact_v0_mini_fixed_step<T: crate::terrain::Terrain>(
         "predicted_state.velocity_mps",
     )?;
 
-    let terrain_query_x_m = predicted_state.position_m.x;
-    let terrain_query_y_m = predicted_state.position_m.y;
-    let terrain_height_m = terrain.height(terrain_query_x_m, terrain_query_y_m);
-    validate_finite_triplet(
-        [terrain_query_x_m, terrain_query_y_m, terrain_height_m],
-        "terrain_query_contact_point",
-    )?;
-    let terrain_normal_world = terrain.normal(terrain_query_x_m, terrain_query_y_m);
-    validate_finite_triplet(
-        [
-            terrain_normal_world.x,
-            terrain_normal_world.y,
-            terrain_normal_world.z,
-        ],
-        "terrain_normal_world",
-    )?;
-    let contact = shape_contact_v0_synthetic_terrain_step(
-        scaffold,
-        terrain,
-        ShapeContactV0SyntheticTerrainInput {
-            pre_state: predicted_state,
-            terrain_query_x_m,
-            terrain_query_y_m,
-            settings: input.settings,
-        },
-    )?;
+    let contact = scaffold.prepare_contact(ShapeContactV0ContactInput {
+        pre_state: predicted_state,
+        terrain_contact_point_m: prediction.terrain_contact_point_m,
+        terrain_normal_world: prediction.terrain_normal_world,
+        settings: input.settings,
+    })?;
 
     Ok(ShapeContactV0MiniFixedStepResult {
-        pre_step_state: input.pre_step_state,
+        pre_step_state: prediction.pre_step_state,
         predicted_state,
-        terrain_contact_point_m: [terrain_query_x_m, terrain_query_y_m, terrain_height_m],
+        terrain_contact_point_m: [
+            prediction.terrain_contact_point_m.x,
+            prediction.terrain_contact_point_m.y,
+            prediction.terrain_contact_point_m.z,
+        ],
         terrain_normal_world: [
-            terrain_normal_world.x,
-            terrain_normal_world.y,
-            terrain_normal_world.z,
+            prediction.terrain_normal_world.x,
+            prediction.terrain_normal_world.y,
+            prediction.terrain_normal_world.z,
         ],
         contact,
     })
@@ -1877,6 +1909,7 @@ pub(crate) fn shape_contact_v0_no_impulse_result(
 mod tests {
     use super::*;
     use crate::terrain::{Plane, Terrain};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn assert_close(actual: f64, expected: f64, epsilon: f64) {
         assert!(
@@ -1918,6 +1951,22 @@ mod tests {
             orientation: ShapeOrientation::default(),
             provenance: ShapeProvenance::default(),
         }
+    }
+
+    fn write_test_shape_metadata_file(
+        metadata: &BlockShapeMetadata,
+        name: &str,
+    ) -> std::path::PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "rust_rockfall_shape_contact_v0_{nonce}_{name}.yaml"
+        ));
+        let yaml = serde_yaml::to_string(metadata).unwrap();
+        fs::write(&path, yaml).unwrap();
+        path
     }
 
     fn settings(
@@ -3313,6 +3362,49 @@ mod tests {
                 "manifest limitations missing {required}: {limitation_text}"
             );
         }
+    }
+
+    #[test]
+    fn shape_contact_v0_integrator_smoke_file_backed_metadata_records_provenance() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let metadata_path = write_test_shape_metadata_file(&metadata, "runtime_smoke");
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_integrator_smoke_step_from_metadata_file(
+            &metadata_path,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+        let metadata_path_string = metadata_path.display().to_string();
+        fs::remove_file(&metadata_path).unwrap();
+
+        assert_eq!(result.writer.rows().len(), 1);
+        let row = &result.writer.rows()[0];
+        assert!(row.impulse_applied);
+        assert_eq!(
+            row.shape_contact_regime_label,
+            ShapeContactV0RuntimeRegimeLabelV1::ImpulsiveTouching
+        );
+        assert_eq!(
+            result.manifest.shape_metadata_path.as_deref(),
+            Some(metadata_path_string.as_str())
+        );
+        let sha256 = result.manifest.shape_metadata_sha256.as_deref().unwrap();
+        assert_eq!(sha256.len(), 64);
+        assert!(sha256
+            .chars()
+            .all(|character| character.is_ascii_hexdigit()));
     }
 
     #[test]

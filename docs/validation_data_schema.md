@@ -182,12 +182,15 @@ scaffold-owned impulse update for touching or penetrating contact without
 producing validation or benchmark outputs. An internal synthetic harness can
 query simple analytic terrain height and normal before calling the same
 preparation layer, but it is not a public validation path. The internal
-runtime-smoke scaffold can advance one synthetic ballistic prediction, collect
-an in-memory `shape_contact_runtime_diagnostic_v1` row, and build a
-manifest-shaped diagnostic sidecar record; it writes no outputs and is not
-validation evidence. Persistent contact handling, projection, orientation
-evolution, and public runtime diagnostic emission remain deferred. Separated
-dry-run states remain non-impulsive, even when moving toward future contact.
+integrator-smoke scaffold can advance one synthetic ballistic prediction
+through an integrator-owned fixed-step prediction helper, collect an in-memory
+`shape_contact_runtime_diagnostic_v1` row, and build a manifest-shaped
+diagnostic sidecar record. Tests can use file-backed shape metadata so
+`shape_metadata_path` and `shape_metadata_sha256` are real. The scaffold writes
+no outputs and is not validation evidence. Persistent contact handling,
+projection, orientation evolution, and public runtime diagnostic emission
+remain deferred. Separated dry-run states remain non-impulsive, even when
+moving toward future contact.
 The contact-gap tolerance is fixed at `1.0e-9 m` as a deterministic
 pre-runtime scaffold convention, not a
 calibrated contact parameter. The runtime diagnostic implementation is still

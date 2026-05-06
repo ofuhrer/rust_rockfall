@@ -278,6 +278,56 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ShapeContactV0IntegratorSmokePrediction {
+    pub(crate) pre_step_state: BodyState,
+    pub(crate) predicted_state: BodyState,
+    pub(crate) terrain_contact_point_m: crate::Vec3,
+    pub(crate) terrain_normal_world: crate::Vec3,
+}
+
+#[allow(dead_code)]
+pub(crate) fn shape_contact_v0_integrator_smoke_prediction(
+    pre_step_state: BodyState,
+    terrain: &dyn Terrain,
+    dt_s: f64,
+    gravity_mps2: f64,
+) -> Result<ShapeContactV0IntegratorSmokePrediction, &'static str> {
+    if !(dt_s.is_finite() && dt_s > 0.0) {
+        return Err("dt_s must be positive and finite");
+    }
+    if !(gravity_mps2.is_finite() && gravity_mps2 > 0.0) {
+        return Err("gravity_mps2 must be positive and finite");
+    }
+    let mut predicted_state = pre_step_state;
+    ballistic_step(&mut predicted_state, dt_s, gravity_mps2);
+    let terrain_height_m =
+        terrain.height(predicted_state.position_m.x, predicted_state.position_m.y);
+    if !terrain_height_m.is_finite() {
+        return Err("terrain height must be finite");
+    }
+    let terrain_normal_world =
+        terrain.normal(predicted_state.position_m.x, predicted_state.position_m.y);
+    if !terrain_normal_world.x.is_finite()
+        || !terrain_normal_world.y.is_finite()
+        || !terrain_normal_world.z.is_finite()
+        || terrain_normal_world.norm() == 0.0
+    {
+        return Err("terrain normal must be finite and nonzero");
+    }
+    Ok(ShapeContactV0IntegratorSmokePrediction {
+        pre_step_state,
+        predicted_state,
+        terrain_contact_point_m: crate::Vec3::new(
+            predicted_state.position_m.x,
+            predicted_state.position_m.y,
+            terrain_height_m,
+        ),
+        terrain_normal_world,
+    })
+}
+
 fn shape_contact_v0_integrator_guard() -> ! {
     panic!(
         "shape_contact_v0 has an isolated analytic impulse kernel but is not wired into the fixed-step integrator"
