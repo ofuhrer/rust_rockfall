@@ -27,6 +27,40 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
         )
         self.assertTrue(any("excluded_ids_with_reasons" in error for error in errors))
 
+    def test_tschamut_manifest_requires_registration_sensitivity_gate(self) -> None:
+        manifest = {
+            "schema_version": benchmark_manifest.SCHEMA_VERSION,
+            "benchmark_id": "tschamut",
+            "dataset_id": "tschamut2014",
+            "selected_ids": ["v004"],
+            "excluded_ids_with_reasons": [],
+            "provenance": {"source": "fixture"},
+            "generated_cases": ["validation/results/fixture/cases/baseline.yaml"],
+            "command_provenance": {"script": "scripts/prepare_tschamut_public_benchmark.py"},
+            "limitations": ["fixture only"],
+            "registration_sensitivity": {
+                "required_before_physics_selection": True,
+                "methods_compared": [
+                    "scan_surface_fit_v1",
+                    "bbox_align_v1",
+                    "overview_offset_v1",
+                ],
+                "classification_stability_required": True,
+                "decision_gate": "fixture gate",
+            },
+        }
+
+        self.assertEqual(benchmark_manifest.validate_manifest(manifest), [])
+
+        bad_manifest = dict(manifest)
+        bad_manifest.pop("registration_sensitivity")
+        self.assertTrue(
+            any(
+                "registration_sensitivity" in error
+                for error in benchmark_manifest.validate_manifest(bad_manifest)
+            )
+        )
+
     def test_prepare_benchmark_inputs_generates_tiny_opt_in_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)

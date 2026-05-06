@@ -161,6 +161,7 @@ def main() -> int:
         args.padding_m,
     )
     qa = registration_quality(scan_zip, transform)
+    sensitivity = registration_sensitivity_gate(qa)
     write_registration_qa(input_dir / "registration_qa.json", qa, transform)
     write_registration_overlay_svg(input_dir / "registration_lps_scan_overlay.svg", scan_zip, transform)
     write_release_zone_metadata(release_zone_path, transformed_releases, crop, args.seed, len(transformed_releases))
@@ -259,9 +260,11 @@ def main() -> int:
             "vertical_offset_m": transform.vertical_offset_m,
             "registration_quality": qa,
         },
+        "registration_sensitivity": sensitivity,
         "limitations": [
             "No parameter tuning is performed.",
             "Coordinate registration uncertainty remains part of the benchmark interpretation.",
+            "Tschamut must not be used for physics selection until under-run/over-run classification stability is reported across scan_surface_fit_v1, bbox_align_v1, and overview_offset_v1.",
             "This package is not an operational hazard assessment.",
         ],
     }
@@ -398,11 +401,44 @@ def registration_quality(scan_zip: Path, active_transform: LpsToLv95Transform) -
         "active_method": active_transform.method,
         "scan_point_count": len(scan_points),
         "lps_point_count": len(lps_points),
+        "fit_inputs": registration_fit_input_summary(scan_points, lps_points),
         "comparison": comparison,
         "interpretation": (
             "Nearest-neighbour residuals compare transformed LPS trajectory samples against "
             "the public CH1903 slope scan. They are a registration QA diagnostic, not a "
             "survey-control adjustment."
+        ),
+    }
+
+
+def registration_fit_input_summary(
+    scan_points: list[tuple[float, float, float]],
+    lps_points: list[tuple[float, float, float]],
+) -> dict[str, Any]:
+    stride = max(1, len(lps_points) // 2500)
+    return {
+        "scan_point_count": len(scan_points),
+        "lps_point_count": len(lps_points),
+        "scan_surface_fit_lps_stride": stride,
+        "scan_surface_fit_lps_sample_count": len(lps_points[::stride]),
+        "fit_output_independent_of_simulation": True,
+        "independent_survey_control_points_present": False,
+    }
+
+
+def registration_sensitivity_gate(qa: dict[str, Any]) -> dict[str, Any]:
+    methods = sorted((qa.get("comparison") or {}).keys())
+    required_methods = ["bbox_align_v1", "overview_offset_v1", "scan_surface_fit_v1"]
+    return {
+        "required_before_physics_selection": True,
+        "methods_compared": methods,
+        "required_methods": required_methods,
+        "classification_stability_required": True,
+        "classification_stability_reported": False,
+        "decision_gate": (
+            "Do not use public Tschamut under-run/over-run classifications to select physics "
+            "until the same no-tuning benchmark is run for each required transform and the "
+            "classification table is reported."
         ),
     }
 
@@ -450,6 +486,7 @@ def write_registration_qa(path: Path, qa: dict[str, Any], transform: LpsToLv95Tr
             "vertical_offset_m": transform.vertical_offset_m,
         },
         "quality": qa,
+        "registration_sensitivity": registration_sensitivity_gate(qa),
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 

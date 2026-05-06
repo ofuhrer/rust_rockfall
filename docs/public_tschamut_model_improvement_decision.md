@@ -13,7 +13,9 @@ subsets give the same broad result:
 
 - `translational_v0` under-runs by about 30 m;
 - `sphere_rotational_v1` over-runs strongly;
-- registration is no longer the dominant explanation for the mismatch;
+- registration quality is improved, but public Tschamut must not be used for
+  physics selection until classification stability is reported across
+  `scan_surface_fit_v1`, `bbox_align_v1`, and `overview_offset_v1`;
 - no restitution, friction, roughness, scarring, terrain-class, or release
   parameters have been tuned.
 
@@ -194,4 +196,3 @@ The shape-aware scaffold is successful if it:
 
 It is not expected to improve Tschamut runout immediately until shape-dependent
 contact is introduced and evaluated in a later no-tuning comparison.
-

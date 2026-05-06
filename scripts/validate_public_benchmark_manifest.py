@@ -74,7 +74,30 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
             if not str(row.get("id", "")).strip() or not str(row.get("reason", "")).strip():
                 errors.append(f"excluded_ids_with_reasons[{index}] requires id and reason")
 
+    if data.get("benchmark_id") == "tschamut":
+        validate_tschamut_registration_sensitivity(data, errors)
+
     return errors
+
+
+def validate_tschamut_registration_sensitivity(data: dict[str, Any], errors: list[str]) -> None:
+    sensitivity = data.get("registration_sensitivity")
+    if not isinstance(sensitivity, dict):
+        errors.append("tschamut manifests require registration_sensitivity")
+        return
+    if sensitivity.get("required_before_physics_selection") is not True:
+        errors.append("registration_sensitivity.required_before_physics_selection must be true")
+    required_methods = {"scan_surface_fit_v1", "bbox_align_v1", "overview_offset_v1"}
+    methods = sensitivity.get("methods_compared")
+    if not isinstance(methods, list) or not required_methods.issubset(set(methods)):
+        errors.append(
+            "registration_sensitivity.methods_compared must include "
+            "scan_surface_fit_v1, bbox_align_v1, and overview_offset_v1"
+        )
+    if sensitivity.get("classification_stability_required") is not True:
+        errors.append("registration_sensitivity.classification_stability_required must be true")
+    if "decision_gate" not in sensitivity:
+        errors.append("registration_sensitivity.decision_gate must be present")
 
 
 def normalized_selected_ids(data: dict[str, Any]) -> Any:
