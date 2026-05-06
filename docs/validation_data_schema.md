@@ -42,6 +42,11 @@ Required case fields:
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 
+Restitution coefficients must be finite values in `[0, 1]`. Values above
+`1.0` are rejected instead of being silently clamped by the contact solver,
+so reported case parameters match the active physics. Friction and the
+optional rolling-resistance coefficient must be finite and nonnegative.
+
 If `t_max` and `max_steps` are both supplied, the runner uses the shorter
 horizon: `min(t_max, max_steps * dt)`. YAML case defaults are intentionally
 small for smoke tests (`dt = 0.01 s`, `t_max = 1.0 s`, and

@@ -790,6 +790,33 @@ fn simulation_validation_rejects_non_positive_inputs() {
     ));
 
     let mut config = minimal_config();
+    config.normal_restitution = 1.0;
+    config.tangential_restitution = 1.0;
+    assert!(config.run().is_ok());
+
+    let mut config = minimal_config();
+    config.normal_restitution = 1.01;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::OutOfRange {
+            field: "normal_restitution",
+            min: 0.0,
+            max: 1.0,
+        })
+    ));
+
+    let mut config = minimal_config();
+    config.tangential_restitution = 1.01;
+    assert!(matches!(
+        config.run(),
+        Err(SimulationError::OutOfRange {
+            field: "tangential_restitution",
+            min: 0.0,
+            max: 1.0,
+        })
+    ));
+
+    let mut config = minimal_config();
     config.friction_coefficient = -0.1;
     assert!(matches!(
         config.run(),

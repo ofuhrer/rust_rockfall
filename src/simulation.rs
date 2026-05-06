@@ -205,6 +205,12 @@ pub enum SimulationError {
     Serialize(#[from] serde_json::Error),
     #[error("configuration value must be positive: {0}")]
     NonPositive(&'static str),
+    #[error("configuration value must be within [{min}, {max}]: {field}")]
+    OutOfRange {
+        field: &'static str,
+        min: f64,
+        max: f64,
+    },
     #[error("trajectory {0} has no samples")]
     EmptyTrajectory(String),
 }
@@ -300,8 +306,8 @@ impl SimulationConfig {
         require_positive(self.dt_s, "dt_s")?;
         require_positive(self.max_time_s, "max_time_s")?;
         require_positive(self.gravity_mps2, "gravity_mps2")?;
-        require_nonnegative(self.normal_restitution, "normal_restitution")?;
-        require_nonnegative(self.tangential_restitution, "tangential_restitution")?;
+        require_unit_interval(self.normal_restitution, "normal_restitution")?;
+        require_unit_interval(self.tangential_restitution, "tangential_restitution")?;
         require_nonnegative(self.friction_coefficient, "friction_coefficient")?;
         require_nonnegative(
             self.rolling_resistance_coefficient,
@@ -345,6 +351,19 @@ fn require_nonnegative(value: f64, field: &'static str) -> Result<(), Simulation
         Ok(())
     } else {
         Err(SimulationError::NonPositive(field))
+    }
+}
+
+fn require_unit_interval(value: f64, field: &'static str) -> Result<(), SimulationError> {
+    require_nonnegative(value, field)?;
+    if value <= 1.0 {
+        Ok(())
+    } else {
+        Err(SimulationError::OutOfRange {
+            field,
+            min: 0.0,
+            max: 1.0,
+        })
     }
 }
 
