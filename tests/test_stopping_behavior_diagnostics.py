@@ -213,6 +213,50 @@ class StoppingBehaviorDiagnosticsTests(unittest.TestCase):
             "; ".join(row["instrumentation_gaps"]),
         )
 
+    def test_diagnostics_summary_reads_explicit_stop_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "diagnostics.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "case_id": "validation_chant_sura_contact",
+                        "metrics": {
+                            "validation_trajectory_count": 3,
+                            "contact_event_compared_count": 2,
+                        },
+                        "stop_state": {
+                            "stop_reason": "t_max_reached_airborne",
+                            "final_contact_state": "airborne",
+                            "final_speed_mps": 5.0,
+                            "final_kinetic_j": 100.0,
+                            "termination_flags": {
+                                "low_velocity": False,
+                                "max_steps": True,
+                                "t_max": True,
+                                "domain_exit": False,
+                                "terrain_error": False,
+                            },
+                            "low_energy_contact_count": 0,
+                            "terrain_normal_x": 0.0,
+                            "terrain_normal_y": 0.0,
+                            "terrain_normal_z": 1.0,
+                            "terrain_slope_abs": 0.0,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            row = stopping.summarize_diagnostics_json(
+                stopping.InputSpec("chant_sura_contact", path)
+            )
+
+        self.assertEqual(row["source_kind"], "diagnostics_json")
+        self.assertTrue(row["explicit_stop_state_available"])
+        self.assertEqual(row["trajectory_count"], 3)
+        self.assertEqual(row["impact_count_total"], 2)
+        self.assertEqual(row["stop_reason"], "t_max_reached_airborne")
+
 
 if __name__ == "__main__":
     unittest.main()

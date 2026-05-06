@@ -298,65 +298,19 @@ def summarize_manifest(spec: InputSpec) -> dict[str, object]:
     performance = manifest.get("performance") or {}
     stop_state = manifest.get("stop_state") or {}
     if stop_state:
-        final_contact_state = stop_state.get("final_contact_state")
-        stop_reason = stop_state.get("stop_reason")
-        termination = stop_state.get("termination_flags") or {}
-        trajectory_count = safe_int(performance.get("trajectory_count"))
-        gaps = []
-        if trajectory_count not in (None, 1):
-            gaps.append(
-                "manifest stop_state describes the primary single-run trajectory; ensemble stop-state aggregation is not yet instrumented"
+        row = summarize_explicit_stop_state(
+            spec,
+            stop_state,
+            source_kind="run_manifest_v1",
+            trajectory_count=safe_int(performance.get("trajectory_count")),
+            impact_count_total=safe_int(performance.get("impact_event_count")),
+        )
+        if row["trajectory_count"] not in (None, 1):
+            row["instrumentation_gaps"].insert(
+                0,
+                "manifest stop_state describes the primary single-run trajectory; ensemble stop-state aggregation is not yet instrumented",
             )
-        if stop_state.get("last_significant_impact_time_s") is None:
-            gaps.append("no significant impact reached the explicit incoming-normal-speed threshold")
-        if not all(
-            stop_state.get(field) is not None
-            for field in ("terrain_normal_x", "terrain_normal_y", "terrain_normal_z")
-        ):
-            gaps.append("terrain normal at final position is unavailable")
-        return {
-            "source_label": spec.label,
-            "source_kind": "run_manifest_v1",
-            "source_path": str(spec.path),
-            "dataset_role": infer_role(spec.label, spec.path),
-            "contact_model": infer_contact_model(spec.label, spec.path),
-            "row_count": None,
-            "trajectory_count": trajectory_count,
-            "explicit_stop_state_available": True,
-            "stop_reason": stop_reason,
-            "final_contact_state": final_contact_state,
-            "termination_low_velocity": bool(termination.get("low_velocity")),
-            "termination_max_steps": bool(termination.get("max_steps")),
-            "termination_t_max": bool(termination.get("t_max")),
-            "termination_domain_exit": bool(termination.get("domain_exit")),
-            "termination_terrain_error": bool(termination.get("terrain_error")),
-            "last_significant_impact_time_s": stop_state.get("last_significant_impact_time_s"),
-            "terrain_normal_x": stop_state.get("terrain_normal_x"),
-            "terrain_normal_y": stop_state.get("terrain_normal_y"),
-            "terrain_normal_z": stop_state.get("terrain_normal_z"),
-            "terrain_slope_abs": stop_state.get("terrain_slope_abs"),
-            "final_status_counts": ({final_contact_state: 1} if final_contact_state else {}),
-            "stop_reason_counts": ({stop_reason: 1} if stop_reason else {}),
-            "final_speed_mean_mps": safe_float(stop_state.get("final_speed_mps")),
-            "final_speed_p95_mps": safe_float(stop_state.get("final_speed_mps")),
-            "final_speed_max_mps": safe_float(stop_state.get("final_speed_mps")),
-            "final_kinetic_mean_j": safe_float(stop_state.get("final_kinetic_j")),
-            "final_kinetic_max_j": safe_float(stop_state.get("final_kinetic_j")),
-            "impact_count_total": safe_int(performance.get("impact_event_count")),
-            "impact_count_mean": None,
-            "significant_impact_count_total": None,
-            "low_energy_contact_count_total": safe_int(stop_state.get("low_energy_contact_count")),
-            "distance_last_significant_impact_to_final_mean_m": safe_float(
-                stop_state.get("distance_last_significant_impact_to_final_m")
-            ),
-            "distance_last_significant_impact_to_final_max_m": safe_float(
-                stop_state.get("distance_last_significant_impact_to_final_m")
-            ),
-            "runout_mean_m": None,
-            "runout_max_m": None,
-            "terrain_slope_near_stop_available": stop_state.get("terrain_slope_abs") is not None,
-            "instrumentation_gaps": gaps,
-        }
+        return row
     gaps = [
         "manifest performance fields give aggregate counts only, not per-trajectory stopping state",
         "final speed, final kinetic energy, and last significant impact distance require trajectory/deposition outputs",
@@ -377,6 +331,119 @@ def summarize_manifest(spec: InputSpec) -> dict[str, object]:
         "final_kinetic_mean_j": None,
         "final_kinetic_max_j": None,
         "impact_count_total": safe_int(performance.get("impact_event_count")),
+        "impact_count_mean": None,
+        "significant_impact_count_total": None,
+        "low_energy_contact_count_total": None,
+        "distance_last_significant_impact_to_final_mean_m": None,
+        "distance_last_significant_impact_to_final_max_m": None,
+        "runout_mean_m": None,
+        "runout_max_m": None,
+        "terrain_slope_near_stop_available": False,
+        "instrumentation_gaps": gaps,
+    }
+
+
+def summarize_explicit_stop_state(
+    spec: InputSpec,
+    stop_state: dict[str, object],
+    *,
+    source_kind: str,
+    trajectory_count: int | None,
+    impact_count_total: int | None,
+) -> dict[str, object]:
+    final_contact_state = stop_state.get("final_contact_state")
+    stop_reason = stop_state.get("stop_reason")
+    termination = stop_state.get("termination_flags") or {}
+    gaps = []
+    if stop_state.get("last_significant_impact_time_s") is None:
+        gaps.append("no significant impact reached the explicit incoming-normal-speed threshold")
+    if not all(
+        stop_state.get(field) is not None
+        for field in ("terrain_normal_x", "terrain_normal_y", "terrain_normal_z")
+    ):
+        gaps.append("terrain normal at final position is unavailable")
+    return {
+        "source_label": spec.label,
+        "source_kind": source_kind,
+        "source_path": str(spec.path),
+        "dataset_role": infer_role(spec.label, spec.path),
+        "contact_model": infer_contact_model(spec.label, spec.path),
+        "row_count": None,
+        "trajectory_count": trajectory_count,
+        "explicit_stop_state_available": True,
+        "stop_reason": stop_reason,
+        "final_contact_state": final_contact_state,
+        "termination_low_velocity": bool(termination.get("low_velocity")),
+        "termination_max_steps": bool(termination.get("max_steps")),
+        "termination_t_max": bool(termination.get("t_max")),
+        "termination_domain_exit": bool(termination.get("domain_exit")),
+        "termination_terrain_error": bool(termination.get("terrain_error")),
+        "last_significant_impact_time_s": stop_state.get("last_significant_impact_time_s"),
+        "terrain_normal_x": stop_state.get("terrain_normal_x"),
+        "terrain_normal_y": stop_state.get("terrain_normal_y"),
+        "terrain_normal_z": stop_state.get("terrain_normal_z"),
+        "terrain_slope_abs": stop_state.get("terrain_slope_abs"),
+        "final_status_counts": ({final_contact_state: 1} if final_contact_state else {}),
+        "stop_reason_counts": ({stop_reason: 1} if stop_reason else {}),
+        "final_speed_mean_mps": safe_float(stop_state.get("final_speed_mps")),
+        "final_speed_p95_mps": safe_float(stop_state.get("final_speed_mps")),
+        "final_speed_max_mps": safe_float(stop_state.get("final_speed_mps")),
+        "final_kinetic_mean_j": safe_float(stop_state.get("final_kinetic_j")),
+        "final_kinetic_max_j": safe_float(stop_state.get("final_kinetic_j")),
+        "impact_count_total": impact_count_total,
+        "impact_count_mean": None,
+        "significant_impact_count_total": None,
+        "low_energy_contact_count_total": safe_int(stop_state.get("low_energy_contact_count")),
+        "distance_last_significant_impact_to_final_mean_m": safe_float(
+            stop_state.get("distance_last_significant_impact_to_final_m")
+        ),
+        "distance_last_significant_impact_to_final_max_m": safe_float(
+            stop_state.get("distance_last_significant_impact_to_final_m")
+        ),
+        "runout_mean_m": None,
+        "runout_max_m": None,
+        "terrain_slope_near_stop_available": stop_state.get("terrain_slope_abs") is not None,
+        "instrumentation_gaps": gaps,
+    }
+
+
+def summarize_diagnostics_json(spec: InputSpec) -> dict[str, object]:
+    report = json.loads(spec.path.read_text(encoding="utf-8"))
+    stop_state = report.get("stop_state") or {}
+    if stop_state:
+        metrics = report.get("metrics") or {}
+        trajectory_count = safe_int(metrics.get("validation_trajectory_count")) or 1
+        impact_count_total = safe_int(
+            metrics.get("impact_event_count")
+            or metrics.get("impact_count")
+            or metrics.get("contact_event_compared_count")
+        )
+        return summarize_explicit_stop_state(
+            spec,
+            stop_state,
+            source_kind="diagnostics_json",
+            trajectory_count=trajectory_count,
+            impact_count_total=impact_count_total,
+        )
+    gaps = [
+        "diagnostics JSON does not contain explicit stop_state; use trajectory/deposition outputs for proxy fallback",
+    ]
+    return {
+        "source_label": spec.label,
+        "source_kind": "diagnostics_json",
+        "source_path": str(spec.path),
+        "dataset_role": infer_role(spec.label, spec.path),
+        "contact_model": infer_contact_model(spec.label, spec.path),
+        "row_count": None,
+        "trajectory_count": None,
+        "final_status_counts": {},
+        "stop_reason_counts": {},
+        "final_speed_mean_mps": None,
+        "final_speed_p95_mps": None,
+        "final_speed_max_mps": None,
+        "final_kinetic_mean_j": None,
+        "final_kinetic_max_j": None,
+        "impact_count_total": None,
         "impact_count_mean": None,
         "significant_impact_count_total": None,
         "low_energy_contact_count_total": None,
@@ -495,6 +562,8 @@ def build_rows(args: argparse.Namespace) -> list[dict[str, object]]:
         rows.append(summarize_deposition_csv(parse_spec(spec), stop_speed_mps=args.stop_speed_mps))
     for spec in args.manifest:
         rows.append(summarize_manifest(parse_spec(spec)))
+    for spec in args.diagnostics:
+        rows.append(summarize_diagnostics_json(parse_spec(spec)))
     return rows
 
 
@@ -505,6 +574,7 @@ def main() -> int:
     parser.add_argument("--trajectory", action="append", default=[], help="label:path trajectory CSV")
     parser.add_argument("--deposition", action="append", default=[], help="label:path deposition CSV")
     parser.add_argument("--manifest", action="append", default=[], help="label:path run manifest JSON")
+    parser.add_argument("--diagnostics", action="append", default=[], help="label:path diagnostics JSON")
     parser.add_argument("--output-csv", type=Path)
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--stop-speed-mps", type=float, default=DEFAULT_STOP_SPEED_MPS)
