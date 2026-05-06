@@ -141,6 +141,16 @@ for tests, advances at most one ballistic prediction against analytic terrain
 before delegating to that same preparation layer. It does not perform persistent
 contact, projection, orientation evolution, runtime diagnostics, validation, or
 benchmark execution.
+The frozen pre-runtime diagnostic contract for future wiring is
+`shape_contact_runtime_diagnostic_v1`: runtime rows must expose contact regime,
+support gap, terrain normal, support point/corner, contact-point speeds,
+impulses, Coulomb cap ratio, pre/post translational and rotational energy,
+contact/projection/total energy deltas, quaternion state, and active
+shape/model metadata before any public `shape_contact_v0` validation run is
+allowed. Run manifests must also record active shape metadata, analytic box
+inertia, support-selection policy, contact-gap tolerance,
+`multi_contact: false`, `new_tuned_parameters: false`, experimental status,
+warnings, and limitations.
 Separated dry-run states are reported without impulse, including states moving
 toward future contact. The contact-gap tolerance is fixed at `1.0e-9 m` as a
 deterministic pre-runtime scaffold convention, not as a calibrated contact

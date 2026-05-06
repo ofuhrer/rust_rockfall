@@ -197,6 +197,32 @@ Current default contact, inertia, trajectory integration, and validation
 semantics remain spherical and continue to use `block.radius` and the current
 spherical moment of inertia.
 
+Before `shape_contact_v0` can be used by public validation or benchmark cases,
+runtime contact rows must implement the frozen
+`shape_contact_runtime_diagnostic_v1` contract from
+`docs/shape_contact_v0_experimental_contract.md`. Required row fields include
+`contact_regime`, `support_signed_gap_m`, `contact_gap_tolerance_m`,
+`terrain_contact_point_*_m`, `terrain_normal_*`, `support_point_*_m`,
+`support_corner_sign_*`, pre/post contact-point normal and tangential speeds,
+normal and tangential impulse fields, `coulomb_cap_ratio`, pre/post
+translational, rotational, potential, and total mechanical energy fields,
+`contact_energy_delta_j`, `projection_energy_delta_j`, `total_energy_delta_j`,
+orientation quaternion fields, `orientation_norm_error`, active model/shape
+metadata, and explicit `impulse_applied` / `projection_applied` flags. While
+projection correction is deferred, `projection_energy_delta_j` must be null and
+`projection_applied` must be false.
+
+Future `run_manifest_v1` output for `shape_contact_v0` must include an additive
+`shape_contact_v0` object recording `active_contact_model`, `active_shape_type`,
+`shape_metadata_path`, `shape_id`, orientation initialization/representation,
+`inertia_model`, `principal_moments_kg_m2`, support-selection and tie-break
+policy, `contact_gap_tolerance_m`, `multi_contact: false`,
+`new_tuned_parameters: false`, `defaults_changed: false`, projection,
+persistent-contact, and orientation-evolution flags, runtime diagnostic schema
+version, experimental status, warnings, and limitations. These fields are a
+future diagnostic contract only; current validation loading still rejects public
+`shape_contact_v0` execution.
+
 ## Implemented Terrain Types
 
 - `plane`: `z0_m`, `slope_x`, `slope_y`

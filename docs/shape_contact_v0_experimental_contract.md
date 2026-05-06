@@ -93,55 +93,110 @@ Hard invariants:
 
 Any change that violates these invariants is out of scope for the first slice.
 
-## Frozen Diagnostic Schema
+## Frozen Runtime Diagnostic Contract
 
-The first implementation must emit enough diagnostics to audit energy, support
-selection, and failure modes. Field names are frozen here; exact output location
-may be trajectory metadata, impact-event rows, run manifests, or dedicated
-diagnostic sidecars as long as the values are reproducible and documented.
+Before `shape_contact_v0` may be wired into the fixed-step integrator, runtime
+outputs must expose the exact per-contact row fields below. The output location
+may be impact-event rows, trajectory metadata, or a dedicated diagnostic sidecar,
+but the field names, units, nullability, and interpretation must remain stable.
+This contract is not validation evidence; it is the audit surface required
+before public benchmark execution.
 
-Per-contact or impact-event diagnostics:
+Per-contact or impact-event row fields:
 
-| Field | Unit / type | Meaning |
+| Field | Unit / type | Required value and meaning |
 | --- | --- | --- |
-| `active_contact_model` | string | Must be `shape_contact_v0` for active shape rows. |
-| `active_contact_shape` | string | Must be `principal_dimensions_box_v0` for first slice. |
-| `orientation_w`, `orientation_x`, `orientation_y`, `orientation_z` | unit quaternion | Active orientation before contact update. |
-| `orientation_norm_error` | dimensionless | `abs(norm(q) - 1)`. |
-| `support_point_x_m`, `support_point_y_m`, `support_point_z_m` | m | Selected world support point. |
-| `support_corner_sign_x`, `support_corner_sign_y`, `support_corner_sign_z` | -1 or 1 | Selected box corner signs in body axes. |
-| `support_corner_changed` | bool | Whether the selected support corner changed since the previous contact. |
-| `contact_point_normal_speed_mps` | m/s | Contact-point speed projected onto terrain normal. |
-| `contact_point_tangent_speed_mps` | m/s | Tangential contact-point speed magnitude. |
-| `normal_impulse_n_s` | N s | Applied normal impulse. |
-| `tangential_impulse_n_s` | N s | Applied tangential impulse magnitude. |
-| `coulomb_cap_ratio` | dimensionless | `abs(tangential_impulse) / (mu * normal_impulse)`, or null when no normal impulse exists. |
+| `shape_contact_runtime_schema_version` | string | `shape_contact_runtime_diagnostic_v1`. |
+| `active_contact_model` | string | Must be `shape_contact_v0`. |
+| `active_shape_type` | string | Must be `principal_dimensions_box_v0` for the first runtime slice. |
+| `shape_id` | string | Shape sidecar identifier used to build the active scaffold. |
+| `contact_regime` | enum | One of `separated_moving_away`, `separated_moving_toward`, `touching`, or `penetrating` from the support-gap gate. |
+| `shape_contact_regime_label` | enum/string | Higher-level diagnostic label such as `impact_candidate`, `non_impulsive_separated`, `non_impulsive_touching`, or future labels; this must not replace `contact_regime`. |
+| `support_signed_gap_m` | m | Signed gap from selected support point to the terrain contact plane along the terrain normal. Positive values are separated. |
+| `contact_gap_tolerance_m` | m | Must record the active deterministic tolerance, initially `1.0e-9`. |
+| `terrain_contact_point_x_m`, `terrain_contact_point_y_m`, `terrain_contact_point_z_m` | m | Explicit terrain point used for support-gap calculation. |
+| `terrain_normal_x`, `terrain_normal_y`, `terrain_normal_z` | unit vector | Terrain normal used for support selection and impulse preparation after normalization. |
+| `support_point_x_m`, `support_point_y_m`, `support_point_z_m` | m | Selected world support point from the validated box scaffold. |
+| `support_corner_sign_x`, `support_corner_sign_y`, `support_corner_sign_z` | -1 or 1 | Selected box corner signs in body axes. Exact-zero tie breaks use positive signs. |
+| `support_corner_changed` | bool/null | Whether the selected support corner changed from the previous emitted contact row. Null until previous-corner tracking exists. |
+| `contact_point_normal_velocity_pre_mps` | m/s | Pre-impulse contact-point velocity projected onto the terrain normal. Incoming contact is negative. |
+| `contact_point_normal_velocity_post_mps` | m/s | Post-impulse contact-point velocity projected onto the terrain normal. |
+| `contact_point_tangential_speed_pre_mps` | m/s | Pre-impulse tangential contact-point speed magnitude. |
+| `contact_point_tangential_speed_post_mps` | m/s | Post-impulse tangential contact-point speed magnitude. |
+| `normal_impulse_n_s` | N s | Applied normal impulse; zero for non-impulsive rows. |
+| `tangential_impulse_x_n_s`, `tangential_impulse_y_n_s`, `tangential_impulse_z_n_s` | N s | Applied tangential impulse vector in world coordinates. |
+| `tangential_impulse_norm_n_s` | N s | Magnitude of applied tangential impulse. |
+| `coulomb_friction_cap_n_s` | N s | `mu * normal_impulse_n_s`, or zero when no normal impulse exists. |
+| `coulomb_cap_ratio` | dimensionless/null | `tangential_impulse_norm_n_s / coulomb_friction_cap_n_s`; null when the cap is zero. |
 | `pre_translational_kinetic_j` | J | Translational kinetic energy before contact update. |
 | `post_translational_kinetic_j` | J | Translational kinetic energy after contact update. |
 | `pre_rotational_kinetic_j` | J | Rotational kinetic energy before contact update. |
 | `post_rotational_kinetic_j` | J | Rotational kinetic energy after contact update. |
-| `pre_total_mechanical_energy_j` | J | Translational + rotational + potential energy before contact update. |
-| `post_total_mechanical_energy_j` | J | Translational + rotational + potential energy after contact update. |
-| `contact_energy_delta_j` | J | `post_total_mechanical_energy_j - pre_total_mechanical_energy_j`. |
-| `projection_energy_delta_j` | J | Energy change attributed to penetration correction/projection. |
-| `rotational_to_translational_energy_ratio` | dimensionless | `rotational_kinetic / translational_kinetic`, null when denominator is zero. |
-| `shape_contact_regime` | enum | One of `impact`, `sliding`, `rolling`, `tumbling_indicator`, `stopped`, `airborne`. Diagnostic only. |
+| `pre_potential_energy_j` | J | Potential energy before contact update, using the same gravity as the step. |
+| `post_potential_energy_j` | J | Potential energy after contact update, using the same gravity as the step. |
+| `pre_total_mechanical_energy_j` | J | Pre-contact translational + rotational + potential energy. |
+| `post_total_mechanical_energy_j` | J | Post-contact translational + rotational + potential energy. |
+| `contact_energy_delta_j` | J | Energy delta from the impulse update only. This must be non-positive for dissipative analytic contacts within tolerance. |
+| `projection_energy_delta_j` | J/null | Energy attributed to penetration correction/projection. Must be null while projection correction is deferred. |
+| `total_energy_delta_j` | J | Sum of contact and projection energy deltas when both are implemented; equal to `contact_energy_delta_j` while projection is absent. |
+| `rotational_to_translational_energy_ratio_pre` | dimensionless/null | Pre-contact rotational/translational kinetic energy ratio; null if translational kinetic energy is zero. |
+| `rotational_to_translational_energy_ratio_post` | dimensionless/null | Post-contact rotational/translational kinetic energy ratio; null if translational kinetic energy is zero. |
+| `orientation_w`, `orientation_x`, `orientation_y`, `orientation_z` | unit quaternion | Active orientation before contact update in `[w, x, y, z]` order. |
+| `orientation_norm_error` | dimensionless | `abs(norm(q) - 1)`. |
+| `orientation_initialization_mode` | string | Initially `identity`; any future value requires a new reviewed slice. |
+| `impulse_applied` | bool | True only when the scaffold-owned impulse path changed the state. |
+| `projection_applied` | bool | Must be false while projection correction is deferred. |
 
-Run-manifest diagnostics:
+The field names above supersede earlier informal names such as
+`active_contact_shape`, `contact_point_normal_speed_mps`, and
+`shape_contact_regime` when runtime rows are implemented. Existing analytic test
+struct field names may differ internally, but runtime exports must map to this
+contract before any public `shape_contact_v0` run.
 
-- `active_contact_model: shape_contact_v0`;
-- `active_contact_shape: principal_dimensions_box_v0`;
-- `shape_metadata_path`;
-- `orientation_initialization_mode`;
-- `active_inertia_model: analytic_box_principal_moments`;
-- `principal_moments_kg_m2`;
-- `support_selection: single_support_point_from_terrain_normal`;
-- `multi_contact: false`;
-- `new_tuned_parameters: false`;
-- `defaults_changed: false`;
-- `experimental_status: research_diagnostic`;
-- warnings that the model is opt-in, uncalibrated, non-operational, and not
-  evidence of RAMMS equivalence.
+## Frozen Run-Manifest Contract
+
+Any run manifest for a future public or validation `shape_contact_v0` run must
+include an additive `shape_contact_v0` object with these exact fields:
+
+| Field | Type | Required value and meaning |
+| --- | --- | --- |
+| `active_contact_model` | string | `shape_contact_v0`. |
+| `active_shape_type` | string | `principal_dimensions_box_v0`. |
+| `shape_metadata_path` | string | Path to the validated `shape_metadata_v1` sidecar. |
+| `shape_id` | string | Sidecar shape identifier. |
+| `orientation_initialization_mode` | string | Initially `identity`. |
+| `orientation_representation` | string | `quaternion_wxyz`. |
+| `inertia_model` | string | `analytic_box_principal_moments`. |
+| `principal_moments_kg_m2` | array[3] | Principal moments used by the active scaffold. |
+| `support_selection_policy` | string | `single_support_point_from_terrain_normal_positive_zero_tiebreak`. |
+| `support_corner_tie_break` | string | `zero_components_choose_positive_sign`; near-zero signs are not snapped. |
+| `contact_gap_tolerance_m` | number | `1.0e-9` unless a future reviewed slice changes it. |
+| `multi_contact` | bool | `false`. |
+| `new_tuned_parameters` | bool | `false`. |
+| `defaults_changed` | bool | `false`. |
+| `projection_correction_enabled` | bool | `false` for the first runtime wiring slice. |
+| `persistent_contact_enabled` | bool | `false` for the first runtime wiring slice. |
+| `orientation_evolution_enabled` | bool | `false` until reviewed separately. |
+| `runtime_diagnostic_schema_version` | string | `shape_contact_runtime_diagnostic_v1`. |
+| `experimental_status` | string | `pre_runtime` until integrator wiring, then `research_diagnostic` for opt-in runs only. |
+| `warnings` | list[string] | Must state opt-in, uncalibrated, non-operational, not RAMMS-equivalent, and not benchmark-validated unless a later report proves otherwise. |
+| `limitations` | list[string] | Must list missing projection, persistent contact, orientation evolution, multi-contact, and public benchmark evidence while those are absent. |
+
+## Runtime Diagnostic Deferrals
+
+The diagnostic contract above freezes what must be emitted before public
+runtime use. It does not implement, validate, or approve the following:
+
+- projection correction or penetration-position repair;
+- persistent contact or resting-contact constraint handling;
+- orientation evolution through time;
+- support-corner change tracking through time, beyond nullable row fields;
+- full runtime diagnostic output writers;
+- public validation cases or public benchmark execution;
+- shape-dependent restitution, friction, damping, terrain/material classes, or
+  calibration;
+- any change to `translational_v0`, `sphere_rotational_v1`, or default model
+  behavior.
 
 ## No-Tuning Evaluation Plan
 
