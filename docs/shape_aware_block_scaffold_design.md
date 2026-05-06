@@ -1,7 +1,8 @@
 # Shape-Aware Block Scaffold Design
 
-Status: design-only implementation plan. This document does not change
-simulation physics, defaults, validation semantics, or calibration policy.
+Status: Stage 1 and Stage 2 are implemented as an opt-in passive metadata
+scaffold. This document does not change simulation physics, defaults,
+validation semantics, or calibration policy.
 
 ## Purpose
 
@@ -25,7 +26,7 @@ and provenance contract.
 
 ## Current Implementation Boundary
 
-Current runtime assumptions:
+Current runtime assumptions after Stage 1/2:
 
 - `SimulationConfig.block` is a `SphereBlock` with `radius_m` and `mass_kg`.
 - `BodyState` carries position, velocity, and angular velocity, but no
@@ -34,8 +35,11 @@ Current runtime assumptions:
   response.
 - Rotational energy uses the solid-sphere moment of inertia.
 - Validation YAML exposes `block.mass` and `block.radius`.
-- `trajectory_metadata_table_v1` already records `shape_class = "sphere"`,
-  `block_radius_m`, `block_mass_kg`, `scenario_id`, and `sampling_weight`.
+- Validation YAML can optionally attach `block_shape.metadata_path`.
+- `trajectory_metadata_table_v1` records `shape_class = "sphere"` by default
+  and can add passive shape id, type, dimensions, inertia, and initial
+  orientation columns when a shape sidecar is configured.
+- `run_manifest_v1` can include an optional `shape_metadata` section.
 
 The scaffold must not silently reinterpret any of those fields. Until a future
 version introduces an explicit shape-dependent contact model, `block.radius`
@@ -211,27 +215,31 @@ case explicitly opts into a future shape-aware dynamics model. Reporting both
 the active sphere inertia and passive shape principal moments is acceptable if
 the labels are unambiguous.
 
-## Staged Implementation Plan
+## Implementation Status
 
 ### Stage 1: Parser And Metadata Validation
 
-- Add Rust structs for `BlockShapeMetadata`.
-- Add YAML parsing through validation/case configuration.
-- Support `sphere`, `ellipsoid`, `box`, `principal_dimensions`, and
+Implemented:
+
+- Rust structs for `BlockShapeMetadata`.
+- YAML parsing through `block_shape.metadata_path`.
+- Support for `sphere`, `ellipsoid`, `box`, `principal_dimensions`, and
   `custom_principal_moments`.
-- Add analytic mass-property functions with unit tests.
-- Reject invalid dimensions, non-positive inertia, invalid quaternions, and
-  unsupported shape types.
-- Prove cases without `block_shape` produce byte-for-byte compatible numerical
-  trajectory outputs where tests can reasonably compare them.
+- Analytic mass-property functions with focused tests.
+- Rejection of invalid dimensions, non-positive inertia, invalid quaternions,
+  unsupported schema versions, and mass/radius mismatches against the active
+  sphere block.
+- Backward-compatible behavior when `block_shape` is absent.
 
 ### Stage 2: Manifest And Trajectory Metadata Propagation
 
-- Record passive shape metadata in `run_manifest_v1`.
-- Extend `trajectory_metadata_table_v1` additively.
-- Add one tiny synthetic shape fixture and one public-data-derived metadata
-  fixture if license-compatible.
-- Keep `shape_class = "sphere"` as the default when no shape metadata exists.
+Implemented:
+
+- Passive shape metadata is recorded in `run_manifest_v1`.
+- `trajectory_metadata_table_v1` is extended additively with passive shape
+  fields.
+- `shape_class = "sphere"` remains the default when no shape metadata exists.
+- Manifests include a warning that active contact remains spherical.
 
 ### Stage 3: Passive Orientation State
 

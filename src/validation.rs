@@ -7,9 +7,11 @@ use crate::{
     io,
     manifest::{
         OutputManifest, PerformanceManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
-        TerrainClassCoverageManifest, TerrainClassManifest, TerrainExtentManifest, TerrainManifest,
-        TrajectoryMetadataManifest, RUN_MANIFEST_SCHEMA_VERSION,
+        ShapeMetadataManifest, TerrainClassCoverageManifest, TerrainClassManifest,
+        TerrainExtentManifest, TerrainManifest, TrajectoryMetadataManifest,
+        RUN_MANIFEST_SCHEMA_VERSION,
     },
+    shape::{BlockShapeMetadata, PASSIVE_SHAPE_WARNING},
     simulation::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
@@ -70,6 +72,8 @@ pub struct BenchmarkCase {
     pub release_zone: Option<ReleaseZoneConfig>,
     #[serde(default)]
     pub terrain_classes: Option<TerrainClassConfig>,
+    #[serde(default)]
+    pub block_shape: Option<BlockShapeConfig>,
     #[serde(default)]
     pub parameters: CaseParameters,
     #[serde(default)]
@@ -150,6 +154,11 @@ pub struct ReleaseZoneConfig {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct TerrainClassConfig {
+    pub metadata_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct BlockShapeConfig {
     pub metadata_path: PathBuf,
 }
 
@@ -452,6 +461,32 @@ pub struct TrajectoryMetadataRow {
     pub block_mass_kg: f64,
     pub block_density_kgpm3: Option<f64>,
     pub shape_class: String,
+    #[serde(default)]
+    pub shape_id: Option<String>,
+    #[serde(default)]
+    pub shape_type: Option<String>,
+    #[serde(default)]
+    pub equivalent_radius_m: Option<f64>,
+    #[serde(default)]
+    pub principal_length_m: Option<f64>,
+    #[serde(default)]
+    pub principal_width_m: Option<f64>,
+    #[serde(default)]
+    pub principal_height_m: Option<f64>,
+    #[serde(default)]
+    pub ixx_kg_m2: Option<f64>,
+    #[serde(default)]
+    pub iyy_kg_m2: Option<f64>,
+    #[serde(default)]
+    pub izz_kg_m2: Option<f64>,
+    #[serde(default)]
+    pub initial_orientation_w: Option<f64>,
+    #[serde(default)]
+    pub initial_orientation_x: Option<f64>,
+    #[serde(default)]
+    pub initial_orientation_y: Option<f64>,
+    #[serde(default)]
+    pub initial_orientation_z: Option<f64>,
     pub scenario_id: String,
     pub sampling_weight: f64,
     pub probability_model: String,
@@ -535,6 +570,7 @@ struct RunManifestContext<'a> {
     terrain_source: Option<&'a TerrainSourceMetadata>,
     release_zone: Option<&'a ReleaseZoneManifest>,
     terrain_classes: Option<&'a TerrainClassManifest>,
+    shape_metadata: Option<&'a BlockShapeMetadata>,
     trajectory_metadata: Option<TrajectoryMetadataManifest>,
     performance: PerformanceManifest,
 }
@@ -552,24 +588,18 @@ impl TrajectoryMetadataCollector {
         release_id: impl Into<String>,
         source_zone_id: impl Into<String>,
         block: &SphereBlock,
+        shape_metadata: Option<&BlockShapeMetadata>,
     ) {
         if let Some(first) = run.samples.first() {
-            self.insert_row(TrajectoryMetadataRow {
-                trajectory_id: run.summary.trajectory_id.clone(),
-                release_id: release_id.into(),
-                source_zone_id: source_zone_id.into(),
-                release_x_m: first.x_m,
-                release_y_m: first.y_m,
-                release_z_m: first.z_m,
-                release_probability: None,
-                block_radius_m: block.radius_m,
-                block_mass_kg: block.mass_kg,
-                block_density_kgpm3: sphere_density_kgpm3(block),
-                shape_class: "sphere".to_string(),
-                scenario_id: case.case_id.clone(),
-                sampling_weight: 1.0,
-                probability_model: default_probability_model().to_string(),
-            });
+            self.insert_row(trajectory_metadata_row(
+                case,
+                &run.summary.trajectory_id,
+                release_id.into(),
+                source_zone_id.into(),
+                [first.x_m, first.y_m, first.z_m],
+                block,
+                shape_metadata,
+            ));
         }
     }
 
@@ -578,24 +608,18 @@ impl TrajectoryMetadataCollector {
         case: &BenchmarkCase,
         result: &SimulationResult,
         block: &SphereBlock,
+        shape_metadata: Option<&BlockShapeMetadata>,
     ) {
         if let Some(first) = result.samples.first() {
-            self.insert_row(TrajectoryMetadataRow {
-                trajectory_id: default_single_trajectory_id().to_string(),
-                release_id: default_single_trajectory_id().to_string(),
-                source_zone_id: default_manual_source_zone_id().to_string(),
-                release_x_m: first.x_m,
-                release_y_m: first.y_m,
-                release_z_m: first.z_m,
-                release_probability: None,
-                block_radius_m: block.radius_m,
-                block_mass_kg: block.mass_kg,
-                block_density_kgpm3: sphere_density_kgpm3(block),
-                shape_class: "sphere".to_string(),
-                scenario_id: case.case_id.clone(),
-                sampling_weight: 1.0,
-                probability_model: default_probability_model().to_string(),
-            });
+            self.insert_row(trajectory_metadata_row(
+                case,
+                default_single_trajectory_id(),
+                default_single_trajectory_id().to_string(),
+                default_manual_source_zone_id().to_string(),
+                [first.x_m, first.y_m, first.z_m],
+                block,
+                shape_metadata,
+            ));
         }
     }
 
@@ -605,6 +629,79 @@ impl TrajectoryMetadataCollector {
 
     fn rows(&self) -> Vec<TrajectoryMetadataRow> {
         self.rows.values().cloned().collect()
+    }
+}
+
+fn trajectory_metadata_row(
+    case: &BenchmarkCase,
+    trajectory_id: &str,
+    release_id: String,
+    source_zone_id: String,
+    release_position_m: [f64; 3],
+    block: &SphereBlock,
+    shape_metadata: Option<&BlockShapeMetadata>,
+) -> TrajectoryMetadataRow {
+    let (
+        shape_class,
+        shape_id,
+        shape_type,
+        equivalent_radius_m,
+        principal_lengths,
+        moments,
+        orientation,
+        density,
+    ) = if let Some(shape) = shape_metadata {
+        let moments = shape.computed_principal_moments_kg_m2().ok();
+        (
+            shape.shape_class_or_default(),
+            Some(shape.shape_id.clone()),
+            Some(shape.shape_type.as_str().to_string()),
+            shape_equivalent_radius_m(shape),
+            shape_principal_lengths_m(shape),
+            moments,
+            Some(shape.orientation.initial_quaternion_wxyz),
+            shape.mass_properties.density_kgpm3,
+        )
+    } else {
+        (
+            "sphere".to_string(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            sphere_density_kgpm3(block),
+        )
+    };
+    TrajectoryMetadataRow {
+        trajectory_id: trajectory_id.to_string(),
+        release_id,
+        source_zone_id,
+        release_x_m: release_position_m[0],
+        release_y_m: release_position_m[1],
+        release_z_m: release_position_m[2],
+        release_probability: None,
+        block_radius_m: block.radius_m,
+        block_mass_kg: block.mass_kg,
+        block_density_kgpm3: density,
+        shape_class,
+        shape_id,
+        shape_type,
+        equivalent_radius_m,
+        principal_length_m: principal_lengths.map(|values| values[0]),
+        principal_width_m: principal_lengths.map(|values| values[1]),
+        principal_height_m: principal_lengths.map(|values| values[2]),
+        ixx_kg_m2: moments.map(|values| values[0]),
+        iyy_kg_m2: moments.map(|values| values[1]),
+        izz_kg_m2: moments.map(|values| values[2]),
+        initial_orientation_w: orientation.map(|values| values[0]),
+        initial_orientation_x: orientation.map(|values| values[1]),
+        initial_orientation_y: orientation.map(|values| values[2]),
+        initial_orientation_z: orientation.map(|values| values[3]),
+        scenario_id: case.case_id.clone(),
+        sampling_weight: 1.0,
+        probability_model: default_probability_model().to_string(),
     }
 }
 
@@ -636,6 +733,8 @@ pub enum ValidationError {
     Terrain(#[from] TerrainError),
     #[error("geodata metadata error: {0}")]
     Geodata(#[from] GeodataError),
+    #[error("shape metadata error: {0}")]
+    Shape(#[from] crate::shape::ShapeMetadataError),
     #[error("I/O helper error: {0}")]
     Output(#[from] io::IoError),
     #[error("case {0} has no trajectory samples")]
@@ -664,6 +763,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let terrain_source = load_terrain_source_metadata(case)?;
     let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
     let terrain_class_map = load_terrain_class_map(case, terrain_source.as_ref())?;
+    let shape_metadata = load_block_shape_metadata(case)?;
     timing.terrain_load_seconds += load_started.elapsed().as_secs_f64();
     let mut release_zone_manifest = release_zone_source
         .as_ref()
@@ -705,6 +805,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                         terrain_source: terrain_source.as_ref(),
                         release_zone: release_zone_manifest.as_ref(),
                         terrain_classes: terrain_class_manifest.as_ref(),
+                        shape_metadata: shape_metadata.as_ref(),
                         trajectory_metadata: None,
                         performance,
                     },
@@ -723,6 +824,9 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             "real-world validation case has no pass/fail acceptance thresholds; passed means the workflow completed and reported metrics".to_string(),
         );
     }
+    if shape_metadata.is_some() {
+        warnings.push(PASSIVE_SHAPE_WARNING.to_string());
+    }
 
     let config = build_simulation_config(case)?;
     let terrain_started = Instant::now();
@@ -737,7 +841,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
     timing.trajectory_count += 1;
     timing.impact_event_count += result.impact_events.len();
-    trajectory_metadata.insert_single_result(case, &result, &config.block);
+    trajectory_metadata.insert_single_result(case, &result, &config.block, shape_metadata.as_ref());
     if let Some(path) = &case.outputs.trajectory_csv {
         let output_started = Instant::now();
         write_trajectory_csv_with_id(path, default_single_trajectory_id(), &result.samples)?;
@@ -797,15 +901,16 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         observations: &observations.deposition_points,
         expected: &case.expected,
     });
-    compute_ensemble_metrics(
+    compute_ensemble_metrics(EnsembleMetricContext {
         case,
-        class_provider,
-        &mut metrics,
-        &mut warnings,
-        &mut output_entries,
-        &mut timing,
-        &mut trajectory_metadata,
-    )?;
+        contact_parameters: class_provider,
+        metrics: &mut metrics,
+        warnings: &mut warnings,
+        output_entries: &mut output_entries,
+        timing: &mut timing,
+        trajectory_metadata: &mut trajectory_metadata,
+        shape_metadata: shape_metadata.as_ref(),
+    })?;
     compute_validation_ensemble_metrics(ValidationEnsembleContext {
         case,
         base_config: &config,
@@ -816,6 +921,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         output_entries: &mut output_entries,
         timing: &mut timing,
         trajectory_metadata: &mut trajectory_metadata,
+        shape_metadata: shape_metadata.as_ref(),
     })?;
     if let Some(source) = release_zone_source.as_ref() {
         release_zone_manifest = compute_release_zone_metrics(ReleaseZoneMetricContext {
@@ -829,6 +935,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             output_entries: &mut output_entries,
             timing: &mut timing,
             trajectory_metadata: &mut trajectory_metadata,
+            shape_metadata: shape_metadata.as_ref(),
         })?;
     }
     compute_observed_trajectory_metrics(
@@ -917,6 +1024,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 terrain_source: terrain_source.as_ref(),
                 release_zone: release_zone_manifest.as_ref(),
                 terrain_classes: terrain_class_manifest.as_ref(),
+                shape_metadata: shape_metadata.as_ref(),
                 trajectory_metadata: trajectory_metadata_manifest,
                 performance,
             },
@@ -954,6 +1062,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         terrain_source,
         release_zone,
         terrain_classes,
+        shape_metadata,
         trajectory_metadata,
         performance,
     } = context;
@@ -975,6 +1084,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         terrain: terrain_manifest(&case.terrain, terrain_source),
         release_zone: release_zone.cloned(),
         terrain_classes: terrain_classes.cloned(),
+        shape_metadata: shape_metadata.map(|metadata| shape_metadata_manifest(case, metadata)),
         trajectory_metadata,
         outputs,
         performance: Some(performance),
@@ -1045,6 +1155,18 @@ fn load_terrain_class_map(
     Ok(Some(class_map))
 }
 
+fn load_block_shape_metadata(
+    case: &BenchmarkCase,
+) -> Result<Option<BlockShapeMetadata>, ValidationError> {
+    let Some(block_shape) = &case.block_shape else {
+        return Ok(None);
+    };
+    let metadata = BlockShapeMetadata::from_yaml_file(&block_shape.metadata_path)?;
+    let block = case_block(case)?;
+    metadata.validate_against_block(&block)?;
+    Ok(Some(metadata))
+}
+
 fn terrain_manifest(
     terrain: &CaseTerrain,
     source: Option<&TerrainSourceMetadata>,
@@ -1108,6 +1230,61 @@ fn terrain_manifest(
         processed_sha256: None,
         provenance_notes: Vec::new(),
     }
+}
+
+fn shape_metadata_manifest(
+    case: &BenchmarkCase,
+    metadata: &BlockShapeMetadata,
+) -> ShapeMetadataManifest {
+    let moments =
+        metadata
+            .computed_principal_moments_kg_m2()
+            .unwrap_or([f64::NAN, f64::NAN, f64::NAN]);
+    ShapeMetadataManifest {
+        schema_version: crate::shape::SHAPE_METADATA_SCHEMA_VERSION.to_string(),
+        metadata_path: case
+            .block_shape
+            .as_ref()
+            .map(|config| config.metadata_path.to_string_lossy().to_string()),
+        shape_id: metadata.shape_id.clone(),
+        shape_type: metadata.shape_type.as_str().to_string(),
+        shape_class: metadata.shape_class_or_default(),
+        active_contact_shape: "sphere".to_string(),
+        active_contact_radius_m: case.block.radius.unwrap_or(f64::NAN),
+        mass_kg: metadata.mass_properties.mass_kg,
+        density_kgpm3: metadata.mass_properties.density_kgpm3,
+        equivalent_radius_m: shape_equivalent_radius_m(metadata),
+        principal_lengths_m: shape_principal_lengths_m(metadata),
+        principal_moments_kg_m2: moments,
+        orientation_initialization_mode: metadata.orientation.initialization_mode.clone(),
+        initial_quaternion_wxyz: metadata.orientation.initial_quaternion_wxyz,
+        source_dataset: metadata.provenance.source_dataset.clone(),
+        source_record_id: metadata.provenance.source_record_id.clone(),
+        source_url_or_doi: metadata.provenance.source_url_or_doi.clone(),
+        license: metadata.provenance.license.clone(),
+        provenance_notes: metadata.provenance.notes.clone(),
+        warnings: vec![PASSIVE_SHAPE_WARNING.to_string()],
+    }
+}
+
+fn shape_equivalent_radius_m(metadata: &BlockShapeMetadata) -> Option<f64> {
+    match metadata.shape_type {
+        crate::shape::BlockShapeType::Sphere => metadata.dimensions_m.radius_m,
+        _ => metadata.dimensions_m.equivalent_radius_m,
+    }
+}
+
+fn shape_principal_lengths_m(metadata: &BlockShapeMetadata) -> Option<[f64; 3]> {
+    metadata
+        .dimensions_m
+        .principal_lengths_m
+        .or(metadata.dimensions_m.side_lengths_m)
+        .or_else(|| {
+            metadata
+                .dimensions_m
+                .semi_axes_m
+                .map(|axes| [2.0 * axes[0], 2.0 * axes[1], 2.0 * axes[2]])
+        })
 }
 
 fn release_zone_manifest(
@@ -1227,7 +1404,7 @@ fn warn_large_debug_outputs(
     ));
 }
 
-fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, ValidationError> {
+fn case_block(case: &BenchmarkCase) -> Result<SphereBlock, ValidationError> {
     let mass_kg = case
         .block
         .mass
@@ -1236,6 +1413,18 @@ fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, Val
         .block
         .radius
         .ok_or_else(|| ValidationError::Case("block.radius is required".to_string()))?;
+    Ok(SphereBlock::new(radius_m, mass_kg))
+}
+
+fn shape_metadata_for_block<'a>(
+    shape_metadata: Option<&'a BlockShapeMetadata>,
+    block: &SphereBlock,
+) -> Option<&'a BlockShapeMetadata> {
+    shape_metadata.filter(|metadata| metadata.validate_against_block(block).is_ok())
+}
+
+fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, ValidationError> {
+    let block = case_block(case)?;
     let terrain = build_terrain_config(&case.terrain)?;
     let max_time_s = match (case.simulation.t_max, case.simulation.max_steps) {
         (Some(t_max), Some(max_steps)) => t_max.min(max_steps as f64 * case.simulation.dt),
@@ -1249,7 +1438,7 @@ fn build_simulation_config(case: &BenchmarkCase) -> Result<SimulationConfig, Val
     };
 
     Ok(SimulationConfig {
-        block: SphereBlock::new(radius_m, mass_kg),
+        block,
         initial_position_m: case.release.position,
         initial_velocity_mps: case.release.velocity,
         initial_angular_velocity_radps: case.release.angular_velocity,
@@ -1533,15 +1722,28 @@ fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
     metrics
 }
 
-fn compute_ensemble_metrics(
-    case: &BenchmarkCase,
-    contact_parameters: Option<&dyn ContactParameterProvider>,
-    metrics: &mut BTreeMap<String, f64>,
-    warnings: &mut Vec<String>,
-    output_entries: &mut Vec<OutputManifest>,
-    timing: &mut RuntimeTiming,
-    trajectory_metadata: &mut TrajectoryMetadataCollector,
-) -> Result<(), ValidationError> {
+struct EnsembleMetricContext<'a> {
+    case: &'a BenchmarkCase,
+    contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    metrics: &'a mut BTreeMap<String, f64>,
+    warnings: &'a mut Vec<String>,
+    output_entries: &'a mut Vec<OutputManifest>,
+    timing: &'a mut RuntimeTiming,
+    trajectory_metadata: &'a mut TrajectoryMetadataCollector,
+    shape_metadata: Option<&'a BlockShapeMetadata>,
+}
+
+fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), ValidationError> {
+    let EnsembleMetricContext {
+        case,
+        contact_parameters,
+        metrics,
+        warnings,
+        output_entries,
+        timing,
+        trajectory_metadata,
+        shape_metadata,
+    } = context;
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
         let config_a = build_simulation_config(case)?;
@@ -1603,6 +1805,7 @@ fn compute_ensemble_metrics(
             run.summary.trajectory_id.clone(),
             default_manual_source_zone_id(),
             &ensemble_config.block,
+            shape_metadata,
         );
     }
     if case.observations.is_none() {
@@ -1693,6 +1896,7 @@ struct ValidationEnsembleContext<'a> {
     output_entries: &'a mut Vec<OutputManifest>,
     timing: &'a mut RuntimeTiming,
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
+    shape_metadata: Option<&'a BlockShapeMetadata>,
 }
 
 fn compute_validation_ensemble_metrics(
@@ -1708,6 +1912,7 @@ fn compute_validation_ensemble_metrics(
         output_entries,
         timing,
         trajectory_metadata,
+        shape_metadata,
     } = context;
     if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
         return Ok(());
@@ -1750,6 +1955,7 @@ fn compute_validation_ensemble_metrics(
                 release.trajectory_id.clone(),
                 default_observed_source_zone_id(),
                 &release_config.block,
+                shape_metadata_for_block(shape_metadata, &release_config.block),
             );
             runs.push(run);
         }
@@ -1806,6 +2012,7 @@ struct ReleaseZoneMetricContext<'a> {
     output_entries: &'a mut Vec<OutputManifest>,
     timing: &'a mut RuntimeTiming,
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
+    shape_metadata: Option<&'a BlockShapeMetadata>,
 }
 
 fn compute_release_zone_metrics(
@@ -1822,6 +2029,7 @@ fn compute_release_zone_metrics(
         output_entries,
         timing,
         trajectory_metadata,
+        shape_metadata,
     } = context;
     let Some(release_zone_config) = &case.release_zone else {
         return Ok(None);
@@ -1877,6 +2085,7 @@ fn compute_release_zone_metrics(
             point.release_id.clone(),
             release_zone.zone_id.clone(),
             &release_config.block,
+            shape_metadata,
         );
         runs.push(run);
     }
@@ -3478,6 +3687,7 @@ mod tests {
             release: CaseRelease::default(),
             release_zone: None,
             terrain_classes: None,
+            block_shape: None,
             parameters: CaseParameters::default(),
             simulation: CaseSimulation::default(),
             random: CaseRandom::default(),

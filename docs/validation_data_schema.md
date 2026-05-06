@@ -11,6 +11,7 @@ Required case fields:
 - optional `terrain.metadata_path` for Swiss/swisstopo-style terrain-source metadata sidecars
 - optional `terrain_classes.metadata_path` for an aligned LV95/LN02 categorical raster metadata sidecar
 - `block.mass`, `block.radius`
+- optional `block_shape.metadata_path` for passive `shape_metadata_v1` block-shape sidecars
 - `release.position`, `release.velocity`, optional `release.perturbation`
 - optional `release_zone.metadata_path` for a small LV95/LN02 source-area polygon metadata sidecar
 - optional `release_zone.generated_release_points_csv` for the deterministic generated release-point audit table
@@ -111,6 +112,30 @@ The current `schema_version: 1` terrain-class metadata contract supports only sm
 - `source_dataset`, optional `source_url`, `license`, and `provenance.notes`
 
 Scarring parameter overrides only affect runs where the case already opts into `soil_interaction_model: scarring_contact_v1`; terrain classes do not enable scarring by themselves. Validation rejects unknown class IDs in the raster and rejects CRS, resolution, extent, or grid-shape mismatches against `terrain.metadata_path` when both sidecars are present. `run_manifest_v1` records the class layer id, metadata path, grid path, CRS, extent, source/license fields, provenance notes, and per-class coverage histogram.
+
+## Passive Block-Shape Metadata
+
+Validation cases can opt into passive shape metadata:
+
+```yaml
+block_shape:
+  metadata_path: validation/data/example/block_shape.yaml
+```
+
+The sidecar must use `schema_version: shape_metadata_v1`. Supported
+`shape_type` values are `sphere`, `ellipsoid`, `box`, `principal_dimensions`,
+and `custom_principal_moments`. The validator checks finite positive dimensions,
+mass, density, and principal moments where present, and requires
+`orientation.representation: quaternion_wxyz` with a unit
+`initial_quaternion_wxyz`. For `principal_dimensions`,
+`mass_properties.mass_property_model` must be either
+`box_principal_dimensions` or `ellipsoid_principal_dimensions`. Shape metadata
+must match the active `block.mass` and the descriptive equivalent radius when
+that radius is supplied.
+
+This metadata is passive. Current contact, inertia, trajectory integration, and
+validation semantics remain spherical and continue to use `block.radius` and the
+current spherical moment of inertia.
 
 ## Implemented Terrain Types
 
@@ -238,10 +263,12 @@ When `outputs.trajectory_metadata_csv` is set, validation writes one
 `trajectory_metadata_table_v1` row per simulated output trajectory. Current rows
 contain `trajectory_id`, `release_id`, `source_zone_id`, release coordinates,
 null `release_probability`, `block_radius_m`, `block_mass_kg`, optional
-`block_density_kgpm3`, `shape_class`, `scenario_id`, `sampling_weight = 1.0`,
-and `probability_model = "unweighted"`. This sidecar can be used by opt-in
-sampling-weighted hazard-layer post-processing. It does not change default
-unweighted hazard or validation semantics.
+`block_density_kgpm3`, `shape_class`, optional passive shape fields
+(`shape_id`, `shape_type`, `equivalent_radius_m`, principal dimensions,
+principal moments, and initial quaternion components), `scenario_id`,
+`sampling_weight = 1.0`, and `probability_model = "unweighted"`. This sidecar
+can be used by opt-in sampling-weighted hazard-layer post-processing. It does
+not change default unweighted hazard or validation semantics.
 
 When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model
@@ -258,7 +285,11 @@ release-point counts, polygon extent/area, source/license fields, and
 provenance notes. If `terrain_classes` is present, the manifest includes
 terrain-class layer id, metadata path, class-grid path, CRS/EPSG, vertical datum,
 resolution, extent, nodata, source/license fields, class coverage histogram, and
-provenance notes. If `outputs.trajectory_metadata_csv` is present, the manifest
+provenance notes. If `block_shape.metadata_path` is present, the manifest
+includes a `shape_metadata` section with schema version, metadata path, shape id
+and type, active contact shape, active contact radius, passive mass properties,
+initial orientation, provenance, and a warning that current contact remains
+spherical. If `outputs.trajectory_metadata_csv` is present, the manifest
 includes a `trajectory_metadata` section with schema version, path, row count,
 probability model, probability semantics, normalization convention, and total
 sampling weight.

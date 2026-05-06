@@ -4,6 +4,10 @@ use rust_rockfall::{
     geometry::SphereBlock,
     io,
     manifest::RunManifest,
+    shape::{
+        box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2,
+        sphere_principal_moments_kg_m2, BlockShapeMetadata,
+    },
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::ContactState,
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -60,6 +64,7 @@ fn run_manifest_without_performance_section_remains_backward_compatible() {
     let manifest: RunManifest = serde_json::from_str(text).unwrap();
     assert_eq!(manifest.case_id, "legacy_manifest");
     assert!(manifest.trajectory_metadata.is_none());
+    assert!(manifest.shape_metadata.is_none());
     assert!(manifest.performance.is_none());
 
     let text_with_legacy_metadata = text.replace(
@@ -70,6 +75,99 @@ fn run_manifest_without_performance_section_remains_backward_compatible() {
     let metadata = manifest.trajectory_metadata.unwrap();
     assert_eq!(metadata.probability_model, "unweighted");
     assert_eq!(metadata.probability_semantics, "sampling_weight_only");
+}
+
+#[test]
+fn shape_metadata_parses_and_computes_mass_properties() {
+    let path = temp_path("shape_metadata.yaml");
+    fs::write(
+        &path,
+        r#"schema_version: shape_metadata_v1
+shape_id: ellipsoid_test
+shape_type: ellipsoid
+shape_class: elongated
+dimensions_m:
+  semi_axes_m: [0.5, 0.25, 0.125]
+  equivalent_radius_m: 0.5
+mass_properties:
+  mass_kg: 10.0
+  density_kgpm3: 100.0
+orientation:
+  representation: quaternion_wxyz
+  initialization_mode: fixed_quaternion
+  initial_quaternion_wxyz: [0.0, 1.0, 0.0, 0.0]
+provenance:
+  source_dataset: synthetic_shape_fixture
+  license: MIT
+  notes: ["test fixture"]
+"#,
+    )
+    .unwrap();
+
+    let metadata = BlockShapeMetadata::from_yaml_file(&path).unwrap();
+    assert_eq!(metadata.shape_id, "ellipsoid_test");
+    assert_eq!(metadata.shape_class_or_default(), "elongated");
+    let moments = metadata.computed_principal_moments_kg_m2().unwrap();
+    let expected = ellipsoid_principal_moments_kg_m2(10.0, [0.5, 0.25, 0.125]);
+    assert_abs_diff_eq!(moments[0], expected[0], epsilon = 1.0e-12);
+    assert_abs_diff_eq!(
+        sphere_principal_moments_kg_m2(10.0, 0.5)[0],
+        1.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        box_principal_moments_kg_m2(12.0, [1.0, 2.0, 3.0])[0],
+        13.0,
+        epsilon = 1.0e-12
+    );
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn shape_metadata_rejects_invalid_dimensions_inertia_and_quaternion() {
+    let invalid_dimension = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: bad_dimension
+shape_type: box
+dimensions_m:
+  side_lengths_m: [1.0, 0.0, 2.0]
+mass_properties:
+  mass_kg: 10.0
+"#,
+    )
+    .unwrap();
+    assert!(invalid_dimension.validate().is_err());
+
+    let invalid_quaternion = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: bad_quaternion
+shape_type: sphere
+dimensions_m:
+  radius_m: 0.5
+mass_properties:
+  mass_kg: 10.0
+orientation:
+  representation: quaternion_wxyz
+  initialization_mode: fixed_quaternion
+  initial_quaternion_wxyz: [1.0, 1.0, 0.0, 0.0]
+"#,
+    )
+    .unwrap();
+    assert!(invalid_quaternion.validate().is_err());
+
+    let invalid_inertia = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: bad_inertia
+shape_type: custom_principal_moments
+dimensions_m:
+  equivalent_radius_m: 0.5
+mass_properties:
+  mass_kg: 10.0
+  principal_moments_kg_m2: [1.0, -1.0, 2.0]
+"#,
+    )
+    .unwrap();
+    assert!(invalid_inertia.validate().is_err());
 }
 use std::{
     fs,
@@ -1209,6 +1307,123 @@ outputs:
     }
     fs::remove_dir(ensemble_dir).unwrap();
     fs::remove_dir(ensemble_impacts_dir).unwrap();
+}
+
+#[test]
+fn passive_shape_metadata_is_manifested_and_does_not_change_runout() {
+    let shape_path = temp_path("passive_shape.yaml");
+    let shaped_case_path = temp_path("passive_shape_case.yaml");
+    let baseline_case_path = temp_path("passive_shape_baseline.yaml");
+    let diagnostics = temp_path("passive_shape_metrics.json");
+    let manifest = temp_path("passive_shape_manifest.json");
+    let metadata = temp_path("passive_shape_trajectory_metadata.csv");
+    fs::write(
+        &shape_path,
+        r#"schema_version: shape_metadata_v1
+shape_id: synthetic_box_block
+shape_type: principal_dimensions
+shape_class: blocky
+dimensions_m:
+  equivalent_radius_m: 0.5
+  principal_lengths_m: [1.0, 0.8, 0.6]
+mass_properties:
+  mass_kg: 10.0
+  density_kgpm3: 20.0
+  mass_property_model: box_principal_dimensions
+orientation:
+  representation: quaternion_wxyz
+  initialization_mode: identity
+  initial_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
+provenance:
+  source_dataset: synthetic_shape_fixture
+  source_record_id: synthetic_box_block
+  license: MIT
+  notes: ["passive metadata test"]
+"#,
+    )
+    .unwrap();
+    let base_yaml = r#"case_id: passive_shape_scaffold
+title: Passive shape scaffold
+terrain:
+  type: plane
+  parameters: { z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }
+block: { mass: 10.0, radius: 0.5 }
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, -0.2]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.3
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: { dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }
+random: { seed: 456, ensemble_size: 1 }
+"#;
+    fs::write(&baseline_case_path, base_yaml).unwrap();
+    fs::write(
+        &shaped_case_path,
+        format!(
+            r#"{base_yaml}block_shape:
+  metadata_path: {}
+outputs:
+  diagnostics_json: {}
+  manifest_json: {}
+  trajectory_metadata_csv: {}
+"#,
+            shape_path.display(),
+            diagnostics.display(),
+            manifest.display(),
+            metadata.display()
+        ),
+    )
+    .unwrap();
+
+    let baseline = run_case_file(&baseline_case_path).unwrap();
+    let shaped = run_case_file(&shaped_case_path).unwrap();
+    assert_eq!(shaped.status, CaseStatus::Passed);
+    assert_abs_diff_eq!(
+        shaped.metrics["runout_m"],
+        baseline.metrics["runout_m"],
+        epsilon = 1.0e-12
+    );
+    assert!(shaped
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("passive")));
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["shape_metadata"]["schema_version"],
+        "shape_metadata_v1"
+    );
+    assert_eq!(
+        manifest_json["shape_metadata"]["active_contact_shape"],
+        "sphere"
+    );
+    assert_eq!(
+        manifest_json["shape_metadata"]["shape_id"],
+        "synthetic_box_block"
+    );
+    assert_eq!(
+        manifest_json["shape_metadata"]["principal_moments_kg_m2"][0],
+        10.0 * (0.8_f64.powi(2) + 0.6_f64.powi(2)) / 12.0
+    );
+    assert!(manifest_json["shape_metadata"]["warnings"][0]
+        .as_str()
+        .unwrap()
+        .contains("passive"));
+    let metadata_contents = fs::read_to_string(&metadata).unwrap();
+    assert!(metadata_contents.contains("shape_id"));
+    assert!(metadata_contents.contains("synthetic_box_block"));
+    assert!(metadata_contents.contains("principal_length_m"));
+    assert!(metadata_contents.contains("0.8"));
+
+    fs::remove_file(shape_path).unwrap();
+    fs::remove_file(shaped_case_path).unwrap();
+    fs::remove_file(baseline_case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(manifest).unwrap();
+    fs::remove_file(metadata).unwrap();
 }
 
 #[test]

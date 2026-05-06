@@ -18,6 +18,8 @@ pub struct RunManifest {
     pub release_zone: Option<ReleaseZoneManifest>,
     pub terrain_classes: Option<TerrainClassManifest>,
     #[serde(default)]
+    pub shape_metadata: Option<ShapeMetadataManifest>,
+    #[serde(default)]
     pub trajectory_metadata: Option<TrajectoryMetadataManifest>,
     pub outputs: Vec<OutputManifest>,
     #[serde(default)]
@@ -106,6 +108,30 @@ pub struct TerrainClassCoverageManifest {
     pub name: String,
     pub cell_count: usize,
     pub coverage_fraction: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeMetadataManifest {
+    pub schema_version: String,
+    pub metadata_path: Option<String>,
+    pub shape_id: String,
+    pub shape_type: String,
+    pub shape_class: String,
+    pub active_contact_shape: String,
+    pub active_contact_radius_m: f64,
+    pub mass_kg: f64,
+    pub density_kgpm3: Option<f64>,
+    pub equivalent_radius_m: Option<f64>,
+    pub principal_lengths_m: Option<[f64; 3]>,
+    pub principal_moments_kg_m2: [f64; 3],
+    pub orientation_initialization_mode: String,
+    pub initial_quaternion_wxyz: [f64; 4],
+    pub source_dataset: Option<String>,
+    pub source_record_id: Option<String>,
+    pub source_url_or_doi: Option<String>,
+    pub license: Option<String>,
+    pub provenance_notes: Vec<String>,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

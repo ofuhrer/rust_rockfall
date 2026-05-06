@@ -15,6 +15,8 @@ terrain_classes:
 block:
   mass: 10.0
   radius: 0.5
+block_shape:
+  metadata_path: null # optional passive shape_metadata_v1 sidecar; current contact remains spherical
 release:
   position: [0.0, 0.0, 1.0]
   velocity: [0.0, 0.0, 0.0]

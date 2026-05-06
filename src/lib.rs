@@ -11,6 +11,7 @@ pub mod geometry;
 pub mod integrator;
 pub mod io;
 pub mod manifest;
+pub mod shape;
 pub mod simulation;
 pub mod state;
 pub mod stochastic;
@@ -22,6 +23,10 @@ pub use dynamics::{
     ScarringDiagnostics, ScarringSettings, SoilInteractionModel,
 };
 pub use geometry::SphereBlock;
+pub use shape::{
+    BlockShapeMetadata, BlockShapeType, MassPropertyModel, ShapeDimensions, ShapeMassProperties,
+    ShapeOrientation, ShapeProvenance, SHAPE_METADATA_SCHEMA_VERSION,
+};
 pub use simulation::{
     simulate_ensemble, simulate_ensemble_with_contact_parameters, simulate_one_trajectory,
     simulate_one_trajectory_with_terrain,

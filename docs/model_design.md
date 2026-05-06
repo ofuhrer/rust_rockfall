@@ -7,6 +7,8 @@ The `v0.5.0` simulator is an independent, literature-based spherical-block model
 Supported now:
 
 - spherical block with explicit mass and radius
+- opt-in passive block-shape metadata with validated dimensions, orientation,
+  and principal-moment diagnostics
 - analytic terrain, strict small ESRI ASCII grids, and opt-in clamped ESRI ASCII terrain patches
 - gravity-driven free flight
 - normal/tangential restitution at impact
@@ -47,6 +49,16 @@ If no class provider is configured, the query is outside the class grid, the cel
 is nodata, or a class omits a parameter, the global case value is used. This is a
 provenance-tracked spatial parameter lookup, not a new physics model or a
 calibration result.
+
+Validation cases can also attach `block_shape.metadata_path` with a
+`shape_metadata_v1` sidecar. This sidecar can describe a sphere, ellipsoid, box,
+principal dimensions, or custom principal moments, including deterministic
+initial orientation metadata and provenance. The parser validates finite
+positive dimensions, mass, inertia, and unit quaternions, then records passive
+shape diagnostics in `run_manifest_v1` and `trajectory_metadata_table_v1`.
+Current contact physics still uses `block.radius` and the existing spherical
+inertia; passive shape metadata does not alter trajectory, deposition, energy,
+or hazard-layer results.
 
 For Tschamut, preprocessing now writes an `idw_residual_dem_from_lps` terrain proxy from public LPS ground points:
 
