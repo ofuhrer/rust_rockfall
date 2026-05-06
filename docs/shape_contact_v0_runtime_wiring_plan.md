@@ -1,9 +1,11 @@
 # `shape_contact_v0` Runtime Wiring Plan
 
 This document defines the smallest safe future slice for wiring
-`shape_contact_v0` into the fixed-step integrator. It is a design plan only.
-It does not enable public simulation, validation, benchmarks, or any new
-physics behavior.
+`shape_contact_v0` into the fixed-step integrator. It is primarily a design
+plan. The repository also contains a test-only internal runtime-smoke scaffold
+that exercises one synthetic ballistic-to-contact step and diagnostic mapping
+without enabling public simulation, validation, benchmarks, or any new physics
+behavior.
 
 The implementation must remain opt-in and experimental. Existing
 `translational_v0` and `sphere_rotational_v1` behavior, defaults, verification
@@ -217,3 +219,23 @@ temporary test sink, and verifies the manifest object.
 This slice should still reject all public validation and benchmark use. Public
 benchmark execution should wait until the runtime-smoke path, diagnostic sidecar,
 manifest provenance, and backward-compatibility gates have passed review.
+
+## Current Internal Smoke Scaffold
+
+The first internal smoke scaffold is test-only. It:
+
+- requires `contact_model = shape_contact_v0`;
+- builds a `ShapeContactV0Scaffold` from compatible in-memory
+  `shape_metadata_v1`;
+- advances one synthetic ballistic step;
+- queries analytic terrain height and normal at the predicted position;
+- calls `shape_contact_v0_prepare_contact`;
+- maps one row to `shape_contact_runtime_diagnostic_v1`;
+- collects the row in memory and serializes JSON Lines in tests;
+- builds a manifest-shaped `shape_contact_v0` object with projection,
+  persistent-contact, orientation-evolution, multi-contact, tuned-parameter, and
+  default-change flags all disabled.
+
+This scaffold is not a public runtime mode and is not validation evidence. It
+does not write files, create validation cases, run public benchmarks, or permit
+ordinary `shape_contact_v0` simulation.

@@ -1279,7 +1279,7 @@ struct ShapeContactV0RuntimeDiagnosticIdentity<'a> {
 }
 
 #[cfg(test)]
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 struct ShapeContactV0RuntimeDiagnosticWriterV1 {
     rows: Vec<ShapeContactV0RuntimeDiagnosticRowV1>,
 }
@@ -1305,6 +1305,165 @@ impl ShapeContactV0RuntimeDiagnosticWriterV1 {
         }
         Ok(lines.join("\n"))
     }
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0RuntimeSmokeInput {
+    contact_model: crate::dynamics::ContactModel,
+    pre_step_state: BodyState,
+    dt_s: f64,
+    gravity_mps2: f64,
+    settings: ShapeContactV0ImpulseSettings,
+    step_index: u64,
+    time_s: f64,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
+struct ShapeContactV0RuntimeSmokeManifestV1 {
+    active_contact_model: String,
+    active_shape_type: String,
+    shape_metadata_path: Option<String>,
+    shape_metadata_sha256: Option<String>,
+    shape_id: String,
+    mass_kg: f64,
+    principal_dimensions_m: [f64; 3],
+    orientation_initialization_mode: String,
+    orientation_representation: String,
+    inertia_model: String,
+    principal_moments_kg_m2: [f64; 3],
+    support_selection_policy: String,
+    support_corner_tie_break: String,
+    contact_gap_tolerance_m: f64,
+    multi_contact: bool,
+    new_tuned_parameters: bool,
+    defaults_changed: bool,
+    projection_correction_enabled: bool,
+    persistent_contact_enabled: bool,
+    orientation_evolution_enabled: bool,
+    runtime_diagnostic_schema_version: String,
+    experimental_status: String,
+    warnings: Vec<String>,
+    limitations: Vec<String>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+struct ShapeContactV0RuntimeSmokeResult {
+    pre_step_state: BodyState,
+    predicted_state: BodyState,
+    terrain_contact_point_m: [f64; 3],
+    terrain_normal_world: [f64; 3],
+    writer: ShapeContactV0RuntimeDiagnosticWriterV1,
+    manifest: ShapeContactV0RuntimeSmokeManifestV1,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_runtime_smoke_manifest(
+    scaffold: &ShapeContactV0Scaffold,
+) -> ShapeContactV0RuntimeSmokeManifestV1 {
+    ShapeContactV0RuntimeSmokeManifestV1 {
+        active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
+        active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
+        shape_metadata_path: None,
+        shape_metadata_sha256: None,
+        shape_id: scaffold.shape_id.clone(),
+        mass_kg: scaffold.mass_kg,
+        principal_dimensions_m: scaffold.principal_dimensions_m,
+        orientation_initialization_mode: default_orientation_initialization_mode(),
+        orientation_representation: default_orientation_representation(),
+        inertia_model: "analytic_box_principal_moments".to_string(),
+        principal_moments_kg_m2: scaffold.principal_moments_kg_m2,
+        support_selection_policy: "single_support_point_from_terrain_normal_positive_zero_tiebreak"
+            .to_string(),
+        support_corner_tie_break: "zero_components_choose_positive_sign".to_string(),
+        contact_gap_tolerance_m: SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M,
+        multi_contact: false,
+        new_tuned_parameters: false,
+        defaults_changed: false,
+        projection_correction_enabled: false,
+        persistent_contact_enabled: false,
+        orientation_evolution_enabled: false,
+        runtime_diagnostic_schema_version: "shape_contact_runtime_diagnostic_v1".to_string(),
+        experimental_status: "internal_runtime_smoke_only".to_string(),
+        warnings: vec![
+            "shape_contact_v0 runtime smoke is internal and not public validation evidence"
+                .to_string(),
+            "shape_contact_v0 remains uncalibrated, non-operational, and not benchmark-ready"
+                .to_string(),
+        ],
+        limitations: vec![
+            "projection correction is disabled".to_string(),
+            "persistent contact is disabled".to_string(),
+            "orientation evolution is disabled".to_string(),
+            "multi-contact is disabled".to_string(),
+        ],
+    }
+}
+
+#[cfg(test)]
+fn shape_contact_v0_internal_runtime_smoke_step<T: crate::terrain::Terrain>(
+    metadata: &BlockShapeMetadata,
+    terrain: &T,
+    input: ShapeContactV0RuntimeSmokeInput,
+) -> Result<ShapeContactV0RuntimeSmokeResult, ShapeMetadataError> {
+    if input.contact_model != crate::dynamics::ContactModel::ShapeContactV0 {
+        return Err(ShapeMetadataError::Invalid(
+            "shape_contact_v0 runtime smoke requires contact_model shape_contact_v0".to_string(),
+        ));
+    }
+    let scaffold = ShapeContactV0Scaffold::from_metadata(metadata)?;
+    let mini_step = shape_contact_v0_mini_fixed_step(
+        &scaffold,
+        terrain,
+        ShapeContactV0MiniFixedStepInput {
+            pre_step_state: input.pre_step_state,
+            dt_s: input.dt_s,
+            gravity_mps2: input.gravity_mps2,
+            settings: input.settings,
+        },
+    )?;
+    let diagnostic_input = ShapeContactV0ContactInput {
+        pre_state: mini_step.predicted_state,
+        terrain_contact_point_m: Vec3::new(
+            mini_step.terrain_contact_point_m[0],
+            mini_step.terrain_contact_point_m[1],
+            mini_step.terrain_contact_point_m[2],
+        ),
+        terrain_normal_world: Vec3::new(
+            mini_step.terrain_normal_world[0],
+            mini_step.terrain_normal_world[1],
+            mini_step.terrain_normal_world[2],
+        ),
+        settings: input.settings,
+    };
+    let row = shape_contact_v0_runtime_diagnostic_row_v1(
+        &scaffold,
+        &diagnostic_input,
+        &mini_step.contact,
+        ShapeContactV0RuntimeDiagnosticIdentity {
+            case_id: "shape_contact_v0_internal_runtime_smoke",
+            trajectory_id: "runtime_smoke_trajectory_000001",
+            step_index: input.step_index,
+            time_s: input.time_s,
+            contact_event_id: None,
+            impact_index: None,
+        },
+    )?;
+    let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+    writer.write_row(row);
+
+    Ok(ShapeContactV0RuntimeSmokeResult {
+        pre_step_state: mini_step.pre_step_state,
+        predicted_state: mini_step.predicted_state,
+        terrain_contact_point_m: mini_step.terrain_contact_point_m,
+        terrain_normal_world: mini_step.terrain_normal_world,
+        writer,
+        manifest: shape_contact_v0_runtime_smoke_manifest(&scaffold),
+    })
 }
 
 #[cfg(test)]
@@ -1693,6 +1852,29 @@ mod tests {
             principal_dimensions_m,
             principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
             orientation_wxyz: default_identity_quaternion(),
+        }
+    }
+
+    fn test_shape_metadata(mass_kg: f64, principal_dimensions_m: [f64; 3]) -> BlockShapeMetadata {
+        BlockShapeMetadata {
+            schema_version: SHAPE_METADATA_SCHEMA_VERSION.to_string(),
+            shape_id: "unit_test_box".to_string(),
+            shape_type: BlockShapeType::PrincipalDimensions,
+            shape_class: Some("box_runtime_smoke_fixture".to_string()),
+            dimensions_m: ShapeDimensions {
+                principal_lengths_m: Some(principal_dimensions_m),
+                equivalent_radius_m: Some(1.0),
+                ..ShapeDimensions::default()
+            },
+            mass_properties: ShapeMassProperties {
+                mass_kg,
+                density_kgpm3: None,
+                mass_property_model: Some(MassPropertyModel::BoxPrincipalDimensions),
+                principal_moments_kg_m2: None,
+                center_of_mass_offset_m: None,
+            },
+            orientation: ShapeOrientation::default(),
+            provenance: ShapeProvenance::default(),
         }
     }
 
@@ -2758,6 +2940,285 @@ mod tests {
         );
         assert_eq!(parsed_rows[2]["normal_impulse_n_s"], 0.0);
         assert_eq!(parsed_rows[2]["tangential_impulse_norm_n_s"], 0.0);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_flat_touching_incoming_emits_diagnostic_row() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.writer.rows().len(), 1);
+        let row = &result.writer.rows()[0];
+        assert_eq!(row.contact_regime, ShapeContactV0ContactRegime::Touching);
+        assert_eq!(
+            row.shape_contact_regime_label,
+            ShapeContactV0RuntimeRegimeLabelV1::ImpulsiveTouching
+        );
+        assert!(row.impulse_applied);
+        assert_close(result.predicted_state.position_m.z, 1.0, 1.0e-12);
+        assert_close(row.terrain_contact_point_z_m, 0.0, 1.0e-12);
+        assert_close(row.terrain_normal_z, 1.0, 1.0e-12);
+        assert!(row.normal_impulse_n_s > 0.0);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_separated_state_writes_non_impulsive_row() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(0.0, 0.0, -1.0)),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        let row = &result.writer.rows()[0];
+        assert_eq!(
+            row.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingToward
+        );
+        assert_eq!(
+            row.shape_contact_regime_label,
+            ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveSeparated
+        );
+        assert!(!row.impulse_applied);
+        assert!(row.support_signed_gap_m > 0.0);
+        assert_close(row.normal_impulse_n_s, 0.0, 1.0e-12);
+        assert_close(row.tangential_impulse_norm_n_s, 0.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_penetrating_moving_away_maps_non_impulsive() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 0.8),
+                    Vec3::new(0.0, 0.0, 1.4905),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        let row = &result.writer.rows()[0];
+        assert_eq!(row.contact_regime, ShapeContactV0ContactRegime::Penetrating);
+        assert_eq!(
+            row.shape_contact_regime_label,
+            ShapeContactV0RuntimeRegimeLabelV1::NonImpulsivePenetrating
+        );
+        assert!(!row.impulse_applied);
+        assert!(row.support_signed_gap_m < 0.0);
+        assert!(row.contact_point_normal_velocity_pre_mps > 0.0);
+        assert_close(row.normal_impulse_n_s, 0.0, 1.0e-12);
+        assert_close(row.tangential_impulse_norm_n_s, 0.0, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_passes_inclined_normal_to_diagnostics() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane {
+            z0_m: 0.0,
+            slope_x: 0.2,
+            slope_y: -0.1,
+        };
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(0.0, 0.0, -1.0)),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        let expected_normal = plane.normal(
+            result.predicted_state.position_m.x,
+            result.predicted_state.position_m.y,
+        );
+        let row = &result.writer.rows()[0];
+        assert_close(row.terrain_normal_x, expected_normal.x, 1.0e-12);
+        assert_close(row.terrain_normal_y, expected_normal.y, 1.0e-12);
+        assert_close(row.terrain_normal_z, expected_normal.z, 1.0e-12);
+        assert_close(result.terrain_normal_world[0], expected_normal.x, 1.0e-12);
+        assert_close(result.terrain_normal_world[1], expected_normal.y, 1.0e-12);
+        assert_close(result.terrain_normal_world[2], expected_normal.z, 1.0e-12);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_json_fields_match_frozen_contract() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+
+        let json_lines = result.writer.to_json_lines().unwrap();
+        let lines: Vec<_> = json_lines.lines().collect();
+        assert_eq!(lines.len(), 1);
+        let row: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
+        assert_shape_contact_runtime_diagnostic_fields(&row);
+        assert_eq!(
+            row["shape_contact_runtime_schema_version"],
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert_eq!(
+            row["shape_contact_row_id"],
+            "runtime_smoke_trajectory_000001:shape_contact:1"
+        );
+        assert!(row["shape_contact_regime_label"].is_string());
+        assert_eq!(row["projection_energy_delta_j"], serde_json::Value::Null);
+        assert_eq!(row["projection_applied"], false);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_manifest_contains_required_shape_fields() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let result = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::ShapeContactV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap();
+        let manifest = serde_json::to_value(&result.manifest).unwrap();
+        let object = manifest.as_object().unwrap();
+        for key in [
+            "active_contact_model",
+            "active_shape_type",
+            "shape_metadata_path",
+            "shape_metadata_sha256",
+            "shape_id",
+            "mass_kg",
+            "principal_dimensions_m",
+            "orientation_initialization_mode",
+            "orientation_representation",
+            "inertia_model",
+            "principal_moments_kg_m2",
+            "support_selection_policy",
+            "support_corner_tie_break",
+            "contact_gap_tolerance_m",
+            "multi_contact",
+            "new_tuned_parameters",
+            "defaults_changed",
+            "projection_correction_enabled",
+            "persistent_contact_enabled",
+            "orientation_evolution_enabled",
+            "runtime_diagnostic_schema_version",
+            "experimental_status",
+            "warnings",
+            "limitations",
+        ] {
+            assert!(object.contains_key(key), "manifest missing {key}");
+        }
+        assert_eq!(manifest["active_contact_model"], SHAPE_CONTACT_V0_MODEL);
+        assert_eq!(manifest["active_shape_type"], SHAPE_CONTACT_V0_ACTIVE_SHAPE);
+        assert_eq!(
+            manifest["runtime_diagnostic_schema_version"],
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert_eq!(
+            manifest["experimental_status"],
+            "internal_runtime_smoke_only"
+        );
+        assert_eq!(manifest["shape_metadata_path"], serde_json::Value::Null);
+        assert_eq!(manifest["shape_metadata_sha256"], serde_json::Value::Null);
+        assert_eq!(manifest["multi_contact"], false);
+        assert_eq!(manifest["new_tuned_parameters"], false);
+        assert_eq!(manifest["defaults_changed"], false);
+        assert_eq!(manifest["projection_correction_enabled"], false);
+        assert_eq!(manifest["persistent_contact_enabled"], false);
+        assert_eq!(manifest["orientation_evolution_enabled"], false);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_smoke_requires_shape_contact_model() {
+        let metadata = test_shape_metadata(2.0, [2.0, 2.0, 2.0]);
+        let plane = Plane::horizontal(0.0);
+        let error = shape_contact_v0_internal_runtime_smoke_step(
+            &metadata,
+            &plane,
+            ShapeContactV0RuntimeSmokeInput {
+                contact_model: crate::dynamics::ContactModel::TranslationalV0,
+                pre_step_state: BodyState::new(
+                    Vec3::new(0.0, 0.0, 1.2),
+                    Vec3::new(0.0, 0.0, -1.5095),
+                ),
+                dt_s: 0.1,
+                gravity_mps2: 9.81,
+                settings: settings(0.5, 0.0, 0.4),
+                step_index: 1,
+                time_s: 0.1,
+            },
+        )
+        .unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("requires contact_model shape_contact_v0"));
     }
 
     #[test]
