@@ -143,6 +143,9 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
             ),
+            ContactModel::ShapeContactV0 => {
+                panic!("shape_contact_v0 is a verification scaffold and is not implemented in the fixed-step integrator")
+            }
         };
         let post_contact_state = state;
         let scarring = if incoming {
@@ -212,6 +215,9 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                     } else {
                         ContactState::Sliding
                     }
+                }
+                ContactModel::ShapeContactV0 => {
+                    panic!("shape_contact_v0 is a verification scaffold and is not implemented in the fixed-step integrator")
                 }
             };
         }

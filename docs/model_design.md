@@ -119,6 +119,13 @@ a = (5/7) g_t
 
 `rolling_resistance_coefficient` is a dimensionless early-stage resistance parameter used only by `sphere_rotational_v1`. It is transparent and testable, but not calibrated as a terrain or soil law.
 
+The experimental `shape_contact_v0` label is recognized only as a
+verification-first scaffold. It requires compatible passive shape metadata and
+currently exposes analytic `principal_dimensions_box_v0` inertia/support
+helpers, but active contact impulses are not implemented. Existing
+`translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
+unchanged.
+
 ## Impact Roughness
 
 The default roughness model is `none`. The opt-in `stochastic_contact_v1` model applies bounded stochastic perturbations at impact only. It is a contact stochasticity model, not a spatial terrain roughness map.

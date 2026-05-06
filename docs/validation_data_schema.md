@@ -17,7 +17,9 @@ Required case fields:
 - optional `release_zone.metadata_path` for a small LV95/LN02 source-area polygon metadata sidecar
 - optional `release_zone.generated_release_points_csv` for the deterministic generated release-point audit table
 - `parameters.gravity`, `normal_restitution`, `tangential_restitution`, `friction_coefficient`
-- optional `parameters.contact_model`: `translational_v0` by default, or `sphere_rotational_v1`
+- optional `parameters.contact_model`: `translational_v0` by default,
+  `sphere_rotational_v1`, or the experimental verification scaffold
+  `shape_contact_v0`
 - optional `parameters.rolling_resistance_coefficient`: dimensionless, default `0.0`, used by `sphere_rotational_v1`
 - optional `parameters.roughness_model`: `none` by default, or `stochastic_contact_v1`
 - optional `parameters.roughness_std_normal`: dimensionless dissipative normal-restitution perturbation scale, default `0.0`
@@ -164,9 +166,13 @@ mass, density, and principal moments where present, and requires
 must match the active `block.mass` and the descriptive equivalent radius when
 that radius is supplied.
 
-This metadata is passive. Current contact, inertia, trajectory integration, and
-validation semantics remain spherical and continue to use `block.radius` and the
-current spherical moment of inertia.
+This metadata is passive for `translational_v0` and `sphere_rotational_v1`.
+The experimental `shape_contact_v0` scaffold recognizes the metadata only when
+explicitly selected, requires compatible `principal_dimensions` sidecars using
+`mass_property_model: box_principal_dimensions`, and currently stops before
+active contact impulses are run. Current default contact, inertia, trajectory
+integration, and validation semantics remain spherical and continue to use
+`block.radius` and the current spherical moment of inertia.
 
 ## Implemented Terrain Types
 

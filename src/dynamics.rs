@@ -19,6 +19,7 @@ pub enum ContactModel {
     #[default]
     TranslationalV0,
     SphereRotationalV1,
+    ShapeContactV0,
 }
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

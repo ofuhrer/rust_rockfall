@@ -15,7 +15,7 @@ use crate::{
         MapPackageManifest, NormalizationScope, ProbabilisticMetadataError, ProbabilityMode,
         ScenarioRow, ScenarioTable, SourceZoneMetadata, MAP_PACKAGE_MANIFEST_SCHEMA_VERSION,
     },
-    shape::{BlockShapeMetadata, PASSIVE_SHAPE_WARNING},
+    shape::{BlockShapeMetadata, ShapeContactV0Scaffold, PASSIVE_SHAPE_WARNING},
     simulation::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
@@ -1379,11 +1379,19 @@ fn load_block_shape_metadata(
     case: &BenchmarkCase,
 ) -> Result<Option<BlockShapeMetadata>, ValidationError> {
     let Some(block_shape) = &case.block_shape else {
+        if case.parameters.contact_model == ContactModel::ShapeContactV0 {
+            return Err(ValidationError::Case(
+                "shape_contact_v0 requires block_shape.metadata_path with compatible shape_metadata_v1".to_string(),
+            ));
+        }
         return Ok(None);
     };
     let metadata = BlockShapeMetadata::from_yaml_file(&block_shape.metadata_path)?;
     let block = case_block(case)?;
     metadata.validate_against_block(&block)?;
+    if case.parameters.contact_model == ContactModel::ShapeContactV0 {
+        ShapeContactV0Scaffold::from_metadata(&metadata)?;
+    }
     Ok(Some(metadata))
 }
 

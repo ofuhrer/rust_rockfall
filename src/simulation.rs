@@ -213,6 +213,8 @@ pub enum SimulationError {
     },
     #[error("trajectory {0} has no samples")]
     EmptyTrajectory(String),
+    #[error("unsupported contact model for simulation: {0}")]
+    UnsupportedContactModel(&'static str),
 }
 
 impl SimulationConfig {
@@ -301,6 +303,11 @@ impl SimulationConfig {
     }
 
     fn validate(&self) -> Result<(), SimulationError> {
+        if self.contact_model == ContactModel::ShapeContactV0 {
+            return Err(SimulationError::UnsupportedContactModel(
+                "shape_contact_v0 is a verification scaffold; active contact impulses are not implemented yet",
+            ));
+        }
         require_positive(self.block.radius_m, "block.radius_m")?;
         require_positive(self.block.mass_kg, "block.mass_kg")?;
         require_positive(self.dt_s, "dt_s")?;

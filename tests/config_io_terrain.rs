@@ -5,11 +5,12 @@ use rust_rockfall::{
     io,
     manifest::RunManifest,
     shape::{
-        box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2,
-        sphere_principal_moments_kg_m2, BlockShapeMetadata, BlockShapeType,
+        box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2, select_box_support_point,
+        shape_contact_v0_energy_diagnostic, sphere_principal_moments_kg_m2, BlockShapeMetadata,
+        BlockShapeType, ShapeContactV0Scaffold,
     },
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
-    state::ContactState,
+    state::{BodyState, ContactState},
     stochastic::{ReleasePerturbation, RoughnessModel},
     terrain::{
         ChannelizedGully, ClampedDemGrid, DemGrid, GaussianBump, Paraboloid, Plane,
@@ -233,6 +234,114 @@ fn tschamut_public_shape_sidecars_validate_against_block_metadata() {
             .iter()
             .any(|note| note.contains("passive")));
     }
+}
+
+#[test]
+fn shape_contact_v0_scaffold_accepts_principal_dimensions_box_metadata() {
+    let metadata = BlockShapeMetadata::from_yaml_file(
+        "data/processed/tschamut2014/shape_metadata/block_1_st_leonard.yaml",
+    )
+    .unwrap();
+    let scaffold = ShapeContactV0Scaffold::from_metadata(&metadata).unwrap();
+
+    assert_eq!(scaffold.active_contact_model, "shape_contact_v0");
+    assert_eq!(scaffold.active_shape_type, "principal_dimensions_box_v0");
+    assert_eq!(scaffold.principal_dimensions_m, [0.37, 0.32, 0.37]);
+    assert_eq!(scaffold.orientation_wxyz, [1.0, 0.0, 0.0, 0.0]);
+    let expected = box_principal_moments_kg_m2(69.0, [0.37, 0.32, 0.37]);
+    for (actual, expected) in scaffold.principal_moments_kg_m2.iter().zip(expected) {
+        assert_abs_diff_eq!(*actual, expected, epsilon = 1.0e-12);
+    }
+}
+
+#[test]
+fn shape_contact_v0_scaffold_rejects_invalid_mass_dimensions_and_orientation() {
+    let invalid_mass = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: bad_mass
+shape_type: principal_dimensions
+dimensions_m:
+  principal_lengths_m: [1.0, 2.0, 3.0]
+  equivalent_radius_m: 1.0
+mass_properties:
+  mass_kg: -1.0
+  mass_property_model: box_principal_dimensions
+"#,
+    )
+    .unwrap();
+    assert!(ShapeContactV0Scaffold::from_metadata(&invalid_mass).is_err());
+
+    let invalid_dimensions = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: bad_dimensions
+shape_type: principal_dimensions
+dimensions_m:
+  principal_lengths_m: [1.0, 0.0, 3.0]
+  equivalent_radius_m: 1.0
+mass_properties:
+  mass_kg: 10.0
+  mass_property_model: box_principal_dimensions
+"#,
+    )
+    .unwrap();
+    assert!(ShapeContactV0Scaffold::from_metadata(&invalid_dimensions).is_err());
+
+    let fixed_orientation = serde_yaml::from_str::<BlockShapeMetadata>(
+        r#"schema_version: shape_metadata_v1
+shape_id: fixed_orientation
+shape_type: principal_dimensions
+dimensions_m:
+  principal_lengths_m: [1.0, 2.0, 3.0]
+  equivalent_radius_m: 1.0
+mass_properties:
+  mass_kg: 10.0
+  mass_property_model: box_principal_dimensions
+orientation:
+  representation: quaternion_wxyz
+  initialization_mode: fixed_quaternion
+  initial_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
+"#,
+    )
+    .unwrap();
+    let error = ShapeContactV0Scaffold::from_metadata(&fixed_orientation)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("identity orientation only"));
+}
+
+#[test]
+fn shape_contact_v0_support_point_selection_is_deterministic() {
+    let support = select_box_support_point(
+        Vec3::new(10.0, 20.0, 30.0),
+        Vec3::new(0.0, 0.0, 1.0),
+        [2.0, 4.0, 6.0],
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+
+    assert_eq!(support.active_contact_model, "shape_contact_v0");
+    assert_eq!(support.active_shape_type, "principal_dimensions_box_v0");
+    assert_eq!(support.support_corner_signs, [1, 1, -1]);
+    assert_abs_diff_eq!(support.support_point_m[0], 11.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(support.support_point_m[1], 22.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(support.support_point_m[2], 27.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(support.orientation_norm_error, 0.0, epsilon = 1.0e-12);
+}
+
+#[test]
+fn shape_contact_v0_energy_diagnostic_is_accounting_only() {
+    let mut pre = BodyState::new(Vec3::new(0.0, 0.0, 10.0), Vec3::new(1.0, 0.0, 0.0));
+    pre.angular_velocity_radps = Vec3::new(0.0, 2.0, 0.0);
+    let post = pre;
+    let diagnostic =
+        shape_contact_v0_energy_diagnostic(&pre, &post, 10.0, [1.0, 2.0, 3.0], 9.81).unwrap();
+
+    assert_abs_diff_eq!(
+        diagnostic.pre_total_mechanical_energy_j,
+        diagnostic.post_total_mechanical_energy_j,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(diagnostic.contact_energy_delta_j, 0.0, epsilon = 1.0e-12);
 }
 
 use std::{
@@ -704,6 +813,60 @@ parameters:
     .unwrap();
 
     assert!(load_case(&path).is_err());
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn shape_contact_v0_requires_shape_metadata_before_simulation() {
+    let path = temp_path("shape_contact_missing_metadata.yaml");
+    fs::write(
+        &path,
+        r#"case_id: shape_contact_missing_metadata
+terrain:
+  type: plane
+block:
+  mass: 10.0
+  radius: 0.5
+parameters:
+  contact_model: shape_contact_v0
+simulation:
+  dt: 0.01
+  t_max: 0.01
+"#,
+    )
+    .unwrap();
+
+    let error = run_case_file(&path).unwrap_err().to_string();
+
+    assert!(error.contains("shape_contact_v0 requires block_shape.metadata_path"));
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn shape_contact_v0_with_metadata_stops_before_unimplemented_dynamics() {
+    let path = temp_path("shape_contact_with_metadata.yaml");
+    fs::write(
+        &path,
+        r#"case_id: shape_contact_with_metadata
+terrain:
+  type: plane
+block:
+  mass: 69.0
+  radius: 0.176667
+block_shape:
+  metadata_path: data/processed/tschamut2014/shape_metadata/block_1_st_leonard.yaml
+parameters:
+  contact_model: shape_contact_v0
+simulation:
+  dt: 0.01
+  t_max: 0.01
+"#,
+    )
+    .unwrap();
+
+    let error = run_case_file(&path).unwrap_err().to_string();
+
+    assert!(error.contains("shape_contact_v0 is a verification scaffold"));
     fs::remove_file(path).unwrap();
 }
 

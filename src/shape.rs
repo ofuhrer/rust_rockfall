@@ -4,7 +4,7 @@
 //! to use the active spherical block unless a future opt-in contact model
 //! explicitly says otherwise.
 
-use crate::geometry::SphereBlock;
+use crate::{geometry::SphereBlock, state::BodyState, Vec3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use thiserror::Error;
@@ -12,6 +12,8 @@ use thiserror::Error;
 pub const SHAPE_METADATA_SCHEMA_VERSION: &str = "shape_metadata_v1";
 pub const PASSIVE_SHAPE_WARNING: &str =
     "Shape metadata is passive; active contact and dynamics remain spherical.";
+pub const SHAPE_CONTACT_V0_MODEL: &str = "shape_contact_v0";
+pub const SHAPE_CONTACT_V0_ACTIVE_SHAPE: &str = "principal_dimensions_box_v0";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BlockShapeMetadata {
@@ -150,6 +152,93 @@ impl BlockShapeMetadata {
             .clone()
             .unwrap_or_else(|| self.shape_type.as_str().to_string())
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0Scaffold {
+    pub active_contact_model: String,
+    pub active_shape_type: String,
+    pub shape_id: String,
+    pub mass_kg: f64,
+    pub principal_dimensions_m: [f64; 3],
+    pub principal_moments_kg_m2: [f64; 3],
+    pub orientation_wxyz: [f64; 4],
+}
+
+impl ShapeContactV0Scaffold {
+    pub fn from_metadata(metadata: &BlockShapeMetadata) -> Result<Self, ShapeMetadataError> {
+        metadata.validate()?;
+        if metadata.shape_type != BlockShapeType::PrincipalDimensions {
+            return Err(ShapeMetadataError::Invalid(format!(
+                "{SHAPE_CONTACT_V0_MODEL} requires shape_type principal_dimensions for {SHAPE_CONTACT_V0_ACTIVE_SHAPE}"
+            )));
+        }
+        if metadata.mass_properties.mass_property_model
+            != Some(MassPropertyModel::BoxPrincipalDimensions)
+        {
+            return Err(ShapeMetadataError::Invalid(format!(
+                "{SHAPE_CONTACT_V0_MODEL} requires mass_properties.mass_property_model box_principal_dimensions"
+            )));
+        }
+        if metadata.orientation.initialization_mode != "identity" {
+            return Err(ShapeMetadataError::Invalid(format!(
+                "{SHAPE_CONTACT_V0_MODEL} scaffold currently supports identity orientation only"
+            )));
+        }
+        let principal_dimensions_m =
+            metadata.dimensions_m.principal_lengths_m.ok_or_else(|| {
+                ShapeMetadataError::Invalid(
+                    "principal_dimensions_box_v0 requires dimensions_m.principal_lengths_m"
+                        .to_string(),
+                )
+            })?;
+        validate_positive_triplet(principal_dimensions_m, "dimensions_m.principal_lengths_m")?;
+        let principal_moments_kg_m2 =
+            box_principal_moments_kg_m2(metadata.mass_properties.mass_kg, principal_dimensions_m);
+        Ok(Self {
+            active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
+            active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
+            shape_id: metadata.shape_id.clone(),
+            mass_kg: metadata.mass_properties.mass_kg,
+            principal_dimensions_m,
+            principal_moments_kg_m2,
+            orientation_wxyz: metadata.orientation.initial_quaternion_wxyz,
+        })
+    }
+
+    pub fn support_point(
+        &self,
+        center_m: Vec3,
+        terrain_normal_world: Vec3,
+    ) -> Result<ShapeContactV0SupportDiagnostic, ShapeMetadataError> {
+        select_box_support_point(
+            center_m,
+            terrain_normal_world,
+            self.principal_dimensions_m,
+            self.orientation_wxyz,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0SupportDiagnostic {
+    pub active_contact_model: String,
+    pub active_shape_type: String,
+    pub orientation_wxyz: [f64; 4],
+    pub orientation_norm_error: f64,
+    pub support_point_m: [f64; 3],
+    pub support_corner_signs: [i8; 3],
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0EnergyDiagnostic {
+    pub pre_translational_kinetic_j: f64,
+    pub pre_rotational_kinetic_j: f64,
+    pub pre_total_mechanical_energy_j: f64,
+    pub post_translational_kinetic_j: f64,
+    pub post_rotational_kinetic_j: f64,
+    pub post_total_mechanical_energy_j: f64,
+    pub contact_energy_delta_j: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -380,6 +469,91 @@ pub fn box_principal_moments_kg_m2(mass_kg: f64, side_lengths_m: [f64; 3]) -> [f
     ]
 }
 
+pub fn select_box_support_point(
+    center_m: Vec3,
+    terrain_normal_world: Vec3,
+    principal_dimensions_m: [f64; 3],
+    orientation_wxyz: [f64; 4],
+) -> Result<ShapeContactV0SupportDiagnostic, ShapeMetadataError> {
+    validate_finite_triplet([center_m.x, center_m.y, center_m.z], "center_m")?;
+    validate_positive_triplet(principal_dimensions_m, "principal_dimensions_m")?;
+    validate_finite_triplet(
+        [
+            terrain_normal_world.x,
+            terrain_normal_world.y,
+            terrain_normal_world.z,
+        ],
+        "terrain_normal_world",
+    )?;
+    let normal_norm = terrain_normal_world.norm();
+    if normal_norm == 0.0 {
+        return Err(ShapeMetadataError::Invalid(
+            "terrain_normal_world must be nonzero".to_string(),
+        ));
+    }
+    validate_unit_quaternion(orientation_wxyz, "orientation_wxyz")?;
+    let normal = terrain_normal_world / normal_norm;
+    let direction_body = rotate_vector_by_quaternion_conjugate(-normal, orientation_wxyz);
+    let support_corner_signs = [
+        deterministic_sign(direction_body.x),
+        deterministic_sign(direction_body.y),
+        deterministic_sign(direction_body.z),
+    ];
+    let support_body = Vec3::new(
+        0.5 * principal_dimensions_m[0] * f64::from(support_corner_signs[0]),
+        0.5 * principal_dimensions_m[1] * f64::from(support_corner_signs[1]),
+        0.5 * principal_dimensions_m[2] * f64::from(support_corner_signs[2]),
+    );
+    let support_world = rotate_vector_by_quaternion(support_body, orientation_wxyz);
+    let support_point = center_m + support_world;
+    let orientation_norm = quaternion_norm(orientation_wxyz);
+    Ok(ShapeContactV0SupportDiagnostic {
+        active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
+        active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
+        orientation_wxyz,
+        orientation_norm_error: (orientation_norm - 1.0).abs(),
+        support_point_m: [support_point.x, support_point.y, support_point.z],
+        support_corner_signs,
+    })
+}
+
+pub fn shape_contact_v0_energy_diagnostic(
+    pre_state: &BodyState,
+    post_state: &BodyState,
+    mass_kg: f64,
+    principal_moments_kg_m2: [f64; 3],
+    gravity_mps2: f64,
+) -> Result<ShapeContactV0EnergyDiagnostic, ShapeMetadataError> {
+    validate_positive(mass_kg, "mass_kg")?;
+    validate_positive_triplet(principal_moments_kg_m2, "principal_moments_kg_m2")?;
+    validate_positive(gravity_mps2, "gravity_mps2")?;
+    let pre_translational_kinetic_j = 0.5 * mass_kg * pre_state.velocity_mps.norm_squared();
+    let pre_rotational_kinetic_j = principal_axis_rotational_energy_j(
+        pre_state.angular_velocity_radps,
+        principal_moments_kg_m2,
+    );
+    let pre_total_mechanical_energy_j = pre_translational_kinetic_j
+        + pre_rotational_kinetic_j
+        + mass_kg * gravity_mps2 * pre_state.position_m.z;
+    let post_translational_kinetic_j = 0.5 * mass_kg * post_state.velocity_mps.norm_squared();
+    let post_rotational_kinetic_j = principal_axis_rotational_energy_j(
+        post_state.angular_velocity_radps,
+        principal_moments_kg_m2,
+    );
+    let post_total_mechanical_energy_j = post_translational_kinetic_j
+        + post_rotational_kinetic_j
+        + mass_kg * gravity_mps2 * post_state.position_m.z;
+    Ok(ShapeContactV0EnergyDiagnostic {
+        pre_translational_kinetic_j,
+        pre_rotational_kinetic_j,
+        pre_total_mechanical_energy_j,
+        post_translational_kinetic_j,
+        post_rotational_kinetic_j,
+        post_total_mechanical_energy_j,
+        contact_energy_delta_j: post_total_mechanical_energy_j - pre_total_mechanical_energy_j,
+    })
+}
+
 fn default_orientation_representation() -> String {
     "quaternion_wxyz".to_string()
 }
@@ -416,6 +590,23 @@ fn validate_positive(value: f64, label: &str) -> Result<(), ShapeMetadataError> 
     Ok(())
 }
 
+fn validate_unit_quaternion(values: [f64; 4], label: &str) -> Result<(), ShapeMetadataError> {
+    for (idx, value) in values.iter().enumerate() {
+        if !value.is_finite() {
+            return Err(ShapeMetadataError::Invalid(format!(
+                "{label}[{idx}] must be finite"
+            )));
+        }
+    }
+    let norm = quaternion_norm(values);
+    if (norm - 1.0).abs() > 1.0e-6 {
+        return Err(ShapeMetadataError::Invalid(format!(
+            "{label} must be unit length; norm is {norm}"
+        )));
+    }
+    Ok(())
+}
+
 fn validate_positive_triplet(values: [f64; 3], label: &str) -> Result<(), ShapeMetadataError> {
     for (idx, value) in values.iter().enumerate() {
         if !value.is_finite() || *value <= 0.0 {
@@ -436,4 +627,34 @@ fn validate_finite_triplet(values: [f64; 3], label: &str) -> Result<(), ShapeMet
         }
     }
     Ok(())
+}
+
+fn deterministic_sign(value: f64) -> i8 {
+    if value < 0.0 {
+        -1
+    } else {
+        1
+    }
+}
+
+fn quaternion_norm(values: [f64; 4]) -> f64 {
+    (values[0] * values[0] + values[1] * values[1] + values[2] * values[2] + values[3] * values[3])
+        .sqrt()
+}
+
+fn rotate_vector_by_quaternion(vector: Vec3, q: [f64; 4]) -> Vec3 {
+    let q_vec = Vec3::new(q[1], q[2], q[3]);
+    let uv = q_vec.cross(&vector);
+    let uuv = q_vec.cross(&uv);
+    vector + (2.0 * q[0]) * uv + 2.0 * uuv
+}
+
+fn rotate_vector_by_quaternion_conjugate(vector: Vec3, q: [f64; 4]) -> Vec3 {
+    rotate_vector_by_quaternion(vector, [q[0], -q[1], -q[2], -q[3]])
+}
+
+fn principal_axis_rotational_energy_j(omega_radps: Vec3, principal_moments_kg_m2: [f64; 3]) -> f64 {
+    0.5 * (principal_moments_kg_m2[0] * omega_radps.x * omega_radps.x
+        + principal_moments_kg_m2[1] * omega_radps.y * omega_radps.y
+        + principal_moments_kg_m2[2] * omega_radps.z * omega_radps.z)
 }
