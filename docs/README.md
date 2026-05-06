@@ -1,6 +1,6 @@
 # Documentation Index
 
-Current project version: `v0.6.0`.
+Current project version: `v0.6.1`.
 
 The repository uses semantic versioning:
 

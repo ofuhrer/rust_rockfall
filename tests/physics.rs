@@ -1,7 +1,8 @@
 use approx::{assert_abs_diff_eq, assert_relative_eq};
 use rust_rockfall::{
     dynamics::{
-        acceleration_from_gravity, apply_contact_friction, estimate_scarring_depth_m,
+        acceleration_from_gravity, apply_contact_friction,
+        apply_contact_friction_after_ballistic_step, estimate_scarring_depth_m,
         resolve_rotational_sphere_contact, resolve_sphere_contact, ScarringDepthSource,
         ScarringSettings, SoilInteractionModel,
     },
@@ -141,6 +142,42 @@ fn low_friction_incline_does_not_stop_when_gravity_overcomes_friction() {
 
     assert!(!stopped);
     assert!(state.velocity_mps.norm() > 0.0);
+}
+
+#[test]
+fn translational_post_ballistic_sliding_applies_tangent_gravity_once() {
+    let terrain = Plane {
+        z0_m: 0.0,
+        slope_x: -0.5,
+        slope_y: 0.0,
+    };
+    let dt_s = 0.1;
+    let gravity_mps2 = 9.81;
+    let friction_coefficient = 0.05;
+    let normal = terrain.normal(0.0, 0.0);
+    let gravity = Vec3::new(0.0, 0.0, -gravity_mps2);
+    let normal_acc = gravity.dot(&normal) * normal;
+    let tangent_acc = gravity - normal_acc;
+    let expected_delta_speed =
+        (tangent_acc.norm() - friction_coefficient * normal_acc.norm()) * dt_s;
+    let mut state = BodyState::new(Vec3::new(0.0, 0.0, 0.5), tangent_acc * dt_s);
+
+    let stopped = apply_contact_friction_after_ballistic_step(
+        &mut state,
+        &terrain,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        0.0,
+    );
+
+    assert!(!stopped);
+    assert_abs_diff_eq!(state.velocity_mps.dot(&normal), 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(
+        state.velocity_mps.norm(),
+        expected_delta_speed,
+        epsilon = 1.0e-12
+    );
 }
 
 #[test]

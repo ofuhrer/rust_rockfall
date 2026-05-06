@@ -2,7 +2,7 @@
 
 ## Scope
 
-The `v0.6.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.6.1` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
 
 Supported now:
 
@@ -241,7 +241,7 @@ rockfall run --config examples/inclined_plane.json --output trajectory.csv
 
 ## HPC-Readiness Boundaries
 
-The v0.6.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+The v0.6.1 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.

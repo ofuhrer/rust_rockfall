@@ -2,7 +2,7 @@
 
 `rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
 
-Current crate/model version: `v0.6.0`.
+Current crate/model version: `v0.6.1`.
 
 The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not decompile or inspect proprietary binaries, and it does not claim numerical equivalence with any proprietary or operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
 
@@ -25,7 +25,7 @@ The first model is intentionally small:
 - optional per-impact CSV/JSON diagnostics for reconstructing contact and scarring events
 - CSV trajectory output from a CLI
 
-Unsupported in v0.6.0: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+Unsupported in v0.6.1: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
 
 ## Versioning
 

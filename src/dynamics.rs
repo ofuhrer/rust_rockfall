@@ -340,6 +340,29 @@ pub fn apply_contact_friction(
     }
 }
 
+pub fn apply_contact_friction_after_ballistic_step(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    dt_s: f64,
+    gravity_mps2: f64,
+    friction_coefficient: f64,
+    stop_speed_mps: f64,
+) -> bool {
+    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    let gravity = gravity_vector(gravity_mps2);
+    let normal_acc = gravity.dot(&normal) * normal;
+    let tangent_acc = gravity - normal_acc;
+    state.velocity_mps -= tangent_acc * dt_s;
+    apply_contact_friction(
+        state,
+        terrain,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        stop_speed_mps,
+    )
+}
+
 pub fn apply_rotational_contact_motion(
     state: &mut BodyState,
     terrain: &dyn Terrain,

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed persistent `translational_v0` sliding integration so tangential gravity
+  is applied once per step after ballistic stepping. This is targeted as the
+  `v0.6.1` patch-candidate physics bug fix and changes default numerical
+  results for sliding contact cases.
 - Added an expert-review baseline release-preparation note for the proposed
   `v0.6.0-expert-review-baseline` tag, without creating the tag or changing the
   project version.

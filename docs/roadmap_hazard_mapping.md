@@ -8,7 +8,7 @@ The goal is not to reproduce RAMMS::ROCKFALL internals, clone proprietary workfl
 
 ## Current Position
 
-The current `v0.6.0` codebase is still a trajectory-scale research core. It supports analytic terrain, small DEM fixtures, seeded ensembles, impact diagnostics, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in compactable-soil scarring diagnostics, hazard-layer post-processing, and metadata-only Swiss geodata strategy.
+The current `v0.6.1` codebase is still a trajectory-scale research core. It supports analytic terrain, small DEM fixtures, seeded ensembles, impact diagnostics, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in compactable-soil scarring diagnostics, hazard-layer post-processing, and metadata-only Swiss geodata strategy.
 
 Recent impact-level work is important because spatial hazard mapping is only credible if the underlying contact, energy, and calibration behaviour can be inspected and challenged. The proxy and Chant Sura single-impact calibration experiments are therefore not a side path; they build the traceability needed before running large ensembles over Alpine terrain.
 

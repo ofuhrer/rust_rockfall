@@ -1,7 +1,7 @@
 use crate::{
     dynamics::{
-        apply_contact_friction, apply_rotational_contact_motion, apply_scarring_energy_loss,
-        ballistic_step, contact_point_tangent_velocity,
+        apply_contact_friction_after_ballistic_step, apply_rotational_contact_motion,
+        apply_scarring_energy_loss, ballistic_step, contact_point_tangent_velocity,
         resolve_rotational_sphere_contact_with_normal, resolve_sphere_contact_with_normal,
         rolling_residual, ContactModel, ContactParameterProvider, ContactParameters,
         RotationalContactSettings, ScarringSettings,
@@ -174,7 +174,7 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
         if signed_distance.abs() < 1.0e-7 && state.velocity_mps.dot(&normal) <= 1.0e-7 {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
-                    let stopped = apply_contact_friction(
+                    let stopped = apply_contact_friction_after_ballistic_step(
                         &mut state,
                         terrain,
                         settings.dt_s,
