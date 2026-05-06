@@ -18,6 +18,7 @@ Core documents:
 - `tschamut_swissalti3d_controlled_pilot_plan.md`: concrete Work Package 1 execution plan for the controlled Tschamut/swissALTI3D real-site pilot, including private inputs, commands, metrics, QA, and interpretation rules.
 - `tschamut_public_benchmark_reproduction.md`: registration-reviewed public-data Tschamut benchmark reproduction workflow using EnviDat observations, a public swissALTI3D terrain crop, explicit-grid hazard layers, and no parameter tuning.
 - `public_tschamut_model_improvement_decision.md`: no-tuning decision record choosing the next scientific model-improvement direction after the registered public Tschamut benchmark.
+- `shape_aware_block_scaffold_design.md`: design-only plan for an opt-in passive block shape, orientation, and inertia metadata scaffold before any non-spherical contact physics.
 - `swisstopo_terrain_tile_schema.yaml`: schema-style metadata example for future swisstopo terrain tile ingestion.
 - `dataset_strategy.md`: multi-dataset roles for physics calibration, trajectory validation, deposition validation, and hazard mapping.
 - `chant_sura_contact_validation.md`: DEM-backed segmented Chant Sura trajectory/contact validation setup, metrics, and model-comparison results.
