@@ -42,6 +42,13 @@ Required case fields:
 
 The machine-readable example is in `docs/benchmark_case_schema.yaml`.
 
+If `t_max` and `max_steps` are both supplied, the runner uses the shorter
+horizon: `min(t_max, max_steps * dt)`. YAML case defaults are intentionally
+small for smoke tests (`dt = 0.01 s`, `t_max = 1.0 s`, and
+`stop_velocity = 0.10 m/s`, matching the JSON `SimulationConfig` stop-speed
+default), but versioned verification and validation cases should continue to
+set these fields explicitly.
+
 ## Hazard-Layer Statistics
 
 `hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. Existing validation pass/fail semantics are unchanged.

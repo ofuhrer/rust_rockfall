@@ -2,7 +2,7 @@
 
 ## Scope
 
-The `v0.5.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.6.0` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
 
 Supported now:
 
@@ -21,7 +21,9 @@ Supported now:
 
 ## Terrain Representation
 
-Terrain access is abstracted through the `Terrain` trait. Existing analytic terrain and strict `esri_ascii_grid` behavior remain unchanged. Strict ESRI ASCII grids use bilinear interpolation and intentionally fail on out-of-bounds access through `try_height`.
+Terrain access is abstracted through the `Terrain` trait. Existing analytic terrain and strict `esri_ascii_grid` behavior remain unchanged. Strict ESRI ASCII grids use bilinear interpolation and intentionally fail on out-of-bounds access through `try_height`. The `Terrain` trait itself is currently infallible, so strict DEM use through `height`, `normal`, or the integrator will panic on out-of-bounds or nodata queries; use the clamped DEM variant only when deterministic boundary extrapolation is an explicit validation assumption.
+
+ESRI ASCII `NODATA_value` cells are not interpolated as elevations. Any bilinear query touching a nodata or non-finite corner returns a terrain error through `try_height`; clamped terrain still fails if the clamped stencil touches nodata. This keeps small DEM fixtures auditable and prevents silent smoothing over raster holes, but it is not a full GIS nodata-repair workflow.
 
 The opt-in `ascii_dem_clamped` / `esri_ascii_grid_clamped` model wraps the same ESRI ASCII grid but clamps height and normal queries to the raster boundary. It is intended for limited real-data terrain patches where a trajectory may leave the small validation raster. This boundary policy is deterministic and lightweight, but it is an extrapolation assumption, not a production GIS workflow.
 
@@ -139,6 +141,13 @@ where `n` is the terrain normal, `t1` and `t2` are orthogonal tangent directions
 
 The coefficient perturbations are dissipative by construction: restitution is only reduced and friction is only increased. The perturbed normal can redirect rebound direction and create deterministic ensemble spread, but the model is not calibrated to a field terrain class. With all roughness standard deviations set to zero, `stochastic_contact_v1` is required to match `none` exactly.
 
+When roughness is active in a direct JSON `SimulationConfig`, `random_seed`
+controls both release perturbation and impact roughness. If `random_seed` is
+omitted, the roughness RNG uses seed `0` so the run remains reproducible rather
+than nondeterministic. YAML ensemble cases derive per-trajectory seeds from
+`random.seed`, `case_id`, and `trajectory_id`; an omitted ensemble seed also
+defaults to `0`.
+
 During sliding, the model constrains normal velocity to zero, applies gravity tangent to the terrain, and reduces speed with Coulomb friction:
 
 ```text
@@ -232,7 +241,7 @@ rockfall run --config examples/inclined_plane.json --output trajectory.csv
 
 ## HPC-Readiness Boundaries
 
-The v0.5.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+The v0.6.0 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.

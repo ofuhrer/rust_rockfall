@@ -90,6 +90,7 @@ Core documentation:
 - `simulation`: configuration and orchestration
 - `io`: JSON configuration and CSV output
 - `validation`: analytic validation helpers
+- `manifest`, `geodata`, `shape`: run metadata, Swiss geodata metadata helpers, and passive block-shape metadata
 - `verification/results/`: JSON and CSV reports from `cargo run -- verify`
 - `validation/results/`: JSON and CSV reports from `cargo run -- validate`
 

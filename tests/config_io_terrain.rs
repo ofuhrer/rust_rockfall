@@ -291,6 +291,19 @@ fn dem_parser_reports_header_value_count_and_bounds_errors() {
         dem.try_height(-0.1, 0.0),
         Err(TerrainError::OutOfBounds { .. })
     ));
+
+    let dem_with_nodata = DemGrid::from_ascii_grid_str(
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 -9999\n0 2\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        dem_with_nodata.try_height(0.5, 0.5),
+        Err(TerrainError::NoData {
+            col: 1,
+            row_from_bottom: 1,
+            ..
+        })
+    ));
 }
 
 #[test]
@@ -316,11 +329,15 @@ fn clamped_dem_normal_matches_planar_dem_interior_and_edge() {
         "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
     )
     .unwrap();
+    let strict_edge = dem.normal(0.0, 1.0);
     let clamped = ClampedDemGrid::from_grid(dem);
     let expected = Vec3::new(-1.0, -2.0, 1.0).normalize();
     let interior = clamped.normal(1.0, 1.0);
     let edge = clamped.normal(-0.5, 1.0);
 
+    assert_abs_diff_eq!(strict_edge.x, expected.x, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(strict_edge.y, expected.y, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(strict_edge.z, expected.z, epsilon = 1.0e-12);
     assert_abs_diff_eq!(interior.x, expected.x, epsilon = 1.0e-12);
     assert_abs_diff_eq!(interior.y, expected.y, epsilon = 1.0e-12);
     assert_abs_diff_eq!(interior.z, expected.z, epsilon = 1.0e-12);

@@ -62,6 +62,8 @@ enum CliError {
     Simulation(#[from] SimulationError),
     #[error("{0}")]
     Validation(#[from] validation::ValidationError),
+    #[error("metrics serialization error: {0}")]
+    MetricsSerialize(#[from] serde_json::Error),
     #[error("{0}")]
     Usage(String),
 }
@@ -133,12 +135,8 @@ fn run_case_command(case: Option<PathBuf>, all: bool, root: &Path) -> Result<(),
     let mut skipped = 0usize;
     for path in case_paths {
         let report = validation::run_case_file(&path)?;
-        println!(
-            "{}\t{:?}\t{}",
-            path.display(),
-            report.status,
-            serde_json::to_string(&report.metrics).unwrap_or_else(|_| "{}".to_string())
-        );
+        let metrics_json = serde_json::to_string(&report.metrics)?;
+        println!("{}\t{:?}\t{}", path.display(), report.status, metrics_json);
         match report.status {
             validation::CaseStatus::Failed => failed += 1,
             validation::CaseStatus::Skipped => skipped += 1,

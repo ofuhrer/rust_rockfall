@@ -2,7 +2,7 @@
 
 Validation asks whether the current model is useful when compared with observations or published benchmarks. It does not target RAMMS::ROCKFALL equivalence and does not use proprietary datasets.
 
-## v0.5.0 Status
+## v0.6.0 Status
 
 Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in minimal scarring_contact_v1 impact energy-loss diagnostics, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact, calibrated scarring with drag torque or slip-dependent friction, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
 

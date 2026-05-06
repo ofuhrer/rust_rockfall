@@ -47,7 +47,7 @@ simulation:
   dt: 0.01
   t_max: 1.0
   max_steps: 100
-  stop_velocity: 0.05
+  stop_velocity: 0.10
 random:
   seed: 1
   ensemble_size: 1

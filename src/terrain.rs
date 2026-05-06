@@ -219,6 +219,13 @@ pub enum TerrainError {
     ValueCount { expected: usize, actual: usize },
     #[error("DEM query outside grid: x={x_m}, y={y_m}")]
     OutOfBounds { x_m: f64, y_m: f64 },
+    #[error("DEM query touches nodata or non-finite elevation at col={col}, row_from_bottom={row_from_bottom}: x={x_m}, y={y_m}")]
+    NoData {
+        x_m: f64,
+        y_m: f64,
+        col: usize,
+        row_from_bottom: usize,
+    },
 }
 
 impl DemGrid {
@@ -269,6 +276,34 @@ impl DemGrid {
         self.values_m[row_from_top * self.ncols + col]
     }
 
+    fn value_is_nodata(&self, value: f64) -> bool {
+        if self.nodata_value.is_nan() {
+            value.is_nan()
+        } else {
+            value == self.nodata_value
+        }
+    }
+
+    fn checked_value(
+        &self,
+        col: usize,
+        row_from_bottom: usize,
+        x_m: f64,
+        y_m: f64,
+    ) -> Result<f64, TerrainError> {
+        let value = self.value(col, row_from_bottom);
+        if self.value_is_nodata(value) || !value.is_finite() {
+            Err(TerrainError::NoData {
+                x_m,
+                y_m,
+                col,
+                row_from_bottom,
+            })
+        } else {
+            Ok(value)
+        }
+    }
+
     pub fn xmax_m(&self) -> f64 {
         self.xllcorner_m + (self.ncols - 1) as f64 * self.cellsize_m
     }
@@ -301,40 +336,46 @@ impl DemGrid {
 
     pub fn try_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
         let (col0, row0, tx, ty) = self.fractional_cell(x_m, y_m)?;
-        let z00 = self.value(col0, row0);
-        let z10 = self.value(col0 + 1, row0);
-        let z01 = self.value(col0, row0 + 1);
-        let z11 = self.value(col0 + 1, row0 + 1);
+        let z00 = self.checked_value(col0, row0, x_m, y_m)?;
+        let z10 = self.checked_value(col0 + 1, row0, x_m, y_m)?;
+        let z01 = self.checked_value(col0, row0 + 1, x_m, y_m)?;
+        let z11 = self.checked_value(col0 + 1, row0 + 1, x_m, y_m)?;
         Ok((1.0 - tx) * (1.0 - ty) * z00
             + tx * (1.0 - ty) * z10
             + (1.0 - tx) * ty * z01
             + tx * ty * z11)
     }
 
-    pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
-        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
-        self.try_height(x_m, y_m)
-            .expect("clamped DEM query must be inside grid")
-    }
-
-    pub fn normal_clamped(&self, x_m: f64, y_m: f64) -> Vec3 {
-        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+    pub fn try_normal(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
+        self.fractional_cell(x_m, y_m)?;
         let h = 0.5 * self.cellsize_m.max(EPS);
         let x0 = (x_m - h).max(self.xllcorner_m);
         let x1 = (x_m + h).min(self.xmax_m());
         let y0 = (y_m - h).max(self.yllcorner_m);
         let y1 = (y_m + h).min(self.ymax_m());
         let dzdx = if (x1 - x0).abs() > EPS {
-            (self.height_clamped(x1, y_m) - self.height_clamped(x0, y_m)) / (x1 - x0)
+            (self.try_height(x1, y_m)? - self.try_height(x0, y_m)?) / (x1 - x0)
         } else {
             0.0
         };
         let dzdy = if (y1 - y0).abs() > EPS {
-            (self.height_clamped(x_m, y1) - self.height_clamped(x_m, y0)) / (y1 - y0)
+            (self.try_height(x_m, y1)? - self.try_height(x_m, y0)?) / (y1 - y0)
         } else {
             0.0
         };
-        Vec3::new(-dzdx, -dzdy, 1.0).normalize()
+        Ok(Vec3::new(-dzdx, -dzdy, 1.0).normalize())
+    }
+
+    pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
+        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+        self.try_height(x_m, y_m)
+            .expect("clamped DEM query must be inside grid and avoid nodata")
+    }
+
+    pub fn normal_clamped(&self, x_m: f64, y_m: f64) -> Vec3 {
+        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+        self.try_normal(x_m, y_m)
+            .expect("clamped DEM normal query must be inside grid and avoid nodata")
     }
 }
 
@@ -345,10 +386,8 @@ impl Terrain for DemGrid {
     }
 
     fn normal(&self, x_m: f64, y_m: f64) -> Vec3 {
-        let h = 0.5 * self.cellsize_m.max(EPS);
-        let dzdx = (self.height(x_m + h, y_m) - self.height(x_m - h, y_m)) / (2.0 * h);
-        let dzdy = (self.height(x_m, y_m + h) - self.height(x_m, y_m - h)) / (2.0 * h);
-        Vec3::new(-dzdx, -dzdy, 1.0).normalize()
+        self.try_normal(x_m, y_m)
+            .unwrap_or_else(|err| panic!("DEM normal query failed at ({x_m}, {y_m}): {err}"))
     }
 }
 

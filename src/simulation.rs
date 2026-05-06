@@ -67,6 +67,8 @@ pub struct SimulationConfig {
     pub release_perturbation: ReleasePerturbation,
 }
 
+pub const DEFAULT_STOP_SPEED_MPS: f64 = 0.10;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TerrainConfig {
@@ -562,7 +564,7 @@ fn default_friction() -> f64 {
 }
 
 fn default_stop_speed() -> f64 {
-    0.10
+    DEFAULT_STOP_SPEED_MPS
 }
 
 fn arr3(values: [f64; 3]) -> Vec3 {

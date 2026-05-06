@@ -16,6 +16,7 @@ use crate::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
         SimulationError, SimulationResult, TerrainConfig, TrajectoryRequest, TrajectoryRun,
+        DEFAULT_STOP_SPEED_MPS,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -3440,6 +3441,9 @@ fn energy_monotonicity_violation(samples: &[TrajectorySample]) -> f64 {
 }
 
 fn max_position_delta(a: &[TrajectorySample], b: &[TrajectorySample]) -> f64 {
+    if a.len() != b.len() {
+        return f64::INFINITY;
+    }
     a.iter()
         .zip(b.iter())
         .map(|(left, right)| {
@@ -3486,6 +3490,25 @@ fn interpolate_trajectory_sample(
     sample.vz_mps = lerp(left.vz_mps, right.vz_mps);
     sample.speed_mps = lerp(left.speed_mps, right.speed_mps);
     sample.kinetic_j = lerp(left.kinetic_j, right.kinetic_j);
+    sample.rotational_j = lerp(left.rotational_j, right.rotational_j);
+    sample.potential_j = lerp(left.potential_j, right.potential_j);
+    sample.total_energy_j = lerp(left.total_energy_j, right.total_energy_j);
+    sample.contact_state = if weight < 0.5 {
+        left.contact_state
+    } else {
+        right.contact_state
+    };
+    sample.omega_x_radps = lerp(left.omega_x_radps, right.omega_x_radps);
+    sample.omega_y_radps = lerp(left.omega_y_radps, right.omega_y_radps);
+    sample.omega_z_radps = lerp(left.omega_z_radps, right.omega_z_radps);
+    sample.contact_tangent_speed_mps = lerp(
+        left.contact_tangent_speed_mps,
+        right.contact_tangent_speed_mps,
+    );
+    sample.rolling_residual_mps = lerp(left.rolling_residual_mps, right.rolling_residual_mps);
+    sample.scarring_depth_m = lerp(left.scarring_depth_m, right.scarring_depth_m);
+    sample.scarring_drag_force_n = lerp(left.scarring_drag_force_n, right.scarring_drag_force_n);
+    sample.scarring_energy_loss_j = lerp(left.scarring_energy_loss_j, right.scarring_energy_loss_j);
     sample
 }
 
@@ -3639,7 +3662,7 @@ fn default_dt() -> f64 {
 }
 
 fn default_stop_speed() -> f64 {
-    0.05
+    DEFAULT_STOP_SPEED_MPS
 }
 
 fn default_ensemble_size() -> usize {
