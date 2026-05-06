@@ -4,7 +4,7 @@ Status: active decision record for `v0.6.0`. This document reviews the DEM-backe
 
 ## Decision
 
-Recommendation: **make `sphere_rotational_v1` the recommended contact model for trajectory-validation experiments, but keep `translational_v0` as the default for now.**
+Recommendation: **treat `sphere_rotational_v1` as the current candidate opt-in contact model for trajectory-validation experiments, but keep `translational_v0` as the default for now.**
 
 The rotational sphere model improves the strongest trajectory-level metrics in the Chant Sura model-selection and held-out contact fixtures, and it is physically better aligned with a rolling/bouncing rockfall model than a purely translational contact law. The evidence is now stronger for opt-in trajectory experiments, but still not broad enough to justify changing the repository default.
 
@@ -26,12 +26,12 @@ The initial fixture contains three segmented trajectory pieces and two segment-b
 
 These are diagnostic comparisons, not calibrated validation claims.
 
-The held-out evaluation uses trajectory IDs that do not overlap the model-selection subset:
+The internal held-out evaluation uses trajectory IDs that do not overlap the model-selection subset:
 
 - `validation/cases/chant_sura_contact_heldout.yaml`
 - `validation/cases/chant_sura_contact_heldout_rotational.yaml`
 
-It contains 15 segmented trajectory pieces and 9 segment-boundary contact/rebound proxies.
+It contains 15 segmented trajectory pieces and 9 segment-boundary contact/rebound proxies. It is an internal disjoint holdout from the same RF16 DEM crop and preprocessing workflow, not an external independent validation dataset.
 
 | Case | Model option | Shape mean error (m) | Energy relative error | Jump envelope error (m) | Impact timing mean error (s) | Rebound velocity mean error (m/s) |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -58,7 +58,7 @@ Held-out subset results:
 
 ## What Improved
 
-`sphere_rotational_v1` improves the two most relevant trajectory-realism metrics in the model-selection and held-out contact fixtures:
+For this decision, the primary comparison endpoints are trajectory-shape mean error and relative kinetic-energy error. Secondary endpoints are jump-height envelope, rebound velocity, and impact timing. `sphere_rotational_v1` improves the primary endpoints in the model-selection and internal held-out contact fixtures:
 
 - initial fixture: shape mean error improves from `0.418 m` to `0.378 m`, about a 10% reduction;
 - initial fixture: relative kinetic-energy error improves from `0.394` to `0.289`, about a 27% reduction;
@@ -96,7 +96,7 @@ Reasons:
 - the observed contact events are inferred from local time resets, not direct instrumented impact labels;
 - the current equivalent-sphere height offset and DEM alignment are transparent but still modelling assumptions;
 
-This evidence is enough to strengthen the recommendation for trajectory experiments, but not enough to make a default-model change that would alter numerical behavior for all existing cases.
+This evidence is enough to retain `sphere_rotational_v1` as a candidate opt-in model for trajectory experiments, but not enough to make a default-model change that would alter numerical behavior for all existing cases.
 
 ## Default Policy
 
@@ -107,7 +107,7 @@ Keep `translational_v0` as the default because:
 - existing validation and calibration workflows were built against that default;
 - changing the default would be a semantic versioning event requiring broader evidence and migration notes.
 
-Use `sphere_rotational_v1` as the **recommended opt-in model** when the experiment is specifically about trajectory realism, contact transitions, rolling/sliding behavior, or energy exchange between translation and spin.
+Use `sphere_rotational_v1` as the **candidate opt-in model** when the experiment is specifically about trajectory realism, contact transitions, rolling/sliding behavior, or energy exchange between translation and spin. Report the worsened or unchanged secondary contact metrics alongside any primary-endpoint improvements.
 
 ## Future Default Criteria
 

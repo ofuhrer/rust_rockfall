@@ -7,7 +7,7 @@
       "validation/cases/chant_sura_contact_heldout.yaml",
       "validation/cases/chant_sura_contact_heldout_rotational.yaml"
     ],
-    "role": "Independent trajectory-level evaluation of the contact-model recommendation.",
+    "role": "Internal disjoint trajectory-level holdout for the contact-model recommendation; it is not an external independent validation dataset.",
     "trajectory_ids": [
       "RF16W200r2",
       "RF18W200r4",
@@ -24,7 +24,7 @@
       "validation/cases/chant_sura_contact_extended.yaml",
       "validation/cases/chant_sura_contact_extended_rotational.yaml"
     ],
-    "role": "Used to choose/recommend contact-model options before held-out evaluation.",
+    "role": "Used to compare candidate contact-model options before the internal disjoint holdout evaluation.",
     "trajectory_ids": [
       "RF16W200r1",
       "RF16W200r3",

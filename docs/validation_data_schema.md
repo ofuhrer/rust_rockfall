@@ -426,7 +426,7 @@ The repository deliberately distinguishes three impact-count concepts:
 
 - `impact_event_count`: raw number of impact-event records emitted by the integrator. This is the complete contact ledger and can include very small low-energy contact chatter.
 - `impact_count`: legacy trajectory-derived count of transitions from `airborne` to `impact` in trajectory samples. This remains for backward compatibility with existing cases.
-- `significant_impact_count`: impact-event count filtered by incoming normal speed. In v0.5.0, an impact is significant when `incoming_normal_speed_mps >= 0.05 m/s`. This threshold is tied to the current stop-speed scale and is intended to separate physically interpretable rebound/contact events from near-rest chatter while preserving the raw event log.
+- `significant_impact_count`: impact-event count filtered by incoming normal speed. Since v0.5.0, an impact is significant when `incoming_normal_speed_mps >= 0.05 m/s`. This threshold is tied to the current stop-speed scale and is intended to separate physically interpretable rebound/contact events from near-rest chatter while preserving the raw event log.
 
 Use `impact_event_count` when auditing all contact responses, `significant_impact_count` when comparing impact-level behavior, and `impact_count` only for legacy trajectory-state tests.
 
