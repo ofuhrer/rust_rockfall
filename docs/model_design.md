@@ -122,18 +122,19 @@ a = (5/7) g_t
 The experimental `shape_contact_v0` label is recognized only as a
 verification-first scaffold. It requires compatible passive shape metadata and
 currently exposes analytic `principal_dimensions_box_v0` inertia/support
-helpers plus a scaffold-owned single-support impulse preparation path for
-analytic tests, but that path is not wired into fixed-step simulation or public
-benchmarks. The raw low-level impulse kernel is crate-internal test support; it
-is not a public integration API. Runtime-facing shape-contact work must route
-through the scaffold-owned API so support selection, mass, and inertia cannot
-come from different sources. A test-only single-contact state-transition wrapper
-exercises that path before any fixed-step integrator wiring. An internal
-contact-adjacent dry run also accepts an explicit terrain contact point and
-normal, computes support gap and contact-point velocity diagnostics, and applies
-a scaffold-owned impulse update only for touching or penetrating contact without
-advancing a trajectory. Separated dry-run states are reported without impulse,
-including states moving toward future contact. Support-corner
+helpers plus a crate-internal contact-preparation layer, but that path is not
+wired into fixed-step simulation or public benchmarks. The raw low-level impulse
+kernel is crate-internal test support; it is not a public integration API.
+Runtime-facing shape-contact work must route through the preparation layer so
+terrain/contact context, support selection, mass, inertia, contact-regime
+classification, and diagnostics cannot come from different sources. A test-only
+single-contact state-transition wrapper exercises that path before any
+fixed-step integrator wiring. The internal contact-adjacent dry run accepts an
+explicit terrain contact point and normal, computes support gap and
+contact-point velocity diagnostics, and applies a scaffold-owned impulse update
+only for touching or penetrating contact without advancing a trajectory.
+Separated dry-run states are reported without impulse, including states moving
+toward future contact. Support-corner
 selection uses a deterministic scaffold policy: exact zero components in the
 body-frame support direction choose the positive corner sign. This tie-break is
 not a physically validated face-contact model. The diagnostic schema is still

@@ -248,6 +248,14 @@ impl ShapeContactV0Scaffold {
         let prepared = self.impulse_input(pre_state, terrain_normal_world, settings)?;
         shape_contact_v0_apply_support_impulse(&prepared.support, prepared.input)
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn prepare_contact(
+        &self,
+        input: ShapeContactV0ContactInput,
+    ) -> Result<ShapeContactV0ContactResult, ShapeMetadataError> {
+        shape_contact_v0_prepare_contact(self, input)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -322,6 +330,33 @@ pub(crate) struct ShapeContactV0ImpulseInput {
     tangential_restitution: f64,
     friction_coefficient: f64,
     gravity_mps2: f64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ShapeContactV0ContactInput {
+    pub(crate) pre_state: BodyState,
+    pub(crate) terrain_contact_point_m: Vec3,
+    pub(crate) terrain_normal_world: Vec3,
+    pub(crate) settings: ShapeContactV0ImpulseSettings,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ShapeContactV0ContactResult {
+    pub(crate) terrain_contact_point_m: [f64; 3],
+    pub(crate) support_signed_gap_m: f64,
+    pub(crate) contact_regime: ShapeContactV0ContactRegime,
+    pub(crate) impulse_result: ShapeContactV0ImpulseResult,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ShapeContactV0ContactRegime {
+    SeparatedMovingAway,
+    SeparatedMovingToward,
+    Touching,
+    Penetrating,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -1005,57 +1040,21 @@ fn clamp_vector_norm(vector: Vec3, max_norm: f64) -> Vec3 {
     }
 }
 
-#[cfg(test)]
-#[derive(Debug, Clone, Copy)]
-struct ShapeContactV0TestContactStepInput {
-    pre_state: BodyState,
-    terrain_normal_world: Vec3,
-    settings: ShapeContactV0ImpulseSettings,
-}
+#[allow(dead_code)]
+pub(crate) const SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M: f64 = 1.0e-9;
 
-#[cfg(test)]
-fn shape_contact_v0_test_contact_step(
+/// Crate-internal shape-contact preparation layer.
+///
+/// This is the single pre-runtime path that owns terrain/contact context,
+/// support selection, signed support-gap classification, and impulse
+/// application. Future integrator-adjacent code should route through this
+/// helper instead of calling [`ShapeContactV0Scaffold::apply_support_impulse`]
+/// directly.
+#[allow(dead_code)]
+pub(crate) fn shape_contact_v0_prepare_contact(
     scaffold: &ShapeContactV0Scaffold,
-    input: ShapeContactV0TestContactStepInput,
-) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
-    scaffold.apply_support_impulse(input.pre_state, input.terrain_normal_world, input.settings)
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone, Copy)]
-struct ShapeContactV0DryRunInput {
-    pre_state: BodyState,
-    terrain_contact_point_m: Vec3,
-    terrain_normal_world: Vec3,
-    settings: ShapeContactV0ImpulseSettings,
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone)]
-struct ShapeContactV0DryRunResult {
-    terrain_contact_point_m: [f64; 3],
-    support_signed_gap_m: f64,
-    contact_regime: ShapeContactV0DryRunContactRegime,
-    impulse_result: ShapeContactV0ImpulseResult,
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ShapeContactV0DryRunContactRegime {
-    SeparatedMovingAway,
-    SeparatedMovingToward,
-    Touching,
-    Penetrating,
-}
-
-#[cfg(test)]
-const SHAPE_CONTACT_V0_DRY_RUN_GAP_TOLERANCE_M: f64 = 1.0e-9;
-
-#[cfg(test)]
-fn shape_contact_v0_contact_dry_run(
-    scaffold: &ShapeContactV0Scaffold,
-    input: ShapeContactV0DryRunInput,
-) -> Result<ShapeContactV0DryRunResult, ShapeMetadataError> {
+    input: ShapeContactV0ContactInput,
+) -> Result<ShapeContactV0ContactResult, ShapeMetadataError> {
     validate_finite_triplet(
         [
             input.terrain_contact_point_m.x,
@@ -1092,28 +1091,27 @@ fn shape_contact_v0_contact_dry_run(
         support_point - input.pre_state.position_m,
     );
     let pre_normal_velocity = pre_contact_velocity.dot(&normal);
-    let contact_regime = if support_signed_gap_m > SHAPE_CONTACT_V0_DRY_RUN_GAP_TOLERANCE_M {
+    let contact_regime = if support_signed_gap_m > SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M {
         if pre_normal_velocity < 0.0 {
-            ShapeContactV0DryRunContactRegime::SeparatedMovingToward
+            ShapeContactV0ContactRegime::SeparatedMovingToward
         } else {
-            ShapeContactV0DryRunContactRegime::SeparatedMovingAway
+            ShapeContactV0ContactRegime::SeparatedMovingAway
         }
-    } else if support_signed_gap_m < -SHAPE_CONTACT_V0_DRY_RUN_GAP_TOLERANCE_M {
-        ShapeContactV0DryRunContactRegime::Penetrating
+    } else if support_signed_gap_m < -SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M {
+        ShapeContactV0ContactRegime::Penetrating
     } else {
-        ShapeContactV0DryRunContactRegime::Touching
+        ShapeContactV0ContactRegime::Touching
     };
     let impulse_result = match contact_regime {
-        ShapeContactV0DryRunContactRegime::SeparatedMovingAway
-        | ShapeContactV0DryRunContactRegime::SeparatedMovingToward => {
+        ShapeContactV0ContactRegime::SeparatedMovingAway
+        | ShapeContactV0ContactRegime::SeparatedMovingToward => {
             shape_contact_v0_no_impulse_result(&prepared.support, prepared.input)?
         }
-        ShapeContactV0DryRunContactRegime::Touching
-        | ShapeContactV0DryRunContactRegime::Penetrating => {
+        ShapeContactV0ContactRegime::Touching | ShapeContactV0ContactRegime::Penetrating => {
             shape_contact_v0_apply_support_impulse(&prepared.support, prepared.input)?
         }
     };
-    Ok(ShapeContactV0DryRunResult {
+    Ok(ShapeContactV0ContactResult {
         terrain_contact_point_m: [
             input.terrain_contact_point_m.x,
             input.terrain_contact_point_m.y,
@@ -1126,7 +1124,40 @@ fn shape_contact_v0_contact_dry_run(
 }
 
 #[cfg(test)]
-fn shape_contact_v0_no_impulse_result(
+#[derive(Debug, Clone, Copy)]
+struct ShapeContactV0TestContactStepInput {
+    pre_state: BodyState,
+    terrain_normal_world: Vec3,
+    settings: ShapeContactV0ImpulseSettings,
+}
+
+#[cfg(test)]
+fn shape_contact_v0_test_contact_step(
+    scaffold: &ShapeContactV0Scaffold,
+    input: ShapeContactV0TestContactStepInput,
+) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
+    scaffold.apply_support_impulse(input.pre_state, input.terrain_normal_world, input.settings)
+}
+
+#[cfg(test)]
+type ShapeContactV0DryRunInput = ShapeContactV0ContactInput;
+
+#[cfg(test)]
+type ShapeContactV0DryRunResult = ShapeContactV0ContactResult;
+
+#[cfg(test)]
+type ShapeContactV0DryRunContactRegime = ShapeContactV0ContactRegime;
+
+#[cfg(test)]
+fn shape_contact_v0_contact_dry_run(
+    scaffold: &ShapeContactV0Scaffold,
+    input: ShapeContactV0DryRunInput,
+) -> Result<ShapeContactV0DryRunResult, ShapeMetadataError> {
+    scaffold.prepare_contact(input)
+}
+
+#[allow(dead_code)]
+pub(crate) fn shape_contact_v0_no_impulse_result(
     support: &ShapeContactV0SupportDiagnostic,
     input: ShapeContactV0ImpulseInput,
 ) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
@@ -1469,6 +1500,34 @@ mod tests {
     }
 
     #[test]
+    fn shape_contact_v0_dry_run_touching_non_incoming_contact_has_no_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, 0.5));
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state,
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert!(!result.impulse_result.diagnostic.impacted);
+        assert_eq!(
+            result.contact_regime,
+            ShapeContactV0DryRunContactRegime::Touching
+        );
+        assert_close(
+            result.impulse_result.diagnostic.normal_impulse_n_s,
+            0.0,
+            1.0e-12,
+        );
+        assert_eq!(result.impulse_result.post_state, pre_state);
+    }
+
+    #[test]
     fn shape_contact_v0_dry_run_penetrating_incoming_contact_rebounds_along_normal() {
         let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
         let result = shape_contact_v0_contact_dry_run(
@@ -1496,6 +1555,35 @@ mod tests {
             1.0,
             1.0e-12,
         );
+    }
+
+    #[test]
+    fn shape_contact_v0_dry_run_penetrating_moving_away_has_no_impulse() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let pre_state = BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, 0.5));
+        let result = shape_contact_v0_contact_dry_run(
+            &scaffold,
+            ShapeContactV0DryRunInput {
+                pre_state,
+                terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.25),
+                terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+                settings: settings(0.5, 1.0, 0.0),
+            },
+        )
+        .unwrap();
+
+        assert!(!result.impulse_result.diagnostic.impacted);
+        assert_eq!(
+            result.contact_regime,
+            ShapeContactV0DryRunContactRegime::Penetrating
+        );
+        assert_close(result.support_signed_gap_m, -0.25, 1.0e-12);
+        assert_close(
+            result.impulse_result.diagnostic.normal_impulse_n_s,
+            0.0,
+            1.0e-12,
+        );
+        assert_eq!(result.impulse_result.post_state, pre_state);
     }
 
     #[test]

@@ -4,12 +4,13 @@ Status: implementation contract with verification-first scaffold started. This
 document freezes the first active shape-contact prototype boundary,
 diagnostics, evaluation plan, and falsification criteria. The current scaffold
 recognizes `shape_contact_v0`, validates compatible metadata, and exposes pure
-box-inertia/support/energy diagnostic helpers plus an isolated single-support
-impulse helper for analytic tests. The scaffold owns preparation of impulse
-inputs so support geometry, mass, and inertia come from the same validated
-shape metadata. A test-only single-contact state-transition wrapper exercises
-the same path before runtime wiring. The helper is still not wired into
-fixed-step simulation, and the patch does not change defaults, validation
+box-inertia/support/energy diagnostic helpers plus an internal
+contact-preparation layer for analytic tests. The scaffold owns terrain/contact context,
+support-gap classification, support geometry, mass, inertia, impulse
+application, and available diagnostics so those quantities come from the same
+validated shape metadata. A test-only single-contact state-transition wrapper
+exercises the same path before runtime wiring. The helper is still not wired
+into fixed-step simulation, and the patch does not change defaults, validation
 baselines, terrain/material assumptions, or existing model behavior.
 
 ## Purpose
@@ -374,18 +375,19 @@ not a physically validated face-contact model.
 `shape_contact_v0` remains blocked from fixed-step simulation, public validation,
 and benchmark execution until a later explicitly reviewed wiring slice.
 
-## Contact-Adjacent Dry Run
+## Internal Contact-Preparation Layer
 
-The first dry-run adapter is internal test support only. It accepts a validated
-`ShapeContactV0Scaffold`, pre-contact body state, explicit terrain contact
-point, terrain normal, and existing restitution/friction settings. It computes
-the scaffold support point, support signed gap relative to the supplied contact
-plane, contact-point velocity diagnostics, and, when the support point is
-touching or penetrating the contact plane, one scaffold-owned impulse update. It
-does not advance a trajectory, write validation outputs, enable public benchmark
-cases, or change existing model behavior.
+The first contact-adjacent adapter is an internal preparation layer. It accepts a
+validated `ShapeContactV0Scaffold`, pre-contact body state, explicit terrain
+contact point, terrain normal, and existing restitution/friction settings. It
+owns scaffold support selection, support signed-gap computation relative to the
+supplied contact plane, contact-regime classification, contact-point velocity
+diagnostics, and, when the support point is touching or penetrating the contact
+plane, one scaffold-owned impulse update. The test-only dry-run wrapper calls
+this same preparation layer. It does not advance a trajectory, write validation
+outputs, enable public benchmark cases, or change existing model behavior.
 
-Dry-run contact-gap semantics are:
+Contact-gap semantics are:
 
 - `separated_moving_away`: support signed gap is positive and contact-point
   normal velocity is nonnegative; no impulse is applied.
@@ -399,6 +401,6 @@ Dry-run contact-gap semantics are:
   scaffold-owned impulse path may apply an impulse only if contact-point normal
   velocity is incoming.
 
-The dry-run diagnostics remain incomplete for public runtime use; full
+The preparation-layer diagnostics remain incomplete for public runtime use; full
 orientation evolution, support-corner changes through time, projection energy,
 and manifest/runtime diagnostic rows are still deferred.

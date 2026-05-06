@@ -170,12 +170,13 @@ This metadata is passive for `translational_v0` and `sphere_rotational_v1`.
 The experimental `shape_contact_v0` scaffold recognizes the metadata only when
 explicitly selected, requires compatible `principal_dimensions` sidecars using
 `mass_property_model: box_principal_dimensions`, and exposes scaffold-owned
-analytic impulse preparation for tests only. It still stops before fixed-step
+analytic contact preparation for tests only. It still stops before fixed-step
 simulation and public validation runs. The raw low-level impulse kernel is
 crate-internal test support rather than a public validation API. The
-scaffold-owned preparation path keeps support selection, mass, and inertia tied
-to the validated sidecar; a test-only single-contact wrapper exercises this path
-before runtime wiring. An internal contact-adjacent dry run can also combine a
+crate-internal preparation layer keeps terrain/contact context, support
+selection, mass, inertia, contact-regime classification, and diagnostics tied to
+the validated sidecar; a test-only single-contact wrapper exercises this path
+before runtime wiring. An internal contact-adjacent dry run can combine a
 terrain contact point, terrain normal, support gap diagnostic, and one
 scaffold-owned impulse update for touching or penetrating contact without
 producing validation or benchmark outputs. Separated dry-run states remain
