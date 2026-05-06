@@ -94,6 +94,10 @@ Core documentation:
 - `verification/results/`: JSON and CSV reports from `cargo run -- verify`
 - `validation/results/`: JSON and CSV reports from `cargo run -- validate`
 
+Use `python3 scripts/audit_local_artifacts.py` to inspect ignored raw-data and
+generated-result caches. The audit is read-only and is only a local hygiene aid;
+clean-clone reproduction must not depend on ignored cached outputs.
+
 ## Verification and Validation
 
 The repository separates:
