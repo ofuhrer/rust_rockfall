@@ -1,0 +1,22 @@
+schema_version: source_zone_metadata_v1
+source_zone_id: zone_a
+crs_epsg: 2056
+vertical_datum: LN02
+geometry:
+  type: polygon
+  vertices:
+    - [2600000.0, 1200000.0]
+    - [2600010.0, 1200000.0]
+    - [2600010.0, 1200010.0]
+    - [2600000.0, 1200010.0]
+release_sampling_policy:
+  mode: deterministic_grid
+  seed: 34014
+  release_count: 4
+  release_cell_id_prefix: zone_a_cell
+provenance:
+  source: synthetic Phase 1 metadata fixture
+  license: test fixture
+  notes:
+    - illustrative source-zone metadata only
+annual_release_frequency_per_year: null

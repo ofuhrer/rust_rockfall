@@ -1,0 +1,3 @@
+scenario_id,source_zone_id,release_sampling_policy,model_configuration_id,terrain_material_assumption_id,sampling_weight,block_scenario_id,block_size_class,block_shape_class,block_radius_m,block_mass_kg,block_density_kgpm3,release_probability,scenario_probability,annual_frequency_per_year,time_horizon_years
+scenario_a,zone_a,deterministic_grid,translational_v0,uniform_global_parameters,0.25,block_small,equivalent_radius_small,sphere,0.2,30.0,2500.0,,,,
+scenario_b,zone_a,deterministic_grid,sphere_rotational_v1,uniform_global_parameters,0.75,block_medium,equivalent_radius_medium,sphere,0.35,80.0,2500.0,,,,

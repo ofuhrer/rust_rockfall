@@ -148,6 +148,14 @@ filtered sampling weight. If all weights are `1.0`, weighted layers match the
 corresponding unweighted trajectory-count layers. Unweighted outputs are still
 written unchanged whenever weighted maps are enabled.
 
+Phase 1 probabilistic map-package metadata is validated separately from the
+hazard builder. `source_zone_metadata_v1`, `scenario_table_v1`, and
+`map_package_manifest_v1` parsers live in the Rust library and enforce the
+Level 1-2 labels `unweighted_diagnostic` and
+`sampling_weighted_conditional`, while keeping `physical_probability` and
+`annual_frequency` guarded by strict validation. This validation layer does not
+change existing hazard raster values or relabel default diagnostic outputs.
+
 ## Production Versus Diagnostic Rendering
 
 The hazard builder is split into four phases:

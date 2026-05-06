@@ -301,6 +301,22 @@ includes a `trajectory_metadata` section with schema version, path, row count,
 probability model, probability semantics, normalization convention, and total
 sampling weight.
 
+Phase 1 probabilistic hazard-map metadata is validated outside the validation
+case runner. The Rust library exposes parsers for:
+
+- `source_zone_metadata_v1` YAML source-zone sidecars;
+- `scenario_table_v1` CSV scenario tables;
+- `map_package_manifest_v1` JSON/YAML map-package manifests.
+
+These contracts add Level 1-2 map semantics (`map_product_id`,
+`source_zone_id`, `source_zone_metadata_path`, scenario ids, block/scenario
+classes, `sampling_weight`, `probability_mode`, and `normalization_scope`)
+without changing existing validation cases. The validator accepts
+`unweighted_diagnostic` and `sampling_weighted_conditional` labels, recognizes
+`physical_probability` only when explicit physical probability columns are
+present, and rejects `annual_frequency` in Phase 1 with a Level 3 error. Tiny
+schema fixtures live under `tests/fixtures/probabilistic_phase1/`.
+
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total

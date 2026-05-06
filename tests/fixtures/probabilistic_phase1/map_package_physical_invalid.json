@@ -1,0 +1,17 @@
+{
+  "schema_version": "map_package_manifest_v1",
+  "map_product_id": "phase1_bad_physical",
+  "probability_mode": "physical_probability",
+  "normalization_scope": "absolute_probability_mass",
+  "source_zone_id": "zone_a",
+  "source_zone_metadata_path": "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+  "scenario_table_path": "tests/fixtures/probabilistic_phase1/scenario_level1.csv",
+  "layer_semantics": [
+    {
+      "layer_name": "physical_reach_probability",
+      "units": "dimensionless",
+      "conditioned_on": ["source_zone_id=zone_a"],
+      "is_annualized": false
+    }
+  ]
+}

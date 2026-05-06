@@ -11,6 +11,7 @@ pub mod geometry;
 pub mod integrator;
 pub mod io;
 pub mod manifest;
+pub mod probabilistic;
 pub mod shape;
 pub mod simulation;
 pub mod state;

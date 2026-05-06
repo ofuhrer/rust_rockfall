@@ -1,9 +1,10 @@
 # Probabilistic Hazard Phase 1 Implementation Plan
 
 Status: implementation plan for Level 1-2 hazard-map semantics and scenario
-modelling. This document does not implement code, tune parameters, change
-defaults, add physics, add active shape-contact, add regional tiling, or claim
-annualized/operational hazard validity.
+modelling. Slice B is implemented as metadata parsers and validators in
+`src/probabilistic.rs`; later slices remain planned. This document does not
+tune parameters, change defaults, add physics, add active shape-contact, add
+regional tiling, or claim annualized/operational hazard validity.
 
 ## Objective
 
@@ -39,13 +40,21 @@ Already implemented:
 
 Still missing:
 
-- a map-package manifest;
-- a scenario table format;
-- explicit Level 1/2 source-zone metadata rules;
+- map-package manifest writing from hazard workflows;
+- scenario-table propagation into validation outputs;
 - source/release/scenario id propagation into all relevant map products;
-- strict validation rules for physical and annual probability labels;
-- examples that distinguish diagnostic, conditional, weighted, physical, and
-  annual layers.
+- generated examples that distinguish diagnostic, conditional, weighted,
+  physical, and annual layers.
+
+Implemented in Slice B:
+
+- `source_zone_metadata_v1` YAML parser and validator;
+- `scenario_table_v1` CSV parser and validator;
+- `map_package_manifest_v1` JSON/YAML parser and cross-validator;
+- strict validation for supported probability modes, normalization scopes,
+  negative weights/probabilities, source-zone mismatches, and unsupported
+  annual-frequency labels;
+- tiny parser/validator fixtures under `tests/fixtures/probabilistic_phase1/`.
 
 ## Phase 1 Schema Additions
 
@@ -381,7 +390,10 @@ Deliverables:
   modes, invalid annual-frequency labels, negative weights, and inconsistent
   source-zone/scenario ids.
 
-No simulation behavior changes.
+Implementation status: complete in `src/probabilistic.rs` with focused Rust
+tests in `tests/probabilistic_phase1.rs`. This slice is deliberately isolated;
+no validation runner, simulation, or hazard-layer numerical behavior uses the
+new metadata unless later slices explicitly opt in.
 
 ### Slice C: Scenario Propagation
 
