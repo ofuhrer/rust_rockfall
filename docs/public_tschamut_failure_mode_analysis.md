@@ -4,6 +4,11 @@ Status: no-tuning scientific analysis based on the registered public Tschamut
 25-run benchmark outputs. This document changes no physics, parameters,
 defaults, validation semantics, or output schemas.
 
+Update: `public_tschamut_all_runs_grouped_validation.md` extends this analysis
+to all 80 processed shared public Tschamut LPS/overview runs. The all-runs
+result confirms the 25-run conclusion: `translational_v0` remains a systematic
+under-run model and `sphere_rotational_v1` remains a systematic over-run model.
+
 ## Inputs
 
 Analyzed ignored generated artifacts from:
@@ -187,3 +192,6 @@ immediate shape-contact implementation or calibration. Specifically:
 Terrain/material calibration remains important, but should wait until grouped
 metrics and held-out criteria prevent calibration from hiding missing shape
 physics.
+
+The all-runs grouped validation now satisfies this recommendation and should be
+used as the evidence baseline for the next active shape-contact design step.

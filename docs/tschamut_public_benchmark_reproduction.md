@@ -67,6 +67,17 @@ example `--run-ids v004,v005,v006`. The preparation manifest records the
 selection mode, selected trajectory IDs, available shared run count, block-ID
 counts, and mass/radius summary.
 
+The all-usable public grouped-validation package uses every processed shared
+LPS/overview run:
+
+```bash
+python3 scripts/prepare_tschamut_public_benchmark.py \
+  --output-root validation/results/tschamut_public_benchmark_all \
+  --run-limit 80 \
+  --padding-m 250 \
+  --force
+```
+
 For passive block-shape provenance checks, generate a single-block package and
 attach the matching public `shape_metadata_v1` sidecar:
 
@@ -234,6 +245,11 @@ python3 scripts/build_hazard_layers.py \
   --no-plots
 ```
 
+All-runs validation and hazard commands are recorded in
+`public_tschamut_all_runs_grouped_validation.md`. The all-runs explicit grid is
+`xllcorner = 2696360`, `yllcorner = 1167382`, `ncols = 308`, `nrows = 309`,
+and `cellsize = 2`.
+
 QA plot generated locally under ignored outputs:
 
 ```text
@@ -390,6 +406,8 @@ robustly:
 - with `sphere_rotational_v1` it over-runs by about 98 m on the same crop.
 - on the 25-run public subset, baseline under-run remains about 30 m and
   `sphere_rotational_v1` over-runs by about 103 m.
+- on the all-usable 80-run public subset, baseline under-run remains systematic
+  at about 35 m and `sphere_rotational_v1` over-runs by about 105 m.
 
 The registration change materially changes the earlier first-pass conclusion:
 the public real-terrain baseline no longer worsens the under-run relative to the
@@ -405,10 +423,10 @@ proxy controls. The remaining likely explanations are not separable yet:
 Because the real-terrain baseline now reproduces the proxy-scale under-run and
 the 25-run subset gives the same broad conclusion, the next scientific step
 should focus on whether the missing trajectory realism is mainly due to
-equivalent-sphere physics or terrain/material parameterization. Shape-aware
-scaffolding remains the strongest physics candidate, but it should be evaluated
-against an even broader registered subset and not tuned to these deposition
-metrics.
+equivalent-sphere physics or terrain/material parameterization. The all-runs
+grouped validation now provides that broader registered subset. The next
+scientific step should be active shape-contact design, with no tuning and with
+terrain/material calibration kept as a later protocol-driven work package.
 
 ## Remaining Gaps Relative To State-Of-Practice Tools
 
@@ -417,21 +435,20 @@ metrics.
 - terrain/material-class dependent contact and roughness parameters;
 - calibrated treatment of rolling, sliding, bouncing, and stopping transitions;
 - GIS-ready raster outputs with CRS-bearing GeoTIFF/COG;
-- larger public benchmark coverage beyond the first 25 LPS runs;
+- active shape/contact design criteria based on the all-runs grouped metrics;
 - independent survey/control-point confirmation of the LPS-to-LV95 registration.
 
 ## Recommended Next Step
 
-Immediate next step: **prepare a shape-aware scaffold or terrain/material
-calibration design, but only as a no-tuning model-comparison experiment**.
+Immediate next step: **prepare an active shape-contact design, but only as a
+no-tuning model-comparison experiment with explicit non-regression criteria**.
 
 Concrete work:
 
-1. expand the registered public subset further only if the next model-comparison
-   question requires additional block/run coverage;
-2. define a shape-aware scaffold or terrain/material calibration experiment that
-   is evaluated against the already-registered public workflow without tuning
-   after seeing results;
+1. use `public_tschamut_all_runs_grouped_validation.md` as the no-tuning
+   evidence baseline;
+2. define an active shape-contact design that is evaluated against the
+   already-registered public workflow without tuning after seeing results;
 3. compare `translational_v0`, `sphere_rotational_v1`, roughness variants, and
    any future candidate model as predefined configurations;
 4. inspect whether under-run persists consistently across block sizes, impact
