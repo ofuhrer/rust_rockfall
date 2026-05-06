@@ -154,6 +154,8 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(metadata["inputs"]["impact_event_count"], 2)
             self.assertEqual(manifest["schema_version"], "run_manifest_v1")
             self.assertEqual(manifest["completion_status"], "completed")
+            self.assertEqual(manifest["execution_status"], "completed")
+            self.assertEqual(manifest["scientific_status"], "not_evaluated")
             self.assertEqual(manifest["grid"]["source"], "auto")
             self.assertEqual(manifest["inputs"]["trajectory_sample_count"], 6)
             self.assertGreaterEqual(manifest["performance"]["total_wall_seconds"], 0.0)
@@ -185,8 +187,14 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(manifest["performance"]["bounds_input_rows_scanned"], 10)
             self.assertGreater(manifest["performance"]["hazard_input_rows_per_second"], 0.0)
             self.assertGreater(manifest["performance"]["output_file_count"], 0)
-            self.assertTrue(any(output["kind"] == "hazard_layer" for output in manifest["outputs"]))
+            hazard_outputs = [output for output in manifest["outputs"] if output["kind"] == "hazard_layer"]
+            self.assertTrue(hazard_outputs)
+            self.assertRegex(hazard_outputs[0]["sha256"], r"^[0-9a-f]{64}$")
             self.assertFalse(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
+            artifacts = {artifact["kind"]: artifact for artifact in manifest["input_artifacts"]}
+            self.assertEqual(artifacts["trajectory_samples"]["file_count"], 2)
+            self.assertRegex(artifacts["trajectory_samples"]["sha256"], r"^[0-9a-f]{64}$")
+            self.assertRegex(artifacts["diagnostics"]["sha256"], r"^[0-9a-f]{64}$")
             reach_summary = next(
                 layer["summary"] for layer in metadata["layers"] if layer["key"] == "reach_probability"
             )

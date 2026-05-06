@@ -47,6 +47,8 @@ def main() -> int:
         "benchmark_id": "chant_sura_eota221",
         "dataset_id": "chant_sura_2020",
         "status": "passive_shape_metadata_manifest",
+        "selected_ids": [row.get("shape_file", "") for row in eota221_rows if row.get("shape_file")],
+        "excluded_ids_with_reasons": [],
         "public_source": {
             "title": "Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), EOTA shape resource",
             "doi": "https://doi.org/10.16904/envidat.174",
@@ -59,6 +61,16 @@ def main() -> int:
             "orientation-sensitive diagnostic planning",
         ],
         "processed_inputs": [file_summary(ROCK_SHAPES_CSV)],
+        "generated_cases": [],
+        "command_provenance": {
+            "script": "scripts/prepare_chant_sura_eota221_benchmark.py",
+            "allow_missing": args.allow_missing,
+        },
+        "provenance": {
+            "dataset": "Chant Sura EOTA221 passive shape metadata",
+            "doi": "https://doi.org/10.16904/envidat.174",
+            "license": "WSL Data Policy",
+        },
         "shape_summary": {
             "all_shape_rows": shape_rows,
             "eota221_rows": eota221_rows,

@@ -15,7 +15,7 @@ use rust_rockfall::{
         ChannelizedGully, ClampedDemGrid, DemGrid, GaussianBump, Paraboloid, Plane,
         SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
-    validation::{load_case, run_case_file, CaseStatus},
+    validation::{load_case, run_case_file, CaseStatus, ScientificStatus},
     ContactModel, ContactParameterProvider, ContactParameters, ScarringSettings,
     SoilInteractionModel, Vec3,
 };
@@ -1196,6 +1196,10 @@ fn tschamut_validation_fixture_runs_reproducibly() {
     let second = run_case_file("validation/cases/tschamut_basic.yaml").unwrap();
 
     assert_eq!(first.status, CaseStatus::Passed);
+    assert_eq!(
+        first.scientific_status,
+        ScientificStatus::ReportedWithoutAcceptanceThresholds
+    );
     assert_eq!(first.metrics, second.metrics);
     assert!(first.metrics.contains_key("deposition_centroid_error_m"));
     assert!(first.metrics.contains_key("runout_distance_error_m"));
@@ -1282,6 +1286,8 @@ outputs:
     assert_eq!(manifest_json["schema_version"], "run_manifest_v1");
     assert_eq!(manifest_json["case_id"], "ensemble_trajectory_output");
     assert_eq!(manifest_json["completion_status"], "passed");
+    assert_eq!(manifest_json["execution_status"], "completed");
+    assert_eq!(manifest_json["scientific_status"], "not_evaluated");
     assert_eq!(manifest_json["seed_policy"]["global_seed"], 123);
     assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 6);
     assert_eq!(
@@ -1358,6 +1364,7 @@ outputs:
     );
     assert_eq!(parquet_manifest["file_count"], 1);
     assert_eq!(parquet_manifest["compression"], "uncompressed");
+    assert!(parquet_manifest["sha256"].as_str().unwrap().len() == 64);
     let first_contents = fs::read_to_string(&first_file).unwrap();
     assert!(first_contents.starts_with("trajectory_id,time_s"));
     assert!(first_contents.contains("trajectory_000000"));

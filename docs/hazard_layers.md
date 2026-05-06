@@ -156,6 +156,14 @@ Level 1-2 labels `unweighted_diagnostic` and
 `annual_frequency` guarded by strict validation. This validation layer does not
 change existing hazard raster values or relabel default diagnostic outputs.
 
+Hazard manifests also record additive artifact identity metadata. Generated
+single-file outputs include SHA-256 checksums, and `input_artifacts` records the
+case, diagnostics, trajectory CSV collection, deposition CSV, impact-event CSV
+collection, and impact-event Parquet collection consumed by the hazard builder
+when those inputs are available. Collection checksums are aggregate hashes over
+member path, byte size, and file checksum so the manifest can identify inputs
+without listing every row.
+
 ## Production Versus Diagnostic Rendering
 
 The hazard builder is split into four phases:

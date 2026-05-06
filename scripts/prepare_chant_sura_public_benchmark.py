@@ -58,6 +58,13 @@ def main() -> int:
         "benchmark_id": "chant_sura",
         "dataset_id": "chant_sura_2020",
         "status": "fixture_backed_manifest",
+        "selected_ids": [
+            "chant_sura_trajectory_subset",
+            "chant_sura_contact",
+            "chant_sura_contact_extended",
+            "chant_sura_contact_heldout",
+        ],
+        "excluded_ids_with_reasons": [],
         "public_source": {
             "title": "Induced Rockfall Dataset #2 (Chant Sura Experimental Campaign), Flüelapass, Grisons, Switzerland",
             "doi": "https://doi.org/10.16904/envidat.174",
@@ -86,6 +93,21 @@ def main() -> int:
             "validation/cases/chant_sura_contact_extended.yaml",
             "validation/cases/chant_sura_contact_heldout.yaml",
         ],
+        "generated_cases": [
+            "validation/cases/chant_sura_trajectory_subset.yaml",
+            "validation/cases/chant_sura_contact.yaml",
+            "validation/cases/chant_sura_contact_extended.yaml",
+            "validation/cases/chant_sura_contact_heldout.yaml",
+        ],
+        "command_provenance": {
+            "script": "scripts/prepare_chant_sura_public_benchmark.py",
+            "allow_missing": args.allow_missing,
+        },
+        "provenance": {
+            "dataset": "Chant Sura public fixture-backed benchmark",
+            "doi": "https://doi.org/10.16904/envidat.174",
+            "license": "WSL Data Policy",
+        },
         "qa_checks": [
             "processed fixture files exist",
             "model-selection and held-out trajectory IDs are disjoint",

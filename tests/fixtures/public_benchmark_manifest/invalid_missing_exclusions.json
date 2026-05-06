@@ -1,0 +1,15 @@
+{
+  "schema_version": "public_benchmark_preparation_manifest_v1",
+  "benchmark_id": "fixture_benchmark",
+  "dataset_id": "fixture_dataset",
+  "selected_ids": ["run_001"],
+  "provenance": {
+    "source": "synthetic test fixture",
+    "license": "test fixture"
+  },
+  "generated_cases": ["validation/results/fixture/cases/baseline.yaml"],
+  "command_provenance": {
+    "command": "python3 scripts/prepare_fixture.py --force"
+  },
+  "limitations": ["schema fixture only"]
+}

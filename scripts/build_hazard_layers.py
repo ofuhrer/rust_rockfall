@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import html
 import json
 import math
@@ -700,6 +701,8 @@ def main_with_args(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     case = load_yaml(args.case) if args.case else {}
+    if args.case:
+        case["_path"] = str(args.case)
     case_id = str(case.get("case_id") or args.prefix or "hazard_layers")
     prefix = args.prefix or case_id
     output_dir = args.output_dir
@@ -725,6 +728,8 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     input_warnings: list[str] = []
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
+    if diagnostics_path:
+        diagnostics["_path"] = str(diagnostics_path)
     probability_config = parse_hazard_probability(case)
 
     explicit_grid = parse_explicit_grid(args)
@@ -795,6 +800,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
     )
     write_core_hazard_outputs(output_dir, prefix, grid, layers, accumulator.deposition_points, metadata)
+    manifest_metadata = dict(metadata)
+    manifest_metadata["_trajectory_paths"] = [str(path) for path in trajectory_paths]
+    manifest_metadata["_deposition_path"] = str(deposition_path) if deposition_path else None
+    manifest_metadata["_impact_event_paths"] = [str(path) for path in impact_event_paths]
+    manifest_metadata["_impact_event_parquet_paths"] = [str(path) for path in impact_event_parquet_paths]
     core_output_write_seconds = time.perf_counter() - core_write_started
 
     plot_paths: dict[str, str] = {}
@@ -808,7 +818,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     manifest = build_hazard_manifest(
         case,
         diagnostics,
-        metadata,
+        manifest_metadata,
         output_dir,
         prefix,
         grid_source,
@@ -1836,6 +1846,8 @@ def build_hazard_manifest(
         "git_hash": diagnostics.get("git_hash"),
         "config_fingerprint": None,
         "completion_status": "completed",
+        "execution_status": "completed",
+        "scientific_status": "not_evaluated",
         "seed_policy": {
             "global_seed": random.get("seed"),
             "ensemble_size": random.get("ensemble_size", 1),
@@ -1893,6 +1905,14 @@ def build_hazard_manifest(
         "warnings": warnings,
         "grid": dict(metadata.get("grid", {}), source=grid_source),
         "inputs": metadata.get("inputs", {}),
+        "input_artifacts": input_artifact_identities(
+            case=case,
+            diagnostics_path=diagnostics.get("_path"),
+            trajectory_paths=metadata.get("_trajectory_paths", []),
+            deposition_path=metadata.get("_deposition_path"),
+            impact_event_paths=metadata.get("_impact_event_paths", []),
+            impact_event_parquet_paths=metadata.get("_impact_event_parquet_paths", []),
+        ),
         "hazard_statistics": {
             "configured": statistic_config.as_dict(),
             "generated_layer_names": [layer.key for layer in layers if "exceedance" in layer.key],
@@ -1976,9 +1996,83 @@ def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, 
         "path": str(path),
         "file_count": 1,
         "total_bytes": path.stat().st_size if path.exists() else 0,
+        "sha256": sha256_file(path) if path.exists() and path.is_file() else None,
         "row_count": None,
         "skipped_empty_files": None,
     }
+
+
+def input_artifact_identities(
+    *,
+    case: dict[str, Any],
+    diagnostics_path: str | None,
+    trajectory_paths: list[str],
+    deposition_path: str | None,
+    impact_event_paths: list[str],
+    impact_event_parquet_paths: list[str],
+) -> list[dict[str, Any]]:
+    artifacts: list[dict[str, Any]] = []
+    if case.get("_path"):
+        artifacts.append(input_artifact_entry(Path(case["_path"]), "case", "yaml"))
+    if diagnostics_path:
+        artifacts.append(input_artifact_entry(Path(diagnostics_path), "diagnostics", "json"))
+    artifacts.append(input_artifact_collection(trajectory_paths, "trajectory_samples", "csv_collection"))
+    if deposition_path:
+        artifacts.append(input_artifact_entry(Path(deposition_path), "deposition_points", "csv"))
+    artifacts.append(input_artifact_collection(impact_event_paths, "impact_events", "csv_collection"))
+    artifacts.append(input_artifact_collection(impact_event_parquet_paths, "impact_events", "parquet_collection"))
+    return [artifact for artifact in artifacts if artifact["file_count"] > 0]
+
+
+def input_artifact_entry(path: Path, kind: str, format_name: str) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {
+            "kind": kind,
+            "format": format_name,
+            "path": str(path),
+            "file_count": 0,
+            "total_bytes": 0,
+            "sha256": None,
+        }
+    return {
+        "kind": kind,
+        "format": format_name,
+        "path": str(path),
+        "file_count": 1,
+        "total_bytes": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+
+
+def input_artifact_collection(paths: list[str], kind: str, format_name: str) -> dict[str, Any]:
+    existing = [Path(path) for path in paths if Path(path).exists() and Path(path).is_file()]
+    digest = hashlib.sha256()
+    total_bytes = 0
+    for path in sorted(existing, key=lambda item: str(item)):
+        file_hash = sha256_file(path)
+        size = path.stat().st_size
+        total_bytes += size
+        digest.update(str(path).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(size).encode("ascii"))
+        digest.update(b"\0")
+        digest.update(file_hash.encode("ascii"))
+        digest.update(b"\n")
+    return {
+        "kind": kind,
+        "format": format_name,
+        "file_count": len(existing),
+        "total_bytes": total_bytes,
+        "sha256": digest.hexdigest() if existing else None,
+    }
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def layer_source(layer_key: str) -> str:

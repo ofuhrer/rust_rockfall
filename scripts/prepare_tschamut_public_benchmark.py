@@ -201,10 +201,15 @@ def main() -> int:
     write_yaml(case_dir / "tschamut_public_benchmark_rotational.yaml", rotational)
 
     manifest = {
+        "schema_version": "public_benchmark_preparation_manifest_v1",
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "benchmark_id": "tschamut",
+        "dataset_id": "tschamut2014",
         "output_root": str(output_root.relative_to(ROOT)),
         "run_limit": args.run_limit,
         "selection": selection,
+        "selected_ids": selection["selected_trajectory_ids"],
+        "excluded_ids_with_reasons": [],
         "selected_run_summary": summarize_selected_runs(release_rows),
         "selected_block_id": single_selected_block_id(release_rows),
         "block_shape_metadata": (
@@ -214,6 +219,28 @@ def main() -> int:
             str((case_dir / "tschamut_public_benchmark_baseline.yaml").relative_to(ROOT)),
             str((case_dir / "tschamut_public_benchmark_rotational.yaml").relative_to(ROOT)),
         ],
+        "generated_cases": [
+            str((case_dir / "tschamut_public_benchmark_baseline.yaml").relative_to(ROOT)),
+            str((case_dir / "tschamut_public_benchmark_rotational.yaml").relative_to(ROOT)),
+        ],
+        "command_provenance": {
+            "script": "scripts/prepare_tschamut_public_benchmark.py",
+            "run_limit": args.run_limit,
+            "run_ids": args.run_ids,
+            "block_id": args.block_id,
+            "ensemble_size": args.ensemble_size,
+            "seed": args.seed,
+            "padding_m": args.padding_m,
+            "transform_method": args.transform_method,
+            "force": args.force,
+        },
+        "provenance": {
+            "dataset": "Tschamut 2014 public benchmark observations",
+            "source_url": TSCHAMUT_SCAN_URL,
+            "lps_url": TSCHAMUT_LPS_URL,
+            "terrain_url": SWISSALTI_TILE_URL,
+            "license": "public source datasets; see data/datasets.yaml",
+        },
         "terrain_crop": str(dem_path.relative_to(ROOT)),
         "terrain_metadata": str(terrain_metadata_path.relative_to(ROOT)),
         "release_zone_metadata": str(release_zone_path.relative_to(ROOT)),
@@ -232,6 +259,11 @@ def main() -> int:
             "vertical_offset_m": transform.vertical_offset_m,
             "registration_quality": qa,
         },
+        "limitations": [
+            "No parameter tuning is performed.",
+            "Coordinate registration uncertainty remains part of the benchmark interpretation.",
+            "This package is not an operational hazard assessment.",
+        ],
     }
     (output_root / "preparation_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print(f"wrote public Tschamut benchmark package to {output_root}")

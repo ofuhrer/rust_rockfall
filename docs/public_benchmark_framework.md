@@ -67,6 +67,13 @@ Required manifest fields:
 - generated validation cases, hazard commands, and manifest paths;
 - grouped metric plan and limitations.
 
+`scripts/validate_public_benchmark_manifest.py` validates the minimal public
+benchmark preparation contract: `schema_version`, `benchmark_id`, `dataset_id`,
+selected IDs, excluded IDs with reasons, provenance, generated cases or an
+explicit empty generated-case list, command provenance, and limitations. The
+validator is intentionally separate from model execution; it checks
+reproducibility metadata and does not imply scientific acceptance.
+
 ## Dataset-Specific Ingestion State
 
 ### Tschamut 2014

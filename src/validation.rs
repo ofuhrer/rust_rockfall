@@ -27,9 +27,11 @@ use arrow_array::{ArrayRef, BooleanArray, Float64Array, RecordBatch, StringArray
 use arrow_schema::{DataType, Field, Schema};
 use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterProperties};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs::{self, File},
+    io::Read,
     path::{Path, PathBuf},
     process::Command,
     sync::Arc,
@@ -510,6 +512,10 @@ pub struct GeneratedReleasePointRecord {
 pub struct CaseReport {
     pub case_id: String,
     pub status: CaseStatus,
+    #[serde(default)]
+    pub execution_status: ExecutionStatus,
+    #[serde(default)]
+    pub scientific_status: ScientificStatus,
     pub timestamp_unix_s: u64,
     pub model_version: String,
     pub git_hash: Option<String>,
@@ -716,6 +722,25 @@ pub enum CaseStatus {
     Skipped,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecutionStatus {
+    #[default]
+    Completed,
+    Failed,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScientificStatus {
+    MeetsAcceptanceThresholds,
+    FailsAcceptanceThresholds,
+    ReportedWithoutAcceptanceThresholds,
+    #[default]
+    NotEvaluated,
+}
+
 #[derive(Debug, Error)]
 pub enum ValidationError {
     #[error("I/O error: {0}")]
@@ -817,12 +842,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             return Ok(report);
         }
     };
-    if case.validation_scope.is_some()
-        && case.expected.tolerances.is_empty()
-        && case.expected.minimums.is_empty()
-        && case.expected.maximums.is_empty()
-        && case.expected.values.is_empty()
-    {
+    if case.validation_scope.is_some() && lacks_acceptance_thresholds(&case.expected) {
         warnings.push(
             "real-world validation case has no pass/fail acceptance thresholds; passed means the workflow completed and reported metrics".to_string(),
         );
@@ -963,10 +983,14 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     } else {
         CaseStatus::Failed
     };
+    let execution_status = execution_status_for_case_status(status);
+    let scientific_status = scientific_status_for_case(case, status);
 
     let report = CaseReport {
         case_id: case.case_id.clone(),
         status,
+        execution_status,
+        scientific_status,
         timestamp_unix_s: now_unix_s(),
         model_version: env!("CARGO_PKG_VERSION").to_string(),
         git_hash: git_hash(),
@@ -1077,6 +1101,8 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         git_hash: report.git_hash.clone(),
         config_fingerprint: report.parameters.config_fingerprint().ok(),
         completion_status: case_status_text(report.status).to_string(),
+        execution_status: execution_status_text(report.execution_status).to_string(),
+        scientific_status: scientific_status_text(report.scientific_status).to_string(),
         seed_policy: SeedPolicyManifest {
             global_seed: case.random.seed,
             ensemble_size: case.random.ensemble_size.max(1),
@@ -1101,6 +1127,61 @@ fn case_status_text(status: CaseStatus) -> &'static str {
         CaseStatus::Failed => "failed",
         CaseStatus::Skipped => "skipped",
     }
+}
+
+fn execution_status_for_case_status(status: CaseStatus) -> ExecutionStatus {
+    match status {
+        CaseStatus::Passed => ExecutionStatus::Completed,
+        CaseStatus::Failed => ExecutionStatus::Failed,
+        CaseStatus::Skipped => ExecutionStatus::Skipped,
+    }
+}
+
+fn scientific_status_for_case(case: &BenchmarkCase, status: CaseStatus) -> ScientificStatus {
+    if status == CaseStatus::Skipped {
+        return ScientificStatus::NotEvaluated;
+    }
+    if status == CaseStatus::Failed {
+        return ScientificStatus::FailsAcceptanceThresholds;
+    }
+    if case.validation_scope.is_some() && lacks_acceptance_thresholds(&case.expected) {
+        return ScientificStatus::ReportedWithoutAcceptanceThresholds;
+    }
+    if has_acceptance_thresholds(&case.expected) {
+        ScientificStatus::MeetsAcceptanceThresholds
+    } else {
+        ScientificStatus::NotEvaluated
+    }
+}
+
+fn execution_status_text(status: ExecutionStatus) -> &'static str {
+    match status {
+        ExecutionStatus::Completed => "completed",
+        ExecutionStatus::Failed => "failed",
+        ExecutionStatus::Skipped => "skipped",
+    }
+}
+
+fn scientific_status_text(status: ScientificStatus) -> &'static str {
+    match status {
+        ScientificStatus::MeetsAcceptanceThresholds => "meets_acceptance_thresholds",
+        ScientificStatus::FailsAcceptanceThresholds => "fails_acceptance_thresholds",
+        ScientificStatus::ReportedWithoutAcceptanceThresholds => {
+            "reported_without_acceptance_thresholds"
+        }
+        ScientificStatus::NotEvaluated => "not_evaluated",
+    }
+}
+
+fn has_acceptance_thresholds(expected: &ExpectedConfig) -> bool {
+    !expected.tolerances.is_empty()
+        || !expected.minimums.is_empty()
+        || !expected.maximums.is_empty()
+        || !expected.values.is_empty()
+}
+
+fn lacks_acceptance_thresholds(expected: &ExpectedConfig) -> bool {
+    !has_acceptance_thresholds(expected)
 }
 
 fn terrain_resolution_m(terrain: &CaseTerrain) -> Option<f64> {
@@ -1372,12 +1453,27 @@ fn file_output_manifest(
         path: path.as_ref().to_string_lossy().to_string(),
         file_count: 1,
         total_bytes: fs::metadata(path.as_ref())?.len(),
+        sha256: Some(sha256_file(path.as_ref())?),
         schema_version: None,
         row_count,
         skipped_empty_files,
         compression: None,
         row_group_count: None,
     })
+}
+
+fn sha256_file(path: &Path) -> Result<String, ValidationError> {
+    let mut file = File::open(path)?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
 }
 
 fn warn_large_debug_outputs(
@@ -2714,6 +2810,7 @@ fn write_ensemble_trajectory_dir(
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count: runs.len(),
         total_bytes,
+        sha256: None,
         schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(0),
@@ -2750,6 +2847,7 @@ fn write_ensemble_impact_events_dir(
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count,
         total_bytes,
+        sha256: None,
         schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(skipped_empty_files),
@@ -2998,6 +3096,7 @@ fn write_ensemble_impact_events_parquet(
         path: path.to_string_lossy().to_string(),
         file_count: 1,
         total_bytes: fs::metadata(path)?.len(),
+        sha256: Some(sha256_file(path)?),
         schema_version: Some(IMPACT_EVENTS_TABLE_SCHEMA_VERSION.to_string()),
         row_count: Some(row_count),
         skipped_empty_files: None,
@@ -3365,6 +3464,8 @@ fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, V
     Ok(CaseReport {
         case_id: case.case_id.clone(),
         status: CaseStatus::Skipped,
+        execution_status: ExecutionStatus::Skipped,
+        scientific_status: ScientificStatus::NotEvaluated,
         timestamp_unix_s: now_unix_s(),
         model_version: env!("CARGO_PKG_VERSION").to_string(),
         git_hash: git_hash(),

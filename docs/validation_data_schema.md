@@ -280,8 +280,9 @@ not change default unweighted hazard or validation semantics.
 When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model
 version, git hash, config fingerprint, seed policy, terrain source, output file
-summaries, warnings, and completion status. It does not replace diagnostics JSON
-or change pass/fail semantics. If `terrain.metadata_path` is present, the
+summaries, warnings, completion status, execution status, and scientific status.
+It does not replace diagnostics JSON or change pass/fail semantics. If
+`terrain.metadata_path` is present, the
 manifest terrain section includes CRS/EPSG, vertical datum, LV95 extent,
 resolution, nodata, source dataset/product, source filename/URL, license,
 download/preprocessing status, optional `raw_sha256` and `processed_sha256`
@@ -299,7 +300,21 @@ initial orientation, provenance, and a warning that current contact remains
 spherical. If `outputs.trajectory_metadata_csv` is present, the manifest
 includes a `trajectory_metadata` section with schema version, path, row count,
 probability model, probability semantics, normalization convention, and total
-sampling weight.
+sampling weight. Single-file output entries include additive SHA-256 checksums
+where feasible; directory outputs keep file-count and byte summaries without
+per-file hashes.
+
+Diagnostics and manifests split status interpretation:
+
+- `execution_status`: whether the case completed, failed, or skipped;
+- `scientific_status`: whether configured acceptance thresholds were met,
+  failed, absent, or not evaluated.
+
+Real-world validation cases with observations but no configured acceptance
+thresholds use `scientific_status:
+reported_without_acceptance_thresholds`. Their legacy `status: passed` still
+means the workflow completed and reported metrics, not that scientific skill was
+accepted against thresholds.
 
 Phase 1 probabilistic hazard-map metadata is validated outside the validation
 case runner. The Rust library exposes parsers for:
@@ -320,7 +335,7 @@ schema fixtures live under `tests/fixtures/probabilistic_phase1/`.
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total
-bytes, compression, and row-group count when available.
+bytes, SHA-256 checksum, compression, and row-group count when available.
 
 Current manifests also include an optional `performance` object with lightweight
 wall-clock and output-volume diagnostics: `total_wall_seconds`,

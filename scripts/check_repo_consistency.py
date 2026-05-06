@@ -900,6 +900,7 @@ def check_public_benchmark_framework() -> list[str]:
         "scripts/prepare_chant_sura_public_benchmark.py",
         "scripts/prepare_chant_sura_eota221_benchmark.py",
         "scripts/prepare_mel_de_la_niva_benchmark.py",
+        "scripts/validate_public_benchmark_manifest.py",
     ):
         if not (ROOT / script).exists():
             errors.append(f"{script} is missing")

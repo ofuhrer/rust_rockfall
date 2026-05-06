@@ -13,6 +13,10 @@ pub struct RunManifest {
     pub git_hash: Option<String>,
     pub config_fingerprint: Option<String>,
     pub completion_status: String,
+    #[serde(default = "default_execution_status")]
+    pub execution_status: String,
+    #[serde(default = "default_scientific_status")]
+    pub scientific_status: String,
     pub seed_policy: SeedPolicyManifest,
     pub terrain: TerrainManifest,
     pub release_zone: Option<ReleaseZoneManifest>,
@@ -168,6 +172,8 @@ pub struct OutputManifest {
     pub file_count: usize,
     pub total_bytes: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schema_version: Option<String>,
     pub row_count: Option<usize>,
     pub skipped_empty_files: Option<usize>,
@@ -175,6 +181,14 @@ pub struct OutputManifest {
     pub compression: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_group_count: Option<usize>,
+}
+
+fn default_execution_status() -> String {
+    "unknown".to_string()
+}
+
+fn default_scientific_status() -> String {
+    "unknown".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

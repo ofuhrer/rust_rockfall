@@ -12,9 +12,21 @@ from pathlib import Path
 import yaml
 
 import scripts.run_performance_benchmark as perf
+import scripts.validate_public_benchmark_manifest as benchmark_manifest
 
 
 class PerformanceBenchmarkScriptTests(unittest.TestCase):
+    def test_public_benchmark_manifest_validator_accepts_required_contract(self) -> None:
+        fixture_root = Path("tests/fixtures/public_benchmark_manifest")
+        self.assertEqual(
+            benchmark_manifest.validate_manifest_file(fixture_root / "valid_manifest.json"),
+            [],
+        )
+        errors = benchmark_manifest.validate_manifest_file(
+            fixture_root / "invalid_missing_exclusions.json"
+        )
+        self.assertTrue(any("excluded_ids_with_reasons" in error for error in errors))
+
     def test_prepare_benchmark_inputs_generates_tiny_opt_in_cases(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)

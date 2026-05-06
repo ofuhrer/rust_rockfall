@@ -90,6 +90,8 @@ def main() -> int:
         "benchmark_id": "mel_de_la_niva",
         "dataset_id": "mel_de_la_niva_2015",
         "status": "metadata_only_until_raw_archives_are_downloaded",
+        "selected_ids": [],
+        "excluded_ids_with_reasons": [],
         "public_source": {
             "title": "Highly energetic rockfalls: Dataset of the 2015 event from the Mel de la Niva, Switzerland",
             "doi": "https://doi.org/10.5281/zenodo.7257979",
@@ -102,6 +104,16 @@ def main() -> int:
             "future block-shape and terrain-interaction stress test",
         ],
         "coordinate_system": "Public archive names indicate EPSG:21781 / LV03 for trajectories, GIS shapes, and SfM rasters.",
+        "generated_cases": [],
+        "command_provenance": {
+            "script": "scripts/prepare_mel_de_la_niva_benchmark.py",
+            "require_raw": args.require_raw,
+        },
+        "provenance": {
+            "dataset": "Mel de la Niva 2015 metadata-only benchmark scaffold",
+            "doi": "https://doi.org/10.5281/zenodo.7257979",
+            "license": "Creative Commons Attribution 4.0 International",
+        },
         "raw_cache_policy": {
             "raw_dir": str(RAW_DIR.relative_to(ROOT)),
             "ignored_by_git": True,
