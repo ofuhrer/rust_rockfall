@@ -1,0 +1,41 @@
+schema_version: internal_shape_contact_v0_chant_sura_model_selection_v1
+case_id: internal_shape_contact_v0_chant_sura_model_selection
+internal_only: true
+description: >
+  Internal-only shape_contact_v0 model-selection smoke run using the checked-in
+  Chant Sura RF16W200r1 contact fixture. This file is deliberately outside
+  validation/cases and must not be discovered by validate --all.
+source_validation_case: validation/cases/chant_sura_contact.yaml
+shape_source:
+  rock_shapes_csv: validation/data/processed/chant_sura_2020/rock_shapes.csv
+  shape_file: EOTA/1m3_EOTA_221_plate.pts
+  reference_shape_volume_m3: 1.0
+  scaling_policy: preserve_eota221_aspect_ratio_scale_to_active_block_volume_using_case_density
+  density_kgpm3: 2670.0
+  trajectory_to_shape_mapping: unresolved_proxy_only
+  shape_metadata_output: temporary_file_backed_only
+frozen_reference_metrics:
+  translational_v0:
+    trajectory_shape_mean_error_m: 0.418
+    trajectory_energy_mean_relative_error: 0.394
+    trajectory_jump_height_envelope_error_m: 0.731
+    impact_timing_mean_error_s: 0.628
+    rebound_velocity_mean_error_mps: 4.899
+  sphere_rotational_v1:
+    trajectory_shape_mean_error_m: 0.378
+    trajectory_energy_mean_relative_error: 0.289
+    trajectory_jump_height_envelope_error_m: 0.750
+    impact_timing_mean_error_s: 0.628
+    rebound_velocity_mean_error_mps: 4.902
+frozen_gates:
+  model_selection_shape_energy_must_be_better_than_translational_v0: true
+  rebound_jump_timing_max_degradation_fraction_vs_better_current_model: 0.10
+  contact_energy_creation_tolerance_j: 1.0e-7
+limitations:
+  - internal-only model-selection smoke evidence, not public validation
+  - no tuning and no post-result filtering
+  - uses the existing Chant Sura RF16W200r1 model-selection subset only
+  - EOTA221-to-trajectory mapping remains unresolved, so shape assignment is proxy-only
+  - EOTA221 dimensions are scaled from the checked-in shape summary using the existing density assumption
+  - projection correction, persistent contact, orientation evolution, and multi-contact remain absent
+  - Tschamut and Mel de la Niva are intentionally excluded from this run

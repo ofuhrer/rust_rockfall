@@ -1941,7 +1941,10 @@ pub(crate) fn shape_contact_v0_no_impulse_result(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::{Plane, Terrain};
+    use crate::{
+        terrain::{Plane, Terrain},
+        EPS,
+    };
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn assert_close(actual: f64, expected: f64, epsilon: f64) {
@@ -2023,6 +2026,10 @@ mod tests {
 
     const INTERNAL_SHAPE_CONTACT_V0_SMOKE_CASE_PATH: &str =
         "validation/internal/shape_contact_v0_internal_smoke.yaml";
+    const INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_MODEL_SELECTION_PATH: &str =
+        "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml";
+    const INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_CASE_ID: &str =
+        "internal_shape_contact_v0_chant_sura_model_selection";
 
     #[derive(Debug, Deserialize)]
     struct InternalShapeContactV0SmokeCase {
@@ -2071,6 +2078,178 @@ mod tests {
         z0_m: f64,
         slope_x: f64,
         slope_y: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalShapeContactV0ChantSuraModelSelectionCase {
+        schema_version: String,
+        case_id: String,
+        internal_only: bool,
+        source_validation_case: std::path::PathBuf,
+        shape_source: InternalChantSuraShapeSource,
+        frozen_reference_metrics: InternalChantSuraReferenceMetrics,
+        frozen_gates: InternalChantSuraFrozenGates,
+        limitations: Vec<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct InternalChantSuraShapeSource {
+        rock_shapes_csv: std::path::PathBuf,
+        shape_file: String,
+        reference_shape_volume_m3: f64,
+        scaling_policy: String,
+        density_kgpm3: f64,
+        trajectory_to_shape_mapping: String,
+        shape_metadata_output: String,
+    }
+
+    #[derive(Debug, Clone, Copy, Deserialize)]
+    struct InternalChantSuraReferenceMetrics {
+        translational_v0: InternalChantSuraMetricSet,
+        sphere_rotational_v1: InternalChantSuraMetricSet,
+    }
+
+    #[derive(Debug, Clone, Copy, Deserialize)]
+    struct InternalChantSuraMetricSet {
+        trajectory_shape_mean_error_m: f64,
+        trajectory_energy_mean_relative_error: f64,
+        trajectory_jump_height_envelope_error_m: f64,
+        impact_timing_mean_error_s: f64,
+        rebound_velocity_mean_error_mps: f64,
+    }
+
+    #[derive(Debug, Clone, Copy, Deserialize)]
+    struct InternalChantSuraFrozenGates {
+        model_selection_shape_energy_must_be_better_than_translational_v0: bool,
+        rebound_jump_timing_max_degradation_fraction_vs_better_current_model: f64,
+        contact_energy_creation_tolerance_j: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraValidationCaseRef {
+        case_id: String,
+        terrain: ChantSuraTerrainRef,
+        block: ChantSuraBlockRef,
+        parameters: ChantSuraParametersRef,
+        simulation: ChantSuraSimulationRef,
+        observations: ChantSuraObservationsRef,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraTerrainRef {
+        #[serde(rename = "type")]
+        terrain_type: String,
+        path: std::path::PathBuf,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraBlockRef {
+        mass: f64,
+        radius: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraParametersRef {
+        gravity: f64,
+        normal_restitution: f64,
+        tangential_restitution: f64,
+        friction_coefficient: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraSimulationRef {
+        dt: f64,
+        t_max: f64,
+        max_steps: u64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraObservationsRef {
+        release_points_csv: std::path::PathBuf,
+        trajectory_csv: std::path::PathBuf,
+        contact_events_csv: std::path::PathBuf,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraReleaseRow {
+        trajectory_id: String,
+        x_m: f64,
+        y_m: f64,
+        z_m: f64,
+        vx_mps: f64,
+        vy_mps: f64,
+        vz_mps: f64,
+        mass_kg: f64,
+        radius_m: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraObservedTrajectoryRow {
+        trajectory_id: String,
+        time_s: f64,
+        x_m: f64,
+        y_m: f64,
+        z_m: f64,
+        kinetic_j: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraObservedContactRow {
+        source_segment_id: String,
+        impact_time_s: f64,
+        outgoing_vx_mps: f64,
+        outgoing_vy_mps: f64,
+        outgoing_vz_mps: f64,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ChantSuraRockShapeRow {
+        shape_file: String,
+        min_x_m: f64,
+        max_x_m: f64,
+        min_y_m: f64,
+        max_y_m: f64,
+        min_z_m: f64,
+        max_z_m: f64,
+    }
+
+    #[derive(Debug, Clone)]
+    struct InternalChantSuraSimSample {
+        time_s: f64,
+        state: BodyState,
+        translational_kinetic_j: f64,
+    }
+
+    #[derive(Debug, Clone)]
+    struct InternalChantSuraFirstImpact {
+        time_s: f64,
+        post_velocity_mps: Vec3,
+        incoming_normal_speed_mps: f64,
+    }
+
+    #[derive(Debug, Clone)]
+    struct InternalChantSuraTrajectoryResult {
+        samples: Vec<InternalChantSuraSimSample>,
+        impacts: Vec<InternalChantSuraFirstImpact>,
+    }
+
+    #[derive(Debug)]
+    struct InternalChantSuraModelSelectionReport {
+        metrics: InternalChantSuraMetricSet,
+        reference: InternalChantSuraReferenceMetrics,
+        gate_status: &'static str,
+        gate_reasons: Vec<String>,
+        observed_trajectory_count: usize,
+        observed_contact_event_count: usize,
+        contact_event_compared_count: usize,
+        diagnostic_row_count: usize,
+        impulsive_row_count: usize,
+        non_impulsive_penetrating_row_count: usize,
+        max_positive_contact_energy_delta_j: f64,
+        shape_metadata_sha256: String,
+        diagnostic_sidecar_sha256: String,
+        diagnostic_sidecar_row_count: usize,
+        shape_assignment_limitation: String,
     }
 
     fn load_internal_shape_contact_v0_smoke_case() -> InternalShapeContactV0SmokeCase {
@@ -2163,6 +2342,574 @@ mod tests {
             results.push(result);
         }
         (case, results)
+    }
+
+    fn load_internal_shape_contact_v0_chant_sura_model_selection_case(
+    ) -> InternalShapeContactV0ChantSuraModelSelectionCase {
+        let text =
+            fs::read_to_string(INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_MODEL_SELECTION_PATH).unwrap();
+        serde_yaml::from_str(&text).unwrap()
+    }
+
+    fn load_chant_sura_validation_case(path: &std::path::Path) -> ChantSuraValidationCaseRef {
+        let text = fs::read_to_string(path).unwrap();
+        serde_yaml::from_str(&text).unwrap()
+    }
+
+    fn read_csv_rows<T: for<'de> Deserialize<'de>>(path: &std::path::Path) -> Vec<T> {
+        let mut reader = csv::Reader::from_path(path).unwrap();
+        reader
+            .deserialize()
+            .map(|record| record.unwrap())
+            .collect::<Vec<T>>()
+    }
+
+    fn chant_sura_shape_metadata_from_existing_shape_summary(
+        internal_case: &InternalShapeContactV0ChantSuraModelSelectionCase,
+        validation_case: &ChantSuraValidationCaseRef,
+    ) -> BlockShapeMetadata {
+        assert_eq!(
+            internal_case.shape_source.scaling_policy,
+            "preserve_eota221_aspect_ratio_scale_to_active_block_volume_using_case_density"
+        );
+        assert_eq!(
+            internal_case.shape_source.trajectory_to_shape_mapping,
+            "unresolved_proxy_only"
+        );
+        assert_eq!(
+            internal_case.shape_source.shape_metadata_output,
+            "temporary_file_backed_only"
+        );
+        let rows =
+            read_csv_rows::<ChantSuraRockShapeRow>(&internal_case.shape_source.rock_shapes_csv);
+        let shape = rows
+            .iter()
+            .find(|row| row.shape_file == internal_case.shape_source.shape_file)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing shape_file {} in {}",
+                    internal_case.shape_source.shape_file,
+                    internal_case.shape_source.rock_shapes_csv.display()
+                )
+            });
+        let reference_lengths_m = [
+            shape.max_x_m - shape.min_x_m,
+            shape.max_y_m - shape.min_y_m,
+            shape.max_z_m - shape.min_z_m,
+        ];
+        validate_positive_triplet(reference_lengths_m, "EOTA reference lengths").unwrap();
+        let active_volume_m3 =
+            validation_case.block.mass / internal_case.shape_source.density_kgpm3;
+        let scale =
+            (active_volume_m3 / internal_case.shape_source.reference_shape_volume_m3).cbrt();
+        let principal_dimensions_m = [
+            reference_lengths_m[0] * scale,
+            reference_lengths_m[1] * scale,
+            reference_lengths_m[2] * scale,
+        ];
+        BlockShapeMetadata {
+            schema_version: SHAPE_METADATA_SCHEMA_VERSION.to_string(),
+            shape_id: "chant_sura_eota221_scaled_w200_internal_proxy".to_string(),
+            shape_type: BlockShapeType::PrincipalDimensions,
+            shape_class: Some("eota221_aspect_ratio_scaled_w200_internal_proxy".to_string()),
+            dimensions_m: ShapeDimensions {
+                principal_lengths_m: Some(principal_dimensions_m),
+                equivalent_radius_m: Some(validation_case.block.radius),
+                ..ShapeDimensions::default()
+            },
+            mass_properties: ShapeMassProperties {
+                mass_kg: validation_case.block.mass,
+                density_kgpm3: Some(internal_case.shape_source.density_kgpm3),
+                mass_property_model: Some(MassPropertyModel::BoxPrincipalDimensions),
+                principal_moments_kg_m2: None,
+                center_of_mass_offset_m: None,
+            },
+            orientation: ShapeOrientation::default(),
+            provenance: ShapeProvenance {
+                source_dataset: Some("chant_sura_2020".to_string()),
+                source_record_id: Some(internal_case.shape_source.shape_file.clone()),
+                source_url_or_doi: Some("https://doi.org/10.16904/envidat.174".to_string()),
+                license: Some("WSL Data Policy".to_string()),
+                notes: vec![
+                    "Internal-only shape_contact_v0 model-selection proxy.".to_string(),
+                    "EOTA221 aspect ratio is scaled to the RF16W200r1 active block volume using the existing 2670 kg/m3 density assumption.".to_string(),
+                    "Trajectory-to-EOTA shape mapping is unresolved; do not interpret as public validation evidence.".to_string(),
+                ],
+            },
+        }
+    }
+
+    fn simulate_internal_chant_sura_shape_contact_trajectory<T: crate::terrain::Terrain>(
+        scaffold: &ShapeContactV0Scaffold,
+        terrain: &T,
+        release: &ChantSuraReleaseRow,
+        validation_case: &ChantSuraValidationCaseRef,
+        writer: &mut ShapeContactV0RuntimeDiagnosticWriterV1,
+    ) -> InternalChantSuraTrajectoryResult {
+        assert_close(release.mass_kg, validation_case.block.mass, 1.0e-9);
+        assert_close(release.radius_m, validation_case.block.radius, 1.0e-9);
+        let mut state = BodyState::new(
+            Vec3::new(release.x_m, release.y_m, release.z_m),
+            Vec3::new(release.vx_mps, release.vy_mps, release.vz_mps),
+        );
+        let mut samples = vec![InternalChantSuraSimSample {
+            time_s: 0.0,
+            state,
+            translational_kinetic_j: 0.5
+                * validation_case.block.mass
+                * state.velocity_mps.norm_squared(),
+        }];
+        let mut impacts = Vec::new();
+        let settings = ShapeContactV0ImpulseSettings {
+            normal_restitution: validation_case.parameters.normal_restitution,
+            tangential_restitution: validation_case.parameters.tangential_restitution,
+            friction_coefficient: validation_case.parameters.friction_coefficient,
+            gravity_mps2: validation_case.parameters.gravity,
+        };
+        for step_index in 1..=validation_case.simulation.max_steps {
+            let mini_step = shape_contact_v0_mini_fixed_step(
+                scaffold,
+                terrain,
+                ShapeContactV0MiniFixedStepInput {
+                    pre_step_state: state,
+                    dt_s: validation_case.simulation.dt,
+                    gravity_mps2: validation_case.parameters.gravity,
+                    settings,
+                },
+            )
+            .unwrap();
+            let diagnostic_input = ShapeContactV0ContactInput {
+                pre_state: mini_step.predicted_state,
+                terrain_contact_point_m: Vec3::new(
+                    mini_step.terrain_contact_point_m[0],
+                    mini_step.terrain_contact_point_m[1],
+                    mini_step.terrain_contact_point_m[2],
+                ),
+                terrain_normal_world: Vec3::new(
+                    mini_step.terrain_normal_world[0],
+                    mini_step.terrain_normal_world[1],
+                    mini_step.terrain_normal_world[2],
+                ),
+                settings,
+            };
+            let time_s = step_index as f64 * validation_case.simulation.dt;
+            let row = shape_contact_v0_runtime_diagnostic_row_v1(
+                scaffold,
+                &diagnostic_input,
+                &mini_step.contact,
+                ShapeContactV0RuntimeDiagnosticIdentity {
+                    case_id: INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_CASE_ID,
+                    trajectory_id: &release.trajectory_id,
+                    step_index,
+                    time_s,
+                    contact_event_id: None,
+                    impact_index: None,
+                },
+            )
+            .unwrap();
+            if row.impulse_applied {
+                impacts.push(InternalChantSuraFirstImpact {
+                    time_s,
+                    post_velocity_mps: mini_step.contact.impulse_result.post_state.velocity_mps,
+                    incoming_normal_speed_mps: (-row.contact_point_normal_velocity_pre_mps)
+                        .max(0.0),
+                });
+            }
+            writer.write_row(row);
+            state = mini_step.contact.impulse_result.post_state;
+            samples.push(InternalChantSuraSimSample {
+                time_s,
+                state,
+                translational_kinetic_j: 0.5
+                    * validation_case.block.mass
+                    * state.velocity_mps.norm_squared(),
+            });
+            if time_s + 1.0e-12 >= validation_case.simulation.t_max {
+                break;
+            }
+        }
+        InternalChantSuraTrajectoryResult { samples, impacts }
+    }
+
+    fn interpolate_internal_chant_sura_sample(
+        samples: &[InternalChantSuraSimSample],
+        time_s: f64,
+    ) -> InternalChantSuraSimSample {
+        if time_s <= samples[0].time_s {
+            return samples[0].clone();
+        }
+        for pair in samples.windows(2) {
+            let a = &pair[0];
+            let b = &pair[1];
+            if time_s <= b.time_s + 1.0e-12 {
+                let span = (b.time_s - a.time_s).max(EPS);
+                let alpha = ((time_s - a.time_s) / span).clamp(0.0, 1.0);
+                let position_m = a.state.position_m * (1.0 - alpha) + b.state.position_m * alpha;
+                let velocity_mps =
+                    a.state.velocity_mps * (1.0 - alpha) + b.state.velocity_mps * alpha;
+                let angular_velocity_radps = a.state.angular_velocity_radps * (1.0 - alpha)
+                    + b.state.angular_velocity_radps * alpha;
+                let translational_kinetic_j =
+                    a.translational_kinetic_j * (1.0 - alpha) + b.translational_kinetic_j * alpha;
+                return InternalChantSuraSimSample {
+                    time_s,
+                    state: BodyState {
+                        position_m,
+                        velocity_mps,
+                        angular_velocity_radps,
+                    },
+                    translational_kinetic_j,
+                };
+            }
+        }
+        samples.last().unwrap().clone()
+    }
+
+    fn mean(values: &[f64]) -> f64 {
+        values.iter().sum::<f64>() / values.len().max(1) as f64
+    }
+
+    fn max_clearance_m<T: crate::terrain::Terrain>(
+        points: impl Iterator<Item = (f64, f64, f64)>,
+        terrain: &T,
+        radius_m: f64,
+    ) -> f64 {
+        points
+            .map(|(x_m, y_m, z_m)| z_m - terrain.height(x_m, y_m) - radius_m)
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+
+    fn first_internal_chant_sura_significant_impact(
+        impacts: &[InternalChantSuraFirstImpact],
+        max_time_s: f64,
+    ) -> Option<&InternalChantSuraFirstImpact> {
+        impacts
+            .iter()
+            .filter(|impact| impact.time_s <= max_time_s + 1.0e-12)
+            .find(|impact| {
+                impact.incoming_normal_speed_mps
+                    >= crate::validation::SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
+            })
+            .or_else(|| {
+                impacts
+                    .iter()
+                    .find(|impact| impact.time_s <= max_time_s + 1.0e-12)
+            })
+    }
+
+    fn evaluate_internal_chant_sura_model_selection() -> InternalChantSuraModelSelectionReport {
+        let internal_case = load_internal_shape_contact_v0_chant_sura_model_selection_case();
+        assert_eq!(
+            internal_case.schema_version,
+            "internal_shape_contact_v0_chant_sura_model_selection_v1"
+        );
+        assert_eq!(
+            internal_case.case_id,
+            INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_CASE_ID
+        );
+        assert!(internal_case.internal_only);
+        assert!(!internal_case
+            .limitations
+            .iter()
+            .any(|limitation| limitation.trim().is_empty()));
+        let validation_case =
+            load_chant_sura_validation_case(&internal_case.source_validation_case);
+        assert_eq!(validation_case.case_id, "validation_chant_sura_contact");
+        assert_eq!(validation_case.terrain.terrain_type, "ascii_dem_clamped");
+        let metadata =
+            chant_sura_shape_metadata_from_existing_shape_summary(&internal_case, &validation_case);
+        let metadata_path = write_test_shape_metadata_file(&metadata, "chant_sura_model_selection");
+        let metadata_text = fs::read_to_string(&metadata_path).unwrap();
+        let shape_metadata_sha256 = sha256_hex(metadata_text.as_bytes());
+        let scaffold = ShapeContactV0Scaffold::from_metadata(&metadata).unwrap();
+        let terrain =
+            crate::terrain::ClampedDemGrid::from_ascii_grid(&validation_case.terrain.path).unwrap();
+        let releases =
+            read_csv_rows::<ChantSuraReleaseRow>(&validation_case.observations.release_points_csv);
+        let observed_trajectories = read_csv_rows::<ChantSuraObservedTrajectoryRow>(
+            &validation_case.observations.trajectory_csv,
+        );
+        let observed_contacts = read_csv_rows::<ChantSuraObservedContactRow>(
+            &validation_case.observations.contact_events_csv,
+        );
+
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        let mut simulated = std::collections::BTreeMap::new();
+        for release in &releases {
+            simulated.insert(
+                release.trajectory_id.clone(),
+                simulate_internal_chant_sura_shape_contact_trajectory(
+                    &scaffold,
+                    &terrain,
+                    release,
+                    &validation_case,
+                    &mut writer,
+                ),
+            );
+        }
+        fs::remove_file(&metadata_path).unwrap();
+
+        let mut observed_by_trajectory: std::collections::BTreeMap<
+            String,
+            Vec<&ChantSuraObservedTrajectoryRow>,
+        > = std::collections::BTreeMap::new();
+        for sample in &observed_trajectories {
+            observed_by_trajectory
+                .entry(sample.trajectory_id.clone())
+                .or_default()
+                .push(sample);
+        }
+
+        let mut trajectory_shape_errors = Vec::new();
+        let mut trajectory_energy_errors = Vec::new();
+        let mut observed_jump_maxima = Vec::new();
+        let mut simulated_jump_maxima = Vec::new();
+        for (trajectory_id, observed_samples_unsorted) in &observed_by_trajectory {
+            let mut observed_samples = observed_samples_unsorted.clone();
+            observed_samples.sort_by(|a, b| a.time_s.total_cmp(&b.time_s));
+            let Some(last_observed) = observed_samples.last() else {
+                continue;
+            };
+            let sim = simulated
+                .get(trajectory_id)
+                .unwrap_or_else(|| panic!("missing simulated trajectory {trajectory_id}"));
+            for observed in &observed_samples {
+                let sample = interpolate_internal_chant_sura_sample(&sim.samples, observed.time_s);
+                let position_error_m = (sample.state.position_m
+                    - Vec3::new(observed.x_m, observed.y_m, observed.z_m))
+                .norm();
+                trajectory_shape_errors.push(position_error_m);
+                if observed.kinetic_j > 0.0 {
+                    trajectory_energy_errors.push(
+                        (sample.translational_kinetic_j - observed.kinetic_j).abs()
+                            / observed.kinetic_j,
+                    );
+                }
+            }
+            observed_jump_maxima.push(max_clearance_m(
+                observed_samples
+                    .iter()
+                    .map(|sample| (sample.x_m, sample.y_m, sample.z_m)),
+                &terrain,
+                validation_case.block.radius,
+            ));
+            simulated_jump_maxima.push(max_clearance_m(
+                sim.samples
+                    .iter()
+                    .filter(|sample| sample.time_s <= last_observed.time_s + 1.0e-12)
+                    .map(|sample| {
+                        (
+                            sample.state.position_m.x,
+                            sample.state.position_m.y,
+                            sample.state.position_m.z,
+                        )
+                    }),
+                &terrain,
+                validation_case.block.radius,
+            ));
+        }
+
+        let mut impact_timing_errors = Vec::new();
+        let mut rebound_velocity_errors = Vec::new();
+        for observed in &observed_contacts {
+            if let Some(sim) = simulated.get(&observed.source_segment_id) {
+                let max_time_s = (observed.impact_time_s + 4.0 * validation_case.simulation.dt)
+                    .max(validation_case.simulation.dt);
+                if let Some(impact) =
+                    first_internal_chant_sura_significant_impact(&sim.impacts, max_time_s)
+                {
+                    impact_timing_errors.push((impact.time_s - observed.impact_time_s).abs());
+                    rebound_velocity_errors.push(
+                        (impact.post_velocity_mps
+                            - Vec3::new(
+                                observed.outgoing_vx_mps,
+                                observed.outgoing_vy_mps,
+                                observed.outgoing_vz_mps,
+                            ))
+                        .norm(),
+                    );
+                }
+            }
+        }
+
+        let rows = writer.rows();
+        let max_positive_contact_energy_delta_j = rows
+            .iter()
+            .map(|row| row.contact_energy_delta_j.max(0.0))
+            .fold(0.0, f64::max);
+        let sidecar = writer
+            .to_sidecar_manifest(Some(
+                "internal_chant_sura_shape_contact_v0_diagnostics.jsonl".to_string(),
+            ))
+            .unwrap();
+
+        let metrics = InternalChantSuraMetricSet {
+            trajectory_shape_mean_error_m: mean(&trajectory_shape_errors),
+            trajectory_energy_mean_relative_error: mean(&trajectory_energy_errors),
+            trajectory_jump_height_envelope_error_m: (simulated_jump_maxima
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max)
+                - observed_jump_maxima
+                    .iter()
+                    .copied()
+                    .fold(f64::NEG_INFINITY, f64::max))
+            .abs(),
+            impact_timing_mean_error_s: mean(&impact_timing_errors),
+            rebound_velocity_mean_error_mps: mean(&rebound_velocity_errors),
+        };
+
+        let mut gate_reasons = Vec::new();
+        if internal_case
+            .frozen_gates
+            .model_selection_shape_energy_must_be_better_than_translational_v0
+        {
+            if metrics.trajectory_shape_mean_error_m
+                >= internal_case
+                    .frozen_reference_metrics
+                    .translational_v0
+                    .trajectory_shape_mean_error_m
+            {
+                gate_reasons.push(format!(
+                    "trajectory_shape_mean_error_m {:.6} is not better than translational_v0 {:.6}",
+                    metrics.trajectory_shape_mean_error_m,
+                    internal_case
+                        .frozen_reference_metrics
+                        .translational_v0
+                        .trajectory_shape_mean_error_m
+                ));
+            }
+            if metrics.trajectory_energy_mean_relative_error
+                >= internal_case
+                    .frozen_reference_metrics
+                    .translational_v0
+                    .trajectory_energy_mean_relative_error
+            {
+                gate_reasons.push(format!(
+                    "trajectory_energy_mean_relative_error {:.6} is not better than translational_v0 {:.6}",
+                    metrics.trajectory_energy_mean_relative_error,
+                    internal_case
+                        .frozen_reference_metrics
+                        .translational_v0
+                        .trajectory_energy_mean_relative_error
+                ));
+            }
+        }
+        let degradation_factor = 1.0
+            + internal_case
+                .frozen_gates
+                .rebound_jump_timing_max_degradation_fraction_vs_better_current_model;
+        let jump_limit = internal_case
+            .frozen_reference_metrics
+            .translational_v0
+            .trajectory_jump_height_envelope_error_m
+            .min(
+                internal_case
+                    .frozen_reference_metrics
+                    .sphere_rotational_v1
+                    .trajectory_jump_height_envelope_error_m,
+            )
+            * degradation_factor;
+        if metrics.trajectory_jump_height_envelope_error_m > jump_limit {
+            gate_reasons.push(format!(
+                "trajectory_jump_height_envelope_error_m {:.6} exceeds frozen 10% degradation limit {:.6}",
+                metrics.trajectory_jump_height_envelope_error_m, jump_limit
+            ));
+        }
+        let timing_limit = internal_case
+            .frozen_reference_metrics
+            .translational_v0
+            .impact_timing_mean_error_s
+            .min(
+                internal_case
+                    .frozen_reference_metrics
+                    .sphere_rotational_v1
+                    .impact_timing_mean_error_s,
+            )
+            * degradation_factor;
+        if metrics.impact_timing_mean_error_s > timing_limit {
+            gate_reasons.push(format!(
+                "impact_timing_mean_error_s {:.6} exceeds frozen 10% degradation limit {:.6}",
+                metrics.impact_timing_mean_error_s, timing_limit
+            ));
+        }
+        let rebound_limit = internal_case
+            .frozen_reference_metrics
+            .translational_v0
+            .rebound_velocity_mean_error_mps
+            .min(
+                internal_case
+                    .frozen_reference_metrics
+                    .sphere_rotational_v1
+                    .rebound_velocity_mean_error_mps,
+            )
+            * degradation_factor;
+        if metrics.rebound_velocity_mean_error_mps > rebound_limit {
+            gate_reasons.push(format!(
+                "rebound_velocity_mean_error_mps {:.6} exceeds frozen 10% degradation limit {:.6}",
+                metrics.rebound_velocity_mean_error_mps, rebound_limit
+            ));
+        }
+        if max_positive_contact_energy_delta_j
+            > internal_case
+                .frozen_gates
+                .contact_energy_creation_tolerance_j
+        {
+            gate_reasons.push(format!(
+                "positive contact energy creation {:.6e} exceeds tolerance {:.6e}",
+                max_positive_contact_energy_delta_j,
+                internal_case
+                    .frozen_gates
+                    .contact_energy_creation_tolerance_j
+            ));
+        }
+        if impact_timing_errors.len() != observed_contacts.len() {
+            gate_reasons.push(format!(
+                "compared {} of {} observed contact proxies",
+                impact_timing_errors.len(),
+                observed_contacts.len()
+            ));
+        }
+        if internal_case.shape_source.trajectory_to_shape_mapping == "unresolved_proxy_only" {
+            gate_reasons.push(
+                "trajectory-to-EOTA shape mapping remains unresolved, so this is proxy-only evidence"
+                    .to_string(),
+            );
+        }
+        let gate_status = if gate_reasons.is_empty() {
+            "passed"
+        } else if internal_case.shape_source.trajectory_to_shape_mapping == "unresolved_proxy_only"
+        {
+            "failed_uncertain"
+        } else {
+            "failed"
+        };
+
+        InternalChantSuraModelSelectionReport {
+            metrics,
+            reference: internal_case.frozen_reference_metrics,
+            gate_status,
+            gate_reasons,
+            observed_trajectory_count: observed_by_trajectory.len(),
+            observed_contact_event_count: observed_contacts.len(),
+            contact_event_compared_count: impact_timing_errors.len(),
+            diagnostic_row_count: rows.len(),
+            impulsive_row_count: rows.iter().filter(|row| row.impulse_applied).count(),
+            non_impulsive_penetrating_row_count: rows
+                .iter()
+                .filter(|row| {
+                    row.shape_contact_regime_label
+                        == ShapeContactV0RuntimeRegimeLabelV1::NonImpulsivePenetrating
+                })
+                .count(),
+            max_positive_contact_energy_delta_j,
+            shape_metadata_sha256,
+            diagnostic_sidecar_sha256: sidecar.json_lines_sha256.unwrap(),
+            diagnostic_sidecar_row_count: sidecar.row_count,
+            shape_assignment_limitation:
+                "EOTA221 aspect ratio is derived from checked-in rock_shapes.csv, scaled to W200 mass with the existing 2670 kg/m3 density assumption; trajectory-to-EOTA mapping is unresolved."
+                    .to_string(),
+        }
     }
 
     fn shape_contact_v0_internal_integrator_smoke_fixture() -> Vec<ShapeContactV0RuntimeSmokeResult>
@@ -3833,6 +4580,121 @@ mod tests {
         assert!(sidecar
             .no_public_output_warning
             .contains("not public validation or benchmark output"));
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_chant_sura_case_is_explicit_and_not_public_discovered() {
+        let case = load_internal_shape_contact_v0_chant_sura_model_selection_case();
+        let path = std::path::Path::new(INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_MODEL_SELECTION_PATH);
+
+        assert!(path.exists());
+        assert_eq!(
+            path.parent().unwrap(),
+            std::path::Path::new("validation/internal")
+        );
+        assert_eq!(
+            case.schema_version,
+            "internal_shape_contact_v0_chant_sura_model_selection_v1"
+        );
+        assert_eq!(case.case_id, INTERNAL_SHAPE_CONTACT_V0_CHANT_SURA_CASE_ID);
+        assert!(case.internal_only);
+        assert_eq!(
+            case.source_validation_case,
+            std::path::Path::new("validation/cases/chant_sura_contact.yaml")
+        );
+        assert!(!std::path::Path::new(
+            "validation/cases/shape_contact_v0_chant_sura_model_selection.yaml"
+        )
+        .exists());
+    }
+
+    #[test]
+    fn shape_contact_v0_internal_chant_sura_model_selection_reports_frozen_gate_result() {
+        let report = evaluate_internal_chant_sura_model_selection();
+
+        assert_eq!(report.observed_trajectory_count, 3);
+        assert_eq!(report.observed_contact_event_count, 2);
+        assert!(report.contact_event_compared_count <= report.observed_contact_event_count);
+        assert!(report.diagnostic_row_count > 0);
+        assert_eq!(
+            report.diagnostic_row_count,
+            report.diagnostic_sidecar_row_count
+        );
+        assert!(report.impulsive_row_count > 0);
+        assert!(report.non_impulsive_penetrating_row_count > 0);
+        assert_eq!(report.shape_metadata_sha256.len(), 64);
+        assert_eq!(report.diagnostic_sidecar_sha256.len(), 64);
+        assert!(
+            report.max_positive_contact_energy_delta_j <= 1.0e-7,
+            "shape_contact_v0 Chant Sura internal run created positive contact energy: {}",
+            report.max_positive_contact_energy_delta_j
+        );
+        assert_eq!(report.gate_status, "failed_uncertain");
+        assert!(
+            !report.gate_reasons.is_empty(),
+            "internal model-selection run should record its failed/uncertain gate reasons"
+        );
+        assert!(report
+            .shape_assignment_limitation
+            .contains("trajectory-to-EOTA mapping is unresolved"));
+        assert!(report.metrics.trajectory_shape_mean_error_m.is_finite());
+        assert!(report
+            .metrics
+            .trajectory_energy_mean_relative_error
+            .is_finite());
+        assert!(report
+            .metrics
+            .trajectory_jump_height_envelope_error_m
+            .is_finite());
+        assert!(report.metrics.impact_timing_mean_error_s.is_finite());
+        assert!(report.metrics.rebound_velocity_mean_error_mps.is_finite());
+        assert_close(
+            report.metrics.trajectory_shape_mean_error_m,
+            0.019653661746782895,
+            1.0e-12,
+        );
+        assert_close(
+            report.metrics.trajectory_energy_mean_relative_error,
+            0.033822753951129936,
+            1.0e-12,
+        );
+        assert_close(
+            report.metrics.trajectory_jump_height_envelope_error_m,
+            0.001283088857690018,
+            1.0e-12,
+        );
+        assert_close(
+            report.metrics.impact_timing_mean_error_s,
+            0.14250000000000002,
+            1.0e-12,
+        );
+        assert_close(
+            report.metrics.rebound_velocity_mean_error_mps,
+            7.187643744814485,
+            1.0e-12,
+        );
+        assert!(
+            report.metrics.trajectory_shape_mean_error_m
+                < report
+                    .reference
+                    .translational_v0
+                    .trajectory_shape_mean_error_m
+        );
+        assert!(
+            report.metrics.trajectory_energy_mean_relative_error
+                < report
+                    .reference
+                    .translational_v0
+                    .trajectory_energy_mean_relative_error
+        );
+        assert!(report
+            .gate_reasons
+            .iter()
+            .any(|reason| reason.contains("rebound_velocity_mean_error_mps")));
+        assert!(report
+            .gate_reasons
+            .iter()
+            .any(|reason| reason.contains("trajectory-to-EOTA shape mapping remains unresolved")));
     }
 
     #[test]

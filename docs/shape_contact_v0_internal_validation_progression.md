@@ -36,7 +36,17 @@ A clean internal smoke result is permission only to review the next boundary. It
 does not by itself justify public validation, benchmark execution, or continued
 shape-contact development.
 
-The next allowed step after a clean review is one controlled internal Chant Sura
-model-selection run for `shape_contact_v0`, outside `validate --all`, compared
-only against frozen trajectory/contact gates and without tuning. Tschamut and
-Mel de la Niva remain diagnostic non-regression smoke evidence only.
+## Chant Sura Model-Selection Result
+
+A first controlled internal Chant Sura model-selection run is recorded in
+`docs/shape_contact_v0_chant_sura_internal_model_selection.md`. It remains
+outside `validate --all` and uses only the RF16W200r1 model-selection fixture.
+
+The run executed without positive contact-energy creation and produced complete
+diagnostic rows/manifests, but the frozen result is `failed_uncertain` because
+rebound-velocity error worsened beyond the 10% gate and the repository still
+lacks an auditable trajectory-to-EOTA shape mapping. Held-out Chant Sura should
+not be run until that failure is reviewed.
+
+Tschamut and Mel de la Niva remain diagnostic non-regression smoke evidence
+only.
