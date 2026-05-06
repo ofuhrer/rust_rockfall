@@ -46,6 +46,7 @@ Core documents:
 - `hazard_accumulation_architecture_decision.md`: benchmark-backed decision record for the next hazard-accumulation scalability step before adding more output formats.
 - `hazard_throughput_bottleneck_report.md`: first measured use of hazard input-throughput counters, identifying auto-grid bounds discovery and trajectory accumulation as the next optimization targets.
 - `ramms_gap_analysis.md`: public-evidence comparison between the local open simulator and publicly documented RAMMS::ROCKFALL capabilities, with scientific, GIS, validation, and engineering gap priorities.
+- `post_ramms_gap_next_work_packages.md`: staged no-tuning roadmap translating the RAMMS gap analysis into grouped public Tschamut validation, shape-contact design, conditional model/calibration work, and GIS export follow-up packages.
 - `probabilistic_trajectory_metadata_design.md`: design and current implementation status for carrying per-trajectory release, block, scenario, and sampling-weight metadata into opt-in weighted hazard maps and future columnar outputs.
 - `probabilistic_hazard_framework_priorities.md`: prioritized roadmap for moving from unweighted diagnostic hazard layers toward explicit probabilistic hazard-map semantics.
 - `probabilistic_scenario_model_design.md`: scenario-level semantics for conditional source-zone hazard maps, source-frequency placeholders, block scenarios, probability modes, and normalization conventions.
