@@ -6,7 +6,7 @@ use rust_rockfall::{
     manifest::RunManifest,
     shape::{
         box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2,
-        sphere_principal_moments_kg_m2, BlockShapeMetadata,
+        sphere_principal_moments_kg_m2, BlockShapeMetadata, BlockShapeType,
     },
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::ContactState,
@@ -169,6 +169,72 @@ mass_properties:
     .unwrap();
     assert!(invalid_inertia.validate().is_err());
 }
+
+#[test]
+fn tschamut_public_shape_sidecars_validate_against_block_metadata() {
+    let cases = [
+        (
+            "data/processed/tschamut2014/shape_metadata/block_1_st_leonard.yaml",
+            "tschamut2014_block_1_st_leonard",
+            69.0,
+            0.176667,
+            [0.37, 0.32, 0.37],
+        ),
+        (
+            "data/processed/tschamut2014/shape_metadata/block_2_most_heavy.yaml",
+            "tschamut2014_block_2_most_heavy",
+            79.0,
+            0.198333,
+            [0.5, 0.3, 0.39],
+        ),
+        (
+            "data/processed/tschamut2014/shape_metadata/block_4_plate.yaml",
+            "tschamut2014_block_4_plate",
+            40.0,
+            0.16,
+            [0.46, 0.3, 0.2],
+        ),
+    ];
+
+    for (path, shape_id, mass_kg, radius_m, lengths_m) in cases {
+        let metadata = BlockShapeMetadata::from_yaml_file(path).unwrap();
+        assert_eq!(metadata.shape_id, shape_id);
+        assert_eq!(metadata.shape_type, BlockShapeType::PrincipalDimensions);
+        assert_eq!(
+            metadata.shape_class.as_deref(),
+            Some("principal_dimensions_from_overview")
+        );
+        assert_abs_diff_eq!(metadata.mass_properties.mass_kg, mass_kg, epsilon = 1.0e-12);
+        assert_abs_diff_eq!(
+            metadata.dimensions_m.equivalent_radius_m.unwrap(),
+            radius_m,
+            epsilon = 1.0e-12
+        );
+        assert_eq!(
+            metadata.orientation.initial_quaternion_wxyz,
+            [1.0, 0.0, 0.0, 0.0]
+        );
+        let principal_lengths_m = metadata.dimensions_m.principal_lengths_m.unwrap();
+        for (actual, expected) in principal_lengths_m.iter().zip(lengths_m) {
+            assert_abs_diff_eq!(*actual, expected, epsilon = 1.0e-12);
+        }
+        let moments = metadata.computed_principal_moments_kg_m2().unwrap();
+        let expected_moments = box_principal_moments_kg_m2(mass_kg, lengths_m);
+        for (actual, expected) in moments.iter().zip(expected_moments) {
+            assert_abs_diff_eq!(*actual, expected, epsilon = 1.0e-12);
+            assert!(*actual > 0.0);
+        }
+        metadata
+            .validate_against_block(&SphereBlock { radius_m, mass_kg })
+            .unwrap();
+        assert!(metadata
+            .provenance
+            .notes
+            .iter()
+            .any(|note| note.contains("passive")));
+    }
+}
+
 use std::{
     fs,
     path::PathBuf,

@@ -1,0 +1,23 @@
+schema_version: shape_metadata_v1
+shape_id: tschamut2014_block_2_most_heavy
+shape_type: principal_dimensions
+shape_class: principal_dimensions_from_overview
+dimensions_m:
+  equivalent_radius_m: 0.198333
+  principal_lengths_m: [0.5, 0.3, 0.39]
+mass_properties:
+  mass_kg: 79.0
+  mass_property_model: box_principal_dimensions
+orientation:
+  representation: quaternion_wxyz
+  initialization_mode: identity
+  initial_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
+provenance:
+  source_dataset: EnviDat tschamut2014
+  source_record_id: "OverviewAllTests block 2, Most heavy"
+  source_url_or_doi: https://doi.org/10.16904/envidat.34
+  license: ODbL/DbCL
+  notes:
+    - "Derived from public Tschamut 2014 OverviewAllTests block metadata."
+    - "Principal lengths are measured overview dimensions, not fitted contact geometry."
+    - "Shape metadata is passive; active contact and dynamics remain spherical."

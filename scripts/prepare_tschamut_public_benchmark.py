@@ -80,6 +80,18 @@ def main() -> int:
         "--run-ids",
         help="comma-separated trajectory IDs to include instead of the first --run-limit processed rows",
     )
+    parser.add_argument(
+        "--block-id",
+        help="select the first --run-limit public LPS runs for one Tschamut block ID",
+    )
+    parser.add_argument(
+        "--block-shape-metadata",
+        type=Path,
+        help=(
+            "optional passive shape_metadata_v1 sidecar; accepted only when all selected runs "
+            "share one block ID"
+        ),
+    )
     parser.add_argument("--ensemble-size", type=int, default=6)
     parser.add_argument("--seed", type=int, default=34014)
     parser.add_argument("--padding-m", type=float, default=250.0)
@@ -114,9 +126,11 @@ def main() -> int:
         deposition_rows_all,
         args.run_limit,
         args.run_ids,
+        args.block_id,
     )
     if not release_rows or not deposition_rows:
         raise SystemExit("processed Tschamut release/deposition rows are missing")
+    shape_metadata_path = resolve_shape_metadata_path(args.block_shape_metadata, release_rows)
 
     transform = derive_lps_to_lv95_transform(scan_zip, args.transform_method)
     transformed_releases = transform_release_rows(release_rows, transform)
@@ -168,6 +182,7 @@ def main() -> int:
         args.seed,
         args.ensemble_size,
         transformed_releases[0],
+        shape_metadata_path,
     )
     rotational = build_case(
         "rotational",
@@ -180,6 +195,7 @@ def main() -> int:
         args.seed,
         args.ensemble_size,
         transformed_releases[0],
+        shape_metadata_path,
     )
     write_yaml(case_dir / "tschamut_public_benchmark_baseline.yaml", baseline)
     write_yaml(case_dir / "tschamut_public_benchmark_rotational.yaml", rotational)
@@ -190,6 +206,10 @@ def main() -> int:
         "run_limit": args.run_limit,
         "selection": selection,
         "selected_run_summary": summarize_selected_runs(release_rows),
+        "selected_block_id": single_selected_block_id(release_rows),
+        "block_shape_metadata": (
+            str(shape_metadata_path.relative_to(ROOT)) if shape_metadata_path is not None else None
+        ),
         "case_files": [
             str((case_dir / "tschamut_public_benchmark_baseline.yaml").relative_to(ROOT)),
             str((case_dir / "tschamut_public_benchmark_rotational.yaml").relative_to(ROOT)),
@@ -715,9 +735,10 @@ def build_case(
     seed: int,
     ensemble_size: int,
     first_release: dict[str, str],
+    shape_metadata_path: Path | None,
 ) -> dict[str, Any]:
     case_id = f"validation_tschamut_public_benchmark_{suffix}"
-    return {
+    case = {
         "case_id": case_id,
         "title": f"Tschamut public benchmark reproduction ({suffix})",
         "level": 5,
@@ -730,7 +751,10 @@ def build_case(
             "path": str(dem_path.relative_to(ROOT)),
             "metadata_path": str(terrain_metadata_path.relative_to(ROOT)),
         },
-        "block": {"mass": 69.0, "radius": 0.176667},
+        "block": {
+            "mass": float(first_release["mass_kg"]),
+            "radius": float(first_release["radius_m"]),
+        },
         "release": {
             "position": [
                 float(first_release["x_m"]),
@@ -806,6 +830,9 @@ def build_case(
             ],
         },
     }
+    if shape_metadata_path is not None:
+        case["block_shape"] = {"metadata_path": str(shape_metadata_path.relative_to(ROOT))}
+    return case
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -818,10 +845,16 @@ def select_observation_rows(
     deposition_rows: list[dict[str, str]],
     run_limit: int,
     run_ids_arg: str | None,
+    block_id: str | None,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, Any]]:
     releases_by_id = {row["trajectory_id"]: row for row in release_rows}
     depositions_by_id = {row["trajectory_id"]: row for row in deposition_rows}
-    shared_ids = [row["trajectory_id"] for row in release_rows if row["trajectory_id"] in depositions_by_id]
+    shared_rows = [row for row in release_rows if row["trajectory_id"] in depositions_by_id]
+    if block_id:
+        shared_rows = [row for row in shared_rows if row.get("block_id") == block_id]
+        if not shared_rows:
+            raise SystemExit(f"--block-id {block_id} selected no complete public LPS runs")
+    shared_ids = [row["trajectory_id"] for row in shared_rows]
     if run_ids_arg:
         selected_ids = [item.strip() for item in run_ids_arg.split(",") if item.strip()]
         if not selected_ids:
@@ -829,12 +862,18 @@ def select_observation_rows(
         missing = [run_id for run_id in selected_ids if run_id not in releases_by_id or run_id not in depositions_by_id]
         if missing:
             raise SystemExit(f"--run-ids contains unknown or incomplete trajectory IDs: {', '.join(missing)}")
+        if block_id:
+            mismatched = [run_id for run_id in selected_ids if releases_by_id[run_id].get("block_id") != block_id]
+            if mismatched:
+                raise SystemExit(
+                    f"--run-ids contains IDs outside --block-id {block_id}: {', '.join(mismatched)}"
+                )
         mode = "explicit_run_ids"
     else:
         if run_limit <= 0:
             raise SystemExit("--run-limit must be positive")
         selected_ids = shared_ids[:run_limit]
-        mode = "first_n_processed_runs"
+        mode = "first_n_processed_runs_for_block" if block_id else "first_n_processed_runs"
     return (
         [releases_by_id[run_id] for run_id in selected_ids],
         [depositions_by_id[run_id] for run_id in selected_ids],
@@ -843,8 +882,30 @@ def select_observation_rows(
             "available_shared_run_count": len(shared_ids),
             "selected_run_count": len(selected_ids),
             "selected_trajectory_ids": selected_ids,
+            "selected_block_id": block_id,
         },
     )
+
+
+def single_selected_block_id(rows: list[dict[str, str]]) -> str | None:
+    block_ids = {row.get("block_id") for row in rows if row.get("block_id")}
+    if len(block_ids) == 1:
+        return next(iter(block_ids))
+    return None
+
+
+def resolve_shape_metadata_path(path: Path | None, release_rows: list[dict[str, str]]) -> Path | None:
+    if path is None:
+        return None
+    if single_selected_block_id(release_rows) is None:
+        raise SystemExit(
+            "--block-shape-metadata requires all selected runs to share one block_id; "
+            "use --block-id or explicit single-block --run-ids"
+        )
+    resolved = path if path.is_absolute() else ROOT / path
+    if not resolved.exists():
+        raise SystemExit(f"--block-shape-metadata does not exist: {resolved}")
+    return resolved
 
 
 def summarize_selected_runs(rows: list[dict[str, str]]) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 # Shape Metadata Application Plan
 
-Status: planning only. This plan uses the passive `shape_metadata_v1` scaffold for provenance, grouping, and diagnostics. It does not introduce shape-dependent contact, tune parameters, change defaults, or alter validation semantics.
+Status: implemented for public Tschamut per-block passive sidecars; planning for Chant Sura attachment. This plan uses the passive `shape_metadata_v1` scaffold for provenance, grouping, and diagnostics. It does not introduce shape-dependent contact, tune parameters, change defaults, or alter validation semantics.
 
 ## Purpose
 
@@ -102,3 +102,13 @@ Any mismatch between a sidecar and the active case-level `block.mass` or `block.
 ## Next Decision
 
 Implementation should happen in a small follow-up as metadata plumbing and validation only. The first implementation target should be Tschamut per-block sidecars plus single-block generated case support or documented run filters. Chant Sura EOTA attachment should wait for better shape-to-trajectory records.
+
+## Implementation Note
+
+The public Tschamut sidecars listed above are now committed under `data/processed/tschamut2014/shape_metadata/` and validated by Rust tests. `scripts/prepare_tschamut_public_benchmark.py` supports `--block-id` and `--block-shape-metadata` for single-block benchmark packages; the script rejects passive shape attachment when selected runs contain mixed block IDs. Existing mixed-block public benchmark defaults remain unchanged.
+
+A local block-1 inertness check generated matched 3-run public Tschamut packages
+with and without `block_1_st_leonard.yaml` and ran the baseline validation case.
+All reported runout/deposition metrics were bitwise identical in the two
+metrics JSON files; the only intended differences were additive manifest and
+trajectory-metadata shape fields plus the passive-contact warning.

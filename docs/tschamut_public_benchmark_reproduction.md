@@ -67,6 +67,23 @@ example `--run-ids v004,v005,v006`. The preparation manifest records the
 selection mode, selected trajectory IDs, available shared run count, block-ID
 counts, and mass/radius summary.
 
+For passive block-shape provenance checks, generate a single-block package and
+attach the matching public `shape_metadata_v1` sidecar:
+
+```bash
+python3 scripts/prepare_tschamut_public_benchmark.py \
+  --output-root validation/results/tschamut_public_block1_shape \
+  --block-id 1 \
+  --run-limit 3 \
+  --block-shape-metadata data/processed/tschamut2014/shape_metadata/block_1_st_leonard.yaml \
+  --force
+```
+
+The sidecar is passive. It records Tschamut block mass/dimension provenance in
+manifests and trajectory metadata, but it does not change contact physics,
+parameters, or validation semantics. Mixed-block benchmark packages should not
+receive a single block-shape sidecar.
+
 The preparation script uses `numpy`, `Pillow`, `pyproj`, `PyYAML`, and
 `scipy.spatial.cKDTree` for GeoTIFF cropping, LV03-to-LV95 projection, YAML
 metadata, and registration QA.
