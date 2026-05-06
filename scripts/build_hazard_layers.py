@@ -161,6 +161,41 @@ class HazardProbabilityState:
 
 
 @dataclass(frozen=True)
+class ScenarioMetadataRow:
+    scenario_id: str
+    source_zone_id: str
+    sampling_weight: float
+    release_probability: float | None
+    scenario_probability: float | None
+    annual_frequency_per_year: float | None
+    time_horizon_years: float | None
+
+
+@dataclass(frozen=True)
+class HazardMapPackageConfig:
+    map_product_id: str
+    probability_mode: str
+    normalization_scope: str
+    source_zone_metadata_path: Path
+    scenario_table_path: Path | None = None
+    map_package_manifest_json: Path | None = None
+    validation_context: tuple[str, ...] = ()
+    limitations: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class HazardMapPackageState:
+    config: HazardMapPackageConfig
+    source_zone_id: str
+    scenario_rows: tuple[ScenarioMetadataRow, ...]
+    annual_frequency_fields_present: bool = False
+
+    @property
+    def scenario_ids(self) -> list[str]:
+        return [row.scenario_id for row in self.scenario_rows]
+
+
+@dataclass(frozen=True)
 class InputStats:
     trajectory_count: int = 0
     trajectory_sample_count: int = 0
@@ -697,6 +732,42 @@ def main_with_args(argv: list[str] | None = None) -> int:
         default=[],
         help="add trajectory-level velocity exceedance probability layer for this threshold in m/s; may be repeated",
     )
+    parser.add_argument("--map-product-id", help="optional Phase 1 map product id for hazard-map package metadata")
+    parser.add_argument(
+        "--probability-mode",
+        choices=[
+            "unweighted_diagnostic",
+            "sampling_weighted_conditional",
+            "physical_probability",
+            "annual_frequency",
+        ],
+        help="optional external probability-mode label for map-package metadata",
+    )
+    parser.add_argument(
+        "--normalization-scope",
+        choices=[
+            "conditioned_on_filter",
+            "conditioned_on_scenario",
+            "absolute_probability_mass",
+            "annual_frequency_sum",
+        ],
+        help="optional denominator convention for map-package metadata",
+    )
+    parser.add_argument(
+        "--source-zone-metadata-path",
+        type=Path,
+        help="source_zone_metadata_v1 YAML sidecar for Phase 1 map-package validation",
+    )
+    parser.add_argument(
+        "--scenario-table-path",
+        type=Path,
+        help="scenario_table_v1 CSV sidecar for Phase 1 map-package validation",
+    )
+    parser.add_argument(
+        "--map-package-manifest-json",
+        type=Path,
+        help="optional output path for map_package_manifest_v1; defaults next to the hazard manifest",
+    )
     parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
@@ -731,6 +802,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     if diagnostics_path:
         diagnostics["_path"] = str(diagnostics_path)
     probability_config = parse_hazard_probability(case)
+    map_package_config = parse_hazard_map_package(case, args)
 
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
@@ -759,6 +831,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         impact_event_paths,
         impact_event_parquet_paths,
     )
+    map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
 
     accumulation_started = time.perf_counter()
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config, probability_state)
@@ -798,6 +871,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         stats,
         statistic_config,
         probability_state,
+        map_package_state,
     )
     write_core_hazard_outputs(output_dir, prefix, grid, layers, accumulator.deposition_points, metadata)
     manifest_metadata = dict(metadata)
@@ -827,6 +901,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         warnings,
         statistic_config,
         probability_state,
+        map_package_state,
         total_wall_seconds=time.perf_counter() - total_started,
         accumulation_seconds=accumulation_seconds,
         core_output_write_seconds=core_output_write_seconds,
@@ -847,7 +922,22 @@ def main_with_args(argv: list[str] | None = None) -> int:
             normalization_seconds=normalization_seconds,
         ),
     )
-    write_text(output_dir / f"{prefix}_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
+    write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    if map_package_state is not None:
+        package_path = map_package_output_path(map_package_state, output_dir, prefix)
+        write_map_package_manifest(
+            package_path,
+            map_package_state,
+            hazard_manifest_path,
+            manifest["layer_semantics"],
+        )
+        manifest["outputs"].append(output_manifest_entry(package_path, "map_package_manifest", "json"))
+        manifest["performance"]["output_file_count"] = sum(
+            int(output["file_count"]) for output in manifest["outputs"]
+        )
+        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+        write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     print(f"wrote hazard layers to {output_dir}")
     return 0
@@ -1034,6 +1124,185 @@ def parse_hazard_probability(case: dict[str, Any]) -> HazardProbabilityConfig | 
             block_mass_kg_max=block_mass_max,
         ),
     )
+
+
+def parse_hazard_map_package(case: dict[str, Any], args: argparse.Namespace) -> HazardMapPackageConfig | None:
+    raw = case.get("hazard_map_package") or case.get("map_package") or {}
+    if raw and not isinstance(raw, dict):
+        raise SystemExit("hazard_map_package must be a mapping")
+    values = {
+        "map_product_id": args.map_product_id or raw.get("map_product_id"),
+        "probability_mode": args.probability_mode or raw.get("probability_mode"),
+        "normalization_scope": args.normalization_scope or raw.get("normalization_scope"),
+        "source_zone_metadata_path": args.source_zone_metadata_path or raw.get("source_zone_metadata_path"),
+        "scenario_table_path": args.scenario_table_path or raw.get("scenario_table_path"),
+        "map_package_manifest_json": args.map_package_manifest_json or raw.get("map_package_manifest_json"),
+    }
+    if not raw and not any(value is not None for value in values.values()):
+        return None
+    missing = [
+        field
+        for field in (
+            "map_product_id",
+            "probability_mode",
+            "normalization_scope",
+            "source_zone_metadata_path",
+        )
+        if not values[field]
+    ]
+    if missing:
+        raise SystemExit(f"hazard_map_package missing required fields: {', '.join(missing)}")
+    probability_mode = str(values["probability_mode"])
+    if probability_mode not in {
+        "unweighted_diagnostic",
+        "sampling_weighted_conditional",
+        "physical_probability",
+        "annual_frequency",
+    }:
+        raise SystemExit("hazard_map_package.probability_mode is not a supported Phase 1 label")
+    normalization_scope = str(values["normalization_scope"])
+    if normalization_scope not in {
+        "conditioned_on_filter",
+        "conditioned_on_scenario",
+        "absolute_probability_mass",
+        "annual_frequency_sum",
+    }:
+        raise SystemExit("hazard_map_package.normalization_scope is not a supported Phase 1 label")
+    return HazardMapPackageConfig(
+        map_product_id=stable_required_id(str(values["map_product_id"]), "hazard_map_package.map_product_id"),
+        probability_mode=probability_mode,
+        normalization_scope=normalization_scope,
+        source_zone_metadata_path=ROOT / str(values["source_zone_metadata_path"]),
+        scenario_table_path=ROOT / str(values["scenario_table_path"]) if values["scenario_table_path"] else None,
+        map_package_manifest_json=ROOT / str(values["map_package_manifest_json"])
+        if values["map_package_manifest_json"]
+        else None,
+        validation_context=tuple(str(value) for value in list_from_any(raw.get("validation_context"))),
+        limitations=tuple(str(value) for value in list_from_any(raw.get("limitations"))),
+    )
+
+
+def load_hazard_map_package_state(
+    config: HazardMapPackageConfig | None,
+    probability: HazardProbabilityState | None,
+) -> HazardMapPackageState | None:
+    if config is None:
+        return None
+    if not config.source_zone_metadata_path.exists():
+        raise SystemExit(f"source_zone_metadata_v1 file does not exist: {config.source_zone_metadata_path}")
+    source_zone = load_yaml(config.source_zone_metadata_path)
+    if source_zone.get("schema_version") != "source_zone_metadata_v1":
+        raise SystemExit("source_zone_metadata_path must point to source_zone_metadata_v1")
+    source_zone_id = stable_required_id(str(source_zone.get("source_zone_id") or ""), "source_zone_id")
+    annual_frequency_fields_present = source_zone.get("annual_release_frequency_per_year") not in (None, "")
+    if config.probability_mode == "annual_frequency":
+        raise SystemExit(
+            "annual_frequency is schema-visible but unsupported in Phase 1; Level 3 temporal/source-frequency semantics are required"
+        )
+    if config.probability_mode == "physical_probability":
+        raise SystemExit("physical_probability map products are schema-visible but not generated by the Phase 1 hazard builder")
+    if config.probability_mode == "unweighted_diagnostic":
+        if config.normalization_scope in {"absolute_probability_mass", "annual_frequency_sum"}:
+            raise SystemExit("unweighted_diagnostic map packages cannot use physical or annual normalization scopes")
+        if probability is not None:
+            raise SystemExit(
+                "hazard_probability is configured; use probability_mode sampling_weighted_conditional for weighted outputs"
+            )
+    if config.probability_mode == "sampling_weighted_conditional":
+        if config.normalization_scope not in {"conditioned_on_filter", "conditioned_on_scenario"}:
+            raise SystemExit(
+                "sampling_weighted_conditional requires conditioned_on_filter or conditioned_on_scenario"
+            )
+        if probability is None:
+            raise SystemExit(
+                "sampling_weighted_conditional map packages require hazard_probability sampling_weighted metadata"
+            )
+        if config.scenario_table_path is None:
+            raise SystemExit("sampling_weighted_conditional map packages require scenario_table_path")
+    scenario_rows = load_scenario_table(config.scenario_table_path) if config.scenario_table_path else ()
+    if config.probability_mode == "sampling_weighted_conditional" and not scenario_rows:
+        raise SystemExit("sampling_weighted_conditional map packages require scenario_table_v1 rows")
+    for row in scenario_rows:
+        if row.source_zone_id != source_zone_id:
+            raise SystemExit(
+                f"scenario_table source_zone_id {row.source_zone_id!r} does not match source metadata {source_zone_id!r}"
+            )
+        annual_frequency_fields_present = annual_frequency_fields_present or row.annual_frequency_per_year is not None or row.time_horizon_years is not None
+        if row.release_probability is not None or row.scenario_probability is not None:
+            raise SystemExit("physical probability columns are not active in Phase 1 hazard map-package writing")
+    if annual_frequency_fields_present:
+        raise SystemExit(
+            "annual-frequency fields are present but unsupported in Phase 1; Level 3 temporal/source-frequency semantics are required"
+        )
+    if probability is not None:
+        scenario_ids = {row.scenario_id for row in scenario_rows}
+        for record in probability.weights.values():
+            if record.source_zone_id != source_zone_id:
+                raise SystemExit(
+                    f"trajectory metadata source_zone_id {record.source_zone_id!r} does not match source metadata {source_zone_id!r}"
+                )
+            if scenario_ids and record.scenario_id not in scenario_ids:
+                raise SystemExit(
+                    f"trajectory metadata scenario_id {record.scenario_id!r} is not present in scenario_table_v1"
+                )
+    return HazardMapPackageState(
+        config=config,
+        source_zone_id=source_zone_id,
+        scenario_rows=scenario_rows,
+        annual_frequency_fields_present=False,
+    )
+
+
+def load_scenario_table(path: Path | None) -> tuple[ScenarioMetadataRow, ...]:
+    if path is None:
+        return ()
+    if not path.exists():
+        raise SystemExit(f"scenario_table_v1 file does not exist: {path}")
+    rows: list[ScenarioMetadataRow] = []
+    with path.open(newline="") as file:
+        reader = csv.DictReader(file)
+        required = {
+            "scenario_id",
+            "source_zone_id",
+            "release_sampling_policy",
+            "model_configuration_id",
+            "terrain_material_assumption_id",
+            "sampling_weight",
+        }
+        missing = sorted(required.difference(reader.fieldnames or ()))
+        if missing:
+            raise SystemExit(f"scenario_table_v1 is missing required columns: {', '.join(missing)}")
+        for index, row in enumerate(reader):
+            weight = parse_required_float(row.get("sampling_weight"), "sampling_weight")
+            if weight < 0.0:
+                raise SystemExit(f"scenario_table_v1 row {index} has negative sampling_weight")
+            rows.append(
+                ScenarioMetadataRow(
+                    scenario_id=stable_required_id(str(row.get("scenario_id") or ""), "scenario_id"),
+                    source_zone_id=stable_required_id(str(row.get("source_zone_id") or ""), "source_zone_id"),
+                    sampling_weight=weight,
+                    release_probability=parse_optional_float_text(row.get("release_probability"), "release_probability"),
+                    scenario_probability=parse_optional_float_text(row.get("scenario_probability"), "scenario_probability"),
+                    annual_frequency_per_year=parse_optional_float_text(
+                        row.get("annual_frequency_per_year"),
+                        "annual_frequency_per_year",
+                    ),
+                    time_horizon_years=parse_optional_float_text(row.get("time_horizon_years"), "time_horizon_years"),
+                )
+            )
+    if not rows:
+        raise SystemExit("scenario_table_v1 must not be empty")
+    return tuple(rows)
+
+
+def stable_required_id(value: str, field: str) -> str:
+    value = value.strip()
+    if not value:
+        raise SystemExit(f"{field} must be set")
+    allowed = set("_-.:/")
+    if not all(ch.isascii() and (ch.isalnum() or ch in allowed) for ch in value):
+        raise SystemExit(f"{field} must be a stable ASCII id")
+    return value
 
 
 def load_hazard_probability_state(
@@ -1730,10 +1999,12 @@ def build_metadata(
     stats: InputStats,
     statistic_config: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    map_package: HazardMapPackageState | None,
 ) -> dict[str, Any]:
     weighted_layer_names = [
         layer.key for layer in layers if layer.key.startswith("weighted_")
     ]
+    layer_semantics = build_layer_semantics(layers, probability, map_package)
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "case_id": case.get("case_id"),
@@ -1758,6 +2029,8 @@ def build_metadata(
         },
         "hazard_statistics": statistic_config.as_dict(),
         "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
+        "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "layer_semantics": layer_semantics,
         "layers": [
             {
                 "key": layer.key,
@@ -1779,6 +2052,99 @@ def build_metadata(
     }
 
 
+def hazard_map_package_manifest_section(
+    map_package: HazardMapPackageState | None,
+    probability: HazardProbabilityState | None,
+) -> dict[str, Any] | None:
+    if map_package is None:
+        return None
+    scenario_weights = [row.sampling_weight for row in map_package.scenario_rows]
+    return {
+        "schema_version": "map_package_manifest_v1",
+        "map_product_id": map_package.config.map_product_id,
+        "probability_mode": map_package.config.probability_mode,
+        "normalization_scope": map_package.config.normalization_scope,
+        "source_zone_id": map_package.source_zone_id,
+        "source_zone_metadata_path": str(map_package.config.source_zone_metadata_path),
+        "scenario_table_path": str(map_package.config.scenario_table_path)
+        if map_package.config.scenario_table_path
+        else None,
+        "scenario_ids": map_package.scenario_ids,
+        "total_sampling_weight": math.fsum(scenario_weights) if scenario_weights else None,
+        "total_filtered_weight": probability.total_filtered_weight if probability else None,
+        "annual_frequency_fields_present": False,
+        "operational_status": "research_diagnostic",
+    }
+
+
+def build_layer_semantics(
+    layers: list[RasterLayer],
+    probability: HazardProbabilityState | None,
+    map_package: HazardMapPackageState | None,
+) -> list[dict[str, Any]]:
+    conditioning = []
+    if map_package is not None:
+        conditioning.append(f"source_zone_id={map_package.source_zone_id}")
+        conditioning.extend(f"scenario_id={scenario_id}" for scenario_id in map_package.scenario_ids)
+    semantics = []
+    for layer in layers:
+        weighted = layer.key.startswith("weighted_")
+        semantics.append(
+            {
+                "layer_name": layer.key,
+                "units": layer_semantic_units(layer, map_package),
+                "numerator": layer_semantic_numerator(layer.key, weighted),
+                "denominator": layer_semantic_denominator(layer.key, weighted, probability, map_package),
+                "conditioned_on": conditioning,
+                "weighted": weighted,
+                "is_annualized": False,
+                "annualized": False,
+            }
+        )
+    return semantics
+
+
+def layer_semantic_units(layer: RasterLayer, map_package: HazardMapPackageState | None) -> str:
+    if map_package is not None and (
+        "probability" in layer.key or "exceedance" in layer.key or layer.key.endswith("_density")
+    ):
+        return "dimensionless"
+    return layer.units
+
+
+def layer_semantic_numerator(layer_key: str, weighted: bool) -> str:
+    if layer_key == "reach_probability" or layer_key == "weighted_reach_probability":
+        return "trajectories reaching cell"
+    if "exceedance" in layer_key:
+        return "trajectories exceeding threshold in cell"
+    if layer_key == "deposition_density":
+        return "deposition points in cell"
+    if layer_key == "significant_impact_density":
+        return "significant impact events in cell"
+    if layer_key.startswith("max_"):
+        return "maximum sampled value in cell"
+    return "cell value"
+
+
+def layer_semantic_denominator(
+    layer_key: str,
+    weighted: bool,
+    probability: HazardProbabilityState | None,
+    map_package: HazardMapPackageState | None,
+) -> str | None:
+    if weighted and probability is not None:
+        return f"filtered sampling_weight sum ({probability.total_filtered_weight:g})"
+    if layer_key == "reach_probability" or "exceedance" in layer_key:
+        if map_package is not None:
+            return "trajectory count conditioned on source/scenario metadata"
+        return "supplied trajectory count"
+    if layer_key == "deposition_density":
+        return "deposition point count"
+    if layer_key == "significant_impact_density":
+        return "significant impact event count"
+    return None
+
+
 def write_core_hazard_outputs(
     output_dir: Path,
     prefix: str,
@@ -1790,6 +2156,56 @@ def write_core_hazard_outputs(
     write_layers(output_dir, prefix, grid, layers)
     write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", deposition_points)
     write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+
+
+def map_package_output_path(
+    map_package: HazardMapPackageState,
+    output_dir: Path,
+    prefix: str,
+) -> Path:
+    return map_package.config.map_package_manifest_json or output_dir / f"{prefix}_map_package_manifest.json"
+
+
+def write_map_package_manifest(
+    path: Path,
+    map_package: HazardMapPackageState,
+    hazard_manifest_path: Path,
+    layer_semantics: list[dict[str, Any]],
+) -> None:
+    limitations = list(map_package.config.limitations) or [
+        "Research diagnostic; not operational hazard validation.",
+        "No annual frequency model is implemented in Phase 1.",
+        "Physical occurrence probabilities, exposure, vulnerability, and risk are out of scope.",
+    ]
+    manifest = {
+        "schema_version": "map_package_manifest_v1",
+        "map_product_id": map_package.config.map_product_id,
+        "map_product_version": "map_package_v1",
+        "probability_mode": map_package.config.probability_mode,
+        "normalization_scope": map_package.config.normalization_scope,
+        "source_zone_id": map_package.source_zone_id,
+        "source_zone_metadata_path": str(map_package.config.source_zone_metadata_path),
+        "scenario_table_path": str(map_package.config.scenario_table_path)
+        if map_package.config.scenario_table_path
+        else None,
+        "hazard_manifest_paths": [str(hazard_manifest_path)],
+        "layer_semantics": [
+            {
+                "layer_name": semantic["layer_name"],
+                "units": semantic["units"],
+                "conditioned_on": semantic["conditioned_on"],
+                "is_annualized": False,
+                "numerator": semantic["numerator"],
+                "denominator": semantic["denominator"],
+                "weighted": semantic["weighted"],
+            }
+            for semantic in layer_semantics
+        ],
+        "validation_context": list(map_package.config.validation_context),
+        "limitations": limitations,
+        "operational_status": "research_diagnostic",
+    }
+    write_text(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
 
 def build_hazard_manifest(
@@ -1804,6 +2220,7 @@ def build_hazard_manifest(
     warnings: list[str],
     statistic_config: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    map_package: HazardMapPackageState | None,
     *,
     total_wall_seconds: float,
     accumulation_seconds: float,
@@ -1838,6 +2255,7 @@ def build_hazard_manifest(
     deposition_rows = int(inputs.get("deposition_point_count", 0) or 0)
     impact_rows = int(inputs.get("impact_event_count", 0) or 0)
     total_hazard_input_rows = trajectory_sample_rows + deposition_rows + impact_rows
+    layer_semantics = metadata.get("layer_semantics", [])
     return {
         "schema_version": "run_manifest_v1",
         "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
@@ -1922,6 +2340,8 @@ def build_hazard_manifest(
             if probability
             else None
         ),
+        "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "layer_semantics": layer_semantics,
         "layers": [
             {
                 "key": layer.key,

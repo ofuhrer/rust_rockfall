@@ -3,10 +3,11 @@
 Status: implementation plan for Level 1-2 hazard-map semantics and scenario
 modelling. Slice B is implemented as metadata parsers and validators in
 `src/probabilistic.rs`; Slice C is implemented as opt-in validation-case
-propagation into `trajectory_metadata_table_v1` and run manifests. Later slices
-remain planned. This document does not tune parameters, change defaults, add
-physics, add active shape-contact, add regional tiling, or claim
-annualized/operational hazard validity.
+propagation into `trajectory_metadata_table_v1` and run manifests. Slice D is
+implemented as opt-in hazard-manifest labelling and `map_package_manifest_v1`
+writing. Later slices remain planned. This document does not tune parameters,
+change defaults, add physics, add active shape-contact, add regional tiling, or
+claim annualized/operational hazard validity.
 
 ## Objective
 
@@ -42,7 +43,6 @@ Already implemented:
 
 Still missing:
 
-- map-package manifest writing from hazard workflows;
 - source/release/scenario id propagation into all relevant map products;
 - generated examples that distinguish diagnostic, conditional, weighted,
   physical, and annual layers.
@@ -67,6 +67,23 @@ Implemented in Slice C:
   sampling-weight, probability-mode, and normalization-scope fields in
   `trajectory_metadata_table_v1` and its run-manifest summary;
 - annual-frequency propagation remains null/empty in Phase 1.
+
+Implemented in Slice D:
+
+- optional hazard-builder `hazard_map_package` case block and matching CLI
+  flags for `map_product_id`, `probability_mode`, `normalization_scope`,
+  `source_zone_metadata_path`, `scenario_table_path`, and package-manifest
+  output path;
+- pre-output validation of source-zone/scenario joins for labelled hazard-map
+  packages;
+- additive `hazard_map_package` and `layer_semantics` sections in hazard
+  metadata and `run_manifest_v1`;
+- `map_package_manifest_v1` JSON writer for hazard outputs;
+- existing internal `hazard_probability.probability_model: sampling_weighted`
+  remains the numerical weighted-layer switch, while labelled map packages use
+  the external `sampling_weighted_conditional` probability-mode label;
+- `annual_frequency` and `physical_probability` remain rejected by the hazard
+  builder in Phase 1.
 
 ## Phase 1 Schema Additions
 
@@ -441,6 +458,14 @@ Deliverables:
   external `sampling_weighted_conditional` map label.
 
 Existing unweighted layers remain unchanged.
+
+Implementation status: complete. Hazard runs can opt in through
+`hazard_map_package` in the case YAML or through CLI flags. When map-package
+metadata is absent, default unweighted diagnostic hazard outputs and manifests
+remain backward-compatible and are not relabelled probabilistic. When present,
+the builder validates the source-zone sidecar, scenario table, scenario/source
+joins, and Phase 1 probability labels before writing hazard products. Only
+manifest/package metadata changes; raster values are unchanged.
 
 ### Slice E: Tests And Smoke Example
 

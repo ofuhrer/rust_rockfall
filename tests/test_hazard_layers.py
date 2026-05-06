@@ -479,6 +479,158 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("weighted_reach_probability", probability["generated_weighted_layer_names"])
             self.assertEqual(metadata["hazard_probability"], probability)
 
+    def test_map_package_metadata_labels_weighted_outputs_without_changing_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "phase1_metadata.csv"
+            rows = fixture_weight_rows()
+            rows[0]["source_zone_id"] = "zone_a"
+            rows[0]["scenario_id"] = "scenario_a"
+            rows[1]["source_zone_id"] = "zone_a"
+            rows[1]["scenario_id"] = "scenario_b"
+            write_metadata_csv(metadata_path, rows)
+            case_path = write_weighted_case(work / "weighted_case.yaml", metadata_path)
+            baseline_dir = work / "baseline"
+            labelled_dir = work / "labelled"
+            package_path = work / "phase1_map_package.json"
+
+            base_args = [
+                "--case",
+                str(case_path),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+            ]
+            self.assertEqual(hazard.main_with_args([*base_args, "--output-dir", str(baseline_dir)]), 0)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        *base_args,
+                        "--output-dir",
+                        str(labelled_dir),
+                        "--map-product-id",
+                        "phase1_zone_a_weighted",
+                        "--probability-mode",
+                        "sampling_weighted_conditional",
+                        "--normalization-scope",
+                        "conditioned_on_filter",
+                        "--source-zone-metadata-path",
+                        str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "source_zone_valid.yaml"),
+                        "--scenario-table-path",
+                        str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "scenario_level2_weighted.csv"),
+                        "--map-package-manifest-json",
+                        str(package_path),
+                    ]
+                ),
+                0,
+            )
+
+            for layer in (
+                "weighted_reach_probability",
+                "weighted_kinetic_energy_exceedance_10j",
+                "weighted_jump_height_exceedance_0p4m",
+                "weighted_velocity_exceedance_1p5mps",
+            ):
+                self.assertEqual(
+                    read_layer(baseline_dir / f"hazard_fixture_weighted_{layer}.csv", layer),
+                    read_layer(labelled_dir / f"hazard_fixture_weighted_{layer}.csv", layer),
+                )
+
+            manifest = json.loads((labelled_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            package = json.loads(package_path.read_text())
+            self.assertEqual(manifest["hazard_map_package"]["map_product_id"], "phase1_zone_a_weighted")
+            self.assertEqual(manifest["hazard_map_package"]["probability_mode"], "sampling_weighted_conditional")
+            self.assertEqual(manifest["hazard_map_package"]["normalization_scope"], "conditioned_on_filter")
+            self.assertEqual(manifest["hazard_map_package"]["source_zone_id"], "zone_a")
+            self.assertEqual(manifest["hazard_map_package"]["scenario_ids"], ["scenario_a", "scenario_b"])
+            self.assertFalse(manifest["hazard_map_package"]["annual_frequency_fields_present"])
+            self.assertAlmostEqual(manifest["hazard_map_package"]["total_filtered_weight"], 4.0)
+            weighted_semantics = [
+                layer for layer in manifest["layer_semantics"] if layer["layer_name"] == "weighted_reach_probability"
+            ][0]
+            self.assertTrue(weighted_semantics["weighted"])
+            self.assertFalse(weighted_semantics["is_annualized"])
+            self.assertEqual(weighted_semantics["units"], "dimensionless")
+            self.assertIn("source_zone_id=zone_a", weighted_semantics["conditioned_on"])
+            self.assertEqual(package["schema_version"], "map_package_manifest_v1")
+            self.assertEqual(package["probability_mode"], "sampling_weighted_conditional")
+            self.assertEqual(package["operational_status"], "research_diagnostic")
+            self.assertEqual(package["hazard_manifest_paths"], [str(labelled_dir / "hazard_fixture_weighted_manifest.json")])
+            self.assertTrue(package["layer_semantics"])
+            self.assertTrue(all(not layer["is_annualized"] for layer in package["layer_semantics"]))
+            self.assertTrue(any(output["kind"] == "map_package_manifest" for output in manifest["outputs"]))
+
+    def test_map_package_metadata_rejects_annual_frequency_and_source_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            metadata_path = work / "phase1_metadata.csv"
+            rows = fixture_weight_rows()
+            for index, row in enumerate(rows):
+                row["source_zone_id"] = "zone_a"
+                row["scenario_id"] = f"scenario_{'a' if index == 0 else 'b'}"
+            write_metadata_csv(metadata_path, rows)
+            case_path = write_weighted_case(work / "weighted_case.yaml", metadata_path)
+            common = [
+                "--case",
+                str(case_path),
+                "--output-dir",
+                str(work / "hazard"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--map-product-id",
+                "phase1_zone_a_weighted",
+                "--source-zone-metadata-path",
+                str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "source_zone_valid.yaml"),
+            ]
+
+            with self.assertRaisesRegex(SystemExit, "Level 3"):
+                hazard.main_with_args(
+                    [
+                        *common,
+                        "--probability-mode",
+                        "annual_frequency",
+                        "--normalization-scope",
+                        "annual_frequency_sum",
+                        "--scenario-table-path",
+                        str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "scenario_level2_weighted.csv"),
+                    ]
+                )
+
+            with self.assertRaisesRegex(SystemExit, "source_zone_id"):
+                hazard.main_with_args(
+                    [
+                        *common,
+                        "--probability-mode",
+                        "sampling_weighted_conditional",
+                        "--normalization-scope",
+                        "conditioned_on_filter",
+                        "--scenario-table-path",
+                        str(
+                            ROOT
+                            / "tests"
+                            / "fixtures"
+                            / "probabilistic_phase1"
+                            / "scenario_source_zone_mismatch_invalid.csv"
+                        ),
+                    ]
+                )
+
+            rows[1]["source_zone_id"] = "zone_b"
+            write_metadata_csv(metadata_path, rows)
+            with self.assertRaisesRegex(SystemExit, "trajectory metadata source_zone_id"):
+                hazard.main_with_args(
+                    [
+                        *common,
+                        "--probability-mode",
+                        "sampling_weighted_conditional",
+                        "--normalization-scope",
+                        "conditioned_on_filter",
+                        "--scenario-table-path",
+                        str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "scenario_level2_weighted.csv"),
+                    ]
+                )
+
     def test_sampling_weighted_layers_reject_negative_weights(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -585,6 +737,8 @@ class HazardLayerTests(unittest.TestCase):
             manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertIsNone(metadata["hazard_probability"])
             self.assertIsNone(manifest["hazard_probability"])
+            self.assertIsNone(metadata["hazard_map_package"])
+            self.assertIsNone(manifest["hazard_map_package"])
             self.assertFalse(list(output_dir.glob("*weighted*.csv")))
 
     def test_explicit_grid_mode_records_reference_grid_in_manifest(self) -> None:

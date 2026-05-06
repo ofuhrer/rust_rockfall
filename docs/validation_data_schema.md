@@ -357,6 +357,15 @@ parsers only when `probabilistic_metadata` is configured. The validator accepts
 present, and rejects `annual_frequency` in Phase 1 with a Level 3 error. Tiny
 schema fixtures live under `tests/fixtures/probabilistic_phase1/`.
 
+Hazard-layer builds can opt in to map-package labelling with a
+`hazard_map_package` block or equivalent CLI flags. This adds
+`hazard_map_package` and `layer_semantics` sections to the hazard
+`run_manifest_v1` and writes a `map_package_manifest_v1` JSON sidecar. The
+builder validates source-zone/scenario joins before writing labelled products,
+keeps `annual_frequency_fields_present: false` in Phase 1, and rejects
+`physical_probability` or `annual_frequency` package generation. Unlabelled
+hazard builds remain diagnostic and backward-compatible.
+
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total
