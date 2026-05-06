@@ -76,6 +76,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--run-limit", type=int, default=10, help="number of public LPS runs to include")
+    parser.add_argument(
+        "--run-ids",
+        help="comma-separated trajectory IDs to include instead of the first --run-limit processed rows",
+    )
     parser.add_argument("--ensemble-size", type=int, default=6)
     parser.add_argument("--seed", type=int, default=34014)
     parser.add_argument("--padding-m", type=float, default=250.0)
@@ -88,7 +92,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
-    output_root = args.output_root
+    output_root = args.output_root if args.output_root.is_absolute() else ROOT / args.output_root
     input_dir = output_root / "input"
     case_dir = output_root / "cases"
     results_dir = output_root / "validation"
@@ -103,10 +107,14 @@ def main() -> int:
     ensure_download(lps_zip, TSCHAMUT_LPS_URL, TSCHAMUT_LPS_SHA256)
     ensure_download(swissalti_tif, SWISSALTI_TILE_URL, SWISSALTI_TILE_SHA256)
 
-    release_rows = read_csv(ROOT / "data" / "processed" / "tschamut2014" / "release_points.csv")[: args.run_limit]
-    deposition_rows = read_csv(ROOT / "data" / "processed" / "tschamut2014" / "observed_deposition.csv")[
-        : args.run_limit
-    ]
+    release_rows_all = read_csv(ROOT / "data" / "processed" / "tschamut2014" / "release_points.csv")
+    deposition_rows_all = read_csv(ROOT / "data" / "processed" / "tschamut2014" / "observed_deposition.csv")
+    release_rows, deposition_rows, selection = select_observation_rows(
+        release_rows_all,
+        deposition_rows_all,
+        args.run_limit,
+        args.run_ids,
+    )
     if not release_rows or not deposition_rows:
         raise SystemExit("processed Tschamut release/deposition rows are missing")
 
@@ -141,7 +149,7 @@ def main() -> int:
     qa = registration_quality(scan_zip, transform)
     write_registration_qa(input_dir / "registration_qa.json", qa, transform)
     write_registration_overlay_svg(input_dir / "registration_lps_scan_overlay.svg", scan_zip, transform)
-    write_release_zone_metadata(release_zone_path, transformed_releases, crop, args.seed, args.run_limit)
+    write_release_zone_metadata(release_zone_path, transformed_releases, crop, args.seed, len(transformed_releases))
     write_release_deposition_overlay_svg(
         input_dir / "release_deposition_crop_overlay.svg",
         transformed_releases,
@@ -180,6 +188,8 @@ def main() -> int:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "output_root": str(output_root.relative_to(ROOT)),
         "run_limit": args.run_limit,
+        "selection": selection,
+        "selected_run_summary": summarize_selected_runs(release_rows),
         "case_files": [
             str((case_dir / "tschamut_public_benchmark_baseline.yaml").relative_to(ROOT)),
             str((case_dir / "tschamut_public_benchmark_rotational.yaml").relative_to(ROOT)),
@@ -801,6 +811,66 @@ def build_case(
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(newline="") as file:
         return [dict(row) for row in csv.DictReader(file)]
+
+
+def select_observation_rows(
+    release_rows: list[dict[str, str]],
+    deposition_rows: list[dict[str, str]],
+    run_limit: int,
+    run_ids_arg: str | None,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, Any]]:
+    releases_by_id = {row["trajectory_id"]: row for row in release_rows}
+    depositions_by_id = {row["trajectory_id"]: row for row in deposition_rows}
+    shared_ids = [row["trajectory_id"] for row in release_rows if row["trajectory_id"] in depositions_by_id]
+    if run_ids_arg:
+        selected_ids = [item.strip() for item in run_ids_arg.split(",") if item.strip()]
+        if not selected_ids:
+            raise SystemExit("--run-ids was provided but no trajectory IDs were parsed")
+        missing = [run_id for run_id in selected_ids if run_id not in releases_by_id or run_id not in depositions_by_id]
+        if missing:
+            raise SystemExit(f"--run-ids contains unknown or incomplete trajectory IDs: {', '.join(missing)}")
+        mode = "explicit_run_ids"
+    else:
+        if run_limit <= 0:
+            raise SystemExit("--run-limit must be positive")
+        selected_ids = shared_ids[:run_limit]
+        mode = "first_n_processed_runs"
+    return (
+        [releases_by_id[run_id] for run_id in selected_ids],
+        [depositions_by_id[run_id] for run_id in selected_ids],
+        {
+            "mode": mode,
+            "available_shared_run_count": len(shared_ids),
+            "selected_run_count": len(selected_ids),
+            "selected_trajectory_ids": selected_ids,
+        },
+    )
+
+
+def summarize_selected_runs(rows: list[dict[str, str]]) -> dict[str, Any]:
+    masses = [float(row["mass_kg"]) for row in rows if row.get("mass_kg")]
+    radii = [float(row["radius_m"]) for row in rows if row.get("radius_m")]
+    block_counts: dict[str, int] = {}
+    for row in rows:
+        block_id = row.get("block_id", "unknown")
+        block_counts[block_id] = block_counts.get(block_id, 0) + 1
+    summary: dict[str, Any] = {
+        "trajectory_count": len(rows),
+        "block_id_counts": dict(sorted(block_counts.items())),
+    }
+    if masses:
+        summary["mass_kg"] = {
+            "min": min(masses),
+            "max": max(masses),
+            "mean": sum(masses) / len(masses),
+        }
+    if radii:
+        summary["radius_m"] = {
+            "min": min(radii),
+            "max": max(radii),
+            "mean": sum(radii) / len(radii),
+        }
+    return summary
 
 
 def write_csv(path: Path, rows: list[dict[str, str]]) -> None:
