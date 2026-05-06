@@ -56,6 +56,6 @@ references:
 report:
   verifies:
     - "Runs the Tschamut validation workflow with the fitted-plane terrain baseline so terrain-model effects can be compared explicitly."
-    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.5.0 model with soil_interaction_model none."
+    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.6.0 model with soil_interaction_model none."
   does_not_verify:
     - "Individual Tschamut trajectories, operational hazard skill, calibrated terrain roughness, real field DEM behavior, block shape effects, vegetation, or fragmentation."

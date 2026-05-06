@@ -23,7 +23,7 @@ simulation: { dt: 0.02, t_max: 18.0, max_steps: 900, stop_velocity: 0.1 }
 random: { seed: 34014, ensemble_size: 6 }
 validation_scope:
   type: distribution-level
-  note: "The current v0.5.0 model is not calibrated for this dataset, runs this case with soil_interaction_model none, and is not expected to reproduce individual trajectories."
+  note: "The current v0.6.0 model is not calibrated for this dataset, runs this case with soil_interaction_model none, and is not expected to reproduce individual trajectories."
 observations:
   release_points_csv: validation/data/processed/tschamut/release_points.csv
   deposition_points_csv: validation/data/processed/tschamut/observed_deposition.csv
@@ -54,6 +54,6 @@ references:
 report:
   verifies:
     - "Loads public-derived Tschamut release and deposition points and runs deterministic seeded ensembles from them."
-    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.5.0 model using the IDW residual terrain proxy with soil_interaction_model none."
+    - "Reports distribution-level runout and deposition-cloud discrepancies for the current uncalibrated v0.6.0 model using the IDW residual terrain proxy with soil_interaction_model none."
   does_not_verify:
     - "Individual Tschamut trajectories, operational hazard skill, calibrated terrain roughness, block shape effects, vegetation, or fragmentation."

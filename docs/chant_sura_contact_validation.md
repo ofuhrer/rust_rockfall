@@ -1,6 +1,6 @@
 # Chant Sura DEM-Backed Contact Validation
 
-Status: active v0.5.0 validation experiment. This document describes a small DEM-backed trajectory/contact fixture and model-comparison cases. It does not change simulation physics and does not claim operational validity.
+Status: active v0.6.0 validation experiment. This document describes a small DEM-backed trajectory/contact fixture and model-comparison cases. It does not change simulation physics and does not claim operational validity.
 
 ## Purpose
 

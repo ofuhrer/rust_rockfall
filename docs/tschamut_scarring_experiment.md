@@ -74,7 +74,7 @@ Deposition metrics also worsen in this experiment. The overlap fraction drops fr
 
 ## Answer
 
-For the current v0.5.0 Tschamut setup:
+For the current v0.6.0 Tschamut setup:
 
 ```text
 No. scarring_contact_v1 does not improve trajectory-level realism.

@@ -165,7 +165,7 @@ datasets:
       - Extended checked-in contact subset uses five selected trajectories, 16 local-time-reset segments, and 11 segment-boundary contact/rebound proxies that remain inside the same RF16 DEM crop.
       - Held-out checked-in contact subset uses six disjoint trajectories, 15 segments, and 9 contact/rebound proxies; metadata_contact_split.json records the deterministic split.
       - The large Input.7z archive remains ignored raw data; only the tiny derived DEM crop is committed as a validation fixture.
-      - EOTA shape files are summarized as metadata for future non-spherical model development; v0.5.0 still uses equivalent spheres.
+      - EOTA shape files are summarized as metadata for future non-spherical model development; v0.6.0 still uses equivalent spheres.
     resources:
       - id: experimental_runs
         name: Experimental Runs Archive

@@ -334,6 +334,13 @@ manifests additionally split post-processing into `accumulation_seconds`,
 and optional plot/report rendering. These values are diagnostic metadata, not
 validation thresholds. Older manifests without this section remain valid.
 
+When `outputs.ensemble_trajectories_dir` or
+`outputs.ensemble_impact_events_dir` is set, validation treats the configured
+directory as run-exclusive for generated CSVs. Existing `*.csv` files in that
+directory are removed before the current run writes its ensemble files so later
+hazard-layer builds cannot accidentally consume stale trajectories or impact
+events from an earlier, larger run. Non-CSV files are left untouched.
+
 Impact-event CSV/JSON outputs are optional and additive. They preserve trajectory CSV compatibility while exposing one event per terrain impact. Each `ImpactEvent` contains:
 
 - impact identity and location: `impact_index`, `time_s`, `x_m`, `y_m`, `z_m`

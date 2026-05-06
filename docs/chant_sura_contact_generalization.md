@@ -1,6 +1,6 @@
 # Chant Sura Contact Generalization
 
-Status: active v0.5.0 held-out validation experiment. This document evaluates whether the `sphere_rotational_v1` improvement observed on the Chant Sura contact model-selection subset generalizes to independent Chant Sura trajectories. It does not change simulation physics, validation semantics, calibration, or model defaults.
+Status: active v0.6.0 held-out validation experiment. This document evaluates whether the `sphere_rotational_v1` improvement observed on the Chant Sura contact model-selection subset generalizes to independent Chant Sura trajectories. It does not change simulation physics, validation semantics, calibration, or model defaults.
 
 ## Purpose
 

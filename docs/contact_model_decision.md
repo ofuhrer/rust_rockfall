@@ -1,6 +1,6 @@
 # Contact Model Decision
 
-Status: decision record for `v0.5.0`. This document reviews the DEM-backed Chant Sura contact-validation results and decides whether `sphere_rotational_v1` should become the recommended or default contact model for trajectory experiments. No defaults are changed by this decision.
+Status: active decision record for `v0.6.0`. This document reviews the DEM-backed Chant Sura contact-validation results and decides whether `sphere_rotational_v1` should become the recommended or default contact model for trajectory experiments. No defaults are changed by this decision.
 
 ## Decision
 

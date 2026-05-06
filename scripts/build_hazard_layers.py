@@ -1537,16 +1537,23 @@ class TerrainSampler:
         if terrain_type == "paraboloid":
             return ParaboloidTerrain(
                 z0=float(parameters.get("z0_m", 0.0) or 0.0),
-                curvature_x=float(parameters.get("curvature_x", parameters.get("a", 0.0)) or 0.0),
-                curvature_y=float(parameters.get("curvature_y", parameters.get("b", 0.0)) or 0.0),
+                curvature_x=float(
+                    parameters.get("ax", parameters.get("curvature_x", parameters.get("a", 0.0))) or 0.0
+                ),
+                curvature_y=float(
+                    parameters.get("ay", parameters.get("curvature_y", parameters.get("b", 0.0))) or 0.0
+                ),
                 x0=float(parameters.get("x0_m", 0.0) or 0.0),
                 y0=float(parameters.get("y0_m", 0.0) or 0.0),
             )
         if terrain_type in {"step", "step_terrain"}:
             return StepTerrain(
-                z_low=float(parameters.get("z_low_m", 0.0) or 0.0),
-                z_high=float(parameters.get("z_high_m", parameters.get("height_m", 0.0)) or 0.0),
-                x_step=float(parameters.get("x_step_m", 0.0) or 0.0),
+                z_low=float(parameters.get("low_z_m", parameters.get("z_low_m", 0.0)) or 0.0),
+                z_high=float(
+                    parameters.get("high_z_m", parameters.get("z_high_m", parameters.get("height_m", 0.0)))
+                    or 0.0
+                ),
+                x_step=float(parameters.get("step_x_m", parameters.get("x_step_m", 0.0)) or 0.0),
             )
         if terrain_type in {"ascii_dem", "esri_ascii_grid", "ascii_dem_clamped", "esri_ascii_grid_clamped"}:
             path_text = terrain.get("path")
@@ -1587,7 +1594,7 @@ class StepTerrain(TerrainSampler):
 
     def height(self, x: float, y: float) -> float:
         _ = y
-        return self.z_low if x < self.x_step else self.z_high
+        return self.z_high if x < self.x_step else self.z_low
 
 
 class UnknownTerrain(TerrainSampler):

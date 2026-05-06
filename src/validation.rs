@@ -2698,6 +2698,7 @@ fn write_ensemble_trajectory_dir(
     runs: &[TrajectoryRun],
 ) -> Result<OutputManifest, ValidationError> {
     fs::create_dir_all(dir.as_ref())?;
+    remove_stale_csv_outputs(dir.as_ref())?;
     let mut total_bytes = 0_u64;
     let mut row_count = 0_usize;
     for run in runs {
@@ -2726,6 +2727,7 @@ fn write_ensemble_impact_events_dir(
     runs: &[TrajectoryRun],
 ) -> Result<OutputManifest, ValidationError> {
     fs::create_dir_all(dir.as_ref())?;
+    remove_stale_csv_outputs(dir.as_ref())?;
     let mut file_count = 0_usize;
     let mut total_bytes = 0_u64;
     let mut row_count = 0_usize;
@@ -2754,6 +2756,16 @@ fn write_ensemble_impact_events_dir(
         compression: None,
         row_group_count: None,
     })
+}
+
+fn remove_stale_csv_outputs(dir: &Path) -> Result<(), ValidationError> {
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.extension().and_then(|extension| extension.to_str()) == Some("csv") {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
 }
 
 fn write_ensemble_impact_events_parquet(

@@ -1265,6 +1265,8 @@ outputs:
     let first_file = ensemble_dir.join("trajectory_000000.csv");
     let second_file = ensemble_dir.join("trajectory_000001.csv");
     let third_file = ensemble_dir.join("trajectory_000002.csv");
+    let stale_trajectory = ensemble_dir.join("stale_trajectory.csv");
+    let stale_impact = ensemble_impacts_dir.join("stale_impact.csv");
     let first_impacts = ensemble_impacts_dir.join("trajectory_000000.csv");
     assert_eq!(first.status, CaseStatus::Passed);
     assert!(trajectory.exists());
@@ -1371,10 +1373,22 @@ outputs:
     assert!(metadata_contents.contains("unweighted"));
     assert_eq!(metadata_contents.lines().count(), 4);
 
+    fs::write(
+        &stale_trajectory,
+        "trajectory_id,time_s,x_m,y_m,z_m\nstale,0,0,0,0\n",
+    )
+    .unwrap();
+    fs::write(
+        &stale_impact,
+        "trajectory_id,impact_index,time_s,x_m,y_m,z_m\nstale,1,0,0,0,0\n",
+    )
+    .unwrap();
     let second = run_case_file(&case_path).unwrap();
     assert_eq!(first.metrics, second.metrics);
     assert_eq!(first_contents, fs::read_to_string(&first_file).unwrap());
     assert_eq!(metadata_contents, fs::read_to_string(&metadata).unwrap());
+    assert!(!stale_trajectory.exists());
+    assert!(!stale_impact.exists());
 
     fs::remove_file(case_path).unwrap();
     fs::remove_file(diagnostics).unwrap();

@@ -105,6 +105,28 @@ class HazardLayerTests(unittest.TestCase):
         )
         self.assertEqual(warnings, [])
 
+    def test_python_terrain_sampler_matches_rust_case_parameter_names(self) -> None:
+        paraboloid = hazard.TerrainSampler.from_case(
+            {
+                "terrain": {
+                    "type": "paraboloid",
+                    "parameters": {"z0_m": 2.0, "ax": 0.5, "ay": 0.25},
+                }
+            }
+        )
+        self.assertAlmostEqual(paraboloid.height(2.0, 4.0), 8.0)
+
+        step = hazard.TerrainSampler.from_case(
+            {
+                "terrain": {
+                    "type": "step",
+                    "parameters": {"step_x_m": 10.0, "high_z_m": 5.0, "low_z_m": 1.0},
+                }
+            }
+        )
+        self.assertAlmostEqual(step.height(9.0, 0.0), 5.0)
+        self.assertAlmostEqual(step.height(10.0, 0.0), 1.0)
+
     def test_fixture_layers_are_reproducible_and_interpretable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

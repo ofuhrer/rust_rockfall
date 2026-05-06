@@ -3,6 +3,7 @@ target/
 *.jsonl
 __pycache__/
 *.py[cod]
+review/
 
 # Raw public datasets can be large; keep downloads local unless a fixture is
 # intentionally added outside data/raw.
