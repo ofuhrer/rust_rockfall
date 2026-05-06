@@ -7,9 +7,13 @@ impact-event CSVs carry `trajectory_id`. The metadata sidecar includes
 unweighted probability semantics, `sampling_weight = 1.0`, and reserved null
 physical-probability fields. The hazard-layer builder now supports opt-in
 sampling-weighted conditional reach and exceedance maps using
-`hazard_probability.probability_model: sampling_weighted`. Physical probability
-models, annual frequencies, block-size sampling, Parquet/Arrow output, new
-physics, and validation semantic changes are not implemented.
+`hazard_probability.probability_model: sampling_weighted`. Phase 1 Slice C also
+supports opt-in `probabilistic_metadata` validation-case sidecars that propagate
+validated source-zone, scenario-table, map-product, probability-mode, and
+normalization metadata into the trajectory metadata sidecar. Physical
+probability models, annual frequencies, block-size sampling, trajectory
+Parquet/Arrow output, new physics, and validation semantic changes are not
+implemented.
 
 ## Purpose
 
@@ -50,6 +54,8 @@ Required identity fields:
 | `release_id` | string | Identifier for the sampled release point or release draw. |
 | `source_zone_id` | string | Identifier for the source area or release-zone polygon. |
 | `scenario_id` | string | Scenario or case identifier, for example a validation case or hazard-map scenario. |
+| `map_product_id` | string or null | Optional map-product identifier from validated Phase 1 metadata. |
+| `release_cell_id` | string or null | Deterministic sampled release-cell/release-point id when scenario metadata is attached. |
 
 Required release fields:
 
@@ -79,6 +85,9 @@ Probability and weighting fields:
 | `event_frequency_per_year` | float or null | Annualized event frequency contribution, if the scenario has a frequency model. |
 | `return_period_years` | float or null | Return period associated with the scenario, if applicable. |
 | `probability_model` | string | Semantics of probability fields, such as `unweighted`, `sampling_weighted`, `physical_probability`, or `annual_frequency`. |
+| `probability_mode` | string or null | Phase 1 map package label such as `sampling_weighted_conditional`; null for legacy diagnostic metadata. |
+| `normalization_scope` | string or null | Denominator convention, for example `conditioned_on_filter` or `conditioned_on_scenario`. |
+| `annual_frequency_per_year` | float or null | Reserved Level 3 field; remains null in Phase 1 propagation. |
 
 Block fields:
 
@@ -89,6 +98,11 @@ Block fields:
 | `block_mass_kg` | float or null | Block mass. |
 | `block_density_kgpm3` | float or null | Block density. |
 | `shape_class` | string | Placeholder for future shape categories. Use `sphere` for current spherical runs. |
+| `block_scenario_id` | string or null | Block scenario id from `scenario_table_v1`, if present. |
+| `block_size_class` | string or null | Block-size class from `scenario_table_v1`, if present. |
+| `block_shape_class` | string or null | Block-shape class from `scenario_table_v1`, if present. |
+| `terrain_material_assumption_id` | string or null | Terrain/material assumption id from `scenario_table_v1`. |
+| `model_configuration_id` | string or null | Model configuration id from `scenario_table_v1`. |
 
 Run provenance fields:
 

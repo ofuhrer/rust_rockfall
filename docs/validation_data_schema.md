@@ -277,6 +277,31 @@ principal moments, and initial quaternion components), `scenario_id`,
 can be used by opt-in sampling-weighted hazard-layer post-processing. It does
 not change default unweighted hazard or validation semantics.
 
+Validation cases may also opt in to Phase 1 probabilistic map metadata with a
+top-level `probabilistic_metadata` block:
+
+```yaml
+probabilistic_metadata:
+  source_zone_metadata_path: tests/fixtures/probabilistic_phase1/source_zone_valid.yaml
+  scenario_table_path: tests/fixtures/probabilistic_phase1/scenario_level1.csv
+  map_product_id: phase1_demo_map
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_scenario
+  scenario_id: scenario_a  # required when the scenario table has multiple rows
+```
+
+When this block is present, the runner validates the referenced
+`source_zone_metadata_v1` and `scenario_table_v1` sidecars before writing
+outputs. The selected scenario row is propagated additively into
+`trajectory_metadata_table_v1`: `map_product_id`, `scenario_id`,
+`source_zone_id`, deterministic `release_cell_id`, `block_scenario_id`,
+`block_size_class`, `block_shape_class`, `terrain_material_assumption_id`,
+`model_configuration_id`, `sampling_weight`, `probability_mode`, and
+`normalization_scope`. `annual_frequency_per_year` remains null/empty in Phase
+1. If multiple scenario rows are present, `scenario_id` is required; the runner
+does not infer a scenario. Existing cases without `probabilistic_metadata`
+remain diagnostic/unweighted and are not relabelled probabilistic.
+
 When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model
 version, git hash, config fingerprint, seed policy, terrain source, output file
@@ -316,8 +341,7 @@ reported_without_acceptance_thresholds`. Their legacy `status: passed` still
 means the workflow completed and reported metrics, not that scientific skill was
 accepted against thresholds.
 
-Phase 1 probabilistic hazard-map metadata is validated outside the validation
-case runner. The Rust library exposes parsers for:
+Phase 1 probabilistic hazard-map metadata is available through Rust parsers for:
 
 - `source_zone_metadata_v1` YAML source-zone sidecars;
 - `scenario_table_v1` CSV scenario tables;
@@ -326,7 +350,8 @@ case runner. The Rust library exposes parsers for:
 These contracts add Level 1-2 map semantics (`map_product_id`,
 `source_zone_id`, `source_zone_metadata_path`, scenario ids, block/scenario
 classes, `sampling_weight`, `probability_mode`, and `normalization_scope`)
-without changing existing validation cases. The validator accepts
+without changing existing validation cases. The validation runner uses these
+parsers only when `probabilistic_metadata` is configured. The validator accepts
 `unweighted_diagnostic` and `sampling_weighted_conditional` labels, recognizes
 `physical_probability` only when explicit physical probability columns are
 present, and rejects `annual_frequency` in Phase 1 with a Level 3 error. Tiny

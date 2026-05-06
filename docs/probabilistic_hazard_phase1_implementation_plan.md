@@ -2,9 +2,11 @@
 
 Status: implementation plan for Level 1-2 hazard-map semantics and scenario
 modelling. Slice B is implemented as metadata parsers and validators in
-`src/probabilistic.rs`; later slices remain planned. This document does not
-tune parameters, change defaults, add physics, add active shape-contact, add
-regional tiling, or claim annualized/operational hazard validity.
+`src/probabilistic.rs`; Slice C is implemented as opt-in validation-case
+propagation into `trajectory_metadata_table_v1` and run manifests. Later slices
+remain planned. This document does not tune parameters, change defaults, add
+physics, add active shape-contact, add regional tiling, or claim
+annualized/operational hazard validity.
 
 ## Objective
 
@@ -41,7 +43,6 @@ Already implemented:
 Still missing:
 
 - map-package manifest writing from hazard workflows;
-- scenario-table propagation into validation outputs;
 - source/release/scenario id propagation into all relevant map products;
 - generated examples that distinguish diagnostic, conditional, weighted,
   physical, and annual layers.
@@ -55,6 +56,17 @@ Implemented in Slice B:
   negative weights/probabilities, source-zone mismatches, and unsupported
   annual-frequency labels;
 - tiny parser/validator fixtures under `tests/fixtures/probabilistic_phase1/`.
+
+Implemented in Slice C:
+
+- optional validation-case `probabilistic_metadata` block;
+- pre-run validation of referenced source-zone and scenario sidecars;
+- deterministic scenario-row selection, requiring explicit `scenario_id` when
+  a scenario table has multiple rows;
+- additive source-zone, scenario, map-product, block-class, model-configuration,
+  sampling-weight, probability-mode, and normalization-scope fields in
+  `trajectory_metadata_table_v1` and its run-manifest summary;
+- annual-frequency propagation remains null/empty in Phase 1.
 
 ## Phase 1 Schema Additions
 
@@ -406,6 +418,17 @@ Deliverables:
 - manifest summaries of scenario ids and source-zone ids.
 
 Existing validation cases remain unchanged unless they opt in.
+
+Implementation status: complete. Validation cases can opt in with a
+`probabilistic_metadata` block that references `source_zone_metadata_v1`,
+`scenario_table_v1`, `map_product_id`, `probability_mode`,
+`normalization_scope`, and optionally `scenario_id`. The runner validates those
+sidecars through the Slice B parsers before simulation output is written. If the
+scenario table has multiple rows, `scenario_id` is required; no row is selected
+by guessing. The selected scenario row is propagated only into
+`trajectory_metadata_table_v1` and its run-manifest summary. Simulation physics,
+contact models, default behavior, and hazard-layer numerical outputs are
+unchanged.
 
 ### Slice D: Hazard Normalization And Manifest Labelling
 

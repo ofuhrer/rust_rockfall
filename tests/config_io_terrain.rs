@@ -236,8 +236,9 @@ fn tschamut_public_shape_sidecars_validate_against_block_metadata() {
 }
 
 use std::{
+    collections::BTreeMap,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -1804,6 +1805,274 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     }
 }
 
+#[test]
+fn probabilistic_scenario_metadata_propagates_to_trajectory_metadata() {
+    let case_path = temp_path("probabilistic_metadata_case.yaml");
+    let no_prob_case_path = temp_path("probabilistic_metadata_baseline_case.yaml");
+    let metadata = temp_path("probabilistic_trajectory_metadata.csv");
+    let diagnostics = temp_path("probabilistic_metadata_diagnostics.json");
+    let manifest = temp_path("probabilistic_metadata_manifest.json");
+    let baseline_diagnostics = temp_path("probabilistic_metadata_baseline.json");
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_case",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some("tests/fixtures/probabilistic_phase1/scenario_level1.csv"),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_scenario"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: Some(&manifest),
+        }),
+    )
+    .unwrap();
+    fs::write(
+        &no_prob_case_path,
+        format!(
+            r#"case_id: probabilistic_metadata_case
+terrain: {{ type: plane, parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }} }}
+block: {{ mass: 50.0, radius: 0.25 }}
+release: {{ position: [0.0, 0.0, 1.0], velocity: [1.0, 0.0, 0.0] }}
+simulation: {{ dt: 0.02, t_max: 0.1, max_steps: 5, stop_velocity: 0.1 }}
+outputs:
+  diagnostics_json: {}
+"#,
+            baseline_diagnostics.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+    let baseline = run_case_file(&no_prob_case_path).unwrap();
+    assert_eq!(report.metrics, baseline.metrics);
+    let row = read_first_csv_row(&metadata);
+    assert_eq!(row["trajectory_id"], "trajectory_000000");
+    assert_eq!(row["map_product_id"], "phase1_test_map");
+    assert_eq!(row["source_zone_id"], "zone_a");
+    assert_eq!(row["release_cell_id"], "trajectory_000000");
+    assert_eq!(row["scenario_id"], "scenario_a");
+    assert_eq!(row["block_scenario_id"], "block_a");
+    assert_eq!(row["block_size_class"], "equivalent_radius_small");
+    assert_eq!(row["block_shape_class"], "sphere");
+    assert_eq!(
+        row["terrain_material_assumption_id"],
+        "uniform_global_parameters"
+    );
+    assert_eq!(row["model_configuration_id"], "translational_v0");
+    assert_eq!(row["sampling_weight"], "1.0");
+    assert_eq!(row["probability_model"], "sampling_weighted");
+    assert_eq!(row["probability_mode"], "sampling_weighted_conditional");
+    assert_eq!(row["normalization_scope"], "conditioned_on_scenario");
+    assert_eq!(row["annual_frequency_per_year"], "");
+
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["map_product_id"],
+        "phase1_test_map"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["probability_mode"],
+        "sampling_weighted_conditional"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["normalization_scope"],
+        "conditioned_on_scenario"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["scenario_id"],
+        "scenario_a"
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["total_sampling_weight"],
+        1.0
+    );
+
+    for path in [
+        case_path,
+        no_prob_case_path,
+        metadata,
+        diagnostics,
+        manifest,
+        baseline_diagnostics,
+    ] {
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn probabilistic_metadata_requires_source_zone_sidecar() {
+    let case_path = temp_path("probabilistic_metadata_missing_source.yaml");
+    let metadata = temp_path("probabilistic_metadata_missing_source.csv");
+    let diagnostics = temp_path("probabilistic_metadata_missing_source.json");
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_missing_source",
+            source_zone_metadata_path: None,
+            scenario_table_path: Some("tests/fixtures/probabilistic_phase1/scenario_level1.csv"),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_scenario"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let error = run_case_file(&case_path).unwrap_err().to_string();
+    assert!(error.contains("source_zone_metadata_path"));
+    fs::remove_file(case_path).unwrap();
+}
+
+#[test]
+fn probabilistic_metadata_rejects_invalid_scenario_tables() {
+    let case_path = temp_path("probabilistic_metadata_invalid.yaml");
+    let metadata = temp_path("probabilistic_metadata_invalid.csv");
+    let diagnostics = temp_path("probabilistic_metadata_invalid.json");
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_invalid",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some(
+                "tests/fixtures/probabilistic_phase1/scenario_negative_weight_invalid.csv",
+            ),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_scenario"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let error = run_case_file(&case_path).unwrap_err().to_string();
+    assert!(error.contains("sampling_weight"));
+
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_mismatch",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some(
+                "tests/fixtures/probabilistic_phase1/scenario_source_zone_mismatch_invalid.csv",
+            ),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_scenario"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let error = run_case_file(&case_path).unwrap_err().to_string();
+    assert!(error.contains("source_zone_id"));
+
+    fs::remove_file(case_path).unwrap();
+}
+
+#[test]
+fn probabilistic_metadata_requires_explicit_mapping_for_multiple_scenarios() {
+    let case_path = temp_path("probabilistic_metadata_multiscenario.yaml");
+    let metadata = temp_path("probabilistic_metadata_multiscenario.csv");
+    let diagnostics = temp_path("probabilistic_metadata_multiscenario.json");
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_multiscenario",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some(
+                "tests/fixtures/probabilistic_phase1/scenario_level2_weighted.csv",
+            ),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_filter"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let error = run_case_file(&case_path).unwrap_err().to_string();
+    assert!(error.contains("scenario_id is required"));
+
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_multiscenario",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some(
+                "tests/fixtures/probabilistic_phase1/scenario_level2_weighted.csv",
+            ),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("sampling_weighted_conditional"),
+            normalization_scope: Some("conditioned_on_filter"),
+            scenario_id: Some("scenario_b"),
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let report = run_case_file(&case_path).unwrap();
+    assert_eq!(report.status, CaseStatus::Passed);
+    let row = read_first_csv_row(&metadata);
+    assert_eq!(row["scenario_id"], "scenario_b");
+    assert_eq!(row["sampling_weight"], "0.75");
+    assert_eq!(row["model_configuration_id"], "sphere_rotational_v1");
+
+    for path in [case_path, metadata, diagnostics] {
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn probabilistic_metadata_keeps_annual_frequency_unsupported_in_phase1() {
+    let case_path = temp_path("probabilistic_metadata_annual.yaml");
+    let metadata = temp_path("probabilistic_metadata_annual.csv");
+    let diagnostics = temp_path("probabilistic_metadata_annual.json");
+    fs::write(
+        &case_path,
+        probabilistic_metadata_case_yaml(ProbabilisticMetadataCaseYamlInput {
+            case_id: "probabilistic_metadata_annual",
+            source_zone_metadata_path: Some(
+                "tests/fixtures/probabilistic_phase1/source_zone_valid.yaml",
+            ),
+            scenario_table_path: Some("tests/fixtures/probabilistic_phase1/scenario_level1.csv"),
+            map_product_id: Some("phase1_test_map"),
+            probability_mode: Some("annual_frequency"),
+            normalization_scope: Some("annual_frequency_sum"),
+            scenario_id: None,
+            metadata: &metadata,
+            diagnostics: &diagnostics,
+            manifest: None,
+        }),
+    )
+    .unwrap();
+    let error = run_case_file(&case_path).unwrap_err().to_string();
+    assert!(error.contains("Level 3"));
+    fs::remove_file(case_path).unwrap();
+}
+
 fn minimal_config() -> SimulationConfig {
     SimulationConfig {
         block: SphereBlock::new(0.5, 10.0),
@@ -1844,4 +2113,79 @@ fn temp_path(name: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     std::env::temp_dir().join(format!("rust_rockfall_{nonce}_{name}"))
+}
+
+struct ProbabilisticMetadataCaseYamlInput<'a> {
+    case_id: &'a str,
+    source_zone_metadata_path: Option<&'a str>,
+    scenario_table_path: Option<&'a str>,
+    map_product_id: Option<&'a str>,
+    probability_mode: Option<&'a str>,
+    normalization_scope: Option<&'a str>,
+    scenario_id: Option<&'a str>,
+    metadata: &'a Path,
+    diagnostics: &'a Path,
+    manifest: Option<&'a Path>,
+}
+
+fn probabilistic_metadata_case_yaml(input: ProbabilisticMetadataCaseYamlInput<'_>) -> String {
+    let ProbabilisticMetadataCaseYamlInput {
+        case_id,
+        source_zone_metadata_path,
+        scenario_table_path,
+        map_product_id,
+        probability_mode,
+        normalization_scope,
+        scenario_id,
+        metadata,
+        diagnostics,
+        manifest,
+    } = input;
+    let mut probabilistic = String::from("probabilistic_metadata:\n");
+    if let Some(path) = source_zone_metadata_path {
+        probabilistic.push_str(&format!("  source_zone_metadata_path: {path}\n"));
+    }
+    if let Some(path) = scenario_table_path {
+        probabilistic.push_str(&format!("  scenario_table_path: {path}\n"));
+    }
+    if let Some(map_product_id) = map_product_id {
+        probabilistic.push_str(&format!("  map_product_id: {map_product_id}\n"));
+    }
+    if let Some(probability_mode) = probability_mode {
+        probabilistic.push_str(&format!("  probability_mode: {probability_mode}\n"));
+    }
+    if let Some(normalization_scope) = normalization_scope {
+        probabilistic.push_str(&format!("  normalization_scope: {normalization_scope}\n"));
+    }
+    if let Some(scenario_id) = scenario_id {
+        probabilistic.push_str(&format!("  scenario_id: {scenario_id}\n"));
+    }
+    let manifest_line = manifest
+        .map(|path| format!("  manifest_json: {}\n", path.display()))
+        .unwrap_or_default();
+    format!(
+        r#"case_id: {case_id}
+terrain: {{ type: plane, parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }} }}
+block: {{ mass: 50.0, radius: 0.25 }}
+release: {{ position: [0.0, 0.0, 1.0], velocity: [1.0, 0.0, 0.0] }}
+simulation: {{ dt: 0.02, t_max: 0.1, max_steps: 5, stop_velocity: 0.1 }}
+{probabilistic}outputs:
+  trajectory_metadata_csv: {}
+  diagnostics_json: {}
+{}"#,
+        metadata.display(),
+        diagnostics.display(),
+        manifest_line
+    )
+}
+
+fn read_first_csv_row(path: &Path) -> BTreeMap<String, String> {
+    let mut reader = csv::Reader::from_path(path).unwrap();
+    let headers = reader.headers().unwrap().clone();
+    let record = reader.records().next().unwrap().unwrap();
+    headers
+        .iter()
+        .zip(record.iter())
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect()
 }

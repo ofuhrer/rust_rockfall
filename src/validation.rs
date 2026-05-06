@@ -11,6 +11,10 @@ use crate::{
         TerrainExtentManifest, TerrainManifest, TrajectoryMetadataManifest,
         RUN_MANIFEST_SCHEMA_VERSION,
     },
+    probabilistic::{
+        MapPackageManifest, NormalizationScope, ProbabilisticMetadataError, ProbabilityMode,
+        ScenarioRow, ScenarioTable, SourceZoneMetadata, MAP_PACKAGE_MANIFEST_SCHEMA_VERSION,
+    },
     shape::{BlockShapeMetadata, PASSIVE_SHAPE_WARNING},
     simulation::{
         simulate_ensemble_with_contact_parameters,
@@ -77,6 +81,8 @@ pub struct BenchmarkCase {
     pub terrain_classes: Option<TerrainClassConfig>,
     #[serde(default)]
     pub block_shape: Option<BlockShapeConfig>,
+    #[serde(default, alias = "probabilistic")]
+    pub probabilistic_metadata: Option<ProbabilisticMetadataConfig>,
     #[serde(default)]
     pub parameters: CaseParameters,
     #[serde(default)]
@@ -163,6 +169,22 @@ pub struct TerrainClassConfig {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct BlockShapeConfig {
     pub metadata_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct ProbabilisticMetadataConfig {
+    #[serde(default)]
+    pub source_zone_metadata_path: Option<PathBuf>,
+    #[serde(default)]
+    pub scenario_table_path: Option<PathBuf>,
+    #[serde(default)]
+    pub map_product_id: Option<String>,
+    #[serde(default)]
+    pub probability_mode: Option<ProbabilityMode>,
+    #[serde(default)]
+    pub normalization_scope: Option<NormalizationScope>,
+    #[serde(default)]
+    pub scenario_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -493,6 +515,26 @@ pub struct TrajectoryMetadataRow {
     pub scenario_id: String,
     pub sampling_weight: f64,
     pub probability_model: String,
+    #[serde(default)]
+    pub map_product_id: Option<String>,
+    #[serde(default)]
+    pub release_cell_id: Option<String>,
+    #[serde(default)]
+    pub block_scenario_id: Option<String>,
+    #[serde(default)]
+    pub block_size_class: Option<String>,
+    #[serde(default)]
+    pub block_shape_class: Option<String>,
+    #[serde(default)]
+    pub terrain_material_assumption_id: Option<String>,
+    #[serde(default)]
+    pub model_configuration_id: Option<String>,
+    #[serde(default)]
+    pub probability_mode: Option<String>,
+    #[serde(default)]
+    pub normalization_scope: Option<String>,
+    #[serde(default)]
+    pub annual_frequency_per_year: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -582,12 +624,33 @@ struct RunManifestContext<'a> {
     performance: PerformanceManifest,
 }
 
+#[derive(Debug, Clone)]
+struct ProbabilisticMetadataContext {
+    map_product_id: String,
+    source_zone_metadata_path: PathBuf,
+    scenario_table_path: PathBuf,
+    source_zone_id: String,
+    scenario: ScenarioRow,
+    probability_mode: ProbabilityMode,
+    normalization_scope: NormalizationScope,
+}
+
 #[derive(Debug, Default)]
 struct TrajectoryMetadataCollector {
     rows: BTreeMap<String, TrajectoryMetadataRow>,
+    probabilistic_metadata: Option<ProbabilisticMetadataContext>,
 }
 
 impl TrajectoryMetadataCollector {
+    fn with_probabilistic_metadata(
+        probabilistic_metadata: Option<ProbabilisticMetadataContext>,
+    ) -> Self {
+        Self {
+            rows: BTreeMap::new(),
+            probabilistic_metadata,
+        }
+    }
+
     fn insert_run(
         &mut self,
         case: &BenchmarkCase,
@@ -598,15 +661,16 @@ impl TrajectoryMetadataCollector {
         shape_metadata: Option<&BlockShapeMetadata>,
     ) {
         if let Some(first) = run.samples.first() {
-            self.insert_row(trajectory_metadata_row(
+            self.insert_row(trajectory_metadata_row(TrajectoryMetadataRowInput {
                 case,
-                &run.summary.trajectory_id,
-                release_id.into(),
-                source_zone_id.into(),
-                [first.x_m, first.y_m, first.z_m],
+                trajectory_id: &run.summary.trajectory_id,
+                release_id: release_id.into(),
+                source_zone_id: source_zone_id.into(),
+                release_position_m: [first.x_m, first.y_m, first.z_m],
                 block,
                 shape_metadata,
-            ));
+                probabilistic_metadata: self.probabilistic_metadata.as_ref(),
+            }));
         }
     }
 
@@ -618,15 +682,16 @@ impl TrajectoryMetadataCollector {
         shape_metadata: Option<&BlockShapeMetadata>,
     ) {
         if let Some(first) = result.samples.first() {
-            self.insert_row(trajectory_metadata_row(
+            self.insert_row(trajectory_metadata_row(TrajectoryMetadataRowInput {
                 case,
-                default_single_trajectory_id(),
-                default_single_trajectory_id().to_string(),
-                default_manual_source_zone_id().to_string(),
-                [first.x_m, first.y_m, first.z_m],
+                trajectory_id: default_single_trajectory_id(),
+                release_id: default_single_trajectory_id().to_string(),
+                source_zone_id: default_manual_source_zone_id().to_string(),
+                release_position_m: [first.x_m, first.y_m, first.z_m],
                 block,
                 shape_metadata,
-            ));
+                probabilistic_metadata: self.probabilistic_metadata.as_ref(),
+            }));
         }
     }
 
@@ -639,15 +704,28 @@ impl TrajectoryMetadataCollector {
     }
 }
 
-fn trajectory_metadata_row(
-    case: &BenchmarkCase,
-    trajectory_id: &str,
+struct TrajectoryMetadataRowInput<'a> {
+    case: &'a BenchmarkCase,
+    trajectory_id: &'a str,
     release_id: String,
     source_zone_id: String,
     release_position_m: [f64; 3],
-    block: &SphereBlock,
-    shape_metadata: Option<&BlockShapeMetadata>,
-) -> TrajectoryMetadataRow {
+    block: &'a SphereBlock,
+    shape_metadata: Option<&'a BlockShapeMetadata>,
+    probabilistic_metadata: Option<&'a ProbabilisticMetadataContext>,
+}
+
+fn trajectory_metadata_row(input: TrajectoryMetadataRowInput<'_>) -> TrajectoryMetadataRow {
+    let TrajectoryMetadataRowInput {
+        case,
+        trajectory_id,
+        release_id,
+        source_zone_id,
+        release_position_m,
+        block,
+        shape_metadata,
+        probabilistic_metadata,
+    } = input;
     let (
         shape_class,
         shape_id,
@@ -683,14 +761,17 @@ fn trajectory_metadata_row(
             sphere_density_kgpm3(block),
         )
     };
+    let scenario = probabilistic_metadata.map(|metadata| &metadata.scenario);
     TrajectoryMetadataRow {
         trajectory_id: trajectory_id.to_string(),
-        release_id,
-        source_zone_id,
+        release_id: release_id.clone(),
+        source_zone_id: probabilistic_metadata
+            .map(|metadata| metadata.source_zone_id.clone())
+            .unwrap_or(source_zone_id),
         release_x_m: release_position_m[0],
         release_y_m: release_position_m[1],
         release_z_m: release_position_m[2],
-        release_probability: None,
+        release_probability: scenario.and_then(|row| row.release_probability),
         block_radius_m: block.radius_m,
         block_mass_kg: block.mass_kg,
         block_density_kgpm3: density,
@@ -708,9 +789,26 @@ fn trajectory_metadata_row(
         initial_orientation_x: orientation.map(|values| values[1]),
         initial_orientation_y: orientation.map(|values| values[2]),
         initial_orientation_z: orientation.map(|values| values[3]),
-        scenario_id: case.case_id.clone(),
-        sampling_weight: 1.0,
-        probability_model: default_probability_model().to_string(),
+        scenario_id: scenario
+            .map(|row| row.scenario_id.clone())
+            .unwrap_or_else(|| case.case_id.clone()),
+        sampling_weight: scenario.map(|row| row.sampling_weight).unwrap_or(1.0),
+        probability_model: probabilistic_metadata
+            .map(|metadata| legacy_probability_model(metadata.probability_mode).to_string())
+            .unwrap_or_else(|| default_probability_model().to_string()),
+        map_product_id: probabilistic_metadata.map(|metadata| metadata.map_product_id.clone()),
+        release_cell_id: probabilistic_metadata.map(|_| release_id),
+        block_scenario_id: scenario.and_then(|row| row.block_scenario_id.clone()),
+        block_size_class: scenario.and_then(|row| row.block_size_class.clone()),
+        block_shape_class: scenario.and_then(|row| row.block_shape_class.clone()),
+        terrain_material_assumption_id: scenario
+            .map(|row| row.terrain_material_assumption_id.clone()),
+        model_configuration_id: scenario.map(|row| row.model_configuration_id.clone()),
+        probability_mode: probabilistic_metadata
+            .map(|metadata| probability_mode_text(metadata.probability_mode).to_string()),
+        normalization_scope: probabilistic_metadata
+            .map(|metadata| normalization_scope_text(metadata.normalization_scope).to_string()),
+        annual_frequency_per_year: None,
     }
 }
 
@@ -763,6 +861,8 @@ pub enum ValidationError {
     Geodata(#[from] GeodataError),
     #[error("shape metadata error: {0}")]
     Shape(#[from] crate::shape::ShapeMetadataError),
+    #[error("probabilistic metadata error: {0}")]
+    Probabilistic(#[from] ProbabilisticMetadataError),
     #[error("I/O helper error: {0}")]
     Output(#[from] io::IoError),
     #[error("case {0} has no trajectory samples")]
@@ -786,12 +886,15 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut timing = RuntimeTiming::default();
     let mut warnings = Vec::new();
     let mut output_entries = Vec::new();
-    let mut trajectory_metadata = TrajectoryMetadataCollector::default();
     let load_started = Instant::now();
     let terrain_source = load_terrain_source_metadata(case)?;
     let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
     let terrain_class_map = load_terrain_class_map(case, terrain_source.as_ref())?;
     let shape_metadata = load_block_shape_metadata(case)?;
+    let probabilistic_metadata =
+        load_probabilistic_metadata_context(case, release_zone_source.as_ref())?;
+    let mut trajectory_metadata =
+        TrajectoryMetadataCollector::with_probabilistic_metadata(probabilistic_metadata.clone());
     timing.terrain_load_seconds += load_started.elapsed().as_secs_f64();
     let mut release_zone_manifest = release_zone_source
         .as_ref()
@@ -1017,10 +1120,43 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             schema_version: TRAJECTORY_METADATA_SCHEMA_VERSION.to_string(),
             path: path.to_string_lossy().to_string(),
             row_count: rows.len(),
-            probability_model: default_probability_model().to_string(),
-            probability_semantics: "sampling_weight_only".to_string(),
-            normalization_convention: "unweighted_current_outputs".to_string(),
+            probability_model: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| legacy_probability_model(metadata.probability_mode).to_string())
+                .unwrap_or_else(|| default_probability_model().to_string()),
+            probability_semantics: probabilistic_metadata
+                .as_ref()
+                .map(|_| "scenario_table_v1".to_string())
+                .unwrap_or_else(|| "sampling_weight_only".to_string()),
+            normalization_convention: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| normalization_scope_text(metadata.normalization_scope).to_string())
+                .unwrap_or_else(|| "unweighted_current_outputs".to_string()),
             total_sampling_weight: rows.iter().map(|row| row.sampling_weight).sum(),
+            map_product_id: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| metadata.map_product_id.clone()),
+            source_zone_id: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| metadata.source_zone_id.clone()),
+            source_zone_metadata_path: probabilistic_metadata.as_ref().map(|metadata| {
+                metadata
+                    .source_zone_metadata_path
+                    .to_string_lossy()
+                    .to_string()
+            }),
+            scenario_table_path: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| metadata.scenario_table_path.to_string_lossy().to_string()),
+            scenario_id: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| metadata.scenario.scenario_id.clone()),
+            probability_mode: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| probability_mode_text(metadata.probability_mode).to_string()),
+            normalization_scope: probabilistic_metadata
+                .as_ref()
+                .map(|metadata| normalization_scope_text(metadata.normalization_scope).to_string()),
         })
     } else {
         None
@@ -1249,6 +1385,118 @@ fn load_block_shape_metadata(
     let block = case_block(case)?;
     metadata.validate_against_block(&block)?;
     Ok(Some(metadata))
+}
+
+fn load_probabilistic_metadata_context(
+    case: &BenchmarkCase,
+    release_zone: Option<&ReleaseZoneMetadata>,
+) -> Result<Option<ProbabilisticMetadataContext>, ValidationError> {
+    let Some(config) = &case.probabilistic_metadata else {
+        return Ok(None);
+    };
+    let source_zone_metadata_path = required_probabilistic_path(
+        config.source_zone_metadata_path.as_ref(),
+        "source_zone_metadata_path",
+    )?;
+    let scenario_table_path =
+        required_probabilistic_path(config.scenario_table_path.as_ref(), "scenario_table_path")?;
+    let map_product_id =
+        required_probabilistic_id(config.map_product_id.as_deref(), "map_product_id")?;
+    let probability_mode = config.probability_mode.ok_or_else(|| {
+        ValidationError::Case("probabilistic_metadata.probability_mode is required".to_string())
+    })?;
+    let normalization_scope = config.normalization_scope.ok_or_else(|| {
+        ValidationError::Case("probabilistic_metadata.normalization_scope is required".to_string())
+    })?;
+
+    let source_zone = SourceZoneMetadata::from_yaml_file(&source_zone_metadata_path)?;
+    if source_zone.annual_release_frequency_per_year.is_some() {
+        return Err(ValidationError::Case(
+            "probabilistic_metadata source-zone annual_release_frequency_per_year is Level 3 and must remain null in Phase 1".to_string(),
+        ));
+    }
+    if let Some(release_zone) = release_zone {
+        if release_zone.zone_id != source_zone.source_zone_id {
+            return Err(ValidationError::Case(format!(
+                "probabilistic_metadata source_zone_id '{}' does not match release-zone id '{}'",
+                source_zone.source_zone_id, release_zone.zone_id
+            )));
+        }
+    }
+
+    let scenario_table = ScenarioTable::from_csv_file(&scenario_table_path)?;
+    let package = MapPackageManifest {
+        schema_version: MAP_PACKAGE_MANIFEST_SCHEMA_VERSION.to_string(),
+        map_product_id: map_product_id.clone(),
+        map_product_version: None,
+        probability_mode,
+        normalization_scope: Some(normalization_scope),
+        source_zone_id: source_zone.source_zone_id.clone(),
+        source_zone_metadata_path: source_zone_metadata_path.clone(),
+        scenario_table_path: Some(scenario_table_path.clone()),
+        hazard_manifest_paths: Vec::new(),
+        layer_semantics: Vec::new(),
+        validation_context: Vec::new(),
+        limitations: Vec::new(),
+        operational_status: None,
+    };
+    package.validate_with_metadata(&source_zone, Some(&scenario_table))?;
+    let scenario = select_probabilistic_scenario(config.scenario_id.as_deref(), &scenario_table)?;
+
+    Ok(Some(ProbabilisticMetadataContext {
+        map_product_id,
+        source_zone_metadata_path: source_zone_metadata_path.clone(),
+        scenario_table_path: scenario_table_path.clone(),
+        source_zone_id: source_zone.source_zone_id,
+        scenario,
+        probability_mode,
+        normalization_scope,
+    }))
+}
+
+fn required_probabilistic_path(
+    value: Option<&PathBuf>,
+    field: &str,
+) -> Result<PathBuf, ValidationError> {
+    value.cloned().ok_or_else(|| {
+        ValidationError::Case(format!(
+            "probabilistic_metadata.{field} is required for Phase 1 metadata propagation"
+        ))
+    })
+}
+
+fn required_probabilistic_id(value: Option<&str>, field: &str) -> Result<String, ValidationError> {
+    let value = value.unwrap_or_default().trim();
+    if value.is_empty() {
+        return Err(ValidationError::Case(format!(
+            "probabilistic_metadata.{field} is required for Phase 1 metadata propagation"
+        )));
+    }
+    Ok(value.to_string())
+}
+
+fn select_probabilistic_scenario(
+    scenario_id: Option<&str>,
+    scenario_table: &ScenarioTable,
+) -> Result<ScenarioRow, ValidationError> {
+    if let Some(scenario_id) = scenario_id {
+        return scenario_table
+            .rows
+            .iter()
+            .find(|row| row.scenario_id == scenario_id)
+            .cloned()
+            .ok_or_else(|| {
+                ValidationError::Case(format!(
+                    "probabilistic_metadata.scenario_id '{scenario_id}' was not found in scenario_table_v1"
+                ))
+            });
+    }
+    if scenario_table.rows.len() == 1 {
+        return Ok(scenario_table.rows[0].clone());
+    }
+    Err(ValidationError::Case(
+        "probabilistic_metadata.scenario_id is required when scenario_table_v1 contains multiple rows".to_string(),
+    ))
 }
 
 fn terrain_manifest(
@@ -3137,6 +3385,33 @@ fn default_probability_model() -> &'static str {
     "unweighted"
 }
 
+fn legacy_probability_model(mode: ProbabilityMode) -> &'static str {
+    match mode {
+        ProbabilityMode::UnweightedDiagnostic => "unweighted",
+        ProbabilityMode::SamplingWeightedConditional => "sampling_weighted",
+        ProbabilityMode::PhysicalProbability => "physical_probability",
+        ProbabilityMode::AnnualFrequency => "annual_frequency",
+    }
+}
+
+fn probability_mode_text(mode: ProbabilityMode) -> &'static str {
+    match mode {
+        ProbabilityMode::UnweightedDiagnostic => "unweighted_diagnostic",
+        ProbabilityMode::SamplingWeightedConditional => "sampling_weighted_conditional",
+        ProbabilityMode::PhysicalProbability => "physical_probability",
+        ProbabilityMode::AnnualFrequency => "annual_frequency",
+    }
+}
+
+fn normalization_scope_text(scope: NormalizationScope) -> &'static str {
+    match scope {
+        NormalizationScope::ConditionedOnFilter => "conditioned_on_filter",
+        NormalizationScope::ConditionedOnScenario => "conditioned_on_scenario",
+        NormalizationScope::AbsoluteProbabilityMass => "absolute_probability_mass",
+        NormalizationScope::AnnualFrequencySum => "annual_frequency_sum",
+    }
+}
+
 fn sphere_density_kgpm3(block: &SphereBlock) -> Option<f64> {
     let volume_m3 = (4.0 / 3.0) * std::f64::consts::PI * block.radius_m.powi(3);
     (volume_m3 > 0.0).then_some(block.mass_kg / volume_m3)
@@ -3828,6 +4103,7 @@ mod tests {
             release_zone: None,
             terrain_classes: None,
             block_shape: None,
+            probabilistic_metadata: None,
             parameters: CaseParameters::default(),
             simulation: CaseSimulation::default(),
             random: CaseRandom::default(),

@@ -150,6 +150,20 @@ pub struct TrajectoryMetadataManifest {
     #[serde(default = "default_normalization_convention")]
     pub normalization_convention: String,
     pub total_sampling_weight: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_product_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_zone_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_zone_metadata_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scenario_table_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scenario_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub probability_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub normalization_scope: Option<String>,
 }
 
 fn default_probability_model() -> String {
