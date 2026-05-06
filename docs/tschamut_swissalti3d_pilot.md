@@ -181,7 +181,7 @@ This pilot deliberately does not:
 - commit real swissALTI3D, SWISSIMAGE, or other raw geodata;
 - tune restitution, friction, roughness, scarring, or terrain-class parameters to Tschamut;
 - claim predictive skill or operational hazard validity;
-- implement GeoTIFF/COG export;
+- implement Cloud-Optimized GeoTIFF export or a full GIS product package;
 - implement source-zone derivation from geology/slope/inventory layers;
 - add shape-aware or forest/fragmentation physics.
 
@@ -191,4 +191,3 @@ The pilot answers a narrower question:
 Does the current model and source-area workflow behave differently when the
 Tschamut proxy terrain is replaced by a real Swiss DEM crop?
 ```
-

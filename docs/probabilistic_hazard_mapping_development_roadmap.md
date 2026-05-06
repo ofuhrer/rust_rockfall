@@ -529,6 +529,11 @@ Stop/defer criteria:
 Objective: produce Level 1 conditional source-zone hazard maps for a small Swiss
 pilot domain with GIS metadata and reviewable layers.
 
+Status: first implementation slice complete for additive GeoTIFF export of
+existing hazard rasters. The current writer preserves raster values as float64
+GeoTIFF, records affine/nodata/EPSG metadata where available, and leaves COG
+compression/tiling/overview guarantees deferred.
+
 Deliverables:
 
 - reference-grid definition with EPSG:2056/LN02 metadata;

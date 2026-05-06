@@ -366,6 +366,23 @@ keeps `annual_frequency_fields_present: false` in Phase 1, and rejects
 `physical_probability` or `annual_frequency` package generation. Unlabelled
 hazard builds remain diagnostic and backward-compatible.
 
+Hazard-layer builds can also opt in to GIS raster export without changing
+existing CSV/ASCII outputs:
+
+```yaml
+hazard_exports:
+  geotiff: true
+  cog: false
+```
+
+`geotiff: true` writes one float64 GeoTIFF per generated hazard raster. The
+hazard manifest records `format: geotiff`, SHA-256 checksum, affine transform,
+nodata value, grid dimensions, extent, EPSG/vertical datum when available from
+`terrain.metadata_path`, and probability semantics with `annualized: false`.
+`cog: true` is schema-reserved but rejected by the Phase 2A hazard builder until
+a verified COG writer is added. Existing cases that omit `hazard_exports`
+continue to write only CSV/ASCII/GeoJSON/JSON outputs.
+
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total

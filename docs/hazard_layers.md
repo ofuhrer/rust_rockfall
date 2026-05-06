@@ -33,6 +33,8 @@ Exports:
 
 - CSV grid with row, column, cell center, and value.
 - ESRI ASCII grid for lightweight GIS-style inspection.
+- opt-in GeoTIFF raster per hazard layer with affine transform, nodata, EPSG
+  metadata when available, and SHA-256 manifest identity.
 - GeoJSON point file for deposition locations.
 - JSON metadata and `run_manifest_v1` provenance sidecars.
 - optional PNG layer plots when diagnostic rendering is enabled.
@@ -73,6 +75,28 @@ python3 scripts/build_hazard_layers.py \
   --cell-size 5
 open hazard/results/tschamut_baseline_report/index.html
 ```
+
+To add GIS-ready GeoTIFF rasters without changing the CSV/ASCII outputs or
+hazard values, pass `--export-geotiff` or set `hazard_exports.geotiff: true` in
+the case file:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/probabilistic_phase1_smoke.yaml \
+  --trajectory validation/results/probabilistic_phase1_smoke_trajectory.csv \
+  --ensemble-trajectories-dir validation/results/probabilistic_phase1_smoke_trajectories \
+  --output-dir hazard/results/probabilistic_phase1_smoke_geotiff \
+  --cell-size 2 \
+  --no-plots \
+  --export-geotiff
+```
+
+The GeoTIFF writer is intentionally lightweight and dependency-free. It writes
+uncompressed float64 GeoTIFFs so raster cell values round-trip exactly relative
+to the CSV/ASCII grids. When the case has `terrain.metadata_path`, the TIFF and
+manifest carry the available EPSG, affine transform, nodata, extent, and grid
+metadata. Cloud-Optimized GeoTIFF is reserved for a later verified writer; COG
+requests fail explicitly rather than producing non-COG files.
 
 For production-style tile experiments, provide an explicit reference grid. When
 all explicit-grid arguments are supplied, they override `--cell-size` for grid
@@ -341,11 +365,11 @@ manifests. If hazard layers are built from ad hoc CLI inputs without a case
 metadata sidecar, the raster files remain numerically valid but CRS/provenance
 must be inherited from external workflow documentation.
 
-For exchange outside this repository, the target raster format should become
-GeoTIFF or Cloud-Optimized GeoTIFF so CRS, nodata, compression, and tiling are
-standardized. GeoJSON remains useful for small vector overlays, while GeoPackage
-is a better future target for larger release zones, deposits, and context
-features.
+For exchange outside this repository, use the opt-in GeoTIFF export when
+available. Cloud-Optimized GeoTIFF remains a future target for compression,
+tiling, and cloud/object-store access once a verified COG writer is selected.
+GeoJSON remains useful for small vector overlays, while GeoPackage is a better
+future target for larger release zones, deposits, and context features.
 
 ## Hazard Versus Risk
 

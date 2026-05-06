@@ -6,10 +6,12 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 import scripts.build_hazard_layers as hazard
 import scripts.prepare_tschamut_swissalti3d_pilot as tschamut_pilot
@@ -281,6 +283,76 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(terrain["extent"]["xmin"], 2600000.0)
             self.assertEqual(manifest["warnings"], [])
 
+    def test_geotiff_export_preserves_values_grid_and_crs_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case_path = work / "terrain_metadata_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(FIXTURE / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                    "--export-geotiff",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            csv_values = read_layer(output_dir / "hazard_fixture_plane_reach_probability.csv", "reach_probability")
+            tif_path = output_dir / "hazard_fixture_plane_reach_probability.tif"
+            tif_values, tags = read_geotiff_values(tif_path)
+            self.assertEqual(tif_values, csv_values)
+            self.assertEqual(tuple(tags[33550]), (1.0, 1.0, 0.0))
+            self.assertEqual(tuple(tags[33922]), (0.0, 0.0, 0.0, -1.0, 2.0, 0.0))
+            self.assertEqual(str(tags[42113]), "-9999.0")
+            self.assertIn(2056, tuple(tags[34735]))
+
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            geotiff_outputs = [output for output in manifest["outputs"] if output["format"] == "geotiff"]
+            self.assertTrue(geotiff_outputs)
+            reach_output = [output for output in geotiff_outputs if output["layer_name"] == "reach_probability"][0]
+            self.assertEqual(reach_output["raster"]["epsg"], 2056)
+            self.assertEqual(reach_output["raster"]["vertical_datum"], "LN02")
+            self.assertEqual(reach_output["raster"]["affine_transform"], [1.0, 0.0, -1.0, 0.0, -1.0, 2.0])
+            self.assertEqual(reach_output["raster"]["nodata"], -9999.0)
+            self.assertFalse(reach_output["raster"]["cloud_optimized"])
+            self.assertEqual(reach_output["raster"]["compression"], "none")
+            self.assertFalse(reach_output["cloud_optimized"])
+            self.assertFalse(reach_output["probability_semantics"]["annualized"])
+            self.assertRegex(reach_output["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_cog_export_is_explicitly_deferred(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(SystemExit, "COG export is not implemented"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(Path(tmp) / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                        "--export-cog",
+                    ]
+                )
+
     def test_plotted_mode_preserves_report_outputs_without_changing_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             no_plot_dir = Path(tmp) / "no_plots"
@@ -534,6 +606,7 @@ class HazardLayerTests(unittest.TestCase):
                         str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "scenario_level2_weighted.csv"),
                         "--map-package-manifest-json",
                         str(package_path),
+                        "--export-geotiff",
                     ]
                 ),
                 0,
@@ -573,6 +646,11 @@ class HazardLayerTests(unittest.TestCase):
             self.assertTrue(package["layer_semantics"])
             self.assertTrue(all(not layer["is_annualized"] for layer in package["layer_semantics"]))
             self.assertTrue(any(output["kind"] == "map_package_manifest" for output in manifest["outputs"]))
+            geotiff_outputs = [output for output in manifest["outputs"] if output["format"] == "geotiff"]
+            self.assertTrue(any(output["layer_name"] == "weighted_reach_probability" for output in geotiff_outputs))
+            self.assertTrue(package["raster_outputs"])
+            self.assertTrue(any(output["layer_name"] == "weighted_reach_probability" for output in package["raster_outputs"]))
+            self.assertTrue(all(not output["is_annualized"] for output in package["raster_outputs"]))
 
     def test_map_package_metadata_rejects_annual_frequency_and_source_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -721,6 +799,7 @@ class HazardLayerTests(unittest.TestCase):
                         str(labelled_dir),
                         "--map-package-manifest-json",
                         str(package_path),
+                        "--export-geotiff",
                         *common,
                     ]
                 ),
@@ -755,6 +834,18 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(package["probability_mode"], "sampling_weighted_conditional")
             self.assertEqual(package["operational_status"], "research_diagnostic")
             self.assertTrue(all(not layer["is_annualized"] for layer in package["layer_semantics"]))
+            self.assertTrue(package["raster_outputs"])
+            self.assertTrue(all(not output["is_annualized"] for output in package["raster_outputs"]))
+            smoke_tif = labelled_dir / "probabilistic_phase1_smoke_weighted_reach_probability.tif"
+            tif_values, tags = read_geotiff_values(smoke_tif)
+            self.assertEqual(
+                tif_values,
+                read_layer(
+                    labelled_dir / "probabilistic_phase1_smoke_weighted_reach_probability.csv",
+                    "weighted_reach_probability",
+                )
+            )
+            self.assertEqual(tuple(tags[33550]), (2.0, 2.0, 0.0))
 
     def test_sampling_weighted_layers_reject_negative_weights(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1165,6 +1256,51 @@ def read_layer(path: Path, key: str) -> dict[tuple[int, int], float]:
         for row in reader:
             values[(int(row["row"]), int(row["col"]))] = float(row[key])
     return values
+
+
+def read_geotiff_values(path: Path) -> tuple[dict[tuple[int, int], float], dict[int, Any]]:
+    data = path.read_bytes()
+    if data[:4] != b"II*\0":
+        raise AssertionError(f"{path} is not a little-endian classic TIFF")
+    ifd_offset = struct.unpack_from("<I", data, 4)[0]
+    entry_count = struct.unpack_from("<H", data, ifd_offset)[0]
+    tags: dict[int, Any] = {}
+    for index in range(entry_count):
+        offset = ifd_offset + 2 + 12 * index
+        tag, field_type, count = struct.unpack_from("<HHI", data, offset)
+        value_or_offset = data[offset + 8 : offset + 12]
+        tags[tag] = parse_tiff_value(data, field_type, count, value_or_offset)
+
+    width = int(tags[256])
+    height = int(tags[257])
+    strip_offset = int(tags[273])
+    byte_count = int(tags[279])
+    if int(tags[258]) != 64 or int(tags[339]) != 3:
+        raise AssertionError(f"{path} is not a float64 GeoTIFF fixture")
+    values = {}
+    for index in range(width * height):
+        start = strip_offset + 8 * index
+        if start + 8 > strip_offset + byte_count:
+            raise AssertionError(f"{path} has truncated raster data")
+        values[(index // width, index % width)] = struct.unpack_from("<d", data, start)[0]
+    return values, tags
+
+
+def parse_tiff_value(data: bytes, field_type: int, count: int, value_or_offset: bytes) -> Any:
+    type_sizes = {2: 1, 3: 2, 4: 4, 12: 8}
+    size = type_sizes[field_type] * count
+    value_bytes = value_or_offset[:size] if size <= 4 else data[struct.unpack("<I", value_or_offset)[0] :][:size]
+    if field_type == 2:
+        return value_bytes.rstrip(b"\0").decode("ascii")
+    if field_type == 3:
+        values = struct.unpack("<" + "H" * count, value_bytes)
+    elif field_type == 4:
+        values = struct.unpack("<" + "I" * count, value_bytes)
+    elif field_type == 12:
+        values = struct.unpack("<" + "d" * count, value_bytes)
+    else:
+        raise AssertionError(f"unsupported TIFF field type {field_type}")
+    return values[0] if count == 1 else values
 
 
 def yaml_load(path: Path) -> dict:

@@ -1435,6 +1435,7 @@ fn load_probabilistic_metadata_context(
         source_zone_metadata_path: source_zone_metadata_path.clone(),
         scenario_table_path: Some(scenario_table_path.clone()),
         hazard_manifest_paths: Vec::new(),
+        raster_outputs: Vec::new(),
         layer_semantics: Vec::new(),
         validation_context: Vec::new(),
         limitations: Vec::new(),

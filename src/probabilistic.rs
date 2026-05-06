@@ -126,6 +126,8 @@ pub struct MapPackageManifest {
     #[serde(default)]
     pub hazard_manifest_paths: Vec<PathBuf>,
     #[serde(default)]
+    pub raster_outputs: Vec<MapRasterOutput>,
+    #[serde(default)]
     pub layer_semantics: Vec<MapLayerSemantics>,
     #[serde(default)]
     pub validation_context: Vec<String>,
@@ -142,6 +144,21 @@ pub struct MapLayerSemantics {
     pub units: Option<String>,
     #[serde(default)]
     pub conditioned_on: Vec<String>,
+    #[serde(default)]
+    pub is_annualized: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MapRasterOutput {
+    pub layer_name: String,
+    pub format: String,
+    pub path: PathBuf,
+    #[serde(default)]
+    pub sha256: Option<String>,
+    #[serde(default)]
+    pub total_bytes: Option<u64>,
+    #[serde(default)]
+    pub cloud_optimized: bool,
     #[serde(default)]
     pub is_annualized: bool,
 }
@@ -472,6 +489,9 @@ impl MapPackageManifest {
         for layer in &self.layer_semantics {
             layer.validate(self.probability_mode)?;
         }
+        for output in &self.raster_outputs {
+            output.validate(self.probability_mode)?;
+        }
         Ok(())
     }
 
@@ -563,6 +583,34 @@ impl MapLayerSemantics {
                 mode == ProbabilityMode::AnnualFrequency,
                 "layer_semantics",
                 "annualized layer labels require probability_mode annual_frequency",
+            )?;
+        }
+        Ok(())
+    }
+}
+
+impl MapRasterOutput {
+    fn validate(&self, mode: ProbabilityMode) -> Result<(), ProbabilisticMetadataError> {
+        ensure(
+            !self.layer_name.trim().is_empty(),
+            "raster_outputs.layer_name",
+            "must be set",
+        )?;
+        ensure(
+            !self.format.trim().is_empty(),
+            "raster_outputs.format",
+            "must be set",
+        )?;
+        ensure(
+            !self.path.as_os_str().is_empty(),
+            "raster_outputs.path",
+            "must be set",
+        )?;
+        if self.is_annualized {
+            ensure(
+                mode == ProbabilityMode::AnnualFrequency,
+                "raster_outputs.is_annualized",
+                "annualized raster outputs require probability_mode annual_frequency",
             )?;
         }
         Ok(())

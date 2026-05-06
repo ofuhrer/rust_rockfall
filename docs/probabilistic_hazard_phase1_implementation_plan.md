@@ -563,9 +563,8 @@ into trajectory metadata, labels hazard manifests and package manifests, and
 exercises the full flow with a CI-safe smoke case. Existing diagnostic and
 unweighted workflows remain unchanged by default.
 
-The recommended next implementation slice is **Phase 2A: GIS-ready GeoTIFF/COG
-export for existing labelled hazard rasters**. Phase 1 has made map semantics
-auditable, but the produced rasters are still primarily CSV/ASCII/debug-review
-artifacts. CRS-bearing raster export is the next practical product gap for
-reviewable Swiss pilot maps, and it can be implemented without changing physics,
-defaults, probability semantics, or hazard raster values.
+The recommended next implementation slice after Phase 1 was **Phase 2A:
+GIS-ready GeoTIFF export for existing labelled hazard rasters**. The first
+Phase 2A slice adds value-preserving GeoTIFF output while leaving COG-specific
+compression, tiling, and overview guarantees deferred until a verified COG
+writer is selected.

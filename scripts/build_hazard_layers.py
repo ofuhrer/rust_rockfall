@@ -14,6 +14,7 @@ import hashlib
 import html
 import json
 import math
+import struct
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -193,6 +194,28 @@ class HazardMapPackageState:
     @property
     def scenario_ids(self) -> list[str]:
         return [row.scenario_id for row in self.scenario_rows]
+
+
+@dataclass(frozen=True)
+class RasterExportConfig:
+    geotiff: bool = False
+    cog: bool = False
+    compression: str = "none"
+
+    @property
+    def enabled(self) -> bool:
+        return self.geotiff
+
+    def as_metadata(self) -> dict[str, Any]:
+        formats = ["csv_grid", "esri_ascii_grid"]
+        if self.geotiff:
+            formats.append("geotiff")
+        return {
+            "geotiff": self.geotiff,
+            "cog": self.cog,
+            "compression": self.compression if self.geotiff else None,
+            "formats": formats,
+        }
 
 
 @dataclass(frozen=True)
@@ -768,6 +791,16 @@ def main_with_args(argv: list[str] | None = None) -> int:
         type=Path,
         help="optional output path for map_package_manifest_v1; defaults next to the hazard manifest",
     )
+    parser.add_argument(
+        "--export-geotiff",
+        action="store_true",
+        help="opt-in GIS GeoTIFF export for each hazard raster layer",
+    )
+    parser.add_argument(
+        "--export-cog",
+        action="store_true",
+        help="reserved for future Cloud-Optimized GeoTIFF export; currently fails rather than writing non-COG TIFFs",
+    )
     parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
@@ -803,6 +836,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         diagnostics["_path"] = str(diagnostics_path)
     probability_config = parse_hazard_probability(case)
     map_package_config = parse_hazard_map_package(case, args)
+    raster_export_config = parse_raster_export_config(case, args)
 
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
@@ -872,8 +906,18 @@ def main_with_args(argv: list[str] | None = None) -> int:
         statistic_config,
         probability_state,
         map_package_state,
+        raster_export_config,
     )
-    write_core_hazard_outputs(output_dir, prefix, grid, layers, accumulator.deposition_points, metadata)
+    write_core_hazard_outputs(
+        output_dir,
+        prefix,
+        grid,
+        layers,
+        accumulator.deposition_points,
+        metadata,
+        case,
+        raster_export_config,
+    )
     manifest_metadata = dict(metadata)
     manifest_metadata["_trajectory_paths"] = [str(path) for path in trajectory_paths]
     manifest_metadata["_deposition_path"] = str(deposition_path) if deposition_path else None
@@ -895,6 +939,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         manifest_metadata,
         output_dir,
         prefix,
+        grid,
         grid_source,
         layers,
         plot_paths,
@@ -902,6 +947,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         statistic_config,
         probability_state,
         map_package_state,
+        raster_export_config,
         total_wall_seconds=time.perf_counter() - total_started,
         accumulation_seconds=accumulation_seconds,
         core_output_write_seconds=core_output_write_seconds,
@@ -931,6 +977,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             map_package_state,
             hazard_manifest_path,
             manifest["layer_semantics"],
+            geotiff_raster_outputs(manifest["outputs"]),
         )
         manifest["outputs"].append(output_manifest_entry(package_path, "map_package_manifest", "json"))
         manifest["performance"]["output_file_count"] = sum(
@@ -1048,6 +1095,25 @@ def parse_explicit_grid(args: argparse.Namespace) -> GridSpec | None:
         nrows=int(args.grid_nrows),
         cell_size=float(args.grid_cell_size),
     )
+
+
+def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -> RasterExportConfig:
+    raw = case.get("hazard_exports") or case.get("raster_exports") or {}
+    if raw and not isinstance(raw, dict):
+        raise SystemExit("hazard_exports must be a mapping")
+    geotiff = bool(raw.get("geotiff", False)) or bool(args.export_geotiff) or bool(args.export_cog)
+    cog = bool(raw.get("cog", False)) or bool(args.export_cog)
+    if cog:
+        raise SystemExit(
+            "COG export is not implemented in Phase 2A without a verified COG writer; use --export-geotiff"
+        )
+    compression = str(raw.get("geotiff_compression") or raw.get("compression") or "none")
+    if compression not in {"none", "uncompressed"}:
+        raise SystemExit(
+            "Phase 2A GeoTIFF export uses an uncompressed stdlib writer; compressed/COG export is deferred"
+        )
+    compression = "none"
+    return RasterExportConfig(geotiff=geotiff, cog=False, compression=compression)
 
 
 def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> HazardStatisticConfig:
@@ -1972,6 +2038,125 @@ def ascii_value(value: float) -> float:
     return value if math.isfinite(value) else NODATA
 
 
+def write_geotiff_layers(
+    output_dir: Path,
+    prefix: str,
+    grid: GridSpec,
+    layers: list[RasterLayer],
+    case: dict[str, Any],
+    export_config: RasterExportConfig,
+) -> None:
+    if not export_config.geotiff:
+        return
+    spatial_reference = geotiff_spatial_reference(case, grid)
+    for layer in layers:
+        write_geotiff_grid(
+            output_dir / f"{prefix}_{layer.key}.tif",
+            grid,
+            layer,
+            spatial_reference,
+            export_config,
+        )
+
+
+def write_geotiff_grid(
+    path: Path,
+    grid: GridSpec,
+    layer: RasterLayer,
+    spatial_reference: dict[str, Any],
+    export_config: RasterExportConfig,
+) -> None:
+    _ = export_config
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pixels = [float(ascii_value(value)) for row in layer.values for value in row]
+    pixel_bytes = b"".join(struct.pack("<d", value) for value in pixels)
+    data_offset = 8
+    ifd_offset = data_offset + len(pixel_bytes)
+    entries: list[tuple[int, int, int, bytes]] = [
+        (256, 4, 1, struct.pack("<I", grid.ncols)),  # ImageWidth
+        (257, 4, 1, struct.pack("<I", grid.nrows)),  # ImageLength
+        (258, 3, 1, struct.pack("<H", 64)),  # BitsPerSample
+        (259, 3, 1, struct.pack("<H", 1)),  # Compression = none
+        (262, 3, 1, struct.pack("<H", 1)),  # BlackIsZero
+        (273, 4, 1, struct.pack("<I", data_offset)),  # StripOffsets
+        (277, 3, 1, struct.pack("<H", 1)),  # SamplesPerPixel
+        (278, 4, 1, struct.pack("<I", grid.nrows)),  # RowsPerStrip
+        (279, 4, 1, struct.pack("<I", len(pixel_bytes))),  # StripByteCounts
+        (284, 3, 1, struct.pack("<H", 1)),  # PlanarConfiguration
+        (339, 3, 1, struct.pack("<H", 3)),  # SampleFormat = IEEE floating point
+        (33550, 12, 3, struct.pack("<ddd", float(grid.cell_size), float(grid.cell_size), 0.0)),
+        (33922, 12, 6, struct.pack("<dddddd", 0.0, 0.0, 0.0, float(grid.xmin), float(grid.ymax), 0.0)),
+        (42113, 2, len(str(NODATA)) + 1, str(NODATA).encode("ascii") + b"\0"),
+    ]
+    geokeys = geokey_directory(spatial_reference.get("epsg"))
+    if geokeys:
+        entries.append((34735, 3, len(geokeys), struct.pack("<" + "H" * len(geokeys), *geokeys)))
+    ifd_bytes = build_tiff_ifd(entries, ifd_offset)
+    path.write_bytes(b"II" + struct.pack("<HI", 42, ifd_offset) + pixel_bytes + ifd_bytes)
+
+
+def build_tiff_ifd(entries: list[tuple[int, int, int, bytes]], ifd_offset: int) -> bytes:
+    entries = sorted(entries, key=lambda item: item[0])
+    inline_size = 2 + 12 * len(entries) + 4
+    extra = bytearray()
+    directory = bytearray(struct.pack("<H", len(entries)))
+    for tag, field_type, count, value_bytes in entries:
+        if len(value_bytes) <= 4:
+            value_or_offset = value_bytes.ljust(4, b"\0")
+        else:
+            if len(extra) % 2:
+                extra.extend(b"\0")
+            value_offset = ifd_offset + inline_size + len(extra)
+            value_or_offset = struct.pack("<I", value_offset)
+            extra.extend(value_bytes)
+        directory.extend(struct.pack("<HHI", tag, field_type, count))
+        directory.extend(value_or_offset)
+    directory.extend(struct.pack("<I", 0))
+    directory.extend(extra)
+    return bytes(directory)
+
+
+def geokey_directory(epsg: Any) -> tuple[int, ...] | None:
+    try:
+        epsg_code = int(epsg)
+    except (TypeError, ValueError):
+        return None
+    if epsg_code <= 0:
+        return None
+    if epsg_code == 4326:
+        entries = [
+            (1024, 0, 1, 2),  # GTModelTypeGeoKey = geographic
+            (1025, 0, 1, 1),  # GTRasterTypeGeoKey = PixelIsArea
+            (2048, 0, 1, epsg_code),  # GeographicTypeGeoKey
+        ]
+    else:
+        entries = [
+            (1024, 0, 1, 1),  # GTModelTypeGeoKey = projected
+            (1025, 0, 1, 1),  # GTRasterTypeGeoKey = PixelIsArea
+            (3072, 0, 1, epsg_code),  # ProjectedCSTypeGeoKey
+            (3076, 0, 1, 9001),  # ProjLinearUnitsGeoKey = metre
+        ]
+    flattened: list[int] = [1, 1, 0, len(entries)]
+    for entry in entries:
+        flattened.extend(entry)
+    return tuple(flattened)
+
+
+def geotiff_spatial_reference(case: dict[str, Any], grid: GridSpec) -> dict[str, Any]:
+    terrain = hazard_terrain_manifest(case, [])
+    return {
+        "crs": terrain.get("crs"),
+        "epsg": terrain.get("epsg"),
+        "vertical_datum": terrain.get("vertical_datum"),
+        "nodata": NODATA,
+        "affine_transform": geotiff_affine_transform(grid),
+    }
+
+
+def geotiff_affine_transform(grid: GridSpec) -> list[float]:
+    return [grid.cell_size, 0.0, grid.xmin, 0.0, -grid.cell_size, grid.ymax]
+
+
 def write_deposition_geojson(path: Path, depositions: list[DepositionPoint]) -> None:
     features = []
     for point in depositions:
@@ -2000,6 +2185,7 @@ def build_metadata(
     statistic_config: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
+    raster_exports: RasterExportConfig,
 ) -> dict[str, Any]:
     weighted_layer_names = [
         layer.key for layer in layers if layer.key.startswith("weighted_")
@@ -2030,6 +2216,7 @@ def build_metadata(
         "hazard_statistics": statistic_config.as_dict(),
         "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "raster_exports": raster_exports.as_metadata(),
         "layer_semantics": layer_semantics,
         "layers": [
             {
@@ -2152,8 +2339,11 @@ def write_core_hazard_outputs(
     layers: list[RasterLayer],
     deposition_points: list[DepositionPoint],
     metadata: dict[str, Any],
+    case: dict[str, Any],
+    raster_exports: RasterExportConfig,
 ) -> None:
     write_layers(output_dir, prefix, grid, layers)
+    write_geotiff_layers(output_dir, prefix, grid, layers, case, raster_exports)
     write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", deposition_points)
     write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
 
@@ -2171,6 +2361,7 @@ def write_map_package_manifest(
     map_package: HazardMapPackageState,
     hazard_manifest_path: Path,
     layer_semantics: list[dict[str, Any]],
+    raster_outputs: list[dict[str, Any]],
 ) -> None:
     limitations = list(map_package.config.limitations) or [
         "Research diagnostic; not operational hazard validation.",
@@ -2189,6 +2380,7 @@ def write_map_package_manifest(
         if map_package.config.scenario_table_path
         else None,
         "hazard_manifest_paths": [str(hazard_manifest_path)],
+        "raster_outputs": raster_outputs,
         "layer_semantics": [
             {
                 "layer_name": semantic["layer_name"],
@@ -2214,6 +2406,7 @@ def build_hazard_manifest(
     metadata: dict[str, Any],
     output_dir: Path,
     prefix: str,
+    grid: GridSpec,
     grid_source: str,
     layers: list[RasterLayer],
     plot_paths: dict[str, str],
@@ -2221,6 +2414,7 @@ def build_hazard_manifest(
     statistic_config: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
+    raster_exports: RasterExportConfig,
     *,
     total_wall_seconds: float,
     accumulation_seconds: float,
@@ -2235,6 +2429,8 @@ def build_hazard_manifest(
     for layer in layers:
         outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.csv", "hazard_layer", "csv_grid"))
         outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.asc", "hazard_layer", "esri_ascii_grid"))
+        if raster_exports.geotiff:
+            outputs.append(geotiff_output_manifest_entry(output_dir / f"{prefix}_{layer.key}.tif", layer, grid, case))
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_deposition_points.geojson", "deposition_points", "geojson"))
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_metadata.json", "hazard_metadata", "json"))
     if plots_enabled:
@@ -2322,6 +2518,7 @@ def build_hazard_manifest(
         },
         "warnings": warnings,
         "grid": dict(metadata.get("grid", {}), source=grid_source),
+        "raster_exports": metadata.get("raster_exports", {}),
         "inputs": metadata.get("inputs", {}),
         "input_artifacts": input_artifact_identities(
             case=case,
@@ -2420,6 +2617,65 @@ def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, 
         "row_count": None,
         "skipped_empty_files": None,
     }
+
+
+def geotiff_output_manifest_entry(path: Path, layer: RasterLayer, grid: GridSpec, case: dict[str, Any]) -> dict[str, Any]:
+    entry = output_manifest_entry(path, "hazard_layer", "geotiff")
+    spatial_reference = geotiff_spatial_reference(case, grid)
+    entry.update(
+        {
+            "layer_name": layer.key,
+            "export_format": "GeoTIFF",
+            "compression": "none",
+            "cloud_optimized": False,
+            "cog": False,
+            "raster": {
+                "crs": spatial_reference.get("crs"),
+                "epsg": spatial_reference.get("epsg"),
+                "vertical_datum": spatial_reference.get("vertical_datum"),
+                "affine_transform": spatial_reference["affine_transform"],
+                "nodata": NODATA,
+                "ncols": grid.ncols,
+                "nrows": grid.nrows,
+                "cell_size_m": grid.cell_size,
+                "extent": {
+                    "xmin_m": grid.xmin,
+                    "ymin_m": grid.ymin,
+                    "xmax_m": grid.xmax,
+                    "ymax_m": grid.ymax,
+                },
+                "cloud_optimized": False,
+                "cog": False,
+                "compression": "none",
+            },
+            "probability_semantics": {
+                "weighted": layer.key.startswith("weighted_"),
+                "annualized": False,
+                "is_annualized": False,
+            },
+        }
+    )
+    return entry
+
+
+def geotiff_raster_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    raster_outputs = []
+    for output in outputs:
+        if output.get("format") != "geotiff":
+            continue
+        raster_outputs.append(
+            {
+                "layer_name": output.get("layer_name"),
+                "format": output.get("format"),
+                "path": output.get("path"),
+                "sha256": output.get("sha256"),
+                "total_bytes": output.get("total_bytes"),
+                "cloud_optimized": bool((output.get("raster") or {}).get("cloud_optimized", False)),
+                "annualized": False,
+                "is_annualized": False,
+            }
+        )
+    return raster_outputs
 
 
 def input_artifact_identities(
@@ -2592,17 +2848,23 @@ def write_html_report(
 ) -> None:
     title = str(case.get("title") or metadata.get("case_id") or "Hazard Layers")
     rows = []
+    geotiff_enabled = bool((metadata.get("raster_exports") or {}).get("geotiff"))
     for layer in layers:
         summary = next(
             (entry.get("summary", {}) for entry in metadata.get("layers", []) if entry.get("key") == layer.key),
             {},
         )
+        files = (
+            f"<a href=\"{prefix}_{layer.key}.csv\">CSV grid</a> | "
+            f"<a href=\"{prefix}_{layer.key}.asc\">ASCII grid</a>"
+        )
+        if geotiff_enabled:
+            files += f" | <a href=\"{prefix}_{layer.key}.tif\">GeoTIFF</a>"
         rows.append(
             "<tr>"
             f"<td>{html.escape(layer.title)}</td>"
             f"<td>{html.escape(layer.units)}</td>"
-            f"<td><a href=\"{prefix}_{layer.key}.csv\">CSV grid</a> | "
-            f"<a href=\"{prefix}_{layer.key}.asc\">ASCII grid</a></td>"
+            f"<td>{files}</td>"
             f"<td>{html.escape(layer.note)}</td>"
             f"<td>{html.escape(format_summary(summary))}</td>"
             "</tr>"

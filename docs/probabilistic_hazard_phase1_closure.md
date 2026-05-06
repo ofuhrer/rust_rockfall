@@ -46,7 +46,7 @@ Phase 1 does not generate:
 - source-frequency models;
 - block-size probability distributions;
 - regional/tiled products;
-- GeoTIFF/COG products;
+- Cloud-Optimized GeoTIFF products;
 - exposure, vulnerability, or risk layers;
 - operationally valid hazard products.
 
@@ -95,10 +95,12 @@ Phase 1 preserves these compatibility boundaries:
 
 Candidate next phases are:
 
-- **Phase 2A: GIS-ready GeoTIFF/COG export for existing labelled hazard
-  rasters.** This addresses the largest product-readiness gap after Phase 1:
-  rasters now have explicit semantics, but remain mostly CSV/ASCII/debug-review
-  artifacts rather than CRS-bearing GIS products.
+- **Phase 2A: GIS-ready GeoTIFF export for existing labelled hazard rasters.**
+  This addresses the largest product-readiness gap after Phase 1: rasters now
+  have explicit semantics, but need CRS-bearing GIS products for reviewable
+  Swiss pilot workflows. The first Phase 2A slice writes value-preserving
+  GeoTIFFs; Cloud-Optimized GeoTIFF remains deferred until a verified COG writer
+  is selected.
 - **Phase 2B: map-product packaging polish.** This would improve package
   completeness checks, artifact inventories, and review templates around the
   existing map-package manifest without changing map values.
@@ -110,8 +112,8 @@ Candidate next phases are:
 
 ## Recommended Next Implementation Slice
 
-Recommended next slice: **Phase 2A, GIS-ready GeoTIFF/COG export for existing
-labelled hazard rasters**.
+Recommended next slice after Phase 1: **Phase 2A, GIS-ready GeoTIFF export for
+existing labelled hazard rasters**.
 
 Rationale:
 
@@ -119,9 +121,10 @@ Rationale:
   auditable in manifests.
 - Swiss pilot and public benchmark workflows still need CRS-bearing raster
   products for ordinary GIS review.
-- GeoTIFF/COG export can be additive and value-preserving: it should export the
+- GeoTIFF export can be additive and value-preserving: it should export the
   existing raster arrays with CRS, extent, nodata, units, checksums, and
-  manifest links.
+  manifest links. COG-specific compression, tiling, and overview guarantees
+  should wait for a dedicated writer.
 - This closes a practical product gap without changing physics, tuning
   parameters, probability semantics, or validation datasets.
 

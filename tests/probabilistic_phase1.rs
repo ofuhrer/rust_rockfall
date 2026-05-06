@@ -66,6 +66,38 @@ fn map_package_manifest_validates_against_source_zone_and_scenario_table() {
 }
 
 #[test]
+fn map_package_manifest_accepts_nonannual_geotiff_raster_outputs() {
+    let package = MapPackageManifest::from_yaml_str(
+        r#"schema_version: map_package_manifest_v1
+map_product_id: phase2a_geotiff_fixture
+probability_mode: sampling_weighted_conditional
+normalization_scope: conditioned_on_filter
+source_zone_id: zone_a
+source_zone_metadata_path: tests/fixtures/probabilistic_phase1/source_zone_valid.yaml
+scenario_table_path: tests/fixtures/probabilistic_phase1/scenario_level2_weighted.csv
+raster_outputs:
+  - layer_name: weighted_reach_probability
+    format: geotiff
+    path: hazard/results/phase2a/weighted_reach_probability.tif
+    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    total_bytes: 1024
+    cloud_optimized: false
+    is_annualized: false
+layer_semantics:
+  - layer_name: weighted_reach_probability
+    units: dimensionless
+    conditioned_on:
+      - source_zone_id=zone_a
+    is_annualized: false
+"#,
+    )
+    .unwrap();
+    assert_eq!(package.raster_outputs.len(), 1);
+    assert_eq!(package.raster_outputs[0].format, "geotiff");
+    assert!(!package.raster_outputs[0].is_annualized);
+}
+
+#[test]
 fn level1_conditional_package_accepts_equal_sampling_weights() {
     let source =
         SourceZoneMetadata::from_yaml_file(Path::new(FIXTURE_ROOT).join("source_zone_valid.yaml"))
