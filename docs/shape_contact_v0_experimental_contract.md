@@ -107,11 +107,18 @@ Per-contact or impact-event row fields:
 | Field | Unit / type | Required value and meaning |
 | --- | --- | --- |
 | `shape_contact_runtime_schema_version` | string | `shape_contact_runtime_diagnostic_v1`. |
+| `case_id` | string | Validation, verification, or synthetic case identifier that produced the row. |
+| `trajectory_id` | string | Stable trajectory identifier; deterministic for ensembles. |
+| `step_index` | integer | Zero-based fixed-step index after which the row was emitted. |
+| `time_s` | s | Simulation time associated with the post-contact state for the row. |
+| `shape_contact_row_id` | string | Stable row identifier unique within a run, recommended format `{trajectory_id}:shape_contact:{step_index}` unless a future writer documents a stricter format. |
+| `contact_event_id` | string/null | Existing impact-event identifier when the row is aligned with an impact-event output; null otherwise. |
+| `impact_index` | integer/null | Existing impact-event index when aligned with impact-event outputs; null otherwise. |
 | `active_contact_model` | string | Must be `shape_contact_v0`. |
 | `active_shape_type` | string | Must be `principal_dimensions_box_v0` for the first runtime slice. |
 | `shape_id` | string | Shape sidecar identifier used to build the active scaffold. |
 | `contact_regime` | enum | One of `separated_moving_away`, `separated_moving_toward`, `touching`, or `penetrating` from the support-gap gate. |
-| `shape_contact_regime_label` | enum/string | Higher-level diagnostic label such as `impact_candidate`, `non_impulsive_separated`, `non_impulsive_touching`, or future labels; this must not replace `contact_regime`. |
+| `shape_contact_regime_label` | enum | One of `non_impulsive_separated`, `non_impulsive_touching`, `non_impulsive_penetrating`, `impulsive_touching`, or `impulsive_penetrating`. |
 | `support_signed_gap_m` | m | Signed gap from selected support point to the terrain contact plane along the terrain normal. Positive values are separated. |
 | `contact_gap_tolerance_m` | m | Must record the active deterministic tolerance, initially `1.0e-9`. |
 | `terrain_contact_point_x_m`, `terrain_contact_point_y_m`, `terrain_contact_point_z_m` | m | Explicit terrain point used for support-gap calculation. |
@@ -128,6 +135,10 @@ Per-contact or impact-event row fields:
 | `tangential_impulse_norm_n_s` | N s | Magnitude of applied tangential impulse. |
 | `coulomb_friction_cap_n_s` | N s | `mu * normal_impulse_n_s`, or zero when no normal impulse exists. |
 | `coulomb_cap_ratio` | dimensionless/null | `tangential_impulse_norm_n_s / coulomb_friction_cap_n_s`; null when the cap is zero. |
+| `normal_restitution` | dimensionless | Active normal restitution used for this row. |
+| `tangential_restitution` | dimensionless | Active tangential restitution used for this row. |
+| `friction_coefficient` | dimensionless | Active Coulomb friction coefficient used for this row. |
+| `gravity_mps2` | m/s^2 | Active gravitational acceleration used for ballistic prediction and energy accounting. |
 | `pre_translational_kinetic_j` | J | Translational kinetic energy before contact update. |
 | `post_translational_kinetic_j` | J | Translational kinetic energy after contact update. |
 | `pre_rotational_kinetic_j` | J | Rotational kinetic energy before contact update. |
@@ -138,7 +149,7 @@ Per-contact or impact-event row fields:
 | `post_total_mechanical_energy_j` | J | Post-contact translational + rotational + potential energy. |
 | `contact_energy_delta_j` | J | Energy delta from the impulse update only. This must be non-positive for dissipative analytic contacts within tolerance. |
 | `projection_energy_delta_j` | J/null | Energy attributed to penetration correction/projection. Must be null while projection correction is deferred. |
-| `total_energy_delta_j` | J | Sum of contact and projection energy deltas when both are implemented; equal to `contact_energy_delta_j` while projection is absent. |
+| `total_energy_delta_j` | J | Must equal `post_total_mechanical_energy_j - pre_total_mechanical_energy_j`. While projection is deferred, it must also equal `contact_energy_delta_j`; when projection exists, it must equal `contact_energy_delta_j + projection_energy_delta_j`. |
 | `rotational_to_translational_energy_ratio_pre` | dimensionless/null | Pre-contact rotational/translational kinetic energy ratio; null if translational kinetic energy is zero. |
 | `rotational_to_translational_energy_ratio_post` | dimensionless/null | Post-contact rotational/translational kinetic energy ratio; null if translational kinetic energy is zero. |
 | `orientation_w`, `orientation_x`, `orientation_y`, `orientation_z` | unit quaternion | Active orientation before contact update in `[w, x, y, z]` order. |
@@ -163,7 +174,10 @@ include an additive `shape_contact_v0` object with these exact fields:
 | `active_contact_model` | string | `shape_contact_v0`. |
 | `active_shape_type` | string | `principal_dimensions_box_v0`. |
 | `shape_metadata_path` | string | Path to the validated `shape_metadata_v1` sidecar. |
+| `shape_metadata_sha256` | string/null | SHA-256 checksum for the shape sidecar when file-backed; null only for in-memory tests that cannot compute a checksum. |
 | `shape_id` | string | Sidecar shape identifier. |
+| `mass_kg` | number | Active mass copied from the validated shape sidecar and checked against the block mass. |
+| `principal_dimensions_m` | array[3] | Active box principal dimensions used for support selection. |
 | `orientation_initialization_mode` | string | Initially `identity`. |
 | `orientation_representation` | string | `quaternion_wxyz`. |
 | `inertia_model` | string | `analytic_box_principal_moments`. |

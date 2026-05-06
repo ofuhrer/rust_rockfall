@@ -188,8 +188,8 @@ evidence. Persistent contact handling, projection, orientation evolution, and
 runtime diagnostic emission remain deferred. Separated dry-run states remain
 non-impulsive, even when moving toward future contact. The contact-gap tolerance
 is fixed at `1.0e-9 m` as a deterministic pre-runtime scaffold convention, not a
-calibrated contact parameter. The runtime diagnostic schema is still incomplete
-before public `shape_contact_v0` use.
+calibrated contact parameter. The runtime diagnostic implementation is still
+incomplete before public `shape_contact_v0` use.
 Support-corner tie breaks are deterministic: exact zero components in the
 body-frame support direction choose the positive corner sign. That policy is
 reproducibility scaffolding, not a validated face-contact law.
@@ -201,27 +201,34 @@ Before `shape_contact_v0` can be used by public validation or benchmark cases,
 runtime contact rows must implement the frozen
 `shape_contact_runtime_diagnostic_v1` contract from
 `docs/shape_contact_v0_experimental_contract.md`. Required row fields include
-`contact_regime`, `support_signed_gap_m`, `contact_gap_tolerance_m`,
-`terrain_contact_point_*_m`, `terrain_normal_*`, `support_point_*_m`,
-`support_corner_sign_*`, pre/post contact-point normal and tangential speeds,
-normal and tangential impulse fields, `coulomb_cap_ratio`, pre/post
+row identity fields (`case_id`, `trajectory_id`, `step_index`, `time_s`, and
+`shape_contact_row_id`), optional impact-event alignment fields,
+`contact_regime`, `shape_contact_regime_label`, `support_signed_gap_m`,
+`contact_gap_tolerance_m`, `terrain_contact_point_*_m`, `terrain_normal_*`,
+`support_point_*_m`, `support_corner_sign_*`, pre/post contact-point normal and
+tangential speeds, normal and tangential impulse fields, active restitution,
+friction, and gravity fields, `coulomb_cap_ratio`, pre/post
 translational, rotational, potential, and total mechanical energy fields,
 `contact_energy_delta_j`, `projection_energy_delta_j`, `total_energy_delta_j`,
 orientation quaternion fields, `orientation_norm_error`, active model/shape
 metadata, and explicit `impulse_applied` / `projection_applied` flags. While
 projection correction is deferred, `projection_energy_delta_j` must be null and
-`projection_applied` must be false.
+`projection_applied` must be false; `total_energy_delta_j` must equal
+`post_total_mechanical_energy_j - pre_total_mechanical_energy_j` and, while
+projection is absent, `contact_energy_delta_j`.
 
 Future `run_manifest_v1` output for `shape_contact_v0` must include an additive
 `shape_contact_v0` object recording `active_contact_model`, `active_shape_type`,
-`shape_metadata_path`, `shape_id`, orientation initialization/representation,
-`inertia_model`, `principal_moments_kg_m2`, support-selection and tie-break
-policy, `contact_gap_tolerance_m`, `multi_contact: false`,
+`shape_metadata_path`, `shape_metadata_sha256`, `shape_id`, active mass,
+principal dimensions, orientation initialization/representation, `inertia_model`,
+`principal_moments_kg_m2`, support-selection and tie-break policy,
+`contact_gap_tolerance_m`, `multi_contact: false`,
 `new_tuned_parameters: false`, `defaults_changed: false`, projection,
-persistent-contact, and orientation-evolution flags, runtime diagnostic schema
-version, experimental status, warnings, and limitations. These fields are a
-future diagnostic contract only; current validation loading still rejects public
-`shape_contact_v0` execution.
+persistent-contact, and
+orientation-evolution flags, runtime diagnostic schema version, experimental
+status, warnings, and limitations. These fields are a future diagnostic contract
+only; current validation loading still rejects public `shape_contact_v0`
+execution.
 
 ## Implemented Terrain Types
 

@@ -1186,6 +1186,97 @@ struct ShapeContactV0MiniFixedStepResult {
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ShapeContactV0RuntimeRegimeLabelV1 {
+    NonImpulsiveSeparated,
+    NonImpulsiveTouching,
+    NonImpulsivePenetrating,
+    ImpulsiveTouching,
+    ImpulsivePenetrating,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+struct ShapeContactV0RuntimeDiagnosticRowV1 {
+    shape_contact_runtime_schema_version: String,
+    case_id: String,
+    trajectory_id: String,
+    step_index: u64,
+    time_s: f64,
+    shape_contact_row_id: String,
+    contact_event_id: Option<String>,
+    impact_index: Option<u64>,
+    active_contact_model: String,
+    active_shape_type: String,
+    shape_id: String,
+    contact_regime: ShapeContactV0ContactRegime,
+    shape_contact_regime_label: Option<ShapeContactV0RuntimeRegimeLabelV1>,
+    support_signed_gap_m: f64,
+    contact_gap_tolerance_m: f64,
+    terrain_contact_point_x_m: f64,
+    terrain_contact_point_y_m: f64,
+    terrain_contact_point_z_m: f64,
+    terrain_normal_x: f64,
+    terrain_normal_y: f64,
+    terrain_normal_z: f64,
+    support_point_x_m: f64,
+    support_point_y_m: f64,
+    support_point_z_m: f64,
+    support_corner_sign_x: i8,
+    support_corner_sign_y: i8,
+    support_corner_sign_z: i8,
+    support_corner_changed: Option<bool>,
+    contact_point_normal_velocity_pre_mps: f64,
+    contact_point_normal_velocity_post_mps: f64,
+    contact_point_tangential_speed_pre_mps: f64,
+    contact_point_tangential_speed_post_mps: f64,
+    normal_impulse_n_s: f64,
+    tangential_impulse_x_n_s: f64,
+    tangential_impulse_y_n_s: f64,
+    tangential_impulse_z_n_s: f64,
+    tangential_impulse_norm_n_s: f64,
+    coulomb_friction_cap_n_s: f64,
+    coulomb_cap_ratio: Option<f64>,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+    gravity_mps2: f64,
+    pre_translational_kinetic_j: f64,
+    post_translational_kinetic_j: f64,
+    pre_rotational_kinetic_j: f64,
+    post_rotational_kinetic_j: f64,
+    pre_potential_energy_j: f64,
+    post_potential_energy_j: f64,
+    pre_total_mechanical_energy_j: f64,
+    post_total_mechanical_energy_j: f64,
+    contact_energy_delta_j: f64,
+    projection_energy_delta_j: Option<f64>,
+    total_energy_delta_j: f64,
+    rotational_to_translational_energy_ratio_pre: Option<f64>,
+    rotational_to_translational_energy_ratio_post: Option<f64>,
+    orientation_w: f64,
+    orientation_x: f64,
+    orientation_y: f64,
+    orientation_z: f64,
+    orientation_norm_error: f64,
+    orientation_initialization_mode: String,
+    impulse_applied: bool,
+    projection_applied: bool,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone)]
+struct ShapeContactV0RuntimeDiagnosticIdentity<'a> {
+    case_id: &'a str,
+    trajectory_id: &'a str,
+    step_index: u64,
+    time_s: f64,
+    contact_event_id: Option<&'a str>,
+    impact_index: Option<u64>,
+}
+
+#[cfg(test)]
 fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -1211,6 +1302,165 @@ fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
         terrain_normal_world,
         settings: input.settings,
     })
+}
+
+#[cfg(test)]
+fn shape_contact_v0_regime_label_v1(
+    contact_regime: ShapeContactV0ContactRegime,
+    impulse_applied: bool,
+) -> Option<ShapeContactV0RuntimeRegimeLabelV1> {
+    match (contact_regime, impulse_applied) {
+        (ShapeContactV0ContactRegime::SeparatedMovingAway, _)
+        | (ShapeContactV0ContactRegime::SeparatedMovingToward, _) => {
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveSeparated)
+        }
+        (ShapeContactV0ContactRegime::Touching, false) => {
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveTouching)
+        }
+        (ShapeContactV0ContactRegime::Touching, true) => {
+            Some(ShapeContactV0RuntimeRegimeLabelV1::ImpulsiveTouching)
+        }
+        (ShapeContactV0ContactRegime::Penetrating, true) => {
+            Some(ShapeContactV0RuntimeRegimeLabelV1::ImpulsivePenetrating)
+        }
+        (ShapeContactV0ContactRegime::Penetrating, false) => {
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsivePenetrating)
+        }
+    }
+}
+
+#[cfg(test)]
+fn shape_contact_v0_runtime_diagnostic_row_v1(
+    scaffold: &ShapeContactV0Scaffold,
+    input: &ShapeContactV0ContactInput,
+    result: &ShapeContactV0ContactResult,
+    identity: ShapeContactV0RuntimeDiagnosticIdentity<'_>,
+) -> Result<ShapeContactV0RuntimeDiagnosticRowV1, ShapeMetadataError> {
+    validate_finite_triplet(
+        [
+            input.terrain_normal_world.x,
+            input.terrain_normal_world.y,
+            input.terrain_normal_world.z,
+        ],
+        "terrain_normal_world",
+    )?;
+    let normal_norm = input.terrain_normal_world.norm();
+    if normal_norm == 0.0 {
+        return Err(ShapeMetadataError::Invalid(
+            "terrain_normal_world must be nonzero".to_string(),
+        ));
+    }
+    let terrain_normal = input.terrain_normal_world / normal_norm;
+    let diagnostic = &result.impulse_result.diagnostic;
+    let energy = &diagnostic.energy;
+    let pre_potential_energy_j = energy.pre_total_mechanical_energy_j
+        - energy.pre_translational_kinetic_j
+        - energy.pre_rotational_kinetic_j;
+    let post_potential_energy_j = energy.post_total_mechanical_energy_j
+        - energy.post_translational_kinetic_j
+        - energy.post_rotational_kinetic_j;
+    let rotational_to_translational_energy_ratio_pre = positive_ratio_or_none(
+        energy.pre_rotational_kinetic_j,
+        energy.pre_translational_kinetic_j,
+    );
+    let rotational_to_translational_energy_ratio_post = positive_ratio_or_none(
+        energy.post_rotational_kinetic_j,
+        energy.post_translational_kinetic_j,
+    );
+    let total_energy_delta_j =
+        energy.post_total_mechanical_energy_j - energy.pre_total_mechanical_energy_j;
+    ensure_close(
+        total_energy_delta_j,
+        energy.contact_energy_delta_j,
+        "total_energy_delta_j",
+        "contact_energy_delta_j",
+    )?;
+
+    Ok(ShapeContactV0RuntimeDiagnosticRowV1 {
+        shape_contact_runtime_schema_version: "shape_contact_runtime_diagnostic_v1".to_string(),
+        case_id: identity.case_id.to_string(),
+        trajectory_id: identity.trajectory_id.to_string(),
+        step_index: identity.step_index,
+        time_s: identity.time_s,
+        shape_contact_row_id: format!(
+            "{}:shape_contact:{}",
+            identity.trajectory_id, identity.step_index
+        ),
+        contact_event_id: identity.contact_event_id.map(str::to_string),
+        impact_index: identity.impact_index,
+        active_contact_model: diagnostic.active_contact_model.clone(),
+        active_shape_type: diagnostic.active_shape_type.clone(),
+        shape_id: scaffold.shape_id.clone(),
+        contact_regime: result.contact_regime,
+        shape_contact_regime_label: shape_contact_v0_regime_label_v1(
+            result.contact_regime,
+            diagnostic.impacted,
+        ),
+        support_signed_gap_m: result.support_signed_gap_m,
+        contact_gap_tolerance_m: SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M,
+        terrain_contact_point_x_m: result.terrain_contact_point_m[0],
+        terrain_contact_point_y_m: result.terrain_contact_point_m[1],
+        terrain_contact_point_z_m: result.terrain_contact_point_m[2],
+        terrain_normal_x: terrain_normal.x,
+        terrain_normal_y: terrain_normal.y,
+        terrain_normal_z: terrain_normal.z,
+        support_point_x_m: diagnostic.support_point_m[0],
+        support_point_y_m: diagnostic.support_point_m[1],
+        support_point_z_m: diagnostic.support_point_m[2],
+        support_corner_sign_x: diagnostic.support_corner_signs[0],
+        support_corner_sign_y: diagnostic.support_corner_signs[1],
+        support_corner_sign_z: diagnostic.support_corner_signs[2],
+        support_corner_changed: None,
+        contact_point_normal_velocity_pre_mps: diagnostic.pre_contact_normal_velocity_mps,
+        contact_point_normal_velocity_post_mps: diagnostic.post_contact_normal_velocity_mps,
+        contact_point_tangential_speed_pre_mps: diagnostic.pre_contact_tangential_speed_mps,
+        contact_point_tangential_speed_post_mps: diagnostic.post_contact_tangential_speed_mps,
+        normal_impulse_n_s: diagnostic.normal_impulse_n_s,
+        tangential_impulse_x_n_s: diagnostic.tangential_impulse_n_s[0],
+        tangential_impulse_y_n_s: diagnostic.tangential_impulse_n_s[1],
+        tangential_impulse_z_n_s: diagnostic.tangential_impulse_n_s[2],
+        tangential_impulse_norm_n_s: diagnostic.tangential_impulse_norm_n_s,
+        coulomb_friction_cap_n_s: diagnostic.coulomb_friction_cap_n_s,
+        coulomb_cap_ratio: if diagnostic.coulomb_friction_cap_n_s > 0.0 {
+            Some(diagnostic.coulomb_cap_ratio)
+        } else {
+            None
+        },
+        normal_restitution: input.settings.normal_restitution,
+        tangential_restitution: input.settings.tangential_restitution,
+        friction_coefficient: input.settings.friction_coefficient,
+        gravity_mps2: input.settings.gravity_mps2,
+        pre_translational_kinetic_j: energy.pre_translational_kinetic_j,
+        post_translational_kinetic_j: energy.post_translational_kinetic_j,
+        pre_rotational_kinetic_j: energy.pre_rotational_kinetic_j,
+        post_rotational_kinetic_j: energy.post_rotational_kinetic_j,
+        pre_potential_energy_j,
+        post_potential_energy_j,
+        pre_total_mechanical_energy_j: energy.pre_total_mechanical_energy_j,
+        post_total_mechanical_energy_j: energy.post_total_mechanical_energy_j,
+        contact_energy_delta_j: energy.contact_energy_delta_j,
+        projection_energy_delta_j: None,
+        total_energy_delta_j,
+        rotational_to_translational_energy_ratio_pre,
+        rotational_to_translational_energy_ratio_post,
+        orientation_w: scaffold.orientation_wxyz[0],
+        orientation_x: scaffold.orientation_wxyz[1],
+        orientation_y: scaffold.orientation_wxyz[2],
+        orientation_z: scaffold.orientation_wxyz[3],
+        orientation_norm_error: (quaternion_norm(scaffold.orientation_wxyz) - 1.0).abs(),
+        orientation_initialization_mode: default_orientation_initialization_mode(),
+        impulse_applied: diagnostic.impacted,
+        projection_applied: false,
+    })
+}
+
+#[cfg(test)]
+fn positive_ratio_or_none(numerator: f64, denominator: f64) -> Option<f64> {
+    if denominator > 0.0 {
+        Some(numerator / denominator)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -1439,6 +1689,17 @@ mod tests {
             tangential_restitution,
             friction_coefficient,
             gravity_mps2,
+        }
+    }
+
+    fn runtime_identity(step_index: u64) -> ShapeContactV0RuntimeDiagnosticIdentity<'static> {
+        ShapeContactV0RuntimeDiagnosticIdentity {
+            case_id: "shape_contract_case",
+            trajectory_id: "trajectory_000001",
+            step_index,
+            time_s: step_index as f64 * 0.01,
+            contact_event_id: None,
+            impact_index: None,
         }
     }
 
@@ -1927,6 +2188,196 @@ mod tests {
                 .energy
                 .contact_energy_delta_j
                 <= 1.0e-10
+        );
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_diagnostic_maps_separated_row_contract() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let input = ShapeContactV0ContactInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.5), Vec3::new(0.0, 0.0, -1.0)),
+            terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 2.0),
+            settings: settings(0.25, 0.75, 0.2),
+        };
+        let result = shape_contact_v0_contact_dry_run(&scaffold, input).unwrap();
+        let row = shape_contact_v0_runtime_diagnostic_row_v1(
+            &scaffold,
+            &input,
+            &result,
+            runtime_identity(7),
+        )
+        .unwrap();
+
+        assert_eq!(
+            row.shape_contact_runtime_schema_version,
+            "shape_contact_runtime_diagnostic_v1"
+        );
+        assert_eq!(row.case_id, "shape_contract_case");
+        assert_eq!(row.trajectory_id, "trajectory_000001");
+        assert_eq!(row.step_index, 7);
+        assert_close(row.time_s, 0.07, 1.0e-12);
+        assert_eq!(
+            row.shape_contact_row_id,
+            "trajectory_000001:shape_contact:7"
+        );
+        assert_eq!(row.contact_event_id, None);
+        assert_eq!(row.impact_index, None);
+        assert_eq!(
+            row.contact_regime,
+            ShapeContactV0ContactRegime::SeparatedMovingToward
+        );
+        assert_eq!(
+            row.shape_contact_regime_label,
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveSeparated)
+        );
+        assert!(!row.impulse_applied);
+        assert!(!row.projection_applied);
+        assert_eq!(row.projection_energy_delta_j, None);
+        assert_eq!(row.coulomb_cap_ratio, None);
+        assert_close(row.support_signed_gap_m, 0.5, 1.0e-12);
+        assert_close(
+            row.contact_gap_tolerance_m,
+            SHAPE_CONTACT_V0_CONTACT_GAP_TOLERANCE_M,
+            1.0e-18,
+        );
+        assert_eq!(row.terrain_contact_point_x_m, 1.0);
+        assert_eq!(row.terrain_contact_point_y_m, 1.0);
+        assert_eq!(row.terrain_contact_point_z_m, 0.0);
+        assert_close(row.terrain_normal_x, 0.0, 1.0e-12);
+        assert_close(row.terrain_normal_y, 0.0, 1.0e-12);
+        assert_close(row.terrain_normal_z, 1.0, 1.0e-12);
+        assert_eq!(row.support_corner_changed, None);
+        assert_eq!(row.active_contact_model, SHAPE_CONTACT_V0_MODEL);
+        assert_eq!(row.active_shape_type, SHAPE_CONTACT_V0_ACTIVE_SHAPE);
+        assert_eq!(row.shape_id, scaffold.shape_id);
+        assert_close(row.normal_restitution, 0.25, 1.0e-12);
+        assert_close(row.tangential_restitution, 0.75, 1.0e-12);
+        assert_close(row.friction_coefficient, 0.2, 1.0e-12);
+        assert_close(row.gravity_mps2, 9.81, 1.0e-12);
+        assert_close(row.normal_impulse_n_s, 0.0, 1.0e-12);
+        assert_close(row.tangential_impulse_norm_n_s, 0.0, 1.0e-12);
+        assert_close(row.total_energy_delta_j, 0.0, 1.0e-12);
+        assert_close(
+            row.contact_energy_delta_j,
+            row.total_energy_delta_j,
+            1.0e-12,
+        );
+        assert_close(row.orientation_w, 1.0, 1.0e-12);
+        assert_close(row.orientation_x, 0.0, 1.0e-12);
+        assert_close(row.orientation_y, 0.0, 1.0e-12);
+        assert_close(row.orientation_z, 0.0, 1.0e-12);
+        assert_close(row.orientation_norm_error, 0.0, 1.0e-12);
+        assert_eq!(row.orientation_initialization_mode, "identity");
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_diagnostic_maps_touching_impulsive_row_contract() {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let input = ShapeContactV0ContactInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(3.0, 0.0, -2.0)),
+            terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            settings: settings(0.5, 0.0, 0.4),
+        };
+        let result = shape_contact_v0_contact_dry_run(&scaffold, input).unwrap();
+        let row = shape_contact_v0_runtime_diagnostic_row_v1(
+            &scaffold,
+            &input,
+            &result,
+            ShapeContactV0RuntimeDiagnosticIdentity {
+                case_id: "shape_contract_case",
+                trajectory_id: "trajectory_000002",
+                step_index: 11,
+                time_s: 0.11,
+                contact_event_id: Some("impact_000003"),
+                impact_index: Some(3),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(row.contact_regime, ShapeContactV0ContactRegime::Touching);
+        assert_eq!(
+            row.shape_contact_regime_label,
+            Some(ShapeContactV0RuntimeRegimeLabelV1::ImpulsiveTouching)
+        );
+        assert!(row.impulse_applied);
+        assert_eq!(row.contact_event_id.as_deref(), Some("impact_000003"));
+        assert_eq!(row.impact_index, Some(3));
+        assert_eq!(
+            row.shape_contact_row_id,
+            "trajectory_000002:shape_contact:11"
+        );
+        assert_close(row.support_point_x_m, 1.0, 1.0e-12);
+        assert_close(row.support_point_y_m, 1.0, 1.0e-12);
+        assert_close(row.support_point_z_m, 0.0, 1.0e-12);
+        assert_eq!(row.support_corner_sign_x, 1);
+        assert_eq!(row.support_corner_sign_y, 1);
+        assert_eq!(row.support_corner_sign_z, -1);
+        assert!(row.contact_point_normal_velocity_pre_mps < 0.0);
+        assert!(row.contact_point_normal_velocity_post_mps > 0.0);
+        assert!(row.contact_point_tangential_speed_pre_mps > 0.0);
+        assert!(row.normal_impulse_n_s > 0.0);
+        assert!(row.tangential_impulse_norm_n_s > 0.0);
+        assert!(row.coulomb_friction_cap_n_s > 0.0);
+        assert!(row.coulomb_cap_ratio.unwrap() <= 1.0 + 1.0e-12);
+        assert_close(
+            row.tangential_impulse_norm_n_s,
+            (row.tangential_impulse_x_n_s.powi(2)
+                + row.tangential_impulse_y_n_s.powi(2)
+                + row.tangential_impulse_z_n_s.powi(2))
+            .sqrt(),
+            1.0e-12,
+        );
+        assert_close(
+            row.total_energy_delta_j,
+            row.post_total_mechanical_energy_j - row.pre_total_mechanical_energy_j,
+            1.0e-12,
+        );
+        assert_close(
+            row.total_energy_delta_j,
+            row.contact_energy_delta_j,
+            1.0e-12,
+        );
+        assert_eq!(row.projection_energy_delta_j, None);
+        assert!(!row.projection_applied);
+        assert!(row.pre_translational_kinetic_j > 0.0);
+        assert!(row.post_translational_kinetic_j > 0.0);
+        assert!(row.pre_potential_energy_j > 0.0);
+        assert!(row.post_potential_energy_j > 0.0);
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_regime_label_v1_values_are_fixed() {
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(
+                ShapeContactV0ContactRegime::SeparatedMovingAway,
+                false
+            ),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveSeparated)
+        );
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(
+                ShapeContactV0ContactRegime::SeparatedMovingToward,
+                false
+            ),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveSeparated)
+        );
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(ShapeContactV0ContactRegime::Touching, false),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsiveTouching)
+        );
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(ShapeContactV0ContactRegime::Touching, true),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::ImpulsiveTouching)
+        );
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(ShapeContactV0ContactRegime::Penetrating, true),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::ImpulsivePenetrating)
+        );
+        assert_eq!(
+            shape_contact_v0_regime_label_v1(ShapeContactV0ContactRegime::Penetrating, false),
+            Some(ShapeContactV0RuntimeRegimeLabelV1::NonImpulsivePenetrating)
         );
     }
 
