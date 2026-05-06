@@ -122,7 +122,9 @@ a = (5/7) g_t
 The experimental `shape_contact_v0` label is recognized only as a
 verification-first scaffold. It requires compatible passive shape metadata and
 currently exposes analytic `principal_dimensions_box_v0` inertia/support
-helpers, but active contact impulses are not implemented. Existing
+helpers plus an isolated single-support impulse helper for analytic tests, but
+that helper is not wired into fixed-step simulation or public benchmarks.
+Existing
 `translational_v0` and `sphere_rotational_v1` dynamics and defaults remain
 unchanged.
 

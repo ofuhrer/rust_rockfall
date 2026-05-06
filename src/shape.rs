@@ -241,6 +241,45 @@ pub struct ShapeContactV0EnergyDiagnostic {
     pub contact_energy_delta_j: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0ImpulseDiagnostic {
+    pub active_contact_model: String,
+    pub active_shape_type: String,
+    pub impacted: bool,
+    pub support_point_m: [f64; 3],
+    pub support_corner_signs: [i8; 3],
+    pub contact_point_velocity_pre_mps: [f64; 3],
+    pub contact_point_velocity_post_mps: [f64; 3],
+    pub pre_contact_normal_velocity_mps: f64,
+    pub post_contact_normal_velocity_mps: f64,
+    pub pre_contact_tangential_speed_mps: f64,
+    pub post_contact_tangential_speed_mps: f64,
+    pub normal_impulse_n_s: f64,
+    pub tangential_impulse_n_s: [f64; 3],
+    pub tangential_impulse_norm_n_s: f64,
+    pub coulomb_friction_cap_n_s: f64,
+    pub coulomb_cap_ratio: f64,
+    pub energy: ShapeContactV0EnergyDiagnostic,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0ImpulseResult {
+    pub post_state: BodyState,
+    pub diagnostic: ShapeContactV0ImpulseDiagnostic,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ShapeContactV0ImpulseInput {
+    pub pre_state: BodyState,
+    pub terrain_normal_world: Vec3,
+    pub mass_kg: f64,
+    pub principal_moments_kg_m2: [f64; 3],
+    pub normal_restitution: f64,
+    pub tangential_restitution: f64,
+    pub friction_coefficient: f64,
+    pub gravity_mps2: f64,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BlockShapeType {
@@ -554,6 +593,183 @@ pub fn shape_contact_v0_energy_diagnostic(
     })
 }
 
+pub fn shape_contact_v0_apply_support_impulse(
+    support: &ShapeContactV0SupportDiagnostic,
+    input: ShapeContactV0ImpulseInput,
+) -> Result<ShapeContactV0ImpulseResult, ShapeMetadataError> {
+    let pre_state = input.pre_state;
+    let mass_kg = input.mass_kg;
+    let principal_moments_kg_m2 = input.principal_moments_kg_m2;
+    let terrain_normal_world = input.terrain_normal_world;
+    validate_finite_triplet(
+        [
+            pre_state.position_m.x,
+            pre_state.position_m.y,
+            pre_state.position_m.z,
+        ],
+        "pre_state.position_m",
+    )?;
+    validate_finite_triplet(
+        [
+            pre_state.velocity_mps.x,
+            pre_state.velocity_mps.y,
+            pre_state.velocity_mps.z,
+        ],
+        "pre_state.velocity_mps",
+    )?;
+    validate_finite_triplet(
+        [
+            pre_state.angular_velocity_radps.x,
+            pre_state.angular_velocity_radps.y,
+            pre_state.angular_velocity_radps.z,
+        ],
+        "pre_state.angular_velocity_radps",
+    )?;
+    validate_positive(mass_kg, "mass_kg")?;
+    validate_positive_triplet(principal_moments_kg_m2, "principal_moments_kg_m2")?;
+    validate_positive(input.gravity_mps2, "gravity_mps2")?;
+    validate_unit_interval(input.normal_restitution, "normal_restitution")?;
+    validate_unit_interval(input.tangential_restitution, "tangential_restitution")?;
+    validate_nonnegative(input.friction_coefficient, "friction_coefficient")?;
+    validate_unit_quaternion(support.orientation_wxyz, "support.orientation_wxyz")?;
+    if support.orientation_wxyz != default_identity_quaternion() {
+        return Err(ShapeMetadataError::Invalid(
+            "shape_contact_v0 impulse kernel currently supports identity orientation only"
+                .to_string(),
+        ));
+    }
+    validate_finite_triplet(support.support_point_m, "support.support_point_m")?;
+    validate_finite_triplet(
+        [
+            terrain_normal_world.x,
+            terrain_normal_world.y,
+            terrain_normal_world.z,
+        ],
+        "terrain_normal_world",
+    )?;
+    let normal_norm = terrain_normal_world.norm();
+    if normal_norm == 0.0 {
+        return Err(ShapeMetadataError::Invalid(
+            "terrain_normal_world must be nonzero".to_string(),
+        ));
+    }
+
+    let normal = terrain_normal_world / normal_norm;
+    let support_point = Vec3::new(
+        support.support_point_m[0],
+        support.support_point_m[1],
+        support.support_point_m[2],
+    );
+    let contact_offset = support_point - pre_state.position_m;
+    let pre_contact_velocity = rigid_body_contact_point_velocity(pre_state, contact_offset);
+    let pre_normal_velocity = pre_contact_velocity.dot(&normal);
+    let pre_tangent_velocity = pre_contact_velocity - pre_normal_velocity * normal;
+    let pre_tangent_speed = pre_tangent_velocity.norm();
+    let mut post_state = pre_state;
+    let mut normal_impulse_n_s = 0.0;
+    let mut tangential_impulse = Vec3::zeros();
+    let mut coulomb_friction_cap_n_s = 0.0;
+
+    if pre_normal_velocity < 0.0 {
+        let normal_denominator = impulse_effective_mass_denominator(
+            mass_kg,
+            principal_moments_kg_m2,
+            contact_offset,
+            normal,
+        )?;
+        normal_impulse_n_s =
+            -((1.0 + input.normal_restitution) * pre_normal_velocity) / normal_denominator;
+        apply_principal_axis_impulse(
+            &mut post_state,
+            mass_kg,
+            principal_moments_kg_m2,
+            contact_offset,
+            normal_impulse_n_s * normal,
+        );
+
+        let post_normal_contact_velocity =
+            rigid_body_contact_point_velocity(post_state, contact_offset);
+        let post_normal_vn = post_normal_contact_velocity.dot(&normal);
+        let post_normal_tangent_velocity = post_normal_contact_velocity - post_normal_vn * normal;
+        let post_normal_tangent_speed = post_normal_tangent_velocity.norm();
+        coulomb_friction_cap_n_s = input.friction_coefficient * normal_impulse_n_s.abs();
+        if post_normal_tangent_speed > 0.0 {
+            let tangent_direction = post_normal_tangent_velocity / post_normal_tangent_speed;
+            let tangent_denominator = impulse_effective_mass_denominator(
+                mass_kg,
+                principal_moments_kg_m2,
+                contact_offset,
+                tangent_direction,
+            )?;
+            let requested_tangent_impulse = -((1.0 - input.tangential_restitution)
+                * post_normal_tangent_speed)
+                / tangent_denominator
+                * tangent_direction;
+            tangential_impulse =
+                clamp_vector_norm(requested_tangent_impulse, coulomb_friction_cap_n_s);
+            apply_principal_axis_impulse(
+                &mut post_state,
+                mass_kg,
+                principal_moments_kg_m2,
+                contact_offset,
+                tangential_impulse,
+            );
+        }
+    }
+
+    let post_contact_velocity = rigid_body_contact_point_velocity(post_state, contact_offset);
+    let post_normal_velocity = post_contact_velocity.dot(&normal);
+    let post_tangent_velocity = post_contact_velocity - post_normal_velocity * normal;
+    let tangential_impulse_norm_n_s = tangential_impulse.norm();
+    let coulomb_cap_ratio = if coulomb_friction_cap_n_s > 0.0 {
+        tangential_impulse_norm_n_s / coulomb_friction_cap_n_s
+    } else {
+        0.0
+    };
+    let energy = shape_contact_v0_energy_diagnostic(
+        &pre_state,
+        &post_state,
+        mass_kg,
+        principal_moments_kg_m2,
+        input.gravity_mps2,
+    )?;
+
+    Ok(ShapeContactV0ImpulseResult {
+        post_state,
+        diagnostic: ShapeContactV0ImpulseDiagnostic {
+            active_contact_model: SHAPE_CONTACT_V0_MODEL.to_string(),
+            active_shape_type: SHAPE_CONTACT_V0_ACTIVE_SHAPE.to_string(),
+            impacted: pre_normal_velocity < 0.0,
+            support_point_m: support.support_point_m,
+            support_corner_signs: support.support_corner_signs,
+            contact_point_velocity_pre_mps: [
+                pre_contact_velocity.x,
+                pre_contact_velocity.y,
+                pre_contact_velocity.z,
+            ],
+            contact_point_velocity_post_mps: [
+                post_contact_velocity.x,
+                post_contact_velocity.y,
+                post_contact_velocity.z,
+            ],
+            pre_contact_normal_velocity_mps: pre_normal_velocity,
+            post_contact_normal_velocity_mps: post_normal_velocity,
+            pre_contact_tangential_speed_mps: pre_tangent_speed,
+            post_contact_tangential_speed_mps: post_tangent_velocity.norm(),
+            normal_impulse_n_s,
+            tangential_impulse_n_s: [
+                tangential_impulse.x,
+                tangential_impulse.y,
+                tangential_impulse.z,
+            ],
+            tangential_impulse_norm_n_s,
+            coulomb_friction_cap_n_s,
+            coulomb_cap_ratio,
+            energy,
+        },
+    })
+}
+
 fn default_orientation_representation() -> String {
     "quaternion_wxyz".to_string()
 }
@@ -585,6 +801,24 @@ fn validate_positive(value: f64, label: &str) -> Result<(), ShapeMetadataError> 
     if !value.is_finite() || value <= 0.0 {
         return Err(ShapeMetadataError::Invalid(format!(
             "{label} must be positive and finite"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_nonnegative(value: f64, label: &str) -> Result<(), ShapeMetadataError> {
+    if !value.is_finite() || value < 0.0 {
+        return Err(ShapeMetadataError::Invalid(format!(
+            "{label} must be nonnegative and finite"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_unit_interval(value: f64, label: &str) -> Result<(), ShapeMetadataError> {
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        return Err(ShapeMetadataError::Invalid(format!(
+            "{label} must be finite and in [0, 1]"
         )));
     }
     Ok(())
@@ -657,4 +891,63 @@ fn principal_axis_rotational_energy_j(omega_radps: Vec3, principal_moments_kg_m2
     0.5 * (principal_moments_kg_m2[0] * omega_radps.x * omega_radps.x
         + principal_moments_kg_m2[1] * omega_radps.y * omega_radps.y
         + principal_moments_kg_m2[2] * omega_radps.z * omega_radps.z)
+}
+
+fn rigid_body_contact_point_velocity(state: BodyState, contact_offset_m: Vec3) -> Vec3 {
+    state.velocity_mps + state.angular_velocity_radps.cross(&contact_offset_m)
+}
+
+fn impulse_effective_mass_denominator(
+    mass_kg: f64,
+    principal_moments_kg_m2: [f64; 3],
+    contact_offset_m: Vec3,
+    impulse_direction: Vec3,
+) -> Result<f64, ShapeMetadataError> {
+    let direction_norm = impulse_direction.norm();
+    if direction_norm == 0.0 {
+        return Err(ShapeMetadataError::Invalid(
+            "impulse_direction must be nonzero".to_string(),
+        ));
+    }
+    let direction = impulse_direction / direction_norm;
+    let rotational_axis = contact_offset_m.cross(&direction);
+    let angular_velocity_delta_per_impulse = Vec3::new(
+        rotational_axis.x / principal_moments_kg_m2[0],
+        rotational_axis.y / principal_moments_kg_m2[1],
+        rotational_axis.z / principal_moments_kg_m2[2],
+    );
+    let contact_velocity_delta_per_impulse =
+        direction / mass_kg + angular_velocity_delta_per_impulse.cross(&contact_offset_m);
+    let denominator = direction.dot(&contact_velocity_delta_per_impulse);
+    if !denominator.is_finite() || denominator <= 0.0 {
+        return Err(ShapeMetadataError::Invalid(format!(
+            "effective impulse mass denominator must be positive and finite; got {denominator}"
+        )));
+    }
+    Ok(denominator)
+}
+
+fn apply_principal_axis_impulse(
+    state: &mut BodyState,
+    mass_kg: f64,
+    principal_moments_kg_m2: [f64; 3],
+    contact_offset_m: Vec3,
+    impulse_n_s: Vec3,
+) {
+    state.velocity_mps += impulse_n_s / mass_kg;
+    let angular_impulse = contact_offset_m.cross(&impulse_n_s);
+    state.angular_velocity_radps += Vec3::new(
+        angular_impulse.x / principal_moments_kg_m2[0],
+        angular_impulse.y / principal_moments_kg_m2[1],
+        angular_impulse.z / principal_moments_kg_m2[2],
+    );
+}
+
+fn clamp_vector_norm(vector: Vec3, max_norm: f64) -> Vec3 {
+    let norm = vector.norm();
+    if norm > max_norm.max(0.0) && norm > 0.0 {
+        vector * (max_norm.max(0.0) / norm)
+    } else {
+        vector
+    }
 }

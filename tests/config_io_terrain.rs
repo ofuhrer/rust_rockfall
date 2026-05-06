@@ -6,8 +6,9 @@ use rust_rockfall::{
     manifest::RunManifest,
     shape::{
         box_principal_moments_kg_m2, ellipsoid_principal_moments_kg_m2, select_box_support_point,
-        shape_contact_v0_energy_diagnostic, sphere_principal_moments_kg_m2, BlockShapeMetadata,
-        BlockShapeType, ShapeContactV0Scaffold,
+        shape_contact_v0_apply_support_impulse, shape_contact_v0_energy_diagnostic,
+        sphere_principal_moments_kg_m2, BlockShapeMetadata, BlockShapeType,
+        ShapeContactV0ImpulseInput, ShapeContactV0Scaffold,
     },
     simulation::{SimulationConfig, SimulationError, TerrainConfig},
     state::{BodyState, ContactState},
@@ -342,6 +343,171 @@ fn shape_contact_v0_energy_diagnostic_is_accounting_only() {
         epsilon = 1.0e-12
     );
     assert_abs_diff_eq!(diagnostic.contact_energy_delta_j, 0.0, epsilon = 1.0e-12);
+}
+
+#[test]
+fn shape_contact_v0_impulse_matches_normal_restitution() {
+    let mass_kg = 2.0;
+    let principal_dimensions_m = [2.0, 2.0, 2.0];
+    let support = select_box_support_point(
+        Vec3::new(0.0, 0.0, 1.0),
+        Vec3::new(0.0, 0.0, 1.0),
+        principal_dimensions_m,
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+    let result = shape_contact_v0_apply_support_impulse(
+        &support,
+        ShapeContactV0ImpulseInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -2.0)),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            mass_kg,
+            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+            normal_restitution: 0.5,
+            tangential_restitution: 1.0,
+            friction_coefficient: 0.0,
+            gravity_mps2: 9.81,
+        },
+    )
+    .unwrap();
+
+    assert!(result.diagnostic.impacted);
+    assert_abs_diff_eq!(
+        result.diagnostic.pre_contact_normal_velocity_mps,
+        -2.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        result.diagnostic.post_contact_normal_velocity_mps,
+        1.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        result.diagnostic.tangential_impulse_norm_n_s,
+        0.0,
+        epsilon = 1.0e-12
+    );
+}
+
+#[test]
+fn shape_contact_v0_impulse_does_not_create_energy_for_dissipative_contact() {
+    let mass_kg = 3.0;
+    let principal_dimensions_m = [2.0, 3.0, 4.0];
+    let center = Vec3::new(0.0, 0.0, 3.0);
+    let support = select_box_support_point(
+        center,
+        Vec3::new(0.0, 0.0, 1.0),
+        principal_dimensions_m,
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+    let mut pre = BodyState::new(center, Vec3::new(3.0, -1.0, -2.0));
+    pre.angular_velocity_radps = Vec3::new(0.2, -0.1, 0.3);
+    let result = shape_contact_v0_apply_support_impulse(
+        &support,
+        ShapeContactV0ImpulseInput {
+            pre_state: pre,
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            mass_kg,
+            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+            normal_restitution: 0.4,
+            tangential_restitution: 0.0,
+            friction_coefficient: 0.8,
+            gravity_mps2: 9.81,
+        },
+    )
+    .unwrap();
+
+    assert!(result.diagnostic.impacted);
+    assert!(
+        result.diagnostic.energy.contact_energy_delta_j <= 1.0e-10,
+        "shape_contact_v0 dissipative impulse created energy: {}",
+        result.diagnostic.energy.contact_energy_delta_j
+    );
+}
+
+#[test]
+fn shape_contact_v0_impulse_respects_coulomb_cap() {
+    let mass_kg = 2.0;
+    let principal_dimensions_m = [2.0, 2.0, 2.0];
+    let center = Vec3::new(0.0, 0.0, 1.0);
+    let support = select_box_support_point(
+        center,
+        Vec3::new(0.0, 0.0, 1.0),
+        principal_dimensions_m,
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+    let result = shape_contact_v0_apply_support_impulse(
+        &support,
+        ShapeContactV0ImpulseInput {
+            pre_state: BodyState::new(center, Vec3::new(6.0, 0.0, -2.0)),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            mass_kg,
+            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+            normal_restitution: 0.2,
+            tangential_restitution: 0.0,
+            friction_coefficient: 0.01,
+            gravity_mps2: 9.81,
+        },
+    )
+    .unwrap();
+
+    assert!(result.diagnostic.coulomb_friction_cap_n_s > 0.0);
+    assert!(
+        result.diagnostic.tangential_impulse_norm_n_s
+            <= result.diagnostic.coulomb_friction_cap_n_s + 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        result.diagnostic.tangential_impulse_norm_n_s,
+        result.diagnostic.coulomb_friction_cap_n_s,
+        epsilon = 1.0e-12
+    );
+    assert!(result.diagnostic.coulomb_cap_ratio <= 1.0 + 1.0e-12);
+}
+
+#[test]
+fn shape_contact_v0_impulse_handles_zero_initial_tangent_speed() {
+    let mass_kg = 2.0;
+    let principal_dimensions_m = [2.0, 2.0, 2.0];
+    let center = Vec3::new(0.0, 0.0, 1.0);
+    let support = select_box_support_point(
+        center,
+        Vec3::new(0.0, 0.0, 1.0),
+        principal_dimensions_m,
+        [1.0, 0.0, 0.0, 0.0],
+    )
+    .unwrap();
+    let result = shape_contact_v0_apply_support_impulse(
+        &support,
+        ShapeContactV0ImpulseInput {
+            pre_state: BodyState::new(center, Vec3::new(0.0, 0.0, -2.0)),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            mass_kg,
+            principal_moments_kg_m2: box_principal_moments_kg_m2(mass_kg, principal_dimensions_m),
+            normal_restitution: 0.0,
+            tangential_restitution: 0.0,
+            friction_coefficient: 0.0,
+            gravity_mps2: 9.81,
+        },
+    )
+    .unwrap();
+
+    assert_abs_diff_eq!(
+        result.diagnostic.pre_contact_tangential_speed_mps,
+        0.0,
+        epsilon = 1.0e-12
+    );
+    assert_abs_diff_eq!(
+        result.diagnostic.tangential_impulse_norm_n_s,
+        0.0,
+        epsilon = 1.0e-12
+    );
+    assert!(result
+        .diagnostic
+        .post_contact_tangential_speed_mps
+        .is_finite());
+    assert_abs_diff_eq!(result.diagnostic.coulomb_cap_ratio, 0.0, epsilon = 1.0e-12);
 }
 
 use std::{

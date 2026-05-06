@@ -305,7 +305,7 @@ impl SimulationConfig {
     fn validate(&self) -> Result<(), SimulationError> {
         if self.contact_model == ContactModel::ShapeContactV0 {
             return Err(SimulationError::UnsupportedContactModel(
-                "shape_contact_v0 is a verification scaffold; active contact impulses are not implemented yet",
+                "shape_contact_v0 is a verification scaffold; analytic impulses are not wired into fixed-step simulation yet",
             ));
         }
         require_positive(self.block.radius_m, "block.radius_m")?;

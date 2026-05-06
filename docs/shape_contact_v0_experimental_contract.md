@@ -4,9 +4,10 @@ Status: implementation contract with verification-first scaffold started. This
 document freezes the first active shape-contact prototype boundary,
 diagnostics, evaluation plan, and falsification criteria. The current scaffold
 recognizes `shape_contact_v0`, validates compatible metadata, and exposes pure
-box-inertia/support/energy diagnostic helpers; it does not implement active
-contact impulses, change defaults, change validation baselines, change
-terrain/material assumptions, or change existing model behavior.
+box-inertia/support/energy diagnostic helpers plus an isolated single-support
+impulse helper for analytic tests; it does not wire active contact impulses
+into fixed-step simulation, change defaults, change validation baselines,
+change terrain/material assumptions, or change existing model behavior.
 
 ## Purpose
 
@@ -343,7 +344,7 @@ The first scaffold slice should remain limited to:
    selection in isolation;
 3. initialize and validate deterministic quaternion orientation for the opt-in
    model path;
-4. add diagnostic-only contact update scaffolding with energy accounting;
+4. add isolated contact impulse scaffolding with energy accounting;
 5. add analytic verification and backward-compatibility tests before running
    public benchmarks.
 

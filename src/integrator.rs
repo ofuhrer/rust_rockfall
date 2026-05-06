@@ -143,9 +143,7 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
             ),
-            ContactModel::ShapeContactV0 => {
-                panic!("shape_contact_v0 is a verification scaffold and is not implemented in the fixed-step integrator")
-            }
+            ContactModel::ShapeContactV0 => shape_contact_v0_integrator_guard(),
         };
         let post_contact_state = state;
         let scarring = if incoming {
@@ -216,9 +214,7 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                         ContactState::Sliding
                     }
                 }
-                ContactModel::ShapeContactV0 => {
-                    panic!("shape_contact_v0 is a verification scaffold and is not implemented in the fixed-step integrator")
-                }
+                ContactModel::ShapeContactV0 => shape_contact_v0_integrator_guard(),
             };
         }
 
@@ -280,6 +276,12 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
         samples,
         impact_events,
     }
+}
+
+fn shape_contact_v0_integrator_guard() -> ! {
+    panic!(
+        "shape_contact_v0 has an isolated analytic impulse kernel but is not wired into the fixed-step integrator"
+    )
 }
 
 #[derive(Debug, Clone, Copy)]

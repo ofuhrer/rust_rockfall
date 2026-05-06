@@ -169,10 +169,11 @@ that radius is supplied.
 This metadata is passive for `translational_v0` and `sphere_rotational_v1`.
 The experimental `shape_contact_v0` scaffold recognizes the metadata only when
 explicitly selected, requires compatible `principal_dimensions` sidecars using
-`mass_property_model: box_principal_dimensions`, and currently stops before
-active contact impulses are run. Current default contact, inertia, trajectory
-integration, and validation semantics remain spherical and continue to use
-`block.radius` and the current spherical moment of inertia.
+`mass_property_model: box_principal_dimensions`, and exposes an isolated
+analytic impulse helper for tests only. It still stops before fixed-step
+simulation and public validation runs. Current default contact, inertia,
+trajectory integration, and validation semantics remain spherical and continue
+to use `block.radius` and the current spherical moment of inertia.
 
 ## Implemented Terrain Types
 
