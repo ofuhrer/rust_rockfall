@@ -1279,6 +1279,35 @@ struct ShapeContactV0RuntimeDiagnosticIdentity<'a> {
 }
 
 #[cfg(test)]
+#[derive(Debug, Default)]
+struct ShapeContactV0RuntimeDiagnosticWriterV1 {
+    rows: Vec<ShapeContactV0RuntimeDiagnosticRowV1>,
+}
+
+#[cfg(test)]
+impl ShapeContactV0RuntimeDiagnosticWriterV1 {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn write_row(&mut self, row: ShapeContactV0RuntimeDiagnosticRowV1) {
+        self.rows.push(row);
+    }
+
+    fn rows(&self) -> &[ShapeContactV0RuntimeDiagnosticRowV1] {
+        &self.rows
+    }
+
+    fn to_json_lines(&self) -> Result<String, serde_json::Error> {
+        let mut lines = Vec::with_capacity(self.rows.len());
+        for row in &self.rows {
+            lines.push(serde_json::to_string(row)?);
+        }
+        Ok(lines.join("\n"))
+    }
+}
+
+#[cfg(test)]
 fn shape_contact_v0_synthetic_terrain_step<T: crate::terrain::Terrain>(
     scaffold: &ShapeContactV0Scaffold,
     terrain: &T,
@@ -1777,6 +1806,73 @@ mod tests {
         .into_iter()
         .collect();
         assert_eq!(actual, expected);
+    }
+
+    fn shape_contact_v0_runtime_diagnostic_fixture_rows(
+    ) -> Vec<ShapeContactV0RuntimeDiagnosticRowV1> {
+        let scaffold = test_scaffold(2.0, [2.0, 2.0, 2.0]);
+        let separated_input = ShapeContactV0ContactInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.5), Vec3::new(0.0, 0.0, -1.0)),
+            terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 2.0),
+            settings: settings(0.25, 0.75, 0.2),
+        };
+        let impulsive_input = ShapeContactV0ContactInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(3.0, 0.0, -2.0)),
+            terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            settings: settings(0.5, 0.0, 0.4),
+        };
+        let penetrating_input = ShapeContactV0ContactInput {
+            pre_state: BodyState::new(Vec3::new(0.0, 0.0, 0.9), Vec3::new(0.0, 0.0, 1.0)),
+            terrain_contact_point_m: Vec3::new(1.0, 1.0, 0.0),
+            terrain_normal_world: Vec3::new(0.0, 0.0, 1.0),
+            settings: settings(0.5, 0.0, 0.4),
+        };
+        let separated_result =
+            shape_contact_v0_contact_dry_run(&scaffold, separated_input).unwrap();
+        let impulsive_result =
+            shape_contact_v0_contact_dry_run(&scaffold, impulsive_input).unwrap();
+        let penetrating_result =
+            shape_contact_v0_contact_dry_run(&scaffold, penetrating_input).unwrap();
+
+        vec![
+            shape_contact_v0_runtime_diagnostic_row_v1(
+                &scaffold,
+                &separated_input,
+                &separated_result,
+                runtime_identity(7),
+            )
+            .unwrap(),
+            shape_contact_v0_runtime_diagnostic_row_v1(
+                &scaffold,
+                &impulsive_input,
+                &impulsive_result,
+                ShapeContactV0RuntimeDiagnosticIdentity {
+                    case_id: "shape_contract_case",
+                    trajectory_id: "trajectory_000002",
+                    step_index: 11,
+                    time_s: 0.11,
+                    contact_event_id: Some("impact_000003"),
+                    impact_index: Some(3),
+                },
+            )
+            .unwrap(),
+            shape_contact_v0_runtime_diagnostic_row_v1(
+                &scaffold,
+                &penetrating_input,
+                &penetrating_result,
+                ShapeContactV0RuntimeDiagnosticIdentity {
+                    case_id: "shape_contract_case",
+                    trajectory_id: "trajectory_000003",
+                    step_index: 13,
+                    time_s: 0.13,
+                    contact_event_id: None,
+                    impact_index: None,
+                },
+            )
+            .unwrap(),
+        ]
     }
 
     #[test]
@@ -2596,6 +2692,72 @@ mod tests {
             fixture_rows[2]["shape_contact_row_id"],
             "trajectory_000003:shape_contact:13"
         );
+    }
+
+    #[test]
+    fn shape_contact_v0_runtime_diagnostic_writer_collects_json_lines_in_order() {
+        let mut writer = ShapeContactV0RuntimeDiagnosticWriterV1::new();
+        for row in shape_contact_v0_runtime_diagnostic_fixture_rows() {
+            writer.write_row(row);
+        }
+
+        assert_eq!(writer.rows().len(), 3);
+        assert_eq!(
+            writer.rows()[0].shape_contact_row_id,
+            "trajectory_000001:shape_contact:7"
+        );
+        assert_eq!(
+            writer.rows()[1].shape_contact_row_id,
+            "trajectory_000002:shape_contact:11"
+        );
+        assert_eq!(
+            writer.rows()[2].shape_contact_row_id,
+            "trajectory_000003:shape_contact:13"
+        );
+
+        let json_lines = writer.to_json_lines().unwrap();
+        let lines: Vec<_> = json_lines.lines().collect();
+        assert_eq!(lines.len(), 3);
+        let parsed_rows: Vec<serde_json::Value> = lines
+            .iter()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+
+        for row in &parsed_rows {
+            assert_shape_contact_runtime_diagnostic_fields(row);
+            assert_eq!(
+                row["shape_contact_runtime_schema_version"],
+                "shape_contact_runtime_diagnostic_v1"
+            );
+            assert!(row["shape_contact_regime_label"].is_string());
+            assert_eq!(row["projection_energy_delta_j"], serde_json::Value::Null);
+            assert_eq!(row["projection_applied"], false);
+        }
+        assert_eq!(
+            parsed_rows[0]["shape_contact_row_id"],
+            "trajectory_000001:shape_contact:7"
+        );
+        assert_eq!(
+            parsed_rows[0]["shape_contact_regime_label"],
+            "non_impulsive_separated"
+        );
+        assert_eq!(parsed_rows[0]["contact_event_id"], serde_json::Value::Null);
+        assert_eq!(parsed_rows[0]["impact_index"], serde_json::Value::Null);
+        assert_eq!(
+            parsed_rows[0]["support_corner_changed"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            parsed_rows[1]["shape_contact_regime_label"],
+            "impulsive_touching"
+        );
+        assert_eq!(parsed_rows[1]["contact_event_id"], "impact_000003");
+        assert_eq!(
+            parsed_rows[2]["shape_contact_regime_label"],
+            "non_impulsive_penetrating"
+        );
+        assert_eq!(parsed_rows[2]["normal_impulse_n_s"], 0.0);
+        assert_eq!(parsed_rows[2]["tangential_impulse_norm_n_s"], 0.0);
     }
 
     #[test]
