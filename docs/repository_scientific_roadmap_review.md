@@ -177,6 +177,14 @@ contract layer, not a demonstrated valley-scale workflow. Its first real-site
 result should be framed as pilot and confounding evidence, not as decisive
 physics validation.
 
+Terrain representation is an underweighted uncertainty source. The repository
+has strict/clamped DEM handling and metadata checks, but it does not yet have a
+dedicated benchmark for DEM resolution, smoothing, interpolation artifacts,
+cliff-edge representation, micro-topography/subgrid roughness, vegetation
+representation in DEMs, or hazard-layer stability under DEM perturbations.
+Those effects can control trajectory paths and map structure before any
+contact-parameter calibration is meaningful.
+
 ### Probabilistic Semantics
 
 The probability terminology is mature relative to the numerical capability:
@@ -253,6 +261,13 @@ pilot budgets, locate the first bottleneck on real or representative pilot
 inputs, and implement only the smallest measured improvement needed to keep the
 valley-scale pilot credible.
 
+The next scaling prototype, if the pilot shows throughput or output-volume
+pressure, should be deterministic local parallel execution. Local multithreading
+with order-independent reducers, thread-safe accumulation, memory scaling, and
+I/O concurrency checks is a more immediate feasibility step than SLURM
+orchestration and may be more valuable than trajectory Parquet if CSV output
+and reducer design are sufficient at pilot scale.
+
 ### Documentation And Reproducibility Maturity
 
 Documentation is broad, mostly consistent, and unusually explicit about
@@ -270,6 +285,9 @@ limitations. Strong points:
 Weak points:
 
 - many historical decision records now compete for "next step" authority;
+- there is no explicit validation maturity hierarchy tying repository evidence
+  to allowed claims, even though the repo already separates verification,
+  validation, calibration, pilot evidence, and operational non-claims;
 - some docs say GeoTIFF export is missing while `docs/hazard_layers.md` now
   documents a lightweight opt-in GeoTIFF path. The stale statement should be
   reworded as "COG and production raster packaging are missing";
@@ -329,7 +347,15 @@ micro-topography, roughness, and DEM/model resolution. Source:
 
 Repository implication: the current terrain-class raster is a parameter lookup
 and provenance scaffold, not a calibrated material model. It should not be
-optimized before real-terrain and validation splits are stronger.
+optimized before real-terrain, DEM sensitivity, and validation splits are
+stronger.
+
+Repository inference: Because DEM resolution, smoothing, interpolation,
+cliff-edge representation, vegetation in surface models, and subgrid roughness
+can change contact normals and lateral spreading, terrain-representation
+sensitivity may dominate early hazard-map patterns as much as contact physics.
+The roadmap should therefore include a dedicated multi-resolution and
+map-difference benchmark before terrain/material calibration.
 
 ### Scarring, Soil Interaction, And Energy Loss
 
@@ -453,6 +479,9 @@ information rather than lowering thresholds or tuning hidden parameters.
 
 - no source-zone physical probability or annual frequency;
 - no block-size/shape population probability;
+- no formal guide for normalization, source-zone overlap, block weighting,
+  release-density interpretation, terrain-class conditionality, and conditional
+  map interpretation limits;
 - no annualized intensity-frequency layers;
 - no weighted convergence diagnostics beyond unweighted standard error;
 - no scenario uncertainty aggregation across model form, terrain class, release
@@ -464,6 +493,9 @@ information rather than lowering thresholds or tuning hidden parameters.
 - COG production output is not implemented;
 - no QGIS-ready pilot package with release zones, rasters, manifests, and QA
   layers;
+- no DEM/terrain-representation sensitivity framework for resolution,
+  smoothing, interpolation, cliff-edge, vegetation-in-DEM, and subgrid
+  roughness effects;
 - no release-zone derivation from slope/geology/inventory data;
 - no orthophoto/hillshade QA workflow codified as a testable checklist.
 
@@ -473,6 +505,8 @@ information rather than lowering thresholds or tuning hidden parameters.
 - no chunk execution/resume workflow;
 - no tiled reducer state and deterministic merge implementation;
 - no local parallel public runner for large source-zone ensembles;
+- no deterministic multithreaded execution prototype with order-independent
+  reducers, memory scaling, and I/O concurrency evidence;
 - no SLURM/CSCS orchestration, appropriately deferred;
 - no explicit throughput budget for the first valley-scale pilot and no
   release-mode benchmark baseline that estimates whether 10,000 trajectories per
@@ -487,6 +521,9 @@ information rather than lowering thresholds or tuning hidden parameters.
 - roadmap documents are numerous and some are stale relative to recent GeoTIFF,
   Parquet-impact, and stopping-diagnostic work;
 - the immediate "do this next" path is less clear than the architecture;
+- no validation maturity framework defines which evidence supports analytic
+  verification, synthetic realism, impact-level field validation, site-scale
+  pilot evidence, cross-site generalization, or operational reproducibility;
 - production/debug output distinction exists but should be repeated in new
   pilot docs;
 - generated ignored results and local caches make review noisier.
@@ -496,11 +533,15 @@ information rather than lowering thresholds or tuning hidden parameters.
 | Roadmap item | Scientific value | Engineering value | Complexity | Misleading-result risk | Private/unavailable data dependency | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- |
 | Controlled Tschamut/swissALTI3D real-site pilot with embedded performance gate | Medium: primarily workflow/confounding and pilot evidence, not decisive physics validation | Very high: exercises Swiss stack end to end and tests ensemble feasibility | Medium | Medium: poor results could be overinterpreted as physics validation | Medium: real crop likely local/private | Immediate |
+| Formal hazard-map semantics and interpretation guide | Very high: ambiguous weighting and normalization can invalidate map interpretation | High: stabilizes manifests, schemas, and user-facing labels | Low to medium | High if omitted; medium if labels overstate evidence | Low | Immediate, before expanding map claims |
+| DEM and terrain-representation sensitivity benchmark | Very high: terrain resolution, smoothing, interpolation, cliff edges, and vegetation can dominate trajectories | Medium to high: provides repeatable map-difference diagnostics | Medium | Medium: arbitrary perturbations can mislead if not tied to terrain assumptions | Low for fixtures, medium for real terrain | Early scientific work before calibration |
 | Shape-readiness validation and passive shape scenario semantics | Very high for trajectory realism and hazard interpretation | Medium to high: block scenarios affect pilot ensembles | Medium | Medium: proxy shape/contact evidence can be overread | Low for passive metadata, medium for active shape provenance | Immediate/medium-term scientific; active runtime remains gated |
 | GeoTIFF/QGIS pilot package, verified COG later | Medium scientific, high interpretation value | Very high GIS value | Medium | Medium: CRS/nodata errors can mislead maps | Low | Immediate engineering after pilot setup; CRS-correct GeoTIFF first, COG later |
 | Probabilistic source-zone/block semantics | High for hazard-map credibility | High for scenario reproducibility | Medium | High if annual labels precede frequency evidence | Medium: requires source/block assumptions | Immediate as design/checks; physical/annual implementation deferred |
 | Expanded Chant Sura validation | High for contact/shape evidence | Medium | Medium | Medium: proxy contact labels remain limiting | Low to medium depending raw archive needs | Immediate/medium-term validation work |
 | Forest/obstacle relevance scoping | Medium to high depending pilot domain | High for Swiss valley interpretation | Low to medium | Medium if ignored or silently folded into parameters | Medium: depends on pilot-domain context layers | Early scoping before pilot conclusions; implementation deferred |
+| Validation maturity hierarchy | High: prevents pilot evidence, validation, and operational readiness from being conflated | Medium: improves reports and contributor guidance | Low | Low if labels are conservative | Low | Early documentation/reproducibility work |
+| Deterministic local parallel execution prototype | Low to medium scientific, very high feasibility value | Very high for 10,000-trajectory release-zone target | Medium to high | Low if parity-tested | Low | Medium-term engineering after pilot measurements; before Parquet/SLURM |
 | Terrain-class calibration framework | High if designed with held-out data | High | Medium to high | Very high hidden-tuning risk | Medium | Defer until real-site pilot and validation split are established |
 | Tiled reducers / trajectory columnar input | Medium scientific, high production value | Very high | Medium to high | Low to medium | Low | Medium-term engineering after pilot-scale bottlenecks are measured |
 
@@ -518,11 +559,13 @@ information rather than lowering thresholds or tuning hidden parameters.
    result was uncertain/failed, and public runtime validation is blocked.
 
 3. Terrain/material classes are schema-ready but scientifically weak. Using
-   them as calibrated parameters before real-terrain and held-out evidence would
-   confuse calibration with validation.
+   them as calibrated parameters before real-terrain, DEM sensitivity, and
+   held-out evidence would confuse calibration with validation.
 
-4. Probabilistic wording is currently disciplined. That discipline must be
-   preserved: no annual-frequency labels until source frequency and block
+4. Probabilistic wording is currently disciplined but still incomplete.
+   Conditional maps need formal normalization, weighting, source-zone overlap,
+   block-weighting, release-density, and terrain-class conditionality rules.
+   No annual-frequency labels should appear until source frequency and block
    probability are explicit and validated.
 
 5. The roadmap should distinguish "CRS-correct QGIS-inspectable GeoTIFF for a
@@ -536,17 +579,31 @@ information rather than lowering thresholds or tuning hidden parameters.
    translational under-run and rotational over-run patterns that are useful but
    not default-selection evidence.
 
-7. Performance is now sufficiently measured to deserve an explicit pilot gate,
-   but it should be merged into the real-site pilot rather than ranked as a
-   separate work stream. The target of roughly 10,000 trajectories per release
-   zone makes throughput, reduced outputs, file counts, and local parallelism
-   core feasibility criteria.
+7. Terrain representation uncertainty is underweighted. DEM resolution,
+   smoothing, interpolation, cliff-edge treatment, vegetation representation,
+   and subgrid roughness can control hazard-map structure. A DEM sensitivity
+   benchmark should precede calibration and should be interpreted alongside the
+   Tschamut pilot.
 
-8. Forest and obstacle relevance should move earlier as a scoping task. For a
+8. Performance is now sufficiently measured to deserve an explicit pilot gate,
+   but it should be merged into the real-site pilot rather than ranked as a
+   separate speculative optimization stream. The target of roughly 10,000
+   trajectories per release zone makes throughput, reduced outputs, file
+   counts, memory use, and local parallelism core feasibility criteria.
+   Deterministic local parallel execution should be the first scaling prototype
+   if pilot measurements justify it, before trajectory Parquet or SLURM.
+
+9. Forest and obstacle relevance should move earlier as a scoping task. For a
    Swiss valley pilot, forest can be a first-order boundary condition affecting
    propagation probability and intensity. Implementation can stay deferred, but
    pilot conclusions should not ignore the domain's forest/obstacle context.
 
-9. The repository is strongest as a transparent scientific workbench. Its next
+10. The repository should formalize validation maturity. V0 analytic
+   verification, V1 synthetic realism, V2 impact-level field validation, V3
+   site-scale hazard-pattern evidence, V4 cross-site generalization, and V5
+   operational reproducibility would make claims more consistent and harder to
+   overstate.
+
+11. The repository is strongest as a transparent scientific workbench. Its next
    step should create evidence that decides between major branches, not just add
    one more feature.
