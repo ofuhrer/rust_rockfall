@@ -104,6 +104,7 @@ fields and can emit extra per-final-class rows with:
 python3 scripts/summarize_stopping_behavior.py \
   --stop-state label:path/to/ensemble_stop_state.csv \
   --terrain-material-exposure label:path/to/ensemble_terrain_material_exposure.csv \
+  --impact-terrain-material label:path/to/ensemble_impacts_terrain_material \
   --group-by-terrain-material \
   --group-by-impact-terrain-material
 ```
@@ -112,7 +113,9 @@ The grouped rows summarize final speed, final kinetic energy, stop reason,
 final contact state, low-energy contacts, last-impact distance, significant
 impact class counts, unavailable impact-class lookups, runout, and
 terrain/material gaps for each final or significant-impact terrain/material
-class.
+class. Impact terrain/material sidecar rows additionally summarize per-impact
+class counts, significant-impact counts, unavailable impact-class lookups, and
+configured override field-name counts.
 
 The summarizer never infers a terrain/material class from paths or outcomes.
 Rows without class context are grouped as `unknown` and carry instrumentation

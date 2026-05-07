@@ -110,6 +110,48 @@ Next candidate: add summary aggregation for the new per-impact terrain/material 
 
 Prompt friction or improvement note: The prompt’s "continue while clear" wording was useful here; it allowed a sidecar instead of forcing a broader schema change.
 
+### Cycle 3
+
+Commit: pending
+
+Selected work package: Add summarizer support for per-impact terrain/material sidecars.
+
+Rationale: Cycle 2 creates a useful sidecar, but without a read-only aggregation path reviewers would need custom parsing to compare impact class counts. Extending the existing stopping-behavior summarizer keeps the new data in the established diagnostic workflow.
+
+Design:
+
+- Files likely touched: `scripts/summarize_stopping_behavior.py`, `tests/test_terrain_material_stopping.py`, `docs/terrain_material_interaction_protocol.md`, this session log.
+- Behavior/schema/provenance implications: parser/reporting addition only; no runtime or validation behavior changes.
+- Tests/checks planned: focused Python unit test; script smoke through `uv run python`; repo consistency.
+- Hidden-tuning risk: low; summarizer reads existing rows and does not filter outcomes beyond fixed fields already emitted.
+- Public-behavior risk: low; new CLI input is optional and existing flags remain unchanged.
+- Reproducibility risk: low; directory reads must sort CSV paths for deterministic output.
+- Overclaiming risk: summaries must keep configured class context separate from material truth or model-selection evidence.
+
+Design critique: A richer report could join stop-state, exposure, and impact sidecars, but that would create matching rules and more review surface. A standalone sidecar summary is the smaller safe slice.
+
+Implementation summary: Added `--impact-terrain-material` support to `scripts/summarize_stopping_behavior.py`, accepting either a single sidecar CSV or a CSV directory. The summarizer now emits aggregate and per-class rows with impact counts, significant-impact counts, classified/unavailable lookup counts, class counts, and configured override field-name counts.
+
+Files changed: `scripts/summarize_stopping_behavior.py`, `tests/test_terrain_material_stopping.py`, `docs/terrain_material_interaction_protocol.md`, `docs/stopping_behavior_diagnostic_report.md`, this session log.
+
+Checks run: `uv run python -m unittest tests.test_terrain_material_stopping`; `cargo fmt --check`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+Checks skipped and reason: direct system-`python3` skipped because the environment needs the project-local `uv` Python for modern syntax.
+
+Diff review:
+
+- Physics/default behavior: no Rust runtime, physics, defaults, thresholds, validation cases, or metrics changed.
+- Schema/provenance: read-only summarizer support for the Cycle 2 sidecar; no output writer schema changes in this cycle.
+- Generated artifacts: Python tests used temporary directories only; none staged.
+- Docs and validation wording: docs frame the rows as diagnostic configured-class context.
+- Backward compatibility: new CLI flag is optional; existing summarizer inputs and columns remain present.
+
+Residual risk: The summarizer does not join impact sidecar rows back to stop-state or exposure rows; reviewers must compare those rows by source labels for now.
+
+Next candidate: final consistency cycle: run broader checks, update final session summary, and stop unless a smaller high-value documentation cleanup is obvious.
+
+Prompt friction or improvement note: The session log template only included two cycle stubs; future prompts should allow adding cycles or make the template include a repeatable blank cycle section.
+
 ## Final Summary
 
 Cycles completed:

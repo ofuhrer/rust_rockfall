@@ -325,6 +325,99 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
         self.assertEqual(grouped["1:synthetic_bedrock"]["contact_exposure_sample_count"], 6)
         self.assertEqual(grouped["unavailable"]["exposure_sample_count"], 2)
 
+    def test_impact_terrain_material_summary_groups_by_class(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "impact_material"
+            directory.mkdir()
+            path = directory / "trajectory_000000.csv"
+            with path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "trajectory_id",
+                        "seed",
+                        "impact_index",
+                        "time_s",
+                        "x_m",
+                        "y_m",
+                        "z_m",
+                        "significant_impact",
+                        "incoming_normal_speed_mps",
+                        "terrain_class_id",
+                        "terrain_class_name",
+                        "terrain_class_source",
+                        "terrain_material_context_status",
+                        "active_parameter_override_count",
+                        "active_parameter_override_fields",
+                        "instrumentation_gaps",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerows(
+                    [
+                        {
+                            "trajectory_id": "t1",
+                            "seed": "1",
+                            "impact_index": "1",
+                            "time_s": "0.1",
+                            "x_m": "1.0",
+                            "y_m": "2.0",
+                            "z_m": "3.0",
+                            "significant_impact": "true",
+                            "incoming_normal_speed_mps": "1.2",
+                            "terrain_class_id": "1",
+                            "terrain_class_name": "synthetic_bedrock",
+                            "terrain_class_source": "fixture_classes",
+                            "terrain_material_context_status": "classified",
+                            "active_parameter_override_count": "2",
+                            "active_parameter_override_fields": '["restitution_n","friction_mu"]',
+                            "instrumentation_gaps": "[]",
+                        },
+                        {
+                            "trajectory_id": "t1",
+                            "seed": "1",
+                            "impact_index": "2",
+                            "time_s": "0.2",
+                            "x_m": "2.0",
+                            "y_m": "3.0",
+                            "z_m": "4.0",
+                            "significant_impact": "false",
+                            "incoming_normal_speed_mps": "0.01",
+                            "terrain_class_id": "",
+                            "terrain_class_name": "",
+                            "terrain_class_source": "fixture_classes",
+                            "terrain_material_context_status": "unavailable",
+                            "active_parameter_override_count": "0",
+                            "active_parameter_override_fields": "[]",
+                            "instrumentation_gaps": (
+                                '["impact position has no terrain/material class"]'
+                            ),
+                        },
+                    ]
+                )
+
+            rows = stopping.summarize_impact_terrain_material_csv(
+                stopping.InputSpec("impact_material", directory)
+            )
+
+        self.assertEqual(len(rows), 3)
+        aggregate = rows[0]
+        self.assertEqual(aggregate["impact_count_total"], 2)
+        self.assertEqual(aggregate["significant_impact_count_total"], 1)
+        self.assertEqual(aggregate["impact_terrain_material_classified_count"], 1)
+        self.assertEqual(aggregate["impact_terrain_material_unavailable_count"], 1)
+        self.assertEqual(
+            aggregate["impact_terrain_class_counts"],
+            {"1:synthetic_bedrock": 1, "unavailable": 1},
+        )
+        self.assertEqual(
+            aggregate["impact_active_parameter_override_field_counts"],
+            {"friction_mu": 1, "restitution_n": 1},
+        )
+        grouped = {row["impact_terrain_class_label"]: row for row in rows[1:]}
+        self.assertEqual(grouped["1:synthetic_bedrock"]["impact_count_total"], 1)
+        self.assertEqual(grouped["unavailable"]["impact_terrain_material_unavailable_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

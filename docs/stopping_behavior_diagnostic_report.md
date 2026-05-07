@@ -31,7 +31,7 @@ The additive stopping-diagnostic schema records:
 | Field | Meaning | Current source |
 | --- | --- | --- |
 | `source_label` | Human-readable input label. | script input |
-| `source_kind` | `trajectory_csv`, `deposition_csv`, `ensemble_stop_state_csv`, `ensemble_stop_state_csv_terrain_material_group`, `ensemble_stop_state_csv_impact_terrain_material_group`, `run_manifest_v1`, or `run_manifest_stop_state_summary_v*`. | script input |
+| `source_kind` | `trajectory_csv`, `deposition_csv`, `ensemble_stop_state_csv`, `ensemble_stop_state_csv_terrain_material_group`, `ensemble_stop_state_csv_impact_terrain_material_group`, `terrain_material_exposure_csv`, `impact_terrain_material_csv`, `impact_terrain_material_csv_class_group`, `run_manifest_v1`, or `run_manifest_stop_state_summary_v*`. | script input |
 | `dataset_role` | Diagnostic role such as verification, Chant Sura, Tschamut diagnostic, or Mel smoke. | inferred from path/label |
 | `contact_model` | Contact-model label inferred from path/label. | inferred from path/label |
 | `trajectory_count` | Number of trajectories or deposition rows summarized. | output rows / manifest |
@@ -61,6 +61,10 @@ The additive stopping-diagnostic schema records:
 | `exposure_sample_count`, `exposure_classified_sample_count`, `exposure_unavailable_sample_count` | Saved-sample exposure counts by configured class and lookup status. | exposure sidecar |
 | `exposure_duration_s`, `exposure_path_length_m` | Sample-derived duration and horizontal path-length exposure. | exposure sidecar |
 | `contact_exposure_sample_count`, `contact_exposure_duration_s`, `contact_exposure_path_length_m` | Exposure restricted to contact states. | exposure sidecar |
+| `impact_terrain_class_label` | Per-class grouping label for rows emitted from an impact terrain/material sidecar. | impact terrain/material sidecar |
+| `impact_terrain_class_counts` | Per-class impact-event counts from the impact terrain/material sidecar. | impact terrain/material sidecar |
+| `impact_terrain_material_classified_count`, `impact_terrain_material_unavailable_count` | Impact-event rows with and without configured class context. | impact terrain/material sidecar |
+| `impact_active_parameter_override_field_counts` | Counts of configured override field names seen on classified impact rows. | impact terrain/material sidecar |
 | `instrumentation_gaps` | Explicit limits for each source. | script output |
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
