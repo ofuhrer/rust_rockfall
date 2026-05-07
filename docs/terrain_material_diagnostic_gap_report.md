@@ -26,7 +26,9 @@ The current stack can audit configured terrain/material context for:
 - per-impact `*_terrain_material/` sidecar directories when both
   `terrain_classes` and `outputs.ensemble_impact_events_dir` are configured,
   including explicit configured override field names and values;
-- read-only summaries grouped by final class and by significant-impact class.
+- read-only summaries grouped by final class, significant-impact class, and
+  per-impact terrain/material class, including configured override field-name
+  and `field=value` counts for impact sidecars.
 
 These outputs are descriptive provenance. They support questions such as
 "which configured class labels coincide with stopping states or significant
@@ -77,8 +79,8 @@ met:
 
 ## Recommended Next Package
 
-The next no-tuning package should add read-only summaries for configured
-per-impact override values, or design active per-contact effective-parameter
-provenance if contact-level evidence is needed. That package should remain
-diagnostic-only and should not add fitted coefficients, new calibrated classes,
-changed contact laws, or validation-threshold changes.
+The next no-tuning package should design active per-contact effective-parameter
+provenance if contact-level evidence is needed, or improve output-format parity
+for Parquet-only impact runs. That package should remain diagnostic-only and
+should not add fitted coefficients, new calibrated classes, changed contact
+laws, or validation-threshold changes.

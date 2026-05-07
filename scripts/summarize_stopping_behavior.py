@@ -353,6 +353,21 @@ def json_list(value: object) -> list[object]:
     return parsed if isinstance(parsed, list) else []
 
 
+def json_object(value: object) -> dict[str, object]:
+    raw = str(value or "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def stable_json_scalar(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
 def significant_impact_terrain_class_counts(rows: list[dict[str, str]]) -> dict[str, int]:
     counts = Counter()
     for row in rows:
@@ -704,9 +719,14 @@ def summarize_impact_terrain_material_rows(
     )
     class_counts = Counter(impact_terrain_class_label(row) for row in rows)
     override_field_counts: Counter[str] = Counter()
+    override_value_counts: Counter[str] = Counter()
     for row in rows:
         for field_name in json_list(row.get("active_parameter_override_fields")):
             override_field_counts[str(field_name)] += 1
+        for field_name, value in json_object(
+            row.get("active_parameter_override_values")
+        ).items():
+            override_value_counts[f"{field_name}={stable_json_scalar(value)}"] += 1
     gaps = terrain_material_gap_values(rows)
     if unavailable_count:
         gaps.append(f"{unavailable_count} impact rows have no terrain/material class")
@@ -726,6 +746,7 @@ def summarize_impact_terrain_material_rows(
         "impact_terrain_material_classified_count": classified_count,
         "impact_terrain_material_unavailable_count": unavailable_count,
         "impact_active_parameter_override_field_counts": dict(sorted(override_field_counts.items())),
+        "impact_active_parameter_override_value_counts": dict(sorted(override_value_counts.items())),
         "impact_count_total": len(rows),
         "significant_impact_count_total": significant_count,
         "final_status_counts": {},
@@ -1159,6 +1180,7 @@ FIELDNAMES = [
     "impact_terrain_material_classified_count",
     "impact_terrain_material_unavailable_count",
     "impact_active_parameter_override_field_counts",
+    "impact_active_parameter_override_value_counts",
     "final_status_counts",
     "stop_reason_counts",
     "final_speed_mean_mps",

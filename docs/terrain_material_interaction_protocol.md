@@ -117,7 +117,7 @@ impact class counts, unavailable impact-class lookups, runout, and
 terrain/material gaps for each final or significant-impact terrain/material
 class. Impact terrain/material sidecar rows additionally summarize per-impact
 class counts, significant-impact counts, unavailable impact-class lookups, and
-configured override field-name counts.
+configured override field-name and `field=value` counts.
 
 The summarizer never infers a terrain/material class from paths or outcomes.
 Rows without class context are grouped as `unknown` and carry instrumentation

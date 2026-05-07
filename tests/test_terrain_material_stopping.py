@@ -349,6 +349,7 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                         "terrain_material_context_status",
                         "active_parameter_override_count",
                         "active_parameter_override_fields",
+                        "active_parameter_override_values",
                         "instrumentation_gaps",
                     ],
                 )
@@ -371,6 +372,9 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "terrain_material_context_status": "classified",
                             "active_parameter_override_count": "2",
                             "active_parameter_override_fields": '["restitution_n","friction_mu"]',
+                            "active_parameter_override_values": (
+                                '{"restitution_n":0.32,"friction_mu":0.35}'
+                            ),
                             "instrumentation_gaps": "[]",
                         },
                         {
@@ -389,6 +393,7 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "terrain_material_context_status": "unavailable",
                             "active_parameter_override_count": "0",
                             "active_parameter_override_fields": "[]",
+                            "active_parameter_override_values": "{}",
                             "instrumentation_gaps": (
                                 '["impact position has no terrain/material class"]'
                             ),
@@ -414,8 +419,18 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
             aggregate["impact_active_parameter_override_field_counts"],
             {"friction_mu": 1, "restitution_n": 1},
         )
+        self.assertEqual(
+            aggregate["impact_active_parameter_override_value_counts"],
+            {"friction_mu=0.35": 1, "restitution_n=0.32": 1},
+        )
         grouped = {row["impact_terrain_class_label"]: row for row in rows[1:]}
         self.assertEqual(grouped["1:synthetic_bedrock"]["impact_count_total"], 1)
+        self.assertEqual(
+            grouped["1:synthetic_bedrock"][
+                "impact_active_parameter_override_value_counts"
+            ],
+            {"friction_mu=0.35": 1, "restitution_n=0.32": 1},
+        )
         self.assertEqual(grouped["unavailable"]["impact_terrain_material_unavailable_count"], 1)
 
 

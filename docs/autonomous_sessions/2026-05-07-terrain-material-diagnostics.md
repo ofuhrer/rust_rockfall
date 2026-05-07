@@ -270,3 +270,45 @@ Residual risk: The sidecar still does not record per-contact effective parameter
 Next candidate: add read-only summarizer support for active override values in per-impact terrain/material sidecars.
 
 Prompt friction or improvement note: The previous session already captured the `uv` Python issue; the only new friction is that the long-running session log benefits from explicit continuation headings.
+
+### Cycle 5
+
+Commit:
+
+Selected work package: Add read-only summarizer support for active override values in per-impact terrain/material sidecars.
+
+Rationale: Cycle 4 emits the configured override values, but the existing diagnostic summarizer only counts override field names. A read-only aggregation lets reviewers audit which configured values appear in a sidecar directory without custom parsing.
+
+Design:
+
+- Files likely touched: `scripts/summarize_stopping_behavior.py`, `tests/test_terrain_material_stopping.py`, `docs/terrain_material_interaction_protocol.md`, this session log.
+- Behavior/schema/provenance implications: additive report column such as `impact_active_parameter_override_value_counts`; no simulator, validation, or sidecar writer behavior changes.
+- Tests/checks planned: focused Python unit test; repo consistency through `uv`.
+- Hidden-tuning risk: low because the script reads already-emitted values and does not filter or select runs.
+- Public-behavior risk: low; existing CLI flags and columns remain available.
+- Reproducibility risk: low if counts are sorted deterministically.
+- Overclaiming risk: output names must keep "override" and "configured" semantics rather than implying observed material parameters.
+
+Design critique: Numeric min/max summaries would be more compact, but counts of explicit `field=value` pairs are more transparent and avoid choosing tolerance bins.
+
+Implementation summary: Added `impact_active_parameter_override_value_counts` to the stopping-behavior summarizer. It parses the optional `active_parameter_override_values` JSON object from per-impact terrain/material sidecars and emits deterministic counts of explicit `field=value` pairs, while older sidecars without the column contribute no value counts.
+
+Files changed: `scripts/summarize_stopping_behavior.py`, `tests/test_terrain_material_stopping.py`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, this session log.
+
+Checks run: `uv run python -m unittest tests.test_terrain_material_stopping`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`; `git diff --check`.
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` skipped for the same environment reason as prior cycles; no Rust code changed in this cycle, so Rust checks were deferred to final/pre-commit.
+
+Diff review:
+
+- Physics/default behavior: no simulator, validation, physics, default, or threshold changes.
+- Schema/provenance: additive summarizer output column only; sidecar writer schema unchanged in this cycle.
+- Generated artifacts: Python unit tests used temporary directories only; no generated outputs staged.
+- Docs and validation wording: docs describe configured override values and maintain diagnostic-only framing.
+- Backward compatibility: missing `active_parameter_override_values` columns parse as empty objects.
+
+Residual risk: Counts use exact JSON scalar formatting, so equivalent floating-point values with different textual precision may appear as separate keys if a future writer changes serialization.
+
+Next candidate: final check-and-closeout cycle, then stop unless a very small documentation-only parity note is needed.
+
+Prompt friction or improvement note: None beyond the already-recorded `uv` Python and long-session-log continuation notes.
