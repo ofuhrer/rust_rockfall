@@ -279,11 +279,18 @@ class DepositionPointBatch:
 
 
 @dataclass(frozen=True)
+class SignificantImpactPoint:
+    x_m: float
+    y_m: float
+    trajectory_id: str | None
+
+
+@dataclass(frozen=True)
 class ImpactEventBatch:
     source_path: Path
     event_count: int
     significant_event_count: int
-    significant_points: tuple[tuple[float, float], ...]
+    significant_points: tuple[SignificantImpactPoint, ...]
 
 
 @dataclass(frozen=True)
@@ -375,6 +382,8 @@ class HazardAccumulator:
         self.deposition = zeros(grid)
         self.weighted_deposition = zeros(grid) if probability else None
         self.impact_density = zeros(grid)
+        self.weighted_impact_density = zeros(grid) if probability else None
+        self.weighted_significant_impact_weight = 0.0
         self.deposition_points: list[DepositionPoint] = []
         self.trajectory_count = 0
         self.trajectory_sample_count = 0
@@ -534,10 +543,27 @@ class HazardAccumulator:
     def accumulate_impacts(self, batch: ImpactEventBatch) -> None:
         self.impact_event_count += batch.event_count
         self.significant_impact_count += batch.significant_event_count
-        for x, y in batch.significant_points:
-            cell = self.grid.cell(x, y)
+        for point in batch.significant_points:
+            if self.weighted_impact_density is not None:
+                if not point.trajectory_id:
+                    raise SystemExit(
+                        "sampling-weighted significant impact density requires trajectory_id in impact-event input"
+                    )
+                if point.trajectory_id in self.probability.weights:
+                    self.weighted_significant_impact_weight += self.probability.weight_for_trajectory(
+                        point.trajectory_id
+                    )
+            cell = self.grid.cell(point.x_m, point.y_m)
             if cell is not None:
                 self.impact_density[cell[0]][cell[1]] += 1.0
+                if (
+                    self.weighted_impact_density is not None
+                    and point.trajectory_id
+                    and point.trajectory_id in self.probability.weights
+                ):
+                    self.weighted_impact_density[cell[0]][cell[1]] += self.probability.weight_for_trajectory(
+                        point.trajectory_id
+                    )
 
     def stats(self) -> InputStats:
         return InputStats(
@@ -720,6 +746,25 @@ class HazardAccumulator:
                     note=f"Significant impacts use incoming_normal_speed_mps >= {SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:g} m/s.",
                 )
             )
+            if self.weighted_impact_density is not None:
+                if self.weighted_significant_impact_weight > 0.0:
+                    scale_grid(self.weighted_impact_density, 1.0 / self.weighted_significant_impact_weight)
+                    layers.append(
+                        RasterLayer(
+                            "weighted_significant_impact_density",
+                            "Weighted significant impact density",
+                            "sampling-weighted fraction of significant impact events",
+                            self.weighted_impact_density,
+                            note=(
+                                "Sampling-weighted significant-impact event density using trajectory_id and "
+                                "normalization by the filtered significant-impact event weight sum."
+                            ),
+                        )
+                    )
+                elif self.significant_impact_count:
+                    warnings.append(
+                        "weighted significant impact density was not created because filters left no significant impact events"
+                    )
         else:
             warnings.append("no impact-event input supplied; significant impact density layer was not created")
 
@@ -1617,7 +1662,7 @@ def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Ite
             continue
         event_count = 0
         significant_event_count = 0
-        significant_points: list[tuple[float, float]] = []
+        significant_points: list[SignificantImpactPoint] = []
         for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
             event_count += 1
             if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
@@ -1626,7 +1671,13 @@ def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Ite
             x = numeric(event.get("x_m"))
             y = numeric(event.get("y_m"))
             if x is not None and y is not None:
-                significant_points.append((x, y))
+                significant_points.append(
+                    SignificantImpactPoint(
+                        x_m=x,
+                        y_m=y,
+                        trajectory_id=trajectory_id_from_impact_event_or_path(event, path),
+                    )
+                )
         yield ImpactEventBatch(
             source_path=path,
             event_count=event_count,
@@ -1721,16 +1772,25 @@ def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Iterat
     else:
         require_parquet_columns(parquet_file, path, ("incoming_normal_speed_mps",))
         columns = ["x_m", "y_m", "incoming_normal_speed_mps"]
+    include_trajectory_id = "trajectory_id" in names
+    if include_trajectory_id:
+        columns.append("trajectory_id")
 
     dropped = 0
     for batch in parquet_file.iter_batches(columns=columns, batch_size=65_536):
         xs = batch.column(0).to_pylist()
         ys = batch.column(1).to_pylist()
         significance_values = batch.column(2).to_pylist()
+        trajectory_ids = batch.column(3).to_pylist() if include_trajectory_id else [None] * len(xs)
         impact_event_count = 0
         significant_impact_count = 0
-        significant_points: list[tuple[float, float]] = []
-        for x_value, y_value, significance_value in zip(xs, ys, significance_values):
+        significant_points: list[SignificantImpactPoint] = []
+        for x_value, y_value, significance_value, trajectory_id_value in zip(
+            xs,
+            ys,
+            significance_values,
+            trajectory_ids,
+        ):
             impact_event_count += 1
             if use_significant_flag:
                 is_significant = bool(significance_value) if significance_value is not None else False
@@ -1745,7 +1805,8 @@ def iter_impact_event_parquet_batches(path: Path, warnings: list[str]) -> Iterat
             if x is None or y is None:
                 dropped += 1
                 continue
-            significant_points.append((x, y))
+            trajectory_id = str(trajectory_id_value or "").strip() if include_trajectory_id else None
+            significant_points.append(SignificantImpactPoint(x_m=x, y_m=y, trajectory_id=trajectory_id or None))
         yield ImpactEventBatch(
             source_path=path,
             event_count=impact_event_count,
@@ -1833,6 +1894,15 @@ def trajectory_id_from_sample_or_path(sample: dict[str, float | str], path: Path
     if isinstance(value, str) and value:
         return value
     return path.stem
+
+
+def trajectory_id_from_impact_event_or_path(event: dict[str, float | str], path: Path) -> str | None:
+    value = event.get("trajectory_id")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if path.stem.startswith("trajectory_"):
+        return path.stem
+    return None
 
 
 def trajectory_id_from_path_or_file(path: Path) -> str:
@@ -2337,7 +2407,7 @@ def layer_semantic_numerator(layer_key: str, weighted: bool) -> str:
         return "trajectories exceeding threshold in cell"
     if layer_key == "deposition_density" or layer_key == "weighted_deposition_density":
         return "deposition points in cell"
-    if layer_key == "significant_impact_density":
+    if layer_key == "significant_impact_density" or layer_key == "weighted_significant_impact_density":
         return "significant impact events in cell"
     if layer_key.startswith("max_"):
         return "maximum sampled value in cell"
@@ -2350,6 +2420,8 @@ def layer_semantic_denominator(
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
 ) -> str | None:
+    if layer_key == "weighted_significant_impact_density":
+        return "filtered significant impact event sampling_weight sum"
     if weighted and probability is not None:
         return f"filtered sampling_weight sum ({probability.total_filtered_weight:g})"
     if layer_key == "reach_probability" or "exceedance" in layer_key:
@@ -2358,7 +2430,7 @@ def layer_semantic_denominator(
         return "supplied trajectory count"
     if layer_key == "deposition_density":
         return "deposition point count"
-    if layer_key == "significant_impact_density":
+    if layer_key == "significant_impact_density" or layer_key == "weighted_significant_impact_density":
         return "significant impact event count"
     return None
 
@@ -2805,7 +2877,7 @@ def layer_source(layer_key: str) -> str:
         return "trajectory_csv"
     if layer_key in {"deposition_density", "weighted_deposition_density"}:
         return "ensemble_deposition_csv"
-    if layer_key == "significant_impact_density":
+    if layer_key == "significant_impact_density" or layer_key == "weighted_significant_impact_density":
         return "impact_event_csv"
     return "unknown"
 
@@ -2846,6 +2918,7 @@ def validate_layers(layers: list[RasterLayer]) -> list[str]:
             "deposition_density",
             "weighted_deposition_density",
             "significant_impact_density",
+            "weighted_significant_impact_density",
         } or "exceedance" in layer.key:
             maximum = summary["maximum"]
             minimum = summary["minimum"]

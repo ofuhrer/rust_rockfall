@@ -106,7 +106,10 @@ class HazardLayerTests(unittest.TestCase):
         self.assertEqual(len(batches), 1)
         self.assertEqual(batches[0].event_count, 2)
         self.assertEqual(batches[0].significant_event_count, 1)
-        self.assertEqual(batches[0].significant_points, ((2.0, 0.0),))
+        self.assertEqual(
+            batches[0].significant_points,
+            (hazard.SignificantImpactPoint(x_m=2.0, y_m=0.0, trajectory_id=None),),
+        )
         self.assertEqual(warnings, [])
 
     def test_projected_parquet_impact_batch_reader_preserves_counts(self) -> None:
@@ -125,7 +128,10 @@ class HazardLayerTests(unittest.TestCase):
         self.assertEqual(sum(batch.significant_event_count for batch in batches), 2)
         self.assertEqual(
             [point for batch in batches for point in batch.significant_points],
-            [(2.0, 0.0), (3.0, 1.0)],
+            [
+                hazard.SignificantImpactPoint(x_m=2.0, y_m=0.0, trajectory_id="trajectory_000000"),
+                hazard.SignificantImpactPoint(x_m=3.0, y_m=1.0, trajectory_id="trajectory_000001"),
+            ],
         )
         self.assertEqual(warnings, [])
 
@@ -954,6 +960,87 @@ class HazardLayerTests(unittest.TestCase):
             write_yaml(case_path, case)
 
             with self.assertRaisesRegex(SystemExit, "requires trajectory_id in deposition CSV"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(work / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                )
+
+    def test_sampling_weighted_significant_impact_density_uses_event_weights(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "weighted_case.yaml")
+            case["outputs"]["ensemble_impact_events_dir"] = str(FIXTURE / "ensemble_impacts")
+            case_path = work / "weighted_impacts.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                ]
+            )
+            self.assertEqual(status, 0)
+
+            unweighted = read_layer(
+                output_dir / "hazard_fixture_weighted_significant_impact_density.csv",
+                "significant_impact_density",
+            )
+            weighted = read_layer(
+                output_dir / "hazard_fixture_weighted_weighted_significant_impact_density.csv",
+                "weighted_significant_impact_density",
+            )
+            self.assertNotEqual(weighted, unweighted)
+            self.assertEqual(sorted(round(value, 8) for value in unweighted.values() if value > 0.0), [0.5, 0.5])
+            self.assertEqual(sorted(round(value, 8) for value in weighted.values() if value > 0.0), [0.25, 0.75])
+
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            probability = manifest["hazard_probability"]
+            self.assertIn("weighted_significant_impact_density", probability["generated_weighted_layer_names"])
+            semantics = [
+                layer
+                for layer in manifest["layer_semantics"]
+                if layer["layer_name"] == "weighted_significant_impact_density"
+            ][0]
+            self.assertEqual(semantics["denominator"], "filtered significant impact event sampling_weight sum")
+            self.assertTrue(semantics["weighted"])
+
+    def test_sampling_weighted_significant_impact_density_requires_trajectory_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            impact_path = work / "impacts_without_ids.csv"
+            with impact_path.open("w", newline="") as file:
+                writer = csv.DictWriter(
+                    file,
+                    fieldnames=["impact_index", "x_m", "y_m", "incoming_normal_speed_mps"],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "impact_index": "0",
+                        "x_m": "2.0",
+                        "y_m": "0.0",
+                        "incoming_normal_speed_mps": "0.2",
+                    }
+                )
+            case = yaml_load(FIXTURE / "weighted_case.yaml")
+            case["outputs"]["impact_events_csv"] = str(impact_path)
+            case_path = work / "weighted_missing_impact_ids.yaml"
+            write_yaml(case_path, case)
+
+            with self.assertRaisesRegex(SystemExit, "requires trajectory_id in impact-event input"):
                 hazard.main_with_args(
                     [
                         "--case",

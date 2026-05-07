@@ -26,6 +26,7 @@ Current layers:
   configured with `probability_model: sampling_weighted`:
   - `weighted_reach_probability`
   - `weighted_deposition_density`
+  - `weighted_significant_impact_density`
   - `weighted_kinetic_energy_exceedance_<threshold>j`
   - `weighted_jump_height_exceedance_<threshold>m`
   - `weighted_velocity_exceedance_<threshold>mps`
@@ -175,6 +176,16 @@ and joins deposition rows to `trajectory_metadata_table_v1` through
 the weighted layer. The weighted deposition layer sums to the fraction of
 filtered sampling weight represented by the supplied deposition CSV, which can
 be below `1.0` if other trajectory inputs are included without deposition rows.
+
+Weighted significant-impact density preserves the unweighted event-density
+interpretation rather than becoming a trajectory-level probability. Each
+significant impact event contributes its trajectory `sampling_weight`, and the
+layer is normalized by the sum of weights over filtered significant impact
+events. CSV impact-event inputs must either contain `trajectory_id` or be
+per-trajectory files whose stem is the trajectory id. Parquet impact-event
+tables must contain `trajectory_id`. This keeps impact-event weighting explicit
+and avoids inferring probability from event counts.
+
 If all weights are `1.0` and the active input set matches the metadata filter,
 weighted layers match the corresponding unweighted layers. Unweighted outputs
 are still written unchanged whenever weighted maps are enabled.

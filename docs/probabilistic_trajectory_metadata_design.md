@@ -283,6 +283,7 @@ hazard_probability:
   generated_weighted_layer_names:
     - weighted_reach_probability
     - weighted_deposition_density
+    - weighted_significant_impact_density
 ```
 
 Each output layer should record:

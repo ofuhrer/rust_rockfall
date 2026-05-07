@@ -88,6 +88,8 @@ Implemented:
   significant-impact density, and threshold-exceedance layers;
 - opt-in `sampling_weighted` conditional reach, deposition density, and
   trajectory-level exceedance layers;
+- opt-in `sampling_weighted` significant-impact event-density layers normalized
+  by filtered significant-impact event weight;
 - explicit probability terminology and manifest fields for the current
   sampling-weighted prototype;
 - strict rejection of ambiguous weighted configurations.
@@ -96,7 +98,6 @@ Not implemented:
 
 - source-zone physical probability or annual release frequency;
 - block-size population probabilities;
-- weighted significant-impact density;
 - annual-frequency layers;
 - convergence/uncertainty diagnostics for probabilistic maps;
 - exposure/vulnerability/risk layers.
@@ -356,7 +357,7 @@ Defer:
 - making `sphere_rotational_v1` the default;
 - annual-frequency hazard maps;
 - physical source-probability calibration;
-- weighted impact-density layers;
+- physical-probability or annual-frequency impact-density layers;
 - terrain-class calibration before a real-site pilot;
 - full polyhedral hard-contact dynamics before a shape scaffold;
 - Swiss-wide orchestration/HPC until GIS outputs and pilot workflow semantics

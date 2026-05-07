@@ -34,9 +34,11 @@ hazard_probability:
     block_mass_kg_max: null
 ```
 
-When enabled, the builder writes these additional trajectory-derived layers:
+When enabled, the builder writes these additional weighted layers:
 
 - `weighted_reach_probability`;
+- `weighted_deposition_density`;
+- `weighted_significant_impact_density`;
 - `weighted_kinetic_energy_exceedance_<threshold>j`;
 - `weighted_jump_height_exceedance_<threshold>m`;
 - `weighted_velocity_exceedance_<threshold>mps`.
@@ -54,8 +56,23 @@ For a filtered trajectory set with weights `w_i`, weighted reach is:
 sum(w_i for trajectories reaching the cell) / sum(w_i for filtered trajectories)
 ```
 
-Weighted exceedance layers use the same denominator. A trajectory contributes at
-most once per cell and threshold, matching the unweighted exceedance semantics.
+Weighted deposition density uses the same filtered trajectory-weight denominator
+and joins deposition rows through `trajectory_id`. Weighted exceedance layers
+also use the same denominator. A trajectory contributes at most once per cell
+and threshold, matching the unweighted exceedance semantics.
+
+Weighted significant-impact density remains an event-density layer. For
+significant impact events `e_j` with trajectory weights `w_j`, it is:
+
+```text
+sum(w_j for significant impact events in the cell)
+/
+sum(w_j for filtered significant impact events)
+```
+
+This denominator is deliberately different from the weighted reach denominator:
+one trajectory can contribute multiple significant impact events, matching the
+existing unweighted `significant_impact_density` event-count interpretation.
 
 The only supported probability mode is `sampling_weighted`. The only supported
 normalization convention is `conditioned_on_filter`. The only supported weight
@@ -73,11 +90,15 @@ The layer names are intentionally probability-like, not frequency-like:
 
 The focused hazard-layer tests cover the key semantic contracts:
 
-- weighted layers equal unweighted layers when all `sampling_weight` values are
-  `1.0`;
-- non-uniform weights change weighted reach and exceedance layers as expected;
+- weighted reach, exceedance, deposition, and significant-impact layers equal
+  their unweighted counterparts when all applicable `sampling_weight` values are
+  `1.0` and the side-input coverage matches the filtered metadata;
+- non-uniform weights change weighted reach, deposition, significant-impact,
+  and exceedance layers as expected;
 - negative weights are rejected;
 - missing trajectory metadata is rejected;
+- missing deposition and impact-event trajectory IDs are rejected when needed
+  for weighted side-input layers;
 - filters by `source_zone_id` and block-mass range are applied deterministically;
 - unweighted mode emits no weighted layers;
 - plotted and no-plot modes preserve identical numerical core layers;
@@ -104,11 +125,10 @@ Still missing for physical or annual probability:
 - geospatial production metadata and standard raster outputs for operational
   GIS workflows.
 
-Current weighted layers include trajectory-derived reach and exceedance layers
-plus deposition density joined through `trajectory_id` in the ensemble
-deposition CSV. Weighted significant-impact density is not implemented yet.
-That remains acceptable because impact weighting needs careful event-table join
-and denominator semantics across CSV-directory and Parquet inputs.
+Current weighted layers include trajectory-derived reach and exceedance layers,
+deposition density joined through `trajectory_id` in the ensemble deposition
+CSV, and significant-impact event density joined through `trajectory_id` in
+CSV-directory or Parquet impact-event inputs.
 
 The metadata CSV may contain physical-probability fields, but this prototype
 does not read or combine them. This avoids hidden probability multiplication.
@@ -128,8 +148,8 @@ Other risks:
 - mixing validation outputs and hazard-pilot outputs without verifying
   `trajectory_id` metadata joins;
 - assuming weighted reach is annual reach probability;
-- extending weighted maps to deposition or impact density before the output
-  model can carry metadata efficiently and audibly.
+- extending weighted maps to physical or annual probabilities before source
+  frequency and block-population inputs are explicitly modelled.
 
 ## Answers To Key Questions
 
@@ -159,11 +179,12 @@ the CSV path.
 
 ### Should Weighted Maps Be Extended Before Parquet?
 
-Only minimally. It is reasonable to add small validation safeguards or manifest
-fields if a clear ambiguity is found. Weighted deposition, weighted impact
-density, physical probabilities, and annual frequencies should wait until the
-columnar output and scenario contracts are stable enough to avoid expensive CSV
-joins and ambiguous denominators.
+Only when denominator semantics are explicit and testable. Weighted deposition
+and weighted significant-impact density now remain conditional diagnostics:
+deposition uses the filtered trajectory-weight denominator, while significant
+impact density uses the filtered significant-impact event-weight denominator.
+Physical probabilities and annual frequencies should still wait until the
+scenario contracts are stable.
 
 ### What Should Remain Deferred?
 
@@ -172,15 +193,14 @@ Defer:
 - annual-frequency maps;
 - physical source or trajectory probability maps;
 - block-size probability sampling;
-- weighted significant-impact density;
 - model-form uncertainty weighting;
 - exposure, vulnerability, and risk layers;
 - operational GIS outputs and claims of operational validity.
 
 ## Recommended Next Step
 
-Keep weighted reach, deposition, and exceedance semantics unchanged while
-gathering benchmark evidence for the new Parquet impact-event path. After parity
-and throughput are demonstrated, design weighted significant-impact density
-explicitly rather than inferring it from current unweighted event-count
-denominators.
+Keep weighted reach, deposition, significant-impact, and exceedance semantics
+unchanged while gathering benchmark evidence for the new Parquet impact-event
+path. The next probability step should focus on source-zone and block-scenario
+probability inputs rather than adding annualized labels to the current
+conditional diagnostics.
