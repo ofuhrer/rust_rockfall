@@ -39,6 +39,11 @@ New physics must be explicit in configuration. Defaults are not changed silently
 
 ## Quickstart
 
+Prerequisites for local development are Rust with `cargo`, `rustfmt`, and
+`clippy`, plus Python `>= 3.9` with PyYAML for repository scripts. See
+`docs/onboarding.md` for installation, hook setup, optional benchmark data, and
+handoff checks.
+
 ```bash
 cargo test
 cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
@@ -66,7 +71,7 @@ Core documentation:
 - `docs/literature_review.md`
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
-- `docs/onboarding_balfrin.md`
+- `docs/onboarding.md`
 - `docs/roadmap_hazard_mapping.md`
 - `docs/swisstopo_data_strategy.md`
 - `docs/dataset_strategy.md`
@@ -117,10 +122,6 @@ cargo run -- verify --all
 ```
 
 Optional large public-data validation cases skip gracefully until data have been downloaded and preprocessed.
-
-For Balfrin/CSCS-style user environments, including user-local Rust setup,
-Python/PyYAML notes, local hook installation, and optional large public
-benchmark preparation commands, see `docs/onboarding_balfrin.md`.
 
 ## Calibration
 

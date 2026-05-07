@@ -1,34 +1,49 @@
-# Balfrin Onboarding Notes
+# Onboarding and Local Setup
 
-Status: local development and reproducibility setup notes for CSCS Balfrin-style
-user environments. These notes do not change simulator physics, validation
-semantics, benchmark filters, or calibration policy.
+Status: developer onboarding and reproducibility setup notes. These notes do
+not change simulator physics, validation semantics, benchmark filters, or
+calibration policy.
 
-The repository can be used on Balfrin from a user-local toolchain. The setup
-below keeps Rust, Cargo, Python packages, generated validation outputs, and
-public benchmark downloads outside tracked source files unless a fixture is
-explicitly intended for git.
+This document is the generic setup guide for working on the repository from a
+fresh checkout. Keep platform- or site-specific details out of committed docs
+unless they describe a reusable class of environment issue.
 
-## Environment Baseline
+## Prerequisites
 
-Start from the repository checkout:
+Required for normal development:
+
+- Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`.
+- Python `>= 3.9`.
+- PyYAML for repository consistency checks and benchmark/data scripts.
+- Git.
+
+Optional tools depend on the workflow:
+
+- public dataset preparation may require network access and extra Python
+  packages documented by the relevant dataset script or benchmark document;
+- visualization workflows may require plotting dependencies;
+- large benchmark runs need sufficient local storage and should write only to
+  ignored result/cache paths.
+
+## Fresh Checkout
+
+Start by checking the repository state:
 
 ```bash
-ssh balfrin.cscs.ch
-cd /users/olifu/work/rust_rockfall
 git status -sb
 ```
 
-If the branch has local commits or generated ignored outputs, inspect them
-before pulling or staging. Generated outputs under `target/`,
-`verification/results/`, `validation/results/`, `hazard/results/`,
-`data/raw/`, and public benchmark result directories should normally remain
-ignored and unstaged.
+If the branch has local commits, untracked files, or generated ignored outputs,
+inspect them before pulling, staging, or deleting anything. Generated outputs
+under `target/`, `verification/results/`, `validation/results/`,
+`hazard/results/`, `data/raw/`, and public benchmark result directories should
+normally remain ignored and unstaged.
 
 ## Rust Toolchain
 
-If Cargo is not available, install Rust with the official user-local `rustup`
-installer:
+If Cargo is unavailable, install Rust with the official user-local `rustup`
+installer for your operating system. On Unix-like systems, the standard install
+path is:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
@@ -37,20 +52,20 @@ sh /tmp/rustup-init.sh -y --profile minimal
 rustup component add rustfmt clippy
 ```
 
-To avoid sourcing Cargo manually in every shell, append the Cargo environment
-loader to the end of `~/.bashrc` if it is not already present:
+For persistent shell setup, add Cargo's environment loader to the end of your
+shell startup file if the installer did not already do so. For Bash:
 
 ```bash
 printf '\n. "$HOME/.cargo/env"\n' >> "$HOME/.bashrc"
 ```
 
-Check before appending if the file may already contain that line:
+Check first if the line may already exist:
 
 ```bash
 tail -n 20 "$HOME/.bashrc"
 ```
 
-Expected tools for normal development:
+Verify the installed tools:
 
 ```bash
 cargo --version
@@ -61,34 +76,31 @@ cargo clippy --version
 
 ## Python and PyYAML
 
-Some repository scripts require Python syntax newer than Python 3.6. On Balfrin,
-plain `python3` may be too old even when a newer interpreter such as
-`/usr/bin/python3.11` is available.
-
-Prefer setting the repository hook interpreter explicitly:
+Repository scripts should be run with Python `>= 3.9`. If your default
+`python3` is older, use a newer interpreter explicitly or set
+`RUST_ROCKFALL_PYTHON` for the repository git hooks:
 
 ```bash
-export RUST_ROCKFALL_PYTHON=/usr/bin/python3.11
+export RUST_ROCKFALL_PYTHON=/path/to/python3.11
 ```
 
-Install PyYAML for the interpreter used by the repository when possible:
+Install PyYAML for the interpreter you use:
 
 ```bash
 python3 -m pip install --user PyYAML
 ```
 
-If the default Python is old but already has a compatible site-package cache,
-the repository git hooks try a local fallback for PyYAML. For manual commands,
-the equivalent explicit form is:
+If you use a non-default interpreter, install PyYAML through that interpreter:
 
 ```bash
-PYTHONPATH=/usr/lib64/python3.6/site-packages /usr/bin/python3.11 scripts/check_repo_consistency.py
+/path/to/python3.11 -m pip install --user PyYAML
 ```
 
-Use this only as an environment workaround. It should not become a repository
-runtime dependency or a validation assumption.
+Avoid relying on machine-local package paths in committed workflows. If an
+environment needs a temporary `PYTHONPATH` workaround, keep it local and record
+the stable requirement as "Python >= 3.9 with PyYAML".
 
-## Local Hooks
+## Local Git Hooks
 
 Install the local hook templates after cloning or when `.git/hooks` is missing:
 
@@ -116,7 +128,13 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo run -- verify --all
 cargo run -- validate --all
+python3 scripts/check_repo_consistency.py
 scripts/git-hooks/pre-commit
+```
+
+Before pushing, run:
+
+```bash
 scripts/git-hooks/pre-push
 ```
 

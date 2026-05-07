@@ -9,6 +9,7 @@ Use this document to decide how to work. Use the docs to decide what to build.
 ## Source of Truth
 
 - Project overview and quickstart: `README.md`
+- Local prerequisites, installation, hooks, and onboarding checks: `docs/onboarding.md`
 - Literature and background inventory: `docs/literature_review.md`
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`

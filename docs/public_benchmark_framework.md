@@ -244,11 +244,11 @@ Generated outputs are ignored. A successful preparation manifest does not mean
 the model is scientifically validated; it means the benchmark package is
 reproducible enough to run and inspect.
 
-Balfrin/CSCS-style setup notes, including the optional larger benchmark data
-preparation sequence and Mel de la Niva runnable smoke commands, are recorded in
-`onboarding_balfrin.md`. Those commands remain opt-in diagnostics and should
-write only to ignored result/cache paths unless a tiny fixture is explicitly
-intended for git.
+Generic setup notes, including the optional larger benchmark data preparation
+sequence and Mel de la Niva runnable smoke commands, are recorded in
+`onboarding.md`. Those commands remain opt-in diagnostics and should write only
+to ignored result/cache paths unless a tiny fixture is explicitly intended for
+git.
 
 The first unified no-tuning execution inventory is in
 `docs/public_benchmark_results_baseline.md`. It records the current runnable
