@@ -2166,6 +2166,27 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
             .len(),
         2
     );
+    let bedrock_coverage = manifest_json["terrain_classes"]["class_coverage"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["class_id"] == 1)
+        .unwrap();
+    assert_eq!(bedrock_coverage["active_parameter_override_count"], 4);
+    assert_eq!(
+        bedrock_coverage["active_parameter_override_fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec![
+            "restitution_n",
+            "restitution_t",
+            "friction_mu",
+            "rolling_resistance"
+        ]
+    );
     assert!(releases.exists());
     assert!(deposition.exists());
     assert!(stop_state.exists());

@@ -18,7 +18,8 @@ The current stack can audit configured terrain/material context for:
 - manifest-level `stop_state_summary_v3` counts for final, last-impact, and
   significant-impact class groupings;
 - terrain-class manifest schema/hash provenance for the metadata and class
-  raster used by a run;
+  raster used by a run, plus the configured override field names for each
+  covered class;
 - trajectory-wide `*_terrain_material_exposure.csv` sidecars and
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
@@ -34,10 +35,11 @@ themselves.
 The following gaps remain before terrain/material interaction studies can be
 used as calibration or model-selection inputs:
 
-- Active parameter provenance is not emitted per contact or impact. Terrain
-  class labels can drive configured contact/scarring overrides, so reports must
-  state "configured terrain/material assumption" rather than observed material
-  truth until active parameter values are recorded with contact evidence.
+- Active numeric parameter provenance is not emitted per contact or impact.
+  Terrain class labels can drive configured contact/scarring overrides, so
+  reports must state "configured terrain/material assumption" rather than
+  observed material truth until active parameter values are recorded with
+  contact evidence.
 - Full per-impact terrain/material tables are not yet emitted. Stop-state
   records carry aggregate counts and bounded sequences only.
 - Exposure sidecars summarize saved sample exposure, not continuous path
@@ -45,8 +47,9 @@ used as calibration or model-selection inputs:
   end sample.
 - Contact-episode summaries are not yet emitted. Exposure rows have contact
   sample/duration/path counts, but not contiguous episode start/end causes.
-- Terrain-class manifests now carry hashes and schema fields, but per-class
-  evidence metadata remains limited to the source fixture metadata.
+- Terrain-class manifests now carry hashes, schema fields, and configured
+  override field names, but per-class evidence metadata remains limited to the
+  source fixture metadata.
 - `domain_exit` and `terrain_error` termination flags are still placeholders
   until the integrator exposes those termination modes.
 - Legacy trajectory and deposition outputs without explicit stop-state sidecars
@@ -69,7 +72,7 @@ met:
 
 ## Recommended Next Package
 
-The next no-tuning package should add active per-contact parameter provenance
-and optional full per-impact terrain/material sidecars. That package should
-remain diagnostic-only and should not add fitted coefficients, new calibrated
-classes, changed contact laws, or validation-threshold changes.
+The next no-tuning package should add active per-contact parameter-value
+provenance and optional full per-impact terrain/material sidecars. That package
+should remain diagnostic-only and should not add fitted coefficients, new
+calibrated classes, changed contact laws, or validation-threshold changes.

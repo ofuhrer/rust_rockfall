@@ -135,6 +135,10 @@ pub struct TerrainClassCoverageManifest {
     pub name: String,
     pub cell_count: usize,
     pub coverage_fraction: f64,
+    #[serde(default)]
+    pub active_parameter_override_count: usize,
+    #[serde(default)]
+    pub active_parameter_override_fields: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

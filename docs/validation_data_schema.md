@@ -123,7 +123,9 @@ change trajectories, contact laws, validation metrics, or pass/fail criteria.
 `terrain_classes` manifest records carry `terrain_class_manifest_v1`,
 the source metadata schema version, and SHA-256 hashes for the metadata sidecar
 and class raster when those files are available through the configured metadata
-path.
+path. Each class-coverage entry also lists the configured terrain/material
+override field names and count for that class, if any. These names expose active
+configured assumptions only; they are not calibrated material evidence.
 
 ## Hazard-Layer Statistics
 
@@ -470,8 +472,9 @@ vertical datum, deterministic sampling mode and seed, requested/generated
 release-point counts, polygon extent/area, source/license fields, and
 provenance notes. If `terrain_classes` is present, the manifest includes
 terrain-class layer id, metadata path, class-grid path, CRS/EPSG, vertical datum,
-resolution, extent, nodata, source/license fields, class coverage histogram, and
-provenance notes. If `block_shape.metadata_path` is present, the manifest
+resolution, extent, nodata, source/license fields, class coverage histogram,
+configured override field names per class, and provenance notes. If
+`block_shape.metadata_path` is present, the manifest
 includes a `shape_metadata` section with schema version, metadata path, shape id
 and type, active contact shape, active contact radius, passive mass properties,
 initial orientation, provenance, and a warning that current contact remains

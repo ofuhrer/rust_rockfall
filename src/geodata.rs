@@ -706,6 +706,35 @@ impl TerrainClassParameterOverrides {
         Ok(())
     }
 
+    pub fn active_field_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        if self.restitution_n.is_some() {
+            names.push("restitution_n".to_string());
+        }
+        if self.restitution_t.is_some() {
+            names.push("restitution_t".to_string());
+        }
+        if self.friction_mu.is_some() {
+            names.push("friction_mu".to_string());
+        }
+        if self.rolling_resistance.is_some() {
+            names.push("rolling_resistance".to_string());
+        }
+        if self.soil_strength_pa.is_some() {
+            names.push("soil_strength_pa".to_string());
+        }
+        if self.scarring_drag_coefficient.is_some() {
+            names.push("scarring_drag_coefficient".to_string());
+        }
+        if self.scarring_layer_density_kgpm3.is_some() {
+            names.push("scarring_layer_density_kgpm3".to_string());
+        }
+        if self.scarring_max_depth_m.is_some() {
+            names.push("scarring_max_depth_m".to_string());
+        }
+        names
+    }
+
     fn apply(&self, base: ContactParameters) -> ContactParameters {
         let mut scarring = ScarringSettings {
             soil_interaction_model: base.scarring.soil_interaction_model,

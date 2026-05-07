@@ -57,6 +57,11 @@ classification.
 `terrain_classes` manifest objects now include `schema_version`,
 `metadata_schema_version`, `metadata_sha256`, and `class_grid_sha256` so future
 reviewers can reproduce the exact class assumptions used by a diagnostic run.
+Each class-coverage entry also records `active_parameter_override_count` and
+`active_parameter_override_fields`, listing only the configured override field
+names for that class. These fields expose active terrain/material assumptions in
+the manifest without changing the parameter lookup or treating the values as
+calibrated material evidence.
 
 When `terrain_classes` metadata is configured for generated ensemble/deposition
 outputs, the runner also writes a local `*_terrain_material_exposure.csv`
@@ -113,6 +118,7 @@ Implemented:
 - additive `stop_state_table_v3` and `stop_state_summary_v3` class-count
   fields;
 - additive terrain-class manifest hashes and schema fields;
+- additive terrain-class manifest active-override field-name provenance;
 - additive `terrain_material_exposure_table_v1` sidecars and
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;

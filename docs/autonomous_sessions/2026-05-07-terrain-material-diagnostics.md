@@ -1,0 +1,89 @@
+# Autonomous Session: Terrain/Material Diagnostics
+
+Session date: 2026-05-07
+Agent: Codex
+Branch: codex/autonomous-2026-05-07-terrain-material-diagnostics
+Base commit: 1cff5ec
+Session goal: Make small, reviewable, no-tuning improvements to terrain/material diagnostic provenance while preserving physics, public validation semantics, and generated-output hygiene.
+
+## Initial Repository State
+
+- Git status: clean at session start, `main...origin/main`.
+- Current branch: `main`; session branch created as `codex/autonomous-2026-05-07-terrain-material-diagnostics`.
+- Recent decision records inspected: `docs/post_shape_contact_v0_pause_next_step.md`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_plan.md`, `docs/model_design.md`, `docs/autonomous_development_program.md`.
+- Hooks installed: `.git/hooks/pre-commit` and `.git/hooks/pre-push` are symlinks to `scripts/git-hooks/`.
+- Initial checks: `git status -sb`, current branch, recent commit log, hook listing, documentation/code inspection.
+
+## Initial Priority Ranking
+
+| Rank | Candidate work package | Evidence/source | Expected value | Risk | Decision |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Add active terrain-class override provenance to manifests | `terrain_material_diagnostic_gap_report.md` lists active parameter provenance as the top gap | Makes configured material assumptions auditable without changing physics | Low; additive manifest/docs/test change | Select for Cycle 1 |
+| 2 | Add optional per-impact terrain/material sidecar | Gap report lists full per-impact tables as missing | Closes impact-level provenance gap for future diagnostics | Medium; new output contract and more runner plumbing | Consider after Cycle 1 if scope remains controlled |
+| 3 | Improve stop-state/sidecar schema consistency tests | Recent commits added checksum and schema checks | Reduces regression risk for diagnostic outputs | Low; test-only, but lower scientific value than new provenance | Keep as fallback |
+| 4 | Add contact-episode summaries from saved samples | Gap report lists episode summaries as missing | Helps distinguish sliding/rolling/contact duration | Medium; definitions may need scientific judgement | Defer unless a narrow schema emerges |
+| 5 | Domain-exit / terrain-error termination instrumentation | Gap report lists flags as placeholders | Improves failure-mode provenance | Higher; integrator error semantics can affect runtime behavior | Defer without a reviewed design |
+
+## Cycle Records
+
+### Cycle 1
+
+Commit: pending
+
+Selected work package: Add manifest-level active terrain/material override provenance.
+
+Rationale: Current terrain-class manifests record class coverage and hashes, but not which class labels carry active overrides. Recording override field names per class directly addresses the active-parameter provenance gap without changing simulation behavior or choosing/tuning parameter values.
+
+Design:
+
+- Files likely touched: `src/manifest.rs`, `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+- Behavior/schema/provenance implications: additive `terrain_class_manifest_v1` class-coverage fields for configured override names/counts; no physics/default/metric changes.
+- Tests/checks planned: focused Rust test for the Swiss terrain-class manifest; `cargo fmt --check`; focused validation test target.
+- Hidden-tuning risk: low because values already exist in checked-in metadata and are only reported.
+- Public-behavior risk: low because manifests are additive and optional metadata remains backward-compatible through serde defaults.
+- Reproducibility risk: low; no stochastic or ordering changes beyond deterministic sorted override names.
+- Overclaiming risk: docs must state "configured assumptions", not observed materials or calibrated evidence.
+
+Design critique: Per-contact provenance would be more complete, but implementing it first risks a larger output contract. A manifest-level slice is safer and still useful because it makes active configured assumptions visible in existing run manifests.
+
+Implementation summary: Added deterministic `active_parameter_override_count` and `active_parameter_override_fields` to each terrain-class coverage manifest entry. Added a helper on `TerrainClassParameterOverrides` to list configured override fields, asserted the Swiss pilot manifest records the expected synthetic bedrock overrides, and documented the provenance-only interpretation.
+
+Files changed: `src/geodata.rs`, `src/manifest.rs`, `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+
+Checks run: `cargo fmt --check`; `cargo test --test config_io_terrain swissalti3d_terrain_class_pilot_writes_class_manifest`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+Checks skipped and reason: direct `python3 scripts/check_repo_consistency.py` failed because the system Python is too old for `from __future__ import annotations`; reran through `uv` with cache under `/tmp`.
+
+Diff review:
+
+- Physics/default behavior: no physics, defaults, thresholds, validation cases, or metrics changed.
+- Schema/provenance: additive manifest fields with serde defaults; existing manifests remain readable.
+- Generated artifacts: focused test generated and removed validation result files as before; none staged.
+- Docs and validation wording: docs frame fields as configured assumptions, not calibrated material evidence.
+- Backward compatibility: additive fields only; no existing output paths or required case fields changed.
+
+Residual risk: This is manifest-level field-name provenance only; active numeric values are still not recorded at each contact or impact.
+
+Next candidate: optional full per-impact terrain/material sidecar, kept separate from existing impact-event schema.
+
+Prompt friction or improvement note: The prompt requests `python3` checks, but this environment needs `uv run python` or an explicit project-local Python path.
+
+## Final Summary
+
+Cycles completed:
+
+Commits:
+
+Files changed:
+
+Checks run:
+
+Checks skipped and reason:
+
+Generated outputs excluded from Git:
+
+Remaining top gaps:
+
+Why the loop stopped:
+
+Recommended next autonomous prompt changes:

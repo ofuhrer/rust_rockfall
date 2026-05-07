@@ -1969,11 +1969,20 @@ fn terrain_class_manifest(
         class_coverage: class_map
             .coverage()
             .into_iter()
-            .map(|coverage| TerrainClassCoverageManifest {
-                class_id: coverage.class_id,
-                name: coverage.name,
-                cell_count: coverage.cell_count,
-                coverage_fraction: coverage.coverage_fraction,
+            .map(|coverage| {
+                let active_parameter_override_fields = class_map
+                    .classes_by_id
+                    .get(&coverage.class_id)
+                    .map(|class| class.parameter_overrides.active_field_names())
+                    .unwrap_or_default();
+                TerrainClassCoverageManifest {
+                    class_id: coverage.class_id,
+                    name: coverage.name,
+                    cell_count: coverage.cell_count,
+                    coverage_fraction: coverage.coverage_fraction,
+                    active_parameter_override_count: active_parameter_override_fields.len(),
+                    active_parameter_override_fields,
+                }
             })
             .collect(),
         provenance_notes: metadata.provenance.notes.clone(),
