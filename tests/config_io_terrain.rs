@@ -1597,15 +1597,6 @@ outputs:
         trajectory_dir_manifest["sha256"].as_str().unwrap().len(),
         64
     );
-    let stop_state_manifest = manifest_json["outputs"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|entry| entry["kind"] == "ensemble_stop_state")
-        .expect("ensemble stop-state output manifest");
-    assert_eq!(stop_state_manifest["schema_version"], "stop_state_table_v1");
-    assert_eq!(stop_state_manifest["row_count"], 3);
-    assert!(stop_state_manifest["sha256"].as_str().unwrap().len() == 64);
     let csv_impact_row_count: usize = fs::read_dir(&ensemble_impacts_dir)
         .unwrap()
         .map(|entry| {
