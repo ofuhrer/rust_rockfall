@@ -472,3 +472,52 @@ Residual risk: The example remains a diagnostic synthetic fixture and should not
 Next candidate: final check-and-closeout; stop before broader per-contact or contact-episode design.
 
 Prompt friction or improvement note: No new prompt friction.
+
+### Parquet Parity Continuation Final Summary
+
+Cycles completed: 2 implementation/documentation cycles.
+
+Commits:
+
+- `becd13c` Write parquet impact material sidecars
+- `0715301` Correct terrain material summary example
+- closeout log commit pending
+
+Files changed:
+
+- `src/validation.rs`
+- `tests/config_io_terrain.rs`
+- `docs/terrain_material_interaction_protocol.md`
+- `docs/terrain_material_diagnostic_gap_report.md`
+- `docs/validation_data_schema.md`
+- `docs/autonomous_sessions/2026-05-07-terrain-material-diagnostics.md`
+
+Checks run:
+
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo test`
+- `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_parquet_only_context`
+- `cargo run -- verify --all`
+- `cargo run -- validate --all`
+- `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`
+- `git diff --check`
+- `scripts/git-hooks/pre-commit`
+- `scripts/git-hooks/pre-push`
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` skipped because this environment requires the project-local `uv` Python for repository scripts.
+
+Generated outputs excluded from Git: final verification, validation, and pre-push checks refreshed ignored outputs under `verification/results/`, `validation/results/`, and existing ignored cache/result directories. No generated outputs, raw data, or large geodata tiles were staged.
+
+Remaining top gaps:
+
+- Per-contact effective parameter provenance remains absent.
+- Contact-episode summaries remain absent.
+- Exposure sidecars still summarize saved samples rather than continuous path integrals.
+- `domain_exit` and `terrain_error` termination flags remain placeholders until integrator termination modes are exposed.
+- Pure columnar terrain/material impact provenance remains a future schema decision if CSV companion sidecars become insufficient.
+
+Why the loop stopped: The safe Parquet-only provenance parity gap and stale summarizer example were closed with passing checks. The next useful slices require broader per-contact, contact-episode, or columnar-schema design, so continuing would reduce reviewability.
+
+Recommended next autonomous prompt changes: Keep the `uv` Python note. Consider asking specifically for a design-only package before per-contact effective-parameter provenance or contact-episode summaries.
