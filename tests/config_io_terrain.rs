@@ -1584,13 +1584,28 @@ outputs:
             .unwrap()
             >= 4
     );
-    assert!(manifest_json["outputs"]
+    let trajectory_dir_manifest = manifest_json["outputs"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|entry| entry["kind"] == "ensemble_trajectories"
-            && entry["file_count"] == 3
-            && entry["row_count"].as_u64().unwrap() > 0));
+        .find(|entry| entry["kind"] == "ensemble_trajectories")
+        .expect("ensemble trajectory directory output manifest");
+    assert_eq!(trajectory_dir_manifest["file_count"], 3);
+    assert!(trajectory_dir_manifest["row_count"].as_u64().unwrap() > 0);
+    assert_eq!(trajectory_dir_manifest["format"], "csv_directory");
+    assert_eq!(
+        trajectory_dir_manifest["sha256"].as_str().unwrap().len(),
+        64
+    );
+    let stop_state_manifest = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "ensemble_stop_state")
+        .expect("ensemble stop-state output manifest");
+    assert_eq!(stop_state_manifest["schema_version"], "stop_state_table_v1");
+    assert_eq!(stop_state_manifest["row_count"], 3);
+    assert!(stop_state_manifest["sha256"].as_str().unwrap().len() == 64);
     let csv_impact_row_count: usize = fs::read_dir(&ensemble_impacts_dir)
         .unwrap()
         .map(|entry| {
@@ -1598,6 +1613,19 @@ outputs:
             csv::Reader::from_path(path).unwrap().records().count()
         })
         .sum();
+    let csv_impact_manifest = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| {
+            entry["kind"] == "ensemble_impact_events" && entry["format"] == "csv_directory"
+        })
+        .expect("ensemble impact-event csv directory output manifest");
+    assert_eq!(
+        csv_impact_manifest["row_count"].as_u64().unwrap(),
+        csv_impact_row_count as u64
+    );
+    assert_eq!(csv_impact_manifest["sha256"].as_str().unwrap().len(), 64);
     let parquet_manifest = manifest_json["outputs"]
         .as_array()
         .unwrap()

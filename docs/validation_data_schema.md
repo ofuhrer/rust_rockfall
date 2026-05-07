@@ -395,14 +395,19 @@ When `outputs.ensemble_trajectories_dir` is set, validation writes deterministic
 per-trajectory CSV files named from the trajectory id. Existing representative
 `outputs.trajectory_csv` remains a representative trajectory output and now
 includes an additive leading `trajectory_id` column when written by validation.
+The run manifest records a deterministic aggregate `sha256` for the CSV
+directory, computed from sorted member file names, byte sizes, and file
+checksums.
 Hazard-layer reach probability, maximum kinetic energy, and maximum jump height should use
 `outputs.ensemble_trajectories_dir` when the full ensemble is needed.
 
 When `outputs.ensemble_impact_events_dir` is set, validation writes deterministic
 per-trajectory impact-event CSV files for ensemble members that produced impact
 events. Validation-written impact-event CSVs include an additive leading
-`trajectory_id` column. Hazard-layer significant-impact density should use this
-directory when full-ensemble impact density is needed.
+`trajectory_id` column. When at least one impact-event CSV is written, the run
+manifest records the same deterministic aggregate directory `sha256` policy used
+for ensemble trajectory CSV directories. Hazard-layer significant-impact density
+should use this directory when full-ensemble impact density is needed.
 
 When `outputs.ensemble_impact_events_parquet` is set, validation writes one
 batched Parquet file with schema version `impact_events_table_v1`. The table

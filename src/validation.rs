@@ -3930,13 +3930,14 @@ fn write_ensemble_trajectory_dir(
         total_bytes += fs::metadata(&path)?.len();
         row_count += run.samples.len();
     }
+    let collection_sha256 = sha256_directory_csv_collection(dir.as_ref())?;
     Ok(OutputManifest {
         kind: "ensemble_trajectories".to_string(),
         format: "csv_directory".to_string(),
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count: runs.len(),
         total_bytes,
-        sha256: None,
+        sha256: Some(collection_sha256),
         schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(0),
@@ -3967,13 +3968,18 @@ fn write_ensemble_impact_events_dir(
         total_bytes += fs::metadata(&path)?.len();
         row_count += run.impact_events.len();
     }
+    let collection_sha256 = if file_count > 0 {
+        Some(sha256_directory_csv_collection(dir.as_ref())?)
+    } else {
+        None
+    };
     Ok(OutputManifest {
         kind: "ensemble_impact_events".to_string(),
         format: "csv_directory".to_string(),
         path: dir.as_ref().to_string_lossy().to_string(),
         file_count,
         total_bytes,
-        sha256: None,
+        sha256: collection_sha256,
         schema_version: None,
         row_count: Some(row_count),
         skipped_empty_files: Some(skipped_empty_files),
@@ -3990,6 +3996,31 @@ fn remove_stale_csv_outputs(dir: &Path) -> Result<(), ValidationError> {
         }
     }
     Ok(())
+}
+
+fn sha256_directory_csv_collection(dir: &Path) -> Result<String, ValidationError> {
+    let mut paths = fs::read_dir(dir)?
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<Result<Vec<_>, _>>()?;
+    paths.retain(|path| path.extension().and_then(|extension| extension.to_str()) == Some("csv"));
+    paths.sort();
+
+    let mut digest = Sha256::new();
+    for path in paths {
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
+        let size = fs::metadata(&path)?.len();
+        let file_hash = sha256_file(&path)?;
+        digest.update(file_name.as_bytes());
+        digest.update(b"\0");
+        digest.update(size.to_string().as_bytes());
+        digest.update(b"\0");
+        digest.update(file_hash.as_bytes());
+        digest.update(b"\n");
+    }
+    Ok(format!("{:x}", digest.finalize()))
 }
 
 fn write_ensemble_impact_events_parquet(
