@@ -5,6 +5,10 @@ semantics. Phase 1 is a metadata, validation, labelling, and smoke-example
 milestone. It does not change simulation physics, default parameters, validation
 semantics, hazard raster values, or operational status.
 
+Current interpretation rules for denominator, conditioning, allowed language,
+and unsupported physical/annual claims are maintained in
+`docs/hazard_map_semantics.md`.
+
 ## Implemented Capabilities
 
 Phase 1 now provides:

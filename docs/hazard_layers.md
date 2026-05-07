@@ -5,9 +5,10 @@ spatial raster/vector products. It is a post-processing layer only: it does not
 add physics, does not alter validation or calibration, and does not include risk
 modelling.
 
-Interpretation semantics for diagnostic, sampling-weighted, and unsupported
-probability classes are outlined in `docs/hazard_map_semantics.md`.
-Local pilot GIS/QGIS package expectations are outlined in
+Current denominator, conditioning, language, and unsupported physical/annual
+claim semantics are defined in `docs/hazard_map_semantics.md`.
+Local pilot GIS/QGIS package classes, raster metadata contract, and visual QA
+gate are defined in
 `docs/pilot_gis_package.md`.
 
 ## Scope
@@ -324,8 +325,10 @@ for that layer. Maximum-value rasters record the largest sampled value in a
 cell; they are not expected values, design values, or calibrated hazard
 intensities. Exceedance rasters are normalized by trajectory count: a cell is
 counted at most once per trajectory for each configured threshold.
-Weighted rasters, when enabled, use the same cell-counting rule but replace the
-trajectory count denominator with the filtered sum of `sampling_weight`.
+Weighted rasters, when enabled, follow the current denominator and conditioning
+rules in `docs/hazard_map_semantics.md`: trajectory-level weighted layers use
+filtered trajectory `sampling_weight`, while weighted significant-impact density
+remains an event-density distribution over filtered significant impact events.
 
 ## Current Limitations
 

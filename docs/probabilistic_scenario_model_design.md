@@ -10,15 +10,17 @@ simulation-physics changes.
 ## Purpose
 
 Future probabilistic hazard maps need scenario-level semantics before physical
-probability or annual-frequency post-processing is implemented. The current simulator can already run
-deterministic ensembles, write `trajectory_metadata_table_v1`, and build
-unweighted diagnostic hazard layers, plus opt-in sampling-weighted conditional
-layers. The remaining missing contract is how a set of trajectories relates to
-a source-zone scenario, a block scenario, a model configuration, and a physical
-probability or frequency interpretation.
+probability or annual-frequency post-processing is implemented. The current
+simulator can already run deterministic ensembles, write
+`trajectory_metadata_table_v1`, and build unweighted diagnostic hazard layers,
+plus opt-in sampling-weighted conditional layers. The remaining future contract
+is physical probability or annual frequency; those claims are inactive until a
+future phase defines source-frequency evidence, probability inputs, validation,
+and manifest support.
 
-This document defines that contract so weighted hazard-layer implementation can
-follow without ambiguity.
+This document defines the scenario metadata contract. Current hazard-map
+denominator, conditioning, language, and unsupported physical/annual claim
+semantics are defined in `docs/hazard_map_semantics.md`.
 
 ## Scenario Identity
 
@@ -87,6 +89,23 @@ Current source-zone semantics are intentionally narrow and metadata-driven.
   data are operational input geodata, not validation evidence by themselves.
   Source zones are diagnostic research inputs and must not be presented as
   operationally approved source areas.
+
+### Source-Zone Derivation Evidence Levels V1
+
+Source-zone evidence level describes how a source area was derived. It is a
+metadata and interpretation label, not a validation result.
+
+| Level | Meaning | Allowed claims | Disallowed claims |
+|---|---|---|---|
+| Level 0 | Manual or synthetic fixture source area for dry runs, schema tests, and debug workflows. | "synthetic fixture source area"; "manual debug source polygon"; "schema/provenance example" | "field-derived source zone"; "validated source area"; "annual source model"; "physical release probability" |
+| Level 1 | Operational-input source area backed by CRS/provenance metadata, terrain context, or manual real-site interpretation. | "diagnostic real-site source area"; "CRS/provenance-backed input geometry"; "suitable for local review only" | "validation evidence"; "inventory-supported derivation"; "operationally approved source area"; "frequency-supported source model" |
+| Level 2 | Documented geomorphic or inventory-supported source-zone derivation using stated slope, geology, inventory, or expert-review criteria. Future/conditional until criteria and review records are implemented. | "documented candidate source-zone derivation" when criteria, data, and review are attached | "annual frequency"; "physical source probability"; "validated hazard source model" without a separate validation policy |
+| Level 3 | Frequency/probability-supported source model. Future only; requires source-frequency or physical-probability evidence, temporal assumptions, and validation policy. | "frequency-supported source model" only after future schema, evidence, and validation gates exist | Any current claim that sampling weights, swisstopo terrain, or source polygons define physical or annual probability |
+
+swisstopo terrain, imagery, buildings, or context layers are operational input
+geodata. They can support provenance and interpretation at Level 1, but by
+themselves they are not validation evidence, inventory evidence, source
+frequency evidence, or physical-probability evidence.
 
 ### Release Density and Sampling Policy
 
@@ -266,6 +285,46 @@ Documented review gates and future enforcement targets:
 - Physics-boundary failures: representative block numeric scenario fields must
   not silently override the active case block, and shape labels must not imply
   shape-dependent contact.
+
+### Executable Checks And Examples V1
+
+Current executable coverage for source-zone and block-scenario v1 semantics is:
+
+- `tests/probabilistic_phase1.rs` parses and validates
+  `source_zone_metadata_v1`, `scenario_table_v1`, and
+  `map_package_manifest_v1` fixtures under
+  `tests/fixtures/probabilistic_phase1/`. It checks source-zone metadata,
+  the fixture scenario-table rows named `scenario_level1.csv` and
+  `scenario_level2_weighted.csv`, source-zone mismatch rejection, negative
+  sampling-weight rejection, Phase 1 annual-frequency rejection, and incomplete
+  `physical_probability` rejection.
+- `tests/config_io_terrain.rs::probabilistic_scenario_metadata_propagates_to_trajectory_metadata`
+  verifies deterministic propagation from source-zone/scenario metadata into
+  `trajectory_metadata_table_v1`, including `map_product_id`,
+  `source_zone_id`, `release_cell_id`, `scenario_id`, `block_scenario_id`,
+  block size/shape labels, model labels, `sampling_weight`,
+  `probability_mode`, `normalization_scope`, and empty
+  `annual_frequency_per_year`.
+- `tests/config_io_terrain.rs::probabilistic_phase1_smoke_case_propagates_scenario_metadata`
+  verifies the smoke-case metadata path using
+  `validation/cases/probabilistic_phase1_smoke.yaml` and examples under
+  `validation/data/processed/probabilistic_phase1/`.
+
+Current metadata examples are:
+
+- `tests/fixtures/probabilistic_phase1/source_zone_valid.yaml`;
+- `tests/fixtures/probabilistic_phase1/scenario_level1.csv`;
+- `tests/fixtures/probabilistic_phase1/scenario_level2_weighted.csv`;
+- `validation/data/processed/probabilistic_phase1/source_zone_smoke.yaml`;
+- `validation/data/processed/probabilistic_phase1/scenario_table_smoke.csv`.
+
+Executable tests currently enforce parser validity, deterministic metadata
+joins, unsupported annual/physical probability boundaries, and selected
+manifest/schema labels. Evidence-level assignment, geomorphic/inventory
+derivation review, swisstopo-as-input-not-validation interpretation,
+operational approval exclusion, and future Level 2/3 evidence quality remain
+documented review gates until a later milestone adds explicit schemas and
+checks.
 
 ## Normalization
 

@@ -1113,3 +1113,141 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: Both reviewers' concerns were addressed.
 - Decision: ACCEPT.
 - Next proposed milestone: M015.
+
+### M015
+
+- Milestone id: M015.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Complete the current semantics guide without advancing
+  physical-probability, annual-frequency, or other roadmap items.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/hazard_layers.md`,
+  `docs/probabilistic_hazard_phase1_closure.md`,
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Replaced placeholder denominator/conditioning text
+  with current unweighted diagnostic and `sampling_weighted_conditional` rules,
+  kept physical-probability and annual-frequency labels explicitly inactive,
+  tightened executable-check references to current Rust/Python tests and
+  fixtures, and updated cross-links to the semantics guide.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/hazard_layers.md docs/probabilistic_hazard_phase1_closure.md docs/probabilistic_scenario_model_design.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Pending.
+- Decision: Pending reviewer.
+- Next proposed milestone: Pending roadmap selection.
+
+### M016 Check Addendum
+
+- Milestone id: M016 check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Files intended to change: `docs/agent_work_log.md`
+- Checks run:
+  Targeted diff whitespace check passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_geotiff_export_preserves_values_grid_and_crs_metadata tests.test_hazard_layers.HazardLayerTests.test_cog_export_is_explicitly_deferred`
+  passed.
+- Reviewer notes: Pending.
+- Decision: Pending reviewer.
+
+### M016 Acceptance Addendum
+
+- Milestone id: M016 acceptance.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Read-only reviewer accepted roadmap item 3 against
+  the Definition of Done; stop after one item as requested.
+- Reviewer notes: Accepted by read-only reviewer.
+- Decision: ACCEPT; item 3 done for current Definition of Done.
+- Next proposed milestone: Stop after one item as requested.
+
+### M016 Final Status Note
+
+- Despite append ordering, final item 3 status is complete.
+- Targeted checks passed.
+- Read-only reviewer accepted against the Definition of Done.
+- Decision: ACCEPT.
+- Stop after one item as requested.
+
+### M015 Acceptance Addendum
+
+- Milestone id: M015 acceptance.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record read-only reviewer acceptance against the
+  current Definition of Done.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Selected roadmap item 2 was accepted by the
+  read-only reviewer; stop after one item as requested.
+- Checks run:
+  `cargo test --test probabilistic_phase1` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_layers`
+  passed.
+  Targeted `git diff --check` passed.
+- Reviewer notes: Read-only reviewer accepted item 2 against the Definition of
+  Done.
+- Decision: ACCEPT; item 2 done for current Definition of Done.
+- Next proposed milestone: Stop after one item as requested.
+
+### M016
+
+- Milestone id: M016.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Complete the current pilot GIS/QGIS package contract
+  without advancing production COG or other roadmap work.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Documented debug/review GeoTIFF, local QGIS pilot
+  package, and deferred production COG/package distinctions; made
+  CRS/transform/nodata/grid-alignment semantics explicit; cited current
+  GeoTIFF parity and COG rejection tests; updated the hazard-layer cross-link.
+- Checks run: Pending targeted diff whitespace check.
+- Reviewer notes: Pending.
+- Decision: Pending reviewer.
+- Next proposed milestone: Pending roadmap selection.
+
+### M016 Final Status Note 2
+
+- Final item 3 status after all M016 entries: targeted checks passed, read-only
+  reviewer accepted against the Definition of Done, decision ACCEPT, and work
+  stopped after one item as requested.
+
+### M017
+
+- Milestone id: M017.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Complete v1 source-zone/block-scenario semantics
+  documentation without advancing physical/annual probability work.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added source-zone derivation evidence levels,
+  allowed/disallowed claims, current executable checks and examples, and a
+  schema cross-link to the v1 interpretation contract.
+- Checks run: Pending targeted diff whitespace check.
+- Reviewer notes: Pending.
+- Decision: Pending reviewer.
+- Next proposed milestone: Pending roadmap selection.
+
+### M017 Acceptance Addendum
+
+- Milestone id: M017 acceptance.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Record completion against the current Definition of
+  Done without advancing physical or annual probability semantics.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Targeted checks passed and a read-only reviewer
+  accepted the source-zone/block-scenario v1 documentation, examples,
+  unsupported-probability boundaries, deterministic trajectory-metadata joins,
+  and source-zone derivation evidence levels.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md` passed.
+  `cargo test --test probabilistic_phase1` passed.
+  `cargo test --test config_io_terrain probabilistic` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+- Reviewer notes: Read-only reviewer accepted item 4 against all Definition of
+  Done bullets with no blocking gaps.
+- Decision: ACCEPT; item 4 done for current Definition of Done.
+- Next proposed milestone: Stop after one item as requested.

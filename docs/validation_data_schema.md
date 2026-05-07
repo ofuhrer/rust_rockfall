@@ -570,6 +570,11 @@ Phase 1 probabilistic hazard-map metadata is available through Rust parsers for:
 - `scenario_table_v1` CSV scenario tables;
 - `map_package_manifest_v1` JSON/YAML map-package manifests.
 
+Source-zone/block-scenario v1 semantics, source-zone derivation evidence
+levels, current examples, and executable check boundaries are defined in
+`docs/probabilistic_scenario_model_design.md`. This schema document records
+where the metadata appears; it does not duplicate the interpretation contract.
+
 These contracts add Level 1-2 map semantics (`map_product_id`,
 `source_zone_id`, `source_zone_metadata_path`, scenario ids, block/scenario
 classes, `sampling_weight`, `probability_mode`, and `normalization_scope`)

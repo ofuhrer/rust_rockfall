@@ -1,6 +1,6 @@
 # Pilot GIS/QGIS Package
 
-Status: M008-M010 outline for local pilot QGIS review package contents, raster
+Status: current contract for local pilot QGIS review package contents, raster
 semantics, and visual QA acceptance gate. This document defines diagnostic
 review expectations only. It does not claim operational map status,
 Cloud-Optimized GeoTIFF conformance, production tiling, or risk modelling.
@@ -11,6 +11,27 @@ The pilot package is a review bundle for local diagnostic inspection of hazard
 post-processing outputs. It should make raster alignment, CRS metadata,
 vertical-datum provenance, source-zone context, and visual QA traceable enough
 for a reviewer to inspect the pilot in QGIS or another GIS tool.
+
+## Package Classes
+
+Current and future GIS products must be distinguished explicitly:
+
+- Debug/review GeoTIFF: the current opt-in `--export-geotiff` or
+  `hazard_exports.geotiff: true` output. It writes uncompressed float64
+  GeoTIFF rasters with manifest metadata, SHA-256 identity, nodata, affine
+  transform, EPSG metadata when available, and value parity with the CSV/ESRI
+  ASCII review grids. It is a debug/review raster export, not a COG, styled map
+  product, or publication package.
+- Local QGIS pilot package: a review bundle containing selected rasters,
+  CSV/ASCII parity files, manifests, metadata sidecars, source-zone/context
+  sidecars where available, and visual QA notes. It is meant to be loadable and
+  auditable in QGIS, but it is not required to be a `.qgz`, GeoPackage bundle,
+  tiled product, or production delivery package.
+- Future production COG/package: deferred work for a verified COG writer,
+  tiling/overview/compression policy, standardized styles, optional QGZ or
+  GeoPackage bundles, publication manifests, and an approval workflow.
+  `hazard_exports.cog: true` and `--export-cog` are reserved but fail
+  explicitly today.
 
 ## Required Diagnostic Review Contents
 
@@ -51,6 +72,17 @@ Swiss real-site pilots must record:
 The vertical datum may be carried in manifests and sidecars rather than fully
 encoded in lightweight GeoTIFF tags. Review notes must make this explicit so the
 GeoTIFF is not treated as self-sufficient vertical-datum evidence.
+
+Current GeoTIFF transform semantics use north-up raster georeferencing. The
+manifest `affine_transform` is ordered as `[pixel_width, 0, x_min, 0,
+-pixel_height, y_max]`. GeoTIFF pixel scale records positive x/y cell sizes,
+while the tiepoint anchors the upper-left raster corner. ESRI ASCII parity files
+continue to expose `xllcorner`, `yllcorner`, `cellsize`, `ncols`, `nrows`, and
+`NODATA_value`; values are written in north-to-south row order for GIS-style
+inspection. Grid alignment means the GeoTIFF, ESRI ASCII grid, CSV cell
+centres, manifest extent, and source terrain metadata describe the same cell
+edges and dimensions. Nodata is the manifest nodata value and is distinct from a
+valid zero cell.
 
 ## Explicit Grid Requirement For Real Pilots
 
@@ -164,6 +196,25 @@ are `pass`. Optional or non-core artifacts may be `inconclusive` without
 blocking acceptance only when the report explains why they do not affect the
 stated diagnostic question. Acceptance does not imply QGZ packaging, COG
 compliance, production readiness, operational validation, or risk-map validity.
+
+## Executable Checks
+
+Current executable coverage is intentionally small but checks the core raster
+contract:
+
+- `tests/test_hazard_layers.py::HazardLayerTests.test_geotiff_export_preserves_values_grid_and_crs_metadata`
+  builds a tiny GeoTIFF fixture, verifies GeoTIFF values match the CSV grid, and
+  checks pixel scale, tiepoint, nodata, EPSG metadata, manifest affine
+  transform, vertical datum, non-COG status, non-annual probability semantics,
+  and SHA-256 checksum recording.
+- `tests/test_hazard_layers.py::HazardLayerTests.test_cog_export_is_explicitly_deferred`
+  verifies `--export-cog` fails with an explicit deferred-implementation error
+  instead of silently writing a non-COG product.
+
+These checks prove value/metadata parity for the tiny fixture path and enforce
+the current unsupported COG boundary. They do not prove QGIS styling quality,
+QGZ packaging, Cloud-Optimized GeoTIFF conformance, production tiling, Swiss
+pilot scientific validity, operational approval, or risk-map validity.
 
 ## Deferred Production Work
 

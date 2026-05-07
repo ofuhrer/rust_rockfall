@@ -1,14 +1,15 @@
 # Hazard-Map Semantics And Interpretation Guide
 
-Status: M005 outline plus M006 language examples and M007 consistency-check
-expectations. This guide defines interpretation semantics for hazard-map
-products only. It does not add physics, introduce annual frequencies, change
-model defaults, validate operational hazard maps, or add risk modelling.
+Status: current interpretation guide for diagnostic and
+sampling-weighted-conditional hazard-map products. This guide defines
+interpretation semantics for hazard-map products only. It does not add physics,
+introduce annual frequencies, change model defaults, validate operational
+hazard maps, or add risk modelling.
 
 ## Scope
 
-This document will define how to label and interpret hazard layers produced by
-the existing post-processing workflow. It is not a calibration plan, source
+This document defines how to label and interpret hazard layers produced by the
+existing post-processing workflow. It is not a calibration plan, source
 frequency model, exposure/vulnerability model, or operational acceptance
 standard.
 
@@ -44,33 +45,77 @@ reported externally as `sampling_weighted_conditional`.
   temporal source-frequency model and propagation into the map denominator; it
   is not available in the current workflow.
 
-## Denominator And Conditioning Outline
+## Denominator And Conditioning Rules
 
-Future guide content should specify, for each layer:
+Current products have two active denominator families.
 
-- whether the denominator is trajectory count, deposition-row count, impact-event
-  count, filtered sampling weight, physical probability mass, or annual source
-  frequency;
-- which filters define the conditioned set;
-- whether normalization is per source zone, per scenario set, per release cell,
-  per block scenario, per map package, or per supplied input table;
-- how missing trajectories, absent deposition rows, absent impact events, and
-  filtered-out metadata rows affect the denominator;
-- which denominator must be recorded in manifests and report tables.
+`unweighted_diagnostic` products are normalized only by the supplied input
+records for the layer being built:
 
-## Source-Zone And Block-Scenario Conditioning Outline
+- `reach_probability` and trajectory-level exceedance layers use the supplied
+  trajectory count. A trajectory contributes at most once per cell for reach and
+  once per cell per configured exceedance threshold.
+- `deposition_density` uses the supplied deposition-row count. Each deposition
+  row contributes to one grid cell; absent deposition rows reduce the represented
+  deposition set rather than implying zero physical deposition probability.
+- `significant_impact_density` uses the supplied significant-impact-event count.
+  It is an event-density distribution over significant impact records, not a
+  trajectory-level impact probability.
+- `max_kinetic_energy` and `max_jump_height` do not use probability
+  denominators. They record the maximum sampled value in each cell over the
+  supplied trajectory samples.
+- Optional unweighted standard-error layers use the same trajectory-count
+  denominator as their parent trajectory-level probability layer and are Monte
+  Carlo convergence diagnostics only.
 
-Future guide content should define:
+`sampling_weighted_conditional` products are normalized by `sampling_weight`
+over the active metadata filter:
 
-- source-zone identifiers, source geometry, release-cell policy, and release
-  sampling assumptions;
-- block scenario identifiers, block size or mass classes, passive shape class,
-  release-condition settings, and sampling weights;
-- whether a map is conditioned on one source zone, a group of source zones, one
-  block scenario, or a weighted scenario set;
-- how overlapping source zones and scenario filters are reported;
-- which source-zone and block-scenario metadata must appear in map-package
-  manifests.
+- The numerical input switch is
+  `hazard_probability.probability_model: sampling_weighted`; the external
+  map-package label is `sampling_weighted_conditional`.
+- The current supported normalization convention is
+  `conditioned_on_filter` for weighted hazard-layer construction. Labelled
+  Phase 1 map packages may also record `conditioned_on_scenario` when the
+  generated package is conditioned on the selected scenario metadata.
+- Weighted reach and weighted exceedance layers use the total filtered
+  trajectory `sampling_weight` as denominator. A trajectory contributes its
+  weight at most once per cell for reach and once per cell per threshold.
+- Weighted deposition density uses the same total filtered trajectory-weight
+  denominator. Deposition rows join to `trajectory_metadata_table_v1` through
+  `trajectory_id`; rows without active filtered metadata are excluded. The
+  weighted deposition layer may sum below `1.0` when the supplied deposition CSV
+  does not contain deposition rows for every filtered trajectory.
+- Weighted significant-impact density is normalized by the sum of
+  `sampling_weight` over filtered significant impact events, not by trajectory
+  weight. It remains an event-density distribution and must not be described as
+  a trajectory-level probability or structure-impact probability.
+- Filters are the explicit `hazard_probability.filters` values and the metadata
+  rows available in `trajectory_metadata_table_v1`. Filters that leave zero
+  total weight are invalid.
+
+No current denominator is physical probability mass or annual source frequency.
+`physical_probability` and `annual_frequency` are schema-visible future labels
+only. They are inactive for current map generation and must not appear as claims
+in map names, legends, reports, or review summaries.
+
+## Source-Zone And Block-Scenario Conditioning
+
+Current conditioning is metadata and filter based:
+
+- Source-zone ids, scenario ids, block-scenario labels, release-cell labels,
+  model-configuration labels, and `sampling_weight` values are propagated
+  metadata used for joins, filtering, and manifest auditability.
+- Release sampling and block-scenario sampling describe the numerical sampling
+  design. They do not define physical release probability, calibrated
+  block-population probability, or annual source frequency.
+- A labelled map package must record its `probability_mode`,
+  `normalization_scope`, source-zone metadata path, scenario-table path when
+  used, scenario ids, layer semantics, limitations, and non-operational status.
+- Overlapping source zones, physical source probability, annual occurrence
+  frequency, and calibrated block-population distributions remain unsupported
+  unless a future phase adds explicit evidence, schemas, validation, and
+  manifest contracts.
 
 ## Hazard Versus Risk Boundary
 
@@ -105,53 +150,39 @@ only in future phases when the required contracts exist:
 | Operational validation | "diagnostic or research output"; "not operationally validated" | "official hazard map"; "validated for emergency planning"; "design-basis map" |
 | Return-period language | "no return-period semantics are defined" | "10-year", "30-year", or "100-year" labels without explicit annual source-frequency contracts |
 
-## Consistency Checks And Fixtures
+## Executable Checks
 
-M007 documents consistency expectations only. Executable expansion can follow in
-later milestones if gaps remain.
+Current executable coverage validates the active labels and the unsupported
+annual/physical boundary:
 
-Existing relevant coverage includes:
+- `tests/probabilistic_phase1.rs` parses
+  `tests/fixtures/probabilistic_phase1/` source-zone, scenario, and
+  `map_package_manifest_v1` fixtures. It validates
+  `sampling_weighted_conditional` packages with `conditioned_on_filter` and
+  `conditioned_on_scenario`, accepts non-annual GeoTIFF raster outputs, keeps
+  `unweighted_diagnostic` diagnostic layer names from being relabelled as
+  annual products, rejects the `annual_frequency` fixture for Phase 1, and
+  rejects incomplete `physical_probability` metadata.
+- `tests/test_hazard_layers.py` checks the Python hazard-layer builder against
+  `tests/fixtures/hazard/` and the smoke case
+  `validation/cases/probabilistic_phase1_smoke.yaml`. It verifies
+  `hazard_probability.probability_model: sampling_weighted`,
+  `normalization_convention: conditioned_on_filter`,
+  `hazard_map_package.probability_mode: sampling_weighted_conditional`,
+  non-annualized layer/raster semantics,
+  `annual_frequency_fields_present` set to `false`, labelled package generation
+  without raster-value changes, rejection of `annual_frequency` map-package
+  requests, and source-zone mismatch rejection.
+- The fixture directories used by those tests are
+  `tests/fixtures/probabilistic_phase1/`, `tests/fixtures/hazard/`, and the
+  generated-output paths referenced by
+  `validation/cases/probabilistic_phase1_smoke.yaml`.
 
-- `tests/probabilistic_phase1.rs`;
-- `tests/fixtures/probabilistic_phase1/`;
-- selected hazard-layer builder fixtures under `tests/fixtures/hazard/`.
-
-Existing coverage includes parser and fixture checks for current Phase 1 map
-package labels, non-annualized raster outputs, weighted conditional package
-fixtures, and incomplete physical/annual metadata rejection cases. It does not
-mean every semantic expectation below is already executable.
-
-Expected checks for future manifest/check-script expansion:
-
-- `probability_mode`: accepted current labels are `unweighted_diagnostic` and
-  `sampling_weighted_conditional`; design-only or unsupported modes must not be
-  presented as current products;
-- normalization scope: manifests must record whether the map is conditioned on
-  the active filter, scenario, source zone, or another documented denominator;
-- annualized flag: current products must keep raster outputs non-annualized;
-  annualized layers require a future source-frequency and time-convention
-  contract;
-- numerator and denominator: reports and manifests should identify the counted
-  quantity and denominator, such as trajectory count, event count, filtered
-  sampling weight, physical probability mass, or annual source frequency. These
-  explicit fields are future expectations unless already represented by current
-  layer semantics;
-- source-zone and scenario conditioning: source-zone ids, scenario ids,
-  block-scenario filters, and sampling-weight fields must match the manifest
-  label and normalization scope;
-- physical and annual rejection: current map products and builders must not
-  present physical-probability or annual-frequency layers. Current fixtures
-  cover rejection of incomplete physical-probability metadata; any future
-  physical-probability mode requires a separate evidence-backed product and
-  manifest contract;
-- significant-impact event-density wording: event-density layers must be
-  described as distributions over supplied impact events, not trajectory-level
-  probabilities, structure-impact probabilities, or risk;
-- risk and operational exclusion: map packages must not include exposure,
-  vulnerability, consequence, expected-loss, operational-risk, or operational
-  approval language unless a future workflow explicitly adds those contracts.
-  Current executable checks may be incomplete; M007 records the required review
-  and future-enforcement expectation.
+These checks do not validate model skill, physical scenario probability,
+annualized hazard frequency, exposure, vulnerability, risk, or operational
+approval. Any future `physical_probability` or `annual_frequency` mode requires
+new evidence-backed product semantics, schemas, fixtures, and executable
+checks before those labels can be used as current claims.
 
 ## Later Milestone Placeholders
 
