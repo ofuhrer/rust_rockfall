@@ -353,7 +353,11 @@ def terrain_class_label(class_id: object, class_name: object) -> str | None:
 def terrain_material_gap_values(rows: list[dict[str, str]]) -> list[str]:
     gaps = set()
     for row in rows:
-        raw = str(row.get("terrain_material_instrumentation_gaps") or "").strip()
+        raw = str(
+            row.get("terrain_material_instrumentation_gaps")
+            or row.get("instrumentation_gaps")
+            or ""
+        ).strip()
         if raw:
             try:
                 parsed = json.loads(raw)
@@ -412,6 +416,12 @@ def summarize_stop_state_rows(
         if (value := safe_int(row.get("low_energy_contact_count"))) is not None
     )
     impact_class_counts = significant_impact_terrain_class_counts(rows)
+    has_significant_impact_count_field = any("significant_impact_count" in row for row in rows)
+    explicit_significant_impact_count_total = sum(
+        value
+        for row in rows
+        if (value := safe_int(row.get("significant_impact_count"))) is not None
+    )
     has_impact_class_fields = any(
         "significant_impact_terrain_class_counts" in row
         or "significant_impact_terrain_class_unavailable_count" in row
@@ -426,7 +436,9 @@ def summarize_stop_state_rows(
         is not None
     )
     significant_impact_count_total = None
-    if has_impact_class_fields:
+    if has_significant_impact_count_field:
+        significant_impact_count_total = explicit_significant_impact_count_total
+    elif has_impact_class_fields:
         significant_impact_count_total = (
             sum(impact_class_counts.values())
             + significant_impact_terrain_class_unavailable_count_total
@@ -541,6 +553,109 @@ def summarize_stop_state_csv_by_impact_terrain_material(spec: InputSpec) -> list
         )
         for label, group_rows in sorted(grouped.items())
     ]
+
+
+def exposure_class_label(row: dict[str, str]) -> str:
+    label = terrain_class_label(row.get("terrain_class_id"), row.get("terrain_class_name"))
+    return label or str(row.get("terrain_material_context_status") or "unknown").strip() or "unknown"
+
+
+def summarize_terrain_material_exposure_rows(
+    spec: InputSpec,
+    rows: list[dict[str, str]],
+    *,
+    source_kind: str,
+    terrain_class_label_value: str | None = None,
+) -> dict[str, object]:
+    sample_count = sum(
+        value for row in rows if (value := safe_int(row.get("sample_count"))) is not None
+    )
+    classified_sample_count = sum(
+        value
+        for row in rows
+        if str(row.get("terrain_material_context_status") or "").strip() == "classified"
+        if (value := safe_int(row.get("sample_count"))) is not None
+    )
+    unavailable_sample_count = sum(
+        value
+        for row in rows
+        if str(row.get("terrain_material_context_status") or "").strip() != "classified"
+        if (value := safe_int(row.get("sample_count"))) is not None
+    )
+    trajectory_ids = {
+        value for row in rows if (value := str(row.get("trajectory_id") or "").strip())
+    }
+    gaps = terrain_material_gap_values(rows)
+    if unavailable_sample_count:
+        gaps.append(f"{unavailable_sample_count} exposure samples have no terrain/material class")
+    if not rows:
+        gaps.append("terrain/material exposure sidecar is empty")
+    return {
+        "source_label": spec.label,
+        "source_kind": source_kind,
+        "source_path": str(spec.path),
+        "dataset_role": infer_role(spec.label, spec.path),
+        "contact_model": infer_contact_model(spec.label, spec.path),
+        "row_count": len(rows),
+        "trajectory_count": len(trajectory_ids),
+        "terrain_material_context_available": bool(classified_sample_count),
+        "terrain_material_context_available_count": None,
+        "exposure_terrain_class_label": terrain_class_label_value,
+        "exposure_sample_count": sample_count,
+        "exposure_classified_sample_count": classified_sample_count,
+        "exposure_unavailable_sample_count": unavailable_sample_count,
+        "exposure_duration_s": sum(
+            value for row in rows if (value := safe_float(row.get("duration_s"))) is not None
+        ),
+        "exposure_path_length_m": sum(
+            value for row in rows if (value := safe_float(row.get("path_length_m"))) is not None
+        ),
+        "contact_exposure_sample_count": sum(
+            value
+            for row in rows
+            if (value := safe_int(row.get("contact_sample_count"))) is not None
+        ),
+        "contact_exposure_duration_s": sum(
+            value
+            for row in rows
+            if (value := safe_float(row.get("contact_duration_s"))) is not None
+        ),
+        "contact_exposure_path_length_m": sum(
+            value
+            for row in rows
+            if (value := safe_float(row.get("contact_path_length_m"))) is not None
+        ),
+        "final_status_counts": {},
+        "stop_reason_counts": {},
+        "final_terrain_class_counts": {},
+        "last_significant_impact_terrain_class_counts": {},
+        "significant_impact_terrain_class_counts": {},
+        "instrumentation_gaps": gaps,
+    }
+
+
+def summarize_terrain_material_exposure_csv(spec: InputSpec) -> list[dict[str, object]]:
+    rows = read_csv_dicts(spec.path)
+    summaries = [
+        summarize_terrain_material_exposure_rows(
+            spec,
+            rows,
+            source_kind="terrain_material_exposure_csv",
+        )
+    ]
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        grouped[exposure_class_label(row)].append(row)
+    summaries.extend(
+        summarize_terrain_material_exposure_rows(
+            spec,
+            group_rows,
+            source_kind="terrain_material_exposure_csv_class_group",
+            terrain_class_label_value=label,
+        )
+        for label, group_rows in sorted(grouped.items())
+    )
+    return summaries
 
 
 def summarize_manifest(spec: InputSpec) -> dict[str, object]:
@@ -663,8 +778,11 @@ def summarize_stop_state_summary_manifest(
         "impact_count_total": impact_count_total,
         "impact_count_mean": None,
         "significant_impact_count_total": (
-            sum(safe_int(value) or 0 for value in significant_impact_class_counts.values())
-            + (significant_impact_unavailable_count or 0)
+            safe_int(stop_state_summary.get("significant_impact_count_total"))
+            or (
+                sum(safe_int(value) or 0 for value in significant_impact_class_counts.values())
+                + (significant_impact_unavailable_count or 0)
+            )
         ),
         "low_energy_contact_count_total": safe_int(
             stop_state_summary.get("low_energy_contact_count_total")
@@ -809,15 +927,18 @@ def summarize_explicit_stop_state(
         "impact_count_total": impact_count_total,
         "impact_count_mean": None,
         "significant_impact_count_total": (
-            sum(
-                safe_int(value) or 0
-                for value in (
-                    stop_state.get("significant_impact_terrain_class_counts") or {}
-                ).values()
-            )
-            + (
-                safe_int(stop_state.get("significant_impact_terrain_class_unavailable_count"))
-                or 0
+            safe_int(stop_state.get("significant_impact_count"))
+            or (
+                sum(
+                    safe_int(value) or 0
+                    for value in (
+                        stop_state.get("significant_impact_terrain_class_counts") or {}
+                    ).values()
+                )
+                + (
+                    safe_int(stop_state.get("significant_impact_terrain_class_unavailable_count"))
+                    or 0
+                )
             )
         ),
         "low_energy_contact_count_total": safe_int(stop_state.get("low_energy_contact_count")),
@@ -921,6 +1042,15 @@ FIELDNAMES = [
     "significant_impact_terrain_class_counts",
     "significant_impact_terrain_class_unavailable_count_total",
     "significant_impact_terrain_class_sequence_truncated_count",
+    "exposure_terrain_class_label",
+    "exposure_sample_count",
+    "exposure_classified_sample_count",
+    "exposure_unavailable_sample_count",
+    "exposure_duration_s",
+    "exposure_path_length_m",
+    "contact_exposure_sample_count",
+    "contact_exposure_duration_s",
+    "contact_exposure_path_length_m",
     "final_status_counts",
     "stop_reason_counts",
     "final_speed_mean_mps",
@@ -969,12 +1099,12 @@ def write_markdown(rows: list[dict[str, object]], path: Path) -> None:
         "Generated by `scripts/summarize_stopping_behavior.py` from existing outputs.",
         "This is diagnostic evidence only; it does not rerun simulations or change baselines.",
         "",
-        "| Source | Kind | Role | Contact model | Final class | Impact class | Traj. | Final speed mean (m/s) | Runout mean (m) | Significant impacts | Stop reasons |",
-        "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |",
+        "| Source | Kind | Role | Contact model | Final class | Impact class | Exposure class | Traj. | Final speed mean (m/s) | Runout mean (m) | Significant impacts | Stop reasons |",
+        "| --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for row in rows:
         lines.append(
-            "| {source_label} | {source_kind} | {dataset_role} | {contact_model} | {final_terrain_class_name} | {significant_impact_terrain_class_label} | {trajectory_count} | {final_speed_mean_mps} | {runout_mean_m} | {significant_impact_count_total} | `{stop_reason_counts}` |".format(
+            "| {source_label} | {source_kind} | {dataset_role} | {contact_model} | {final_terrain_class_name} | {significant_impact_terrain_class_label} | {exposure_terrain_class_label} | {trajectory_count} | {final_speed_mean_mps} | {runout_mean_m} | {significant_impact_count_total} | `{stop_reason_counts}` |".format(
                 **{field: format_cell(row.get(field)) for field in FIELDNAMES}
             )
         )
@@ -1012,6 +1142,8 @@ def build_rows(args: argparse.Namespace) -> list[dict[str, object]]:
             rows.extend(summarize_stop_state_csv_by_terrain_material(parsed))
         if args.group_by_impact_terrain_material:
             rows.extend(summarize_stop_state_csv_by_impact_terrain_material(parsed))
+    for spec in args.terrain_material_exposure:
+        rows.extend(summarize_terrain_material_exposure_csv(parse_spec(spec)))
     for spec in args.manifest:
         rows.append(summarize_manifest(parse_spec(spec)))
     for spec in args.diagnostics:
@@ -1033,6 +1165,12 @@ def main() -> int:
     )
     parser.add_argument("--manifest", action="append", default=[], help="label:path run manifest JSON")
     parser.add_argument("--diagnostics", action="append", default=[], help="label:path diagnostics JSON")
+    parser.add_argument(
+        "--terrain-material-exposure",
+        action="append",
+        default=[],
+        help="label:path terrain/material exposure sidecar CSV",
+    )
     parser.add_argument("--output-csv", type=Path)
     parser.add_argument("--output-md", type=Path)
     parser.add_argument("--stop-speed-mps", type=float, default=DEFAULT_STOP_SPEED_MPS)

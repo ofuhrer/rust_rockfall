@@ -8,8 +8,10 @@ use crate::{
     manifest::{
         OutputManifest, PerformanceManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
         ShapeMetadataManifest, StopStateSummaryManifest, TerrainClassCoverageManifest,
-        TerrainClassManifest, TerrainExtentManifest, TerrainManifest, TrajectoryMetadataManifest,
-        RUN_MANIFEST_SCHEMA_VERSION, STOP_STATE_SUMMARY_SCHEMA_VERSION,
+        TerrainClassManifest, TerrainExtentManifest, TerrainManifest,
+        TerrainMaterialExposureClassSummaryManifest, TerrainMaterialExposureSummaryManifest,
+        TrajectoryMetadataManifest, RUN_MANIFEST_SCHEMA_VERSION, STOP_STATE_SUMMARY_SCHEMA_VERSION,
+        TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION,
     },
     probabilistic::{
         MapPackageManifest, NormalizationScope, ProbabilisticMetadataError, ProbabilityMode,
@@ -33,7 +35,7 @@ use parquet::{arrow::ArrowWriter, basic::Compression, file::properties::WriterPr
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
@@ -493,6 +495,8 @@ pub struct EnsembleStopStateRow {
     pub last_significant_impact_y_m: Option<f64>,
     pub last_significant_impact_z_m: Option<f64>,
     pub distance_last_significant_impact_to_final_m: Option<f64>,
+    #[serde(default)]
+    pub significant_impact_count: Option<usize>,
     pub low_energy_contact_count: Option<usize>,
     pub terrain_normal_x: Option<f64>,
     pub terrain_normal_y: Option<f64>,
@@ -519,6 +523,30 @@ pub struct EnsembleStopStateRow {
     #[serde(default)]
     pub terrain_material_instrumentation_gaps: String,
     pub runout_m: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TerrainMaterialExposureRow {
+    pub release_id: String,
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+    pub terrain_class_id: Option<i32>,
+    pub terrain_class_name: Option<String>,
+    pub terrain_class_source: String,
+    pub terrain_material_context_status: String,
+    pub sample_count: usize,
+    pub segment_count: usize,
+    pub duration_s: f64,
+    pub path_length_m: f64,
+    pub airborne_sample_count: usize,
+    pub impact_sample_count: usize,
+    pub sliding_sample_count: usize,
+    pub rolling_sample_count: usize,
+    pub stopped_sample_count: usize,
+    pub contact_sample_count: usize,
+    pub contact_duration_s: f64,
+    pub contact_path_length_m: f64,
+    pub instrumentation_gaps: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -673,6 +701,7 @@ struct RunManifestContext<'a> {
     trajectory_metadata: Option<TrajectoryMetadataManifest>,
     performance: PerformanceManifest,
     stop_state_summary: Option<StopStateSummaryManifest>,
+    terrain_material_exposure_summary: Option<TerrainMaterialExposureSummaryManifest>,
 }
 
 #[derive(Debug, Clone)]
@@ -938,6 +967,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut warnings = Vec::new();
     let mut output_entries = Vec::new();
     let mut stop_state_summary = None;
+    let mut terrain_material_exposure_summary = None;
     let load_started = Instant::now();
     let terrain_source = load_terrain_source_metadata(case)?;
     let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
@@ -953,7 +983,8 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         .map(|source| release_zone_manifest(case.release_zone.as_ref(), source, 0));
     let terrain_class_manifest = terrain_class_map
         .as_ref()
-        .map(|class_map| terrain_class_manifest(case.terrain_classes.as_ref(), class_map));
+        .map(|class_map| terrain_class_manifest(case.terrain_classes.as_ref(), class_map))
+        .transpose()?;
     let observations = match load_observations(case, &mut warnings)? {
         ObservationLoad::Loaded(data) => data,
         ObservationLoad::MissingRequired(path) => {
@@ -992,6 +1023,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                         trajectory_metadata: None,
                         performance,
                         stop_state_summary: None,
+                        terrain_material_exposure_summary: None,
                     },
                 )?;
             }
@@ -1092,6 +1124,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         trajectory_metadata: &mut trajectory_metadata,
         shape_metadata: shape_metadata.as_ref(),
         stop_state_summary: &mut stop_state_summary,
+        terrain_material_exposure_summary: &mut terrain_material_exposure_summary,
     })?;
     compute_validation_ensemble_metrics(ValidationEnsembleContext {
         case,
@@ -1106,6 +1139,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         trajectory_metadata: &mut trajectory_metadata,
         shape_metadata: shape_metadata.as_ref(),
         stop_state_summary: &mut stop_state_summary,
+        terrain_material_exposure_summary: &mut terrain_material_exposure_summary,
     })?;
     if let Some(source) = release_zone_source.as_ref() {
         release_zone_manifest = compute_release_zone_metrics(ReleaseZoneMetricContext {
@@ -1122,6 +1156,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             trajectory_metadata: &mut trajectory_metadata,
             shape_metadata: shape_metadata.as_ref(),
             stop_state_summary: &mut stop_state_summary,
+            terrain_material_exposure_summary: &mut terrain_material_exposure_summary,
         })?;
     }
     compute_observed_trajectory_metrics(
@@ -1252,6 +1287,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 trajectory_metadata: trajectory_metadata_manifest,
                 performance,
                 stop_state_summary,
+                terrain_material_exposure_summary,
             },
         )?;
     }
@@ -1291,6 +1327,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         trajectory_metadata,
         performance,
         stop_state_summary,
+        terrain_material_exposure_summary,
     } = context;
     RunManifest {
         schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
@@ -1318,6 +1355,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         performance: Some(performance),
         stop_state: report.stop_state.clone(),
         stop_state_summary,
+        terrain_material_exposure_summary,
         warnings: report.warnings.clone(),
     }
 }
@@ -1896,12 +1934,24 @@ fn release_zone_manifest(
 fn terrain_class_manifest(
     config: Option<&TerrainClassConfig>,
     class_map: &TerrainClassMap,
-) -> TerrainClassManifest {
+) -> Result<TerrainClassManifest, ValidationError> {
     let metadata = &class_map.metadata;
-    TerrainClassManifest {
+    let metadata_path = config.map(|config| config.metadata_path.to_string_lossy().to_string());
+    let metadata_sha256 = config
+        .map(|config| sha256_file(&config.metadata_path))
+        .transpose()?;
+    let class_grid_sha256 = config
+        .map(|config| resolved_terrain_class_grid_path(&config.metadata_path, metadata))
+        .map(|path| sha256_file(&path))
+        .transpose()?;
+    Ok(TerrainClassManifest {
+        schema_version: "terrain_class_manifest_v1".to_string(),
+        metadata_schema_version: Some(metadata.schema_version),
         layer_id: metadata.layer_id.clone(),
-        metadata_path: config.map(|config| config.metadata_path.to_string_lossy().to_string()),
+        metadata_path,
+        metadata_sha256,
         class_grid_path: metadata.class_grid_path.to_string_lossy().to_string(),
+        class_grid_sha256,
         crs: metadata.coordinate_reference_system.horizontal_name.clone(),
         epsg: metadata.coordinate_reference_system.epsg,
         vertical_datum: metadata.coordinate_reference_system.vertical_datum.clone(),
@@ -1927,6 +1977,20 @@ fn terrain_class_manifest(
             })
             .collect(),
         provenance_notes: metadata.provenance.notes.clone(),
+    })
+}
+
+fn resolved_terrain_class_grid_path(
+    metadata_path: &Path,
+    metadata: &crate::geodata::TerrainClassMetadata,
+) -> PathBuf {
+    if metadata.class_grid_path.is_absolute() {
+        metadata.class_grid_path.clone()
+    } else {
+        metadata_path
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .join(&metadata.class_grid_path)
     }
 }
 
@@ -2324,6 +2388,7 @@ struct EnsembleMetricContext<'a> {
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
     stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
+    terrain_material_exposure_summary: &'a mut Option<TerrainMaterialExposureSummaryManifest>,
 }
 
 fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), ValidationError> {
@@ -2338,6 +2403,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
         trajectory_metadata,
         shape_metadata,
         stop_state_summary: _stop_state_summary,
+        terrain_material_exposure_summary: _terrain_material_exposure_summary,
     } = context;
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
@@ -2494,6 +2560,7 @@ struct ValidationEnsembleContext<'a> {
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
     stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
+    terrain_material_exposure_summary: &'a mut Option<TerrainMaterialExposureSummaryManifest>,
 }
 
 fn compute_validation_ensemble_metrics(
@@ -2512,6 +2579,7 @@ fn compute_validation_ensemble_metrics(
         trajectory_metadata,
         shape_metadata,
         stop_state_summary,
+        terrain_material_exposure_summary,
     } = context;
     if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
         return Ok(());
@@ -2525,6 +2593,7 @@ fn compute_validation_ensemble_metrics(
     let mut runs = Vec::with_capacity(observations.release_points.len() * ensemble_size);
     let mut deposition_rows = Vec::with_capacity(observations.release_points.len() * ensemble_size);
     let mut stop_state_rows = Vec::with_capacity(observations.release_points.len() * ensemble_size);
+    let mut exposure_rows = Vec::new();
 
     for release in &observations.release_points {
         let mut release_config = base_config.clone();
@@ -2551,6 +2620,13 @@ fn compute_validation_ensemble_metrics(
             timing.record_run(&run);
             deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
             stop_state_rows.push(ensemble_stop_state_row(&release.trajectory_id, &run));
+            if let Some(class_map) = terrain_class_map {
+                exposure_rows.extend(terrain_material_exposure_rows(
+                    &release.trajectory_id,
+                    &run,
+                    class_map,
+                ));
+            }
             trajectory_metadata.insert_run(
                 case,
                 &run,
@@ -2581,6 +2657,19 @@ fn compute_validation_ensemble_metrics(
             None,
         )?);
         output_entries.push(stop_state_output);
+        if terrain_class_map.is_some() {
+            let exposure_path = terrain_material_exposure_sidecar_path(path);
+            let exposure_output = write_terrain_material_exposure_csv(
+                &exposure_path,
+                &exposure_rows,
+                "ensemble_terrain_material_exposure",
+            )?;
+            *terrain_material_exposure_summary = Some(terrain_material_exposure_summary_manifest(
+                Some(&exposure_path),
+                &exposure_rows,
+            ));
+            output_entries.push(exposure_output);
+        }
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
         let output_started = Instant::now();
@@ -2624,6 +2713,7 @@ struct ReleaseZoneMetricContext<'a> {
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
     stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
+    terrain_material_exposure_summary: &'a mut Option<TerrainMaterialExposureSummaryManifest>,
 }
 
 fn compute_release_zone_metrics(
@@ -2643,6 +2733,7 @@ fn compute_release_zone_metrics(
         trajectory_metadata,
         shape_metadata,
         stop_state_summary,
+        terrain_material_exposure_summary,
     } = context;
     let Some(release_zone_config) = &case.release_zone else {
         return Ok(None);
@@ -2657,6 +2748,7 @@ fn compute_release_zone_metrics(
     let mut runs = Vec::with_capacity(release_points.len());
     let mut deposition_rows = Vec::with_capacity(release_points.len());
     let mut stop_state_rows = Vec::with_capacity(release_points.len());
+    let mut exposure_rows = Vec::new();
     let mut generated_records = Vec::with_capacity(release_points.len());
 
     for point in &release_points {
@@ -2695,6 +2787,13 @@ fn compute_release_zone_metrics(
         timing.record_run(&run);
         deposition_rows.push(ensemble_deposition_row(&point.release_id, &run));
         stop_state_rows.push(ensemble_stop_state_row(&point.release_id, &run));
+        if let Some(class_map) = terrain_class_map {
+            exposure_rows.extend(terrain_material_exposure_rows(
+                &point.release_id,
+                &run,
+                class_map,
+            ));
+        }
         trajectory_metadata.insert_run(
             case,
             &run,
@@ -2736,6 +2835,19 @@ fn compute_release_zone_metrics(
             None,
         )?);
         output_entries.push(stop_state_output);
+        if terrain_class_map.is_some() {
+            let exposure_path = terrain_material_exposure_sidecar_path(path);
+            let exposure_output = write_terrain_material_exposure_csv(
+                &exposure_path,
+                &exposure_rows,
+                "release_zone_terrain_material_exposure",
+            )?;
+            *terrain_material_exposure_summary = Some(terrain_material_exposure_summary_manifest(
+                Some(&exposure_path),
+                &exposure_rows,
+            ));
+            output_entries.push(exposure_output);
+        }
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
         let output_started = Instant::now();
@@ -3111,6 +3223,7 @@ fn ensemble_stop_state_row(release_id: &str, run: &TrajectoryRun) -> EnsembleSto
         last_significant_impact_z_m: stop_state.and_then(|state| state.last_significant_impact_z_m),
         distance_last_significant_impact_to_final_m: stop_state
             .and_then(|state| state.distance_last_significant_impact_to_final_m),
+        significant_impact_count: stop_state.map(|state| state.significant_impact_count),
         low_energy_contact_count: stop_state.map(|state| state.low_energy_contact_count),
         terrain_normal_x: stop_state.and_then(|state| state.terrain_normal_x),
         terrain_normal_y: stop_state.and_then(|state| state.terrain_normal_y),
@@ -3178,6 +3291,15 @@ fn stop_state_sidecar_path(path: &Path) -> PathBuf {
     path.with_file_name(filename)
 }
 
+fn terrain_material_exposure_sidecar_path(path: &Path) -> PathBuf {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("ensemble");
+    let filename = format!("{stem}_terrain_material_exposure.csv");
+    path.with_file_name(filename)
+}
+
 fn write_ensemble_stop_state_csv(
     path: impl AsRef<Path>,
     rows: &[EnsembleStopStateRow],
@@ -3199,7 +3321,7 @@ fn write_ensemble_stop_state_csv(
         file_count: 1,
         total_bytes: metadata.len(),
         sha256: Some(sha256_file(path)?),
-        schema_version: Some("stop_state_table_v2".to_string()),
+        schema_version: Some("stop_state_table_v3".to_string()),
         row_count: Some(rows.len()),
         skipped_empty_files: None,
         compression: None,
@@ -3216,6 +3338,7 @@ fn stop_state_summary_manifest(
     let mut final_speeds = Vec::new();
     let mut final_kinetic = Vec::new();
     let mut low_energy_contact_count_total = 0_usize;
+    let mut significant_impact_count_total = 0_usize;
     let mut terrain_slope_available_count = 0_usize;
     let mut explicit_stop_state_count = 0_usize;
     let mut terrain_material_context_available_count = 0_usize;
@@ -3239,6 +3362,9 @@ fn stop_state_summary_manifest(
         }
         if let Some(count) = row.low_energy_contact_count {
             low_energy_contact_count_total += count;
+        }
+        if let Some(count) = row.significant_impact_count {
+            significant_impact_count_total += count;
         }
         if row.terrain_slope_abs.is_some() {
             terrain_slope_available_count += 1;
@@ -3275,6 +3401,7 @@ fn stop_state_summary_manifest(
         stop_reason_counts,
         final_contact_state_counts,
         low_energy_contact_count_total,
+        significant_impact_count_total,
         terrain_slope_available_count,
         final_speed_mean_mps: nonempty_mean(&final_speeds),
         final_speed_max_mps: final_speeds.iter().copied().reduce(f64::max),
@@ -3303,6 +3430,266 @@ fn terrain_class_label(class_id: Option<i32>, class_name: &Option<String>) -> Op
         Some(class_name) => format!("{class_id}:{class_name}"),
         None => class_id.to_string(),
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct TerrainMaterialExposureKey {
+    class_id: Option<i32>,
+    class_name: Option<String>,
+    source: String,
+    status: String,
+}
+
+#[derive(Debug, Clone)]
+struct TerrainMaterialExposureAccumulator {
+    release_id: String,
+    trajectory_id: String,
+    seed: Option<u64>,
+    key: TerrainMaterialExposureKey,
+    sample_count: usize,
+    segment_count: usize,
+    duration_s: f64,
+    path_length_m: f64,
+    airborne_sample_count: usize,
+    impact_sample_count: usize,
+    sliding_sample_count: usize,
+    rolling_sample_count: usize,
+    stopped_sample_count: usize,
+    contact_sample_count: usize,
+    contact_duration_s: f64,
+    contact_path_length_m: f64,
+    instrumentation_gaps: BTreeSet<String>,
+}
+
+impl TerrainMaterialExposureAccumulator {
+    fn new(release_id: &str, run: &TrajectoryRun, key: TerrainMaterialExposureKey) -> Self {
+        Self {
+            release_id: release_id.to_string(),
+            trajectory_id: run.summary.trajectory_id.clone(),
+            seed: run.summary.seed,
+            key,
+            sample_count: 0,
+            segment_count: 0,
+            duration_s: 0.0,
+            path_length_m: 0.0,
+            airborne_sample_count: 0,
+            impact_sample_count: 0,
+            sliding_sample_count: 0,
+            rolling_sample_count: 0,
+            stopped_sample_count: 0,
+            contact_sample_count: 0,
+            contact_duration_s: 0.0,
+            contact_path_length_m: 0.0,
+            instrumentation_gaps: BTreeSet::new(),
+        }
+    }
+
+    fn record(
+        &mut self,
+        sample: &TrajectorySample,
+        duration_s: f64,
+        path_length_m: f64,
+        starts_segment: bool,
+    ) {
+        self.sample_count += 1;
+        if starts_segment {
+            self.segment_count += 1;
+        }
+        self.duration_s += duration_s.max(0.0);
+        self.path_length_m += path_length_m.max(0.0);
+        match sample.contact_state {
+            ContactState::Airborne => self.airborne_sample_count += 1,
+            ContactState::Impact => self.impact_sample_count += 1,
+            ContactState::Sliding => self.sliding_sample_count += 1,
+            ContactState::Rolling => self.rolling_sample_count += 1,
+            ContactState::Stopped => self.stopped_sample_count += 1,
+        }
+        if sample.contact_state != ContactState::Airborne {
+            self.contact_sample_count += 1;
+            self.contact_duration_s += duration_s.max(0.0);
+            self.contact_path_length_m += path_length_m.max(0.0);
+        }
+    }
+
+    fn into_row(self) -> TerrainMaterialExposureRow {
+        TerrainMaterialExposureRow {
+            release_id: self.release_id,
+            trajectory_id: self.trajectory_id,
+            seed: self.seed,
+            terrain_class_id: self.key.class_id,
+            terrain_class_name: self.key.class_name,
+            terrain_class_source: self.key.source,
+            terrain_material_context_status: self.key.status,
+            sample_count: self.sample_count,
+            segment_count: self.segment_count,
+            duration_s: self.duration_s,
+            path_length_m: self.path_length_m,
+            airborne_sample_count: self.airborne_sample_count,
+            impact_sample_count: self.impact_sample_count,
+            sliding_sample_count: self.sliding_sample_count,
+            rolling_sample_count: self.rolling_sample_count,
+            stopped_sample_count: self.stopped_sample_count,
+            contact_sample_count: self.contact_sample_count,
+            contact_duration_s: self.contact_duration_s,
+            contact_path_length_m: self.contact_path_length_m,
+            instrumentation_gaps: serde_json::to_string(
+                &self.instrumentation_gaps.into_iter().collect::<Vec<_>>(),
+            )
+            .expect("terrain/material exposure gaps serialize to JSON"),
+        }
+    }
+}
+
+fn terrain_material_exposure_rows(
+    release_id: &str,
+    run: &TrajectoryRun,
+    class_map: &TerrainClassMap,
+) -> Vec<TerrainMaterialExposureRow> {
+    let mut accumulators: BTreeMap<TerrainMaterialExposureKey, TerrainMaterialExposureAccumulator> =
+        BTreeMap::new();
+    let mut previous_key: Option<TerrainMaterialExposureKey> = None;
+    let mut previous_sample: Option<&TrajectorySample> = None;
+    for sample in &run.samples {
+        let key = if let Some((class_id, class_name, source)) =
+            terrain_class_lookup(class_map, sample.x_m, sample.y_m)
+        {
+            TerrainMaterialExposureKey {
+                class_id: Some(class_id),
+                class_name: Some(class_name),
+                source,
+                status: "classified".to_string(),
+            }
+        } else {
+            TerrainMaterialExposureKey {
+                class_id: None,
+                class_name: None,
+                source: class_map.metadata.layer_id.clone(),
+                status: "unavailable".to_string(),
+            }
+        };
+        let duration_s = previous_sample
+            .map(|previous| sample.time_s - previous.time_s)
+            .filter(|value| value.is_finite() && *value > 0.0)
+            .unwrap_or(0.0);
+        let path_length_m = previous_sample
+            .map(|previous| horizontal_sample_distance_m(previous, sample))
+            .filter(|value| value.is_finite())
+            .unwrap_or(0.0);
+        let starts_segment = previous_key.as_ref() != Some(&key);
+        let accumulator = accumulators
+            .entry(key.clone())
+            .or_insert_with(|| TerrainMaterialExposureAccumulator::new(release_id, run, key));
+        accumulator.record(sample, duration_s, path_length_m, starts_segment);
+        if accumulator.key.status == "unavailable" {
+            accumulator.instrumentation_gaps.insert(
+                "sample position has no terrain/material class (outside class grid or nodata)"
+                    .to_string(),
+            );
+        }
+        previous_key = Some(accumulator.key.clone());
+        previous_sample = Some(sample);
+    }
+    accumulators
+        .into_values()
+        .map(TerrainMaterialExposureAccumulator::into_row)
+        .collect()
+}
+
+fn horizontal_sample_distance_m(a: &TrajectorySample, b: &TrajectorySample) -> f64 {
+    (b.x_m - a.x_m).hypot(b.y_m - a.y_m)
+}
+
+fn write_terrain_material_exposure_csv(
+    path: impl AsRef<Path>,
+    rows: &[TerrainMaterialExposureRow],
+    kind: &str,
+) -> Result<OutputManifest, ValidationError> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for row in rows {
+        writer.serialize(row)?;
+    }
+    writer.flush()?;
+    let metadata = fs::metadata(path)?;
+    Ok(OutputManifest {
+        kind: kind.to_string(),
+        format: "csv".to_string(),
+        path: path.to_string_lossy().to_string(),
+        file_count: 1,
+        total_bytes: metadata.len(),
+        sha256: Some(sha256_file(path)?),
+        schema_version: Some("terrain_material_exposure_table_v1".to_string()),
+        row_count: Some(rows.len()),
+        skipped_empty_files: None,
+        compression: None,
+        row_group_count: None,
+    })
+}
+
+fn terrain_material_exposure_summary_manifest(
+    path: Option<&Path>,
+    rows: &[TerrainMaterialExposureRow],
+) -> TerrainMaterialExposureSummaryManifest {
+    let mut trajectory_ids = BTreeSet::new();
+    let mut classified_sample_count = 0_usize;
+    let mut unavailable_sample_count = 0_usize;
+    let mut by_class: BTreeMap<String, TerrainMaterialExposureClassSummaryManifest> =
+        BTreeMap::new();
+    let mut class_trajectories: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for row in rows {
+        trajectory_ids.insert(row.trajectory_id.clone());
+        if row.terrain_material_context_status == "classified" {
+            classified_sample_count += row.sample_count;
+        } else {
+            unavailable_sample_count += row.sample_count;
+        }
+        let label = terrain_class_label(row.terrain_class_id, &row.terrain_class_name)
+            .unwrap_or_else(|| row.terrain_material_context_status.clone());
+        let entry = by_class.entry(label.clone()).or_insert_with(|| {
+            TerrainMaterialExposureClassSummaryManifest {
+                terrain_class_label: label.clone(),
+                trajectory_count: 0,
+                sample_count: 0,
+                duration_s: 0.0,
+                path_length_m: 0.0,
+                contact_sample_count: 0,
+                contact_duration_s: 0.0,
+                contact_path_length_m: 0.0,
+            }
+        });
+        entry.sample_count += row.sample_count;
+        entry.duration_s += row.duration_s;
+        entry.path_length_m += row.path_length_m;
+        entry.contact_sample_count += row.contact_sample_count;
+        entry.contact_duration_s += row.contact_duration_s;
+        entry.contact_path_length_m += row.contact_path_length_m;
+        class_trajectories
+            .entry(label)
+            .or_default()
+            .insert(row.trajectory_id.clone());
+    }
+    for (label, trajectories) in class_trajectories {
+        if let Some(entry) = by_class.get_mut(&label) {
+            entry.trajectory_count = trajectories.len();
+        }
+    }
+    TerrainMaterialExposureSummaryManifest {
+        schema_version: TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION.to_string(),
+        path: path.map(|path| path.to_string_lossy().to_string()),
+        row_count: rows.len(),
+        trajectory_count: trajectory_ids.len(),
+        classified_sample_count,
+        unavailable_sample_count,
+        class_summaries: by_class.into_values().collect(),
+        limitations: vec![
+            "exposure rows are diagnostic only and are derived from saved trajectory samples".to_string(),
+            "duration and path length are assigned to the terrain/material class at the segment end sample".to_string(),
+            "terrain/material classes are configured assumptions and may include active parameter overrides; they are not observed material truth".to_string(),
+        ],
+    }
 }
 
 fn write_ensemble_deposition_csv(

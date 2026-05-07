@@ -14,9 +14,14 @@ The current stack can audit configured terrain/material context for:
 - last significant-impact class in `stop_state`;
 - per-trajectory significant-impact class counts and bounded head/tail class
   sequences;
-- ensemble `*_stop_state.csv` sidecars with `stop_state_table_v2` fields;
-- manifest-level `stop_state_summary_v2` counts for final, last-impact, and
+- ensemble `*_stop_state.csv` sidecars with `stop_state_table_v3` fields;
+- manifest-level `stop_state_summary_v3` counts for final, last-impact, and
   significant-impact class groupings;
+- terrain-class manifest schema/hash provenance for the metadata and class
+  raster used by a run;
+- trajectory-wide `*_terrain_material_exposure.csv` sidecars and
+  `terrain_material_exposure_summary_v1` manifests for generated outputs with
+  configured terrain classes;
 - read-only summaries grouped by final class and by significant-impact class.
 
 These outputs are descriptive provenance. They support questions such as
@@ -35,11 +40,13 @@ used as calibration or model-selection inputs:
   truth until active parameter values are recorded with contact evidence.
 - Full per-impact terrain/material tables are not yet emitted. Stop-state
   records carry aggregate counts and bounded sequences only.
-- Trajectory-wide exposure by class is not yet summarized. Time, path length,
-  contact-state duration, and airborne/contact episode splits by class remain
-  future diagnostic outputs.
-- Terrain-class manifests do not yet carry class-grid hashes, metadata hashes,
-  or an explicit terrain-class manifest schema version.
+- Exposure sidecars summarize saved sample exposure, not continuous path
+  integrals. Duration and path length are assigned to the class at the segment
+  end sample.
+- Contact-episode summaries are not yet emitted. Exposure rows have contact
+  sample/duration/path counts, but not contiguous episode start/end causes.
+- Terrain-class manifests now carry hashes and schema fields, but per-class
+  evidence metadata remains limited to the source fixture metadata.
 - `domain_exit` and `terrain_error` termination flags are still placeholders
   until the integrator exposes those termination modes.
 - Legacy trajectory and deposition outputs without explicit stop-state sidecars

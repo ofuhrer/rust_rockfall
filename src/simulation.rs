@@ -217,6 +217,8 @@ pub struct StopStateProvenance {
     pub last_significant_impact_y_m: Option<f64>,
     pub last_significant_impact_z_m: Option<f64>,
     pub distance_last_significant_impact_to_final_m: Option<f64>,
+    #[serde(default)]
+    pub significant_impact_count: usize,
     pub low_energy_contact_count: usize,
     pub terrain_normal_x: Option<f64>,
     pub terrain_normal_y: Option<f64>,
@@ -593,6 +595,12 @@ fn build_stop_state_provenance(
     let last_significant_impact = impact_events.iter().rev().find(|event| {
         event.incoming_normal_speed_mps >= STOP_SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
     });
+    let significant_impact_count = impact_events
+        .iter()
+        .filter(|event| {
+            event.incoming_normal_speed_mps >= STOP_SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS
+        })
+        .count();
     let distance_last_significant_impact_to_final_m = last_significant_impact
         .map(|event| ((last.x_m - event.x_m).powi(2) + (last.y_m - event.y_m).powi(2)).sqrt());
     let low_energy_contact_count = samples
@@ -631,6 +639,7 @@ fn build_stop_state_provenance(
         last_significant_impact_y_m: last_significant_impact.map(|event| event.y_m),
         last_significant_impact_z_m: last_significant_impact.map(|event| event.z_m),
         distance_last_significant_impact_to_final_m,
+        significant_impact_count,
         low_energy_contact_count,
         terrain_normal_x: Some(normal.x),
         terrain_normal_y: Some(normal.y),

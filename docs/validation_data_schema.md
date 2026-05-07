@@ -95,7 +95,7 @@ The fields are diagnostic only:
 - `significant_impact_terrain_class_sequence_truncated`;
 - `significant_impact_terrain_class_unavailable_count`;
 - `terrain_material_instrumentation_gaps`;
-- aggregate `stop_state_summary_v2` counts for final, last-impact, and
+- aggregate `stop_state_summary_v3` counts for final, last-impact, and
   significant-impact classes.
 
 Class labels are looked up from the configured aligned class raster at the
@@ -106,6 +106,24 @@ significant impacts are reported as instrumentation gaps. These fields do not
 change contact laws, parameters, stopping thresholds, validation metrics, or
 pass/fail criteria. Significant-impact class sequences are bounded head/tail
 diagnostics; full per-event class tables are not yet emitted.
+
+When a generated ensemble/deposition output also has configured
+`terrain_classes`, the runner writes an additive
+`*_terrain_material_exposure.csv` sidecar with
+`terrain_material_exposure_table_v1` schema. This sidecar is not configured as a
+separate case output; it is a diagnostic companion to the generated deposition
+output. It groups saved trajectory samples by terrain/material class and records
+sample counts, segment counts, duration, horizontal path length, contact sample
+counts, contact duration, contact path length, contact-state sample counts, and
+explicit lookup gaps for unavailable class context. The run manifest records a
+`terrain_material_exposure_summary_v1` object with per-class aggregate exposure
+summaries. Exposure summaries are descriptive sample/path provenance and do not
+change trajectories, contact laws, validation metrics, or pass/fail criteria.
+
+`terrain_classes` manifest records carry `terrain_class_manifest_v1`,
+the source metadata schema version, and SHA-256 hashes for the metadata sidecar
+and class raster when those files are available through the configured metadata
+path.
 
 ## Hazard-Layer Statistics
 

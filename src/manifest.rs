@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const RUN_MANIFEST_SCHEMA_VERSION: &str = "run_manifest_v1";
-pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v2";
+pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v3";
+pub const TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION: &str =
+    "terrain_material_exposure_summary_v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunManifest {
@@ -35,6 +37,8 @@ pub struct RunManifest {
     pub stop_state: Option<StopStateProvenance>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_state_summary: Option<StopStateSummaryManifest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terrain_material_exposure_summary: Option<TerrainMaterialExposureSummaryManifest>,
     pub warnings: Vec<String>,
 }
 
@@ -97,9 +101,17 @@ pub struct ReleaseZoneManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TerrainClassManifest {
+    #[serde(default = "default_terrain_class_manifest_schema_version")]
+    pub schema_version: String,
+    #[serde(default)]
+    pub metadata_schema_version: Option<u32>,
     pub layer_id: String,
     pub metadata_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata_sha256: Option<String>,
     pub class_grid_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub class_grid_sha256: Option<String>,
     pub crs: String,
     pub epsg: u32,
     pub vertical_datum: String,
@@ -111,6 +123,10 @@ pub struct TerrainClassManifest {
     pub license: String,
     pub class_coverage: Vec<TerrainClassCoverageManifest>,
     pub provenance_notes: Vec<String>,
+}
+
+fn default_terrain_class_manifest_schema_version() -> String {
+    "terrain_class_manifest_v1".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -235,6 +251,8 @@ pub struct StopStateSummaryManifest {
     pub stop_reason_counts: BTreeMap<String, usize>,
     pub final_contact_state_counts: BTreeMap<String, usize>,
     pub low_energy_contact_count_total: usize,
+    #[serde(default)]
+    pub significant_impact_count_total: usize,
     pub terrain_slope_available_count: usize,
     pub final_speed_mean_mps: Option<f64>,
     pub final_speed_max_mps: Option<f64>,
@@ -251,4 +269,28 @@ pub struct StopStateSummaryManifest {
     #[serde(default)]
     pub significant_impact_terrain_class_unavailable_count: usize,
     pub limitations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TerrainMaterialExposureSummaryManifest {
+    pub schema_version: String,
+    pub path: Option<String>,
+    pub row_count: usize,
+    pub trajectory_count: usize,
+    pub classified_sample_count: usize,
+    pub unavailable_sample_count: usize,
+    pub class_summaries: Vec<TerrainMaterialExposureClassSummaryManifest>,
+    pub limitations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TerrainMaterialExposureClassSummaryManifest {
+    pub terrain_class_label: String,
+    pub trajectory_count: usize,
+    pub sample_count: usize,
+    pub duration_s: f64,
+    pub path_length_m: f64,
+    pub contact_sample_count: usize,
+    pub contact_duration_s: f64,
+    pub contact_path_length_m: f64,
 }

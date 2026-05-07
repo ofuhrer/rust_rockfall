@@ -57,6 +57,10 @@ The additive stopping-diagnostic schema records:
 | `significant_impact_terrain_class_counts` | Per-class significant-impact counts, formatted as `id:name`. | run manifest / stop-state sidecar |
 | `significant_impact_terrain_class_unavailable_count_total` | Significant-impact lookup count with missing terrain/material class context. | run manifest / stop-state sidecar |
 | `significant_impact_terrain_class_sequence_truncated_count` | Number of stop-state rows whose significant-impact class sequence exceeded the bounded head/tail record. | stop-state sidecar |
+| `exposure_terrain_class_label` | Per-class grouping label for rows emitted from a terrain/material exposure sidecar. | exposure sidecar |
+| `exposure_sample_count`, `exposure_classified_sample_count`, `exposure_unavailable_sample_count` | Saved-sample exposure counts by configured class and lookup status. | exposure sidecar |
+| `exposure_duration_s`, `exposure_path_length_m` | Sample-derived duration and horizontal path-length exposure. | exposure sidecar |
+| `contact_exposure_sample_count`, `contact_exposure_duration_s`, `contact_exposure_path_length_m` | Exposure restricted to contact states. | exposure sidecar |
 | `instrumentation_gaps` | Explicit limits for each source. | script output |
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
@@ -98,11 +102,19 @@ integrator does not yet expose those termination modes as separate outcomes.
 
 For validation cases that already write ensemble/deposition CSV outputs, the
 runner now writes an additive `*_stop_state.csv` sidecar and records a
-`stop_state_summary_v2` object in the run manifest. The sidecar is diagnostic
+`stop_state_summary_v3` object in the run manifest. The sidecar is diagnostic
 only and does not change deposition values, metrics, baselines, or acceptance
 criteria. The summary can include per-class final-stop and last-impact counts
 when terrain/material context is available. Legacy manifests without
 `stop_state_summary` remain readable.
+
+Generated ensemble/deposition outputs with configured `terrain_classes` also
+write a `*_terrain_material_exposure.csv` sidecar and
+`terrain_material_exposure_summary_v1` manifest object. These exposure rows are
+explicit runtime provenance derived from saved trajectory samples. They reduce
+proxy-only interpretation by separating classified sample/path exposure,
+contact-state exposure, and unavailable class lookups, but they remain
+diagnostic and do not imply calibrated terrain/material effects.
 
 ## Evidence Inspected
 

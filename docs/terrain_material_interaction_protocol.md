@@ -44,7 +44,7 @@ classification.
 | `significant_impact_terrain_class_unavailable_count` | Significant-impact count with no class lookup because the impact was outside the class grid or nodata. |
 | `terrain_material_instrumentation_gaps` | Explicit reasons terrain/material context is incomplete. |
 
-`stop_state_summary_v2` manifest objects now include:
+`stop_state_summary_v3` manifest objects now include:
 
 | Field | Meaning |
 | --- | --- |
@@ -53,6 +53,19 @@ classification.
 | `last_significant_impact_terrain_class_counts` | Per-class count at last significant impacts, formatted as `id:name`. |
 | `significant_impact_terrain_class_counts` | Per-class significant-impact count, aggregated across stop-state rows. |
 | `significant_impact_terrain_class_unavailable_count` | Aggregate count of significant impacts that could not be classified. |
+
+`terrain_classes` manifest objects now include `schema_version`,
+`metadata_schema_version`, `metadata_sha256`, and `class_grid_sha256` so future
+reviewers can reproduce the exact class assumptions used by a diagnostic run.
+
+When `terrain_classes` metadata is configured for generated ensemble/deposition
+outputs, the runner also writes a local `*_terrain_material_exposure.csv`
+sidecar and a `terrain_material_exposure_summary_v1` manifest object. Exposure
+rows group saved trajectory samples by configured terrain/material class and
+record sample count, segment count, horizontal path length, duration, contact
+sample count, contact duration, contact path length, and contact-state sample
+counts. Rows with out-of-grid or nodata lookups are labelled `unavailable` and
+carry explicit instrumentation gaps.
 
 Legacy manifests and diagnostics remain readable because the new fields are
 additive and default to absent, false, empty, or null.
@@ -76,6 +89,7 @@ fields and can emit extra per-final-class rows with:
 ```bash
 python3 scripts/summarize_stopping_behavior.py \
   --stop-state label:path/to/ensemble_stop_state.csv \
+  --terrain-material-exposure label:path/to/ensemble_terrain_material_exposure.csv \
   --group-by-terrain-material \
   --group-by-impact-terrain-material
 ```
@@ -96,8 +110,12 @@ Implemented:
 
 - additive single-run `stop_state` class fields;
 - additive ensemble stop-state CSV class fields;
-- additive `stop_state_table_v2` and `stop_state_summary_v2` class-count
+- additive `stop_state_table_v3` and `stop_state_summary_v3` class-count
   fields;
+- additive terrain-class manifest hashes and schema fields;
+- additive `terrain_material_exposure_table_v1` sidecars and
+  `terrain_material_exposure_summary_v1` manifests for generated outputs with
+  configured terrain classes;
 - grouped stop-state summarization by final and significant-impact
   terrain/material class;
 - synthetic tests for configured class lookup, missing metadata fallback,
@@ -105,9 +123,8 @@ Implemented:
 
 Still missing:
 
-- dominant or coverage-weighted class exposure along an entire trajectory;
 - active per-contact parameter-value provenance;
-- class-grid checksums and per-class evidence metadata;
+- per-class evidence metadata beyond fixture/source provenance;
 - domain-exit and terrain-error termination exposure from the integrator.
 
 ## Examples
@@ -119,6 +136,7 @@ schema and lookup behavior, but it cannot support terrain/material calibration:
 cargo run -- validate --case validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml
 python3 scripts/summarize_stopping_behavior.py \
   --stop-state synthetic_swiss:validation/results/swissalti3d_terrain_class_deposition_stop_state.csv \
+  --terrain-material-exposure synthetic_swiss_exposure:validation/results/swissalti3d_terrain_class_deposition_terrain_material_exposure.csv \
   --group-by-terrain-material \
   --group-by-impact-terrain-material \
   --output-csv validation/results/terrain_material_diagnostics/synthetic_swiss_stopping_by_material.csv \

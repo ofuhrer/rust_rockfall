@@ -36,6 +36,7 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                         "last_significant_impact_y_m",
                         "last_significant_impact_z_m",
                         "distance_last_significant_impact_to_final_m",
+                        "significant_impact_count",
                         "low_energy_contact_count",
                         "terrain_normal_x",
                         "terrain_normal_y",
@@ -78,6 +79,7 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "last_significant_impact_y_m": "0.0",
                             "last_significant_impact_z_m": "0.5",
                             "distance_last_significant_impact_to_final_m": "2.0",
+                            "significant_impact_count": "2",
                             "low_energy_contact_count": "2",
                             "terrain_normal_x": "0.0",
                             "terrain_normal_y": "0.0",
@@ -120,6 +122,7 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "last_significant_impact_y_m": "",
                             "last_significant_impact_z_m": "",
                             "distance_last_significant_impact_to_final_m": "",
+                            "significant_impact_count": "1",
                             "low_energy_contact_count": "0",
                             "terrain_normal_x": "0.0",
                             "terrain_normal_y": "0.0",
@@ -229,6 +232,98 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
         self.assertTrue(
             any("final position has no terrain/material class" in gap for gap in row["instrumentation_gaps"])
         )
+
+    def test_terrain_material_exposure_summary_groups_by_class(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "exposure.csv"
+            with path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "release_id",
+                        "trajectory_id",
+                        "seed",
+                        "terrain_class_id",
+                        "terrain_class_name",
+                        "terrain_class_source",
+                        "terrain_material_context_status",
+                        "sample_count",
+                        "segment_count",
+                        "duration_s",
+                        "path_length_m",
+                        "airborne_sample_count",
+                        "impact_sample_count",
+                        "sliding_sample_count",
+                        "rolling_sample_count",
+                        "stopped_sample_count",
+                        "contact_sample_count",
+                        "contact_duration_s",
+                        "contact_path_length_m",
+                        "instrumentation_gaps",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerows(
+                    [
+                        {
+                            "release_id": "r1",
+                            "trajectory_id": "t1",
+                            "seed": "1",
+                            "terrain_class_id": "1",
+                            "terrain_class_name": "synthetic_bedrock",
+                            "terrain_class_source": "fixture_classes",
+                            "terrain_material_context_status": "classified",
+                            "sample_count": "10",
+                            "segment_count": "1",
+                            "duration_s": "0.9",
+                            "path_length_m": "2.0",
+                            "airborne_sample_count": "4",
+                            "impact_sample_count": "6",
+                            "sliding_sample_count": "0",
+                            "rolling_sample_count": "0",
+                            "stopped_sample_count": "0",
+                            "contact_sample_count": "6",
+                            "contact_duration_s": "0.5",
+                            "contact_path_length_m": "1.0",
+                            "instrumentation_gaps": "[]",
+                        },
+                        {
+                            "release_id": "r1",
+                            "trajectory_id": "t1",
+                            "seed": "1",
+                            "terrain_class_id": "",
+                            "terrain_class_name": "",
+                            "terrain_class_source": "fixture_classes",
+                            "terrain_material_context_status": "unavailable",
+                            "sample_count": "2",
+                            "segment_count": "1",
+                            "duration_s": "0.1",
+                            "path_length_m": "0.2",
+                            "airborne_sample_count": "2",
+                            "impact_sample_count": "0",
+                            "sliding_sample_count": "0",
+                            "rolling_sample_count": "0",
+                            "stopped_sample_count": "0",
+                            "contact_sample_count": "0",
+                            "contact_duration_s": "0.0",
+                            "contact_path_length_m": "0.0",
+                            "instrumentation_gaps": '["sample position has no terrain/material class"]',
+                        },
+                    ]
+                )
+
+            rows = stopping.summarize_terrain_material_exposure_csv(
+                stopping.InputSpec("exposure", path)
+            )
+
+        self.assertEqual(len(rows), 3)
+        aggregate = rows[0]
+        self.assertEqual(aggregate["exposure_sample_count"], 12)
+        self.assertEqual(aggregate["exposure_classified_sample_count"], 10)
+        self.assertEqual(aggregate["exposure_unavailable_sample_count"], 2)
+        grouped = {row["exposure_terrain_class_label"]: row for row in rows[1:]}
+        self.assertEqual(grouped["1:synthetic_bedrock"]["contact_exposure_sample_count"], 6)
+        self.assertEqual(grouped["unavailable"]["exposure_sample_count"], 2)
 
 
 if __name__ == "__main__":

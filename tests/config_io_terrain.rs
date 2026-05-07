@@ -1945,7 +1945,7 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
         .contains("terrain_classes metadata is not configured"));
     assert_eq!(
         manifest_json["stop_state_summary"]["schema_version"],
-        "stop_state_summary_v2"
+        "stop_state_summary_v3"
     );
     assert_eq!(manifest_json["stop_state_summary"]["trajectory_count"], 4);
     assert_eq!(
@@ -1962,7 +1962,7 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
         .iter()
         .any(|entry| {
             entry["kind"] == "ensemble_stop_state"
-                && entry["schema_version"] == "stop_state_table_v2"
+                && entry["schema_version"] == "stop_state_table_v3"
                 && entry["row_count"] == 4
         }));
 
@@ -1985,6 +1985,7 @@ r1,t1,1,explicit_stopped_state,stopped,0.0,0.0,true,false,false,false,false,,,,,
     assert!(row.final_terrain_class_name.is_none());
     assert!(row.final_terrain_class_source.is_none());
     assert!(row.last_significant_impact_terrain_class_id.is_none());
+    assert!(row.significant_impact_count.is_none());
     assert!(row.significant_impact_terrain_class_counts.is_empty());
     assert!(row
         .significant_impact_terrain_class_sequence_head
@@ -2090,7 +2091,17 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     let deposition = PathBuf::from("validation/results/swissalti3d_terrain_class_deposition.csv");
     let stop_state =
         PathBuf::from("validation/results/swissalti3d_terrain_class_deposition_stop_state.csv");
-    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
+    let exposure = PathBuf::from(
+        "validation/results/swissalti3d_terrain_class_deposition_terrain_material_exposure.csv",
+    );
+    for path in [
+        &diagnostics,
+        &manifest,
+        &releases,
+        &deposition,
+        &stop_state,
+        &exposure,
+    ] {
         let _ = fs::remove_file(path);
     }
 
@@ -2106,6 +2117,28 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
         manifest_json["terrain_classes"]["layer_id"],
         "swissalti3d_pilot_material_classes"
     );
+    assert_eq!(
+        manifest_json["terrain_classes"]["schema_version"],
+        "terrain_class_manifest_v1"
+    );
+    assert_eq!(
+        manifest_json["terrain_classes"]["metadata_schema_version"],
+        1
+    );
+    assert!(
+        manifest_json["terrain_classes"]["metadata_sha256"]
+            .as_str()
+            .unwrap()
+            .len()
+            >= 64
+    );
+    assert!(
+        manifest_json["terrain_classes"]["class_grid_sha256"]
+            .as_str()
+            .unwrap()
+            .len()
+            >= 64
+    );
     assert_eq!(manifest_json["terrain_classes"]["epsg"], 2056);
     assert_eq!(
         manifest_json["terrain_classes"]["class_coverage"]
@@ -2117,6 +2150,7 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     assert!(releases.exists());
     assert!(deposition.exists());
     assert!(stop_state.exists());
+    assert!(exposure.exists());
     let stop_state_row = read_first_csv_row(&stop_state);
     assert_eq!(stop_state_row["terrain_material_context_available"], "true");
     assert_eq!(
@@ -2149,8 +2183,38 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
         stop_state_row["significant_impact_terrain_class_counts"],
         "{}"
     );
+    let exposure_row = read_first_csv_row(&exposure);
+    assert_eq!(
+        exposure_row["terrain_class_source"],
+        "swissalti3d_pilot_material_classes"
+    );
+    assert_eq!(
+        exposure_row["terrain_material_context_status"],
+        "classified"
+    );
+    assert!(
+        manifest_json["terrain_material_exposure_summary"]["classified_sample_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| {
+            entry["kind"] == "release_zone_terrain_material_exposure"
+                && entry["schema_version"] == "terrain_material_exposure_table_v1"
+        }));
 
-    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
+    for path in [
+        &diagnostics,
+        &manifest,
+        &releases,
+        &deposition,
+        &stop_state,
+        &exposure,
+    ] {
         fs::remove_file(path).unwrap();
     }
 }

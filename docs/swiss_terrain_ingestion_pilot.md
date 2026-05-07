@@ -132,10 +132,14 @@ The case writes ignored outputs under `validation/results/`, including:
 The manifest terrain section includes LV95/LN02 metadata, source dataset/product fields, license note, extent, nodata value, metadata path, and DEM path. The release-zone manifest section records the source-area metadata path, CRS, deterministic sampling seed, requested/generated release-point count, polygon extent/area, source/license fields, and provenance notes.
 The terrain-class manifest section records class-layer provenance and class coverage. The checked-in class parameters are illustrative fixtures, not calibrated Swiss terrain parameters.
 When terrain classes are configured, additive stop-state diagnostics can also
-record the final terrain/material class and last-significant-impact class for
-generated trajectories when those points fall inside non-nodata class cells.
-These fields are provenance groupings only; they do not change validation
-metrics, pass/fail criteria, physics, or parameter defaults.
+record the final terrain/material class, last-significant-impact class, and
+significant-impact class counts for generated trajectories when those points
+fall inside non-nodata class cells. Generated ensemble/deposition outputs also
+receive a `*_terrain_material_exposure.csv` sidecar that summarizes saved
+sample exposure by configured class. These fields are provenance groupings only;
+they do not change validation metrics, pass/fail criteria, physics, or
+parameter defaults. The manifest includes metadata and class-grid hashes so the
+configured class assumptions are reproducible.
 
 ## Hazard-Statistics Pilot
 
@@ -160,9 +164,9 @@ python3 scripts/build_hazard_layers.py \
 ```
 
 The resulting exceedance rasters are trajectory-level threshold exceedance
-probabilities. They are closer to RAMMS-like intensity map interpretation than
-max-only diagnostic layers, but they are still research fixtures and not
-operational Swiss hazard products.
+probabilities. They are intensity-map-style diagnostics rather than max-only
+layers, but they are still research fixtures and not operational Swiss hazard
+products.
 
 ## Boundaries
 
