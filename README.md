@@ -66,6 +66,7 @@ Core documentation:
 - `docs/literature_review.md`
 - `docs/model_design.md`
 - `docs/implementation_plan.md`
+- `docs/onboarding_balfrin.md`
 - `docs/roadmap_hazard_mapping.md`
 - `docs/swisstopo_data_strategy.md`
 - `docs/dataset_strategy.md`
@@ -116,6 +117,10 @@ cargo run -- verify --all
 ```
 
 Optional large public-data validation cases skip gracefully until data have been downloaded and preprocessed.
+
+For Balfrin/CSCS-style user environments, including user-local Rust setup,
+Python/PyYAML notes, local hook installation, and optional large public
+benchmark preparation commands, see `docs/onboarding_balfrin.md`.
 
 ## Calibration
 

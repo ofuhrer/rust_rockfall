@@ -11,6 +11,7 @@ The repository uses semantic versioning:
 Core documents:
 
 - `model_design.md`: current equations, assumptions, model options, and API boundaries.
+- `onboarding_balfrin.md`: Balfrin/CSCS-style user-local Rust, Python/PyYAML, git-hook, and optional public benchmark setup notes.
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
 - `probabilistic_hazard_mapping_development_roadmap.md`: staged development roadmap reframing the project around transparent, reproducible probabilistic hazard-map production for selected Swiss regions.
 - `probabilistic_hazard_phase1_implementation_plan.md`: concrete Level 1-2 implementation plan for map semantics, source-zone identity, scenario tables, probability labels, normalization rules, and validation slices.
