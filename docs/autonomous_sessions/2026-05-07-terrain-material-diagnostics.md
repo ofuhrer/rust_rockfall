@@ -364,3 +364,69 @@ Remaining top gaps:
 Why the loop stopped: The continuation completed the obvious low-risk active-override provenance slices and all broad checks passed. The next work requires either contact-level effective-parameter design or output-format parity decisions, both broader than another small cycle.
 
 Recommended next autonomous prompt changes: Keep using the project-local `uv` Python wording. For long-running session logs, explicitly allow "continuation final summary" sections so new cycles can close cleanly without rewriting prior summaries.
+
+## Continuation: Parquet Impact Provenance Parity
+
+Session date: 2026-05-07
+Agent: Codex
+Branch: codex/autonomous-2026-05-07-terrain-material-diagnostics
+Base commit: 6af54eb
+Session goal: Continue no-tuning terrain/material diagnostic work by closing a small output-format parity gap for Parquet-only impact-event runs.
+
+### Continuation Initial Repository State
+
+- Git status: tracked worktree clean on `codex/autonomous-2026-05-07-terrain-material-diagnostics`.
+- Current branch: `codex/autonomous-2026-05-07-terrain-material-diagnostics`.
+- Recent decision records inspected: `docs/terrain_material_diagnostic_gap_report.md`, `docs/terrain_material_interaction_protocol.md`, `docs/validation_data_schema.md`, `docs/autonomous_sessions/2026-05-07-terrain-material-diagnostics.md`.
+- Hooks installed: `.git/hooks/pre-commit` and `.git/hooks/pre-push` are symlinks to `scripts/git-hooks/`.
+- Initial checks: `git status -sb`, current branch, recent commit log, hook listing, documentation/code inspection.
+
+### Continuation Initial Priority Ranking
+
+| Rank | Candidate work package | Evidence/source | Expected value | Risk | Decision |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Write terrain/material impact sidecars for Parquet-only impact-event outputs | Gap report lists Parquet-only impact outputs as missing equivalent provenance | Closes output-format parity without changing impact-event Parquet schema or physics | Low; additive companion directory only when terrain classes and Parquet output are configured | Select for Cycle 6 |
+| 2 | Add summarizer/documentation examples for Parquet-derived sidecar paths | Would make the new parity path discoverable | Useful after writer exists | Low | Candidate Cycle 7 if needed |
+| 3 | Design active per-contact effective-parameter provenance | Gap report lists per-contact provenance as missing | Higher scientific value | Broader runtime contract; likely needs careful design | Defer |
+
+### Cycle 6
+
+Commit:
+
+Selected work package: Write terrain/material impact sidecars for Parquet-only impact-event outputs.
+
+Rationale: The runner already writes per-impact terrain/material sidecars for `ensemble_impact_events_dir`, but cases that choose only `ensemble_impact_events_parquet` lose equivalent terrain/material class and configured-override provenance. A companion CSV sidecar directory derived from the Parquet path closes this gap without altering the Parquet table schema.
+
+Design:
+
+- Files likely touched: `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+- Behavior/schema/provenance implications: additive `ensemble_impact_terrain_material` output manifest for Parquet-only impact cases with configured terrain classes; existing Parquet schema and CSV-directory behavior unchanged.
+- Tests/checks planned: focused Rust validation output test; `cargo fmt --check`; repo consistency through `uv`.
+- Hidden-tuning risk: low because the sidecar records already configured terrain-class assumptions.
+- Public-behavior risk: low; no validation metrics, pass/fail semantics, or public impact-event schemas change.
+- Reproducibility risk: low; sidecar uses existing deterministic trajectory order and directory hashing.
+- Overclaiming risk: docs must keep the sidecar as diagnostic provenance, not calibrated material evidence.
+
+Design critique: Embedding class fields directly in `impact_events_table_v1` would be cleaner for pure columnar workflows, but that would change a public output schema. A companion directory is a smaller additive parity step.
+
+Implementation summary: Added Parquet-only companion terrain/material sidecar writing wherever ensemble impact-event Parquet is written and no CSV impact-event directory is configured. The sidecar directory is derived from the Parquet path stem and uses the existing `impact_terrain_material_table_v1` CSV schema and output manifest kind.
+
+Files changed: `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+
+Checks run: `cargo fmt`; `cargo fmt --check`; `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_parquet_only_context`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`; `git diff --check`.
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` remains skipped because this environment needs the project-local `uv` Python for repository scripts.
+
+Diff review:
+
+- Physics/default behavior: no physics, defaults, contact models, thresholds, validation metrics, or pass/fail semantics changed.
+- Schema/provenance: existing `impact_events_table_v1` Parquet schema unchanged; additive companion `impact_terrain_material_table_v1` directory appears only for Parquet-only impact outputs with terrain classes.
+- Generated artifacts: focused Rust test generated temporary Parquet and sidecar files and removed them; none staged.
+- Docs and validation wording: docs call the sidecar diagnostic provenance and keep configured terrain/material assumptions separate from calibrated evidence.
+- Backward compatibility: existing CSV impact-directory sidecar behavior is unchanged; cases with both CSV and Parquet continue to use the CSV-derived sidecar.
+
+Residual risk: Pure columnar workflows still need to join to a CSV sidecar directory rather than reading terrain/material columns from Parquet.
+
+Next candidate: add a short summarizer example or smoke test for a Parquet-derived sidecar path if needed; otherwise stop before broader contact-episode or per-contact effective-parameter design.
+
+Prompt friction or improvement note: No new prompt friction.

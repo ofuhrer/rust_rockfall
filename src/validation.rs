@@ -2528,6 +2528,17 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
                 path,
                 &ensemble.trajectories,
             )?);
+            if case.outputs.ensemble_impact_events_dir.is_none() {
+                if let Some(class_map) = terrain_class_map {
+                    let terrain_material_dir =
+                        impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                    output_entries.push(write_ensemble_impact_terrain_material_dir(
+                        &terrain_material_dir,
+                        &ensemble.trajectories,
+                        class_map,
+                    )?);
+                }
+            }
             timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
     }
@@ -2730,6 +2741,17 @@ fn compute_validation_ensemble_metrics(
     if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
         let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
+        if case.outputs.ensemble_impact_events_dir.is_none() {
+            if let Some(class_map) = terrain_class_map {
+                let terrain_material_dir =
+                    impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                output_entries.push(write_ensemble_impact_terrain_material_dir(
+                    &terrain_material_dir,
+                    &runs,
+                    class_map,
+                )?);
+            }
+        }
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
 
@@ -2916,6 +2938,17 @@ fn compute_release_zone_metrics(
     if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
         let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
+        if case.outputs.ensemble_impact_events_dir.is_none() {
+            if let Some(class_map) = terrain_class_map {
+                let terrain_material_dir =
+                    impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                output_entries.push(write_ensemble_impact_terrain_material_dir(
+                    &terrain_material_dir,
+                    &runs,
+                    class_map,
+                )?);
+            }
+        }
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
 
@@ -3360,6 +3393,14 @@ fn impact_terrain_material_sidecar_dir(dir: &Path) -> PathBuf {
         .and_then(|value| value.to_str())
         .unwrap_or("ensemble_impacts");
     dir.with_file_name(format!("{name}_terrain_material"))
+}
+
+fn impact_terrain_material_sidecar_dir_for_parquet_path(path: &Path) -> PathBuf {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("ensemble_impacts");
+    path.with_file_name(format!("{stem}_terrain_material"))
 }
 
 fn write_ensemble_stop_state_csv(

@@ -123,8 +123,10 @@ change trajectories, contact laws, validation metrics, or pass/fail criteria.
 
 When `terrain_classes` and `outputs.ensemble_impact_events_dir` are both
 configured, validation also writes a sibling `*_terrain_material/` directory
-with `impact_terrain_material_table_v1` CSV files. Each row is keyed by
-trajectory id, impact index, and impact time/location, reports whether the
+with `impact_terrain_material_table_v1` CSV files. The same sidecar is written
+beside `outputs.ensemble_impact_events_parquet` when terrain classes are
+configured and no impact-event CSV directory is configured. Each row is keyed
+by trajectory id, impact index, and impact time/location, reports whether the
 impact meets the fixed significant-impact threshold, classifies the configured
 terrain/material class at the impact point when available, lists configured
 override field names and explicit override values for that class, and records

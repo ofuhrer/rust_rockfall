@@ -24,8 +24,9 @@ The current stack can audit configured terrain/material context for:
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
 - per-impact `*_terrain_material/` sidecar directories when both
-  `terrain_classes` and `outputs.ensemble_impact_events_dir` are configured,
-  including explicit configured override field names and values;
+  `terrain_classes` and an ensemble impact-event CSV directory are configured,
+  or when terrain classes and Parquet-only ensemble impact events are
+  configured, including explicit configured override field names and values;
 - read-only summaries grouped by final class, significant-impact class, and
   per-impact terrain/material class, including configured override field-name
   and `field=value` counts for impact sidecars.
@@ -45,10 +46,10 @@ used as calibration or model-selection inputs:
   effective parameters, fallback global defaults, and post-validation scarring
   settings are still not emitted. Reports must state "configured
   terrain/material assumption" rather than observed material truth.
-- Full per-impact terrain/material tables are emitted only for ensemble
-  impact-event CSV outputs with configured terrain classes. Older outputs,
-  Parquet-only impact outputs, and runs without configured classes remain
-  proxy-only or unavailable for per-impact class context.
+- Full per-impact terrain/material tables are emitted for ensemble impact-event
+  CSV outputs and Parquet-only impact outputs with configured terrain classes.
+  Older outputs and runs without configured classes remain proxy-only or
+  unavailable for per-impact class context.
 - Exposure sidecars summarize saved sample exposure, not continuous path
   integrals. Duration and path length are assigned to the class at the segment
   end sample.
@@ -80,7 +81,7 @@ met:
 ## Recommended Next Package
 
 The next no-tuning package should design active per-contact effective-parameter
-provenance if contact-level evidence is needed, or improve output-format parity
-for Parquet-only impact runs. That package should remain diagnostic-only and
-should not add fitted coefficients, new calibrated classes, changed contact
-laws, or validation-threshold changes.
+provenance if contact-level evidence is needed, or improve contact-episode
+summaries. That package should remain diagnostic-only and should not add fitted
+coefficients, new calibrated classes, changed contact laws, or
+validation-threshold changes.

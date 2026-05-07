@@ -72,8 +72,9 @@ sample count, contact duration, contact path length, and contact-state sample
 counts. Rows with out-of-grid or nodata lookups are labelled `unavailable` and
 carry explicit instrumentation gaps.
 
-When `terrain_classes` metadata and `outputs.ensemble_impact_events_dir` are
-both configured, the runner also writes a sibling
+When `terrain_classes` metadata is configured and the case writes
+`outputs.ensemble_impact_events_dir`, or writes only
+`outputs.ensemble_impact_events_parquet`, the runner also writes a sibling
 `*_terrain_material/` CSV directory with `impact_terrain_material_table_v1`
 rows. These rows classify each emitted impact event by configured class at the
 impact `(x, y)` point, record whether the event meets the fixed significant
@@ -134,8 +135,8 @@ Implemented:
 - additive terrain-class manifest hashes and schema fields;
 - additive terrain-class manifest active-override field-name provenance;
 - additive per-impact terrain/material sidecar directories for ensemble impact
-  CSV outputs with configured terrain classes, including explicit configured
-  override values;
+  CSV outputs, and for Parquet-only ensemble impact outputs, with configured
+  terrain classes, including explicit configured override values;
 - additive `terrain_material_exposure_table_v1` sidecars and
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
