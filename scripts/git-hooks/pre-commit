@@ -6,18 +6,21 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
+. scripts/git-hooks/python-env.sh
+select_repo_python
+
 echo "pre-commit: cargo fmt --check"
 cargo fmt --check
 
 echo "pre-commit: YAML syntax check"
-python3 - <<'PY'
+PYTHONPATH="${REPO_PYTHONPATH}" "${REPO_PYTHON}" - <<'PY'
 from pathlib import Path
 import sys
 
 try:
     import yaml
 except ImportError:
-    print("PyYAML is required for the YAML syntax check. Install with `python3 -m pip install PyYAML`.", file=sys.stderr)
+    print("PyYAML is required for the YAML syntax check.", file=sys.stderr)
     raise SystemExit(1)
 
 paths = (
@@ -30,4 +33,3 @@ for path in paths:
         yaml.safe_load(file)
 print(f"checked {len(paths)} YAML files")
 PY
-

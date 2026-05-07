@@ -477,7 +477,7 @@ def run_hazard_stage(
     output_dir = output_root / "hazard" / run.run_id / suffix
     case_path = make_weighted_hazard_case(run, output_root) if weighted else run.case_path
     command = [
-        "python3",
+        sys.executable,
         "scripts/build_hazard_layers.py",
         "--case",
         str(case_path),

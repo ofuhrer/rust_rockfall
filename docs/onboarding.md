@@ -13,8 +13,7 @@ unless they describe a reusable class of environment issue.
 Required for normal development:
 
 - Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`.
-- Python `>= 3.9`.
-- PyYAML for repository consistency checks and benchmark/data scripts.
+- `uv` for a project-local Python runtime and virtual environment.
 - Git.
 
 Optional tools depend on the workflow:
@@ -76,29 +75,40 @@ cargo clippy --version
 
 ## Python and PyYAML
 
-Repository scripts should be run with Python `>= 3.9`. If your default
-`python3` is older, use a newer interpreter explicitly or set
-`RUST_ROCKFALL_PYTHON` for the repository git hooks:
+Use `uv` so repository Python tools do not depend on system Python packages or
+the system default Python version.
 
 ```bash
-export RUST_ROCKFALL_PYTHON=/path/to/python3.11
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+uv python install 3.12
+uv venv --python 3.12 .venv
+uv pip install -r requirements-tools.txt
 ```
 
-Install PyYAML for the interpreter you use:
+The `.venv/` directory is ignored by git. The repository hooks prefer
+`.venv/bin/python` when it exists, so activating the environment is not required
+for hook execution.
+
+For interactive Python commands, either activate the environment:
 
 ```bash
-python3 -m pip install --user PyYAML
+. .venv/bin/activate
+python scripts/check_repo_consistency.py
 ```
 
-If you use a non-default interpreter, install PyYAML through that interpreter:
+or call it directly:
 
 ```bash
-/path/to/python3.11 -m pip install --user PyYAML
+.venv/bin/python scripts/check_repo_consistency.py
 ```
 
-Avoid relying on machine-local package paths in committed workflows. If an
-environment needs a temporary `PYTHONPATH` workaround, keep it local and record
-the stable requirement as "Python >= 3.9 with PyYAML".
+Set `RUST_ROCKFALL_PYTHON` only when intentionally overriding the local
+environment:
+
+```bash
+export RUST_ROCKFALL_PYTHON="$PWD/.venv/bin/python"
+```
 
 ## Local Git Hooks
 
@@ -108,8 +118,9 @@ Install the local hook templates after cloning or when `.git/hooks` is missing:
 scripts/install_git_hooks.sh
 ```
 
-The hooks select Python `>= 3.9`, preferring `RUST_ROCKFALL_PYTHON`, and run the
-Rust/Python checks through the same path used by local commits and pushes.
+The hooks select Python `>= 3.9`, preferring `RUST_ROCKFALL_PYTHON` and then
+`.venv/bin/python`, and run the Rust/Python checks through the same path used by
+local commits and pushes.
 
 Run the hook chain directly before handoff:
 
@@ -128,7 +139,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo run -- verify --all
 cargo run -- validate --all
-python3 scripts/check_repo_consistency.py
+.venv/bin/python scripts/check_repo_consistency.py
 scripts/git-hooks/pre-commit
 ```
 
@@ -152,17 +163,17 @@ hazard-map validity.
 Use them only when the benchmark data are intentionally needed:
 
 ```bash
-python3 scripts/prepare_tschamut_public_benchmark.py --force
-python3 scripts/prepare_chant_sura_public_benchmark.py
-python3 scripts/prepare_chant_sura_eota221_benchmark.py
-python3 scripts/prepare_mel_de_la_niva_benchmark.py
+.venv/bin/python scripts/prepare_tschamut_public_benchmark.py --force
+.venv/bin/python scripts/prepare_chant_sura_public_benchmark.py
+.venv/bin/python scripts/prepare_chant_sura_eota221_benchmark.py
+.venv/bin/python scripts/prepare_mel_de_la_niva_benchmark.py
 ```
 
 The Mel de la Niva runnable smoke package is opt-in and writes under an ignored
 results path:
 
 ```bash
-python3 scripts/prepare_mel_de_la_niva_benchmark.py \
+.venv/bin/python scripts/prepare_mel_de_la_niva_benchmark.py \
   --download-runnable-archives \
   --make-runnable \
   --output-root validation/results/public_benchmarks/mel_de_la_niva_runnable

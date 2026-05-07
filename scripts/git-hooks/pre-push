@@ -6,10 +6,13 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
+. scripts/git-hooks/python-env.sh
+select_repo_python
+
 echo "pre-push: full local verification chain"
 cargo fmt --check \
   && cargo clippy --all-targets --all-features -- -D warnings \
   && cargo test \
   && cargo run -- verify --all \
   && cargo run -- validate --all \
-  && python3 scripts/check_repo_consistency.py
+  && PYTHONPATH="${REPO_PYTHONPATH}" "${REPO_PYTHON}" scripts/check_repo_consistency.py

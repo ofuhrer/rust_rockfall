@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -555,6 +557,66 @@ class PerformanceBenchmarkScriptTests(unittest.TestCase):
                     ]
                 )
             )
+
+    def test_hazard_stage_uses_current_python_interpreter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            manifest_path = (
+                output_root
+                / "hazard"
+                / "synthetic_scale_n2_baseline_trajectories"
+                / "hazard_explicit_no_plots"
+                / "synthetic_scale_n2_baseline_trajectories_manifest.json"
+            )
+            manifest_path.parent.mkdir(parents=True)
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "performance": {
+                            "total_wall_seconds": 1.0,
+                            "terrain_load_seconds": 0.0,
+                            "release_generation_seconds": 0.0,
+                            "simulation_seconds": 0.0,
+                            "output_write_seconds": 0.0,
+                            "hazard_layer_seconds": 1.0,
+                            "trajectory_count": 2,
+                            "impact_event_count": 0,
+                            "output_file_count": 1,
+                            "output_bytes": 1,
+                        }
+                    }
+                )
+            )
+            run = perf.BenchmarkRun(
+                run_id="synthetic_scale_n2_baseline_trajectories",
+                release_count=2,
+                contact_model="translational_v0",
+                mode_name="trajectories",
+                write_trajectories=True,
+                impact_output_mode="none",
+                case_path=output_root / "case.yaml",
+                manifest_path=output_root / "validation_manifest.json",
+                diagnostics_path=output_root / "metrics.json",
+                grid_xmin=0.0,
+                grid_ymin=0.0,
+                grid_ncols=10,
+                grid_nrows=10,
+                grid_cell_size=1.0,
+            )
+            run.case_path.write_text("case_id: fixture\n")
+
+            with mock.patch.object(perf.subprocess, "run") as subprocess_run:
+                perf.run_hazard_stage(
+                    run,
+                    output_root=output_root,
+                    no_plots=True,
+                    weighted=False,
+                    grid_mode="explicit",
+                )
+
+            command = subprocess_run.call_args.args[0]
+            self.assertEqual(command[0], sys.executable)
+            self.assertNotEqual(command[0], "python3")
 
     def test_summary_report_uses_manifest_performance_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

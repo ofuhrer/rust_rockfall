@@ -40,9 +40,9 @@ New physics must be explicit in configuration. Defaults are not changed silently
 ## Quickstart
 
 Prerequisites for local development are Rust with `cargo`, `rustfmt`, and
-`clippy`, plus Python `>= 3.9` with PyYAML for repository scripts. See
-`docs/onboarding.md` for installation, hook setup, optional benchmark data, and
-handoff checks.
+`clippy`, plus a project-local `uv` Python environment for repository scripts.
+See `docs/onboarding.md` for installation, hook setup, optional benchmark data,
+and handoff checks.
 
 ```bash
 cargo test
