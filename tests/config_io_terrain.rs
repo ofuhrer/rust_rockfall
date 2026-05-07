@@ -1945,7 +1945,7 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
         .contains("terrain_classes metadata is not configured"));
     assert_eq!(
         manifest_json["stop_state_summary"]["schema_version"],
-        "stop_state_summary_v1"
+        "stop_state_summary_v2"
     );
     assert_eq!(manifest_json["stop_state_summary"]["trajectory_count"], 4);
     assert_eq!(
@@ -1962,7 +1962,7 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
         .iter()
         .any(|entry| {
             entry["kind"] == "ensemble_stop_state"
-                && entry["schema_version"] == "stop_state_table_v1"
+                && entry["schema_version"] == "stop_state_table_v2"
                 && entry["row_count"] == 4
         }));
 
@@ -1985,6 +1985,15 @@ r1,t1,1,explicit_stopped_state,stopped,0.0,0.0,true,false,false,false,false,,,,,
     assert!(row.final_terrain_class_name.is_none());
     assert!(row.final_terrain_class_source.is_none());
     assert!(row.last_significant_impact_terrain_class_id.is_none());
+    assert!(row.significant_impact_terrain_class_counts.is_empty());
+    assert!(row
+        .significant_impact_terrain_class_sequence_head
+        .is_empty());
+    assert!(row
+        .significant_impact_terrain_class_sequence_tail
+        .is_empty());
+    assert!(!row.significant_impact_terrain_class_sequence_truncated);
+    assert_eq!(row.significant_impact_terrain_class_unavailable_count, 0);
     assert!(row.terrain_material_instrumentation_gaps.is_empty());
 }
 
@@ -2129,6 +2138,16 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
             .as_object()
             .unwrap()
             .is_empty()
+    );
+    assert!(
+        !manifest_json["stop_state_summary"]["significant_impact_terrain_class_counts"]
+            .as_object()
+            .unwrap()
+            .is_empty()
+    );
+    assert_ne!(
+        stop_state_row["significant_impact_terrain_class_counts"],
+        "{}"
     );
 
     for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {

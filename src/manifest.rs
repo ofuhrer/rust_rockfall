@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const RUN_MANIFEST_SCHEMA_VERSION: &str = "run_manifest_v1";
-pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v1";
+pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v2";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunManifest {
@@ -246,5 +246,9 @@ pub struct StopStateSummaryManifest {
     pub final_terrain_class_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub last_significant_impact_terrain_class_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_unavailable_count: usize,
     pub limitations: Vec<String>,
 }

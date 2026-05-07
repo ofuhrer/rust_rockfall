@@ -17,6 +17,7 @@ use crate::{
     Vec3,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -235,6 +236,16 @@ pub struct StopStateProvenance {
     pub last_significant_impact_terrain_class_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_significant_impact_terrain_class_source: Option<String>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_head: Vec<String>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_tail: Vec<String>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_truncated: bool,
+    #[serde(default)]
+    pub significant_impact_terrain_class_unavailable_count: usize,
     #[serde(default)]
     pub terrain_material_instrumentation_gaps: Vec<String>,
 }
@@ -632,6 +643,11 @@ fn build_stop_state_provenance(
         last_significant_impact_terrain_class_id: None,
         last_significant_impact_terrain_class_name: None,
         last_significant_impact_terrain_class_source: None,
+        significant_impact_terrain_class_counts: BTreeMap::new(),
+        significant_impact_terrain_class_sequence_head: Vec::new(),
+        significant_impact_terrain_class_sequence_tail: Vec::new(),
+        significant_impact_terrain_class_sequence_truncated: false,
+        significant_impact_terrain_class_unavailable_count: 0,
         terrain_material_instrumentation_gaps: vec![
             "terrain_classes metadata is not configured for this run".to_string(),
         ],

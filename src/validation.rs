@@ -53,6 +53,7 @@ pub fn free_flight_state(initial: BodyState, gravity_mps2: f64, time_s: f64) -> 
 }
 
 pub const SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
+const SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT: usize = 16;
 pub const TRAJECTORY_METADATA_SCHEMA_VERSION: &str = "trajectory_metadata_table_v1";
 pub const IMPACT_EVENTS_TABLE_SCHEMA_VERSION: &str = "impact_events_table_v1";
 const OUTPUT_FILE_WARNING_THRESHOLD: usize = 1_000;
@@ -505,6 +506,16 @@ pub struct EnsembleStopStateRow {
     pub last_significant_impact_terrain_class_id: Option<i32>,
     pub last_significant_impact_terrain_class_name: Option<String>,
     pub last_significant_impact_terrain_class_source: Option<String>,
+    #[serde(default)]
+    pub significant_impact_terrain_class_counts: String,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_head: String,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_tail: String,
+    #[serde(default)]
+    pub significant_impact_terrain_class_sequence_truncated: bool,
+    #[serde(default)]
+    pub significant_impact_terrain_class_unavailable_count: usize,
     #[serde(default)]
     pub terrain_material_instrumentation_gaps: String,
     pub runout_m: f64,
@@ -1433,9 +1444,20 @@ fn annotate_result_terrain_material_context(
     result: &mut SimulationResult,
     class_map: Option<&TerrainClassMap>,
 ) {
-    let final_xy = result.samples.last().map(|sample| (sample.x_m, sample.y_m));
-    if let Some(stop_state) = result.stop_state.as_mut() {
-        annotate_stop_state_terrain_material_context(stop_state, final_xy, class_map);
+    let SimulationResult {
+        samples,
+        impact_events,
+        stop_state,
+        ..
+    } = result;
+    let final_xy = samples.last().map(|sample| (sample.x_m, sample.y_m));
+    if let Some(stop_state) = stop_state.as_mut() {
+        annotate_stop_state_terrain_material_context(
+            stop_state,
+            final_xy,
+            impact_events,
+            class_map,
+        );
     }
 }
 
@@ -1443,15 +1465,27 @@ fn annotate_run_terrain_material_context(
     run: &mut TrajectoryRun,
     class_map: Option<&TerrainClassMap>,
 ) {
-    let final_xy = run.samples.last().map(|sample| (sample.x_m, sample.y_m));
-    if let Some(stop_state) = run.stop_state.as_mut() {
-        annotate_stop_state_terrain_material_context(stop_state, final_xy, class_map);
+    let TrajectoryRun {
+        samples,
+        impact_events,
+        stop_state,
+        ..
+    } = run;
+    let final_xy = samples.last().map(|sample| (sample.x_m, sample.y_m));
+    if let Some(stop_state) = stop_state.as_mut() {
+        annotate_stop_state_terrain_material_context(
+            stop_state,
+            final_xy,
+            impact_events,
+            class_map,
+        );
     }
 }
 
 fn annotate_stop_state_terrain_material_context(
     stop_state: &mut StopStateProvenance,
     final_xy: Option<(f64, f64)>,
+    impact_events: &[ImpactEvent],
     class_map: Option<&TerrainClassMap>,
 ) {
     let Some(class_map) = class_map else {
@@ -1465,6 +1499,15 @@ fn annotate_stop_state_terrain_material_context(
     stop_state.last_significant_impact_terrain_class_id = None;
     stop_state.last_significant_impact_terrain_class_name = None;
     stop_state.last_significant_impact_terrain_class_source = None;
+    stop_state.significant_impact_terrain_class_counts.clear();
+    stop_state
+        .significant_impact_terrain_class_sequence_head
+        .clear();
+    stop_state
+        .significant_impact_terrain_class_sequence_tail
+        .clear();
+    stop_state.significant_impact_terrain_class_sequence_truncated = false;
+    stop_state.significant_impact_terrain_class_unavailable_count = 0;
     stop_state.terrain_material_instrumentation_gaps.clear();
 
     if let Some((x_m, y_m)) = final_xy {
@@ -1506,6 +1549,48 @@ fn annotate_stop_state_terrain_material_context(
             "last significant impact terrain/material class is unavailable because no significant impact reached the explicit threshold"
                 .to_string(),
         ),
+    }
+
+    let mut significant_impact_sequence = Vec::new();
+    for event in impact_events
+        .iter()
+        .filter(|event| event.incoming_normal_speed_mps >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS)
+    {
+        if let Some((class_id, class_name, _source)) =
+            terrain_class_lookup(class_map, event.x_m, event.y_m)
+        {
+            stop_state.terrain_material_context_available = true;
+            let label = format!("{class_id}:{class_name}");
+            *stop_state
+                .significant_impact_terrain_class_counts
+                .entry(label.clone())
+                .or_insert(0) += 1;
+            significant_impact_sequence.push(label);
+        } else {
+            stop_state.significant_impact_terrain_class_unavailable_count += 1;
+        }
+    }
+    if !significant_impact_sequence.is_empty() {
+        let sequence_limit = SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT * 2;
+        if significant_impact_sequence.len() <= sequence_limit {
+            stop_state.significant_impact_terrain_class_sequence_head = significant_impact_sequence;
+        } else {
+            stop_state.significant_impact_terrain_class_sequence_head = significant_impact_sequence
+                [..SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT]
+                .to_vec();
+            stop_state.significant_impact_terrain_class_sequence_tail = significant_impact_sequence
+                [significant_impact_sequence.len()
+                    - SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT..]
+                .to_vec();
+            stop_state.significant_impact_terrain_class_sequence_truncated = true;
+        }
+    }
+    if stop_state.significant_impact_terrain_class_unavailable_count > 0 {
+        let gap = format!(
+            "{} significant impacts have no terrain/material class (outside class grid or nodata)",
+            stop_state.significant_impact_terrain_class_unavailable_count
+        );
+        stop_state.terrain_material_instrumentation_gaps.push(gap);
     }
 }
 
@@ -3045,6 +3130,30 @@ fn ensemble_stop_state_row(release_id: &str, run: &TrajectoryRun) -> EnsembleSto
             .and_then(|state| state.last_significant_impact_terrain_class_name.clone()),
         last_significant_impact_terrain_class_source: stop_state
             .and_then(|state| state.last_significant_impact_terrain_class_source.clone()),
+        significant_impact_terrain_class_counts: serde_json::to_string(
+            &stop_state
+                .map(|state| state.significant_impact_terrain_class_counts.clone())
+                .unwrap_or_default(),
+        )
+        .expect("significant impact terrain/material class counts serialize to JSON"),
+        significant_impact_terrain_class_sequence_head: serde_json::to_string(
+            &stop_state
+                .map(|state| state.significant_impact_terrain_class_sequence_head.clone())
+                .unwrap_or_default(),
+        )
+        .expect("significant impact terrain/material class head sequence serializes to JSON"),
+        significant_impact_terrain_class_sequence_tail: serde_json::to_string(
+            &stop_state
+                .map(|state| state.significant_impact_terrain_class_sequence_tail.clone())
+                .unwrap_or_default(),
+        )
+        .expect("significant impact terrain/material class tail sequence serializes to JSON"),
+        significant_impact_terrain_class_sequence_truncated: stop_state
+            .map(|state| state.significant_impact_terrain_class_sequence_truncated)
+            .unwrap_or(false),
+        significant_impact_terrain_class_unavailable_count: stop_state
+            .map(|state| state.significant_impact_terrain_class_unavailable_count)
+            .unwrap_or(0),
         terrain_material_instrumentation_gaps: serde_json::to_string(
             &stop_state
                 .map(|state| state.terrain_material_instrumentation_gaps.clone())
@@ -3090,7 +3199,7 @@ fn write_ensemble_stop_state_csv(
         file_count: 1,
         total_bytes: metadata.len(),
         sha256: Some(sha256_file(path)?),
-        schema_version: Some("stop_state_table_v1".to_string()),
+        schema_version: Some("stop_state_table_v2".to_string()),
         row_count: Some(rows.len()),
         skipped_empty_files: None,
         compression: None,
@@ -3112,6 +3221,8 @@ fn stop_state_summary_manifest(
     let mut terrain_material_context_available_count = 0_usize;
     let mut final_terrain_class_counts = BTreeMap::new();
     let mut last_significant_impact_terrain_class_counts = BTreeMap::new();
+    let mut significant_impact_terrain_class_counts = BTreeMap::new();
+    let mut significant_impact_terrain_class_unavailable_count = 0_usize;
     for row in rows {
         if let Some(reason) = &row.stop_reason {
             explicit_stop_state_count += 1;
@@ -3148,6 +3259,13 @@ fn stop_state_summary_manifest(
                 .entry(label)
                 .or_insert(0) += 1;
         }
+        for (label, count) in parse_json_count_map(&row.significant_impact_terrain_class_counts) {
+            *significant_impact_terrain_class_counts
+                .entry(label)
+                .or_insert(0) += count;
+        }
+        significant_impact_terrain_class_unavailable_count +=
+            row.significant_impact_terrain_class_unavailable_count;
     }
     StopStateSummaryManifest {
         schema_version: STOP_STATE_SUMMARY_SCHEMA_VERSION.to_string(),
@@ -3165,12 +3283,19 @@ fn stop_state_summary_manifest(
         terrain_material_context_available_count,
         final_terrain_class_counts,
         last_significant_impact_terrain_class_counts,
+        significant_impact_terrain_class_counts,
+        significant_impact_terrain_class_unavailable_count,
         limitations: vec![
             "aggregate is diagnostic only and does not change validation metrics".to_string(),
             "domain_exit and terrain_error flags remain false until the integrator exposes those termination modes".to_string(),
             "terrain/material class counts are provenance groupings from configured terrain_classes metadata, not calibrated material evidence".to_string(),
+            "significant-impact terrain/material sequences are bounded head/tail diagnostic samples; full per-event class output is not yet emitted".to_string(),
         ],
     }
+}
+
+fn parse_json_count_map(text: &str) -> BTreeMap<String, usize> {
+    serde_json::from_str(text).unwrap_or_default()
 }
 
 fn terrain_class_label(class_id: Option<i32>, class_name: &Option<String>) -> Option<String> {

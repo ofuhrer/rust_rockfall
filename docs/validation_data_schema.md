@@ -89,15 +89,23 @@ The fields are diagnostic only:
 - `last_significant_impact_terrain_class_id`,
   `last_significant_impact_terrain_class_name`, and
   `last_significant_impact_terrain_class_source`;
+- `significant_impact_terrain_class_counts`;
+- `significant_impact_terrain_class_sequence_head`;
+- `significant_impact_terrain_class_sequence_tail`;
+- `significant_impact_terrain_class_sequence_truncated`;
+- `significant_impact_terrain_class_unavailable_count`;
 - `terrain_material_instrumentation_gaps`;
-- aggregate `stop_state_summary_v1` counts for final and last-impact classes.
+- aggregate `stop_state_summary_v2` counts for final, last-impact, and
+  significant-impact classes.
 
 Class labels are looked up from the configured aligned class raster at the
-final position and last significant-impact location. They are not inferred from
-paths, outcomes, runout, or terrain slope. Missing metadata, out-of-grid points,
-nodata cells, and absent significant impacts are reported as instrumentation
-gaps. These fields do not change contact laws, parameters, stopping thresholds,
-validation metrics, or pass/fail criteria.
+final position, last significant-impact location, and significant-impact event
+locations. They are not inferred from paths, outcomes, runout, or terrain
+slope. Missing metadata, out-of-grid points, nodata cells, and absent
+significant impacts are reported as instrumentation gaps. These fields do not
+change contact laws, parameters, stopping thresholds, validation metrics, or
+pass/fail criteria. Significant-impact class sequences are bounded head/tail
+diagnostics; full per-event class tables are not yet emitted.
 
 ## Hazard-Layer Statistics
 

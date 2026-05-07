@@ -48,6 +48,11 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                         "last_significant_impact_terrain_class_id",
                         "last_significant_impact_terrain_class_name",
                         "last_significant_impact_terrain_class_source",
+                        "significant_impact_terrain_class_counts",
+                        "significant_impact_terrain_class_sequence_head",
+                        "significant_impact_terrain_class_sequence_tail",
+                        "significant_impact_terrain_class_sequence_truncated",
+                        "significant_impact_terrain_class_unavailable_count",
                         "terrain_material_instrumentation_gaps",
                         "runout_m",
                     ],
@@ -85,6 +90,15 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "last_significant_impact_terrain_class_id": "2",
                             "last_significant_impact_terrain_class_name": "synthetic_talus",
                             "last_significant_impact_terrain_class_source": "fixture_classes",
+                            "significant_impact_terrain_class_counts": (
+                                '{"2:synthetic_talus": 2}'
+                            ),
+                            "significant_impact_terrain_class_sequence_head": (
+                                '["2:synthetic_talus","2:synthetic_talus"]'
+                            ),
+                            "significant_impact_terrain_class_sequence_tail": "[]",
+                            "significant_impact_terrain_class_sequence_truncated": "false",
+                            "significant_impact_terrain_class_unavailable_count": "0",
                             "terrain_material_instrumentation_gaps": "[]",
                             "runout_m": "4.0",
                         },
@@ -118,6 +132,11 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
                             "last_significant_impact_terrain_class_id": "",
                             "last_significant_impact_terrain_class_name": "",
                             "last_significant_impact_terrain_class_source": "",
+                            "significant_impact_terrain_class_counts": "{}",
+                            "significant_impact_terrain_class_sequence_head": "[]",
+                            "significant_impact_terrain_class_sequence_tail": "[]",
+                            "significant_impact_terrain_class_sequence_truncated": "false",
+                            "significant_impact_terrain_class_unavailable_count": "1",
                             "terrain_material_instrumentation_gaps": '["no impact class"]',
                             "runout_m": "8.0",
                         },
@@ -126,6 +145,9 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
 
             aggregate = stopping.summarize_stop_state_csv(stopping.InputSpec("fixture", path))
             grouped = stopping.summarize_stop_state_csv_by_terrain_material(
+                stopping.InputSpec("fixture", path)
+            )
+            grouped_by_impact = stopping.summarize_stop_state_csv_by_impact_terrain_material(
                 stopping.InputSpec("fixture", path)
             )
 
@@ -138,11 +160,22 @@ class TerrainMaterialStoppingTests(unittest.TestCase):
             aggregate["last_significant_impact_terrain_class_counts"],
             {"2:synthetic_talus": 1},
         )
+        self.assertEqual(
+            aggregate["significant_impact_terrain_class_counts"],
+            {"2:synthetic_talus": 2},
+        )
+        self.assertEqual(aggregate["significant_impact_count_total"], 3)
+        self.assertEqual(
+            aggregate["significant_impact_terrain_class_unavailable_count_total"], 1
+        )
         self.assertEqual(len(grouped), 2)
         by_name = {row["final_terrain_class_name"]: row for row in grouped}
         self.assertEqual(by_name["synthetic_bedrock"]["trajectory_count"], 1)
         self.assertEqual(by_name["synthetic_bedrock"]["final_speed_mean_mps"], 0.0)
         self.assertEqual(by_name["synthetic_talus"]["final_speed_mean_mps"], 1.0)
+        by_impact = {row["significant_impact_terrain_class_label"]: row for row in grouped_by_impact}
+        self.assertEqual(by_impact["2:synthetic_talus"]["trajectory_count"], 1)
+        self.assertEqual(by_impact["unknown"]["significant_impact_count_total"], 1)
 
     def test_missing_terrain_material_context_reports_gap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

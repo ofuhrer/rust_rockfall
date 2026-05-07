@@ -179,7 +179,7 @@ Pause the protocol and do not proceed to terrain/material implementation if:
 - domain-exit or terrain-error modes are needed but still not instrumented;
 - ensemble-level stop-state aggregation is required but the relevant
   diagnostics have not been regenerated with `*_stop_state.csv` sidecars and
-  `stop_state_summary_v1` manifests;
+  `stop_state_summary_v2` manifests;
 - the analysis starts changing thresholds or bins after seeing outcomes;
 - Tschamut or Mel is being used as physics-selection evidence;
 - the result cannot distinguish terrain/material stopping behavior from
@@ -223,7 +223,7 @@ No code beyond summarization/reporting should be required.
 ### Slice B: Stop-State Aggregation Gaps
 
 If Slice A shows that ensemble manifests are insufficient, use the additive
-per-trajectory `*_stop_state.csv` sidecars and `stop_state_summary_v1`
+per-trajectory `*_stop_state.csv` sidecars and `stop_state_summary_v2`
 manifest aggregates when regenerating selected diagnostics. This remains
 instrumentation only.
 

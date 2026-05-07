@@ -31,7 +31,7 @@ The additive stopping-diagnostic schema records:
 | Field | Meaning | Current source |
 | --- | --- | --- |
 | `source_label` | Human-readable input label. | script input |
-| `source_kind` | `trajectory_csv`, `deposition_csv`, `ensemble_stop_state_csv`, `run_manifest_v1`, or `run_manifest_stop_state_summary_v1`. | script input |
+| `source_kind` | `trajectory_csv`, `deposition_csv`, `ensemble_stop_state_csv`, `ensemble_stop_state_csv_terrain_material_group`, `ensemble_stop_state_csv_impact_terrain_material_group`, `run_manifest_v1`, or `run_manifest_stop_state_summary_v*`. | script input |
 | `dataset_role` | Diagnostic role such as verification, Chant Sura, Tschamut diagnostic, or Mel smoke. | inferred from path/label |
 | `contact_model` | Contact-model label inferred from path/label. | inferred from path/label |
 | `trajectory_count` | Number of trajectories or deposition rows summarized. | output rows / manifest |
@@ -43,7 +43,7 @@ The additive stopping-diagnostic schema records:
 | `final_speed_mean_mps`, `final_speed_p95_mps`, `final_speed_max_mps` | Final speed summary. | trajectory/deposition/stop-state CSV |
 | `final_kinetic_mean_j`, `final_kinetic_max_j` | Final translational kinetic-energy summary. | trajectory/stop-state CSV |
 | `impact_count_total`, `impact_count_mean` | Count of rows with `contact_state == impact`, or aggregate manifest impact count. | trajectory CSV / manifest |
-| `significant_impact_count_total` | Proxy count of impact rows with `speed_mps >= 0.05`. | trajectory CSV |
+| `significant_impact_count_total` | Proxy count of impact rows with `speed_mps >= 0.05`, or explicit significant-impact class-count total from stop-state provenance. | trajectory CSV / stop-state sidecar / manifest |
 | `low_energy_contact_count_total` | Contact rows with `speed_mps <= 0.05`, or explicit low-energy contact count. | trajectory CSV / stop-state sidecar |
 | `distance_last_significant_impact_to_final_mean_m`, `..._max_m` | Horizontal distance from last significant-impact proxy or explicit significant-impact record to final point. | trajectory CSV / stop-state sidecar |
 | `runout_mean_m`, `runout_max_m` | Runout summary when deposition rows are available. | deposition CSV |
@@ -53,6 +53,10 @@ The additive stopping-diagnostic schema records:
 | `final_terrain_class_id`, `final_terrain_class_name`, `final_terrain_class_source` | Terrain/material class at the final position when `terrain_classes` metadata is configured and the point is classifiable. | run manifest / stop-state sidecar |
 | `last_significant_impact_terrain_class_id`, `last_significant_impact_terrain_class_name`, `last_significant_impact_terrain_class_source` | Terrain/material class at the last significant impact when available. | run manifest / stop-state sidecar |
 | `final_terrain_class_counts`, `last_significant_impact_terrain_class_counts` | Per-class stop-state summary counts, formatted as `id:name`. | run manifest / stop-state sidecar |
+| `significant_impact_terrain_class_label` | Per-class grouping label for rows emitted with `--group-by-impact-terrain-material`. | script output |
+| `significant_impact_terrain_class_counts` | Per-class significant-impact counts, formatted as `id:name`. | run manifest / stop-state sidecar |
+| `significant_impact_terrain_class_unavailable_count_total` | Significant-impact lookup count with missing terrain/material class context. | run manifest / stop-state sidecar |
+| `significant_impact_terrain_class_sequence_truncated_count` | Number of stop-state rows whose significant-impact class sequence exceeded the bounded head/tail record. | stop-state sidecar |
 | `instrumentation_gaps` | Explicit limits for each source. | script output |
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
@@ -94,7 +98,7 @@ integrator does not yet expose those termination modes as separate outcomes.
 
 For validation cases that already write ensemble/deposition CSV outputs, the
 runner now writes an additive `*_stop_state.csv` sidecar and records a
-`stop_state_summary_v1` object in the run manifest. The sidecar is diagnostic
+`stop_state_summary_v2` object in the run manifest. The sidecar is diagnostic
 only and does not change deposition values, metrics, baselines, or acceptance
 criteria. The summary can include per-class final-stop and last-impact counts
 when terrain/material context is available. Legacy manifests without

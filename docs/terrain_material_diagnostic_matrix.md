@@ -88,7 +88,7 @@ These bins are descriptive only. They are not calibration thresholds.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: |
 | Chant Sura contact | `sphere_rotational_v1` | explicit `stop_state` | `t_max_reached_airborne` | `airborne` | steep | none | low | high_speed | unknown | 1 | 5.867 |
 | Chant Sura contact | `translational_v0` | explicit `stop_state` | `t_max_reached_airborne` | `airborne` | steep | none | low | high_speed | unknown | 3 | 5.121 |
-| Synthetic Swiss hazard/smoke manifest summary | `translational_v0` | explicit `stop_state_summary_v1` | `t_max_reached_in_contact_state` | `impact` | unknown | none | high | moving | unknown | 8 | 0.878 |
+| Synthetic Swiss hazard/smoke manifest summary | `translational_v0` | explicit `stop_state_summary_v2` | `t_max_reached_in_contact_state` | `impact` | unknown | none | high | moving | unknown | 8 | 0.878 |
 | Synthetic Swiss hazard/smoke sidecar | `translational_v0` | explicit `ensemble_stop_state_csv` | `t_max_reached_in_contact_state` | `impact` | unknown | none | unknown | moving | short | 8 | 0.878 |
 | Mel de la Niva smoke | `sphere_rotational_v1` | proxy fallback | `output_ended_while_in_contact_state` | `impact` | unknown | none | high | high_speed | unknown | 1 | 149.785 |
 | Mel de la Niva smoke | `translational_v0` | proxy fallback | `output_ended_airborne` | `airborne` | unknown | none | high | high_speed | unknown | 1 | 5.408 |
