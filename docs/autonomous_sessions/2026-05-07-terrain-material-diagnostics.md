@@ -312,3 +312,55 @@ Residual risk: Counts use exact JSON scalar formatting, so equivalent floating-p
 Next candidate: final check-and-closeout cycle, then stop unless a very small documentation-only parity note is needed.
 
 Prompt friction or improvement note: None beyond the already-recorded `uv` Python and long-session-log continuation notes.
+
+### Continuation Final Summary
+
+Cycles completed: 2 continuation implementation cycles.
+
+Commits:
+
+- `45d73b6` Record impact override values
+- `a3ef853` Summarize impact override values
+- closeout log commit pending
+
+Files changed:
+
+- `src/geodata.rs`
+- `src/validation.rs`
+- `tests/config_io_terrain.rs`
+- `scripts/summarize_stopping_behavior.py`
+- `tests/test_terrain_material_stopping.py`
+- `docs/terrain_material_interaction_protocol.md`
+- `docs/terrain_material_diagnostic_gap_report.md`
+- `docs/validation_data_schema.md`
+- `docs/autonomous_sessions/2026-05-07-terrain-material-diagnostics.md`
+
+Checks run:
+
+- `cargo fmt --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo test`
+- `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_per_impact_context`
+- `uv run python -m unittest tests.test_terrain_material_stopping`
+- `cargo run -- verify --all`
+- `cargo run -- validate --all`
+- `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`
+- `git diff --check`
+- `scripts/git-hooks/pre-commit`
+- `scripts/git-hooks/pre-push`
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` skipped because this environment requires the project-local `uv` Python for repository scripts.
+
+Generated outputs excluded from Git: `cargo run -- verify --all`, `cargo run -- validate --all`, and `scripts/git-hooks/pre-push` refreshed ignored outputs under `verification/results/`, `validation/results/`, and existing ignored cache/result directories. No generated outputs, raw data, or large geodata tiles were staged.
+
+Remaining top gaps:
+
+- Per-contact effective parameter provenance remains absent.
+- Parquet-only impact-event outputs still do not get equivalent terrain/material sidecar provenance.
+- Exposure sidecars still summarize saved samples rather than continuous path integrals.
+- Contact-episode summaries remain absent.
+- `domain_exit` and `terrain_error` termination flags remain placeholders until integrator termination modes are exposed.
+
+Why the loop stopped: The continuation completed the obvious low-risk active-override provenance slices and all broad checks passed. The next work requires either contact-level effective-parameter design or output-format parity decisions, both broader than another small cycle.
+
+Recommended next autonomous prompt changes: Keep using the project-local `uv` Python wording. For long-running session logs, explicitly allow "continuation final summary" sections so new cycles can close cleanly without rewriting prior summaries.
