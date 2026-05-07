@@ -190,6 +190,22 @@ and is normalized by the filtered significant-impact event sampling-weight sum.
 These are conditional sampling-weighted diagnostics only; they are not
 annual-frequency, physical source-probability, exposure, or risk layers.
 
+Cases can also opt into unweighted trajectory-level probability standard-error
+rasters:
+
+```yaml
+hazard_layers:
+  statistics:
+    probability_standard_error: true
+```
+
+The hazard builder then writes `reach_probability_standard_error` and
+`<exceedance_layer>_standard_error` rasters for configured unweighted
+trajectory-level probability layers. The formula is `sqrt(p(1-p)/n)`, using the
+supplied trajectory count. These rasters are convergence diagnostics only; they
+are not weighted uncertainty estimates, confidence intervals, physical
+probability validation, annual frequency, exposure, vulnerability, or risk.
+
 ## Release-Zone Metadata
 
 Swiss pilot source-area cases can opt into `release_zone.metadata_path`. This is an orchestration feature, not new physics: the simulator still runs independent spherical-block trajectories from generated starting points.

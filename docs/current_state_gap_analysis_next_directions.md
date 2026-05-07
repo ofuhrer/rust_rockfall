@@ -90,6 +90,8 @@ Implemented:
   trajectory-level exceedance layers;
 - opt-in `sampling_weighted` significant-impact event-density layers normalized
   by filtered significant-impact event weight;
+- opt-in unweighted binomial standard-error rasters for trajectory-level reach
+  and exceedance probability layers;
 - explicit probability terminology and manifest fields for the current
   sampling-weighted prototype;
 - strict rejection of ambiguous weighted configurations.
@@ -99,7 +101,8 @@ Not implemented:
 - source-zone physical probability or annual release frequency;
 - block-size population probabilities;
 - annual-frequency layers;
-- convergence/uncertainty diagnostics for probabilistic maps;
+- weighted convergence/uncertainty diagnostics and formal confidence intervals
+  for probabilistic maps;
 - exposure/vulnerability/risk layers.
 
 The current weighted layers are conditional sampling-weighted diagnostics, not

@@ -74,6 +74,7 @@ class HazardStatisticConfig:
     kinetic_energy_exceedance_j: tuple[float, ...] = ()
     jump_height_exceedance_m: tuple[float, ...] = ()
     velocity_exceedance_mps: tuple[float, ...] = ()
+    probability_standard_error: bool = False
 
     @property
     def enabled(self) -> bool:
@@ -81,13 +82,15 @@ class HazardStatisticConfig:
             self.kinetic_energy_exceedance_j
             or self.jump_height_exceedance_m
             or self.velocity_exceedance_mps
+            or self.probability_standard_error
         )
 
-    def as_dict(self) -> dict[str, list[float]]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "kinetic_energy_exceedance_j": list(self.kinetic_energy_exceedance_j),
             "jump_height_exceedance_m": list(self.jump_height_exceedance_m),
             "velocity_exceedance_mps": list(self.velocity_exceedance_mps),
+            "probability_standard_error": self.probability_standard_error,
         }
 
 
@@ -578,6 +581,11 @@ class HazardAccumulator:
         warnings = list(self.warnings)
         layers: list[RasterLayer] = []
         if self.trajectory_count:
+            reach_standard_error = (
+                binomial_standard_error_grid(self.reach, self.trajectory_count)
+                if self.statistics.probability_standard_error
+                else None
+            )
             scale_grid(self.reach, 1.0 / self.trajectory_count)
             layers.append(
                 RasterLayer(
@@ -588,6 +596,19 @@ class HazardAccumulator:
                     note="Cells touched by each supplied trajectory, normalized by the number of trajectory CSVs.",
                 )
             )
+            if reach_standard_error is not None:
+                layers.append(
+                    RasterLayer(
+                        "reach_probability_standard_error",
+                        "Reach probability standard error",
+                        "standard error of trajectory fraction",
+                        reach_standard_error,
+                        note=(
+                            "Binomial standard error sqrt(p(1-p)/n) for unweighted trajectory-level "
+                            "reach probability, using supplied trajectory count n."
+                        ),
+                    )
+                )
             layers.append(RasterLayer("max_kinetic_energy", "Maximum kinetic energy", "J", self.max_ke, nodata=True))
             layers.append(
                 RasterLayer(
@@ -617,10 +638,16 @@ class HazardAccumulator:
                         )
                     )
             for threshold, values in self.kinetic_exceedance.items():
+                standard_error = (
+                    binomial_standard_error_grid(values, self.trajectory_count)
+                    if self.statistics.probability_standard_error
+                    else None
+                )
                 scale_grid(values, 1.0 / self.trajectory_count)
+                layer_key = exceedance_layer_key("kinetic_energy_exceedance", threshold, "j")
                 layers.append(
                     RasterLayer(
-                        exceedance_layer_key("kinetic_energy_exceedance", threshold, "j"),
+                        layer_key,
                         f"Kinetic energy exceedance >= {threshold:g} J",
                         "fraction of supplied trajectories",
                         values,
@@ -630,6 +657,19 @@ class HazardAccumulator:
                         ),
                     )
                 )
+                if standard_error is not None:
+                    layers.append(
+                        RasterLayer(
+                            f"{layer_key}_standard_error",
+                            f"Kinetic energy exceedance >= {threshold:g} J standard error",
+                            "standard error of trajectory fraction",
+                            standard_error,
+                            note=(
+                                "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
+                                "trajectory-level exceedance probability."
+                            ),
+                        )
+                    )
             for threshold, values in self.weighted_kinetic_exceedance.items():
                 scale_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
@@ -645,10 +685,16 @@ class HazardAccumulator:
                     )
                 )
             for threshold, values in self.jump_exceedance.items():
+                standard_error = (
+                    binomial_standard_error_grid(values, self.trajectory_count)
+                    if self.statistics.probability_standard_error
+                    else None
+                )
                 scale_grid(values, 1.0 / self.trajectory_count)
+                layer_key = exceedance_layer_key("jump_height_exceedance", threshold, "m")
                 layers.append(
                     RasterLayer(
-                        exceedance_layer_key("jump_height_exceedance", threshold, "m"),
+                        layer_key,
                         f"Jump height exceedance >= {threshold:g} m",
                         "fraction of supplied trajectories",
                         values,
@@ -658,6 +704,19 @@ class HazardAccumulator:
                         ),
                     )
                 )
+                if standard_error is not None:
+                    layers.append(
+                        RasterLayer(
+                            f"{layer_key}_standard_error",
+                            f"Jump height exceedance >= {threshold:g} m standard error",
+                            "standard error of trajectory fraction",
+                            standard_error,
+                            note=(
+                                "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
+                                "trajectory-level exceedance probability."
+                            ),
+                        )
+                    )
             for threshold, values in self.weighted_jump_exceedance.items():
                 scale_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
@@ -673,10 +732,16 @@ class HazardAccumulator:
                     )
                 )
             for threshold, values in self.velocity_exceedance.items():
+                standard_error = (
+                    binomial_standard_error_grid(values, self.trajectory_count)
+                    if self.statistics.probability_standard_error
+                    else None
+                )
                 scale_grid(values, 1.0 / self.trajectory_count)
+                layer_key = exceedance_layer_key("velocity_exceedance", threshold, "mps")
                 layers.append(
                     RasterLayer(
-                        exceedance_layer_key("velocity_exceedance", threshold, "mps"),
+                        layer_key,
                         f"Velocity exceedance >= {threshold:g} m/s",
                         "fraction of supplied trajectories",
                         values,
@@ -686,6 +751,19 @@ class HazardAccumulator:
                         ),
                     )
                 )
+                if standard_error is not None:
+                    layers.append(
+                        RasterLayer(
+                            f"{layer_key}_standard_error",
+                            f"Velocity exceedance >= {threshold:g} m/s standard error",
+                            "standard error of trajectory fraction",
+                            standard_error,
+                            note=(
+                                "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
+                                "trajectory-level exceedance probability."
+                            ),
+                        )
+                    )
             for threshold, values in self.weighted_velocity_exceedance.items():
                 scale_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
@@ -828,6 +906,14 @@ def main_with_args(argv: list[str] | None = None) -> int:
         type=float,
         default=[],
         help="add trajectory-level velocity exceedance probability layer for this threshold in m/s; may be repeated",
+    )
+    parser.add_argument(
+        "--probability-standard-error",
+        action="store_true",
+        help=(
+            "add binomial standard-error rasters for unweighted trajectory-level "
+            "reach and exceedance probability layers"
+        ),
     )
     parser.add_argument("--map-product-id", help="optional Phase 1 map product id for hazard-map package metadata")
     parser.add_argument(
@@ -1208,6 +1294,9 @@ def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> H
             list_from_config(statistics.get("velocity_exceedance_mps"))
             + list(args.velocity_exceedance_mps),
             "velocity_exceedance_mps",
+        ),
+        probability_standard_error=bool(
+            args.probability_standard_error or statistics.get("probability_standard_error") is True
         ),
     )
 
@@ -1863,6 +1952,21 @@ def scale_grid(values: list[list[float]], factor: float) -> None:
                 values[row_index][col_index] = value * factor
 
 
+def binomial_standard_error_grid(counts: list[list[float]], trajectory_count: int) -> list[list[float]]:
+    if trajectory_count <= 0:
+        raise SystemExit("trajectory count must be positive for probability standard-error layers")
+    result: list[list[float]] = []
+    denominator = float(trajectory_count)
+    for row in counts:
+        result_row: list[float] = []
+        for count in row:
+            p = count / denominator
+            variance = max(0.0, p * (1.0 - p) / denominator)
+            result_row.append(math.sqrt(variance))
+        result.append(result_row)
+    return result
+
+
 def increment_exceedance_grids(
     grids: dict[float, list[list[float]]],
     exceeded: dict[float, set[tuple[int, int]]],
@@ -2401,6 +2505,8 @@ def layer_semantic_units(layer: RasterLayer, map_package: HazardMapPackageState 
 
 
 def layer_semantic_numerator(layer_key: str, weighted: bool) -> str:
+    if layer_key.endswith("_standard_error"):
+        return "estimated standard error of trajectory-level probability"
     if layer_key == "reach_probability" or layer_key == "weighted_reach_probability":
         return "trajectories reaching cell"
     if "exceedance" in layer_key:
@@ -2420,6 +2526,8 @@ def layer_semantic_denominator(
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
 ) -> str | None:
+    if layer_key.endswith("_standard_error"):
+        return "supplied trajectory count"
     if layer_key == "weighted_significant_impact_density":
         return "filtered significant impact event sampling_weight sum"
     if weighted and probability is not None:
@@ -2633,7 +2741,9 @@ def build_hazard_manifest(
         ),
         "hazard_statistics": {
             "configured": statistic_config.as_dict(),
-            "generated_layer_names": [layer.key for layer in layers if "exceedance" in layer.key],
+            "generated_layer_names": [
+                layer.key for layer in layers if "exceedance" in layer.key or layer.key.endswith("_standard_error")
+            ],
         },
         "hazard_probability": (
             probability.as_manifest([layer.key for layer in layers if layer.key.startswith("weighted_")])
@@ -2871,6 +2981,7 @@ def layer_source(layer_key: str) -> str:
     if layer_key in {
         "reach_probability",
         "weighted_reach_probability",
+        "reach_probability_standard_error",
         "max_kinetic_energy",
         "max_jump_height",
     } or "exceedance" in layer_key:

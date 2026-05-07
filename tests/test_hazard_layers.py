@@ -517,6 +517,68 @@ class HazardLayerTests(unittest.TestCase):
                 any(layer["key"] == "velocity_exceedance_1p5mps" for layer in manifest["layers"])
             )
 
+    def test_probability_standard_error_layers_are_opt_in_and_binomial(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--kinetic-energy-exceedance-j",
+                        "10",
+                        "--velocity-exceedance-mps",
+                        "1.5",
+                        "--probability-standard-error",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            reach = read_layer(output_dir / "hazard_fixture_plane_reach_probability.csv", "reach_probability")
+            reach_se = read_layer(
+                output_dir / "hazard_fixture_plane_reach_probability_standard_error.csv",
+                "reach_probability_standard_error",
+            )
+            for cell, probability in reach.items():
+                expected = (probability * (1.0 - probability) / 2.0) ** 0.5
+                self.assertAlmostEqual(reach_se[cell], expected)
+            self.assertIn(0.0, {round(value, 12) for value in reach_se.values()})
+
+            velocity = read_layer(
+                output_dir / "hazard_fixture_plane_velocity_exceedance_1p5mps.csv",
+                "velocity_exceedance_1p5mps",
+            )
+            velocity_se = read_layer(
+                output_dir / "hazard_fixture_plane_velocity_exceedance_1p5mps_standard_error.csv",
+                "velocity_exceedance_1p5mps_standard_error",
+            )
+            for cell, probability in velocity.items():
+                expected = (probability * (1.0 - probability) / 2.0) ** 0.5
+                self.assertAlmostEqual(velocity_se[cell], expected)
+
+            metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertTrue(metadata["hazard_statistics"]["probability_standard_error"])
+            self.assertIn(
+                "reach_probability_standard_error",
+                manifest["hazard_statistics"]["generated_layer_names"],
+            )
+            semantics = [
+                layer
+                for layer in manifest["layer_semantics"]
+                if layer["layer_name"] == "reach_probability_standard_error"
+            ][0]
+            self.assertEqual(semantics["numerator"], "estimated standard error of trajectory-level probability")
+            self.assertEqual(semantics["denominator"], "supplied trajectory count")
+
     def test_sampling_weighted_layers_equal_unweighted_when_weights_are_uniform(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)

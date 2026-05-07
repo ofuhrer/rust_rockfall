@@ -22,6 +22,11 @@ Current layers:
   - `kinetic_energy_exceedance_<threshold>j`
   - `jump_height_exceedance_<threshold>m`
   - `velocity_exceedance_<threshold>mps`
+- opt-in unweighted trajectory-level probability standard-error layers when
+  `--probability-standard-error` or
+  `hazard_layers.statistics.probability_standard_error: true` is configured:
+  - `reach_probability_standard_error`
+  - `<exceedance_layer>_standard_error`
 - opt-in sampling-weighted conditional layers when `hazard_probability` is
   configured with `probability_model: sampling_weighted`:
   - `weighted_reach_probability`
@@ -139,6 +144,26 @@ hazard_layers:
     jump_height_exceedance_m: [0.05, 0.10]
     velocity_exceedance_mps: [0.5, 1.0]
 ```
+
+To add simple convergence diagnostics for trajectory-level probability layers,
+enable probability standard-error rasters:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml \
+  --output-dir hazard/results/swissalti3d_hazard_statistics_se \
+  --cell-size 2 \
+  --kinetic-energy-exceedance-j 5 \
+  --velocity-exceedance-mps 1.0 \
+  --probability-standard-error \
+  --no-plots
+```
+
+These layers use the unweighted binomial formula `sqrt(p(1-p)/n)` with `n`
+equal to the supplied trajectory count. They are Monte Carlo convergence
+diagnostics for reach and trajectory-level exceedance fractions. They are not
+weighted uncertainty estimates, confidence intervals, physical probability
+validation, annual-frequency uncertainty, or risk metrics.
 
 ## Sampling-Weighted Conditional Maps
 
