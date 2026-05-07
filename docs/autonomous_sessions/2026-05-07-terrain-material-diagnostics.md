@@ -28,7 +28,7 @@ Session goal: Make small, reviewable, no-tuning improvements to terrain/material
 
 ### Cycle 1
 
-Commit: pending
+Commit: `dba35c0` (`Record terrain class override provenance`)
 
 Selected work package: Add manifest-level active terrain/material override provenance.
 
@@ -70,7 +70,7 @@ Prompt friction or improvement note: The prompt requests `python3` checks, but t
 
 ### Cycle 2
 
-Commit: pending
+Commit: `f5741ba` (`Add impact terrain material sidecars`)
 
 Selected work package: Add optional per-impact terrain/material sidecar directory.
 
@@ -112,7 +112,7 @@ Prompt friction or improvement note: The prompt’s "continue while clear" wordi
 
 ### Cycle 3
 
-Commit: pending
+Commit: `ec50d2b` (`Summarize impact terrain material sidecars`)
 
 Selected work package: Add summarizer support for per-impact terrain/material sidecars.
 
@@ -154,20 +154,53 @@ Prompt friction or improvement note: The session log template only included two 
 
 ## Final Summary
 
-Cycles completed:
+Cycles completed: 3 implementation cycles plus this session-log closeout.
 
 Commits:
 
+- `dba35c0` Record terrain class override provenance
+- `f5741ba` Add impact terrain material sidecars
+- `ec50d2b` Summarize impact terrain material sidecars
+- closeout log commit pending
+
 Files changed:
+
+- `src/geodata.rs`
+- `src/manifest.rs`
+- `src/validation.rs`
+- `tests/config_io_terrain.rs`
+- `scripts/summarize_stopping_behavior.py`
+- `tests/test_terrain_material_stopping.py`
+- `docs/terrain_material_interaction_protocol.md`
+- `docs/terrain_material_diagnostic_gap_report.md`
+- `docs/validation_data_schema.md`
+- `docs/stopping_behavior_diagnostic_report.md`
+- `docs/autonomous_sessions/2026-05-07-terrain-material-diagnostics.md`
 
 Checks run:
 
-Checks skipped and reason:
+- `cargo fmt --check`
+- `cargo test --test config_io_terrain swissalti3d_terrain_class_pilot_writes_class_manifest`
+- `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_per_impact_context`
+- `uv run python -m unittest tests.test_terrain_material_stopping`
+- `uv run python scripts/check_repo_consistency.py`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo test`
+- `scripts/git-hooks/pre-commit`
+- `scripts/git-hooks/pre-push`
 
-Generated outputs excluded from Git:
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` was skipped after it failed in Cycle 1 because the system Python is too old for the repository scripts; all Python checks were run through `uv` with `UV_CACHE_DIR=/tmp/uv-cache`, and `pre-push` also passed.
+
+Generated outputs excluded from Git: focused Rust tests and `pre-push` generated validation/verification outputs under ignored result paths; `git status -sb` was clean after the hook chain.
 
 Remaining top gaps:
 
-Why the loop stopped:
+- Active numeric parameter values are still not recorded at each contact or impact.
+- Impact terrain/material sidecars are tied to ensemble impact CSV directories; Parquet-only impact outputs do not yet get equivalent companion provenance.
+- Exposure sidecars still summarize saved samples, not continuous path integrals.
+- Contact-episode summaries remain absent.
+- `domain_exit` and `terrain_error` termination flags remain placeholders until integrator termination modes are exposed.
 
-Recommended next autonomous prompt changes:
+Why the loop stopped: Three coherent cycles closed the highest-value safe terrain/material diagnostic gaps available without tuning or changing physics. The remaining work needs a broader numeric parameter provenance design or integrator termination semantics, which is better handled as a reviewed next package.
+
+Recommended next autonomous prompt changes: Keep the 2-4 cycle target; add an explicit note that repository Python checks should use the project-local `uv` environment when available. Consider expanding the session-log template with a repeatable blank cycle section rather than only two fixed cycle stubs.
