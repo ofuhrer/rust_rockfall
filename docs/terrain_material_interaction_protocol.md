@@ -157,10 +157,11 @@ The checked-in Swiss pilot terrain-class fixture is synthetic. It can prove
 schema and lookup behavior, but it cannot support terrain/material calibration:
 
 ```bash
-cargo run -- validate --case validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml
+cargo run -- validate --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml
 python3 scripts/summarize_stopping_behavior.py \
-  --stop-state synthetic_swiss:validation/results/swissalti3d_terrain_class_deposition_stop_state.csv \
-  --terrain-material-exposure synthetic_swiss_exposure:validation/results/swissalti3d_terrain_class_deposition_terrain_material_exposure.csv \
+  --stop-state synthetic_swiss:validation/results/swissalti3d_hazard_stats_deposition_stop_state.csv \
+  --terrain-material-exposure synthetic_swiss_exposure:validation/results/swissalti3d_hazard_stats_deposition_terrain_material_exposure.csv \
+  --impact-terrain-material synthetic_swiss_impacts:validation/results/swissalti3d_hazard_stats_impacts_terrain_material \
   --group-by-terrain-material \
   --group-by-impact-terrain-material \
   --output-csv validation/results/terrain_material_diagnostics/synthetic_swiss_stopping_by_material.csv \

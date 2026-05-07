@@ -430,3 +430,45 @@ Residual risk: Pure columnar workflows still need to join to a CSV sidecar direc
 Next candidate: add a short summarizer example or smoke test for a Parquet-derived sidecar path if needed; otherwise stop before broader contact-episode or per-contact effective-parameter design.
 
 Prompt friction or improvement note: No new prompt friction.
+
+### Cycle 7
+
+Commit:
+
+Selected work package: Correct the terrain/material summarizer example so impact grouping has an impact sidecar input.
+
+Rationale: The protocol example enables `--group-by-impact-terrain-material` but uses a validation case that does not write impact-event sidecars and does not pass `--impact-terrain-material`. Updating the example to the existing hazard-statistics Swiss pilot keeps docs consistent with the implemented sidecar workflow.
+
+Design:
+
+- Files likely touched: `docs/terrain_material_interaction_protocol.md`, this session log.
+- Behavior/schema/provenance implications: documentation-only; no runtime, schema, or validation behavior changes.
+- Tests/checks planned: repo consistency through `uv`; `git diff --check`.
+- Hidden-tuning risk: none; example remains synthetic and diagnostic-only.
+- Public-behavior risk: none.
+- Reproducibility risk: low; example paths match checked-in case outputs.
+- Overclaiming risk: retain synthetic-fixture and non-operational wording.
+
+Design critique: A generated example for Parquet-derived sidecars would prove the new path more directly, but no checked-in validation case currently uses Parquet with terrain classes. Correcting the existing CSV-sidecar example is the smallest useful docs fix.
+
+Implementation summary: Updated the protocol example to run `swissalti3d_hazard_statistics_pilot`, which writes trajectories, impact-event CSVs, and the terrain/material impact sidecar. The example now passes `--impact-terrain-material` before enabling `--group-by-impact-terrain-material`.
+
+Files changed: `docs/terrain_material_interaction_protocol.md`, this session log.
+
+Checks run: `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`; `git diff --check`.
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` skipped because this environment needs the project-local `uv` Python; no code changed, so Rust checks were deferred to final hook checks.
+
+Diff review:
+
+- Physics/default behavior: documentation-only.
+- Schema/provenance: no schema changes.
+- Generated artifacts: none.
+- Docs and validation wording: example now uses an existing synthetic case that produces the sidecar consumed by the documented flag.
+- Backward compatibility: not applicable.
+
+Residual risk: The example remains a diagnostic synthetic fixture and should not be read as operational Swiss terrain/material evidence.
+
+Next candidate: final check-and-closeout; stop before broader per-contact or contact-episode design.
+
+Prompt friction or improvement note: No new prompt friction.
