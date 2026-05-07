@@ -77,9 +77,11 @@ both configured, the runner also writes a sibling
 `*_terrain_material/` CSV directory with `impact_terrain_material_table_v1`
 rows. These rows classify each emitted impact event by configured class at the
 impact `(x, y)` point, record whether the event meets the fixed significant
-impact threshold, and list configured override field names for that class. The
-sidecar is separate from the existing impact-event CSV/Parquet schemas so
-existing impact diagnostics remain backward-compatible.
+impact threshold, and list configured override field names and explicit
+override values for that class. The values are the class metadata assumptions
+only; they do not include fallback global defaults or inferred calibrated
+properties. The sidecar is separate from the existing impact-event CSV/Parquet
+schemas so existing impact diagnostics remain backward-compatible.
 
 Legacy manifests and diagnostics remain readable because the new fields are
 additive and default to absent, false, empty, or null.
@@ -132,7 +134,8 @@ Implemented:
 - additive terrain-class manifest hashes and schema fields;
 - additive terrain-class manifest active-override field-name provenance;
 - additive per-impact terrain/material sidecar directories for ensemble impact
-  CSV outputs with configured terrain classes;
+  CSV outputs with configured terrain classes, including explicit configured
+  override values;
 - additive `terrain_material_exposure_table_v1` sidecars and
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
@@ -144,7 +147,6 @@ Implemented:
 Still missing:
 
 - active per-contact parameter-value provenance;
-- active numeric parameter-value provenance in the per-impact sidecar;
 - per-class evidence metadata beyond fixture/source provenance;
 - domain-exit and terrain-error termination exposure from the integrator.
 

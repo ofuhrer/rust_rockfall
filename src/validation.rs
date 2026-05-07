@@ -566,6 +566,7 @@ pub struct ImpactTerrainMaterialRow {
     pub terrain_material_context_status: String,
     pub active_parameter_override_count: usize,
     pub active_parameter_override_fields: String,
+    pub active_parameter_override_values: String,
     pub instrumentation_gaps: String,
 }
 
@@ -4106,14 +4107,20 @@ fn impact_terrain_material_rows(
                 terrain_class_source,
                 terrain_material_context_status,
                 active_parameter_override_fields,
+                active_parameter_override_values,
                 instrumentation_gaps,
             ) = if let Some((class_id, class_name, source)) =
                 terrain_class_lookup(class_map, event.x_m, event.y_m)
             {
-                let active_fields = class_map
+                let (active_fields, active_values) = class_map
                     .classes_by_id
                     .get(&class_id)
-                    .map(|class| class.parameter_overrides.active_field_names())
+                    .map(|class| {
+                        (
+                            class.parameter_overrides.active_field_names(),
+                            class.parameter_overrides.active_values(),
+                        )
+                    })
                     .unwrap_or_default();
                 (
                     Some(class_id),
@@ -4121,6 +4128,7 @@ fn impact_terrain_material_rows(
                     source,
                     "classified".to_string(),
                     active_fields,
+                    active_values,
                     Vec::new(),
                 )
             } else {
@@ -4130,6 +4138,7 @@ fn impact_terrain_material_rows(
                     class_map.metadata.layer_id.clone(),
                     "unavailable".to_string(),
                     Vec::new(),
+                    Default::default(),
                     vec![
                         "impact position has no terrain/material class (outside class grid or nodata)"
                             .to_string(),
@@ -4156,6 +4165,10 @@ fn impact_terrain_material_rows(
                     &active_parameter_override_fields,
                 )
                 .expect("impact terrain/material active override fields serialize to JSON"),
+                active_parameter_override_values: serde_json::to_string(
+                    &active_parameter_override_values,
+                )
+                .expect("impact terrain/material active override values serialize to JSON"),
                 instrumentation_gaps: serde_json::to_string(&instrumentation_gaps)
                     .expect("impact terrain/material gaps serialize to JSON"),
             }

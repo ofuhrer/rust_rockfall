@@ -127,9 +127,10 @@ with `impact_terrain_material_table_v1` CSV files. Each row is keyed by
 trajectory id, impact index, and impact time/location, reports whether the
 impact meets the fixed significant-impact threshold, classifies the configured
 terrain/material class at the impact point when available, lists configured
-override field names for that class, and records explicit lookup gaps for
-outside-grid or nodata impacts. This sidecar does not alter the existing
-impact-event CSV/Parquet schemas.
+override field names and explicit override values for that class, and records
+explicit lookup gaps for outside-grid or nodata impacts. Override values are
+configured class metadata assumptions only and do not include global defaults.
+This sidecar does not alter the existing impact-event CSV/Parquet schemas.
 
 `terrain_classes` manifest records carry `terrain_class_manifest_v1`,
 the source metadata schema version, and SHA-256 hashes for the metadata sidecar

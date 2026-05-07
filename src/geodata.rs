@@ -735,6 +735,35 @@ impl TerrainClassParameterOverrides {
         names
     }
 
+    pub fn active_values(&self) -> BTreeMap<String, f64> {
+        let mut values = BTreeMap::new();
+        if let Some(value) = self.restitution_n {
+            values.insert("restitution_n".to_string(), value);
+        }
+        if let Some(value) = self.restitution_t {
+            values.insert("restitution_t".to_string(), value);
+        }
+        if let Some(value) = self.friction_mu {
+            values.insert("friction_mu".to_string(), value);
+        }
+        if let Some(value) = self.rolling_resistance {
+            values.insert("rolling_resistance".to_string(), value);
+        }
+        if let Some(value) = self.soil_strength_pa {
+            values.insert("soil_strength_pa".to_string(), value);
+        }
+        if let Some(value) = self.scarring_drag_coefficient {
+            values.insert("scarring_drag_coefficient".to_string(), value);
+        }
+        if let Some(value) = self.scarring_layer_density_kgpm3 {
+            values.insert("scarring_layer_density_kgpm3".to_string(), value);
+        }
+        if let Some(value) = self.scarring_max_depth_m {
+            values.insert("scarring_max_depth_m".to_string(), value);
+        }
+        values
+    }
+
     fn apply(&self, base: ContactParameters) -> ContactParameters {
         let mut scarring = ScarringSettings {
             soil_interaction_model: base.scarring.soil_interaction_model,

@@ -24,7 +24,8 @@ The current stack can audit configured terrain/material context for:
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
 - per-impact `*_terrain_material/` sidecar directories when both
-  `terrain_classes` and `outputs.ensemble_impact_events_dir` are configured;
+  `terrain_classes` and `outputs.ensemble_impact_events_dir` are configured,
+  including explicit configured override field names and values;
 - read-only summaries grouped by final class and by significant-impact class.
 
 These outputs are descriptive provenance. They support questions such as
@@ -37,11 +38,11 @@ themselves.
 The following gaps remain before terrain/material interaction studies can be
 used as calibration or model-selection inputs:
 
-- Active numeric parameter provenance is not emitted per contact or impact.
-  Terrain class labels can drive configured contact/scarring overrides, and the
-  per-impact sidecar lists override field names only. Reports must state
-  "configured terrain/material assumption" rather than observed material truth
-  until active parameter values are recorded with contact evidence.
+- Active numeric parameter provenance is emitted for per-impact terrain/material
+  sidecars only as explicit configured class override values. Per-contact
+  effective parameters, fallback global defaults, and post-validation scarring
+  settings are still not emitted. Reports must state "configured
+  terrain/material assumption" rather than observed material truth.
 - Full per-impact terrain/material tables are emitted only for ensemble
   impact-event CSV outputs with configured terrain classes. Older outputs,
   Parquet-only impact outputs, and runs without configured classes remain
@@ -76,7 +77,8 @@ met:
 
 ## Recommended Next Package
 
-The next no-tuning package should add active per-contact or per-impact numeric
-parameter-value provenance. That package should remain diagnostic-only and
-should not add fitted coefficients, new calibrated classes, changed contact
-laws, or validation-threshold changes.
+The next no-tuning package should add read-only summaries for configured
+per-impact override values, or design active per-contact effective-parameter
+provenance if contact-level evidence is needed. That package should remain
+diagnostic-only and should not add fitted coefficients, new calibrated classes,
+changed contact laws, or validation-threshold changes.

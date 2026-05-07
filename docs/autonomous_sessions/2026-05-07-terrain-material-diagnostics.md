@@ -204,3 +204,69 @@ Remaining top gaps:
 Why the loop stopped: Three coherent cycles closed the highest-value safe terrain/material diagnostic gaps available without tuning or changing physics. The remaining work needs a broader numeric parameter provenance design or integrator termination semantics, which is better handled as a reviewed next package.
 
 Recommended next autonomous prompt changes: Keep the 2-4 cycle target; add an explicit note that repository Python checks should use the project-local `uv` environment when available. Consider expanding the session-log template with a repeatable blank cycle section rather than only two fixed cycle stubs.
+
+## Continuation: Active Parameter Provenance
+
+Session date: 2026-05-07
+Agent: Codex
+Branch: codex/autonomous-2026-05-07-terrain-material-diagnostics
+Base commit: 262b456
+Session goal: Continue no-tuning terrain/material diagnostic work by making active configured numeric parameter assumptions auditable where the runtime already emits terrain/material impact context.
+
+### Continuation Initial Repository State
+
+- Git status: tracked worktree clean on `codex/autonomous-2026-05-07-terrain-material-diagnostics`; ignored local caches and generated validation/hazard outputs are present.
+- Current branch: `codex/autonomous-2026-05-07-terrain-material-diagnostics`.
+- Recent decision records inspected: `docs/terrain_material_diagnostic_gap_report.md`, `docs/terrain_material_interaction_protocol.md`, `docs/post_shape_contact_v0_pause_next_step.md`, `docs/validation_plan.md`, `docs/README.md`, `README.md`, `docs/onboarding.md`.
+- Hooks installed: `.git/hooks/pre-commit` and `.git/hooks/pre-push` are symlinks to `scripts/git-hooks/`.
+- Initial checks: `git status -sb`, `git status -sb --ignored`, current branch, recent commit log, hook listing, documentation/code inspection.
+
+### Continuation Initial Priority Ranking
+
+| Rank | Candidate work package | Evidence/source | Expected value | Risk | Decision |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Add active numeric parameter-value provenance to per-impact terrain/material sidecars | `terrain_material_diagnostic_gap_report.md` lists missing active numeric provenance as the recommended next package | Makes configured impact-context assumptions auditable without changing physics or tuning | Low to moderate; additive CSV column and docs/tests only if limited to configured override values | Select for Cycle 4 |
+| 2 | Add read-only summarizer counts for active numeric parameter values | Would make the new provenance easier to audit across sidecar directories | Useful after Cycle 4, but lower value until the writer exists | Low; parser/reporting only | Candidate Cycle 5 |
+| 3 | Design Parquet-equivalent terrain/material provenance | Gap report notes Parquet-only impact outputs lack sidecars | Improves output parity | Moderate; touches output-format design and may require a broader schema decision | Defer unless a minimal design-only doc update is clearly needed |
+
+### Cycle 4
+
+Commit:
+
+Selected work package: Add active numeric parameter-value provenance to per-impact terrain/material sidecars.
+
+Rationale: Existing per-impact terrain/material sidecars list configured override field names, but not the active values. Recording the configured override values for the class at the impact point directly closes the top provenance gap while preserving the current contact-parameter lookup, defaults, and validation semantics.
+
+Design:
+
+- Files likely touched: `src/geodata.rs`, `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+- Behavior/schema/provenance implications: additive `active_parameter_override_values` JSON object column in `impact_terrain_material_table_v1` rows; existing impact-event CSV/Parquet schemas unchanged.
+- Tests/checks planned: focused Rust sidecar test; `cargo fmt --check`; repo consistency check through `uv`.
+- Hidden-tuning risk: low because values are already configured in terrain-class metadata and only serialized for audit.
+- Public-behavior risk: low if no defaults, thresholds, or validation pass/fail metrics change.
+- Reproducibility risk: low; JSON object keys must be deterministic.
+- Overclaiming risk: docs must call these configured assumptions, not calibrated material truth.
+
+Design critique: Recording effective post-fallback contact parameters would be more complete but could blur configured terrain-class overrides with global defaults. This cycle records only explicit terrain-class override values, which is narrower and easier to interpret.
+
+Implementation summary: Added deterministic `active_parameter_override_values` JSON-object serialization for per-impact terrain/material sidecar rows. The values come only from explicit terrain-class metadata overrides and are emitted as `{}` for unavailable class lookups.
+
+Files changed: `src/geodata.rs`, `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+
+Checks run: `cargo fmt --check`; `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_per_impact_context`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`; `git diff --check`.
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` remains skipped because this environment needs the project-local `uv` Python for repository scripts.
+
+Diff review:
+
+- Physics/default behavior: no physics, defaults, validation cases, thresholds, metrics, or contact-parameter lookup behavior changed.
+- Schema/provenance: additive CSV column on the existing optional `impact_terrain_material_table_v1` sidecar; existing impact-event CSV/Parquet schemas unchanged.
+- Generated artifacts: focused Rust test generated temporary validation outputs and removed them; ignored pre-existing result/cache directories remain unstaged.
+- Docs and validation wording: docs frame values as configured class metadata assumptions only, not calibrated or observed material evidence.
+- Backward compatibility: additive sidecar field only; readers that ignore extra CSV columns remain compatible.
+
+Residual risk: The sidecar still does not record per-contact effective parameters or fallback global defaults, and summarizer output does not yet aggregate numeric override values.
+
+Next candidate: add read-only summarizer support for active override values in per-impact terrain/material sidecars.
+
+Prompt friction or improvement note: The previous session already captured the `uv` Python issue; the only new friction is that the long-running session log benefits from explicit continuation headings.

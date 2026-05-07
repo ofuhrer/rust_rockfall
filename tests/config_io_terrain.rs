@@ -1746,6 +1746,21 @@ outputs:
     );
     assert_eq!(first_row["terrain_material_context_status"], "classified");
     assert!(first_row["active_parameter_override_fields"].contains("restitution_n"));
+    let active_values: serde_json::Value =
+        serde_json::from_str(&first_row["active_parameter_override_values"]).unwrap();
+    if first_row["terrain_class_name"] == "synthetic_bedrock" {
+        assert_eq!(active_values["restitution_n"], 0.32);
+        assert_eq!(active_values["restitution_t"], 0.90);
+        assert_eq!(active_values["friction_mu"], 0.35);
+        assert_eq!(active_values["rolling_resistance"], 0.0);
+    } else {
+        assert_eq!(first_row["terrain_class_name"], "synthetic_talus");
+        assert_eq!(active_values["restitution_n"], 0.18);
+        assert_eq!(active_values["restitution_t"], 0.70);
+        assert_eq!(active_values["friction_mu"], 0.55);
+        assert_eq!(active_values["rolling_resistance"], 0.02);
+        assert_eq!(active_values["soil_strength_pa"], 60000.0);
+    }
     let manifest_json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
     let impact_material_manifest = manifest_json["outputs"]
