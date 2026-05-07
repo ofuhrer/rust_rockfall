@@ -1,154 +1,158 @@
 # Next Development Targets
 
-Status: proposed development directions from the strategic review in
-`docs/repository_scientific_roadmap_review.md`. These targets are planning
-recommendations only and do not change simulator behavior.
+Status: proposed development directions after the current repository review.
+These are planning recommendations only and do not change simulator behavior.
 
-## Target 1: Controlled Real-Site Tschamut/swissALTI3D Pilot With Embedded Gates
+The previous roadmap correctly avoided "more physics first." The current
+post-`d4bbdc4` state adds useful scaffolds for hazard semantics, pilot GIS
+packaging, source/block semantics, and DEM sensitivity. The next targets should
+therefore convert scaffolds into evidence, fixtures, or enforceable checks.
 
-Objective: Execute the existing private/local Tschamut swissALTI3D pilot plan
-with a real provenance-tracked DEM crop, explicit source-area metadata,
-baseline and `sphere_rotational_v1` comparison cases, no tuning, visual QA,
-and embedded performance and terrain-representation observations.
+## Target 1: Execute The Controlled Real-Site Tschamut/swissALTI3D Pilot
 
-Rationale: The repository has a Swiss pilot contract but not a real-site
-result. Tschamut under-run remains confounded by proxy terrain. The pilot is
-primarily workflow, confounding, and feasibility evidence; it is not decisive
-physics validation.
+Objective: Run the no-tuning private/local Tschamut pilot on a real
+provenance-tracked swissALTI3D-style DEM crop with frozen release-zone,
+scenario, baseline, and `sphere_rotational_v1` comparison settings.
 
-Expected value for Swiss hazard-map goal: Very high. It tests the Swiss
-workflow stack, exposes whether proxy terrain was a dominant failure source,
-and produces the measurements needed to prioritize GIS, semantics, terrain,
-shape, forest, or performance work.
+Rationale: The Swiss workflow stack is well specified but not demonstrated on a
+real terrain crop. This pilot is the gateway experiment for workflow,
+confounding, and feasibility evidence.
 
-Scientific risk: Medium. Results may still be poor because shape, vegetation,
-source conditions, DEM representation, and terrain/material parameters are
-missing. Such a result must be interpreted as pilot evidence, not model
-validation failure by itself.
+Expected value for Swiss hazard-map goal: Very high. It tests real terrain,
+source-zone metadata, manifests, hazard layers, GIS QA, output volume, and
+throughput in one controlled workflow.
 
-Engineering risk: Medium. CRS, datum, DEM extent, nodata, clamping, private
-data hygiene, output volume, file count, and hazard-stage performance can fail.
+Scientific risk: Medium. Failure may reflect source zones, DEM representation,
+forest, block shape, material parameters, or contact physics. It is pilot
+evidence, not decisive validation.
+
+Engineering risk: Medium. Private data hygiene, CRS/datum, nodata, edge
+behavior, explicit grids, file count, and hazard-stage timings can fail.
 
 Likely affected areas: `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
 `docs/tschamut_swissalti3d_pilot.md`,
 `scripts/prepare_tschamut_swissalti3d_pilot.py`,
-`scripts/run_performance_benchmark.py`, `scripts/build_hazard_layers.py`,
-`validation/templates/`, ignored `validation/private/`,
+`scripts/build_hazard_layers.py`, ignored `validation/private/`,
 `validation/results/`, and `hazard/results/`.
 
-Evidence needed: manifest review for EPSG:2056/LN02, extent, resolution,
-source-zone metadata, and tile provenance; baseline vs rotational metrics;
-proxy vs real-terrain comparison; reach/deposition/energy/jump/impact QA;
-release-mode trajectories/s, rows/s, bytes, file counts, hazard-stage timings,
-and ensemble-size feasibility estimates; notes on whether cliff edges,
-smoothing, interpolation, forest in DEMs, or micro-topography appear to control
-results.
+Evidence needed: G1-G9 gate table, manifest review, baseline/rotational/proxy
+metrics, visual QA, terrain-representation notes, row/file/byte counts,
+hazard-stage timings, and a decision on whether under-run improves, persists,
+worsens, or remains inconclusive.
 
-Minimal acceptable deliverable: A concise execution report with commands,
-manifest checks, metric tables, visual QA, performance-readiness section,
-terrain-representation observations, and a next-step decision. Raw DEM and
-large generated outputs remain out of git.
+Minimal acceptable deliverable: A share-safe diagnostic pilot report. No raw
+DEMs or large generated outputs are committed.
 
-What not to do: Do not tune parameters, alter release zones after seeing
-results, commit private geodata, claim operational validation, or optimize
-physics speculatively.
+What not to do: Do not tune parameters, move source zones after seeing results,
+claim operational validation, or promote a default contact-model change.
 
 Estimated order: 1.
 
-## Target 2: Hazard-Map Semantics And Interpretation Guide
+## Target 2: Enforce Hazard-Map Semantics In Manifests And Tests
 
-Objective: Formalize conditional hazard-map semantics before expanding map
-products: normalization conventions, weighting assumptions, release-density
-interpretation, source-zone normalization, block weighting, overlapping source
-zones, terrain-class conditionality, and interpretation limits.
+Objective: Convert `docs/hazard_map_semantics.md` from guidance into executable
+manifest/schema checks for current product classes.
 
-Rationale: Ambiguous map semantics can invalidate interpretation even when
-trajectory simulation is technically correct. The repository correctly avoids
-annual-frequency claims, but conditional maps still need stronger language
-around what their weights and denominators mean.
+Rationale: The semantics guide is a good scaffold, but ambiguous denominators,
+weights, annual labels, and risk language can still leak into products unless
+checked.
 
-Expected value for Swiss hazard-map goal: Very high. It reduces misuse risk,
-stabilizes GIS package manifests, and gives future source-zone, block-scenario,
-and uncertainty work a common vocabulary.
+Expected value for Swiss hazard-map goal: Very high. It protects every future
+map product from probability and risk overclaims.
 
-Scientific risk: Medium. Semantics may look more authoritative than the
-underlying source-frequency evidence supports.
+Scientific risk: Low to medium. The risk is overformalizing unsupported
+probability modes; keep current modes narrow.
 
-Engineering risk: Low. Mostly documentation, schema labels, fixture manifests,
-and consistency checks.
+Engineering risk: Low to medium.
 
-Likely affected areas: `docs/hazard_layers.md`,
-`docs/probabilistic_scenario_model_design.md`,
-`docs/probabilistic_hazard_framework_priorities.md`,
-`docs/roadmap_hazard_mapping.md`, `src/probabilistic.rs`,
-`tests/probabilistic_phase1.rs`, and map package fixtures.
+Likely affected areas: `src/probabilistic.rs`, `tests/probabilistic_phase1.rs`,
+`tests/fixtures/probabilistic_phase1/`, `scripts/build_hazard_layers.py`,
+`docs/hazard_layers.md`, `docs/hazard_map_semantics.md`.
 
-Evidence needed: examples showing equal sampling weights, conditional weights,
-unsupported physical probability, unsupported annual frequency, overlapping
-source-zone handling, and recommended/non-recommended user language.
+Evidence needed: tests rejecting annual/physical/risk claims, required
+denominator and normalization fields for current products, clear
+`unweighted_diagnostic` versus `sampling_weighted_conditional` manifests.
 
-Minimal acceptable deliverable: A formal semantics guide referenced by hazard
-docs and enforced by small manifest/schema tests where possible.
+Minimal acceptable deliverable: Expanded fixtures and tests covering semantic
+accept/reject cases without adding annual or physical probabilities.
 
-Sequencing note: M005 created the guide outline, M006 adds language examples
-only, and M007 owns manifest/schema enforcement. These incremental
-micro-milestones should complete the deliverable rather than weaken it.
-
-What not to do: Do not invent annual rates, physical source probabilities,
-exposure, vulnerability, or risk semantics.
+What not to do: Do not invent source frequency, physical block probabilities,
+exposure, vulnerability, or return periods.
 
 Estimated order: 2.
 
-## Target 3: Pilot GIS/QGIS Package And Raster Semantics
+## Target 3: Build A Dry-Runnable DEM/Terrain Sensitivity Fixture
 
-Objective: Turn current hazard outputs into a QGIS-reviewable pilot package:
-CRS-bearing GeoTIFF rasters, explicit grid metadata, release-zone vector
-sidecars, manifest identities, semantic labels, and a visual QA checklist.
-Produce correct local GeoTIFF first; keep verified COG as a later
-production/tiled-delivery step.
+Objective: Turn `docs/dem_terrain_sensitivity_benchmark.md` into a small
+deterministic benchmark fixture comparing terrain resolution, smoothing,
+interpolation, nodata/cliff handling, and hazard-layer map differences.
 
-Rationale: Swiss pilot review requires geospatial products that align safely
-with LV95 terrain and can be inspected by GIS users. For the first local pilot,
-CRS, affine transform, nodata, grid alignment, and QGIS inspectability matter
-more than cloud optimization.
+Rationale: Terrain representation can dominate trajectory and hazard-map
+structure. This should be measured before calibration or physics selection.
 
-Expected value for Swiss hazard-map goal: High.
+Expected value for Swiss hazard-map goal: Very high. It separates DEM artifacts
+from contact or material failures and informs the real-site pilot.
 
-Scientific risk: Low to medium. It does not improve physics, but geospatial or
-semantic mistakes could create misleading maps.
+Scientific risk: Medium. Synthetic perturbations can be arbitrary; they must be
+predeclared and interpreted as sensitivity evidence.
 
-Engineering risk: Medium. GeoTIFF transforms, nodata, row order, compression,
-COG conformance, and dependency boundaries need tests.
+Engineering risk: Medium.
 
-Likely affected areas: `scripts/build_hazard_layers.py`,
-`docs/hazard_layers.md`, `docs/swisstopo_data_strategy.md`,
-`docs/scalability_and_data_formats_review.md`, `tests/test_hazard_layers.py`,
-and hazard fixtures.
+Likely affected areas: `verification/synthetic/`, `validation/cases/`,
+`scripts/build_hazard_layers.py`, `docs/dem_terrain_sensitivity_benchmark.md`,
+`docs/benchmark_catalog.md`, terrain fixtures.
 
-Evidence needed: round-trip parity between CSV/ASCII and GeoTIFF values;
-CRS/transform/nodata manifest checks; QGIS or raster-library smoke inspection;
-explicit failure for unsupported COG claims until verified.
+Evidence needed: deterministic rerun parity, fixed-source/scenario invariants,
+map-difference metrics for reach/deposition/energy/jump/exceedance layers, and
+manifested terrain metadata for each variant.
 
-Minimal acceptable deliverable: A tiny fixture producing GeoTIFF outputs with
-manifested CRS/extent/nodata and conditional-map semantic labels.
+Minimal acceptable deliverable: A CI-safe dry-run fixture and report template.
 
-What not to do: Do not put GIS dependencies in the trajectory kernel; do not
-let COG work delay CRS-correct GeoTIFF/QGIS inspection; do not call non-COG
-files COG.
+What not to do: Do not tune restitution or terrain classes to compensate for
+DEM changes; do not treat swisstopo terrain as validation evidence by itself.
 
 Estimated order: 3.
 
-## Target 4: Source-Zone And Block-Scenario Semantics V1
+## Target 4: Produce A Pilot GIS/QGIS Package Fixture
 
-Objective: Define and validate a minimal scenario schema for source-zone
-identity, release sampling, source-zone derivation policy, block-size classes,
-shape-class placeholders, sampling weights, and explicit absence of physical or
-annual probabilities.
+Objective: Convert `docs/pilot_gis_package.md` into a tiny reviewable package
+fixture with CRS-correct GeoTIFF, CSV/ASCII parity, source-zone sidecar,
+manifest labels, nodata styling guidance, and visual QA evidence.
 
-Rationale: Source-zone derivation is an early national hazard-map need, not a
-late orchestration detail. Deterministic polygon sampling is useful, but Swiss
-automation will need a defensible policy based on slope, geology, inventories,
-or field interpretation.
+Rationale: The repo has lightweight GeoTIFF output, but not a proven
+QGIS-ready package boundary. Correct CRS, transform, nodata, alignment, and
+semantics matter more than COG optimization for the first pilot.
+
+Expected value for Swiss hazard-map goal: High.
+
+Scientific risk: Low to medium. GIS metadata errors can create misleading maps.
+
+Engineering risk: Medium.
+
+Likely affected areas: `scripts/build_hazard_layers.py`,
+`tests/test_hazard_layers.py`, `docs/hazard_layers.md`,
+`docs/pilot_gis_package.md`, `hazard/results/` fixtures if intentionally tiny.
+
+Evidence needed: raster value parity, CRS/transform/nodata checks, explicit
+non-COG labeling, and a QGIS/raster-library smoke inspection note.
+
+Minimal acceptable deliverable: A tiny generated/fixture package that proves
+the local review workflow and preserves current hazard values.
+
+What not to do: Do not add GIS dependencies to the trajectory kernel; do not
+call unverified GeoTIFFs COG; do not conflate hazard with risk.
+
+Estimated order: 4.
+
+## Target 5: Tighten Source-Zone And Block-Scenario Semantics V1
+
+Objective: Move source-zone/block semantics from documentation toward
+runner/manifest consistency: stable IDs, polygon-only current support,
+release-cell identity, block-scenario labels, sampling weights, and explicit
+non-support for physical/annual probability.
+
+Rationale: National hazard mapping needs defensible source-zone policy and
+block scenario semantics before annualized products.
 
 Expected value for Swiss hazard-map goal: High.
 
@@ -159,414 +163,187 @@ Engineering risk: Low to medium.
 
 Likely affected areas: `src/probabilistic.rs`,
 `docs/probabilistic_scenario_model_design.md`,
-`docs/probabilistic_hazard_framework_priorities.md`,
-`docs/dataset_strategy.md`, `validation/cases/probabilistic_phase1_smoke.yaml`,
-`tests/probabilistic_phase1.rs`, and probabilistic fixtures.
+`docs/validation_data_schema.md`, `tests/probabilistic_phase1.rs`,
+`validation/cases/probabilistic_phase1_smoke.yaml`.
 
-Evidence needed: parser rejection of annual/physical labels when evidence is
-absent; deterministic joins between scenario rows and trajectory metadata;
-conditional map package labels; fixed-block and block-class examples; explicit
-notes on source-zone derivation evidence levels.
+Evidence needed: join consistency tests, scenario-row propagation review,
+clear separation of release-zone sidecars from probabilistic source-zone
+metadata, and literature/source inventory for future source-zone derivation.
 
-Minimal acceptable deliverable: Schema and fixture updates for conditional
-source-zone/block-class scenario metadata, with no annual-frequency
-computation.
+Minimal acceptable deliverable: Fixture/test coverage for current V1 semantics
+plus a short policy note for future source-zone derivation evidence.
 
-What not to do: Do not invent annual release rates, physical block
-probabilities, or risk semantics.
-
-Estimated order: 4.
-
-## Target 5: DEM And Terrain-Representation Sensitivity Benchmark
-
-Objective: Build a reproducible benchmark framework for DEM resolution,
-terrain smoothing, interpolation artifacts, cliff-edge representation,
-micro-topography/subgrid roughness, vegetation representation in DEMs, and
-hazard-layer stability under terrain perturbations.
-
-Rationale: Terrain representation uncertainty may dominate trajectory realism
-and hazard-map structure as much as contact physics or shape. Multi-resolution
-and interpolation sensitivity should precede calibration claims.
-
-Expected value for Swiss hazard-map goal: Very high. It directly tests whether
-map patterns are stable under public-terrain representation choices and helps
-separate DEM artifacts from physics failures.
-
-Scientific risk: Medium. Perturbations can be arbitrary if not tied to real
-DEM products and terrain-processing assumptions.
-
-Engineering risk: Medium. Requires careful fixture design, raster alignment,
-map-difference metrics, and reproducible terrain variants.
-
-Likely affected areas: `docs/model_design.md`,
-`docs/swisstopo_data_strategy.md`, `docs/validation_plan.md`,
-`docs/hazard_layers.md`, `src/terrain.rs`, `scripts/build_hazard_layers.py`,
-`validation/cases/`, `verification/`, and terrain fixtures.
-
-Evidence needed: multi-resolution terrain runs; strict vs clamped/interpolated
-comparisons; smoothing/no-smoothing comparisons; cliff-edge and nodata edge
-fixtures; reach/deposition/energy/jump map-difference diagnostics; stability
-summary for at least one Swiss-style terrain fixture.
-
-Minimal acceptable deliverable: A small deterministic DEM sensitivity
-benchmark with map-difference metrics and a report template. It may use
-fixtures before private real-site data are available.
-
-What not to do: Do not calibrate contact parameters to compensate for DEM
-resolution, smooth terrain silently, or treat swisstopo data as validation
-evidence by itself.
+What not to do: Do not implement a national source-zone algorithm without
+documented slope/geology/inventory assumptions.
 
 Estimated order: 5.
 
-## Target 6: Expanded Chant Sura Contact And Shape-Readiness Validation
+## Target 6: Add A Validation Maturity Framework
 
-Objective: Improve Chant Sura contact/trajectory evidence by expanding or
-cleaning DEM-backed contact fixtures, documenting proxy-contact uncertainty,
-and attaching passive EOTA/shape metadata where provenance is auditable.
+Objective: Define maturity labels for claims: V0 analytic verification, V1
+synthetic realism, V2 impact-level field validation, V3 site-scale hazard
+pattern evidence, V4 cross-site generalization, and V5 operational
+reproducibility.
 
-Rationale: Shape and contact are among the largest physics gaps. External
-review reinforces that shape is a dominant driver of lateral spread, runout,
-rotational behavior, and energy dissipation, and that Chant Sura shape evidence
-should be strengthened before active shape-contact work proceeds.
+Rationale: The repo distinguishes validation, calibration, pilot evidence, and
+operational non-claims, but lacks a concise hierarchy for reports and future
+papers.
 
-Expected value for Swiss hazard-map goal: High scientific value.
+Expected value for Swiss hazard-map goal: High. It reduces overclaim risk.
 
-Scientific risk: Medium. Segment-boundary contacts may remain too approximate
-for strong conclusions.
-
-Engineering risk: Medium.
-
-Likely affected areas: `scripts/prepare_chant_sura_public_benchmark.py`,
-`scripts/summarize_chant_sura_contact_diagnostics.py`,
-`validation/data/processed/chant_sura_2020/`,
-`validation/cases/chant_sura_contact*.yaml`,
-`docs/chant_sura_contact_validation.md`, `docs/dataset_strategy.md`,
-`docs/shape_aware_block_scaffold_design.md`, and passive shape metadata.
-
-Evidence needed: deterministic split records; contact timing/rebound/jump/
-energy metrics for model-selection and held-out subsets; explicit proxy-contact
-caveats; no tuning or default changes.
-
-Minimal acceptable deliverable: Expanded or audited contact/shape-readiness
-fixture/report plus passive shape scenario semantics where provenance is
-auditable.
-
-What not to do: Do not use proxy contacts as exact truth; do not run
-`shape_contact_v0` held-out validation while its gates remain blocked.
-
-Estimated order: 6.
-
-## Target 7: Forest/Obstacle Relevance Scoping For The Swiss Pilot Domain
-
-Objective: Before interpreting the first Swiss valley pilot, assess whether
-forest, buildings, roads, barriers, or other obstacles are first-order boundary
-conditions in the chosen domain.
-
-Rationale: Forest may materially reduce propagation probability and intensity
-in Swiss Alpine terrain. The repo should scope this early while still deferring
-implementation.
-
-Expected value for Swiss hazard-map goal: High when the pilot domain contains
-forest or obstacles; medium otherwise.
-
-Scientific risk: Medium. Ignoring forest/obstacles can overstate reach or
-intensity; silently absorbing them into terrain/material parameters would
-confuse physics, calibration, and scenario assumptions.
-
-Engineering risk: Low to medium for scoping; high only if implementation is
-started.
-
-Likely affected areas: `docs/swisstopo_data_strategy.md`,
-`docs/roadmap_hazard_mapping.md`, `docs/dataset_strategy.md`, the pilot report,
-and future terrain-context docs.
-
-Evidence needed: pilot-domain forest/obstacle inventory from allowed public or
-context data; statement of whether no-forest/no-obstacle assumptions are
-acceptable, limiting, or invalidating; recommendation to defer, mask/exclude,
-scenario-split, or design explicit future physics.
-
-Minimal acceptable deliverable: A short scoping memo tied to the selected pilot
-domain and cited public/context layers.
-
-What not to do: Do not implement forest/barrier physics in this package; do not
-tune restitution or terrain classes to mimic forest; do not call no-forest
-outputs operational hazard maps.
-
-Estimated order: 7.
-
-## Target 8: Validation Maturity Framework
-
-Objective: Formalize a validation maturity hierarchy for repository claims:
-V0 analytic verification, V1 synthetic trajectory realism, V2 impact-level
-field validation, V3 site-scale hazard-pattern validation, V4 cross-site
-generalization, and V5 operational reproducibility.
-
-Rationale: The repository already distinguishes verification, calibration,
-validation, pilot evidence, shape-readiness, and performance gates. A named
-maturity framework will reduce overclaim risk and make reports, README text,
-and future papers more consistent.
-
-Expected value for Swiss hazard-map goal: High. It clarifies what evidence each
-result supports and prevents pilot evidence from being mistaken for operational
-validation.
-
-Scientific risk: Low to medium. The main risk is creating labels without
-enforcing them in reports.
+Scientific risk: Low if labels are conservative.
 
 Engineering risk: Low.
 
 Likely affected areas: new `docs/validation_maturity_framework.md`,
-`README.md`, `AGENTS.md`, `docs/validation_plan.md`, `docs/dataset_strategy.md`,
-validation report templates, and consistency checks.
+`docs/validation_plan.md`, `docs/dataset_strategy.md`, `README.md`,
+report templates, `scripts/check_repo_consistency.py`.
 
-Evidence needed: mapping from existing verification/validation cases to
-maturity levels; examples of allowed and forbidden claims for each level;
-report-template language.
+Evidence needed: mapping of current cases to maturity levels and examples of
+allowed/disallowed claims for each level.
 
-Minimal acceptable deliverable: A concise framework document referenced by
-validation docs and future pilot reports. Updating `AGENTS.md` can follow in a
-separate procedural docs change.
+Minimal acceptable deliverable: A concise framework referenced by validation
+and pilot-report docs.
 
-What not to do: Do not relabel current evidence upward; do not imply
-operational readiness before cross-site and reproducibility evidence exist.
+What not to do: Do not relabel current evidence upward or imply operational
+readiness.
+
+Estimated order: 6.
+
+## Target 7: Expand Chant Sura Contact And Shape-Readiness Evidence
+
+Objective: Improve or audit Chant Sura contact/trajectory fixtures, held-out
+metrics, passive shape metadata, and proxy-contact caveats before public
+shape-contact runtime work.
+
+Rationale: Shape/contact are major scientific gaps, but active shape runtime is
+not ready.
+
+Expected value for Swiss hazard-map goal: High scientific value.
+
+Scientific risk: Medium. Segment-boundary contacts remain imperfect evidence.
+
+Engineering risk: Medium.
+
+Likely affected areas: `validation/cases/chant_sura_contact*.yaml`,
+`data/processed/chant_sura_2020/`, `docs/chant_sura_contact_validation.md`,
+`docs/shape_aware_block_scaffold_design.md`, `src/shape.rs`.
+
+Evidence needed: deterministic split records, contact timing/rebound/energy
+metrics, shape provenance, and non-regression checks for current defaults.
+
+Minimal acceptable deliverable: A reviewed shape-readiness report and any small
+fixture cleanup needed to support a later shape decision gate.
+
+What not to do: Do not treat proxy contacts as exact impacts; do not run public
+`shape_contact_v0` validation while it remains gated.
+
+Estimated order: 7.
+
+## Target 8: Scope Forest/Obstacle Relevance For The Pilot Domain
+
+Objective: Determine whether forest, buildings, roads, barriers, nets, or
+other obstacles are first-order boundary conditions for the selected Swiss
+pilot domain.
+
+Rationale: A no-forest/no-obstacle pilot can be acceptable, limiting, or
+invalidating depending on the corridor.
+
+Expected value for Swiss hazard-map goal: High for interpretation.
+
+Scientific risk: Medium if omission is silently absorbed into parameters.
+
+Engineering risk: Low for scoping.
+
+Likely affected areas: `docs/swisstopo_data_strategy.md`,
+`docs/roadmap_hazard_mapping.md`, pilot report, future terrain-context docs.
+
+Evidence needed: share-safe inventory of available context layers and a clear
+statement of whether omission is acceptable, limiting, or invalidating.
+
+Minimal acceptable deliverable: A pilot-domain scoping memo.
+
+What not to do: Do not implement forest/barrier physics in this package; do not
+tune restitution or terrain classes to mimic forest.
 
 Estimated order: 8.
 
-## Target 9: Deterministic Local Parallel Execution Prototype
+## Target 9: Prototype Deterministic Local Parallel Execution And Streaming Reduction
 
-Objective: Prototype deterministic local multithreaded execution and
-thread-safe hazard accumulation before trajectory Parquet or SLURM
-orchestration work: reproducible seeds, order-independent reducers, memory
-scaling, I/O concurrency checks, and scaling benchmarks.
+Objective: Add an opt-in local parallel execution/reducer prototype only after
+pilot or benchmark evidence shows throughput/output pressure.
 
-Rationale: The long-term target of roughly 10,000 trajectories per release zone
-makes local parallel scaling a core feasibility issue. A measured multithreaded
-CSV/reducer workflow may outperform premature distributed or Parquet-heavy
-designs.
+Rationale: The 10,000-trajectories-per-release-zone target needs local
+parallelism and order-independent reducers before SLURM. This may matter more
+than trajectory Parquet if reduced outputs are sufficient.
 
-Expected value for Swiss hazard-map goal: High engineering value after the
-pilot has identified real output and reducer pressure.
+Expected value for Swiss hazard-map goal: High engineering value.
 
-Scientific risk: Low, provided outputs are parity-tested and deterministic.
+Scientific risk: Low if serial/parallel parity is strict.
 
-Engineering risk: Medium to high. Requires careful ownership of RNG,
-execution-order independence, reducer merges, memory use, and file layout.
+Engineering risk: Medium to high.
 
-Likely affected areas: `src/stochastic.rs`, `src/simulation.rs`,
+Likely affected areas: `src/simulation.rs`, `src/stochastic.rs`,
 `src/validation.rs`, `src/manifest.rs`, `scripts/build_hazard_layers.py`,
-`tests/hpc_readiness.rs`, performance benchmark scripts, and
-`docs/scalability_and_data_formats_review.md`.
+`tests/hpc_readiness.rs`, performance scripts.
 
-Evidence needed: serial vs parallel parity; deterministic outputs independent
-of worker count and execution order; scaling benchmarks versus trajectory
-count and output volume; memory/file-count report; thread-safe reducer contract.
+Evidence needed: deterministic parity independent of worker count and order,
+thread-safe reducer contract, memory/file-count benchmarks, and scaling curves.
 
-Minimal acceptable deliverable: An opt-in local parallel runner or prototype
-fixture with deterministic parity tests and a benchmark report. It should be
-selected after pilot measurements confirm parallel execution or reduction is
-the next bottleneck.
+Minimal acceptable deliverable: An opt-in prototype with parity tests and a
+benchmark report.
 
-What not to do: Do not add MPI, GPU, or SLURM first; do not make parallelism
-change default numerical behavior; do not optimize the kernel without evidence
-that it is the limiting path.
+What not to do: Do not add MPI, GPU, or SLURM first; do not change defaults or
+optimize the kernel without evidence.
 
 Estimated order: 9.
 
-## Target 10: Active Shape-Contact Decision Gate, Not Runtime Feature First
+## Target 10: Design Terrain/Material Calibration And Production Data-Format Gates
 
-Objective: Convert the paused `shape_contact_v0` status into a formal gate:
-required provenance, diagnostics, non-regression metrics, and failure criteria
-before any public runtime wiring proceeds.
+Objective: Define the gate that must be passed before terrain/material
+calibration, trajectory sample tables, tiled reducers, or COG production are
+implemented.
 
-Rationale: Shape is scientifically crucial, but the first internal result was
-uncertain/failed. The next shape-runtime step should reduce risk before adding
-public behavior.
+Rationale: These are important, but premature work could fit structural errors
+or optimize the wrong data path.
 
-Expected value for Swiss hazard-map goal: High long-term scientific value.
+Expected value for Swiss hazard-map goal: Medium to high as a guardrail.
 
-Scientific risk: High. A simplistic shape model may trade one failure mode for
-another or hide terrain/material errors.
-
-Engineering risk: High.
-
-Likely affected areas: `docs/active_shape_contact_design.md`,
-`docs/post_shape_contact_v0_pause_next_step.md`,
-`docs/shape_contact_v0_experimental_contract.md`, `src/shape.rs`, and internal
-validation under `validation/internal/`.
-
-Evidence needed: frozen diagnostic contract; energy non-increase checks;
-baseline parity; model-selection results that do not degrade Chant Sura or
-recreate Tschamut rotational over-run.
-
-Minimal acceptable deliverable: A gate document and internal-only tests that
-define when public shape runtime work is allowed.
-
-What not to do: Do not implement a broad polyhedral solver, tune shape
-constants, or present passive shape metadata as active validation.
-
-Estimated order: 10.
-
-## Target 11: Terrain/Material Calibration Design With Holdout Policy
-
-Objective: Design a no-hidden-tuning calibration framework for terrain/material
-classes, including parameter bounds, objective functions, training/held-out
-datasets, and manifest labels. Implementation of calibrated values should wait
-for pilot evidence, DEM sensitivity results, and validation maturity labels.
-
-Rationale: Terrain classes are essential for maps but dangerous without
-calibration discipline. DEM representation, source zones, shape, and forest can
-all masquerade as material-parameter effects.
-
-Expected value for Swiss hazard-map goal: High, once real-site terrain,
-sensitivity benchmarks, and validation splits exist.
-
-Scientific risk: Very high if done prematurely.
+Scientific risk: High if calibration starts before pilot, DEM sensitivity, and
+holdout evidence.
 
 Engineering risk: Medium.
 
 Likely affected areas: `docs/terrain_material_interaction_protocol.md`,
-`docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_plan.md`,
-`docs/dataset_strategy.md`, `calibration/`, and terrain-class validation cases.
+`docs/scalability_and_data_formats_review.md`,
+`docs/trajectory_parquet_next_step_decision.md`,
+`calibration/`, future reducer/COG docs.
 
-Evidence needed: explicit calibration/validation split; objective-function
-documentation; parameter bounds and provenance; holdout metrics showing
-transfer, not only fit.
+Evidence needed: holdout policy, objective functions, parameter bounds,
+calibration-status metadata, and measured decision criteria for CSV vs Parquet
+vs streaming reducers vs tiled rasters.
 
-Minimal acceptable deliverable: Design document and schema additions for
-calibration status/provenance, with synthetic fixtures only.
+Minimal acceptable deliverable: A short gate document that explicitly defers
+implementation until evidence exists.
 
 What not to do: Do not tune terrain classes on Tschamut proxy results; do not
-promote synthetic class values as calibrated material parameters; do not use
-terrain classes to absorb forest, DEM, or shape errors.
+add writer-only trajectory Parquet; do not implement production COG/tiled
+reducers before local reducer contracts.
 
-Estimated order: 11.
-
-## Target 12: Trajectory Samples Table And Batched Hazard Reader
-
-Objective: Add an opt-in `trajectory_samples_table_v1` columnar output and
-projected/batched reader only if pilot and local-parallel measurements show
-trajectory CSV file count or Python row processing is the limiting path.
-
-Rationale: Impact-event Parquet exists, but trajectory CSVs still feed most
-hazard layers. Columnar output is useful only if reader parity and throughput
-improve the measured workflow.
-
-Expected value for Swiss hazard-map goal: Medium to high for larger pilots and
-future production.
-
-Scientific risk: Low.
-
-Engineering risk: Medium to high.
-
-Likely affected areas: `src/validation.rs`, `scripts/build_hazard_layers.py`,
-`docs/trajectory_parquet_next_step_decision.md`,
-`docs/columnar_output_design_decision.md`, `tests/test_hazard_layers.py`, and
-performance benchmark scripts.
-
-Evidence needed: numerical parity for reach, deposition, max energy, max jump,
-velocity, and exceedance layers; file-count and byte-volume reduction; no
-slower projected/batched hazard reads at representative scale; unchanged CSV
-defaults.
-
-Minimal acceptable deliverable: Optional prototype with benchmark report and
-manifest schema, not default output.
-
-What not to do: Do not remove CSV debug outputs, add a writer-only Parquet
-feature, or add probability semantics to the trajectory table.
-
-Estimated order: 12.
-
-## Target 13: Chunked/Tiled Reducer Contract And Resume Semantics
-
-Objective: Implement a minimal local chunk manifest and deterministic reducer
-merge contract for reach counts, deposition counts, maxima, exceedances, and
-significant-impact counts.
-
-Rationale: National or valley-scale production requires resumable chunks and
-mergeable rasters before SLURM orchestration. This should follow the local
-parallel and reducer contracts, not precede them.
-
-Expected value for Swiss hazard-map goal: High engineering value.
-
-Scientific risk: Low to medium. Merge semantics for percentiles and uncertainty
-need care.
-
-Engineering risk: High.
-
-Likely affected areas: `src/manifest.rs`, `scripts/build_hazard_layers.py`,
-`docs/scalability_and_data_formats_review.md`,
-`tests/fixtures/hpc/chunk_manifest_v0.json`, and future orchestration scripts.
-
-Evidence needed: chunked vs single-run raster parity; deterministic checksums
-independent of chunk order; incomplete chunk handling and resume status;
-documented merge rules.
-
-Minimal acceptable deliverable: Local two-chunk fixture whose merged outputs
-match an unchunked fixture.
-
-What not to do: Do not add SLURM, MPI, GPU, or distributed frameworks before
-local chunk/reducer contracts are stable.
-
-Estimated order: 13.
-
-## Target 14: Fragmentation And Broader Obstacle Implementation Scoping
-
-Objective: Produce a later implementation-oriented scoping review for
-fragmentation and broader obstacle modelling requirements after the first
-forest/obstacle relevance memo has clarified pilot-domain needs.
-
-Rationale: Fragmentation and engineered mitigation structures can matter for
-some sites, but they should not be added generically before the pilot
-identifies whether they are blockers.
-
-Expected value for Swiss hazard-map goal: Medium, domain-dependent.
-
-Scientific risk: Medium if omitted where important; high if implemented
-without data.
-
-Engineering risk: Medium to high for future implementation.
-
-Likely affected areas: `docs/roadmap_hazard_mapping.md`,
-`docs/swisstopo_data_strategy.md`, `docs/dataset_strategy.md`, and future
-terrain-context and scenario docs.
-
-Evidence needed: pilot-domain inventory of fragmentation or
-engineered-obstacle relevance; public geodata candidates; decision whether to
-defer, model as scenario exclusion, or design explicit future physics.
-
-Minimal acceptable deliverable: A gap note that says whether these effects are
-material to the first pilot.
-
-What not to do: Do not silently absorb fragmentation, forest, or barriers into
-restitution or terrain-class tuning.
-
-Estimated order: 14.
+Estimated order: 10.
 
 ## Recommended Sequence
 
-1. Controlled real-site Tschamut/swissALTI3D pilot with embedded performance
-   and terrain-representation observations.
-2. Hazard-map semantics and interpretation guide.
-3. Pilot GIS/QGIS package and raster semantics.
-4. Source-zone and block-scenario semantics v1.
-5. DEM and terrain-representation sensitivity benchmark.
-6. Expanded Chant Sura contact and shape-readiness validation.
-7. Forest/obstacle relevance scoping for the chosen Swiss pilot domain.
-8. Validation maturity framework.
-9. Deterministic local parallel execution prototype, if pilot measurements
-   justify it.
-10. Active shape-contact decision gate.
-11. Terrain/material calibration design with holdout policy.
-12. Trajectory samples table and batched hazard reader, only after measured
-    output-reader pressure.
-13. Chunked/tiled reducer contract and resume semantics.
-14. Fragmentation and broader obstacle implementation scoping, timed by
-    pilot-domain need.
-
-The sequence is intentionally not "more physics first." It first asks the
-existing Swiss stack to produce pilot and feasibility evidence, then formalizes
-map semantics, GIS products, source-zone assumptions, terrain sensitivity,
-shape-readiness evidence, and forest context before calibration or public shape
-runtime work. Performance remains coupled to realistic scientific workflows:
-measure in the pilot, prototype deterministic local parallelism when warranted,
-and defer columnar/distributed work until the measured bottleneck is clear.
+1. Execute the controlled real-site Tschamut/swissALTI3D pilot if private data
+   are available.
+2. Enforce hazard-map semantics in manifests and tests.
+3. Build a dry-runnable DEM/terrain sensitivity fixture.
+4. Produce a pilot GIS/QGIS package fixture.
+5. Tighten source-zone and block-scenario V1 semantics.
+6. Add validation maturity labels.
+7. Expand Chant Sura contact and shape-readiness evidence.
+8. Scope forest/obstacle relevance for the pilot domain.
+9. Prototype deterministic local parallel execution and streaming reduction
+   only when measured bottlenecks justify it.
+10. Gate terrain/material calibration and production data-format work until
+    pilot, sensitivity, and holdout evidence exist.
