@@ -140,9 +140,11 @@ terrain/material implementation slice.
 
 It shows that the additive stop-state instrumentation is ready for small
 single-run diagnostics and generated ensemble/deposition sidecars. It also
-shows that the dataset most relevant to deposition/runout failure modes, public
-Tschamut, still lacks explicit per-trajectory stopping provenance in the
-generated deposition outputs used here.
+now has a direct path for final-stop and last-significant-impact class grouping
+when configured terrain-class metadata exists. It also shows that the dataset
+most relevant to deposition/runout failure modes, public Tschamut, still lacks
+explicit per-trajectory stopping provenance in the generated deposition outputs
+used here.
 
 Therefore, proceeding directly to material-parameter implementation would be
 premature. The instrumentation gap for generated ensemble/deposition outputs

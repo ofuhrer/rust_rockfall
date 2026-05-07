@@ -240,5 +240,11 @@ pub struct StopStateSummaryManifest {
     pub final_speed_max_mps: Option<f64>,
     pub final_kinetic_mean_j: Option<f64>,
     pub final_kinetic_max_j: Option<f64>,
+    #[serde(default)]
+    pub terrain_material_context_available_count: usize,
+    #[serde(default)]
+    pub final_terrain_class_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub last_significant_impact_terrain_class_counts: BTreeMap<String, usize>,
     pub limitations: Vec<String>,
 }

@@ -49,6 +49,10 @@ The additive stopping-diagnostic schema records:
 | `runout_mean_m`, `runout_max_m` | Runout summary when deposition rows are available. | deposition CSV |
 | `terrain_normal_x`, `terrain_normal_y`, `terrain_normal_z`, `terrain_slope_abs` | Terrain normal/slope at the final position when instrumented. | run manifest |
 | `terrain_slope_near_stop_available` | Whether terrain slope/normal near stop was directly available. | manifest / script output |
+| `terrain_material_context_available`, `terrain_material_context_available_count` | Whether configured terrain-class context was available for stop-state rows. | run manifest / stop-state sidecar |
+| `final_terrain_class_id`, `final_terrain_class_name`, `final_terrain_class_source` | Terrain/material class at the final position when `terrain_classes` metadata is configured and the point is classifiable. | run manifest / stop-state sidecar |
+| `last_significant_impact_terrain_class_id`, `last_significant_impact_terrain_class_name`, `last_significant_impact_terrain_class_source` | Terrain/material class at the last significant impact when available. | run manifest / stop-state sidecar |
+| `final_terrain_class_counts`, `last_significant_impact_terrain_class_counts` | Per-class stop-state summary counts, formatted as `id:name`. | run manifest / stop-state sidecar |
 | `instrumentation_gaps` | Explicit limits for each source. | script output |
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
@@ -56,8 +60,9 @@ diagnostics when generated from legacy trajectory/deposition CSVs. New
 run-manifest `stop_state` records and ensemble stop-state sidecars provide
 explicit stop reason, final contact state, termination flags, final
 speed/kinetic energy, low-energy contact count, last significant-impact
-provenance when present, and final terrain normal/slope. The summarizer prefers
-those explicit fields and falls back to proxy inference for older outputs.
+provenance when present, final terrain normal/slope, and terrain/material class
+context where configured. The summarizer prefers those explicit fields and
+falls back to proxy inference for older outputs.
 
 ## Additive Instrumentation
 
@@ -76,7 +81,13 @@ The explicit stop-state record includes:
   position when an impact exceeds the explicit incoming-normal-speed threshold;
 - `low_energy_contact_count`;
 - terrain normal and terrain slope at the final position when terrain is
-  available.
+  available;
+- final-position terrain/material class and last-significant-impact
+  terrain/material class when a configured `terrain_classes` raster can classify
+  those points;
+- explicit terrain/material instrumentation gaps when class metadata is absent,
+  a point is outside the class raster, a cell is nodata, or no significant
+  impact reached the explicit threshold.
 
 Current domain-exit and terrain-error flags remain false because the fixed-step
 integrator does not yet expose those termination modes as separate outcomes.
@@ -85,7 +96,9 @@ For validation cases that already write ensemble/deposition CSV outputs, the
 runner now writes an additive `*_stop_state.csv` sidecar and records a
 `stop_state_summary_v1` object in the run manifest. The sidecar is diagnostic
 only and does not change deposition values, metrics, baselines, or acceptance
-criteria. Legacy manifests without `stop_state_summary` remain readable.
+criteria. The summary can include per-class final-stop and last-impact counts
+when terrain/material context is available. Legacy manifests without
+`stop_state_summary` remain readable.
 
 ## Evidence Inspected
 

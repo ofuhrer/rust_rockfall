@@ -497,6 +497,16 @@ pub struct EnsembleStopStateRow {
     pub terrain_normal_y: Option<f64>,
     pub terrain_normal_z: Option<f64>,
     pub terrain_slope_abs: Option<f64>,
+    #[serde(default)]
+    pub terrain_material_context_available: bool,
+    pub final_terrain_class_id: Option<i32>,
+    pub final_terrain_class_name: Option<String>,
+    pub final_terrain_class_source: Option<String>,
+    pub last_significant_impact_terrain_class_id: Option<i32>,
+    pub last_significant_impact_terrain_class_name: Option<String>,
+    pub last_significant_impact_terrain_class_source: Option<String>,
+    #[serde(default)]
+    pub terrain_material_instrumentation_gaps: String,
     pub runout_m: f64,
 }
 
@@ -994,8 +1004,9 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         .as_ref()
         .map(|class_map| class_map as &dyn ContactParameterProvider);
     let simulation_started = Instant::now();
-    let result =
+    let mut result =
         config.run_with_terrain_and_contact_parameters(terrain.as_ref(), class_provider)?;
+    annotate_result_terrain_material_context(&mut result, terrain_class_map.as_ref());
     timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
     timing.trajectory_count += 1;
     timing.impact_event_count += result.impact_events.len();
@@ -1062,6 +1073,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     compute_ensemble_metrics(EnsembleMetricContext {
         case,
         contact_parameters: class_provider,
+        terrain_class_map: terrain_class_map.as_ref(),
         metrics: &mut metrics,
         warnings: &mut warnings,
         output_entries: &mut output_entries,
@@ -1074,6 +1086,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         case,
         base_config: &config,
         contact_parameters: class_provider,
+        terrain_class_map: terrain_class_map.as_ref(),
         observations: &observations,
         metrics: &mut metrics,
         warnings: &mut warnings,
@@ -1088,6 +1101,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             case,
             base_config: &config,
             contact_parameters: class_provider,
+            terrain_class_map: terrain_class_map.as_ref(),
             release_zone: source,
             observations: &observations,
             metrics: &mut metrics,
@@ -1413,6 +1427,100 @@ fn load_terrain_class_map(
         class_map.validate_against_terrain_source(terrain_source)?;
     }
     Ok(Some(class_map))
+}
+
+fn annotate_result_terrain_material_context(
+    result: &mut SimulationResult,
+    class_map: Option<&TerrainClassMap>,
+) {
+    let final_xy = result.samples.last().map(|sample| (sample.x_m, sample.y_m));
+    if let Some(stop_state) = result.stop_state.as_mut() {
+        annotate_stop_state_terrain_material_context(stop_state, final_xy, class_map);
+    }
+}
+
+fn annotate_run_terrain_material_context(
+    run: &mut TrajectoryRun,
+    class_map: Option<&TerrainClassMap>,
+) {
+    let final_xy = run.samples.last().map(|sample| (sample.x_m, sample.y_m));
+    if let Some(stop_state) = run.stop_state.as_mut() {
+        annotate_stop_state_terrain_material_context(stop_state, final_xy, class_map);
+    }
+}
+
+fn annotate_stop_state_terrain_material_context(
+    stop_state: &mut StopStateProvenance,
+    final_xy: Option<(f64, f64)>,
+    class_map: Option<&TerrainClassMap>,
+) {
+    let Some(class_map) = class_map else {
+        return;
+    };
+
+    stop_state.terrain_material_context_available = false;
+    stop_state.final_terrain_class_id = None;
+    stop_state.final_terrain_class_name = None;
+    stop_state.final_terrain_class_source = None;
+    stop_state.last_significant_impact_terrain_class_id = None;
+    stop_state.last_significant_impact_terrain_class_name = None;
+    stop_state.last_significant_impact_terrain_class_source = None;
+    stop_state.terrain_material_instrumentation_gaps.clear();
+
+    if let Some((x_m, y_m)) = final_xy {
+        if let Some((class_id, class_name, source)) = terrain_class_lookup(class_map, x_m, y_m) {
+            stop_state.terrain_material_context_available = true;
+            stop_state.final_terrain_class_id = Some(class_id);
+            stop_state.final_terrain_class_name = Some(class_name);
+            stop_state.final_terrain_class_source = Some(source);
+        } else {
+            stop_state.terrain_material_instrumentation_gaps.push(
+                "final position has no terrain/material class (outside class grid or nodata)"
+                    .to_string(),
+            );
+        }
+    } else {
+        stop_state
+            .terrain_material_instrumentation_gaps
+            .push("final position is unavailable for terrain/material class lookup".to_string());
+    }
+
+    match (
+        stop_state.last_significant_impact_x_m,
+        stop_state.last_significant_impact_y_m,
+    ) {
+        (Some(x_m), Some(y_m)) => {
+            if let Some((class_id, class_name, source)) = terrain_class_lookup(class_map, x_m, y_m) {
+                stop_state.terrain_material_context_available = true;
+                stop_state.last_significant_impact_terrain_class_id = Some(class_id);
+                stop_state.last_significant_impact_terrain_class_name = Some(class_name);
+                stop_state.last_significant_impact_terrain_class_source = Some(source);
+            } else {
+                stop_state.terrain_material_instrumentation_gaps.push(
+                    "last significant impact has no terrain/material class (outside class grid or nodata)"
+                        .to_string(),
+                );
+            }
+        }
+        _ => stop_state.terrain_material_instrumentation_gaps.push(
+            "last significant impact terrain/material class is unavailable because no significant impact reached the explicit threshold"
+                .to_string(),
+        ),
+    }
+}
+
+fn terrain_class_lookup(
+    class_map: &TerrainClassMap,
+    x_m: f64,
+    y_m: f64,
+) -> Option<(i32, String, String)> {
+    let class_id = class_map.class_id_at(x_m, y_m)?;
+    let class = class_map.classes_by_id.get(&class_id)?;
+    Some((
+        class_id,
+        class.name.clone(),
+        class_map.metadata.layer_id.clone(),
+    ))
 }
 
 fn load_block_shape_metadata(
@@ -2123,6 +2231,7 @@ fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
 struct EnsembleMetricContext<'a> {
     case: &'a BenchmarkCase,
     contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    terrain_class_map: Option<&'a TerrainClassMap>,
     metrics: &'a mut BTreeMap<String, f64>,
     warnings: &'a mut Vec<String>,
     output_entries: &'a mut Vec<OutputManifest>,
@@ -2136,6 +2245,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
     let EnsembleMetricContext {
         case,
         contact_parameters,
+        terrain_class_map: _terrain_class_map,
         metrics,
         warnings,
         output_entries,
@@ -2290,6 +2400,7 @@ struct ValidationEnsembleContext<'a> {
     case: &'a BenchmarkCase,
     base_config: &'a SimulationConfig,
     contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    terrain_class_map: Option<&'a TerrainClassMap>,
     observations: &'a ObservationData,
     metrics: &'a mut BTreeMap<String, f64>,
     warnings: &'a mut Vec<String>,
@@ -2307,6 +2418,7 @@ fn compute_validation_ensemble_metrics(
         case,
         base_config,
         contact_parameters,
+        terrain_class_map,
         observations,
         metrics,
         warnings,
@@ -2343,12 +2455,13 @@ fn compute_validation_ensemble_metrics(
             let request =
                 TrajectoryRequest::from_global_seed(global_seed, case.case_id.clone(), member_id);
             let simulation_started = Instant::now();
-            let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+            let mut run = simulate_one_trajectory_with_terrain_and_contact_parameters(
                 &release_config,
                 request,
                 terrain.as_ref(),
                 contact_parameters,
             )?;
+            annotate_run_terrain_material_context(&mut run, terrain_class_map);
             timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
             timing.record_run(&run);
             deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
@@ -2416,6 +2529,7 @@ struct ReleaseZoneMetricContext<'a> {
     case: &'a BenchmarkCase,
     base_config: &'a SimulationConfig,
     contact_parameters: Option<&'a dyn ContactParameterProvider>,
+    terrain_class_map: Option<&'a TerrainClassMap>,
     release_zone: &'a ReleaseZoneMetadata,
     observations: &'a ObservationData,
     metrics: &'a mut BTreeMap<String, f64>,
@@ -2434,6 +2548,7 @@ fn compute_release_zone_metrics(
         case,
         base_config,
         contact_parameters,
+        terrain_class_map,
         release_zone,
         observations,
         metrics,
@@ -2484,12 +2599,13 @@ fn compute_release_zone_metrics(
             point.release_id.clone(),
         );
         let simulation_started = Instant::now();
-        let run = simulate_one_trajectory_with_terrain_and_contact_parameters(
+        let mut run = simulate_one_trajectory_with_terrain_and_contact_parameters(
             &release_config,
             request,
             terrain.as_ref(),
             contact_parameters,
         )?;
+        annotate_run_terrain_material_context(&mut run, terrain_class_map);
         timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
         timing.record_run(&run);
         deposition_rows.push(ensemble_deposition_row(&point.release_id, &run));
@@ -2915,6 +3031,31 @@ fn ensemble_stop_state_row(release_id: &str, run: &TrajectoryRun) -> EnsembleSto
         terrain_normal_y: stop_state.and_then(|state| state.terrain_normal_y),
         terrain_normal_z: stop_state.and_then(|state| state.terrain_normal_z),
         terrain_slope_abs: stop_state.and_then(|state| state.terrain_slope_abs),
+        terrain_material_context_available: stop_state
+            .map(|state| state.terrain_material_context_available)
+            .unwrap_or(false),
+        final_terrain_class_id: stop_state.and_then(|state| state.final_terrain_class_id),
+        final_terrain_class_name: stop_state
+            .and_then(|state| state.final_terrain_class_name.clone()),
+        final_terrain_class_source: stop_state
+            .and_then(|state| state.final_terrain_class_source.clone()),
+        last_significant_impact_terrain_class_id: stop_state
+            .and_then(|state| state.last_significant_impact_terrain_class_id),
+        last_significant_impact_terrain_class_name: stop_state
+            .and_then(|state| state.last_significant_impact_terrain_class_name.clone()),
+        last_significant_impact_terrain_class_source: stop_state
+            .and_then(|state| state.last_significant_impact_terrain_class_source.clone()),
+        terrain_material_instrumentation_gaps: serde_json::to_string(
+            &stop_state
+                .map(|state| state.terrain_material_instrumentation_gaps.clone())
+                .unwrap_or_else(|| {
+                    vec![
+                        "explicit stop_state is unavailable for terrain/material lookup"
+                            .to_string(),
+                    ]
+                }),
+        )
+        .expect("terrain/material instrumentation gaps serialize to JSON"),
         runout_m: run.summary.runout_m,
     }
 }
@@ -2968,6 +3109,9 @@ fn stop_state_summary_manifest(
     let mut low_energy_contact_count_total = 0_usize;
     let mut terrain_slope_available_count = 0_usize;
     let mut explicit_stop_state_count = 0_usize;
+    let mut terrain_material_context_available_count = 0_usize;
+    let mut final_terrain_class_counts = BTreeMap::new();
+    let mut last_significant_impact_terrain_class_counts = BTreeMap::new();
     for row in rows {
         if let Some(reason) = &row.stop_reason {
             explicit_stop_state_count += 1;
@@ -2988,6 +3132,22 @@ fn stop_state_summary_manifest(
         if row.terrain_slope_abs.is_some() {
             terrain_slope_available_count += 1;
         }
+        if row.terrain_material_context_available {
+            terrain_material_context_available_count += 1;
+        }
+        if let Some(label) =
+            terrain_class_label(row.final_terrain_class_id, &row.final_terrain_class_name)
+        {
+            *final_terrain_class_counts.entry(label).or_insert(0) += 1;
+        }
+        if let Some(label) = terrain_class_label(
+            row.last_significant_impact_terrain_class_id,
+            &row.last_significant_impact_terrain_class_name,
+        ) {
+            *last_significant_impact_terrain_class_counts
+                .entry(label)
+                .or_insert(0) += 1;
+        }
     }
     StopStateSummaryManifest {
         schema_version: STOP_STATE_SUMMARY_SCHEMA_VERSION.to_string(),
@@ -3002,11 +3162,22 @@ fn stop_state_summary_manifest(
         final_speed_max_mps: final_speeds.iter().copied().reduce(f64::max),
         final_kinetic_mean_j: nonempty_mean(&final_kinetic),
         final_kinetic_max_j: final_kinetic.iter().copied().reduce(f64::max),
+        terrain_material_context_available_count,
+        final_terrain_class_counts,
+        last_significant_impact_terrain_class_counts,
         limitations: vec![
             "aggregate is diagnostic only and does not change validation metrics".to_string(),
             "domain_exit and terrain_error flags remain false until the integrator exposes those termination modes".to_string(),
+            "terrain/material class counts are provenance groupings from configured terrain_classes metadata, not calibrated material evidence".to_string(),
         ],
     }
+}
+
+fn terrain_class_label(class_id: Option<i32>, class_name: &Option<String>) -> Option<String> {
+    class_id.map(|class_id| match class_name {
+        Some(class_name) => format!("{class_id}:{class_name}"),
+        None => class_id.to_string(),
+    })
 }
 
 fn write_ensemble_deposition_csv(

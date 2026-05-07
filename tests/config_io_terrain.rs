@@ -1934,7 +1934,15 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
     assert!(stop_state_csv.starts_with("release_id,trajectory_id,seed,stop_reason"));
     assert!(stop_state_csv.contains("final_contact_state"));
     assert!(stop_state_csv.contains("terrain_slope_abs"));
+    assert!(stop_state_csv.contains("terrain_material_context_available"));
     assert_eq!(stop_state_csv.lines().count(), 5);
+    let stop_state_row = read_first_csv_row(&stop_state);
+    assert_eq!(
+        stop_state_row["terrain_material_context_available"],
+        "false"
+    );
+    assert!(stop_state_row["terrain_material_instrumentation_gaps"]
+        .contains("terrain_classes metadata is not configured"));
     assert_eq!(
         manifest_json["stop_state_summary"]["schema_version"],
         "stop_state_summary_v1"
@@ -1961,6 +1969,23 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
     for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
         fs::remove_file(path).unwrap();
     }
+}
+
+#[test]
+fn legacy_stop_state_csv_rows_default_missing_terrain_material_fields() {
+    let csv = r#"release_id,trajectory_id,seed,stop_reason,final_contact_state,final_speed_mps,final_kinetic_j,termination_low_velocity,termination_max_steps,termination_t_max,termination_domain_exit,termination_terrain_error,last_significant_impact_time_s,last_significant_impact_x_m,last_significant_impact_y_m,last_significant_impact_z_m,distance_last_significant_impact_to_final_m,low_energy_contact_count,terrain_normal_x,terrain_normal_y,terrain_normal_z,terrain_slope_abs,runout_m
+r1,t1,1,explicit_stopped_state,stopped,0.0,0.0,true,false,false,false,false,,,,,,1,0.0,0.0,1.0,0.0,2.0
+"#;
+    let mut reader = csv::Reader::from_reader(csv.as_bytes());
+    let row: rust_rockfall::validation::EnsembleStopStateRow =
+        reader.deserialize().next().unwrap().unwrap();
+
+    assert!(!row.terrain_material_context_available);
+    assert!(row.final_terrain_class_id.is_none());
+    assert!(row.final_terrain_class_name.is_none());
+    assert!(row.final_terrain_class_source.is_none());
+    assert!(row.last_significant_impact_terrain_class_id.is_none());
+    assert!(row.terrain_material_instrumentation_gaps.is_empty());
 }
 
 #[test]
@@ -2083,8 +2108,141 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     assert!(releases.exists());
     assert!(deposition.exists());
     assert!(stop_state.exists());
+    let stop_state_row = read_first_csv_row(&stop_state);
+    assert_eq!(stop_state_row["terrain_material_context_available"], "true");
+    assert_eq!(
+        stop_state_row["final_terrain_class_source"],
+        "swissalti3d_pilot_material_classes"
+    );
+    assert!(matches!(
+        stop_state_row["final_terrain_class_name"].as_str(),
+        "synthetic_bedrock" | "synthetic_talus"
+    ));
+    assert!(
+        manifest_json["stop_state_summary"]["terrain_material_context_available_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(
+        !manifest_json["stop_state_summary"]["final_terrain_class_counts"]
+            .as_object()
+            .unwrap()
+            .is_empty()
+    );
 
     for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn terrain_class_stop_state_reports_out_of_grid_gap() {
+    let case_path = temp_path("terrain_class_out_of_grid_case.yaml");
+    let metadata_path = temp_path("terrain_class_out_of_grid_metadata.yaml");
+    let grid_path = metadata_path.with_file_name("terrain_class_out_of_grid.asc");
+    let diagnostics = temp_path("terrain_class_out_of_grid_diagnostics.json");
+    let manifest = temp_path("terrain_class_out_of_grid_manifest.json");
+
+    fs::write(
+        &grid_path,
+        r#"ncols 1
+nrows 1
+xllcorner 100
+yllcorner 100
+cellsize 1
+NODATA_value -9999
+1
+"#,
+    )
+    .unwrap();
+    fs::write(
+        &metadata_path,
+        format!(
+            r#"schema_version: 1
+layer_id: out_of_grid_material_fixture
+source_dataset: synthetic_fixture
+source_url: null
+license: synthetic fixture
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: ESRI ASCII GRID
+  resolution_m: 1.0
+  width_px: 1
+  height_px: 1
+  nodata: -9999.0
+extent_lv95_m:
+  xmin: 100.0
+  ymin: 100.0
+  xmax: 101.0
+  ymax: 101.0
+class_grid_path: {}
+classes:
+  - id: 1
+    name: synthetic_class
+    parameter_overrides: {{}}
+provenance:
+  intended_use: stop_state_out_of_grid_test
+  notes: ["Synthetic test fixture."]
+"#,
+            grid_path.file_name().unwrap().to_string_lossy()
+        ),
+    )
+    .unwrap();
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: terrain_class_out_of_grid_case
+terrain: {{ type: plane, parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }} }}
+terrain_classes:
+  metadata_path: {}
+block: {{ mass: 10.0, radius: 0.5 }}
+release: {{ position: [0.0, 0.0, 0.5], velocity: [1.0, 0.0, 0.0] }}
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.0
+  tangential_restitution: 1.0
+  friction_coefficient: 0.5
+simulation: {{ dt: 0.01, t_max: 5.0, max_steps: 500, stop_velocity: 0.05 }}
+outputs:
+  diagnostics_json: {}
+  manifest_json: {}
+"#,
+            metadata_path.display(),
+            diagnostics.display(),
+            manifest.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+    let stop_state = report.stop_state.unwrap();
+
+    assert!(!stop_state.terrain_material_context_available);
+    assert!(stop_state.final_terrain_class_id.is_none());
+    assert!(stop_state
+        .terrain_material_instrumentation_gaps
+        .iter()
+        .any(|gap| gap.contains("final position has no terrain/material class")));
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["stop_state"]["terrain_material_context_available"],
+        false
+    );
+
+    for path in [
+        &case_path,
+        &metadata_path,
+        &grid_path,
+        &diagnostics,
+        &manifest,
+    ] {
         fs::remove_file(path).unwrap();
     }
 }

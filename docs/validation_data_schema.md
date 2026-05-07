@@ -75,6 +75,30 @@ small for smoke tests (`dt = 0.01 s`, `t_max = 1.0 s`, and
 default), but versioned verification and validation cases should continue to
 set these fields explicitly.
 
+## Stop-State Terrain/Material Diagnostics
+
+`run_manifest_v1` and ensemble `*_stop_state.csv` sidecars can carry additive
+terrain/material stopping context when a case configures
+`terrain_classes.metadata_path`.
+
+The fields are diagnostic only:
+
+- `terrain_material_context_available`;
+- `final_terrain_class_id`, `final_terrain_class_name`, and
+  `final_terrain_class_source`;
+- `last_significant_impact_terrain_class_id`,
+  `last_significant_impact_terrain_class_name`, and
+  `last_significant_impact_terrain_class_source`;
+- `terrain_material_instrumentation_gaps`;
+- aggregate `stop_state_summary_v1` counts for final and last-impact classes.
+
+Class labels are looked up from the configured aligned class raster at the
+final position and last significant-impact location. They are not inferred from
+paths, outcomes, runout, or terrain slope. Missing metadata, out-of-grid points,
+nodata cells, and absent significant impacts are reported as instrumentation
+gaps. These fields do not change contact laws, parameters, stopping thresholds,
+validation metrics, or pass/fail criteria.
+
 ## Hazard-Layer Statistics
 
 `hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. Existing validation pass/fail semantics are unchanged.

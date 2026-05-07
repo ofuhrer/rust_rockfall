@@ -131,6 +131,11 @@ The case writes ignored outputs under `validation/results/`, including:
 
 The manifest terrain section includes LV95/LN02 metadata, source dataset/product fields, license note, extent, nodata value, metadata path, and DEM path. The release-zone manifest section records the source-area metadata path, CRS, deterministic sampling seed, requested/generated release-point count, polygon extent/area, source/license fields, and provenance notes.
 The terrain-class manifest section records class-layer provenance and class coverage. The checked-in class parameters are illustrative fixtures, not calibrated Swiss terrain parameters.
+When terrain classes are configured, additive stop-state diagnostics can also
+record the final terrain/material class and last-significant-impact class for
+generated trajectories when those points fall inside non-nodata class cells.
+These fields are provenance groupings only; they do not change validation
+metrics, pass/fail criteria, physics, or parameter defaults.
 
 ## Hazard-Statistics Pilot
 

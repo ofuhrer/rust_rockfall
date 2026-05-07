@@ -221,6 +221,22 @@ pub struct StopStateProvenance {
     pub terrain_normal_y: Option<f64>,
     pub terrain_normal_z: Option<f64>,
     pub terrain_slope_abs: Option<f64>,
+    #[serde(default)]
+    pub terrain_material_context_available: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_terrain_class_id: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_terrain_class_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_terrain_class_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_significant_impact_terrain_class_id: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_significant_impact_terrain_class_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_significant_impact_terrain_class_source: Option<String>,
+    #[serde(default)]
+    pub terrain_material_instrumentation_gaps: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -609,6 +625,16 @@ fn build_stop_state_provenance(
         terrain_normal_y: Some(normal.y),
         terrain_normal_z: Some(normal.z),
         terrain_slope_abs,
+        terrain_material_context_available: false,
+        final_terrain_class_id: None,
+        final_terrain_class_name: None,
+        final_terrain_class_source: None,
+        last_significant_impact_terrain_class_id: None,
+        last_significant_impact_terrain_class_name: None,
+        last_significant_impact_terrain_class_source: None,
+        terrain_material_instrumentation_gaps: vec![
+            "terrain_classes metadata is not configured for this run".to_string(),
+        ],
     })
 }
 
