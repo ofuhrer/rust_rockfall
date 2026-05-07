@@ -86,8 +86,8 @@ Implemented:
   `sampling_weight = 1.0`;
 - unweighted reach, deposition, maximum kinetic energy, maximum jump height,
   significant-impact density, and threshold-exceedance layers;
-- opt-in `sampling_weighted` conditional reach and trajectory-level exceedance
-  layers;
+- opt-in `sampling_weighted` conditional reach, deposition density, and
+  trajectory-level exceedance layers;
 - explicit probability terminology and manifest fields for the current
   sampling-weighted prototype;
 - strict rejection of ambiguous weighted configurations.
@@ -96,7 +96,7 @@ Not implemented:
 
 - source-zone physical probability or annual release frequency;
 - block-size population probabilities;
-- weighted deposition density or weighted significant-impact density;
+- weighted significant-impact density;
 - annual-frequency layers;
 - convergence/uncertainty diagnostics for probabilistic maps;
 - exposure/vulnerability/risk layers.
@@ -356,7 +356,7 @@ Defer:
 - making `sphere_rotational_v1` the default;
 - annual-frequency hazard maps;
 - physical source-probability calibration;
-- weighted deposition and weighted impact-density layers;
+- weighted impact-density layers;
 - terrain-class calibration before a real-site pilot;
 - full polyhedral hard-contact dynamics before a shape scaffold;
 - Swiss-wide orchestration/HPC until GIS outputs and pilot workflow semantics
@@ -397,4 +397,3 @@ Public, high-level context only:
   <https://ramms.ch/ramms-rockfall/>
 - WSL/SLF RAMMS overview, accessed 2026-05-06:
   <https://www.slf.ch/en/services-and-products/ramms-rapid-mass-movement-simulation/>
-

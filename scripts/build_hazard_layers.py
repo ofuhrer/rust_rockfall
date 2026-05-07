@@ -269,6 +269,7 @@ class TrajectorySampleBatch:
 class DepositionPoint:
     x_m: float | None
     y_m: float | None
+    trajectory_id: str | None
     properties: dict[str, float | str]
 
 
@@ -372,6 +373,7 @@ class HazardAccumulator:
             else {}
         )
         self.deposition = zeros(grid)
+        self.weighted_deposition = zeros(grid) if probability else None
         self.impact_density = zeros(grid)
         self.deposition_points: list[DepositionPoint] = []
         self.trajectory_count = 0
@@ -519,6 +521,15 @@ class HazardAccumulator:
             cell = sample_cell_from_xy(self.grid, point.x_m, point.y_m)
             if cell is not None:
                 self.deposition[cell[0]][cell[1]] += 1.0
+                if self.weighted_deposition is not None:
+                    if not point.trajectory_id:
+                        raise SystemExit(
+                            "sampling-weighted deposition density requires trajectory_id in deposition CSV"
+                        )
+                    if point.trajectory_id in self.probability.weights:
+                        self.weighted_deposition[cell[0]][cell[1]] += self.probability.weight_for_trajectory(
+                            point.trajectory_id
+                        )
 
     def accumulate_impacts(self, batch: ImpactEventBatch) -> None:
         self.impact_event_count += batch.event_count
@@ -677,6 +688,23 @@ class HazardAccumulator:
                     note="Final-position density from ensemble deposition CSV.",
                 )
             )
+            if self.weighted_deposition is not None:
+                denominator = self.probability.total_filtered_weight
+                if denominator <= 0.0:
+                    raise SystemExit("filtered total sampling weight must be positive")
+                scale_grid(self.weighted_deposition, 1.0 / denominator)
+                layers.append(
+                    RasterLayer(
+                        "weighted_deposition_density",
+                        "Weighted deposition density",
+                        "sampling-weighted fraction of filtered trajectories",
+                        self.weighted_deposition,
+                        note=(
+                            "Sampling-weighted conditional final-position density using "
+                            "trajectory_metadata_table_v1 and normalization conditioned on filters."
+                        ),
+                    )
+                )
         else:
             warnings.append("no ensemble deposition CSV supplied; deposition density layer was not created")
 
@@ -1574,9 +1602,11 @@ def read_deposition_batch(path: Path | None, warnings: list[str]) -> DepositionP
 
 
 def deposition_point_from_row(row: dict[str, float | str]) -> DepositionPoint:
+    raw_trajectory_id = str(row.get("trajectory_id") or "").strip()
     return DepositionPoint(
         x_m=numeric(row.get("x_m")),
         y_m=numeric(row.get("y_m")),
+        trajectory_id=raw_trajectory_id or None,
         properties={key: value for key, value in row.items() if key not in {"x_m", "y_m"}},
     )
 
@@ -2305,7 +2335,7 @@ def layer_semantic_numerator(layer_key: str, weighted: bool) -> str:
         return "trajectories reaching cell"
     if "exceedance" in layer_key:
         return "trajectories exceeding threshold in cell"
-    if layer_key == "deposition_density":
+    if layer_key == "deposition_density" or layer_key == "weighted_deposition_density":
         return "deposition points in cell"
     if layer_key == "significant_impact_density":
         return "significant impact events in cell"
@@ -2773,7 +2803,7 @@ def layer_source(layer_key: str) -> str:
         "max_jump_height",
     } or "exceedance" in layer_key:
         return "trajectory_csv"
-    if layer_key == "deposition_density":
+    if layer_key in {"deposition_density", "weighted_deposition_density"}:
         return "ensemble_deposition_csv"
     if layer_key == "significant_impact_density":
         return "impact_event_csv"
@@ -2814,6 +2844,7 @@ def validate_layers(layers: list[RasterLayer]) -> list[str]:
             "reach_probability",
             "weighted_reach_probability",
             "deposition_density",
+            "weighted_deposition_density",
             "significant_impact_density",
         } or "exceedance" in layer.key:
             maximum = summary["maximum"]
@@ -2919,7 +2950,7 @@ def write_html_report(
   <p>Probability and density layers are normalized diagnostic rasters. A value near 1 means all supplied samples for that layer occupied the cell; a value near 0 means few or none did. Maximum-energy and maximum-jump-height layers record the largest sampled value in each cell, not an expected value or design value. Exceedance layers count each trajectory at most once per cell and threshold.</p>
   <ul>
     <li><strong>Reach probability</strong>: cells touched by supplied trajectory CSVs. With <code>outputs.ensemble_trajectories_dir</code> it represents the full written ensemble; with one representative trajectory it is only a 0/1 path mask.</li>
-    <li><strong>Deposition density</strong>: final-position density from ensemble deposition points.</li>
+    <li><strong>Deposition density</strong>: final-position density from ensemble deposition points. Weighted deposition density is normalized by filtered sampling weight when <code>hazard_probability</code> is configured.</li>
     <li><strong>Maximum kinetic energy</strong>: largest kinetic energy sampled in each cell from supplied trajectories.</li>
     <li><strong>Maximum jump height</strong>: largest sampled height above terrain plus block radius where terrain metadata can be evaluated.</li>
     <li><strong>Exceedance probability</strong>: fraction of supplied trajectories that exceeded a configured kinetic-energy, jump-height, or velocity threshold in each cell.</li>

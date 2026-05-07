@@ -404,7 +404,9 @@ Expected labels:
 
 Success condition:
 
-- weighted layers match unweighted layers when all `sampling_weight = 1.0`;
+- weighted trajectory-derived layers match unweighted layers when all
+  `sampling_weight = 1.0`; weighted deposition also requires the deposition CSV
+  to cover the same filtered input set;
 - nonuniform weights change only weighted layers;
 - annual-frequency labels are absent.
 
@@ -523,7 +525,8 @@ Propagation tests:
 
 Hazard-layer tests:
 
-- weighted equals unweighted when all weights are `1.0`;
+- weighted trajectory-derived layers equal unweighted layers when all weights
+  are `1.0`; weighted deposition also requires matching deposition coverage;
 - nonuniform weights affect only weighted layers;
 - weighted layers are labelled `sampling_weighted_conditional` in the map
   package manifest;

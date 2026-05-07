@@ -237,7 +237,7 @@ Required inputs:
 Required model capabilities:
 
 - trajectory metadata table joined to hazard-layer generation;
-- sampling-weighted reach and exceedance layers;
+- sampling-weighted reach, deposition density, and exceedance layers;
 - deterministic seed derivation independent of trajectory execution order;
 - scenario-filtered map generation.
 

@@ -104,11 +104,11 @@ Still missing for physical or annual probability:
 - geospatial production metadata and standard raster outputs for operational
   GIS workflows.
 
-Current weighted layers are trajectory-derived only. Weighted deposition density
-and weighted significant-impact density are not implemented. That is acceptable
-for the first prototype because deposition and impact weighting need careful
-join and denominator semantics, especially before batched impact-event output is
-introduced.
+Current weighted layers include trajectory-derived reach and exceedance layers
+plus deposition density joined through `trajectory_id` in the ensemble
+deposition CSV. Weighted significant-impact density is not implemented yet.
+That remains acceptable because impact weighting needs careful event-table join
+and denominator semantics across CSV-directory and Parquet inputs.
 
 The metadata CSV may contain physical-probability fields, but this prototype
 does not read or combine them. This avoids hidden probability multiplication.
@@ -172,15 +172,15 @@ Defer:
 - annual-frequency maps;
 - physical source or trajectory probability maps;
 - block-size probability sampling;
-- weighted deposition and weighted significant-impact density;
+- weighted significant-impact density;
 - model-form uncertainty weighting;
 - exposure, vulnerability, and risk layers;
 - operational GIS outputs and claims of operational validity.
 
 ## Recommended Next Step
 
-Keep weighted reach and exceedance semantics unchanged while gathering
-benchmark evidence for the new Parquet impact-event path. After parity and
-throughput are demonstrated, design weighted significant-impact density and
-weighted deposition layers explicitly rather than inferring them from current
-unweighted density denominators.
+Keep weighted reach, deposition, and exceedance semantics unchanged while
+gathering benchmark evidence for the new Parquet impact-event path. After parity
+and throughput are demonstrated, design weighted significant-impact density
+explicitly rather than inferring it from current unweighted event-count
+denominators.

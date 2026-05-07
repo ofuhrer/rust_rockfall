@@ -25,6 +25,7 @@ Current layers:
 - opt-in sampling-weighted conditional layers when `hazard_probability` is
   configured with `probability_model: sampling_weighted`:
   - `weighted_reach_probability`
+  - `weighted_deposition_density`
   - `weighted_kinetic_energy_exceedance_<threshold>j`
   - `weighted_jump_height_exceedance_<threshold>m`
   - `weighted_velocity_exceedance_<threshold>mps`
@@ -168,9 +169,15 @@ Validation rules are deliberately strict:
 - filters must leave positive total weight.
 
 Weighted reach and weighted exceedance layers are normalized by the total
-filtered sampling weight. If all weights are `1.0`, weighted layers match the
-corresponding unweighted trajectory-count layers. Unweighted outputs are still
-written unchanged whenever weighted maps are enabled.
+filtered sampling weight. Weighted deposition density uses the same denominator
+and joins deposition rows to `trajectory_metadata_table_v1` through
+`trajectory_id`; deposition rows excluded by active filters are not counted in
+the weighted layer. The weighted deposition layer sums to the fraction of
+filtered sampling weight represented by the supplied deposition CSV, which can
+be below `1.0` if other trajectory inputs are included without deposition rows.
+If all weights are `1.0` and the active input set matches the metadata filter,
+weighted layers match the corresponding unweighted layers. Unweighted outputs
+are still written unchanged whenever weighted maps are enabled.
 
 Phase 1 map-package labelling is also opt-in. It does not change the weighted
 or unweighted raster values; it only labels outputs and writes a

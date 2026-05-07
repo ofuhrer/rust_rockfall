@@ -282,6 +282,7 @@ hazard_probability:
   total_filtered_weight: 1000.0
   generated_weighted_layer_names:
     - weighted_reach_probability
+    - weighted_deposition_density
 ```
 
 Each output layer should record:

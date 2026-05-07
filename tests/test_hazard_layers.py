@@ -539,6 +539,7 @@ class HazardLayerTests(unittest.TestCase):
 
             for weighted_key, unweighted_key in (
                 ("weighted_reach_probability", "reach_probability"),
+                ("weighted_deposition_density", "deposition_density"),
                 ("weighted_kinetic_energy_exceedance_10j", "kinetic_energy_exceedance_10j"),
                 ("weighted_jump_height_exceedance_0p4m", "jump_height_exceedance_0p4m"),
                 ("weighted_velocity_exceedance_1p5mps", "velocity_exceedance_1p5mps"),
@@ -578,6 +579,20 @@ class HazardLayerTests(unittest.TestCase):
             nonzero_values = sorted({round(value, 8) for value in weighted.values() if value > 0.0})
             self.assertEqual(nonzero_values, [0.25, 0.75, 1.0])
 
+            unweighted_deposition = read_layer(
+                output_dir / "hazard_fixture_weighted_deposition_density.csv",
+                "deposition_density",
+            )
+            weighted_deposition = read_layer(
+                output_dir / "hazard_fixture_weighted_weighted_deposition_density.csv",
+                "weighted_deposition_density",
+            )
+            self.assertNotEqual(weighted_deposition, unweighted_deposition)
+            self.assertEqual(
+                sorted(round(value, 8) for value in weighted_deposition.values() if value > 0.0),
+                [0.25, 0.75],
+            )
+
             weighted_velocity = read_layer(
                 output_dir / "hazard_fixture_weighted_weighted_velocity_exceedance_1p5mps.csv",
                 "weighted_velocity_exceedance_1p5mps",
@@ -593,6 +608,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertAlmostEqual(probability["total_input_weight"], 4.0)
             self.assertAlmostEqual(probability["total_filtered_weight"], 4.0)
             self.assertIn("weighted_reach_probability", probability["generated_weighted_layer_names"])
+            self.assertIn("weighted_deposition_density", probability["generated_weighted_layer_names"])
             self.assertEqual(metadata["hazard_probability"], probability)
 
     def test_map_package_metadata_labels_weighted_outputs_without_changing_layers(self) -> None:
@@ -850,6 +866,11 @@ class HazardLayerTests(unittest.TestCase):
                     read_layer(unlabelled_dir / f"probabilistic_phase1_smoke_{weighted_key}.csv", weighted_key),
                     read_layer(labelled_dir / f"probabilistic_phase1_smoke_{weighted_key}.csv", weighted_key),
                 )
+            weighted_deposition = read_layer(
+                labelled_dir / "probabilistic_phase1_smoke_weighted_deposition_density.csv",
+                "weighted_deposition_density",
+            )
+            self.assertAlmostEqual(sum(weighted_deposition.values()), 0.8)
 
             manifest = json.loads((labelled_dir / "probabilistic_phase1_smoke_manifest.json").read_text())
             package = json.loads(package_path.read_text())
@@ -907,6 +928,32 @@ class HazardLayerTests(unittest.TestCase):
             case_path = write_weighted_case(work / "missing_case.yaml", metadata_path)
 
             with self.assertRaisesRegex(SystemExit, "missing from"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(work / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                )
+
+    def test_sampling_weighted_deposition_requires_trajectory_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            deposition_path = work / "deposition_without_ids.csv"
+            with deposition_path.open("w", newline="") as file:
+                writer = csv.DictWriter(file, fieldnames=["x_m", "y_m", "z_m"])
+                writer.writeheader()
+                writer.writerow({"x_m": "2.0", "y_m": "0.0", "z_m": "0.5"})
+            case = yaml_load(FIXTURE / "weighted_case.yaml")
+            case["outputs"]["ensemble_deposition_csv"] = str(deposition_path)
+            case_path = work / "weighted_missing_deposition_ids.yaml"
+            write_yaml(case_path, case)
+
+            with self.assertRaisesRegex(SystemExit, "requires trajectory_id in deposition CSV"):
                 hazard.main_with_args(
                     [
                         "--case",

@@ -178,10 +178,14 @@ Validation rules:
   metadata row that passes the active filters.
 
 When enabled, the hazard builder writes weighted reach and weighted
-trajectory-level exceedance probability rasters alongside the existing
-unweighted rasters. These are conditional sampling-weighted diagnostics only;
-they are not annual-frequency, physical source-probability, exposure, or risk
-layers.
+deposition-density rasters, plus weighted trajectory-level exceedance
+probability rasters, alongside the existing unweighted rasters. Weighted
+deposition density requires `trajectory_id` in the ensemble deposition CSV so
+rows can be joined to the active metadata filter. Its denominator is the
+filtered sampling-weight sum, so the layer can sum below `1.0` when the supplied
+deposition CSV covers only part of the filtered trajectory input set. These are
+conditional sampling-weighted diagnostics only; they are not annual-frequency,
+physical source-probability, exposure, or risk layers.
 
 ## Release-Zone Metadata
 
