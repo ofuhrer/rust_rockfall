@@ -22,18 +22,18 @@ Generated local artifacts are ignored and reproducible:
 
 ## Commands Run
 
-Selected existing diagnostic cases were regenerated only to attach additive
-`stop_state` provenance to diagnostics/manifests:
+The matrix can be reproduced from existing local diagnostic outputs. The latest
+sidecar refresh reran only the selected small Swiss smoke cases needed to
+populate additive ensemble stop-state sidecars:
 
 ```bash
-cargo run -- verify --case verification/analytic/inclined_slide_stop.yaml
-cargo run -- verify --case verification/synthetic/slide_to_stop_transition.yaml
-cargo run -- verify --case verification/synthetic/repeated_low_energy_impacts.yaml
-cargo run -- validate --case validation/cases/chant_sura_contact.yaml
-cargo run -- validate --case validation/cases/chant_sura_contact_rotational.yaml
 cargo run -- validate --case validation/cases/performance_smoke.yaml
 cargo run -- validate --case validation/cases/swissalti3d_release_zone_terrain_classes_pilot.yaml
 ```
+
+Earlier verification and Chant Sura diagnostics are consumed as existing local
+outputs. Tschamut and Mel de la Niva outputs are not regenerated here and remain
+diagnostic/proxy evidence only.
 
 The stopping summary and matrix were generated with:
 
@@ -46,6 +46,8 @@ python3 scripts/summarize_stopping_behavior.py \
   --diagnostics chant_sura_contact_rotational:validation/results/chant_sura_contact_rotational_metrics.json \
   --manifest synthetic_swiss_performance:validation/results/performance_smoke_manifest.json \
   --manifest synthetic_swiss_terrain_classes:validation/results/swissalti3d_release_zone_terrain_classes_pilot_manifest.json \
+  --stop-state synthetic_swiss_performance_stop_state:validation/results/performance_smoke_deposition_stop_state.csv \
+  --stop-state synthetic_swiss_terrain_classes_stop_state:validation/results/swissalti3d_terrain_class_deposition_stop_state.csv \
   --deposition tschamut_translational:validation/results/tschamut_public_benchmark_all/validation/validation_tschamut_public_benchmark_baseline_deposition.csv \
   --deposition tschamut_rotational:validation/results/tschamut_public_benchmark_all/validation/validation_tschamut_public_benchmark_rotational_deposition.csv \
   --manifest tschamut_translational_manifest:validation/results/tschamut_public_benchmark_all/validation/validation_tschamut_public_benchmark_baseline_manifest.json \
@@ -86,7 +88,8 @@ These bins are descriptive only. They are not calibration thresholds.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: |
 | Chant Sura contact | `sphere_rotational_v1` | explicit `stop_state` | `t_max_reached_airborne` | `airborne` | steep | none | low | high_speed | unknown | 1 | 5.867 |
 | Chant Sura contact | `translational_v0` | explicit `stop_state` | `t_max_reached_airborne` | `airborne` | steep | none | low | high_speed | unknown | 3 | 5.121 |
-| Synthetic Swiss hazard/smoke | `translational_v0` | explicit `stop_state` | `t_max_reached_in_contact_state` | `impact` | moderate | none | high | moving | unknown | 14 | 1.708 |
+| Synthetic Swiss hazard/smoke manifest summary | `translational_v0` | explicit `stop_state_summary_v1` | `t_max_reached_in_contact_state` | `impact` | unknown | none | high | moving | unknown | 8 | 0.878 |
+| Synthetic Swiss hazard/smoke sidecar | `translational_v0` | explicit `ensemble_stop_state_csv` | `t_max_reached_in_contact_state` | `impact` | unknown | none | unknown | moving | short | 8 | 0.878 |
 | Mel de la Niva smoke | `sphere_rotational_v1` | proxy fallback | `output_ended_while_in_contact_state` | `impact` | unknown | none | high | high_speed | unknown | 1 | 149.785 |
 | Mel de la Niva smoke | `translational_v0` | proxy fallback | `output_ended_airborne` | `airborne` | unknown | none | high | high_speed | unknown | 1 | 5.408 |
 | Tschamut diagnostic | `sphere_rotational_v1` | proxy fallback | final speed above threshold | unknown | unknown | unknown | unknown | high_speed | long | 480 | 6.725 |
@@ -99,26 +102,31 @@ These bins are descriptive only. They are not calibration thresholds.
 
 ## Findings
 
-1. Explicit `stop_state` works for single-run diagnostics and manifests. The
-   verification rows distinguish explicit stopped states, low-speed terminal
-   repeated-impact behavior, and `t_max`/contact-state termination.
+1. Explicit `stop_state` works for single-run diagnostics, run manifests, and
+   generated ensemble/deposition sidecars. The verification rows distinguish
+   explicit stopped states, low-speed terminal repeated-impact behavior, and
+   `t_max`/contact-state termination.
 
 2. Chant Sura contact rows now have explicit `stop_state`, but they end
    airborne with high terminal speed. This reinforces the existing
    interpretation that Chant Sura is a trajectory/contact benchmark, not a
    deposition or stopping benchmark.
 
-3. The synthetic Swiss terrain-class smoke rows provide explicit
-   terrain-normal/slope context and show `t_max_reached_in_contact_state` on
-   moderate final slope. This proves the reporting path can carry terrain
-   context, but the fixture is synthetic and not calibration evidence.
+3. The synthetic Swiss smoke rows now provide explicit ensemble-level
+   stop-state sidecars. Both the baseline Swiss smoke and terrain-class smoke
+   cases end as `t_max_reached_in_contact_state` with final `impact` state,
+   mean final speed about `0.878 m/s`, no low-energy contacts, and short runout
+   in the sidecar rows. This proves the reporting path can carry per-trajectory
+   stop reason, final contact state, final speed/kinetic energy, runout, and
+   terrain-normal/slope availability for generated ensembles. The fixtures are
+   synthetic and are not calibration evidence.
 
-4. The most important deposition/runout evidence remains proxy based. Tschamut
-   and Mel rows in this matrix come from deposition or trajectory outputs that
-   do not yet carry per-trajectory explicit `stop_state`. The Tschamut
-   translational/rotational contrast remains visible, but terrain/material
-   interpretation would still depend on proxy final speeds and aggregate impact
-   counts.
+4. The most important field-scale deposition/runout evidence remains proxy
+   based. Tschamut and Mel rows in this matrix come from existing deposition or
+   trajectory outputs that do not yet carry per-trajectory explicit
+   `stop_state`. The Tschamut translational/rotational contrast remains
+   visible, but terrain/material interpretation would still depend on proxy
+   final speeds and aggregate impact counts.
 
 5. The matrix does not yet separate terrain/material effects from contact-rich
    stopping in Tschamut. The public Tschamut diagnostic rows lack per-trajectory
@@ -127,41 +135,38 @@ These bins are descriptive only. They are not calibration thresholds.
 
 ## Interpretation
 
-This first matrix is useful, but it is not sufficient to justify a
+This refreshed matrix is useful, but it is not sufficient to justify a
 terrain/material implementation slice.
 
 It shows that the additive stop-state instrumentation is ready for small
-single-run diagnostics. It also shows that the dataset most relevant to
-deposition/runout failure modes, public Tschamut, still lacks explicit
-per-trajectory stopping provenance in the generated deposition/ensemble outputs
-used here.
+single-run diagnostics and generated ensemble/deposition sidecars. It also
+shows that the dataset most relevant to deposition/runout failure modes, public
+Tschamut, still lacks explicit per-trajectory stopping provenance in the
+generated deposition outputs used here.
 
 Therefore, proceeding directly to material-parameter implementation would be
 premature. The instrumentation gap for generated ensemble/deposition outputs
-has now been closed additively with `*_stop_state.csv` sidecars and
-`stop_state_summary_v1` manifest aggregates, so the next work should repeat
-this matrix against those explicit fields before any terrain/material model
-design.
+has been closed for newly generated smoke/ensemble workflows, but the
+field-scale diagnostic evidence remains proxy-limited.
 
 ## Decision
 
-Recommended next package: **rerun the selected terrain/material diagnostic
-matrix with explicit ensemble stop-state sidecars**.
+Recommended next package: **terrain/material implementation design should
+remain deferred; choose between targeted public-diagnostic regeneration for
+explicit stop-state sidecars and rebound/contact-proxy provenance work**.
 
 Do not implement new terrain/material physics yet. Do not calibrate terrain
 classes. Do not use Tschamut or Mel as physics-selection evidence.
 
-The next package should:
+The next package should not add material parameters yet. It should either:
 
-- regenerate only the selected deposition-focused diagnostics needed to
-  populate `*_stop_state.csv` sidecars and `stop_state_summary_v1` manifests;
-- feed those sidecars to `scripts/summarize_stopping_behavior.py --stop-state`;
-- compare explicit stop-reason/final-contact-state bins against the previous
-  proxy-only Tschamut/Mel rows;
-- decide whether the remaining evidence supports terrain/material
-  implementation design, more stopping instrumentation, or continued
-  rebound/proxy provenance work.
+- run a reviewed, diagnostic-only regeneration path that adds explicit
+  stop-state sidecars to selected Tschamut/Mel outputs without changing filters,
+  transforms, defaults, baselines, or physics-selection status; or
+- continue rebound/contact-proxy provenance work if the required field-scale
+  regeneration is too expensive or still scientifically ambiguous.
 
-If the repeated matrix still cannot distinguish stopping/contact behavior from
-terrain/material behavior, the project should continue instrumentation or
-rebound/proxy provenance work rather than implement material parameters.
+If the field-scale rows remain proxy-only or cannot distinguish
+stopping/contact behavior from terrain/material behavior, the project should
+continue instrumentation or rebound/proxy provenance work rather than implement
+material parameters.
