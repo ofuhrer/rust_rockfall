@@ -4,6 +4,7 @@ use rust_rockfall::{
     SoilInteractionModel, SphereBlock, TerrainConfig, TrajectoryRequest,
 };
 use std::collections::BTreeMap;
+use std::fs;
 
 #[test]
 fn same_trajectory_seed_reproduces_identical_samples() {
@@ -111,6 +112,39 @@ fn configuration_and_run_fingerprints_are_stable() {
         config.run_fingerprint(&request).unwrap(),
         config.run_fingerprint(&different_request).unwrap()
     );
+}
+
+#[test]
+fn chunk_manifest_fixture_records_reproducible_reducer_contract() {
+    let path = format!(
+        "{}/tests/fixtures/hpc/chunk_manifest_v0.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+
+    assert_eq!(manifest["schema_version"], "chunk_manifest_v0");
+    assert_eq!(manifest["execution_status"], "completed");
+    assert_eq!(manifest["completion_status"], "completed");
+    assert_eq!(manifest["scientific_status"], "not_evaluated");
+    assert_eq!(manifest["calibration_state"], "none");
+    assert_eq!(
+        manifest["seed_policy"]["derivation"],
+        "global_seed + case_id + trajectory_id"
+    );
+    assert_eq!(manifest["seed_policy"]["trajectory_count"], 100);
+    assert_eq!(manifest["terrain"]["epsg"], 2056);
+    assert_eq!(manifest["terrain"]["vertical_datum"], "LN02");
+    assert_eq!(
+        manifest["reducer_contract"]["merge_order"],
+        "deterministic after sorting chunk_id"
+    );
+    assert_eq!(manifest["outputs"][0]["kind"], "partial_reducer_state");
+    assert!(manifest["limitations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item.as_str().unwrap().contains("no chunk execution")));
 }
 
 fn ensemble_ready_config() -> SimulationConfig {

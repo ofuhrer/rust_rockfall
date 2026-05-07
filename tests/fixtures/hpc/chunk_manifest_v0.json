@@ -1,0 +1,76 @@
+{
+  "schema_version": "chunk_manifest_v0",
+  "chunk_id": "case_a__tile_0000__trajectory_000000_000099",
+  "case_id": "case_a",
+  "model_version": "0.6.1",
+  "git_hash": "fixture",
+  "config_fingerprint": "config_fixture_sha256",
+  "run_fingerprint_policy": "config plus explicit trajectory request",
+  "execution_status": "completed",
+  "completion_status": "completed",
+  "scientific_status": "not_evaluated",
+  "calibration_state": "none",
+  "seed_policy": {
+    "global_seed": 42,
+    "derivation": "global_seed + case_id + trajectory_id",
+    "trajectory_id_start": "trajectory_000000",
+    "trajectory_id_end": "trajectory_000099",
+    "trajectory_count": 100
+  },
+  "terrain": {
+    "source_dataset": "fixture_swissalti3d",
+    "crs": "CH1903+ / LV95",
+    "epsg": 2056,
+    "vertical_datum": "LN02",
+    "resolution_m": 2.0,
+    "extent": {
+      "xmin_m": 2600000.0,
+      "ymin_m": 1200000.0,
+      "xmax_m": 2600200.0,
+      "ymax_m": 1200200.0
+    },
+    "source_tile_ids": ["fixture_tile_0000"],
+    "processed_sha256": "fixture_processed_sha256"
+  },
+  "reference_grid": {
+    "grid_id": "fixture_grid_2m",
+    "xmin_m": 2600000.0,
+    "ymin_m": 1200000.0,
+    "ncols": 100,
+    "nrows": 100,
+    "cell_size_m": 2.0
+  },
+  "outputs": [
+    {
+      "kind": "partial_reducer_state",
+      "format": "json",
+      "path": "hazard/results/fixture/chunks/chunk_0000_reducer.json",
+      "file_count": 1,
+      "row_count": 10000,
+      "total_bytes": 1234,
+      "sha256": "fixture_reducer_sha256"
+    }
+  ],
+  "reducer_contract": {
+    "reach_counts": "integer counts add by cell",
+    "deposition_counts": "integer counts add by cell",
+    "max_kinetic_energy": "cellwise maximum",
+    "max_jump_height": "cellwise maximum",
+    "significant_impact_counts": "integer counts add by cell",
+    "merge_order": "deterministic after sorting chunk_id"
+  },
+  "input_artifacts": [
+    {
+      "kind": "case",
+      "format": "yaml",
+      "path": "validation/cases/fixture.yaml",
+      "file_count": 1,
+      "total_bytes": 100,
+      "sha256": "fixture_case_sha256"
+    }
+  ],
+  "limitations": [
+    "Schema-only HPC provenance fixture; no chunk execution is implemented.",
+    "Research diagnostic; not operational hazard-map evidence."
+  ]
+}

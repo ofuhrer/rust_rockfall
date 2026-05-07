@@ -337,6 +337,12 @@ record:
   trajectories, deposition summaries, or impact-event logs.
 
 This is the lowest-risk foundation for restartability and reproducibility.
+A schema-only fixture, `tests/fixtures/hpc/chunk_manifest_v0.json`, records the
+current minimum contract for future chunked execution tests without implementing
+chunk execution. The fixture requires explicit chunk IDs, seed derivation,
+trajectory ID ranges, terrain CRS/vertical-datum provenance, reference-grid
+metadata, output identities, reducer merge rules, calibration state, and
+research-diagnostic limitations.
 
 ### Stage 2: Add Streaming Hazard Accumulation
 
