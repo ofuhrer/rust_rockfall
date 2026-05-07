@@ -90,6 +90,10 @@ source-zone handling, and recommended/non-recommended user language.
 Minimal acceptable deliverable: A formal semantics guide referenced by hazard
 docs and enforced by small manifest/schema tests where possible.
 
+Sequencing note: M005 created the guide outline, M006 adds language examples
+only, and M007 owns manifest/schema enforcement. These incremental
+micro-milestones should complete the deliverable rather than weaken it.
+
 What not to do: Do not invent annual rates, physical source probabilities,
 exposure, vulnerability, or risk semantics.
 

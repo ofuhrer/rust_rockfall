@@ -99,6 +99,11 @@ The generated cases write ignored outputs under `validation/results/tschamut_swi
 
 ## Build Hazard Layers
 
+The `--cell-size` examples below are convenience commands. Real controlled
+pilot acceptance should use the explicit DEM-derived grid arguments documented
+in `docs/tschamut_swissalti3d_controlled_pilot_plan.md`, so the hazard grid
+matches the private DEM extent, dimensions, and cell size.
+
 Baseline hazard layers:
 
 ```bash
@@ -155,7 +160,8 @@ Use at least:
 Interpretation rule:
 
 ```text
-Improved agreement under real terrain is evidence that proxy terrain was a major limitation.
+Improved agreement under real terrain is evidence that proxy terrain and/or
+source representation likely contributed to the under-run.
 Persistent under-run under real terrain points toward release conditions, terrain classes,
 shape, forest/obstacles, or contact parameters as remaining limitations.
 ```

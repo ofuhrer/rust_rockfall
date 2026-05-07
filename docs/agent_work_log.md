@@ -1,0 +1,1115 @@
+# Agent Work Log
+
+Append-only control log for development subagents. Entries should preserve
+scientific boundaries: no hidden physics changes, no private geodata, no
+operational validation claims, and no risk-map language unless exposure and
+vulnerability are explicitly in scope.
+
+## Entry Template
+
+- Milestone id:
+- Roadmap item:
+- Hypothesis/objective:
+- Files intended to change:
+- Implementation summary:
+- Checks run:
+- Reviewer notes:
+- Decision:
+- Next proposed milestone:
+
+## Roadmap Items 1-5 Micro-Milestone Plan
+
+Planning only; these milestones do not implement roadmap item content yet.
+
+| Proposed milestone | Roadmap item | Micro-milestone objective | Intended scope |
+| --- | --- | --- | --- |
+| M002 | 1. Impact and Contact Credibility | Define the next audit task for impact/contact diagnostics and evidence gaps. | Planning/docs only unless explicitly approved later. |
+| M003 | 2. Terrain and GIS Foundation | Define the next terrain/GIS provenance or CRS-readiness task. | Planning/docs only unless explicitly approved later. |
+| M004 | 3. Release-Zone and Scenario Definition | Define the next source-zone and block-scenario semantics task. | Planning/docs only unless explicitly approved later. |
+| M005 | 4. Ensemble Orchestration | Define the next deterministic chunking, manifest, or reducer task. | Planning/docs only unless explicitly approved later. |
+| M006 | 5. Hazard-Layer Generation | Define the next hazard-layer semantics, metadata, or export-readiness task. | Planning/docs only unless explicitly approved later. |
+
+## Entries
+
+### M001
+
+- Milestone id: M001
+- Roadmap item: Control log setup for roadmap items 1-5.
+- Hypothesis/objective: A concise append-only log will let future subagents
+  coordinate scoped micro-milestones without changing physics, geodata, or
+  validation claims.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Created this control log, entry template, and
+  roadmap items 1-5 micro-milestone plan.
+- Checks run: Pending.
+- Reviewer notes: Pending reviewer input.
+- Decision: Pending.
+- Next proposed milestone: M002.
+
+## Correction: Roadmap Items 1-5 Target Mapping
+
+This correction supersedes the initial "Roadmap Items 1-5 Micro-Milestone
+Plan" above. The initial plan incorrectly mapped items 1-5 to sections from
+`docs/roadmap_hazard_mapping.md`. Future work should use the corrected target
+sequence below, drawn from the roadmap recommendation targets:
+
+1. Controlled real-site Tschamut/swissALTI3D pilot with embedded gates.
+2. Hazard-map semantics and interpretation guide.
+3. Pilot GIS/QGIS package and raster semantics.
+4. Source-zone and block-scenario semantics v1.
+5. DEM and terrain-representation sensitivity benchmark.
+
+## Corrected M002-M015 Micro-Milestone Sequence
+
+Planning only; these milestones do not implement roadmap item content yet.
+
+| Proposed milestone | Target | Micro-milestone objective | Intended scope |
+| --- | --- | --- | --- |
+| M002 | 1. Controlled real-site Tschamut/swissALTI3D pilot with embedded gates | Define pilot scope, non-tuning constraints, required inputs, and go/no-go gates. | Planning/docs only unless explicitly approved later. |
+| M003 | 1. Controlled real-site Tschamut/swissALTI3D pilot with embedded gates | Define execution-report structure for performance, terrain observations, manifests, and visual QA. | Planning/docs only unless explicitly approved later. |
+| M004 | 1. Controlled real-site Tschamut/swissALTI3D pilot with embedded gates | Define pilot review gate criteria and failure-mode reporting expectations. | Planning/docs only unless explicitly approved later. |
+| M005 | 2. Hazard-map semantics and interpretation guide | Define guide outline for conditional, sampling-weighted, physical-probability, and annual-frequency semantics. | Planning/docs only unless explicitly approved later. |
+| M006 | 2. Hazard-map semantics and interpretation guide | Define required labels, limitations, and non-operational interpretation language for hazard layers. | Planning/docs only unless explicitly approved later. |
+| M007 | 2. Hazard-map semantics and interpretation guide | Define review checklist for preventing risk-map language and unsupported probability claims. | Planning/docs only unless explicitly approved later. |
+| M008 | 3. Pilot GIS/QGIS package and raster semantics | Define GIS package contents, CRS/vertical-datum metadata, grid alignment, nodata, and provenance expectations. | Planning/docs only unless explicitly approved later. |
+| M009 | 3. Pilot GIS/QGIS package and raster semantics | Define raster-layer semantics for reach, deposition, energy, jump height, and uncertainty review layers. | Planning/docs only unless explicitly approved later. |
+| M010 | 3. Pilot GIS/QGIS package and raster semantics | Define QGIS visual QA checklist and package acceptance gate. | Planning/docs only unless explicitly approved later. |
+| M011 | 4. Source-zone and block-scenario semantics v1 | Define source-zone representation, release-cell policy, provenance, and exclusion rules. | Planning/docs only unless explicitly approved later. |
+| M012 | 4. Source-zone and block-scenario semantics v1 | Define block scenario metadata for size, shape class, release conditions, weights, and seed policy. | Planning/docs only unless explicitly approved later. |
+| M013 | 4. Source-zone and block-scenario semantics v1 | Define consistency checks for scenario weighting, calibration/validation separation, and deterministic seeding. | Planning/docs only unless explicitly approved later. |
+| M014 | 5. DEM and terrain-representation sensitivity benchmark | Define benchmark design for DEM resolution, interpolation, smoothing, cliff/nodata handling, and terrain classes. | Planning/docs only unless explicitly approved later. |
+| M015 | 5. DEM and terrain-representation sensitivity benchmark | Define sensitivity-report outputs, comparison metrics, and decision gate for pilot terrain readiness. | Planning/docs only unless explicitly approved later. |
+
+## M001 Revision Note
+
+- Milestone id: M001 revision.
+- Roadmap item: Control log setup for corrected roadmap recommendation targets
+  1-5.
+- Hypothesis/objective: Append-only correction can supersede the incorrect
+  initial micro-plan without deleting prior log content.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Appended corrected target mapping, corrected
+  M002-M015 sequence, and this revision note.
+- Checks run: Pending.
+- Reviewer notes: Initial M001 micro-plan used the wrong roadmap mapping:
+  Impact/Contact, Terrain/GIS, Release-Zone, Ensemble Orchestration, and
+  Hazard-Layer Generation instead of the requested recommendation targets.
+- Decision: REVISE for the initial mapping; corrected decision ACCEPT if this
+  correction is complete.
+- Next proposed milestone: M002.
+
+### M001 Revision Check Addendum
+
+- Milestone id: M001 revision check.
+- Roadmap item: Control log setup for corrected roadmap recommendation targets
+  1-5.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  append-only correction.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run: `git diff --check -- docs/agent_work_log.md`
+- Reviewer notes: Correction remains append-only and supersedes the initial
+  incorrect plan without deleting it.
+- Decision: ACCEPT.
+- Next proposed milestone: M002.
+
+### M002
+
+- Milestone id: M002.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Define the pilot scope, no-tuning constraints,
+  required inputs, and go/no-go/evidence gates before any pilot execution or
+  report-template work.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a concise pilot scope and evidence-gate
+  inventory to the controlled pilot plan, emphasizing provenance completeness,
+  source-zone independence, frozen no-tuning settings, manifest completeness,
+  spatial QA, comparison evidence, private-data boundaries, and scoped
+  non-operational interpretation.
+- Checks run: Pending.
+- Reviewer notes: No physics changes, no private geodata, no report scripts or
+  templates, no operational validation claims, and no risk-map language.
+- Decision: Pending.
+- Next proposed milestone: M003.
+
+### M002 Check Addendum
+
+- Milestone id: M002 check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M002 docs-only scope change.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M003.
+
+### M002 Revision Note
+
+- Milestone id: M002 revision.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Revise the M002 gate inventory and wording so the
+  controlled pilot records bottleneck evidence, avoids broad validation or
+  operational maturity language, and harmonizes GIS/geodata handling notes.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/tschamut_swissalti3d_pilot.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a performance/bottleneck interpretability gate
+  requiring phase timings and row/file/byte counts for simulation, output
+  writing, and hazard accumulation context; softened proxy-terrain and
+  rotational-contact interpretation language; replaced production-style wording
+  with batch diagnostic wording; added private-path/provenance redaction and
+  processed-checksum notes; and noted that real pilot acceptance should use
+  explicit DEM-derived hazard-grid arguments.
+- Checks run: Pending.
+- Reviewer notes: First M002 pass needed revision for performance
+  interpretability evidence, scientific wording around validation and contact
+  recommendations, and GIS/geodata handling for private paths, checksums, and
+  explicit DEM-derived hazard grids.
+- Decision: REVISE for the first M002 pass; corrected decision ACCEPT if this
+  correction is complete.
+- Next proposed milestone: M003.
+
+### M002 Revision Check Addendum
+
+- Milestone id: M002 revision check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted verification for the M002 revision.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the requested M002 revision check
+  passed and reviewer findings were addressed.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/tschamut_swissalti3d_pilot.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Performance, scientific wording, and GIS/geodata findings
+  were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M003.
+
+### M003
+
+- Milestone id: M003.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Define the execution-report structure for performance,
+  terrain observations, manifests, and visual QA without adding report scripts
+  or template files.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Expanded the controlled pilot deliverable guidance
+  into a required diagnostic report structure covering input/provenance
+  inventory, command log, gate table, validation and hazard manifest summaries,
+  metric table, visual QA notes, performance/bottleneck observations,
+  terrain-representation observations, interpretation category, next-step
+  decision, and limitations. Added share-safe reporting constraints for raw
+  data, private paths, restricted tile identifiers, and share-sensitive
+  provenance.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no report scripts, templates, physics
+  changes, private geodata, operational validation claims, or risk-map language.
+- Decision: Pending.
+- Next proposed milestone: M004.
+
+### M003 Check Addendum
+
+- Milestone id: M003 check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M003 docs-only scope change.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M004.
+
+### M003 Revision Note
+
+- Milestone id: M003 revision.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Revise the diagnostic report structure to make hazard
+  GIS metadata carry-through and visual QA artifact traceability explicit.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Updated the hazard manifest summary requirements to
+  confirm EPSG:2056/LN02, geotransform or affine grid, nodata,
+  extent/resolution, and terrain/source provenance carry through to hazard
+  outputs or GeoTIFF metadata where applicable. Updated visual QA notes to
+  require reviewed PNG, HTML, GIS, or QGIS artifact references where present,
+  or an explicit no-artifact QA statement.
+- Checks run: Pending.
+- Reviewer notes: M003 needed stronger GIS metadata carry-through and visual QA
+  artifact traceability requirements.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M004.
+
+### M003 Revision Check Addendum
+
+- Milestone id: M003 revision check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M003 revision.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/agent_work_log.md`
+- Reviewer notes: GIS metadata carry-through and visual QA artifact findings
+  were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M004.
+
+### M004
+
+- Milestone id: M004.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Define post-run pilot review gate criteria and
+  failure-mode reporting expectations without adding scripts or templates.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added post-run gate review criteria for G1-G9,
+  including allowed statuses (`pass`, `no-go`, `inconclusive`, `not-run`),
+  required reason text for no-go/inconclusive outcomes, rerun limits, and
+  failure-mode categories for provenance, CRS/grid alignment, source-zone
+  freeze, manifest/output completeness, visual QA, performance evidence,
+  terrain-representation confounders, comparison evidence, and interpretation
+  boundaries. Clarified that no-go outcomes lead to data, provenance, or
+  process fixes, rerun, or deferral, not parameter tuning.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no report scripts, templates, physics
+  changes, private geodata, operational validation claims, risk-map language,
+  or tuning response to failures.
+- Decision: Pending.
+- Next proposed milestone: M005.
+
+### M004 Check Addendum
+
+- Milestone id: M004 check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M004 docs-only scope change.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M005.
+
+### M004 Revision Note
+
+- Milestone id: M004 revision.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Tighten post-run gate criteria for optional `not-run`
+  use, visual QA evidence, CRS/grid alignment, checksum evidence, expected-vs-
+  actual output counts, performance run context, and report failure labels.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Reserved `not-run` for explicitly optional branches,
+  clarified that missing required validation outputs, hazard manifests,
+  comparison metrics, or visual QA are `no-go`, strengthened G6 visual QA
+  evidence requirements, expanded CRS/grid alignment failure modes to include
+  raster origin and orientation, required private DEM checksums or recorded
+  reasons, required actual-vs-expected release/ensemble/output counts and
+  hazard input rows, required performance run context, and required
+  failure-mode labels for every `no-go` and `inconclusive` report gate.
+- Checks run: Pending.
+- Reviewer notes: M004 needed stronger distinction between optional not-run
+  branches and missing required evidence, plus sharper GIS alignment,
+  checksum, output-count, performance-context, and gate-label requirements.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M005.
+
+### M004 Revision Check Addendum
+
+- Milestone id: M004 revision check.
+- Roadmap item: 1. Controlled real-site Tschamut/swissALTI3D pilot with
+  embedded gates.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M004 revision.
+- Files intended to change:
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/tschamut_swissalti3d_controlled_pilot_plan.md docs/agent_work_log.md`
+- Reviewer notes: Optional branch handling, visual QA, CRS/grid alignment,
+  checksum, count, performance context, and gate-label findings were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M005.
+
+### M005
+
+- Milestone id: M005.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Define the initial guide outline for conditional,
+  sampling-weighted, physical-probability, and annual-frequency semantics
+  without adding examples, tests, physics, risk modelling, or annual-frequency
+  implementation.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Created a skeleton hazard-map semantics guide with a
+  status/scope statement, current supported `unweighted_diagnostic` and
+  `sampling_weighted_conditional` product classes, unsupported
+  `physical_probability` and `annual_frequency` classes, denominator and
+  conditioning outline, source-zone and block-scenario conditioning outline,
+  hazard-versus-risk boundary, and placeholders for later allowed-language,
+  manifest-check, and GIS-package alignment milestones. Added a short
+  discoverability cross-reference from the hazard-layer workflow doc.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no report scripts, templates, tests,
+  physics changes, annual-frequency claims, operational validation claims, or
+  risk modelling.
+- Decision: Pending.
+- Next proposed milestone: M006.
+
+### M005 Check Addendum
+
+- Milestone id: M005 check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M005 docs-only scope change.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/hazard_layers.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M006.
+
+### M005 Revision Note
+
+- Milestone id: M005 revision.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Add the design-only `conditional_probability` product
+  class and clarify Target 2 sequencing without weakening the minimal
+  deliverable.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added `conditional_probability` as an unsupported
+  design-only product class aligned with
+  `docs/probabilistic_scenario_model_design.md`, and added a Target 2
+  sequencing note that M005 creates the guide outline while examples and
+  manifest-schema enforcement remain later micro-milestones.
+- Checks run: Pending.
+- Reviewer notes: M005 needed explicit conditional-probability design-only
+  semantics and clearer incremental sequencing for the autonomous loop.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M006.
+
+### M005 Revision Check Addendum
+
+- Milestone id: M005 revision check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M005 revision.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/next_development_targets.md docs/agent_work_log.md`
+- Reviewer notes: Conditional-probability and sequencing findings were
+  addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M006.
+
+### M006
+
+- Milestone id: M006.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Add concise allowed and disallowed hazard-map language
+  examples for current product classes without adding tests or check scripts.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a language examples section covering
+  `unweighted_diagnostic`, `sampling_weighted_conditional`,
+  design-only `conditional_probability`, unsupported `physical_probability`,
+  unsupported `annual_frequency`, significant-impact density/event-location
+  distributions, hazard-versus-risk boundaries, operational validation
+  boundaries, and return-period language. Clarified that disallowed phrases may
+  become allowed only in future phases with required source-frequency,
+  exposure/vulnerability, validation, and manifest contracts.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no tests, check scripts, physics changes,
+  annual-frequency implementation, operational validation claims, or risk
+  modelling.
+- Decision: Pending.
+- Next proposed milestone: M007.
+
+### M006 Check Addendum
+
+- Milestone id: M006 check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M006 docs-only scope change.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M007.
+
+### M006 Revision Note
+
+- Milestone id: M006 revision.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Tighten language semantics for map-package product
+  labels, builder config terminology, future claim contracts, and
+  conditional/sampling-weighted probability wording.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Updated guide status to include M006 examples,
+  distinguished external `probability_mode` labels from current builder config
+  terms, split future-allowance requirements by risk, annual/return-period,
+  operational, and physical-probability claim type, tightened
+  `sampling_weighted_conditional` disallowed wording so sampling weights never
+  become physical probability by implication, tightened design-only
+  `conditional_probability` wording, and clarified Target 2 sequencing for
+  M005, M006, and M007.
+- Checks run: Pending.
+- Reviewer notes: M006 needed clearer separation between output labels and
+  builder config, narrower future-claim contracts, and stricter probability
+  wording.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M007.
+
+### M006 Revision Check Addendum
+
+- Milestone id: M006 revision check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M006 revision.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/next_development_targets.md docs/agent_work_log.md`
+- Reviewer notes: Product-label, config-term, future-contract, and probability
+  wording findings were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M007.
+
+### M007
+
+- Milestone id: M007.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Document semantics consistency-check expectations and
+  existing fixture references without adding broad new code.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a `Consistency Checks And Fixtures` section to
+  the semantics guide, referencing existing probabilistic phase 1 tests and
+  fixtures, and listing current/future map-package checks for
+  `probability_mode`, normalization scope, annualized flags, numerator and
+  denominator, source-zone/scenario conditioning, physical/annual rejection,
+  significant-impact event-density wording, and risk exclusion.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no tests, check scripts, physics changes,
+  annual-frequency implementation, operational validation claims, or risk
+  modelling.
+- Decision: Pending.
+- Next proposed milestone: M008.
+
+### M007 Check Addendum
+
+- Milestone id: M007 check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M007 docs-only scope change.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M008.
+
+### M007 Revision Note
+
+- Milestone id: M007 revision.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Clarify which semantics checks are already covered by
+  fixtures and which remain future manifest/check-script expectations.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Split the consistency section into existing coverage
+  and expected future expansion, softened physical-probability wording to avoid
+  overstating current validator coverage, marked numerator/denominator explicit
+  fields as future expectations unless already represented by current layer
+  semantics, and clarified that risk/operational exclusion is a required review
+  expectation with incomplete current executable enforcement.
+- Checks run: Pending.
+- Reviewer notes: M007 needed clearer separation between current fixture
+  coverage and future enforcement, softer physical-probability rejection
+  language, and explicit remaining enforcement gaps.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M008.
+
+### M007 Revision Check Addendum
+
+- Milestone id: M007 revision check.
+- Roadmap item: 2. Hazard-map semantics and interpretation guide.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M007 revision.
+- Files intended to change:
+  `docs/hazard_map_semantics.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/hazard_map_semantics.md docs/agent_work_log.md`
+- Reviewer notes: Current-vs-future coverage wording was corrected. Remaining
+  executable-enforcement gaps are a future milestone candidate.
+- Decision: ACCEPT.
+- Next proposed milestone: M008.
+
+### M008
+
+- Milestone id: M008.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Define local pilot GIS/QGIS package contents and
+  geospatial metadata expectations without adding production packaging code.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Created a pilot GIS package outline covering local
+  review scope, required GeoTIFF/CSV/ASCII parity outputs, manifests,
+  source-zone metadata or vector sidecars, terrain metadata, visual QA notes,
+  EPSG:2056/LN02 expectations, affine/geotransform, cell size, extent, nodata,
+  row order/north-up interpretation, checksums/provenance, explicit
+  DEM-derived grid requirements for real pilots, vertical-datum sidecar
+  limitations, and deferred QGZ/GeoPackage/styles/COG/tiling work. Added a
+  short discoverability cross-reference from `docs/hazard_layers.md`.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no scripts, tests, production GIS packaging,
+  COG claims, operational map claims, private geodata, or risk modelling.
+- Decision: Pending.
+- Next proposed milestone: M009.
+
+### M008 Check Addendum
+
+- Milestone id: M008 check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M008 docs-only scope change.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/hazard_layers.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M009.
+
+### M008 Revision Note
+
+- Milestone id: M008 revision.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Tighten pilot GIS wording to avoid production-package
+  implication and make real-site CRS/grid requirements mandatory.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Renamed required contents to required diagnostic
+  review contents, changed Swiss real-site CRS/geodata wording from `should
+  record` to `must record`, and changed real pilot explicit-grid wording from
+  `should use` to `must use` explicit DEM-derived grid arguments.
+- Checks run: Pending.
+- Reviewer notes: M008 needed clearer diagnostic-review framing and mandatory
+  real-site CRS/geodata and explicit-grid language.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M009.
+
+### M008 Revision Check Addendum
+
+- Milestone id: M008 revision check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M008 revision.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/agent_work_log.md`
+- Reviewer notes: Diagnostic-review wording and mandatory CRS/grid findings
+  were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M009.
+
+### M009
+
+- Milestone id: M009.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Define raster-layer semantics for local pilot GIS/QGIS
+  review without adding code or tests.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added raster review semantics for reach
+  probability/fraction, deposition density, maximum kinetic energy, maximum
+  jump height, significant-impact density/event-location distribution,
+  threshold exceedance layers, probability standard-error/convergence
+  diagnostics, weighted conditional layers, nodata versus valid zero, units,
+  source table types, and annualized/risk exclusions, with a cross-reference to
+  `docs/hazard_map_semantics.md`.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no code, tests, operational map claims,
+  annual-frequency claims, private geodata, or risk modelling.
+- Decision: Pending.
+- Next proposed milestone: M010.
+
+### M009 Check Addendum
+
+- Milestone id: M009 check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M009 docs-only scope change.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M010.
+
+### M009 Revision Note
+
+- Milestone id: M009 revision.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Tighten raster-layer semantics for denominators,
+  source inputs, units, and significant-impact density wording.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Updated reach to use supplied trajectory count with
+  at-most-once-per-trajectory cell counting, made deposition density a
+  dimensionless fraction of supplied deposition rows or points, removed
+  impact-adjacent wording from maximum kinetic energy, added explicit source
+  input mappings for trajectory CSVs, ensemble deposition CSV, impact-event
+  CSV/Parquet, and `trajectory_metadata_table_v1`, and corrected
+  `significant_impact_density` in `docs/hazard_layers.md` to fraction of
+  significant impact events per cell.
+- Checks run: Pending.
+- Reviewer notes: M009 needed stricter denominator and source-table language
+  and a correction to significant-impact density wording.
+- Decision: ACCEPT if corrected.
+- Next proposed milestone: M010.
+
+### M009 Revision Check Addendum
+
+- Milestone id: M009 revision check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M009 revision.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/hazard_layers.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/hazard_layers.md docs/agent_work_log.md`
+- Reviewer notes: Denominator, source-input, unit, and significant-impact
+  density findings were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M010.
+
+### M010
+
+- Milestone id: M010.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Define QGIS visual QA checklist and local diagnostic
+  package acceptance gate without adding code, tests, or production packaging.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a `QGIS Visual QA And Acceptance Gate` section
+  covering DEM/hillshade, release-zone sidecar, share-safe observed deposition
+  points, hazard rasters, manifests, CRS/project CRS EPSG:2056, LN02
+  sidecars, grid alignment, nodata versus zero styling, layer semantic labels,
+  no annual/risk/operational styling, artifact references, QA statuses
+  (`pass`, `no-go`, `inconclusive`, `not-run`), and local diagnostic acceptance
+  boundaries with no QGZ, COG, production, operational, or risk claim.
+- Checks run: Pending.
+- Reviewer notes: Docs-only scope; no code, tests, QGZ/COG packaging,
+  production map claims, operational validation claims, private geodata, or risk
+  modelling.
+- Decision: Pending.
+- Next proposed milestone: M011.
+
+### M010 Check Addendum
+
+- Milestone id: M010 check.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record targeted markdown-only verification for the
+  M010 docs-only scope change.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recorded completion of the requested targeted check.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/agent_work_log.md`
+- Reviewer notes: Check covers whitespace/errors in the intended changed files.
+- Decision: ACCEPT.
+- Next proposed milestone: M011.
+
+### M010 Revision Note
+
+- Milestone id: M010 revision.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Tighten visual QA acceptance semantics and update the
+  pilot GIS package status to reflect M008-M010 content.
+- Files intended to change:
+  `docs/pilot_gis_package.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Updated the status line to cover package contents,
+  raster semantics, and visual QA gate; tightened acceptance so core CRS/grid
+  metadata, semantic labels, nodata handling, provenance, and required visual QA
+  evidence must be `pass`; and limited non-blocking `inconclusive` status to
+  optional or non-core artifacts that do not affect the diagnostic question.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/agent_work_log.md`
+- Reviewer notes: GIS reviewer accepted M010; scientific reviewer requested a
+  stricter acceptance gate and status update.
+- Decision: ACCEPT if the targeted check passes.
+- Next proposed milestone: M011.
+
+### M010 Acceptance Addendum
+
+- Milestone id: M010 acceptance.
+- Roadmap item: 3. Pilot GIS/QGIS package and raster semantics.
+- Hypothesis/objective: Record final acceptance after targeted verification.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the targeted check passed and both
+  reviewer concerns were addressed.
+- Checks run:
+  `git diff --check -- docs/pilot_gis_package.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: GIS reviewer accepted; scientific revision tightened core
+  non-waivable acceptance and updated the status line.
+- Decision: ACCEPT.
+- Next proposed milestone: M011.
+
+### M011
+
+- Milestone id: M011.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Define source-zone representation, release-cell policy,
+  provenance, and exclusion rules using existing source-zone metadata and
+  `trajectory_metadata_table_v1` semantics, without adding block-scenario
+  semantics yet.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a source-zone semantics v1 subsection covering
+  polygon/multipolygon design intent, current small-polygon fixture/parser
+  limitation, stable `source_zone_id`, deterministic `release_cell_id`,
+  release sampling as numerical design rather than physical probability,
+  CRS/vertical-datum/provenance/source/license requirements, and exclusions for
+  national derivation, slope/geology/inventory release algorithms, annual
+  source frequency, physical source probability, swisstopo-as-validation, and
+  operational source-zone approval. Added a schema cross-reference near
+  release-zone metadata.
+- Checks run: Pending.
+- Reviewer notes: Pending.
+- Decision: Pending.
+- Next proposed milestone: M012.
+
+### M011 Revision Note
+
+- Milestone id: M011 revision.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Correct source-zone v1 schema wording so current
+  support is polygon-only and release-zone sidecars are not conflated with
+  `source_zone_metadata_v1`.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Revised source-zone geometry wording to state that
+  current `source_zone_metadata_v1` and release-zone parser support is
+  polygon-only, with multipolygon remaining future design intent and not parsed
+  today. Clarified that `release_zone.metadata_path` is a separate
+  schema-version-1 deterministic release-generation sidecar, while
+  `source_zone_metadata_v1` belongs to the probabilistic metadata contract for
+  source-zone/scenario joins; both preserve stable identity and provenance but
+  are not the same schema.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+- Reviewer notes: Scientific reviewer accepted M011; roadmap/schema reviewer
+  requested revision for polygon-only support and schema separation.
+- Decision: ACCEPT if the targeted check passes.
+- Next proposed milestone: M012.
+
+### M011 Acceptance Addendum
+
+- Milestone id: M011 acceptance.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Record final acceptance after targeted verification.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the targeted check passed after
+  revision and reviewer concerns were addressed.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Scientific reviewer accepted; roadmap/schema reviewer
+  concerns were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M012.
+
+### M012
+
+- Milestone id: M012.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Define block-scenario metadata semantics v1 using
+  existing `scenario_table_v1` and `trajectory_metadata_table_v1` fields without
+  adding tests or code.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a block-scenario semantics v1 subsection
+  covering stable `block_scenario_id`, block size/shape class labels,
+  representative radius/mass/density metadata propagation, the current active
+  case spherical-block physics boundary, inactive shape-dependent contact,
+  `sampling_weight` as conditional sampling weight rather than physical
+  block-population probability, inactive source/release probability and annual
+  frequency fields, and exclusions for calibrated block-population
+  distributions, fragmentation, shape-dependent contact, mid-trajectory
+  block-size changes, and operational block-scenario approval. Added schema
+  clarification that propagated block-scenario fields are additive Phase 1
+  labels/weights and do not change default physics.
+- Checks run: Pending.
+- Reviewer notes: Pending.
+- Decision: Pending.
+- Next proposed milestone: M013.
+
+### M012 Revision Note
+
+- Milestone id: M012 revision.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Correct block-scenario numeric field semantics so
+  scenario-table representative values are not described as current trajectory
+  metadata numeric overrides.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Revised block-scenario semantics to state that
+  `block_scenario_id`, `block_size_class`, `block_shape_class`, and
+  `sampling_weight` are current additive propagated scenario labels/weights,
+  while representative scenario numeric fields are schema-visible design and
+  consistency fields that must match or be reconciled with active case block
+  values before interpretation as simulated values. Clarified that current
+  `trajectory_metadata_table_v1` numeric block columns report active simulated
+  case block and passive shape values, not scenario-row numeric overrides.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+- Reviewer notes: Scientific reviewer accepted M012; implementation/schema
+  reviewer requested revision for current trajectory metadata numeric block
+  value provenance.
+- Decision: ACCEPT if the targeted check passes.
+- Next proposed milestone: M013.
+
+### M012 Acceptance Addendum
+
+- Milestone id: M012 acceptance.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Record final acceptance after targeted verification.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the targeted check passed after
+  revision and reviewer concerns were addressed.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Scientific reviewer accepted; implementation/schema reviewer
+  concern was addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M013.
+
+### M013
+
+- Milestone id: M013.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Define consistency checks for scenario weighting,
+  calibration/validation separation, and deterministic seeding without adding
+  code.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added Scenario Consistency Checks V1 covering stable
+  joins across source-zone metadata, scenario tables, trajectory metadata, and
+  manifests; finite nonnegative sampling weights and positive filtered totals;
+  denominator and normalization recording; calibration/validation separation;
+  swisstopo inputs as operational geodata rather than validation evidence;
+  deterministic seeds, trajectory ids, release-cell ids, and order-independent
+  reducers; deferred physical probability and annual frequency evidence/schema
+  requirements; and physics-boundary failures for block numeric overrides and
+  shape labels. Added a validation schema cross-reference noting which checks
+  are currently parser/test enforced and which remain documented review gates.
+- Checks run: Pending.
+- Reviewer notes: Pending.
+- Decision: Pending.
+- Next proposed milestone: M014.
+
+### M013 Revision Note
+
+- Milestone id: M013 revision.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Correct M013 consistency-check wording so current
+  parser/test-enforced checks are distinguished from documented review gates and
+  future executor/reducer expectations.
+- Files intended to change:
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Split Scenario Consistency Checks V1 into
+  parser/test-enforced checks and documented review gates/future enforcement
+  targets. Clarified that deterministic seeding and reducer-order independence
+  are documented design/review expectations for future executors and reducers,
+  not current parser/test enforcement.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+- Reviewer notes: Reviewer requested REVISE because the first M013 wording
+  implied deterministic seed review and reducer-order independence were already
+  executable enforcement.
+- Decision: ACCEPT if the targeted check passes.
+- Next proposed milestone: M014.
+
+### M013 Acceptance Addendum
+
+- Milestone id: M013 acceptance.
+- Roadmap item: 4. Source-zone and block-scenario semantics v1.
+- Hypothesis/objective: Record final acceptance after targeted verification.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the targeted check passed after
+  revision and reviewer concern was addressed.
+- Checks run:
+  `git diff --check -- docs/probabilistic_scenario_model_design.md docs/validation_data_schema.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Concern was addressed by splitting parser/test-enforced checks
+  from documented review gates.
+- Decision: ACCEPT.
+- Next proposed milestone: M014.
+
+### M014
+
+- Milestone id: M014.
+- Roadmap item: 5. DEM and terrain-representation sensitivity benchmark.
+- Hypothesis/objective: Add an initial documentation-only benchmark design for
+  DEM and terrain-representation sensitivity without running private data or
+  generating outputs.
+- Files intended to change:
+  `docs/dem_terrain_sensitivity_benchmark.md`,
+  `docs/benchmark_catalog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Created a DEM/terrain sensitivity benchmark design
+  covering purpose, compared terrain representations, invariants, required
+  metadata, runout/deposition and hazard-layer metrics, visual QA, timing and
+  output-volume context, acceptance gates, and future M015/M016 report
+  sections. Added a Level 5 benchmark-catalog cross-reference that marks the
+  design as documentation-only and not part of `validate --all`.
+- Checks run: Pending.
+- Reviewer notes: Pending.
+- Decision: Pending.
+- Next proposed milestone: M015.
+
+### M014 Revision Note
+
+- Milestone id: M014 revision.
+- Roadmap item: 5. DEM and terrain-representation sensitivity benchmark.
+- Hypothesis/objective: Make the DEM/terrain sensitivity design concrete enough
+  for future execution while staying documentation-only.
+- Files intended to change:
+  `docs/dem_terrain_sensitivity_benchmark.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a concrete comparison matrix for
+  synthetic/control, public Tschamut proxy, native private swissALTI3D,
+  coarsened resolutions, interpolation/resampling methods, smoothing variants,
+  cliff/nodata variants, and terrain-class/raster alignment variants. Added
+  LV95/EPSG:2056 and LN02 requirements or recorded transforms for private
+  Tschamut/swissALTI3D variants; ESRI ASCII `xllcorner`/`yllcorner`, north/top
+  first row, and cell-center conventions; predeclared resampling/coarsening and
+  nodata behavior; terrain-class variant limits; diagnostic-only observation
+  comparison caveats; a minimum dry-run/real-site recipe; ignored output roots;
+  command/report placeholders; paired output modes; and gate statuses.
+- Checks run:
+  Original targeted check:
+  `git diff --check -- docs/dem_terrain_sensitivity_benchmark.md docs/benchmark_catalog.md docs/agent_work_log.md`
+  passed.
+  Revision targeted check:
+  `git diff --check -- docs/dem_terrain_sensitivity_benchmark.md docs/agent_work_log.md`
+- Reviewer notes: Both reviewers requested revision for concrete executable
+  comparison design, metadata/nodata specifics, terrain-class boundaries,
+  diagnostic observation language, and a minimum recipe.
+- Decision: ACCEPT if the revision targeted check passes.
+- Next proposed milestone: M015.
+
+### M014 Acceptance Addendum
+
+- Milestone id: M014 acceptance.
+- Roadmap item: 5. DEM and terrain-representation sensitivity benchmark.
+- Hypothesis/objective: Record final acceptance after targeted verification.
+- Files intended to change: `docs/agent_work_log.md`
+- Implementation summary: Recorded that the revision targeted check passed and
+  both reviewers' concerns were addressed.
+- Checks run:
+  `git diff --check -- docs/dem_terrain_sensitivity_benchmark.md docs/agent_work_log.md`
+  passed.
+- Reviewer notes: Both reviewers' concerns were addressed.
+- Decision: ACCEPT.
+- Next proposed milestone: M015.

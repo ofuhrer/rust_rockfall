@@ -5,6 +5,11 @@ spatial raster/vector products. It is a post-processing layer only: it does not
 add physics, does not alter validation or calibration, and does not include risk
 modelling.
 
+Interpretation semantics for diagnostic, sampling-weighted, and unsupported
+probability classes are outlined in `docs/hazard_map_semantics.md`.
+Local pilot GIS/QGIS package expectations are outlined in
+`docs/pilot_gis_package.md`.
+
 ## Scope
 
 Current layers:
@@ -15,8 +20,8 @@ Current layers:
 - `max_kinetic_energy`: maximum sampled kinetic energy per cell.
 - `max_jump_height`: maximum sampled height above terrain plus block radius per
   cell, where the terrain can be evaluated from case metadata.
-- `significant_impact_density`: fraction of impact events per cell whose
-  incoming normal speed is at least `0.05 m/s`.
+- `significant_impact_density`: fraction of significant impact events per cell,
+  where significant means incoming normal speed is at least `0.05 m/s`.
 - optional trajectory-level exceedance probability layers for configured
   thresholds:
   - `kinetic_energy_exceedance_<threshold>j`

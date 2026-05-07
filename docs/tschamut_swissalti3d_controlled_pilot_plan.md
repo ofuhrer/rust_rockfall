@@ -21,8 +21,8 @@ metadata?
 The pilot compares:
 
 - `translational_v0`: current default baseline;
-- `sphere_rotational_v1`: recommended opt-in contact model for trajectory and
-  contact experiments.
+- `sphere_rotational_v1`: opt-in contact-model comparison for this controlled
+  pilot and later Tschamut-style testing if evidence supports it.
 
 No parameters may be tuned during this pilot. The result is a diagnostic
 workflow outcome, not operational validation.
@@ -154,6 +154,136 @@ Before generating runnable cases, confirm:
   results;
 - validation and hazard manifests will be reviewed before interpreting metrics
   or maps.
+
+## Pilot Scope And Evidence Gates
+
+M002 defines the controlled-pilot scope and gate inventory only. It does not
+authorize tuning, new scripts, report templates, physics changes, default
+changes, or committed private/geodata artifacts.
+
+### Scope
+
+The pilot is limited to a controlled real-site comparison between:
+
+- checked-in public/proxy Tschamut cases used as context;
+- a private, provenance-tracked swissALTI3D-style DEM crop and release-zone
+  sidecar;
+- `translational_v0` and `sphere_rotational_v1` using existing documented
+  settings.
+
+The pilot may answer whether the proxy-terrain under-run changes under real
+terrain. It may not claim operational validation, annual probability,
+physical occurrence probability, risk, or equivalence to any proprietary model.
+
+### No-Tuning And Private-Data Boundaries
+
+The pilot is a freeze-before-run exercise:
+
+- freeze DEM crop, release-zone geometry, release sampling settings, block
+  settings, contact settings, roughness, scarring, and optional terrain-class
+  choices before inspecting pilot metrics or maps;
+- do not adjust any of those choices after seeing runout, deposition, energy,
+  jump-height, or reach results;
+- keep raw swissALTI3D, private DEM crops, generated cases, generated
+  validation outputs, generated hazard outputs, and derived private visual
+  products out of git;
+- record private input paths, source-tile identifiers, CRS, vertical datum,
+  preprocessing notes, and checksums in local manifests or sidecars where
+  available;
+- keep manifests containing private absolute paths, restricted tile
+  identifiers, or share-sensitive provenance ignored locally, and redact those
+  fields before sharing derived summaries;
+- record a non-null processed DEM checksum for each real private crop, or an
+  explicit reason why the checksum could not be recorded, so local reruns can
+  verify the exact terrain crop where feasible;
+- treat optional terrain classes as auditable metadata only, not as calibrated
+  Tschamut classes, unless a separate future calibration experiment is designed.
+
+### Gate Inventory
+
+These gates are evidence-completeness checks. They are not runtime pass/fail
+budgets and they do not decide whether the model is valid for operations.
+
+| Gate | Evidence required | Go condition | No-go condition |
+| --- | --- | --- | --- |
+| G1 private-input completeness | DEM crop, terrain metadata, release-zone metadata, and optional terrain-class metadata if used. | Required files exist locally and metadata can be inspected. | Any required private input is missing or undocumented. |
+| G2 provenance and CRS completeness | EPSG:2056, LN02, metre units, extent, resolution, nodata, source dataset, source/license notes, preprocessing notes, and checksums where available. | Metadata are complete enough to audit terrain and release-zone provenance. | CRS/datum/extent/resolution/nodata are missing, conflicting, or unauditable. |
+| G3 source-zone independence | Release-zone source, polygon, sampling mode, requested count, and seed. | Source-zone choices were defined before seeing pilot outputs. | Source-zone geometry or sampling was adjusted after inspecting results. |
+| G4 no-tuning freeze | Frozen settings for contact, block, release, roughness, scarring, and optional terrain classes. | All compared cases use predeclared settings and unchanged defaults. | Any parameter or default was changed to improve Tschamut agreement. |
+| G5 manifest completeness | Validation and hazard manifests for baseline and rotational cases. | Manifests record model version, git hash, config fingerprint, seed policy, terrain provenance, release-zone provenance, output paths, row counts, file counts, and warnings. | Manifests are missing or omit provenance, seed, configuration, or output-count evidence. |
+| G6 spatial QA completeness | DEM/release-zone inspection, deposition-point coverage, nodata/crop-edge review, reach/deposition review, and energy/jump artifact review. | Spatial QA uses reviewed plot/GIS artifacts or documented manual/GIS inspection, and shows inputs and outputs are interpretable and not dominated by obvious CRS, nodata, or crop-edge errors. | Spatial QA exposes unresolved CRS, datum, nodata, release-zone, or crop-edge problems, or lacks reviewed artifacts and documented manual/GIS inspection. |
+| G7 comparison evidence completeness | Proxy context metrics, real-terrain baseline metrics, real-terrain rotational metrics, and hazard-layer summaries. | Enough evidence exists to classify under-run as improved, persistent, worsened, or inconclusive. | Missing metrics or layer summaries prevent a traceable comparison. |
+| G8 performance/bottleneck interpretability | Phase timings plus trajectory/deposition/impact/hazard row counts, file counts, and byte counts. | Evidence is sufficient to identify whether the limiting stage appears to be simulation, output writing, or hazard accumulation. These diagnostics are contextual only, not runtime pass/fail budgets. | Timing or output-volume evidence is missing or too coarse to interpret the likely bottleneck. |
+| G9 interpretation boundary | Written notes state non-operational status, no tuning, no risk-map claim, no annual-frequency claim, and no proprietary-model equivalence claim. | Interpretation remains diagnostic and scoped to the controlled pilot question. | Interpretation overclaims validation, probability, risk, or proprietary equivalence. |
+
+If any gate is no-go, stop interpretation and record the reason before reruns or
+additional comparisons. Fix data/provenance issues without tuning model or
+release parameters to observed results.
+
+### Post-Run Gate Review Criteria
+
+M004 defines how to review G1-G9 after a run. The review is a diagnostic
+evidence assessment, not a model-validation decision.
+
+Allowed gate statuses:
+
+- `pass`: required evidence is present and interpretable;
+- `no-go`: required evidence is absent, contradictory, unauditable, or shows a
+  process violation;
+- `inconclusive`: evidence exists but is too weak, ambiguous, or confounded for
+  interpretation;
+- `not-run`: the gate depends on an explicitly optional branch or artifact that
+  was not generated, such as optional terrain classes, optional plots, GeoTIFF
+  metadata when GeoTIFF export was not requested, or significant-impact density
+  when impact events are absent.
+
+Missing required baseline or rotational validation outputs, hazard manifests,
+comparison metrics, or visual QA evidence must be marked `no-go`, not
+`not-run`.
+
+Every `no-go` or `inconclusive` status must include a short reason, the affected
+files or evidence sources where share-safe, and the allowed next action. Reruns
+are allowed only to fix data, provenance, command, manifest, output, or QA
+process issues. Reruns must not tune restitution, friction, roughness, scarring,
+terrain classes, block settings, release velocity, release geometry, or defaults
+to improve agreement with observations.
+
+Classify failure modes with one or more of these labels:
+
+- `private_input_provenance_failure`: missing private DEM, sidecar metadata,
+  source/license notes, preprocessing notes, or checksum evidence;
+- `crs_grid_alignment_failure`: conflicting or missing EPSG:2056/LN02,
+  geotransform or affine grid, extent, resolution, nodata, DEM/header, raster
+  origin convention (`xllcorner` versus `xllcenter`), lower-left grid origin,
+  row order or north-up interpretation, hazard-cell alignment, or hazard grid
+  evidence;
+- `source_zone_freeze_violation`: release-zone geometry, sampling, seed, or
+  source interpretation changed after inspecting results;
+- `manifest_output_completeness_failure`: validation or hazard manifests,
+  warnings, output paths, actual-vs-expected generated release count, ensemble
+  size, trajectory/deposition/impact row and file counts, hazard input rows
+  read, or byte counts are missing or inconsistent;
+- `visual_qa_failure`: DEM/release-zone, deposition coverage, nodata/crop-edge,
+  reach/deposition, energy/jump, or reviewed artifact evidence exposes an
+  unresolved spatial interpretation problem;
+- `performance_evidence_incomplete`: phase timings or row/file/byte counts are
+  missing or too coarse to identify whether simulation, output writing, or
+  hazard accumulation is the likely bottleneck, or run context is missing for
+  hardware/CPU or thread count where known, plot mode, release count, ensemble
+  size, and input/output format;
+- `terrain_representation_confounder`: DEM resolution, interpolation,
+  smoothing, cliff/nodata handling, vegetation/obstacle omission, or terrain
+  classes plausibly dominate the interpretation;
+- `comparison_evidence_inconclusive`: proxy, real-terrain baseline,
+  real-terrain rotational, or hazard-layer summaries are insufficient to
+  classify the under-run outcome;
+- `interpretation_boundary_violation`: notes overclaim operational validation,
+  risk, annual frequency, physical occurrence probability, proprietary-model
+  equivalence, tuning, or default-change implications.
+
+No-go outcomes lead to data/provenance/process fixes, an explicitly documented
+rerun, or deferral. They do not justify parameter tuning or broad validation
+claims.
 
 ## Output And Ignored-Data Policy
 
@@ -292,7 +422,7 @@ python3 scripts/build_hazard_layers.py \
 ```
 
 For a selected QA run only, omit `--no-plots` to generate PNG/HTML diagnostic
-reports. Do not use plotted mode for routine benchmark or production-style
+reports. Do not use plotted mode for routine benchmark or batch diagnostic
 runs.
 
 ## Manifest And Provenance Checks
@@ -334,7 +464,7 @@ Required checks:
 - generated layer names include reach, deposition, max energy, max jump height,
   significant impact density when impacts exist, and configured exceedance
   layers;
-- `plots_enabled` is `false` for production-style runs;
+- `plots_enabled` is `false` for batch diagnostic runs;
 - warnings do not indicate missing full ensemble trajectory inputs.
 
 ## Metrics To Compare
@@ -442,9 +572,9 @@ Use these categories:
 ### Under-run Improves
 
 If real terrain reduces the runout/deposition bias substantially without
-tuning, proxy terrain was a major limitation. Next step: prioritize GIS-ready
-hazard outputs and better real-site source/terrain-class documentation before
-new physics.
+tuning, proxy terrain and/or source representation likely contributed to the
+under-run. Next step: prioritize GIS-ready hazard outputs and better real-site
+source/terrain-class documentation before new physics.
 
 ### Under-run Persists
 
@@ -464,15 +594,15 @@ parameters and equivalent-sphere physics are not transferable to this site.
 ### Rotational Contact Helps
 
 If `sphere_rotational_v1` improves Tschamut real-terrain metrics without
-creating worse energy/jump artifacts, it strengthens the recommendation to use
-rotational contact in trajectory and real-site experiments. It still does not
-justify changing defaults.
+creating worse energy/jump artifacts, it supports further Tschamut-style
+testing with rotational contact. It still does not justify changing defaults or
+making broad contact-model recommendations.
 
 ### Rotational Contact Does Not Help
 
-If rotational contact does not improve Tschamut, keep it recommended for Chant
-Sura trajectory/contact experiments only. Tschamut may be controlled more by
-terrain/source/shape/material effects than by spherical rotational coupling.
+If rotational contact does not improve Tschamut, do not generalize from this
+pilot. Tschamut may be controlled more by terrain/source/shape/material effects
+than by spherical rotational coupling.
 
 ## Strict Constraints
 
@@ -491,19 +621,53 @@ terrain/source/shape/material effects than by spherical rotational coupling.
 
 ## Deliverable After Execution
 
-Once private inputs are available and the pilot is run, create a short results
-document with:
+Once private inputs are available and the pilot is run, create a short
+diagnostic results document. M003 defines the report structure only; do not add
+report scripts or template files in this milestone.
 
-- input data inventory and checksums;
-- command log;
-- manifest/provenance summary;
-- baseline vs rotational validation metric table;
-- proxy vs real-terrain comparison table;
-- selected hazard-layer screenshots or statistics;
-- visual QA findings;
-- conclusion: under-run improves, persists, or worsens;
-- recommended next step: shape scaffold, GIS export, terrain-class calibration
-  design, or data-quality correction.
+Required report sections:
 
-That execution report should remain honest about limitations and should not
-claim predictive skill.
+- input/provenance inventory: DEM crop source, CRS, vertical datum, extent,
+  resolution, nodata, source-tile identifiers where share-safe, preprocessing
+  notes, release-zone source, optional terrain classes, and checksums where
+  feasible;
+- command log: preparation, validation, proxy-control, and hazard-layer
+  commands with enough detail to reproduce the local run;
+- gate table: G1-G9 status, evidence links or filenames, unresolved no-go
+  items, failure-mode labels for every `no-go` and `inconclusive` gate, and
+  any stopped interpretation;
+- validation manifest summary: model version, git hash, config fingerprint,
+  seed policy, contact model, terrain provenance, release-zone provenance,
+  warning summary, trajectory/deposition/impact output paths, row counts, file
+  counts, and bytes;
+- hazard manifest summary: explicit grid parameters, layer names, thresholds,
+  plot mode, warnings, output file counts, output bytes, trajectory-input
+  completeness, and confirmation that EPSG:2056/LN02, geotransform or affine
+  grid, nodata, extent/resolution, and terrain/source provenance carry through
+  to hazard outputs or GeoTIFF metadata where applicable;
+- metric table: proxy controls, real-terrain baseline, and real-terrain
+  rotational values for the validation metrics listed above;
+- visual QA notes: DEM/release-zone inspection, deposition-point coverage,
+  nodata and crop-edge review, reach/deposition review, and energy/jump
+  artifact review, with references to reviewed PNG, HTML, GIS, or QGIS files
+  where present, or an explicit statement that no plot/GIS artifacts were
+  generated and how QA was performed;
+- performance/bottleneck observations: phase timings and row/file/byte counts
+  sufficient to interpret whether the main bottleneck appears to be simulation,
+  output writing, or hazard accumulation;
+- terrain-representation observations: resolution, interpolation, smoothing,
+  cliff or nodata handling, terrain-class use or omission, vegetation/obstacle
+  visibility, and any observed terrain/source confounders;
+- interpretation category: under-run improves, persists, worsens, or remains
+  inconclusive, with the evidence used for that classification;
+- next-step decision: data-quality correction, pilot rerun, GIS packaging,
+  terrain/source semantics work, terrain-class calibration design, shape/contact
+  testing, or pause;
+- limitations: no tuning, no private-data release, no operational validation,
+  no risk-map claim, no annual-frequency claim, no proprietary-model
+  equivalence claim, and no default change.
+
+The report is a diagnostic evidence summary, not a validation certificate.
+Shareable versions must omit raw data, private absolute paths, restricted tile
+identifiers, and share-sensitive provenance. Keep private manifests and visual
+products ignored locally or redact them before sharing.

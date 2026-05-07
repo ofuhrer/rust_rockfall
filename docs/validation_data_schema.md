@@ -220,6 +220,18 @@ The current `schema_version: 1` release-zone metadata contract supports only sma
 
 When both `terrain.metadata_path` and `release_zone.metadata_path` are present, validation checks that CRS/vertical datum match and that the release polygon lies inside the small pilot DEM footprint. Generated release points are recorded in `run_manifest_v1` and can optionally be written to `release_zone.generated_release_points_csv`.
 
+Source-zone semantics are defined in
+`docs/probabilistic_scenario_model_design.md`. In this validation schema,
+`release_zone.metadata_path` is a separate schema-version-1 deterministic
+release-generation sidecar. `source_zone_metadata_v1` belongs to the
+probabilistic metadata contract for source-zone/scenario joins and
+`trajectory_metadata_table_v1` production. Both sidecar families must preserve
+stable source/release identity, CRS/vertical datum, sampling policy,
+provenance, source, and license notes, but they are not the same schema. Neither
+sidecar implies physical source probability, annual source frequency, national
+release-zone derivation, validation evidence from swisstopo inputs alone, or
+operational source-zone approval.
+
 ## Terrain-Class Metadata
 
 Swiss pilot cases can opt into `terrain_classes.metadata_path` to attach a small aligned terrain/material-class raster. This is not a new contact law. It only selects local values for existing parameters where a class override is explicitly provided; otherwise the global case parameters are used.
@@ -493,6 +505,24 @@ outputs. The selected scenario row is propagated additively into
 1. If multiple scenario rows are present, `scenario_id` is required; the runner
 does not infer a scenario. Existing cases without `probabilistic_metadata`
 remain diagnostic/unweighted and are not relabelled probabilistic.
+
+Block-scenario fields propagated from `scenario_table_v1` are additive labels
+and weights for Phase 1 metadata. `block_scenario_id`, `block_size_class`,
+`block_shape_class`, and `sampling_weight` do not change default simulation
+physics, do not create shape-dependent contact, and do not define physical
+block-population probability unless a future schema and runner explicitly add
+that contract. Representative radius/mass/density fields in `scenario_table_v1`
+are parsed and validated scenario-table fields, but current
+`trajectory_metadata_table_v1` numeric block columns report active simulated
+case block and passive shape values, not scenario-row numeric overrides.
+
+Scenario consistency expectations are summarized in
+`docs/probabilistic_scenario_model_design.md`. Current parser/tests enforce
+some Phase 1 checks, including source-zone/scenario joins, sampling-weight
+constraints, and annual-frequency rejection. Calibration/validation separation,
+swisstopo-as-input-not-validation interpretation, deterministic seed review,
+and reducer-order independence remain documented review gates unless a future
+milestone adds executable enforcement.
 
 When `outputs.manifest_json` is set, verification or validation writes an
 additive `run_manifest_v1` sidecar. The manifest records the case id, model

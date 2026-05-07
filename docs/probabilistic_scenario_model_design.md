@@ -46,7 +46,8 @@ id, and `time_horizon_years` should be omitted.
 
 The source-zone model starts with geometry:
 
-- polygon or multipolygon in the case CRS;
+- polygon in the case CRS for current `source_zone_metadata_v1` and
+  release-zone parser support;
 - EPSG code and vertical datum;
 - source-zone id;
 - provenance, source, and license metadata;
@@ -55,6 +56,37 @@ The source-zone model starts with geometry:
 
 The current release-zone pilot already provides deterministic polygon sampling
 for small fixtures. That is sufficient for conditional source-zone experiments.
+Multipolygon source areas remain future design intent and are not parsed by the
+current source-zone/release-zone fixture path.
+
+### Source-Zone Semantics V1
+
+Current source-zone semantics are intentionally narrow and metadata-driven.
+
+- Geometry intent: current source zones are polygon source areas in the case
+  CRS. Current checked-in fixtures and parser paths use small polygon sidecars
+  only; multipolygon remains future design intent and must not be assumed
+  parsed or supported by `source_zone_metadata_v1` or `release_zone.metadata_path`
+  until an explicit schema/parser change adds it.
+- Identity: `source_zone_id` must be stable across manifests, source-zone
+  sidecars, scenario tables, and `trajectory_metadata_table_v1`. Generated
+  release cells or release points should have deterministic `release_cell_id`
+  values so reruns and reducers can join outputs without depending on execution
+  order.
+- Sampling semantics: release sampling is a numerical design for representing
+  a source area. Equal grid samples, stratified samples, and sampling weights do
+  not by themselves define physical release probability.
+- Required provenance: source-zone sidecars should record CRS, vertical datum,
+  source geometry provenance, source dataset or interpretation basis, license
+  notes, preprocessing notes where applicable, and any manual interpretation
+  caveats.
+- Exclusions: current source-zone metadata does not implement national source
+  derivation, a slope/geology/inventory release algorithm, annual source
+  frequency, or physical source probability. Those may appear only in a future
+  phase with explicit evidence and schema support. swisstopo terrain or context
+  data are operational input geodata, not validation evidence by themselves.
+  Source zones are diagnostic research inputs and must not be presented as
+  operationally approved source areas.
 
 ### Release Density and Sampling Policy
 
@@ -114,6 +146,37 @@ should use frequency units, for example `1/year`.
 
 ## Block Population Model
 
+### Block-Scenario Semantics V1
+
+Block-scenario metadata is an additive scenario contract, not physics behavior
+by itself.
+
+- Identity: `block_scenario_id` is the stable identifier for the block scenario
+  represented by a scenario row and propagated trajectory metadata. It does not
+  select contact physics or shape behavior by itself.
+- Metadata fields: `block_scenario_id`, `block_size_class`,
+  `block_shape_class`, and `sampling_weight` are current additive propagated
+  scenario labels or weights. Representative scenario numeric fields such as
+  `block_radius_m`, `block_mass_kg`, and optional `block_density_kgpm3` are
+  schema-visible design and consistency fields; they must match or be
+  reconciled with active case block values before they can be interpreted as
+  simulated values. Current `trajectory_metadata_table_v1` numeric block
+  radius, mass, and density columns reflect the active simulated case block or
+  passive shape metadata, not scenario-row numeric overrides.
+- Current physics boundary: the simulator still uses the active case spherical
+  block unless a validation or probabilistic runner explicitly selects and
+  propagates a scenario row into the case/run metadata. Passive shape labels do
+  not imply active shape-dependent contact.
+- Sampling weights: `sampling_weight` may weight scenario rows for conditional
+  sampling-weighted hazard products. It is not physical block-population
+  probability by itself.
+- Inactive probability fields: release/source probability fields and annual
+  frequency remain inactive for current Phase 1 unless future evidence and
+  schema support are added.
+- Exclusions: v1 does not define calibrated block-population distributions,
+  fragmentation, shape-dependent contact, mid-trajectory block-size changes, or
+  operational block-scenario approval.
+
 ### Fixed Block Scenario
 
 The current simulator uses a spherical block with fixed radius and mass. A
@@ -167,6 +230,42 @@ Allowed scenario probability modes should be explicit:
 `sampling_weighted` can be used to estimate a conditional probability if the
 scenario defines the denominator. It should not be described as physical
 probability unless the probability model states that interpretation explicitly.
+
+### Scenario Consistency Checks V1
+
+Current Phase 1 scenario consistency checks should keep joins, weights,
+evidence roles, and deterministic identity explicit. Some checks are already
+parser/test-enforced; others are documented review gates until future executors
+or reducers add explicit enforcement.
+
+Parser/test-enforced checks:
+
+- Stable joins: `source_zone_id`, `scenario_id`, deterministic
+  `release_cell_id`, and `block_scenario_id` where present must join
+  consistently across source-zone metadata, scenario tables, selected
+  `trajectory_metadata_table_v1` fields, and map-package manifests.
+- Sampling weights: weighted scenario rows must use finite nonnegative
+  `sampling_weight` values; sampling-weighted conditional products require a
+  positive filtered total weight and must record the denominator and
+  normalization scope where current map-package metadata supports it.
+- Deferred probability failures: physical probability and annual frequency
+  require explicit future evidence and schema support; current Phase 1 metadata
+  must not infer them from sampling weights.
+
+Documented review gates and future enforcement targets:
+
+- Calibration/validation separation: scenario weights and source-zone choices
+  used for hazard-map conditioning are not validation evidence and must not be
+  treated as tuning results. swisstopo terrain or context inputs are
+  operational geodata, not validation evidence by themselves.
+- Deterministic seeding and reducer order: release sampling seeds, trajectory
+  ids, release-cell ids, and reducer joins should make reruns and aggregated
+  summaries independent of trajectory execution order. This is a documented
+  design/review expectation for future executors and reducers, not current
+  parser/test enforcement.
+- Physics-boundary failures: representative block numeric scenario fields must
+  not silently override the active case block, and shape labels must not imply
+  shape-dependent contact.
 
 ## Normalization
 
