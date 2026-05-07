@@ -31,21 +31,21 @@ The additive stopping-diagnostic schema records:
 | Field | Meaning | Current source |
 | --- | --- | --- |
 | `source_label` | Human-readable input label. | script input |
-| `source_kind` | `trajectory_csv`, `deposition_csv`, or `run_manifest_v1`. | script input |
+| `source_kind` | `trajectory_csv`, `deposition_csv`, `ensemble_stop_state_csv`, `run_manifest_v1`, or `run_manifest_stop_state_summary_v1`. | script input |
 | `dataset_role` | Diagnostic role such as verification, Chant Sura, Tschamut diagnostic, or Mel smoke. | inferred from path/label |
 | `contact_model` | Contact-model label inferred from path/label. | inferred from path/label |
 | `trajectory_count` | Number of trajectories or deposition rows summarized. | output rows / manifest |
 | `final_status_counts` | Final `contact_state` counts when trajectory rows are available. | trajectory CSV |
-| `explicit_stop_state_available` | Whether an explicit simulator `stop_state` record was available. | run manifest |
+| `explicit_stop_state_available` | Whether explicit simulator stop-state records were available. | run manifest / stop-state sidecar |
 | `stop_reason`, `final_contact_state` | Explicit stop reason and final contact state when instrumented. | run manifest |
 | `termination_low_velocity`, `termination_max_steps`, `termination_t_max`, `termination_domain_exit`, `termination_terrain_error` | Explicit termination flags when instrumented. | run manifest |
 | `stop_reason_counts` | Explicit stop reason when present, otherwise conservative inferred stop/status reason. | manifest / trajectory/deposition CSV |
-| `final_speed_mean_mps`, `final_speed_p95_mps`, `final_speed_max_mps` | Final speed summary. | trajectory/deposition CSV |
-| `final_kinetic_mean_j`, `final_kinetic_max_j` | Final translational kinetic-energy summary. | trajectory CSV |
+| `final_speed_mean_mps`, `final_speed_p95_mps`, `final_speed_max_mps` | Final speed summary. | trajectory/deposition/stop-state CSV |
+| `final_kinetic_mean_j`, `final_kinetic_max_j` | Final translational kinetic-energy summary. | trajectory/stop-state CSV |
 | `impact_count_total`, `impact_count_mean` | Count of rows with `contact_state == impact`, or aggregate manifest impact count. | trajectory CSV / manifest |
 | `significant_impact_count_total` | Proxy count of impact rows with `speed_mps >= 0.05`. | trajectory CSV |
-| `low_energy_contact_count_total` | Contact rows with `speed_mps <= 0.05`. | trajectory CSV |
-| `distance_last_significant_impact_to_final_mean_m`, `..._max_m` | Horizontal distance from last significant-impact proxy to final point. | trajectory CSV |
+| `low_energy_contact_count_total` | Contact rows with `speed_mps <= 0.05`, or explicit low-energy contact count. | trajectory CSV / stop-state sidecar |
+| `distance_last_significant_impact_to_final_mean_m`, `..._max_m` | Horizontal distance from last significant-impact proxy or explicit significant-impact record to final point. | trajectory CSV / stop-state sidecar |
 | `runout_mean_m`, `runout_max_m` | Runout summary when deposition rows are available. | deposition CSV |
 | `terrain_normal_x`, `terrain_normal_y`, `terrain_normal_z`, `terrain_slope_abs` | Terrain normal/slope at the final position when instrumented. | run manifest |
 | `terrain_slope_near_stop_available` | Whether terrain slope/normal near stop was directly available. | manifest / script output |
@@ -53,11 +53,11 @@ The additive stopping-diagnostic schema records:
 
 Important: `stop_reason_counts` and `significant_impact_count_total` are proxy
 diagnostics when generated from legacy trajectory/deposition CSVs. New
-run-manifest `stop_state` records provide explicit stop reason, final contact
-state, termination flags, final speed/kinetic energy, low-energy contact count,
-last significant-impact provenance when present, and final terrain normal/slope.
-The summarizer prefers those explicit fields and falls back to proxy inference
-for older outputs.
+run-manifest `stop_state` records and ensemble stop-state sidecars provide
+explicit stop reason, final contact state, termination flags, final
+speed/kinetic energy, low-energy contact count, last significant-impact
+provenance when present, and final terrain normal/slope. The summarizer prefers
+those explicit fields and falls back to proxy inference for older outputs.
 
 ## Additive Instrumentation
 
@@ -80,8 +80,12 @@ The explicit stop-state record includes:
 
 Current domain-exit and terrain-error flags remain false because the fixed-step
 integrator does not yet expose those termination modes as separate outcomes.
-Ensemble-level aggregation is also still deferred; current manifest `stop_state`
-describes the primary single-run trajectory.
+
+For validation cases that already write ensemble/deposition CSV outputs, the
+runner now writes an additive `*_stop_state.csv` sidecar and records a
+`stop_state_summary_v1` object in the run manifest. The sidecar is diagnostic
+only and does not change deposition values, metrics, baselines, or acceptance
+criteria. Legacy manifests without `stop_state_summary` remain readable.
 
 ## Evidence Inspected
 
@@ -163,10 +167,10 @@ Missing or weak fields in legacy/generated summary inputs:
 - explicit simulator stop reason in older outputs without manifest `stop_state`;
 - per-row incoming normal speed in trajectory CSVs;
 - last significant impact information in deposition rows;
-- distance from last significant impact to final deposition point for ensemble
-  deposition outputs unless full trajectory or impact-event directories are
-  scanned;
-- normalized per-trajectory impact summaries in ensemble manifests;
+- distance from last significant impact to final deposition point for legacy
+  ensemble deposition outputs that predate the `*_stop_state.csv` sidecar;
+- normalized per-trajectory impact summaries beyond the explicit stop-state
+  fields;
 - explicit domain-exit and terrain-error termination modes from the integrator.
 
 These are instrumentation gaps, not reasons to tune parameters.

@@ -137,31 +137,31 @@ per-trajectory stopping provenance in the generated deposition/ensemble outputs
 used here.
 
 Therefore, proceeding directly to material-parameter implementation would be
-premature. The next work should close the instrumentation gap for ensembles and
-deposition-focused diagnostics before any terrain/material model design.
+premature. The instrumentation gap for generated ensemble/deposition outputs
+has now been closed additively with `*_stop_state.csv` sidecars and
+`stop_state_summary_v1` manifest aggregates, so the next work should repeat
+this matrix against those explicit fields before any terrain/material model
+design.
 
 ## Decision
 
-Recommended next package: **additive per-trajectory stop-state aggregation for
-ensemble/deposition outputs**.
+Recommended next package: **rerun the selected terrain/material diagnostic
+matrix with explicit ensemble stop-state sidecars**.
 
 Do not implement new terrain/material physics yet. Do not calibrate terrain
 classes. Do not use Tschamut or Mel as physics-selection evidence.
 
 The next package should:
 
-- record per-trajectory stop-state summaries for generated ensemble/deposition
-  outputs;
-- aggregate explicit stop-state counts into `run_manifest_v1` where ensembles
-  are generated;
-- include final slope/normal, final contact state, stop reason, final speed,
-  final kinetic energy, low-energy contact count, and last significant impact
-  distance per trajectory where feasible;
-- update the stopping and terrain/material matrix summarizers to prefer those
-  per-trajectory fields;
-- rerun only selected diagnostic workflows under ignored result paths.
+- regenerate only the selected deposition-focused diagnostics needed to
+  populate `*_stop_state.csv` sidecars and `stop_state_summary_v1` manifests;
+- feed those sidecars to `scripts/summarize_stopping_behavior.py --stop-state`;
+- compare explicit stop-reason/final-contact-state bins against the previous
+  proxy-only Tschamut/Mel rows;
+- decide whether the remaining evidence supports terrain/material
+  implementation design, more stopping instrumentation, or continued
+  rebound/proxy provenance work.
 
-After that, repeat this matrix. If Tschamut/Mel remain proxy-only for the
-fields needed to distinguish stopping from terrain/material behavior, the
-project should continue instrumentation or rebound/proxy provenance work rather
-than implement material parameters.
+If the repeated matrix still cannot distinguish stopping/contact behavior from
+terrain/material behavior, the project should continue instrumentation or
+rebound/proxy provenance work rather than implement material parameters.

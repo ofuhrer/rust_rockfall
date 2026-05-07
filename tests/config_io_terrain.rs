@@ -68,6 +68,7 @@ fn run_manifest_without_performance_section_remains_backward_compatible() {
     assert!(manifest.shape_metadata.is_none());
     assert!(manifest.performance.is_none());
     assert!(manifest.stop_state.is_none());
+    assert!(manifest.stop_state_summary.is_none());
 
     let text_with_legacy_metadata = text.replace(
         "\"terrain_classes\": null,\n      \"outputs\": []",
@@ -1900,7 +1901,9 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
     let manifest = PathBuf::from("validation/results/swissalti3d_release_zone_pilot_manifest.json");
     let releases = PathBuf::from("validation/results/swissalti3d_release_zone_points.csv");
     let deposition = PathBuf::from("validation/results/swissalti3d_release_zone_deposition.csv");
-    for path in [&diagnostics, &manifest, &releases, &deposition] {
+    let stop_state =
+        PathBuf::from("validation/results/swissalti3d_release_zone_deposition_stop_state.csv");
+    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
         let _ = fs::remove_file(path);
     }
 
@@ -1911,6 +1914,7 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
     assert!(manifest.exists());
     assert!(releases.exists());
     assert!(deposition.exists());
+    assert!(stop_state.exists());
     let manifest_json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
     assert_eq!(
@@ -1926,8 +1930,35 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
     let release_csv = fs::read_to_string(&releases).unwrap();
     assert!(release_csv.contains("source_zone_id"));
     assert!(release_csv.contains("swissalti3d_pilot_source_area"));
+    let stop_state_csv = fs::read_to_string(&stop_state).unwrap();
+    assert!(stop_state_csv.starts_with("release_id,trajectory_id,seed,stop_reason"));
+    assert!(stop_state_csv.contains("final_contact_state"));
+    assert!(stop_state_csv.contains("terrain_slope_abs"));
+    assert_eq!(stop_state_csv.lines().count(), 5);
+    assert_eq!(
+        manifest_json["stop_state_summary"]["schema_version"],
+        "stop_state_summary_v1"
+    );
+    assert_eq!(manifest_json["stop_state_summary"]["trajectory_count"], 4);
+    assert_eq!(
+        manifest_json["stop_state_summary"]["explicit_stop_state_count"],
+        4
+    );
+    assert_eq!(
+        manifest_json["stop_state_summary"]["path"],
+        "validation/results/swissalti3d_release_zone_deposition_stop_state.csv"
+    );
+    assert!(manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| {
+            entry["kind"] == "ensemble_stop_state"
+                && entry["schema_version"] == "stop_state_table_v1"
+                && entry["row_count"] == 4
+        }));
 
-    for path in [&diagnostics, &manifest, &releases, &deposition] {
+    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
         fs::remove_file(path).unwrap();
     }
 }
@@ -2023,7 +2054,9 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     );
     let releases = PathBuf::from("validation/results/swissalti3d_terrain_class_release_points.csv");
     let deposition = PathBuf::from("validation/results/swissalti3d_terrain_class_deposition.csv");
-    for path in [&diagnostics, &manifest, &releases, &deposition] {
+    let stop_state =
+        PathBuf::from("validation/results/swissalti3d_terrain_class_deposition_stop_state.csv");
+    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
         let _ = fs::remove_file(path);
     }
 
@@ -2049,8 +2082,9 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
     );
     assert!(releases.exists());
     assert!(deposition.exists());
+    assert!(stop_state.exists());
 
-    for path in [&diagnostics, &manifest, &releases, &deposition] {
+    for path in [&diagnostics, &manifest, &releases, &deposition, &stop_state] {
         fs::remove_file(path).unwrap();
     }
 }

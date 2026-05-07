@@ -7,9 +7,9 @@ use crate::{
     io,
     manifest::{
         OutputManifest, PerformanceManifest, ReleaseZoneManifest, RunManifest, SeedPolicyManifest,
-        ShapeMetadataManifest, TerrainClassCoverageManifest, TerrainClassManifest,
-        TerrainExtentManifest, TerrainManifest, TrajectoryMetadataManifest,
-        RUN_MANIFEST_SCHEMA_VERSION,
+        ShapeMetadataManifest, StopStateSummaryManifest, TerrainClassCoverageManifest,
+        TerrainClassManifest, TerrainExtentManifest, TerrainManifest, TrajectoryMetadataManifest,
+        RUN_MANIFEST_SCHEMA_VERSION, STOP_STATE_SUMMARY_SCHEMA_VERSION,
     },
     probabilistic::{
         MapPackageManifest, NormalizationScope, ProbabilisticMetadataError, ProbabilityMode,
@@ -19,8 +19,8 @@ use crate::{
     simulation::{
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
-        SimulationError, SimulationResult, StopStateProvenance, TerrainConfig, TrajectoryRequest,
-        TrajectoryRun, DEFAULT_STOP_SPEED_MPS,
+        SimulationError, SimulationResult, StopReason, StopStateProvenance, TerrainConfig,
+        TrajectoryRequest, TrajectoryRun, DEFAULT_STOP_SPEED_MPS,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
     stochastic::{ReleasePerturbation, RoughnessModel},
@@ -474,6 +474,33 @@ pub struct EnsembleDepositionPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnsembleStopStateRow {
+    pub release_id: String,
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+    pub stop_reason: Option<String>,
+    pub final_contact_state: Option<String>,
+    pub final_speed_mps: Option<f64>,
+    pub final_kinetic_j: Option<f64>,
+    pub termination_low_velocity: Option<bool>,
+    pub termination_max_steps: Option<bool>,
+    pub termination_t_max: Option<bool>,
+    pub termination_domain_exit: Option<bool>,
+    pub termination_terrain_error: Option<bool>,
+    pub last_significant_impact_time_s: Option<f64>,
+    pub last_significant_impact_x_m: Option<f64>,
+    pub last_significant_impact_y_m: Option<f64>,
+    pub last_significant_impact_z_m: Option<f64>,
+    pub distance_last_significant_impact_to_final_m: Option<f64>,
+    pub low_energy_contact_count: Option<usize>,
+    pub terrain_normal_x: Option<f64>,
+    pub terrain_normal_y: Option<f64>,
+    pub terrain_normal_z: Option<f64>,
+    pub terrain_slope_abs: Option<f64>,
+    pub runout_m: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrajectoryMetadataRow {
     pub trajectory_id: String,
     pub release_id: String,
@@ -624,6 +651,7 @@ struct RunManifestContext<'a> {
     shape_metadata: Option<&'a BlockShapeMetadata>,
     trajectory_metadata: Option<TrajectoryMetadataManifest>,
     performance: PerformanceManifest,
+    stop_state_summary: Option<StopStateSummaryManifest>,
 }
 
 #[derive(Debug, Clone)]
@@ -888,6 +916,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
     let mut timing = RuntimeTiming::default();
     let mut warnings = Vec::new();
     let mut output_entries = Vec::new();
+    let mut stop_state_summary = None;
     let load_started = Instant::now();
     let terrain_source = load_terrain_source_metadata(case)?;
     let release_zone_source = load_release_zone_metadata(case, terrain_source.as_ref())?;
@@ -941,6 +970,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                         shape_metadata: shape_metadata.as_ref(),
                         trajectory_metadata: None,
                         performance,
+                        stop_state_summary: None,
                     },
                 )?;
             }
@@ -1038,6 +1068,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         timing: &mut timing,
         trajectory_metadata: &mut trajectory_metadata,
         shape_metadata: shape_metadata.as_ref(),
+        stop_state_summary: &mut stop_state_summary,
     })?;
     compute_validation_ensemble_metrics(ValidationEnsembleContext {
         case,
@@ -1050,6 +1081,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         timing: &mut timing,
         trajectory_metadata: &mut trajectory_metadata,
         shape_metadata: shape_metadata.as_ref(),
+        stop_state_summary: &mut stop_state_summary,
     })?;
     if let Some(source) = release_zone_source.as_ref() {
         release_zone_manifest = compute_release_zone_metrics(ReleaseZoneMetricContext {
@@ -1064,6 +1096,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
             timing: &mut timing,
             trajectory_metadata: &mut trajectory_metadata,
             shape_metadata: shape_metadata.as_ref(),
+            stop_state_summary: &mut stop_state_summary,
         })?;
     }
     compute_observed_trajectory_metrics(
@@ -1193,6 +1226,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 shape_metadata: shape_metadata.as_ref(),
                 trajectory_metadata: trajectory_metadata_manifest,
                 performance,
+                stop_state_summary,
             },
         )?;
     }
@@ -1231,6 +1265,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         shape_metadata,
         trajectory_metadata,
         performance,
+        stop_state_summary,
     } = context;
     RunManifest {
         schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
@@ -1257,6 +1292,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         outputs,
         performance: Some(performance),
         stop_state: report.stop_state.clone(),
+        stop_state_summary,
         warnings: report.warnings.clone(),
     }
 }
@@ -2093,6 +2129,7 @@ struct EnsembleMetricContext<'a> {
     timing: &'a mut RuntimeTiming,
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
+    stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
 }
 
 fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), ValidationError> {
@@ -2105,6 +2142,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
         timing,
         trajectory_metadata,
         shape_metadata,
+        stop_state_summary: _stop_state_summary,
     } = context;
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
@@ -2259,6 +2297,7 @@ struct ValidationEnsembleContext<'a> {
     timing: &'a mut RuntimeTiming,
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
+    stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
 }
 
 fn compute_validation_ensemble_metrics(
@@ -2275,6 +2314,7 @@ fn compute_validation_ensemble_metrics(
         timing,
         trajectory_metadata,
         shape_metadata,
+        stop_state_summary,
     } = context;
     if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
         return Ok(());
@@ -2287,6 +2327,7 @@ fn compute_validation_ensemble_metrics(
     let terrain = base_config.terrain.build()?;
     let mut runs = Vec::with_capacity(observations.release_points.len() * ensemble_size);
     let mut deposition_rows = Vec::with_capacity(observations.release_points.len() * ensemble_size);
+    let mut stop_state_rows = Vec::with_capacity(observations.release_points.len() * ensemble_size);
 
     for release in &observations.release_points {
         let mut release_config = base_config.clone();
@@ -2311,6 +2352,7 @@ fn compute_validation_ensemble_metrics(
             timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
             timing.record_run(&run);
             deposition_rows.push(ensemble_deposition_row(&release.trajectory_id, &run));
+            stop_state_rows.push(ensemble_stop_state_row(&release.trajectory_id, &run));
             trajectory_metadata.insert_run(
                 case,
                 &run,
@@ -2326,6 +2368,12 @@ fn compute_validation_ensemble_metrics(
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
         let output_started = Instant::now();
         write_ensemble_deposition_csv(path, &deposition_rows)?;
+        let stop_state_path = stop_state_sidecar_path(path);
+        let stop_state_output = write_ensemble_stop_state_csv(&stop_state_path, &stop_state_rows)?;
+        *stop_state_summary = Some(stop_state_summary_manifest(
+            Some(&stop_state_path),
+            &stop_state_rows,
+        ));
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
@@ -2334,6 +2382,7 @@ fn compute_validation_ensemble_metrics(
             Some(deposition_rows.len()),
             None,
         )?);
+        output_entries.push(stop_state_output);
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
         let output_started = Instant::now();
@@ -2375,6 +2424,7 @@ struct ReleaseZoneMetricContext<'a> {
     timing: &'a mut RuntimeTiming,
     trajectory_metadata: &'a mut TrajectoryMetadataCollector,
     shape_metadata: Option<&'a BlockShapeMetadata>,
+    stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
 }
 
 fn compute_release_zone_metrics(
@@ -2392,6 +2442,7 @@ fn compute_release_zone_metrics(
         timing,
         trajectory_metadata,
         shape_metadata,
+        stop_state_summary,
     } = context;
     let Some(release_zone_config) = &case.release_zone else {
         return Ok(None);
@@ -2405,6 +2456,7 @@ fn compute_release_zone_metrics(
     timing.terrain_load_seconds += terrain_started.elapsed().as_secs_f64();
     let mut runs = Vec::with_capacity(release_points.len());
     let mut deposition_rows = Vec::with_capacity(release_points.len());
+    let mut stop_state_rows = Vec::with_capacity(release_points.len());
     let mut generated_records = Vec::with_capacity(release_points.len());
 
     for point in &release_points {
@@ -2441,6 +2493,7 @@ fn compute_release_zone_metrics(
         timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
         timing.record_run(&run);
         deposition_rows.push(ensemble_deposition_row(&point.release_id, &run));
+        stop_state_rows.push(ensemble_stop_state_row(&point.release_id, &run));
         trajectory_metadata.insert_run(
             case,
             &run,
@@ -2467,6 +2520,12 @@ fn compute_release_zone_metrics(
     if let Some(path) = &case.outputs.ensemble_deposition_csv {
         let output_started = Instant::now();
         write_ensemble_deposition_csv(path, &deposition_rows)?;
+        let stop_state_path = stop_state_sidecar_path(path);
+        let stop_state_output = write_ensemble_stop_state_csv(&stop_state_path, &stop_state_rows)?;
+        *stop_state_summary = Some(stop_state_summary_manifest(
+            Some(&stop_state_path),
+            &stop_state_rows,
+        ));
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
             path,
@@ -2475,6 +2534,7 @@ fn compute_release_zone_metrics(
             Some(deposition_rows.len()),
             None,
         )?);
+        output_entries.push(stop_state_output);
     }
     if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
         let output_started = Instant::now();
@@ -2824,6 +2884,128 @@ fn ensemble_deposition_row(release_id: &str, run: &TrajectoryRun) -> EnsembleDep
         z_m: final_position[2],
         runout_m: run.summary.runout_m,
         final_speed_mps: run.summary.final_speed_mps,
+    }
+}
+
+fn ensemble_stop_state_row(release_id: &str, run: &TrajectoryRun) -> EnsembleStopStateRow {
+    let stop_state = run.stop_state.as_ref();
+    EnsembleStopStateRow {
+        release_id: release_id.to_string(),
+        trajectory_id: run.summary.trajectory_id.clone(),
+        seed: run.summary.seed,
+        stop_reason: stop_state.map(|state| stop_reason_text(&state.stop_reason).to_string()),
+        final_contact_state: stop_state
+            .map(|state| contact_state_csv(state.final_contact_state).to_string()),
+        final_speed_mps: stop_state.map(|state| state.final_speed_mps),
+        final_kinetic_j: stop_state.map(|state| state.final_kinetic_j),
+        termination_low_velocity: stop_state.map(|state| state.termination_flags.low_velocity),
+        termination_max_steps: stop_state.map(|state| state.termination_flags.max_steps),
+        termination_t_max: stop_state.map(|state| state.termination_flags.t_max),
+        termination_domain_exit: stop_state.map(|state| state.termination_flags.domain_exit),
+        termination_terrain_error: stop_state.map(|state| state.termination_flags.terrain_error),
+        last_significant_impact_time_s: stop_state
+            .and_then(|state| state.last_significant_impact_time_s),
+        last_significant_impact_x_m: stop_state.and_then(|state| state.last_significant_impact_x_m),
+        last_significant_impact_y_m: stop_state.and_then(|state| state.last_significant_impact_y_m),
+        last_significant_impact_z_m: stop_state.and_then(|state| state.last_significant_impact_z_m),
+        distance_last_significant_impact_to_final_m: stop_state
+            .and_then(|state| state.distance_last_significant_impact_to_final_m),
+        low_energy_contact_count: stop_state.map(|state| state.low_energy_contact_count),
+        terrain_normal_x: stop_state.and_then(|state| state.terrain_normal_x),
+        terrain_normal_y: stop_state.and_then(|state| state.terrain_normal_y),
+        terrain_normal_z: stop_state.and_then(|state| state.terrain_normal_z),
+        terrain_slope_abs: stop_state.and_then(|state| state.terrain_slope_abs),
+        runout_m: run.summary.runout_m,
+    }
+}
+
+fn stop_state_sidecar_path(path: &Path) -> PathBuf {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("ensemble");
+    let filename = format!("{stem}_stop_state.csv");
+    path.with_file_name(filename)
+}
+
+fn write_ensemble_stop_state_csv(
+    path: impl AsRef<Path>,
+    rows: &[EnsembleStopStateRow],
+) -> Result<OutputManifest, ValidationError> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for row in rows {
+        writer.serialize(row)?;
+    }
+    writer.flush()?;
+    let metadata = fs::metadata(path)?;
+    Ok(OutputManifest {
+        kind: "ensemble_stop_state".to_string(),
+        format: "csv".to_string(),
+        path: path.to_string_lossy().to_string(),
+        file_count: 1,
+        total_bytes: metadata.len(),
+        sha256: Some(sha256_file(path)?),
+        schema_version: Some("stop_state_table_v1".to_string()),
+        row_count: Some(rows.len()),
+        skipped_empty_files: None,
+        compression: None,
+        row_group_count: None,
+    })
+}
+
+fn stop_state_summary_manifest(
+    path: Option<&Path>,
+    rows: &[EnsembleStopStateRow],
+) -> StopStateSummaryManifest {
+    let mut stop_reason_counts = BTreeMap::new();
+    let mut final_contact_state_counts = BTreeMap::new();
+    let mut final_speeds = Vec::new();
+    let mut final_kinetic = Vec::new();
+    let mut low_energy_contact_count_total = 0_usize;
+    let mut terrain_slope_available_count = 0_usize;
+    let mut explicit_stop_state_count = 0_usize;
+    for row in rows {
+        if let Some(reason) = &row.stop_reason {
+            explicit_stop_state_count += 1;
+            *stop_reason_counts.entry(reason.clone()).or_insert(0) += 1;
+        }
+        if let Some(state) = &row.final_contact_state {
+            *final_contact_state_counts.entry(state.clone()).or_insert(0) += 1;
+        }
+        if let Some(speed) = row.final_speed_mps {
+            final_speeds.push(speed);
+        }
+        if let Some(kinetic) = row.final_kinetic_j {
+            final_kinetic.push(kinetic);
+        }
+        if let Some(count) = row.low_energy_contact_count {
+            low_energy_contact_count_total += count;
+        }
+        if row.terrain_slope_abs.is_some() {
+            terrain_slope_available_count += 1;
+        }
+    }
+    StopStateSummaryManifest {
+        schema_version: STOP_STATE_SUMMARY_SCHEMA_VERSION.to_string(),
+        path: path.map(|path| path.to_string_lossy().to_string()),
+        trajectory_count: rows.len(),
+        explicit_stop_state_count,
+        stop_reason_counts,
+        final_contact_state_counts,
+        low_energy_contact_count_total,
+        terrain_slope_available_count,
+        final_speed_mean_mps: nonempty_mean(&final_speeds),
+        final_speed_max_mps: final_speeds.iter().copied().reduce(f64::max),
+        final_kinetic_mean_j: nonempty_mean(&final_kinetic),
+        final_kinetic_max_j: final_kinetic.iter().copied().reduce(f64::max),
+        limitations: vec![
+            "aggregate is diagnostic only and does not change validation metrics".to_string(),
+            "domain_exit and terrain_error flags remain false until the integrator exposes those termination modes".to_string(),
+        ],
     }
 }
 
@@ -3440,6 +3622,17 @@ fn contact_state_csv(state: ContactState) -> &'static str {
     }
 }
 
+fn stop_reason_text(reason: &StopReason) -> &'static str {
+    match reason {
+        StopReason::ExplicitStoppedState => "explicit_stopped_state",
+        StopReason::FinalSpeedBelowStopThreshold => "final_speed_below_stop_threshold",
+        StopReason::TMaxReachedAirborne => "t_max_reached_airborne",
+        StopReason::TMaxReachedInContactState => "t_max_reached_in_contact_state",
+        StopReason::TMaxReachedOther => "t_max_reached_other",
+        StopReason::Unknown => "unknown",
+    }
+}
+
 fn scarring_depth_source_csv(source: ScarringDepthSource) -> &'static str {
     match source {
         ScarringDepthSource::None => "none",
@@ -3948,6 +4141,10 @@ fn mean(values: &[f64]) -> f64 {
     } else {
         values.iter().sum::<f64>() / values.len() as f64
     }
+}
+
+fn nonempty_mean(values: &[f64]) -> Option<f64> {
+    (!values.is_empty()).then(|| mean(values))
 }
 
 fn percentile(values: &[f64], p: f64) -> f64 {

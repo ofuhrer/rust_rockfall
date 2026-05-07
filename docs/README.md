@@ -32,7 +32,7 @@ Core documents:
 - `post_shape_contact_v0_pause_next_step.md`: decision record pausing `shape_contact_v0` runtime progression and choosing no-tuning stopping-behavior diagnostics as the next scientific work package.
 - `stopping_behavior_diagnostic_report.md`: no-tuning diagnostic report and schema for existing stopping, contact-state, final-speed, runout, and instrumentation-gap evidence after pausing `shape_contact_v0`.
 - `terrain_material_interaction_diagnostic_protocol.md`: no-tuning protocol for using explicit stop-state provenance to diagnose terrain/material interaction hypotheses before any material-parameter implementation or calibration.
-- `terrain_material_diagnostic_matrix.md`: first no-tuning terrain/material diagnostic matrix using explicit `stop_state` where available and labelled proxy fallback for Tschamut/Mel deposition-focused evidence.
+- `terrain_material_diagnostic_matrix.md`: first no-tuning terrain/material diagnostic matrix using explicit `stop_state` where available, labelled proxy fallback for older deposition-focused evidence, and the next step to repeat the matrix with ensemble stop-state sidecars.
 - `shape_aware_block_scaffold_design.md`: design-only plan for an opt-in passive block shape, orientation, and inertia metadata scaffold before any non-spherical contact physics.
 - `shape_metadata_application_plan.md`: practical plan for attaching passive public block-shape metadata to Tschamut and Chant Sura validation cases without changing dynamics or tuning parameters.
 - `public_tschamut_shape_metadata_milestone.md`: concise scientific milestone report after the registered public Tschamut benchmark, passive shape scaffold, Tschamut sidecars, and inertness validation.

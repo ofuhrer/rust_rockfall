@@ -2,8 +2,10 @@
 
 use crate::simulation::StopStateProvenance;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 pub const RUN_MANIFEST_SCHEMA_VERSION: &str = "run_manifest_v1";
+pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunManifest {
@@ -31,6 +33,8 @@ pub struct RunManifest {
     pub performance: Option<PerformanceManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_state: Option<StopStateProvenance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_state_summary: Option<StopStateSummaryManifest>,
     pub warnings: Vec<String>,
 }
 
@@ -220,4 +224,21 @@ pub struct PerformanceManifest {
     pub impact_event_count: usize,
     pub output_file_count: usize,
     pub output_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StopStateSummaryManifest {
+    pub schema_version: String,
+    pub path: Option<String>,
+    pub trajectory_count: usize,
+    pub explicit_stop_state_count: usize,
+    pub stop_reason_counts: BTreeMap<String, usize>,
+    pub final_contact_state_counts: BTreeMap<String, usize>,
+    pub low_energy_contact_count_total: usize,
+    pub terrain_slope_available_count: usize,
+    pub final_speed_mean_mps: Option<f64>,
+    pub final_speed_max_mps: Option<f64>,
+    pub final_kinetic_mean_j: Option<f64>,
+    pub final_kinetic_max_j: Option<f64>,
+    pub limitations: Vec<String>,
 }
