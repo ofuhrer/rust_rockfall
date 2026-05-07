@@ -1680,6 +1680,99 @@ outputs:
 }
 
 #[test]
+fn terrain_class_impact_sidecar_records_per_impact_context() {
+    let case_path = temp_path("terrain_class_impact_sidecar_case.yaml");
+    let diagnostics = temp_path("terrain_class_impact_sidecar_metrics.json");
+    let manifest = temp_path("terrain_class_impact_sidecar_manifest.json");
+    let impact_dir = temp_path("terrain_class_impact_sidecar_impacts");
+    let impact_material_dir = impact_dir.with_file_name(format!(
+        "{}_terrain_material",
+        impact_dir.file_name().unwrap().to_string_lossy()
+    ));
+    let _ = fs::remove_dir_all(&impact_dir);
+    let _ = fs::remove_dir_all(&impact_material_dir);
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: terrain_class_impact_sidecar
+title: Terrain class impact sidecar
+level: 3
+description: Temporary case that writes per-impact terrain/material context.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc
+  metadata_path: validation/data/processed/swisstopo_pilot/swissalti3d_pilot_metadata.yaml
+terrain_classes:
+  metadata_path: validation/data/processed/swisstopo_pilot/terrain_classes_metadata.yaml
+block: {{ mass: 20.0, radius: 0.25 }}
+release:
+  position: [2600001.0, 1200001.0, 1002.0]
+  velocity: [0.2, 0.0, -2.0]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.2
+  tangential_restitution: 0.8
+  friction_coefficient: 0.45
+simulation: {{ dt: 0.01, t_max: 0.5, max_steps: 50, stop_velocity: 0.05 }}
+random: {{ seed: 2056, ensemble_size: 2 }}
+expected:
+  metrics: [ensemble_mean_runout_m]
+outputs:
+  diagnostics_json: {}
+  manifest_json: {}
+  ensemble_impact_events_dir: {}
+"#,
+            diagnostics.display(),
+            manifest.display(),
+            impact_dir.display(),
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert!(impact_dir.exists());
+    assert!(impact_material_dir.exists());
+    let material_files = fs::read_dir(&impact_material_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect::<Vec<_>>();
+    assert!(!material_files.is_empty());
+    let first_row = read_first_csv_row(&material_files[0]);
+    assert_eq!(
+        first_row["terrain_class_source"],
+        "swissalti3d_pilot_material_classes"
+    );
+    assert_eq!(first_row["terrain_material_context_status"], "classified");
+    assert!(first_row["active_parameter_override_fields"].contains("restitution_n"));
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    let impact_material_manifest = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "ensemble_impact_terrain_material")
+        .expect("impact terrain/material sidecar manifest");
+    assert_eq!(
+        impact_material_manifest["schema_version"],
+        "impact_terrain_material_table_v1"
+    );
+    assert_eq!(impact_material_manifest["format"], "csv_directory");
+    assert!(impact_material_manifest["row_count"].as_u64().unwrap() > 0);
+    assert_eq!(
+        impact_material_manifest["sha256"].as_str().unwrap().len(),
+        64
+    );
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(manifest).unwrap();
+    fs::remove_dir_all(impact_dir).unwrap();
+    fs::remove_dir_all(impact_material_dir).unwrap();
+}
+
+#[test]
 fn passive_shape_metadata_is_manifested_and_does_not_change_runout() {
     let shape_path = temp_path("passive_shape.yaml");
     let shaped_case_path = temp_path("passive_shape_case.yaml");

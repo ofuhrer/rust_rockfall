@@ -68,6 +68,48 @@ Next candidate: optional full per-impact terrain/material sidecar, kept separate
 
 Prompt friction or improvement note: The prompt requests `python3` checks, but this environment needs `uv run python` or an explicit project-local Python path.
 
+### Cycle 2
+
+Commit: pending
+
+Selected work package: Add optional per-impact terrain/material sidecar directory.
+
+Rationale: The gap report lists full per-impact terrain/material tables as missing. A companion sidecar keyed to existing ensemble impact-event outputs can record class lookup and configured override-field provenance per impact without changing the established impact-event CSV/Parquet schemas.
+
+Design:
+
+- Files likely touched: `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+- Behavior/schema/provenance implications: new additive `impact_terrain_material_table_v1` companion directory only when both terrain classes and ensemble impact-event CSV output are configured.
+- Tests/checks planned: focused Rust test using checked-in synthetic Swiss terrain/material fixture; `cargo fmt --check`; repo consistency.
+- Hidden-tuning risk: low; class lookup comes only from configured metadata and records existing override field names.
+- Public-behavior risk: moderate if existing impact-event schemas are modified, so the design explicitly avoids changing them.
+- Reproducibility risk: low; file names and row order follow existing deterministic trajectory/event order.
+- Overclaiming risk: docs must keep this as configured-assumption provenance, not material truth.
+
+Design critique: Adding active numeric values per contact would be more complete, but that requires a broader runtime provenance contract. The smaller sidecar closes the per-impact class-context gap first and leaves numeric value provenance as the next explicit gap.
+
+Implementation summary: Added `ImpactTerrainMaterialRow` and a sibling `*_terrain_material/` CSV directory writer for cases that configure both `terrain_classes` and `outputs.ensemble_impact_events_dir`. The sidecar records impact identity, significant-impact status, class lookup status, configured class id/name/source, active override field names, and explicit lookup gaps without modifying the existing impact-event schemas.
+
+Files changed: `src/validation.rs`, `tests/config_io_terrain.rs`, `docs/terrain_material_interaction_protocol.md`, `docs/terrain_material_diagnostic_gap_report.md`, `docs/validation_data_schema.md`, this session log.
+
+Checks run: `cargo fmt --check`; `cargo test --test config_io_terrain terrain_class_impact_sidecar_records_per_impact_context`; `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+Checks skipped and reason: direct system-`python3` consistency check remains skipped for the same Python-version reason found in Cycle 1; used `uv run python`.
+
+Diff review:
+
+- Physics/default behavior: no physics, defaults, thresholds, validation cases, or pass/fail metrics changed.
+- Schema/provenance: new additive sidecar schema `impact_terrain_material_table_v1`; existing impact-event CSV and Parquet schemas are unchanged.
+- Generated artifacts: focused test generated temporary diagnostics/manifest/impact directories and removed them; none staged.
+- Docs and validation wording: docs state configured assumptions and explicitly leave numeric parameter-value provenance as missing.
+- Backward compatibility: sidecar is emitted only with an already opt-in impact-event directory plus configured terrain classes; existing cases without that combination are unaffected.
+
+Residual risk: The sidecar records override field names, not active numeric values; Parquet-only impact outputs do not yet get the companion sidecar.
+
+Next candidate: add summary aggregation for the new per-impact terrain/material sidecar so diagnostics can compare impact counts by class without custom parsing.
+
+Prompt friction or improvement note: The prompt’s "continue while clear" wording was useful here; it allowed a sidecar instead of forcing a broader schema change.
+
 ## Final Summary
 
 Cycles completed:

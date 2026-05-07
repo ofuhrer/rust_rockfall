@@ -550,6 +550,26 @@ pub struct TerrainMaterialExposureRow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ImpactTerrainMaterialRow {
+    pub trajectory_id: String,
+    pub seed: Option<u64>,
+    pub impact_index: usize,
+    pub time_s: f64,
+    pub x_m: f64,
+    pub y_m: f64,
+    pub z_m: f64,
+    pub significant_impact: bool,
+    pub incoming_normal_speed_mps: f64,
+    pub terrain_class_id: Option<i32>,
+    pub terrain_class_name: Option<String>,
+    pub terrain_class_source: String,
+    pub terrain_material_context_status: String,
+    pub active_parameter_override_count: usize,
+    pub active_parameter_override_fields: String,
+    pub instrumentation_gaps: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrajectoryMetadataRow {
     pub trajectory_id: String,
     pub release_id: String,
@@ -2404,7 +2424,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
     let EnsembleMetricContext {
         case,
         contact_parameters,
-        terrain_class_map: _terrain_class_map,
+        terrain_class_map,
         metrics,
         warnings,
         output_entries,
@@ -2491,6 +2511,14 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
                 dir,
                 &ensemble.trajectories,
             )?);
+            if let Some(class_map) = terrain_class_map {
+                let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
+                output_entries.push(write_ensemble_impact_terrain_material_dir(
+                    &terrain_material_dir,
+                    &ensemble.trajectories,
+                    class_map,
+                )?);
+            }
             timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
         if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
@@ -2688,6 +2716,14 @@ fn compute_validation_ensemble_metrics(
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
         let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+        if let Some(class_map) = terrain_class_map {
+            let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
+            output_entries.push(write_ensemble_impact_terrain_material_dir(
+                &terrain_material_dir,
+                &runs,
+                class_map,
+            )?);
+        }
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
     if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
@@ -2866,6 +2902,14 @@ fn compute_release_zone_metrics(
     if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
         let output_started = Instant::now();
         output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
+        if let Some(class_map) = terrain_class_map {
+            let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
+            output_entries.push(write_ensemble_impact_terrain_material_dir(
+                &terrain_material_dir,
+                &runs,
+                class_map,
+            )?);
+        }
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
     }
     if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
@@ -3307,6 +3351,14 @@ fn terrain_material_exposure_sidecar_path(path: &Path) -> PathBuf {
         .unwrap_or("ensemble");
     let filename = format!("{stem}_terrain_material_exposure.csv");
     path.with_file_name(filename)
+}
+
+fn impact_terrain_material_sidecar_dir(dir: &Path) -> PathBuf {
+    let name = dir
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("ensemble_impacts");
+    dir.with_file_name(format!("{name}_terrain_material"))
 }
 
 fn write_ensemble_stop_state_csv(
@@ -3995,6 +4047,135 @@ fn write_ensemble_impact_events_dir(
         compression: None,
         row_group_count: None,
     })
+}
+
+fn write_ensemble_impact_terrain_material_dir(
+    dir: impl AsRef<Path>,
+    runs: &[TrajectoryRun],
+    class_map: &TerrainClassMap,
+) -> Result<OutputManifest, ValidationError> {
+    fs::create_dir_all(dir.as_ref())?;
+    remove_stale_csv_outputs(dir.as_ref())?;
+    let mut file_count = 0_usize;
+    let mut total_bytes = 0_u64;
+    let mut row_count = 0_usize;
+    let mut skipped_empty_files = 0_usize;
+    for run in runs {
+        if run.impact_events.is_empty() {
+            skipped_empty_files += 1;
+            continue;
+        }
+        let rows = impact_terrain_material_rows(run, class_map);
+        let filename = format!("{}.csv", safe_filename(&run.summary.trajectory_id));
+        let path = dir.as_ref().join(filename);
+        write_impact_terrain_material_csv(&path, &rows)?;
+        file_count += 1;
+        total_bytes += fs::metadata(&path)?.len();
+        row_count += rows.len();
+    }
+    let collection_sha256 = if file_count > 0 {
+        Some(sha256_directory_csv_collection(dir.as_ref())?)
+    } else {
+        None
+    };
+    Ok(OutputManifest {
+        kind: "ensemble_impact_terrain_material".to_string(),
+        format: "csv_directory".to_string(),
+        path: dir.as_ref().to_string_lossy().to_string(),
+        file_count,
+        total_bytes,
+        sha256: collection_sha256,
+        schema_version: Some("impact_terrain_material_table_v1".to_string()),
+        row_count: Some(row_count),
+        skipped_empty_files: Some(skipped_empty_files),
+        compression: None,
+        row_group_count: None,
+    })
+}
+
+fn impact_terrain_material_rows(
+    run: &TrajectoryRun,
+    class_map: &TerrainClassMap,
+) -> Vec<ImpactTerrainMaterialRow> {
+    run.impact_events
+        .iter()
+        .map(|event| {
+            let (
+                terrain_class_id,
+                terrain_class_name,
+                terrain_class_source,
+                terrain_material_context_status,
+                active_parameter_override_fields,
+                instrumentation_gaps,
+            ) = if let Some((class_id, class_name, source)) =
+                terrain_class_lookup(class_map, event.x_m, event.y_m)
+            {
+                let active_fields = class_map
+                    .classes_by_id
+                    .get(&class_id)
+                    .map(|class| class.parameter_overrides.active_field_names())
+                    .unwrap_or_default();
+                (
+                    Some(class_id),
+                    Some(class_name),
+                    source,
+                    "classified".to_string(),
+                    active_fields,
+                    Vec::new(),
+                )
+            } else {
+                (
+                    None,
+                    None,
+                    class_map.metadata.layer_id.clone(),
+                    "unavailable".to_string(),
+                    Vec::new(),
+                    vec![
+                        "impact position has no terrain/material class (outside class grid or nodata)"
+                            .to_string(),
+                    ],
+                )
+            };
+            ImpactTerrainMaterialRow {
+                trajectory_id: run.summary.trajectory_id.clone(),
+                seed: run.summary.seed,
+                impact_index: event.impact_index,
+                time_s: event.time_s,
+                x_m: event.x_m,
+                y_m: event.y_m,
+                z_m: event.z_m,
+                significant_impact: event.incoming_normal_speed_mps
+                    >= SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS,
+                incoming_normal_speed_mps: event.incoming_normal_speed_mps,
+                terrain_class_id,
+                terrain_class_name,
+                terrain_class_source,
+                terrain_material_context_status,
+                active_parameter_override_count: active_parameter_override_fields.len(),
+                active_parameter_override_fields: serde_json::to_string(
+                    &active_parameter_override_fields,
+                )
+                .expect("impact terrain/material active override fields serialize to JSON"),
+                instrumentation_gaps: serde_json::to_string(&instrumentation_gaps)
+                    .expect("impact terrain/material gaps serialize to JSON"),
+            }
+        })
+        .collect()
+}
+
+fn write_impact_terrain_material_csv(
+    path: impl AsRef<Path>,
+    rows: &[ImpactTerrainMaterialRow],
+) -> Result<(), ValidationError> {
+    if let Some(parent) = path.as_ref().parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut writer = csv::Writer::from_path(path)?;
+    for row in rows {
+        writer.serialize(row)?;
+    }
+    writer.flush()?;
+    Ok(())
 }
 
 fn remove_stale_csv_outputs(dir: &Path) -> Result<(), ValidationError> {

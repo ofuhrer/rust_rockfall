@@ -23,6 +23,8 @@ The current stack can audit configured terrain/material context for:
 - trajectory-wide `*_terrain_material_exposure.csv` sidecars and
   `terrain_material_exposure_summary_v1` manifests for generated outputs with
   configured terrain classes;
+- per-impact `*_terrain_material/` sidecar directories when both
+  `terrain_classes` and `outputs.ensemble_impact_events_dir` are configured;
 - read-only summaries grouped by final class and by significant-impact class.
 
 These outputs are descriptive provenance. They support questions such as
@@ -36,12 +38,14 @@ The following gaps remain before terrain/material interaction studies can be
 used as calibration or model-selection inputs:
 
 - Active numeric parameter provenance is not emitted per contact or impact.
-  Terrain class labels can drive configured contact/scarring overrides, so
-  reports must state "configured terrain/material assumption" rather than
-  observed material truth until active parameter values are recorded with
-  contact evidence.
-- Full per-impact terrain/material tables are not yet emitted. Stop-state
-  records carry aggregate counts and bounded sequences only.
+  Terrain class labels can drive configured contact/scarring overrides, and the
+  per-impact sidecar lists override field names only. Reports must state
+  "configured terrain/material assumption" rather than observed material truth
+  until active parameter values are recorded with contact evidence.
+- Full per-impact terrain/material tables are emitted only for ensemble
+  impact-event CSV outputs with configured terrain classes. Older outputs,
+  Parquet-only impact outputs, and runs without configured classes remain
+  proxy-only or unavailable for per-impact class context.
 - Exposure sidecars summarize saved sample exposure, not continuous path
   integrals. Duration and path length are assigned to the class at the segment
   end sample.
@@ -72,7 +76,7 @@ met:
 
 ## Recommended Next Package
 
-The next no-tuning package should add active per-contact parameter-value
-provenance and optional full per-impact terrain/material sidecars. That package
-should remain diagnostic-only and should not add fitted coefficients, new
-calibrated classes, changed contact laws, or validation-threshold changes.
+The next no-tuning package should add active per-contact or per-impact numeric
+parameter-value provenance. That package should remain diagnostic-only and
+should not add fitted coefficients, new calibrated classes, changed contact
+laws, or validation-threshold changes.

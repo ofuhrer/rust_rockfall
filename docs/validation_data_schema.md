@@ -105,7 +105,8 @@ slope. Missing metadata, out-of-grid points, nodata cells, and absent
 significant impacts are reported as instrumentation gaps. These fields do not
 change contact laws, parameters, stopping thresholds, validation metrics, or
 pass/fail criteria. Significant-impact class sequences are bounded head/tail
-diagnostics; full per-event class tables are not yet emitted.
+diagnostics; per-event class tables are emitted only as opt-in companion
+sidecars for ensemble impact-event CSV outputs with configured terrain classes.
 
 When a generated ensemble/deposition output also has configured
 `terrain_classes`, the runner writes an additive
@@ -119,6 +120,16 @@ explicit lookup gaps for unavailable class context. The run manifest records a
 `terrain_material_exposure_summary_v1` object with per-class aggregate exposure
 summaries. Exposure summaries are descriptive sample/path provenance and do not
 change trajectories, contact laws, validation metrics, or pass/fail criteria.
+
+When `terrain_classes` and `outputs.ensemble_impact_events_dir` are both
+configured, validation also writes a sibling `*_terrain_material/` directory
+with `impact_terrain_material_table_v1` CSV files. Each row is keyed by
+trajectory id, impact index, and impact time/location, reports whether the
+impact meets the fixed significant-impact threshold, classifies the configured
+terrain/material class at the impact point when available, lists configured
+override field names for that class, and records explicit lookup gaps for
+outside-grid or nodata impacts. This sidecar does not alter the existing
+impact-event CSV/Parquet schemas.
 
 `terrain_classes` manifest records carry `terrain_class_manifest_v1`,
 the source metadata schema version, and SHA-256 hashes for the metadata sidecar
