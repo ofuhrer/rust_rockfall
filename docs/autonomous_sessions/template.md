@@ -24,6 +24,10 @@ Session goal:
 
 ## Cycle Records
 
+Use additional `### Cycle N` sections as needed. For a resumed run on an
+existing branch/session log, add a short continuation heading with the new base
+commit and initial state before the next cycle.
+
 ### Cycle 1
 
 Commit:
@@ -127,3 +131,5 @@ Remaining top gaps:
 Why the loop stopped:
 
 Recommended next autonomous prompt changes:
+
+Prompt feedback mapped into durable docs:

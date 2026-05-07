@@ -103,6 +103,13 @@ or call it directly:
 .venv/bin/python scripts/check_repo_consistency.py
 ```
 
+When `.venv/` has not been created yet, use `uv run` rather than relying on a
+possibly old system `python3`:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
+```
+
 Set `RUST_ROCKFALL_PYTHON` only when intentionally overriding the local
 environment:
 

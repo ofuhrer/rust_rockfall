@@ -521,3 +521,69 @@ Remaining top gaps:
 Why the loop stopped: The safe Parquet-only provenance parity gap and stale summarizer example were closed with passing checks. The next useful slices require broader per-contact, contact-episode, or columnar-schema design, so continuing would reduce reviewability.
 
 Recommended next autonomous prompt changes: Keep the `uv` Python note. Consider asking specifically for a design-only package before per-contact effective-parameter provenance or contact-episode summaries.
+
+## Continuation: Prompt Feedback Documentation
+
+Session date: 2026-05-07
+Agent: Codex
+Branch: codex/autonomous-2026-05-07-terrain-material-diagnostics
+Base commit: bdf5f47
+Session goal: Map recurring autonomous-session feedback into durable repository guidance so future agents do not have to rediscover the same local Python, continuation-log, and design-only stop-condition issues.
+
+### Continuation Initial Repository State
+
+- Git status: tracked worktree had in-progress documentation edits to `AGENTS.md` and `docs/onboarding.md` from the immediately preceding user request.
+- Current branch: `codex/autonomous-2026-05-07-terrain-material-diagnostics`.
+- Recent decision records inspected: `AGENTS.md`, `docs/onboarding.md`, `docs/autonomous_development_program.md`, `docs/autonomous_sessions/template.md`, and the current session log.
+- Hooks installed: `.git/hooks/pre-commit` and `.git/hooks/pre-push` are symlinks to `scripts/git-hooks/`.
+- Initial checks: `git status -sb`, recent commit log, hook listing, and targeted documentation diff review.
+
+### Continuation Initial Priority Ranking
+
+| Rank | Candidate work package | Evidence/source | Expected value | Risk | Decision |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Document project-local `uv` Python fallback in agent and onboarding guidance | Repeated session notes skipped direct `python3` because the system interpreter was incompatible | Prevents repeated check friction and makes skipped-check notes more precise | Low; docs-only | Select for Cycle 8 |
+| 2 | Add autonomous-session continuation and design-only stop guidance | Multiple continuation summaries noted ad hoc log headings and broader next-step design boundaries | Makes future autonomous logs and stop decisions more reviewable | Low; docs-only | Include in Cycle 8 because it is the same prompt-feedback mapping slice |
+| 3 | Change README quickstart commands to `uv run python` globally | README contains many user-facing examples | Medium, but risks noisy churn and changing simple public examples unnecessarily | Defer |
+
+### Cycle 8
+
+Commit:
+
+Selected work package: Map recurring prompt feedback into agent, onboarding, autonomous-program, and session-template docs.
+
+Rationale: Several autonomous continuations recorded the same feedback: repository Python checks should use the project-local `uv` environment when system `python3` is incompatible; long-running logs need explicit continuation structure; and broader per-contact/contact-episode work should become design-only before implementation. These are durable operating rules, not one-off session notes.
+
+Design:
+
+- Files likely touched: `AGENTS.md`, `docs/onboarding.md`, `docs/autonomous_development_program.md`, `docs/autonomous_sessions/template.md`, this session log.
+- Behavior/schema/provenance implications: documentation-only; no simulator, schema, validation, or output behavior changes.
+- Tests/checks planned: repo consistency through `uv`; `git diff --check`; pre-commit hook.
+- Hidden-tuning risk: none.
+- Public-behavior risk: none.
+- Reproducibility risk: low; guidance improves check reproducibility.
+- Overclaiming risk: none; wording stays operational.
+
+Design critique: Updating README examples too would be broader and could clutter user-facing commands. Keeping this slice to operating/onboarding/autonomous docs is more focused.
+
+Implementation summary: Added `uv run` fallback guidance to `AGENTS.md` and onboarding docs, added continuation-log and design-only stop-condition guidance to the autonomous development program, and extended the autonomous session template with continuation and durable-doc feedback fields.
+
+Files changed: `AGENTS.md`, `docs/onboarding.md`, `docs/autonomous_development_program.md`, `docs/autonomous_sessions/template.md`, this session log.
+
+Checks run: `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`; `git diff --check`.
+
+Checks skipped and reason: direct system-`python3 scripts/check_repo_consistency.py` skipped because this environment needs the project-local `uv` Python; no code changed, so Rust checks are not required for this docs-only slice.
+
+Diff review:
+
+- Physics/default behavior: documentation-only.
+- Schema/provenance: no schema changes.
+- Generated artifacts: none.
+- Docs and validation wording: updates are operational guidance only and do not alter scientific claims.
+- Backward compatibility: not applicable.
+
+Residual risk: README still contains simple `python3` examples for user-facing workflows; this was intentionally left unchanged to avoid broad command churn.
+
+Next candidate: final check-and-closeout unless a concrete implementation slice is requested.
+
+Prompt friction or improvement note: The user's request to map feedback into docs was useful; future autonomous prompts can explicitly invite durable doc updates when prompt-improvement notes recur.

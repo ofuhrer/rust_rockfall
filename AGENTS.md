@@ -79,6 +79,16 @@ cargo run -- validate --all
 python3 scripts/check_repo_consistency.py
 ```
 
+Repository Python scripts should normally run through the project-local `uv`
+environment described in `docs/onboarding.md`. If direct `python3` uses an
+older or incompatible system interpreter, use:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
+```
+
+and record that substitution in the final response or commit notes.
+
 If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
 
 ## HPC-Readiness Constraints
@@ -114,6 +124,9 @@ Before committing:
     && cargo run -- validate --all \
     && python3 scripts/check_repo_consistency.py
   ```
+
+  If system `python3` is incompatible, run the consistency check through the
+  project-local `uv` environment and record the exact command used.
 
 - Do a quick consistency pass:
   - inspect `git status -sb`;

@@ -143,6 +143,8 @@ Session setup:
    codex/autonomous-YYYY-MM-DD-short-topic. Otherwise continue locally and
    record the branch recommendation in the session log.
 4. Record the initial top gaps and candidate work packages in the session log.
+5. When continuing an existing autonomous branch/session, append a clearly
+   labelled continuation section instead of rewriting earlier cycle summaries.
 
 Cycle target:
 - Aim for 2 to 4 coherent cycles in one run.
@@ -180,6 +182,10 @@ Check policy:
 - If Python changed, run relevant pytest targets or script smoke tests.
 - If validation, benchmark, schema, or docs changed, run
   python3 scripts/check_repo_consistency.py.
+- Prefer the project-local `uv` Python environment for repository scripts. If
+  direct `python3` is incompatible with the repository scripts, use
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`
+  and record the substitution in the session log and final response.
 - Before final handoff, run scripts/git-hooks/pre-commit. Run
   scripts/git-hooks/pre-push when the session made multiple commits or changed
   Rust behavior. If a command is skipped, record the exact reason.
@@ -197,6 +203,10 @@ Stop conditions:
 - No clear safe implementable next slice remains.
 - The next step requires private data, tuning/calibration judgement, or a
   scientific decision not already made in docs.
+- The next useful step is mainly a design decision for a broader contract, such
+  as per-contact effective-parameter provenance, contact-episode semantics, or
+  output-schema migration. In that case, stop or run a design-only package
+  rather than implementing speculative runtime behavior.
 - Checks fail and cannot be safely resolved without changing scope.
 - The remaining work is mainly strategic planning rather than implementation.
 - You have completed the planned cycles and the next slice is lower value than
@@ -227,6 +237,16 @@ changing the prompt. Useful signals include:
 - missing artifact fields that made review harder;
 - commit messages or PR bodies that failed to connect changes to the cycle
   rationale.
+
+When a prompt-improvement note recurs across sessions, map it back into durable
+documentation rather than leaving it only in a chat transcript. Good homes are:
+
+- `AGENTS.md` for agent operating rules and required handoff behavior;
+- `docs/onboarding.md` for local environment and toolchain substitutions;
+- `docs/autonomous_development_program.md` for autonomous-session prompt
+  wording and stop conditions;
+- `docs/autonomous_sessions/template.md` for fields that should appear in every
+  future session log.
 
 Update this document only when there is concrete evidence from one or more
 session logs.
