@@ -218,6 +218,24 @@ class HazardLayerTests(unittest.TestCase):
             artifacts = {artifact["kind"]: artifact for artifact in manifest["input_artifacts"]}
             self.assertEqual(artifacts["trajectory_samples"]["file_count"], 2)
             self.assertRegex(artifacts["trajectory_samples"]["sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(
+                artifacts["trajectory_samples"]["path_hash_policy"],
+                "sha256 over sorted member path, byte size, and file sha256",
+            )
+            self.assertFalse(artifacts["trajectory_samples"]["members_truncated"])
+            self.assertEqual(len(artifacts["trajectory_samples"]["members"]), 2)
+            self.assertTrue(
+                all(
+                    set(member) == {"path", "total_bytes", "sha256"}
+                    for member in artifacts["trajectory_samples"]["members"]
+                )
+            )
+            self.assertTrue(
+                all(
+                    len(member["sha256"]) == 64
+                    for member in artifacts["trajectory_samples"]["members"]
+                )
+            )
             self.assertRegex(artifacts["diagnostics"]["sha256"], r"^[0-9a-f]{64}$")
             reach_summary = next(
                 layer["summary"] for layer in metadata["layers"] if layer["key"] == "reach_probability"

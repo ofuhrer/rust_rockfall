@@ -230,7 +230,10 @@ case, diagnostics, trajectory CSV collection, deposition CSV, impact-event CSV
 collection, and impact-event Parquet collection consumed by the hazard builder
 when those inputs are available. Collection checksums are aggregate hashes over
 member path, byte size, and file checksum so the manifest can identify inputs
-without listing every row.
+without listing every row. For small collections, the manifest also records
+member path, byte size, and SHA-256 entries directly; larger collections keep
+the aggregate checksum and set `members_truncated` when the inline member list
+is capped.
 
 ## Production Versus Diagnostic Rendering
 

@@ -25,6 +25,7 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 NODATA = -9999.0
 SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS = 0.05
+INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT = 32
 
 
 @dataclass(frozen=True)
@@ -2724,10 +2725,18 @@ def input_artifact_collection(paths: list[str], kind: str, format_name: str) -> 
     existing = [Path(path) for path in paths if Path(path).exists() and Path(path).is_file()]
     digest = hashlib.sha256()
     total_bytes = 0
+    members: list[dict[str, Any]] = []
     for path in sorted(existing, key=lambda item: str(item)):
         file_hash = sha256_file(path)
         size = path.stat().st_size
         total_bytes += size
+        members.append(
+            {
+                "path": str(path),
+                "total_bytes": size,
+                "sha256": file_hash,
+            }
+        )
         digest.update(str(path).encode("utf-8"))
         digest.update(b"\0")
         digest.update(str(size).encode("ascii"))
@@ -2740,6 +2749,11 @@ def input_artifact_collection(paths: list[str], kind: str, format_name: str) -> 
         "file_count": len(existing),
         "total_bytes": total_bytes,
         "sha256": digest.hexdigest() if existing else None,
+        "path_hash_policy": "sha256 over sorted member path, byte size, and file sha256",
+        "members": members
+        if len(members) <= INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT
+        else members[:INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT],
+        "members_truncated": len(members) > INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT,
     }
 
 
