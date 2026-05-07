@@ -14,9 +14,12 @@ Python loop optimization has diminishing returns. The next phase should now be
 chosen by scientific and workflow value, not by another low-level optimization
 pass.
 
-This review asks which next direction best advances an open, research-oriented
-probabilistic rockfall hazard-mapping framework for Alpine terrain in
-Switzerland while remaining clearly separate from operational hazard assessment.
+This review asks which next direction best advances automated, reproducible
+rockfall hazard mapping for Switzerland's Alpine terrain from public geodata,
+with a valley-scale pilot as the first concrete milestone. Priorities should be
+judged by their importance to that goal, including scientific credibility,
+uncertainty handling, performance, GIS workflow maturity, and reproducibility,
+while remaining clearly separate from risk modelling and operational warning.
 
 ## Current State
 
@@ -363,8 +366,8 @@ Defer:
 - physical-probability or annual-frequency impact-density layers;
 - terrain-class calibration before a real-site pilot;
 - full polyhedral hard-contact dynamics before a shape scaffold;
-- Swiss-wide orchestration/HPC until GIS outputs and pilot workflow semantics
-  are stable;
+- Swiss-wide SLURM orchestration until local chunk/reducer contracts, GIS
+  outputs, and pilot workflow semantics are stable;
 - risk mapping until exposure and vulnerability data are explicitly introduced.
 
 ## Decision

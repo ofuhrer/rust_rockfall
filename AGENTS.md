@@ -49,15 +49,19 @@ When these files conflict, preserve the safety constraints first, then update th
 
 ## Long-Term Direction
 
-- The long-term target is open, research-oriented probabilistic rockfall hazard mapping for Alpine terrain in Switzerland.
-- Keep trajectory, impact, calibration, and validation work aligned with future spatial hazard outputs.
-- Future hazard outputs should be designed around runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers.
-- Treat release-zone generation, DEM/GIS integration, ensemble orchestration, calibration/validation, and geospatial export as future workflow layers around the core simulator.
-- Keep risk modelling separate from hazard modelling; risk requires exposure and vulnerability inputs that are not part of the current core.
-- Treat hazard-layer generation as post-processing of simulation outputs, not core physics; document whether a layer comes from full trajectory ensembles, representative trajectories, deposition summaries, or impact-event logs.
+- The long-term target is automated, reproducible rockfall hazard mapping for Switzerland's Alpine terrain from public geodata, primarily swisstopo.
+- The first concrete milestone is a valley-scale pilot that demonstrates the full workflow from pragmatic release-zone and block-scenario generation through large trajectory ensembles to GIS-ready hazard outputs.
+- Choose development priorities by importance to that national hazard-map goal. Close the largest scientific, workflow, performance, or reproducibility gaps first instead of adding features by convenience.
+- Keep trajectory, impact, calibration, validation, release-zone, ensemble, and hazard-layer work aligned with future spatial hazard outputs.
+- Future hazard outputs should be designed around pixel-scale intensity-frequency information, or the closest defensible national hazard-map quantity while annual source-frequency semantics are immature. Supporting layers include runout probability, deposition density, maximum kinetic energy, maximum jump height, significant-impact density, scenario uncertainty, and convergence diagnostics.
+- Treat uncertainty estimation as a primary design constraint. It can be represented through scenario sampling, stochastic trajectory terms, sensitivity analysis, convergence summaries, or explicit probability models, but uncertainty provenance must remain visible.
+- Release-zone generation and block location/size/shape/probability policies should be pragmatic and literature-informed. Prefer simple reproducible workflows when release-zone and block-probability uncertainty dominates over fine-grained physics detail.
+- Performance and HPC readiness are core design targets. The code should support efficient single-socket execution, local parallelism, reproducible chunked ensembles, and a path to CSCS/SLURM orchestration; roughly 10,000 trajectories per release zone should be feasible where scientifically appropriate.
+- Keep risk modelling separate from hazard modelling. Exposure, vulnerability, consequence modelling, and operational warning systems are out of scope unless a future phase explicitly introduces them.
+- Treat hazard-layer generation as post-processing of simulation outputs, not core physics; document whether a layer comes from full trajectory ensembles, representative trajectories, deposition summaries, impact-event logs, or weighted scenario tables.
 - Treat swisstopo datasets as operational input geodata for future Swiss pilot and hazard-map workflows, not as model-validation evidence by themselves.
 - Preserve CRS, vertical datum, resolution, extent, source-tile ids, and provenance for all geospatial outputs.
-- Treat CSV/JSON/ASCII/GeoJSON/PNG/HTML outputs as debug and small-review formats unless a document explicitly defines a production-scale use; prefer manifest-backed chunking, columnar trajectory/event storage, and CRS-aware raster exports for future large workflows.
+- Treat CSV/JSON/ASCII/GeoJSON/PNG/HTML outputs as debug and small-review formats unless a document explicitly defines a production-scale use; prefer manifest-backed chunking, columnar trajectory/event storage, deterministic reducers, and CRS-aware raster exports for future large workflows.
 - Do not commit large swissALTI3D, swissSURFACE3D, SWISSIMAGE, swissTLM3D, or swissBUILDINGS3D raw products; use metadata records and small intentional fixtures only.
 
 ## Code Expectations
@@ -97,9 +101,10 @@ If the toolchain is unavailable, state that clearly and still validate any chang
 - Keep randomness explicit; derive ensemble seeds from global seed, case ID, and trajectory ID.
 - Keep computation, orchestration, and output writing separate.
 - Preserve reproducibility independent of trajectory execution order.
+- Prioritize single-socket throughput and local parallel trajectory execution before cluster orchestration.
 - Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
-- For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, and deterministic reducer merge rules before adding new execution frameworks.
-- Do not add MPI, GPU, distributed execution, or heavy parallel frameworks without an explicit phase change.
+- For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, deterministic reducer merge rules, and resume semantics before adding new execution frameworks.
+- CSCS/SLURM orchestration is in scope for the hazard-map goal, but should follow stable local chunk/reducer contracts. Do not add MPI, GPU, or heavy distributed frameworks without an explicit phase change.
 
 ## Versioning Rules
 

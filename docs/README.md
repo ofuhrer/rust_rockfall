@@ -2,6 +2,14 @@
 
 Current project version: `v0.6.1`.
 
+Project direction: `rust_rockfall` targets automated, reproducible rockfall
+hazard mapping for Switzerland's Alpine terrain from public geodata, primarily
+swisstopo. The first milestone is a valley-scale pilot with pragmatic
+release-zone and block-scenario generation, uncertainty-aware trajectory
+ensembles, GIS-ready hazard outputs, and performance suitable for large local
+and later CSCS/SLURM runs. Risk modelling, exposure/vulnerability analysis, and
+operational warning systems are out of scope.
+
 The repository uses semantic versioning:
 
 - `MAJOR`: breaking physics or output changes, including changing a default model.

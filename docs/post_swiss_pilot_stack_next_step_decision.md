@@ -11,7 +11,7 @@ The repository now has the first Swiss pilot workflow layers needed around the s
 - opt-in terrain/material-class raster lookup for existing contact/scarring parameters;
 - additive hazard exceedance layers for kinetic energy, jump height, and velocity.
 
-The question is now what should come next to move toward Swiss operational-scale hazard-mapping capability while preserving the project goal: an independent, open, research-oriented simulator, not a proprietary-tool clone.
+The question is now what should come next to move toward automated Swiss hazard-map production from public geodata while preserving the project boundaries: independent implementation, transparent provenance, no proprietary-tool equivalence claims, no hidden tuning, and no operational risk or warning claims.
 
 ## Current Swiss Pilot Workflow Readiness
 
@@ -32,7 +32,7 @@ What is not ready:
 - No GeoTIFF/COG export or CRS-bearing production raster output exists.
 - No release-zone derivation from slope, geology, inventory, or field mapping exists.
 - Terrain classes are illustrative fixtures, not calibrated material classes.
-- Hazard layers are research diagnostics, not operational intensity or hazard-zoning products.
+- Hazard layers are non-operational hazard indicators, not risk maps, warning products, or regulatory hazard-zoning products.
 - The physics remains equivalent-sphere based, so shape-controlled spreading, tumbling, contact points, and runout are absent.
 
 Conclusion: the Swiss pilot stack is a credible **contract and fixture layer**. It is not yet a real-site Swiss hazard workflow.
@@ -41,7 +41,7 @@ Conclusion: the Swiss pilot stack is a credible **contract and fixture layer**. 
 
 The current project uses public literature, open datasets, and Swiss operational needs as context. It does not attempt to reproduce proprietary internals.
 
-| Area | Current project state | Remaining operational-scale gap | Priority |
+| Area | Current project state | Remaining national hazard-map gap | Priority |
 | --- | --- | --- | --- |
 | Terrain input | Small ASCII DEM fixtures plus swissALTI3D-style metadata | Real cropped swissALTI3D pilots, tile workflows, GeoTIFF/COG ingestion/export, hillshade/orthophoto QA | Blocking for Swiss pilots |
 | Release/source areas | Deterministic polygon sampling fixture | Source-zone derivation from slope/geology/inventory criteria, scenario definitions, release-density policy | Blocking for hazard mapping |
@@ -71,7 +71,7 @@ Weak points:
 - Tschamut validation remains on proxy terrain. It does not yet answer whether the simulator performs on real Swiss terrain inputs.
 - Chant Sura contact events are still segmented/proxy events rather than a full campaign-scale contact reconstruction.
 
-Scientific credibility is therefore good for **research diagnostics and model-comparison experiments**, not for operational hazard assessment.
+Scientific credibility is therefore good for **diagnostic evidence and model-comparison experiments**, not for operational hazard assessment.
 
 ## Engineering Maturity
 
@@ -211,7 +211,7 @@ This closes the main engineering gap for Swiss pilot review and eventual tile wo
 - **Terrain-class calibration framework: deferred until after a real-site pilot.** The schema exists, but calibration should not tune around proxy terrain or untested source assumptions.
 - **Full production data formats beyond GeoTIFF/COG: deferred.** Parquet/Zarr/large-scale archives should wait until pilot file volumes and reducer semantics are clearer.
 - **Full polyhedral hard-contact model: deferred beyond a shape scaffold.** A complete nonsmooth contact solver is a long-term research step.
-- **Swiss-wide orchestration/HPC: deferred.** The deterministic kernel and manifests are ready foundations, but national-scale execution needs stable geospatial I/O and pilot results first.
+- **Swiss-wide SLURM orchestration: deferred.** Single-socket throughput, local parallelism, deterministic chunking, manifests, and reducer contracts are active design targets, but national-scale CSCS/SLURM execution needs stable geospatial I/O and pilot semantics first.
 - **Risk mapping: deferred.** Exposure, vulnerability, occurrence frequency, and consequence modelling remain outside the current hazard simulator.
 
 ## Risks And Assumptions
@@ -228,11 +228,11 @@ Assumptions:
 - A small real swissALTI3D or swissALTI3D-compatible crop can be obtained manually and kept out of git.
 - The current ASCII DEM plus metadata path is adequate for the first real-site rerun.
 - The first Tschamut/swissALTI3D pilot should use existing global or explicitly documented terrain-class parameters, not hidden calibration.
-- Operational-scale capability means transparent Swiss hazard-map workflow maturity, not proprietary equivalence.
+- National hazard-map capability means transparent Swiss workflow maturity, not proprietary equivalence, risk modelling, or operational warning readiness.
 
 ## Final Decision
 
-After the minimal Swiss hazard-mapping stack, the most valuable next step toward Swiss operational-scale capability is:
+After the minimal Swiss hazard-mapping stack, the most valuable next step toward the automated Swiss hazard-map goal is:
 
 > Run a controlled real-site Tschamut/swissALTI3D pilot using the existing terrain metadata, release-zone, terrain-class, ensemble-output, and hazard-exceedance stack, without changing physics or tuning parameters.
 

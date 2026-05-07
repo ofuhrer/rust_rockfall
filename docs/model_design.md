@@ -2,7 +2,7 @@
 
 ## Scope
 
-The `v0.6.1` simulator is an independent, literature-based spherical-block model. It is intended for analytic validation and research iteration, not for operational hazard assessment.
+The `v0.6.1` simulator is an independent, literature-based spherical-block model used as the current trajectory kernel for the larger goal of automated Swiss Alpine rockfall hazard mapping. It is intended for deterministic simulation, diagnostics, and hazard-layer development, not for risk modelling or operational warning.
 
 Supported now:
 
@@ -78,7 +78,7 @@ Deliberately left out:
 - nonsmooth complementarity solver
 - calibrated scarring with drag torque, terrain categories, or slip-dependent friction
 - calibrated terrain roughness fields
-- forest, barriers, fragmentation, GIS production workflows, MPI/GPU/distributed execution
+- forest, barriers, fragmentation, national release-zone generation, production SLURM orchestration, MPI/GPU execution, or operational warning workflows
 
 ## Equations and Assumptions
 
@@ -259,7 +259,7 @@ let config: SimulationConfig = serde_json::from_reader(reader)?;
 let result = config.run()?;
 ```
 
-HPC-ready orchestration entry points:
+Ensemble/HPC-ready orchestration entry points:
 
 ```rust
 let request = TrajectoryRequest::from_global_seed(42, "case_id", "trajectory_000001");
@@ -291,15 +291,22 @@ rockfall run --config examples/inclined_plane.json --output trajectory.csv
 
 ## HPC-Readiness Boundaries
 
-The v0.6.1 codebase does not implement MPI, GPU execution, distributed schedulers, or heavy parallel frameworks. It does keep the core architecture ready for later scaling:
+Performance is a core hazard-map requirement, not a cosmetic optimization. The
+v0.6.1 codebase should first improve single-socket throughput, local parallel
+trajectory execution, deterministic chunking, and reducer aggregation toward
+roughly 10,000 trajectories per release zone where scientifically appropriate.
+It does not yet implement production SLURM orchestration, MPI, GPU execution,
+distributed schedulers, or heavy parallel frameworks. It does keep the core
+architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
 - `simulate_fixed_step` performs no file I/O and does not use global state.
 - `SimulationConfig::run` returns structured samples; CSV/JSON writing is handled by `io` and validation orchestration.
 - `SimulationConfig::run_with_terrain` and ensemble orchestration can reuse a previously constructed terrain object, avoiding repeated DEM file reads inside trajectory loops.
 - Terrain access is abstracted behind the `Terrain` trait and constructed from serializable `TerrainConfig`.
-- Ensemble execution is represented as a loop over independent `TrajectoryRequest` values.
+- Ensemble execution is represented as independent `TrajectoryRequest` values.
 - `TrajectorySummary` separates per-trajectory diagnostics from full trajectory samples so future runners can aggregate summaries while streaming or chunking detailed outputs.
+- Future CSCS/SLURM orchestration should build on the same deterministic seeds, chunk manifests, row counts, checksums, and reducer merge rules rather than changing the trajectory kernel.
 
 ## Reproducibility Model
 
@@ -327,4 +334,4 @@ The next scientifically meaningful extensions are:
 - nonsmooth contact solver or integration with a public solver reference
 - calibrated scarring model based on public experimental data
 - output manifests for chunked ensemble runs
-- optional parallel/distributed orchestration outside the trajectory kernel
+- local parallel execution and later SLURM orchestration outside the trajectory kernel

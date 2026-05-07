@@ -84,21 +84,25 @@
 - Output: transparent validation plan.
 - Limitations: no RAMMS bitwise comparison.
 
-## Phase 8: Performance Profiling
+## Phase 8: Performance And Ensemble Scaling
 
-- Objective: profile after correctness is established.
-- Methods: benchmark hot loops and allocation patterns.
+- Objective: make large trajectory ensembles feasible for Swiss hazard-map workflows.
+- Methods: benchmark hot loops and allocation patterns; improve single-socket throughput; add local parallel execution where order-independent deterministic seeds and reducers are already defined.
 - Tests: `cargo test`, `cargo fmt --check`, `cargo clippy -- -D warnings`.
-- Output: prioritized optimization list.
-- Limitations: HPC/GPU are future phases.
+- Output: prioritized optimization list, throughput metrics, chunk/reducer contracts, and a path to later CSCS/SLURM orchestration.
+- Limitations: production SLURM orchestration, MPI, and GPU execution are future phases.
 
 ## Future Phases
 
 - Python bindings
+- valley-scale Swiss pilot workflow from public geodata
+- pragmatic release-zone and block-scenario generation
+- uncertainty and intensity-frequency hazard-map summaries
 - GeoTIFF and production DEM workflows
 - streaming/tiled hazard-map reducers and GeoTIFF/COG export
 - production visualization/reporting workflows
 - calibrated compactable-soil scarring refinements
 - convex polyhedral rigid-body contact
 - public benchmark dataset integration
-- HPC and GPU acceleration
+- local parallel execution and later CSCS/SLURM orchestration
+- GPU acceleration only after an explicit phase decision

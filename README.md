@@ -1,12 +1,14 @@
 # rust_rockfall
 
-`rust_rockfall` is an independent, open, research-oriented implementation of a small computational core for 3D rockfall trajectory experiments.
+`rust_rockfall` is an independent, open implementation for scalable rockfall trajectory simulation and hazard-map generation for Switzerland's Alpine terrain.
 
 Current crate/model version: `v0.6.1`.
 
-The long-term goal is a transparent research tool for probabilistic rockfall hazard-map layers in Alpine terrain in Switzerland. The project is literature-based and transparent by design. It does not decompile or inspect proprietary binaries, and it does not claim numerical equivalence with any proprietary or operational hazard tool. The current implementation is experimental and is not validated for operational hazard assessment.
+The development goal is an automated, reproducible workflow that can produce rockfall hazard maps across Switzerland from public geodata, primarily swisstopo. The first concrete milestone is a valley-scale pilot that connects pragmatic release-zone and block-scenario generation, large deterministic trajectory ensembles, uncertainty-aware probabilistic post-processing, and GIS-ready hazard outputs. Development priorities are chosen by importance to that goal: close the largest workflow and scientific gaps first, prefer simple reproducible approaches when release-zone and block-probability uncertainty dominates, and treat performance and HPC readiness as core requirements rather than late additions.
 
-The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames future map outputs such as runout probability, deposition density, maximum kinetic energy, maximum jump height, and scenario uncertainty layers. Risk mapping is a later, separate workflow because it requires exposure and vulnerability data beyond the current simulator.
+The main probabilistic target is pixel-scale intensity-frequency information, or the closest defensible national hazard-map quantity until source-frequency semantics are mature. The implementation should support efficient single-socket execution, local parallelism, reproducible chunked ensembles, a path to CSCS/SLURM orchestration, and roughly 10,000 trajectories per release zone where appropriate. The project is literature-based and transparent by design. It does not decompile or inspect proprietary binaries, and it does not claim numerical equivalence with any proprietary or operational hazard tool.
+
+The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames future map outputs such as runout probability, deposition density, maximum kinetic energy, maximum jump height, intensity-frequency summaries, and scenario uncertainty layers. Risk modelling, exposure/vulnerability analysis, and operational warning systems are out of scope; hazard maps must not be presented as risk maps or operational products without separate validation and review.
 
 ## Current Model
 
@@ -25,7 +27,7 @@ The first model is intentionally small:
 - optional per-impact CSV/JSON diagnostics for reconstructing contact and scarring events
 - CSV trajectory output from a CLI
 
-Unsupported in v0.6.1: calibrated terrain roughness fields, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, GIS production workflows, GPU/HPC execution, and Python bindings.
+Unsupported in v0.6.1: national release-zone derivation, calibrated terrain/material parameter libraries, convex polyhedral contact, hard-contact complementarity solvers, calibrated scarring with drag torque or slip-dependent friction, forest interaction, fragmentation, production SLURM orchestration, GPU execution, and Python bindings. Single-socket performance, local parallelism, manifest-backed chunking, scalable reducers, and CRS-aware GIS outputs are active design targets.
 
 ## Versioning
 
@@ -187,7 +189,7 @@ python3 scripts/build_hazard_layers.py \
   --cell-size 5
 ```
 
-Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, and significant impact density when impact events are available. These are hazard indicators only, not risk maps and not operational Swiss hazard products.
+Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, significant impact density when impact events are available, weighted conditional layers, and uncertainty diagnostics where available. These are hazard indicators intended to develop pixel-scale intensity-frequency or related national hazard-map quantities; they are not risk maps and not operational Swiss hazard products.
 
 The hazard builder writes both metadata JSON and a `run_manifest_v1` sidecar.
 For larger pilot-style runs, pass the explicit grid arguments

@@ -1,14 +1,18 @@
-# Long-Term Roadmap: Probabilistic Alpine Rockfall Hazard Mapping
+# Long-Term Roadmap: Swiss Alpine Rockfall Hazard Mapping
 
 ## End Goal
 
-The long-term goal is an independent, open, research-oriented rockfall simulation tool capable of producing scientifically traceable probabilistic rockfall hazard-map layers for Alpine terrain in Switzerland.
+The long-term goal is an independent, open, automated workflow for producing scientifically traceable rockfall hazard maps for Switzerland's Alpine terrain from public geodata, primarily swisstopo.
+
+The first concrete milestone is a valley-scale pilot that demonstrates the full chain from pragmatic release-zone and block-scenario generation through large deterministic trajectory ensembles to GIS-ready hazard outputs. Development should prioritize the largest blockers to that milestone and to eventual national-scale mapping: uncertainty-aware scenario modelling, scalable trajectory execution, reproducible geospatial provenance, and defensible hazard-layer semantics.
+
+The main probabilistic target is pixel-scale intensity-frequency information, or the closest defensible national hazard-map quantity while annual source-frequency assumptions remain immature. The workflow should be designed for efficient single-socket execution, local parallelism, reproducible chunking, a later CSCS/SLURM path, and roughly 10,000 trajectories per release zone where appropriate.
 
 The goal is not to reproduce RAMMS::ROCKFALL internals, clone proprietary workflows, or claim equivalence with any operational tool. RAMMS and related literature are used as scientific context for understanding state-of-the-art modelling concepts, not as implementation targets.
 
 ## Current Position
 
-The current `v0.6.1` codebase is still a trajectory-scale research core. It supports analytic terrain, small DEM fixtures, seeded ensembles, impact diagnostics, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in compactable-soil scarring diagnostics, hazard-layer post-processing, and metadata-only Swiss geodata strategy.
+The current `v0.6.1` codebase is a trajectory and hazard-postprocessing core with early Swiss workflow scaffolding, not yet a national hazard-map production workflow. It supports analytic terrain, small DEM fixtures, seeded ensembles, impact diagnostics, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in compactable-soil scarring diagnostics, hazard-layer post-processing, probabilistic metadata, GeoTIFF export, and Swiss geodata provenance fixtures.
 
 Recent impact-level work is important because spatial hazard mapping is only credible if the underlying contact, energy, and calibration behaviour can be inspected and challenged. The proxy and Chant Sura single-impact calibration experiments are therefore not a side path; they build the traceability needed before running large ensembles over Alpine terrain.
 
@@ -28,6 +32,7 @@ Hazard modelling estimates where rockfall may travel and how intense it may be. 
 - maximum kinetic energy;
 - maximum jump height;
 - velocity or momentum summaries where useful;
+- intensity-frequency or threshold-exceedance summaries where source-frequency semantics allow them;
 - scenario uncertainty layers across release, terrain, block, roughness, and contact parameters.
 
 Risk modelling requires exposure and vulnerability information that is outside the current simulator:
@@ -73,12 +78,12 @@ Current status: small DEM support and a Tschamut proxy terrain exist; production
 
 ### 3. Release-Zone and Scenario Definition
 
-Purpose: make ensembles spatially meaningful.
+Purpose: make ensembles spatially meaningful and nationally repeatable.
 
 Needed work:
 
-- release-zone polygons or raster masks;
-- sampling of release points, initial velocities, block volumes, and shape classes;
+- pragmatic release-zone polygons or raster masks from public geodata and documented rules;
+- literature-informed sampling of release points, initial velocities, block volumes, and shape classes;
 - scenario metadata for return-period or event-family assumptions;
 - deterministic seeding by scenario, release cell, and trajectory id.
 
@@ -90,6 +95,7 @@ Purpose: run many independent trajectories without changing the physics kernel.
 
 Needed work:
 
+- single-socket trajectory throughput and local parallel execution as first-order requirements;
 - chunked ensemble execution;
 - stable per-trajectory seeds independent of execution order;
 - resumable outputs;
@@ -98,9 +104,9 @@ Needed work:
   seed policy, output completeness, row counts, file sizes, and reducer inputs;
 - optional columnar trajectory/event archives for full-fidelity analysis when
   debug CSV output is too file-heavy;
-- later optional parallel, HPC, or cloud orchestration.
+- later CSCS/SLURM orchestration built on the same chunk and reducer contracts.
 
-Current status: architecture is HPC-ready by design, but MPI, GPU, distributed execution, and production schedulers are deliberately absent.
+Current status: architecture is deterministic and ready for local parallelism and later SLURM orchestration, but MPI, GPU, distributed execution, and production schedulers are deliberately absent.
 
 ### 5. Hazard-Layer Generation
 
@@ -157,9 +163,9 @@ Needed work:
 
 Current status: no risk modelling is implemented.
 
-## Operational-Use Boundary
+## Scope Boundary
 
-This project is experimental research software. It is not validated for operational hazard assessment, emergency planning, engineering design, or regulatory decision-making.
+This project targets transparent, scalable hazard mapping, not operational warning or risk modelling. It is not validated for emergency planning, engineering design, regulatory decision-making, or national operational production.
 
 Future map layers should carry explicit metadata and disclaimers:
 
@@ -168,14 +174,14 @@ Future map layers should carry explicit metadata and disclaimers:
 - terrain and release-zone data provenance;
 - ensemble size and random-seed policy;
 - known unsupported physics;
-- statement that outputs are research products unless independently reviewed and validated for a specific operational use.
+- statement that outputs are non-operational hazard products unless independently reviewed and validated for a specific operational use.
 
 ## Near-Term Priorities
 
-The next high-impact work should support the hazard-mapping goal without prematurely building production GIS or HPC infrastructure:
+The next high-impact work should support the Swiss hazard-mapping goal and close the largest gaps to the valley-scale pilot:
 
-1. Improve impact-level calibration inputs and diagnostics using public measured datasets.
-2. Improve DEM/terrain handling with CRS-aware, reproducible preprocessing.
-3. Define a minimal release-zone and ensemble-hazard-layer schema.
-4. Add lightweight reducers for runout probability, deposition density, maximum kinetic energy, and maximum jump height on small synthetic rasters.
-5. Keep all new map-style outputs labelled as research diagnostics until validation improves.
+1. Build a valley-scale pilot workflow from public geodata with explicit release-zone and block-scenario assumptions.
+2. Improve single-socket throughput, local parallelism, chunk manifests, and deterministic reducers toward roughly 10,000 trajectories per release zone where appropriate.
+3. Strengthen uncertainty and convergence reporting for weighted conditional hazard layers and intensity-frequency-style products.
+4. Improve DEM/terrain handling, GeoTIFF/COG packaging, and CRS-aware visual QA for Swiss workflows.
+5. Use Chant Sura, Tschamut, Mel de la Niva, and Swiss pilot evidence to decide which physics gaps matter most, without hidden tuning or operational claims.
