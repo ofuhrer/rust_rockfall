@@ -150,12 +150,13 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `--conditional-curve-export summary-only` keeps the existing rasters and
   metadata summaries but skips the large per-cell curve CSV table. The default
   remains full export for small debug/review workflows.
-- Ensemble-size increase has a selected-domain no-go feasibility gate.
+- Ensemble-size increase has a reassessed selected-domain no-go feasibility gate.
   `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
-  `docs/tschamut_public_ensemble_feasibility.md` record that larger Tschamut
-  runs are not authorized until target-scale convergence diagnostics, output
-  budgets, manual GIS/QGIS visual QA, and forest/obstacle context review are
-  resolved.
+  `docs/tschamut_public_ensemble_feasibility.md` now review the executed but
+  inconclusive target-scale evidence and record that larger Tschamut runs remain
+  unauthorized until convergence interpretation, validation output volume,
+  manual GIS/QGIS visual QA, forest/obstacle context, and validation-runner
+  provenance scope are resolved.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
   `docs/tschamut_public_scalable_conditional_execution.md`, and
@@ -730,13 +731,14 @@ the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
 `inconclusive`, forest/obstacle omission is explicitly `limiting`, and
 conditional-curve table export now has an opt-in summary-only mode. Fallible
 DEM-facing runtime guardrails, deterministic local parallel ensemble execution,
-validation-runner ensemble provenance, and scalable conditional execution
-diagnostics are also implemented. Ensemble scale-up is still explicitly no-go
-for the selected domain until target-scale convergence, output budget,
-manual-GIS, and obstacle-context preconditions are resolved. The current
-near-term bottleneck is evidence, not another contract: run or explicitly
-block the selected scalable conditional target-scale gate. Annual or physical
-products remain a separate deferred semantic/evidence problem.
+validation-runner ensemble provenance, scalable conditional execution
+diagnostics, and selected target-scale execution evidence are also implemented.
+Ensemble scale-up is still explicitly no-go for the selected domain until
+target-scale convergence interpretation, validation output volume, manual-GIS,
+obstacle-context, and validation-runner provenance preconditions are resolved.
+The current near-term bottleneck is interpretation and QA of the target
+evidence, not another contract or larger run. Annual or physical products remain
+a separate deferred semantic/evidence problem.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
@@ -744,12 +746,12 @@ products remain a separate deferred semantic/evidence problem.
 | 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
-| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Complete as a selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` records that increasing the Tschamut ensemble is not authorized until convergence diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle context review are resolved. |
+| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the selected pilot is reproducible and scientifically interpretable. | Complete as a reassessed selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` reviews the executed but inconclusive target evidence and records that increasing the Tschamut ensemble is not authorized until convergence interpretation, validation output volume, manual GIS/QGIS review, forest/obstacle context, and validation-runner provenance scope are resolved. |
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
 | 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Complete for the first narrow concern: pure validation metric-math helpers are split into `src/validation/metric_math.rs` with behavior-preserving unit tests and consistency checks. Larger validation/shape splits remain future work. |
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Complete at the library-contract level: `simulate_ensemble_parallel` is opt-in, preserves serial default behavior, records deterministic local chunk metadata, and focused tests prove serial/parallel and worker-count parity. |
 | 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, manual GIS QA, obstacle context, and validation-runner provenance scope remain unresolved. |
-| 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | The selected ensemble-feasibility record is updated to remain blocked or authorize exactly one further diagnostic scale step with explicit limitations. |
+| 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | Complete: the selected ensemble-feasibility record remains `no_go` with explicit target-evidence limitations and no authorization for a further diagnostic scale step. |
 | 11 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
 | 12 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 

@@ -2953,3 +2953,57 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Reassess the selected ensemble-size gate against the
   new target evidence, keeping convergence, manual GIS QA, obstacle context, and
   validation-runner provenance limitations visible.
+
+### M050
+
+- Milestone id: M050.
+- Roadmap item: Target 12 selected ensemble-size gate reassessment.
+- Hypothesis/objective: Reassess the selected Tschamut ensemble-size gate using
+  the newly executed but inconclusive target-scale evidence, and either keep
+  scale-up blocked or authorize exactly one further diagnostic step with
+  explicit limitations.
+- Initial gap assessment: Target-scale execution evidence now exists, but the
+  evidence record is `inconclusive`: target-vs-small-gate convergence has not
+  been accepted, manual GIS/QGIS visual QA remains incomplete, obstacle/forest
+  context remains limiting, validation-runner `ensemble_execution` provenance
+  covers only the auxiliary single-release ensemble path, and validation-side
+  debug outputs are large.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+  `scripts/validate_pilot_ensemble_feasibility.py`,
+  `tests/test_pilot_ensemble_feasibility.py`,
+  `docs/tschamut_public_ensemble_feasibility.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: The ensemble feasibility record remains `decision:
+  no_go`, but now explicitly reviews Target 11 evidence: 1,000 target
+  trajectories, summary-only curves, runtime/memory/file/byte counts, checksums,
+  and 1-vs-2 reducer parity. The validator now requires target-scale evidence
+  fields and rejects missing target-scale/provenance blockers. Roadmap docs now
+  identify manual GIS QA, obstacle context, validation-runner provenance scope,
+  and validation debug output volume as the next blockers rather than missing
+  target execution.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_pilot_ensemble_feasibility`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, sampling weights, generated outputs,
+  raw/public/private geodata, annual frequency support, physical probability
+  support, calibration, risk/exposure semantics, SLURM/MPI/GPU code, or
+  operational claims are changed.
+- Decision: ACCEPT if final checks pass; selected ensemble-size increase remains
+  no-go after target-scale evidence review.
+- Next proposed milestone: Complete or explicitly classify manual GIS/QGIS
+  visual QA for the executed target-scale package, while keeping the output
+  research-diagnostic and non-operational.

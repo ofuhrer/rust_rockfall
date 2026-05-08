@@ -21,9 +21,16 @@ import yaml
 DECISIONS = {"proceed", "no_go", "inconclusive"}
 STATUSES = {"pass", "no-go", "inconclusive"}
 REQUIRED_BLOCKERS_FOR_NO_GO = {
-    "target_scale_convergence_not_established",
+    "target_scale_convergence_inconclusive",
     "manual_gis_visual_qa_inconclusive",
     "forest_obstacle_omission_limiting",
+}
+ALLOWED_LEGACY_BLOCKERS_FOR_NO_GO = {
+    "target_scale_convergence_not_established",
+}
+REQUIRED_TARGET_SCALE_BLOCKERS = {
+    "validation_runner_parallel_provenance_partial_for_observed_release_outputs",
+    "validation_debug_output_budget_too_large_for_next_increase",
 }
 REQUIRED_PRECONDITIONS = {
     "use_summary_only_conditional_curve_export",
@@ -31,6 +38,8 @@ REQUIRED_PRECONDITIONS = {
     "record_output_budget",
     "review_manual_gis_visual_qa",
     "review_forest_obstacle_context",
+    "clarify_validation_runner_parallel_provenance",
+    "reduce_or_justify_validation_debug_output_volume",
 }
 MISLEADING_PATTERNS = [
     re.compile(r"\bannual(?:ized)?\s+(?:frequency|probability|rate)\b", re.IGNORECASE),
@@ -83,6 +92,9 @@ def validate_feasibility_record(record_path: Path) -> dict[str, Any]:
     inputs = validate_input_evidence(require_mapping(record.get("input_evidence"), "input_evidence"))
     convergence = validate_convergence(require_mapping(record.get("convergence_assessment"), "convergence_assessment"))
     output_budget = validate_output_budget(require_mapping(record.get("output_budget_assessment"), "output_budget_assessment"))
+    target_scale = validate_target_scale_evidence(
+        require_mapping(record.get("target_scale_evidence"), "target_scale_evidence")
+    )
     validate_execution_plan(require_mapping(record.get("execution_plan"), "execution_plan"), decision)
     preconditions = set(require_list(record.get("required_preconditions_before_increase"), "required_preconditions_before_increase"))
     missing_preconditions = sorted(REQUIRED_PRECONDITIONS - preconditions)
@@ -95,9 +107,20 @@ def validate_feasibility_record(record_path: Path) -> dict[str, Any]:
         require(convergence["status"] == "pass", "proceed decision requires convergence_assessment.status pass")
         require(output_budget["status"] == "pass", "proceed decision requires output_budget_assessment.status pass")
     elif decision == "no_go":
-        missing_blockers = sorted(REQUIRED_BLOCKERS_FOR_NO_GO - blockers)
+        required_blockers = set(REQUIRED_BLOCKERS_FOR_NO_GO)
+        if "target_scale_convergence_inconclusive" not in blockers:
+            required_blockers = (
+                required_blockers - {"target_scale_convergence_inconclusive"}
+            ) | ALLOWED_LEGACY_BLOCKERS_FOR_NO_GO
+        missing_blockers = sorted(required_blockers - blockers)
         require(not missing_blockers, f"no_go decision missing required blockers: {missing_blockers}")
         require(convergence["status"] == "no-go", "no_go decision requires convergence_assessment.status no-go")
+        if target_scale["status"] == "inconclusive":
+            missing_target_blockers = sorted(REQUIRED_TARGET_SCALE_BLOCKERS - blockers)
+            require(
+                not missing_target_blockers,
+                f"no_go target-scale reassessment missing blockers: {missing_target_blockers}",
+            )
     else:
         require(blockers, "inconclusive decision requires explicit blockers or unresolved limitations")
 
@@ -111,6 +134,7 @@ def validate_feasibility_record(record_path: Path) -> dict[str, Any]:
         "proposed_trajectories_per_release_zone": inputs["proposed_trajectories_per_release_zone"],
         "convergence_status": convergence["status"],
         "output_budget_status": output_budget["status"],
+        "target_scale_status": target_scale["status"],
         "blocker_count": len(blockers),
     }
 
@@ -120,6 +144,12 @@ def validate_input_evidence(inputs: dict[str, Any]) -> dict[str, int]:
     require_text(inputs.get("scaling_review_path"), "input_evidence.scaling_review_path")
     require_text(inputs.get("obstacle_scope_path"), "input_evidence.obstacle_scope_path")
     require_text(inputs.get("visual_qa_record_path"), "input_evidence.visual_qa_record_path")
+    if "target_gate_record_path" in inputs:
+        require_text(inputs.get("target_gate_record_path"), "input_evidence.target_gate_record_path")
+        require(
+            inputs.get("target_gate_status") == "inconclusive",
+            "input_evidence.target_gate_status must be inconclusive when target evidence is present",
+        )
     require(inputs.get("small_gate_status") == "gate_run_completed", "input_evidence.small_gate_status must be gate_run_completed")
     gate = require_positive_int(inputs.get("gate_trajectories_per_release_zone"), "input_evidence.gate_trajectories_per_release_zone")
     proposed = require_positive_int(inputs.get("proposed_trajectories_per_release_zone"), "input_evidence.proposed_trajectories_per_release_zone")
@@ -147,11 +177,84 @@ def validate_output_budget(output_budget: dict[str, Any]) -> dict[str, str]:
     require(status in STATUSES, f"output_budget_assessment.status must be one of {sorted(STATUSES)}")
     require_positive_int(output_budget.get("gate_output_total_bytes"), "output_budget_assessment.gate_output_total_bytes")
     require_positive_int(output_budget.get("gate_output_file_count"), "output_budget_assessment.gate_output_file_count")
+    if "target_validation_output_total_bytes" in output_budget:
+        require_positive_int(
+            output_budget.get("target_validation_output_total_bytes"),
+            "output_budget_assessment.target_validation_output_total_bytes",
+        )
+        require_positive_int(
+            output_budget.get("target_validation_output_file_count"),
+            "output_budget_assessment.target_validation_output_file_count",
+        )
+        require_positive_int(
+            output_budget.get("target_hazard_output_total_bytes"),
+            "output_budget_assessment.target_hazard_output_total_bytes",
+        )
+        require_positive_int(
+            output_budget.get("target_hazard_output_file_count"),
+            "output_budget_assessment.target_hazard_output_file_count",
+        )
+        require_positive_number(
+            output_budget.get("target_validation_wall_seconds"),
+            "output_budget_assessment.target_validation_wall_seconds",
+        )
+        require_positive_number(
+            output_budget.get("target_hazard_wall_seconds"),
+            "output_budget_assessment.target_hazard_wall_seconds",
+        )
+        require_positive_int(
+            output_budget.get("target_validation_memory_peak_bytes_on_darwin"),
+            "output_budget_assessment.target_validation_memory_peak_bytes_on_darwin",
+        )
+        require_positive_int(
+            output_budget.get("target_hazard_memory_peak_bytes_on_darwin"),
+            "output_budget_assessment.target_hazard_memory_peak_bytes_on_darwin",
+        )
+        require_positive_int(
+            output_budget.get("target_conditional_curve_rows_suppressed"),
+            "output_budget_assessment.target_conditional_curve_rows_suppressed",
+        )
     mode = require_text(output_budget.get("required_curve_export_mode"), "output_budget_assessment.required_curve_export_mode")
     require(mode == "summary-only", "output_budget_assessment.required_curve_export_mode must be summary-only")
     require(output_budget.get("full_curve_table_export_allowed_for_increase") is False, "full curve-table export must not be allowed for ensemble increase")
     require_list(output_budget.get("budget_controls"), "output_budget_assessment.budget_controls")
     require_text(output_budget.get("interpretation"), "output_budget_assessment.interpretation")
+    return {"status": status}
+
+
+def validate_target_scale_evidence(target: dict[str, Any]) -> dict[str, str]:
+    status = require_text(target.get("status"), "target_scale_evidence.status")
+    require(status in {"inconclusive", "pass", "no-go"}, "target_scale_evidence.status must be pass, no-go, or inconclusive")
+    require(status == "inconclusive", "selected target-scale evidence must remain inconclusive for this reassessment")
+    for field in (
+        "target_gate_record_path",
+        "validation_manifest_path",
+        "hazard_manifest_path",
+        "evidence_summary_path",
+        "validation_manifest_sha256",
+        "hazard_manifest_sha256",
+    ):
+        require_text(target.get(field), f"target_scale_evidence.{field}")
+    require(target.get("target_scale_executed") is True, "target_scale_evidence.target_scale_executed must be true")
+    require_positive_int(
+        target.get("validation_simulated_trajectory_count"),
+        "target_scale_evidence.validation_simulated_trajectory_count",
+    )
+    require(
+        target.get("conditional_curve_export_mode") == "summary-only",
+        "target_scale_evidence.conditional_curve_export_mode must be summary-only",
+    )
+    counts = require_list(
+        target.get("reducer_worker_counts_compared"),
+        "target_scale_evidence.reducer_worker_counts_compared",
+    )
+    require(set(counts) == {1, 2}, "target-scale reducer parity must compare worker counts 1 and 2")
+    require(
+        target.get("reducer_parity_compared_outputs_match") is True,
+        "target-scale compared reducer outputs must match",
+    )
+    require(target.get("generated_outputs_committed") is False, "target-scale generated outputs must not be committed")
+    require_text(target.get("interpretation"), "target_scale_evidence.interpretation")
     return {"status": status}
 
 
@@ -230,6 +333,11 @@ def require_text(value: Any, field: str) -> str:
 def require_positive_int(value: Any, field: str) -> int:
     require(isinstance(value, int) and value > 0, f"{field} must be a positive integer")
     return int(value)
+
+
+def require_positive_number(value: Any, field: str) -> float:
+    require(isinstance(value, int | float) and value > 0, f"{field} must be a positive number")
+    return float(value)
 
 
 if __name__ == "__main__":

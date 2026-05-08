@@ -477,9 +477,10 @@ blocked, becomes conditionally authorized for a larger diagnostic run, or
 should stop because convergence/output/GIS/obstacle evidence is insufficient.
 
 Rationale: Target 5 intentionally recorded a no-go feasibility state. Target
-11 can produce the missing target-scale execution evidence, but the gate must
-still consider manual GIS visual QA and forest/obstacle omission before any
-larger run is interpreted scientifically.
+11 produced target-scale execution evidence, but the gate must still consider
+convergence interpretation, output budget, manual GIS visual QA, forest/obstacle
+omission, and validation-runner provenance scope before any larger run is
+interpreted scientifically.
 
 Expected value for Swiss hazard-map goal: High.
 
@@ -501,6 +502,15 @@ pass/no-go/inconclusive decision with claim boundaries.
 Minimal acceptable deliverable: an updated ensemble-feasibility record that
 keeps scale-up blocked or authorizes exactly one next diagnostic scale step
 with explicit evidence and limitations.
+
+Current status: complete as a reassessed `no_go` gate. The updated
+`validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` reviews the
+executed but inconclusive Target 11 evidence and keeps ensemble increase blocked
+because convergence has not been accepted, manual GIS/QGIS visual QA is
+incomplete, forest/obstacle context remains limiting, validation-runner
+parallel provenance is partial for observed-release outputs, and validation
+debug output volume remains too large for another increase without reduction or
+explicit justification.
 
 What not to do: Do not treat a successful technical run as scientific or
 operational validation.
@@ -528,10 +538,11 @@ Estimated order: 12.
 - Conditional-curve output volume has an opt-in mitigation:
   `--conditional-curve-export summary-only`. The default remains full
   curve-table export for small debug/review runs.
-- Ensemble-size increase has a selected-domain no-go feasibility gate. The
-  gate records that larger Tschamut runs are not authorized until convergence
-  diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle
-  context review are resolved.
+- Ensemble-size increase has a reassessed selected-domain no-go feasibility
+  gate. The gate now reviews the executed but inconclusive target-scale
+  evidence and records that larger Tschamut runs remain unauthorized until
+  convergence interpretation, output budget, manual GIS/QGIS review,
+  forest/obstacle context, and validation-runner provenance scope are resolved.
 - Fallible terrain/integrator API migration is complete at the guardrail
   level. DEM-facing fixed-step runtime code propagates structured terrain
   errors through the fallible integration path, with compatibility wrappers
@@ -635,19 +646,20 @@ Estimated order: 12.
 
 ## Recommended Sequence
 
-1. Reassess the selected ensemble-size gate. Keep it blocked unless target
-   convergence, output budget, manual GIS/QGIS visual QA, and forest/obstacle
-   context evidence justify exactly one further diagnostic step.
+1. Complete or explicitly classify manual GIS/QGIS visual QA for the selected
+   target-scale package.
 2. Clarify validation-runner parallel provenance for observed-release
    ensembles if the next gate requires `ensemble_execution` to cover all 1,000
    target trajectories rather than the auxiliary single-release ensemble path.
-3. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+3. Reduce or explicitly justify validation-side debug output volume before any
+   further selected-domain increase.
+4. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
    focused behavior-preserving change already touches that concern.
-4. Resolve the remaining physical/source-frequency design-gate blockers if
+5. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
-5. Implement an annual/physical prototype only if the design gate passes.
+6. Implement an annual/physical prototype only if the design gate passes.
    Until then, use the Target 10 preflight record as the executable no-go
    check rather than adding annual or physical runtime semantics.

@@ -4,11 +4,13 @@ run_id: tschamut_public_conditional_gate_v1
 roadmap_item: target_5_ensemble_size_feasibility
 decision: no_go
 decision_rationale: >
-  The selected small conditional gate is reproducible and the largest
-  curve-table output now has a summary-only control, but increasing the
-  Tschamut ensemble is not authorized yet. The current evidence does not show
-  target-scale convergence, manual GIS visual QA remains inconclusive, and
-  forest/obstacle omission remains limiting for interpretation.
+  The selected target-scale conditional workflow executed locally and recorded
+  output-budget, runtime, checksum, summary-only curve, and reducer-parity
+  evidence, but increasing the Tschamut ensemble is still not authorized.
+  Target-vs-small-gate convergence has not been accepted, manual GIS visual QA
+  remains incomplete, forest/obstacle omission remains limiting for
+  interpretation, and validation-runner parallel provenance is partial for the
+  observed-release target outputs.
 operational_status: research_diagnostic
 
 input_evidence:
@@ -16,7 +18,9 @@ input_evidence:
   scaling_review_path: docs/tschamut_public_pilot_scaling_review.md
   obstacle_scope_path: validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml
   visual_qa_record_path: validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml
+  target_gate_record_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
   small_gate_status: gate_run_completed
+  target_gate_status: inconclusive
   gate_trajectories_per_release_zone: 6
   proposed_trajectories_per_release_zone: 100
   release_cell_count: 10
@@ -27,21 +31,36 @@ convergence_assessment:
     - small_gate_conditional_intensity_exceedance_curves
     - small_gate_standard_error_layers
     - deterministic_reducer_metadata
+    - target_gate_1000_observed_release_trajectories
+    - target_gate_summary_only_conditional_hazard_layers
+    - target_gate_worker_count_reducer_parity
   missing_diagnostics:
-    - trajectory_count_sensitivity_between_gate_and_proposed_count
-    - convergence_of_conditional_curves_by_threshold
-    - convergence_of_supporting_rasters
-    - worker_count_independent_reducer_parity_for_the_proposed_count
+    - accepted_target_vs_small_gate_convergence_interpretation
+    - manual_gis_visual_qa_for_target_package
+    - forest_obstacle_context_review_for_target_outputs
+    - validation_runner_parallel_provenance_for_observed_release_ensembles
   interpretation: >
-    The gate has only 60 simulated trajectories from ten release cells and
-    three conditional block scenarios. It is sufficient for workflow execution
-    evidence, but it does not establish whether conditional curves or raster
-    patterns are stable enough to justify a larger selected-domain run.
+    The target gate generated 1,000 observed-release trajectories and
+    summary-only conditional hazard layers, so the earlier missing-execution
+    blocker is closed. The ensemble increase remains no-go because the
+    target-scale record itself is inconclusive: target-vs-small-gate stability
+    has not been accepted, manual GIS/QGIS review is incomplete, obstacle
+    context remains limiting, and validation-runner local parallel provenance
+    does not cover every observed-release target trajectory.
 
 output_budget_assessment:
-  status: inconclusive
+  status: no-go
   gate_output_total_bytes: 226925754
   gate_output_file_count: 186
+  target_validation_output_total_bytes: 571131205
+  target_validation_output_file_count: 2004
+  target_hazard_output_total_bytes: 75423367
+  target_hazard_output_file_count: 54
+  target_validation_wall_seconds: 77.0243719999853
+  target_hazard_wall_seconds: 57.85906245899969
+  target_validation_memory_peak_bytes_on_darwin: 367017984
+  target_hazard_memory_peak_bytes_on_darwin: 411058176
+  target_conditional_curve_rows_suppressed: 729600
   required_curve_export_mode: summary-only
   full_curve_table_export_allowed_for_increase: false
   budget_controls:
@@ -49,12 +68,35 @@ output_budget_assessment:
     - explicit_grid_required
     - deterministic_local_reducer_required
     - generated_outputs_remain_ignored
+    - no_full_curve_table_for_target_scale
+    - output_budget_reassessment_required_before_larger_run
   interpretation: >
-    The small gate's full-output local artifact budget was already close to the
-    configured private byte limit. Any future increase must use the
-    summary-only conditional-curve export and record file-count, byte-count,
-    runtime, memory, and reducer-parity evidence before being treated as a
-    completed target-size step.
+    Summary-only curves kept the target hazard products bounded at 54 files and
+    about 75 MB, but the validation-side debug outputs still produced 2,004
+    files and about 571 MB of ignored artifacts. The target run is useful
+    evidence, but it does not yet justify a larger diagnostic run without
+    tighter output controls or an explicit reason to keep per-trajectory debug
+    files.
+
+target_scale_evidence:
+  status: inconclusive
+  target_gate_record_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  validation_manifest_path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+  hazard_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+  evidence_summary_path: hazard/results/tschamut_public_pilot/target_gate_v1/target_gate_evidence_summary.json
+  validation_manifest_sha256: 73b5db351727522264c10e48f24a646150122903d2296457c08eb34814819fc0
+  hazard_manifest_sha256: 2d743fbd28fc4af2d65dfcc00cf3801aad9805126b87362a32de8b5f767fbc8b
+  target_scale_executed: true
+  validation_simulated_trajectory_count: 1000
+  conditional_curve_export_mode: summary-only
+  reducer_worker_counts_compared: [1, 2]
+  reducer_parity_compared_outputs_match: true
+  generated_outputs_committed: false
+  interpretation: >
+    Target-scale execution evidence exists and closes the prior missing-inputs
+    blocker. It remains insufficient to authorize ensemble increase because the
+    target gate is explicitly inconclusive and its remaining blockers affect
+    scientific interpretation.
 
 execution_plan:
   run_now: false
@@ -84,9 +126,11 @@ execution_plan:
     --no-plots
 
 blockers:
-  - target_scale_convergence_not_established
+  - target_scale_convergence_inconclusive
   - manual_gis_visual_qa_inconclusive
   - forest_obstacle_omission_limiting
+  - validation_runner_parallel_provenance_partial_for_observed_release_outputs
+  - validation_debug_output_budget_too_large_for_next_increase
 
 required_preconditions_before_increase:
   - use_summary_only_conditional_curve_export
@@ -94,6 +138,8 @@ required_preconditions_before_increase:
   - record_output_budget
   - review_manual_gis_visual_qa
   - review_forest_obstacle_context
+  - clarify_validation_runner_parallel_provenance
+  - reduce_or_justify_validation_debug_output_volume
 
 claim_boundary:
   operational_status: research_diagnostic
