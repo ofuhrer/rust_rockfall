@@ -11,11 +11,11 @@ for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
 sensitivity gate, conditional pilot report, GIS package review, scaling review,
 and visual-QA review record have been reconciled against regenerated local
 ignored artifacts. The current critical gap is no longer evidence consistency,
-an unclassified visual-QA gate, or unscoped forest/obstacle omission. The next
-development task should add deterministic local parallel ensemble execution
-before any CSCS/SLURM orchestration or larger selected-domain runs. Larger
-ensembles should still proceed only if convergence, performance, and
-output-volume evidence justify them.
+an unclassified visual-QA gate, unscoped forest/obstacle omission, or missing
+local threaded ensemble semantics. Larger ensembles should still proceed only
+if convergence, performance, and output-volume evidence justify them. The next
+development task should design physical/source-frequency semantics before any
+annual or physical prototype is attempted.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -320,8 +320,14 @@ Evidence needed: order-independent ensemble tests, serial-versus-parallel
 bitwise or tolerance-controlled output comparisons, deterministic chunk
 manifests, row-count/checksum provenance, and pilot-scale timing evidence.
 
-Minimal acceptable deliverable: opt-in local parallel ensemble mode for
-existing deterministic cases, with serial default preserved until reviewed.
+Minimal acceptable deliverable: complete. `simulate_ensemble_parallel` and
+`simulate_ensemble_parallel_with_contact_parameters` provide an opt-in local
+threaded ensemble path with serial default preserved. The returned
+`LocalParallelEnsembleExecution` records `local_parallel_ensemble_v1`
+provenance, requested/effective worker counts, deterministic contiguous chunks,
+and merge order `requested_trajectory_index`. Focused HPC-readiness tests prove
+serial-vs-parallel equality, worker-count-independent reduced outputs, and
+zero-worker rejection.
 
 What not to do: Do not add SLURM, MPI, GPU, distributed frameworks, or changed
 default execution order before local chunk/reducer contracts are stable.
@@ -423,6 +429,10 @@ Estimated order: 10.
   live in `src/validation/metric_math.rs`, with behavior-preserving unit tests
   and a consistency guard. Larger validation and shape splits remain future
   work.
+- Deterministic local parallel ensemble execution is available as an opt-in
+  library path. Serial execution remains the default, and no SLURM, MPI, GPU,
+  distributed orchestration, validation-runner default change, or larger
+  selected-domain run is introduced.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
@@ -449,6 +459,5 @@ Estimated order: 10.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
-6. Add deterministic local parallel ensemble execution.
-7. Design physical/source-frequency semantics.
-8. Implement an annual/physical prototype only if the design gate passes.
+6. Design physical/source-frequency semantics.
+7. Implement an annual/physical prototype only if the design gate passes.

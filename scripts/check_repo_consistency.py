@@ -150,6 +150,7 @@ def main() -> int:
     errors.extend(check_hazard_claim_hygiene())
     errors.extend(check_fallible_terrain_boundaries())
     errors.extend(check_validation_module_boundaries())
+    errors.extend(check_local_parallel_ensemble_contract())
 
     if errors:
         for error in errors:
@@ -219,6 +220,40 @@ def check_validation_module_boundaries() -> list[str]:
             errors.append(
                 f"validation metric helper {helper} should live in src/validation/metric_math.rs"
             )
+    return errors
+
+
+def check_local_parallel_ensemble_contract() -> list[str]:
+    errors = []
+    simulation = (ROOT / "src/simulation.rs").read_text()
+    lib = (ROOT / "src/lib.rs").read_text()
+    tests = (ROOT / "tests/hpc_readiness.rs").read_text()
+
+    for symbol in (
+        "LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION",
+        "LocalParallelEnsembleExecution",
+        "simulate_ensemble_parallel",
+        "simulate_ensemble_parallel_with_contact_parameters",
+    ):
+        if symbol not in simulation:
+            errors.append(f"src/simulation.rs omits local parallel ensemble symbol {symbol}")
+        if symbol not in lib:
+            errors.append(f"src/lib.rs does not re-export local parallel ensemble symbol {symbol}")
+
+    for test_name in (
+        "local_parallel_ensemble_matches_serial_order_and_samples",
+        "local_parallel_ensemble_is_independent_of_worker_count",
+        "local_parallel_ensemble_rejects_zero_workers",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/hpc_readiness.rs omits {test_name}")
+
+    if '"local_threads"' not in simulation:
+        errors.append("local parallel ensemble execution should record mode 'local_threads'")
+    if '"requested_trajectory_index"' not in simulation:
+        errors.append(
+            "local parallel ensemble execution should record merge_order 'requested_trajectory_index'"
+        )
     return errors
 
 

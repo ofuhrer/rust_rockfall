@@ -267,6 +267,7 @@ let run = simulate_one_trajectory(&config, request)?;
 
 let ids = vec!["trajectory_000001".to_string(), "trajectory_000002".to_string()];
 let ensemble = simulate_ensemble(&config, "case_id", 42, &ids)?;
+let parallel = simulate_ensemble_parallel(&config, "case_id", 42, &ids, 2)?;
 ```
 
 Important data types:
@@ -282,6 +283,8 @@ Important data types:
 - `TrajectoryRun`
 - `TrajectorySummary`
 - `EnsembleResult`
+- `LocalParallelEnsembleResult`
+- `LocalParallelEnsembleExecution`
 
 The CLI accepts the same JSON configuration:
 
@@ -310,6 +313,11 @@ architecture ready for later scaling:
 - `SimulationConfig::run_with_terrain` and ensemble orchestration can reuse a previously constructed terrain object, avoiding repeated DEM file reads inside trajectory loops.
 - Terrain access is abstracted behind the `Terrain` trait and constructed from serializable `TerrainConfig`.
 - Ensemble execution is represented as independent `TrajectoryRequest` values.
+- `simulate_ensemble_parallel` is an opt-in local threaded runner. It preserves
+  requested trajectory order after joining deterministic contiguous chunks and
+  records local execution metadata with schema
+  `local_parallel_ensemble_v1`. Serial `simulate_ensemble` remains the default
+  path.
 - `TrajectorySummary` separates per-trajectory diagnostics from full trajectory samples so future runners can aggregate summaries while streaming or chunking detailed outputs.
 - Future CSCS/SLURM orchestration should build on the same deterministic seeds, chunk manifests, row counts, checksums, and reducer merge rules rather than changing the trajectory kernel.
 

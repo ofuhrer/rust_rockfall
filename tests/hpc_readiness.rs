@@ -1,7 +1,8 @@
 use rust_rockfall::stochastic::{derive_trajectory_seed, ReleasePerturbation, RoughnessModel};
 use rust_rockfall::{
-    simulate_ensemble, simulate_one_trajectory, ContactModel, SimulationConfig,
-    SoilInteractionModel, SphereBlock, TerrainConfig, TrajectoryRequest,
+    simulate_ensemble, simulate_ensemble_parallel, simulate_one_trajectory, ContactModel,
+    SimulationConfig, SimulationError, SoilInteractionModel, SphereBlock, TerrainConfig,
+    TrajectoryRequest, LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION,
 };
 use std::collections::BTreeMap;
 use std::fs;
@@ -90,6 +91,77 @@ fn ensemble_results_are_independent_of_requested_order() {
         assert_eq!(forward_run.samples, reverse_run.samples);
         assert_eq!(forward_run.summary, reverse_run.summary);
     }
+}
+
+#[test]
+fn local_parallel_ensemble_matches_serial_order_and_samples() {
+    let config = ensemble_ready_config();
+    let trajectory_ids = (0..7)
+        .map(|index| format!("trajectory_{index:06}"))
+        .collect::<Vec<_>>();
+
+    let serial = simulate_ensemble(&config, "parallel_case", 1234, &trajectory_ids).unwrap();
+    let parallel =
+        simulate_ensemble_parallel(&config, "parallel_case", 1234, &trajectory_ids, 3).unwrap();
+
+    assert_eq!(
+        parallel.execution.schema_version,
+        LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION
+    );
+    assert_eq!(parallel.execution.mode, "local_threads");
+    assert_eq!(parallel.execution.requested_worker_count, 3);
+    assert_eq!(parallel.execution.worker_count, 3);
+    assert_eq!(parallel.execution.chunk_count, 3);
+    assert_eq!(parallel.execution.trajectory_count, trajectory_ids.len());
+    assert_eq!(parallel.execution.merge_order, "requested_trajectory_index");
+    assert_eq!(
+        parallel
+            .execution
+            .chunks
+            .iter()
+            .map(|chunk| chunk.trajectory_count)
+            .sum::<usize>(),
+        trajectory_ids.len()
+    );
+    assert_eq!(
+        parallel
+            .ensemble
+            .trajectories
+            .iter()
+            .map(|run| run.request.trajectory_id.clone())
+            .collect::<Vec<_>>(),
+        trajectory_ids
+    );
+    assert_eq!(parallel.ensemble, serial);
+}
+
+#[test]
+fn local_parallel_ensemble_is_independent_of_worker_count() {
+    let config = ensemble_ready_config();
+    let trajectory_ids = (0..5)
+        .map(|index| format!("trajectory_{index:06}"))
+        .collect::<Vec<_>>();
+
+    let one_worker =
+        simulate_ensemble_parallel(&config, "worker_count_case", 99, &trajectory_ids, 1).unwrap();
+    let many_workers =
+        simulate_ensemble_parallel(&config, "worker_count_case", 99, &trajectory_ids, 8).unwrap();
+
+    assert_eq!(one_worker.ensemble, many_workers.ensemble);
+    assert_eq!(many_workers.execution.requested_worker_count, 8);
+    assert_eq!(many_workers.execution.worker_count, trajectory_ids.len());
+    assert_eq!(many_workers.execution.chunk_count, trajectory_ids.len());
+}
+
+#[test]
+fn local_parallel_ensemble_rejects_zero_workers() {
+    let config = ensemble_ready_config();
+    let trajectory_ids = vec!["trajectory_000000".to_string()];
+
+    let error = simulate_ensemble_parallel(&config, "worker_count_case", 99, &trajectory_ids, 0)
+        .unwrap_err();
+
+    assert!(matches!(error, SimulationError::InvalidWorkerCount));
 }
 
 #[test]

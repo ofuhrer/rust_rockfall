@@ -1948,3 +1948,55 @@ Planning only; these milestones do not implement roadmap item content yet.
   concern split.
 - Next proposed milestone: Add deterministic local parallel ensemble
   execution.
+
+### M032
+
+- Milestone id: M032.
+- Roadmap item: Target 8. Add deterministic local parallel ensemble execution.
+- Hypothesis/objective: Add an opt-in local threaded ensemble runner that
+  preserves serial-default behavior and deterministic trajectory identity,
+  ordering, and provenance without introducing SLURM, MPI, GPU, distributed
+  orchestration, or larger selected-domain runs.
+- Initial gap assessment: The simulator already represented trajectories as
+  independent `TrajectoryRequest` values and had order-independent seed tests,
+  but the public ensemble runner was serial only. There was no executable
+  local threaded runner or local execution metadata contract proving
+  serial-vs-parallel parity.
+- Files changed:
+  `src/simulation.rs`,
+  `src/lib.rs`,
+  `tests/hpc_readiness.rs`,
+  `scripts/check_repo_consistency.py`,
+  `docs/model_design.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added `simulate_ensemble_parallel` and
+  `simulate_ensemble_parallel_with_contact_parameters` as opt-in local
+  threaded ensemble runners. The implementation partitions requested
+  trajectory ids into deterministic contiguous chunks, executes chunks on local
+  scoped threads against shared immutable terrain/configuration, restores
+  requested trajectory order after join, and returns
+  `LocalParallelEnsembleExecution` metadata with schema
+  `local_parallel_ensemble_v1`, requested/effective worker counts, chunk ids,
+  and merge order. Serial `simulate_ensemble` remains unchanged and remains
+  the default.
+- Checks run:
+  `cargo fmt --check`;
+  `cargo test --test hpc_readiness`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, stochastic seed derivation, defaults,
+  validation-runner defaults, output schemas, generated products, annual
+  frequency, physical probability, risk/exposure semantics, SLURM/MPI/GPU
+  orchestration, larger ensemble execution, or raw/processed swisstopo geodata
+  are changed or committed.
+- Decision: ACCEPT if final checks pass; Target 8 done at the opt-in
+  library-contract level.
+- Next proposed milestone: Design physical/source-frequency semantics.

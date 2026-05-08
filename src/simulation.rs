@@ -21,6 +21,7 @@ use std::{
     any::Any,
     collections::BTreeMap,
     panic::{catch_unwind, AssertUnwindSafe},
+    thread,
 };
 use thiserror::Error;
 
@@ -276,6 +277,35 @@ pub struct EnsembleResult {
     pub trajectories: Vec<TrajectoryRun>,
 }
 
+pub const LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION: &str = "local_parallel_ensemble_v1";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalParallelEnsembleChunk {
+    pub chunk_id: String,
+    pub worker_index: usize,
+    pub trajectory_start_index: usize,
+    pub trajectory_end_index_exclusive: usize,
+    pub trajectory_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalParallelEnsembleExecution {
+    pub schema_version: String,
+    pub mode: String,
+    pub requested_worker_count: usize,
+    pub worker_count: usize,
+    pub chunk_count: usize,
+    pub trajectory_count: usize,
+    pub merge_order: String,
+    pub chunks: Vec<LocalParallelEnsembleChunk>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LocalParallelEnsembleResult {
+    pub ensemble: EnsembleResult,
+    pub execution: LocalParallelEnsembleExecution,
+}
+
 #[derive(Debug, Error)]
 pub enum SimulationError {
     #[error("terrain error: {0}")]
@@ -298,6 +328,8 @@ pub enum SimulationError {
     EmptyTrajectory(String),
     #[error("unsupported contact model for simulation: {0}")]
     UnsupportedContactModel(&'static str),
+    #[error("local parallel ensemble worker_count must be positive")]
+    InvalidWorkerCount,
 }
 
 impl SimulationConfig {
@@ -552,6 +584,139 @@ pub fn simulate_ensemble_with_contact_parameters(
         global_seed,
         trajectories,
     })
+}
+
+pub fn simulate_ensemble_parallel(
+    config: &SimulationConfig,
+    case_id: impl Into<String>,
+    global_seed: u64,
+    trajectory_ids: &[String],
+    worker_count: usize,
+) -> Result<LocalParallelEnsembleResult, SimulationError> {
+    simulate_ensemble_parallel_with_contact_parameters(
+        config,
+        case_id,
+        global_seed,
+        trajectory_ids,
+        worker_count,
+        None,
+    )
+}
+
+pub fn simulate_ensemble_parallel_with_contact_parameters(
+    config: &SimulationConfig,
+    case_id: impl Into<String>,
+    global_seed: u64,
+    trajectory_ids: &[String],
+    worker_count: usize,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+) -> Result<LocalParallelEnsembleResult, SimulationError> {
+    if worker_count == 0 {
+        return Err(SimulationError::InvalidWorkerCount);
+    }
+
+    let case_id = case_id.into();
+    let terrain = config.terrain.build()?;
+    let execution = local_parallel_ensemble_execution(&case_id, trajectory_ids.len(), worker_count);
+    let indexed_runs = thread::scope(|scope| {
+        let mut handles = Vec::with_capacity(execution.chunks.len());
+        let case_id_ref = &case_id;
+        let terrain_ref = terrain.as_ref();
+        for chunk in &execution.chunks {
+            handles.push(scope.spawn(move || {
+                let mut runs = Vec::with_capacity(chunk.trajectory_count);
+                for (index, trajectory_id) in trajectory_ids
+                    .iter()
+                    .enumerate()
+                    .take(chunk.trajectory_end_index_exclusive)
+                    .skip(chunk.trajectory_start_index)
+                {
+                    let request = TrajectoryRequest::from_global_seed(
+                        global_seed,
+                        case_id_ref.as_str(),
+                        trajectory_id.clone(),
+                    );
+                    runs.push((
+                        index,
+                        simulate_one_trajectory_with_terrain_and_contact_parameters(
+                            config,
+                            request,
+                            terrain_ref,
+                            contact_parameters,
+                        )?,
+                    ));
+                }
+                Ok::<Vec<(usize, TrajectoryRun)>, SimulationError>(runs)
+            }));
+        }
+
+        let mut indexed_runs = Vec::with_capacity(trajectory_ids.len());
+        for handle in handles {
+            match handle.join() {
+                Ok(Ok(mut runs)) => indexed_runs.append(&mut runs),
+                Ok(Err(error)) => return Err(error),
+                Err(payload) => {
+                    return Err(SimulationError::IntegrationPanic(panic_payload_message(
+                        payload,
+                    )))
+                }
+            }
+        }
+        Ok(indexed_runs)
+    })?;
+
+    let mut indexed_runs = indexed_runs;
+    indexed_runs.sort_by_key(|(index, _)| *index);
+    let trajectories = indexed_runs.into_iter().map(|(_, run)| run).collect();
+    Ok(LocalParallelEnsembleResult {
+        ensemble: EnsembleResult {
+            case_id,
+            global_seed,
+            trajectories,
+        },
+        execution,
+    })
+}
+
+fn local_parallel_ensemble_execution(
+    case_id: &str,
+    trajectory_count: usize,
+    requested_worker_count: usize,
+) -> LocalParallelEnsembleExecution {
+    let worker_count = requested_worker_count
+        .min(trajectory_count)
+        .max(usize::from(trajectory_count > 0));
+    let chunks = if let Some(base) = trajectory_count.checked_div(worker_count) {
+        let remainder = trajectory_count % worker_count;
+        let mut start = 0;
+        (0..worker_count)
+            .map(|worker_index| {
+                let count = base + usize::from(worker_index < remainder);
+                let end = start + count;
+                let chunk = LocalParallelEnsembleChunk {
+                    chunk_id: format!("{case_id}__chunk_{worker_index:04}"),
+                    worker_index,
+                    trajectory_start_index: start,
+                    trajectory_end_index_exclusive: end,
+                    trajectory_count: count,
+                };
+                start = end;
+                chunk
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    LocalParallelEnsembleExecution {
+        schema_version: LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION.to_string(),
+        mode: "local_threads".to_string(),
+        requested_worker_count,
+        worker_count,
+        chunk_count: chunks.len(),
+        trajectory_count,
+        merge_order: "requested_trajectory_index".to_string(),
+        chunks,
+    }
 }
 
 pub fn summarize_trajectory(

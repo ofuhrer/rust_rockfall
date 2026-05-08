@@ -33,11 +33,14 @@ pub use shape::{
     SHAPE_METADATA_SCHEMA_VERSION,
 };
 pub use simulation::{
-    simulate_ensemble, simulate_ensemble_with_contact_parameters, simulate_one_trajectory,
-    simulate_one_trajectory_with_terrain,
-    simulate_one_trajectory_with_terrain_and_contact_parameters, EnsembleResult, SimulationConfig,
-    SimulationResult, StopReason, StopStateProvenance, TerminationFlags, TerrainConfig,
-    TrajectoryRequest, TrajectoryRun, TrajectorySummary,
+    simulate_ensemble, simulate_ensemble_parallel,
+    simulate_ensemble_parallel_with_contact_parameters, simulate_ensemble_with_contact_parameters,
+    simulate_one_trajectory, simulate_one_trajectory_with_terrain,
+    simulate_one_trajectory_with_terrain_and_contact_parameters, EnsembleResult,
+    LocalParallelEnsembleChunk, LocalParallelEnsembleExecution, LocalParallelEnsembleResult,
+    SimulationConfig, SimulationError, SimulationResult, StopReason, StopStateProvenance,
+    TerminationFlags, TerrainConfig, TrajectoryRequest, TrajectoryRun, TrajectorySummary,
+    LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION,
 };
 pub use state::{
     BodyState, ContactState, ImpactEvent, ImpactStageEnergy, TrajectoryDiagnostics,
