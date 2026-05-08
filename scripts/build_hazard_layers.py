@@ -1293,6 +1293,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             int(output["file_count"]) for output in manifest["outputs"]
         )
         manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+    update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
     write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
@@ -1308,6 +1309,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             int(output["file_count"]) for output in manifest["outputs"]
         )
         manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+        update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
         write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     if pilot_gis_package_config is not None:
         package_path = pilot_gis_package_output_path(pilot_gis_package_config, output_dir, prefix)
@@ -1317,6 +1319,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             int(output["file_count"]) for output in manifest["outputs"]
         )
         manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+        update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
         write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     print(f"wrote hazard layers to {output_dir}")
@@ -3570,6 +3573,7 @@ def build_hazard_manifest(
             else None
         ),
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "conditional_intensity_exceedance_curves": metadata.get("conditional_intensity_exceedance_curves", {}),
         "layer_semantics": layer_semantics,
         "layers": [
             {
@@ -3579,6 +3583,75 @@ def build_hazard_manifest(
                 "summary": summarize_layer(layer),
             }
             for layer in layers
+        ],
+    }
+
+
+def update_conditional_execution_manifest(
+    manifest: dict[str, Any],
+    grid: GridSpec,
+    conditional_curve_export: ConditionalCurveExportConfig,
+    reducer_execution: dict[str, Any] | None,
+) -> None:
+    curves = manifest.get("conditional_intensity_exceedance_curves") or {}
+    performance = manifest.get("performance") or {}
+    outputs = manifest.get("outputs") or []
+    if reducer_execution is None:
+        reducer = {
+            "mode": "serial",
+            "worker_count": 1,
+            "chunk_count": 1,
+            "chunk_manifest_count": 0,
+            "merge_order": "single_serial_accumulator",
+            "merge_order_independent": True,
+            "chunk_ids": [],
+        }
+    else:
+        reducer = {
+            "mode": reducer_execution.get("mode"),
+            "worker_count": reducer_execution.get("worker_count"),
+            "chunk_count": reducer_execution.get("chunk_count"),
+            "chunk_manifest_count": sum(1 for output in outputs if output.get("kind") == "reducer_chunk_manifest"),
+            "merge_order": reducer_execution.get("merge_order"),
+            "merge_order_independent": reducer_execution.get("merge_order_independent"),
+            "chunk_ids": list(reducer_execution.get("chunk_ids") or []),
+        }
+    manifest["conditional_execution"] = {
+        "schema_version": "conditional_hazard_execution_diagnostics_v1",
+        "product_modes": [
+            "unweighted_diagnostic",
+            "sampling_weighted_conditional",
+            "conditional_intensity_exceedance",
+        ],
+        "annualized": False,
+        "physical_probability": False,
+        "risk_or_exposure": False,
+        "grid_cell_count": grid.ncols * grid.nrows,
+        "conditional_curve_export": {
+            "mode": conditional_curve_export.mode,
+            "csv_table_written": conditional_curve_export.write_table,
+            "row_count": int(curves.get("row_count", 0) or 0),
+            "table_suppressed_for_output_budget": bool(
+                curves.get("enabled") and not conditional_curve_export.write_table
+            ),
+        },
+        "reducer": reducer,
+        "output_budget": {
+            "output_file_count": int(performance.get("output_file_count", 0) or 0),
+            "output_bytes": int(performance.get("output_bytes", 0) or 0),
+            "summary_only_curve_export_required_for_scale_up": True,
+            "generated_outputs_should_remain_ignored": True,
+        },
+        "convergence_diagnostics": {
+            "probability_standard_error_layers_present": any(
+                output.get("path", "").endswith("_standard_error.csv") for output in outputs
+            ),
+            "requires_trajectory_count_sensitivity_before_scale_up": True,
+            "requires_worker_count_reducer_parity_before_scale_up": True,
+        },
+        "limitations": [
+            "Conditional research diagnostics only.",
+            "No annual frequency, physical probability, return-period, risk, or operational semantics are included.",
         ],
     }
 

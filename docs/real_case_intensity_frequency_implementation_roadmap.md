@@ -74,6 +74,10 @@ Already available:
 - opt-in `--conditional-curve-export summary-only` hazard-build mode that keeps
   threshold rasters and metadata summaries while omitting the large per-cell
   conditional curve CSV table;
+- scalable conditional execution diagnostics for the selected Tschamut pilot,
+  including deterministic chunk metadata, summary-only output controls,
+  output-budget fields, convergence-diagnostic requirements, and a validated
+  no-scale-up decision record;
 - diagnostic pilot GIS package manifest behind explicit GeoTIFF export;
 - deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - fallible DEM-facing fixed-step integration path that propagates terrain
@@ -145,6 +149,13 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   runs are not authorized until target-scale convergence diagnostics, output
   budgets, manual GIS/QGIS visual QA, and forest/obstacle context review are
   resolved.
+- Scalable conditional execution is now design-ready but not authorized for
+  scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
+  `docs/tschamut_public_scalable_conditional_execution.md`, and
+  `scripts/validate_scalable_conditional_execution.py` define deterministic
+  local reducer chunks, sorted merge order, summary-only conditional curves,
+  output-budget diagnostics, and convergence checks for the selected Tschamut
+  pilot while preserving the same no-go blockers before ensemble-size increase.
 - Fallible terrain/integrator API migration is complete at the guardrail
   level. The fixed-step integrator uses fallible contact-motion helpers for
   DEM-facing contact response and friction, strict DEM terrain errors propagate

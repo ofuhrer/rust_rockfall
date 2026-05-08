@@ -157,6 +157,7 @@ def main() -> int:
     errors.extend(check_physical_frequency_reducer_preconditions())
     errors.extend(check_annual_physical_validation_calibration_review_gate())
     errors.extend(check_annual_physical_prototype_preflight())
+    errors.extend(check_scalable_conditional_execution())
 
     if errors:
         for error in errors:
@@ -798,6 +799,94 @@ def check_annual_physical_prototype_preflight() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_annual_physical_prototype_preflight.py omits {test_name}")
+    return errors
+
+
+def check_scalable_conditional_execution() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/tschamut_public_scalable_conditional_execution.md",
+        ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml",
+        ROOT / "scripts/validate_scalable_conditional_execution.py",
+        ROOT / "tests/test_scalable_conditional_execution.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"scalable conditional execution path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/tschamut_public_scalable_conditional_execution.md").read_text()
+    record = (
+        ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml"
+    ).read_text()
+    validator = (ROOT / "scripts/validate_scalable_conditional_execution.py").read_text()
+    tests = (ROOT / "tests/test_scalable_conditional_execution.py").read_text()
+    runner = (ROOT / "scripts/build_hazard_layers.py").read_text()
+    hazard_tests = (ROOT / "tests/test_hazard_layers.py").read_text()
+
+    for term in (
+        "scalable conditional execution",
+        "summary-only",
+        "sorted_chunk_id",
+        "conditional_hazard_execution_diagnostics_v1",
+        "target-scale convergence",
+        "not operational",
+    ):
+        if term not in doc:
+            errors.append(f"docs/tschamut_public_scalable_conditional_execution.md omits {term!r}")
+
+    for term in (
+        "schema_version: scalable_conditional_execution_v1",
+        "decision: design_ready_not_authorized_for_scale_up",
+        "runtime_support_added: true",
+        "merge_order: sorted_chunk_id",
+        "required_mode_for_scale_up: summary-only",
+        "conditional_hazard_execution_diagnostics_v1",
+        "worker_count_reducer_parity",
+        "annualized: false",
+        "physical_probability: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_scalable_conditional_execution",
+        "REQUIRED_DIAGNOSTICS",
+        "REQUIRED_OUTPUT_BUDGET_FIELDS",
+        "full curve table must not be allowed for scale-up",
+        "merge_order must be sorted_chunk_id",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_scalable_conditional_execution.py omits {symbol!r}")
+
+    for term in (
+        "conditional_hazard_execution_diagnostics_v1",
+        "update_conditional_execution_manifest",
+        "summary_only_curve_export_required_for_scale_up",
+        "requires_worker_count_reducer_parity_before_scale_up",
+    ):
+        if term not in runner:
+            errors.append(f"scripts/build_hazard_layers.py omits {term!r}")
+
+    for test_name in (
+        "test_selected_tschamut_record_is_valid_and_not_authorized_for_scale_up",
+        "test_rejects_full_curve_table_for_scale_up",
+        "test_rejects_nondeterministic_merge_order",
+        "test_rejects_missing_convergence_diagnostic",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_scalable_conditional_execution.py omits {test_name}")
+
+    for test_name in (
+        "test_conditional_curve_summary_only_suppresses_large_curve_table",
+        "test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests",
+    ):
+        if test_name not in hazard_tests:
+            errors.append(f"tests/test_hazard_layers.py omits {test_name}")
     return errors
 
 

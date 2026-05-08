@@ -764,6 +764,25 @@ class HazardLayerTests(unittest.TestCase):
             self.assertTrue(
                 any(output["path"].endswith("_kinetic_energy_exceedance_10j.csv") for output in manifest["outputs"])
             )
+            execution = manifest["conditional_execution"]
+            self.assertEqual(execution["schema_version"], "conditional_hazard_execution_diagnostics_v1")
+            self.assertIn("conditional_intensity_exceedance", execution["product_modes"])
+            self.assertFalse(execution["annualized"])
+            self.assertFalse(execution["physical_probability"])
+            self.assertFalse(execution["risk_or_exposure"])
+            self.assertEqual(execution["conditional_curve_export"]["mode"], "summary-only")
+            self.assertFalse(execution["conditional_curve_export"]["csv_table_written"])
+            self.assertTrue(execution["conditional_curve_export"]["table_suppressed_for_output_budget"])
+            self.assertEqual(execution["conditional_curve_export"]["row_count"], curves["row_count"])
+            self.assertEqual(execution["reducer"]["mode"], "serial")
+            self.assertEqual(execution["reducer"]["merge_order"], "single_serial_accumulator")
+            self.assertGreater(execution["grid_cell_count"], 0)
+            self.assertEqual(
+                execution["output_budget"]["output_file_count"],
+                manifest["performance"]["output_file_count"],
+            )
+            self.assertTrue(execution["output_budget"]["summary_only_curve_export_required_for_scale_up"])
+            self.assertTrue(execution["convergence_diagnostics"]["requires_trajectory_count_sensitivity_before_scale_up"])
 
     def test_sampling_weighted_layers_equal_unweighted_when_weights_are_uniform(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1667,6 +1686,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(reducer["chunk_count"], 3)
             self.assertEqual(reducer["merge_order"], "sorted_chunk_id")
             self.assertTrue(reducer["merge_order_independent"])
+            self.assertEqual(reducer["chunk_ids"], sorted(reducer["chunk_ids"]))
             self.assertTrue(any(output["kind"] == "reducer_chunk_manifest" for output in manifest["outputs"]))
             chunk_manifests = sorted((chunked_dir / "chunks").glob("*_manifest.json"))
             self.assertEqual(len(chunk_manifests), 3)
@@ -1674,6 +1694,27 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(first_chunk["schema_version"], "hazard_reducer_chunk_manifest_v1")
             self.assertEqual(first_chunk["completion_status"], "completed")
             self.assertIn("reach_counts", first_chunk["reducer_contract"])
+            execution = manifest["conditional_execution"]
+            self.assertEqual(execution["reducer"]["mode"], "chunked_local_threads")
+            self.assertEqual(execution["reducer"]["worker_count"], 3)
+            self.assertEqual(execution["reducer"]["chunk_count"], 3)
+            self.assertEqual(execution["reducer"]["chunk_manifest_count"], 3)
+            self.assertEqual(execution["reducer"]["chunk_ids"], sorted(execution["reducer"]["chunk_ids"]))
+            self.assertEqual(execution["reducer"]["merge_order"], "sorted_chunk_id")
+            self.assertTrue(execution["reducer"]["merge_order_independent"])
+            self.assertFalse(execution["annualized"])
+            self.assertFalse(execution["physical_probability"])
+            self.assertFalse(execution["risk_or_exposure"])
+            self.assertEqual(
+                execution["output_budget"]["output_file_count"],
+                manifest["performance"]["output_file_count"],
+            )
+            self.assertEqual(
+                execution["output_budget"]["output_bytes"],
+                manifest["performance"]["output_bytes"],
+            )
+            self.assertTrue(execution["output_budget"]["generated_outputs_should_remain_ignored"])
+            self.assertTrue(execution["convergence_diagnostics"]["requires_worker_count_reducer_parity_before_scale_up"])
 
     def test_parquet_impact_events_match_csv_impact_density(self) -> None:
         try:

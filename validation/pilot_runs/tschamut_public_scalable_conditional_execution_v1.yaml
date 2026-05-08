@@ -1,0 +1,104 @@
+schema_version: scalable_conditional_execution_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_gate_v1
+roadmap_item: scalable_conditional_intensity_exceedance_pilot
+decision: design_ready_not_authorized_for_scale_up
+decision_rationale: >
+  The selected Tschamut conditional pilot has deterministic chunked reducer
+  support, summary-only conditional-curve output control, and an executable
+  diagnostics contract. Scale-up is still not authorized because target-scale
+  convergence, manual GIS visual QA, obstacle context, and measured output
+  budget evidence remain incomplete.
+operational_status: research_diagnostic
+
+input_evidence:
+  run_freeze_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  ensemble_feasibility_path: validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml
+  scaling_review_path: docs/tschamut_public_pilot_scaling_review.md
+  selected_domain: tschamut_public_pilot
+  selected_run_status: gate_run_completed
+  release_cell_count: 10
+  gate_trajectories_per_release_zone: 6
+  proposed_trajectories_per_release_zone: 100
+
+execution_contract:
+  status: design_ready
+  runner: scripts/build_hazard_layers.py
+  runtime_support_added: true
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+  deterministic_chunking:
+    status: required
+    worker_argument: --reducer-workers
+    chunk_manifest_schema: hazard_reducer_chunk_manifest_v1
+    chunk_id_policy: stable_prefix_sorted_chunk_index
+    merge_order: sorted_chunk_id
+    merge_order_independent: true
+    local_threads_only: true
+  conditional_curve_export:
+    required_mode_for_scale_up: summary-only
+    full_curve_table_allowed_for_scale_up: false
+    metadata_summary_required: true
+  manifest_diagnostics:
+    schema_version: conditional_hazard_execution_diagnostics_v1
+    required_fields:
+      - product_modes
+      - grid_cell_count
+      - conditional_curve_export
+      - reducer
+      - output_budget
+      - convergence_diagnostics
+
+output_budget:
+  status: design_ready_not_measured_at_target
+  required_before_scale_up:
+    - output_file_count
+    - output_bytes
+    - total_wall_seconds
+    - hazard_input_rows_per_second
+    - chunk_manifest_count
+  controls:
+    - summary_only_conditional_curves
+    - explicit_grid
+    - generated_outputs_ignored
+    - no_full_curve_table_for_scale_up
+
+convergence_diagnostics:
+  status: required_before_scale_up
+  required_before_increase:
+    - trajectory_count_sensitivity_between_gate_and_target_count
+    - conditional_curve_stability_by_threshold
+    - supporting_raster_stability
+    - probability_standard_error_layers
+    - worker_count_reducer_parity
+  current_gate_status: insufficient_for_scale_up
+
+remaining_blockers_before_ensemble_increase:
+  - target_scale_convergence_not_established
+  - manual_gis_visual_qa_inconclusive
+  - forest_obstacle_omission_limiting
+  - target_scale_output_budget_not_measured
+
+claim_boundary:
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+  unsupported_current_claims:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk_map
+    - operational_hazard_map
+
+limitations:
+  - conditional research diagnostics only
+  - scale-up remains blocked until convergence and output-budget evidence are recorded
+  - no physical probability or source-frequency semantics are included
+  - no risk, exposure, vulnerability, or operational claim is included

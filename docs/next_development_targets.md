@@ -502,6 +502,13 @@ Estimated order: 10.
   `scripts/validate_annual_physical_prototype_preflight.py` verify that the
   annual/physical prototype remains blocked by the deferred design gate and
   that no runtime support is added.
+- A scalable conditional execution contract now supports the selected Tschamut
+  pilot without changing semantics. `docs/tschamut_public_scalable_conditional_execution.md`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
+  and `scripts/validate_scalable_conditional_execution.py` define deterministic
+  local chunking, chunk manifests, sorted merge rules, summary-only conditional
+  curve export, output-budget fields, and convergence diagnostics required
+  before any ensemble-size increase.
 
 ## Deferred But Important Cross-Cutting Work
 

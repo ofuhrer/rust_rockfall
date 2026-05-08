@@ -2635,6 +2635,66 @@ Planning only; these milestones do not implement roadmap item content yet.
   accepted evidence or implemented reducer work is explicitly provided;
   otherwise keep annual/physical prototype implementation deferred.
 
+### M045
+
+- Milestone id: M045.
+- Roadmap item: Scalable conditional intensity-exceedance pilot for the selected
+  Tschamut public domain.
+- Hypothesis/objective: Add a narrow conditional-only scaling slice that makes
+  deterministic local chunking, chunk manifests, sorted reducer merge rules,
+  summary-only conditional curves, output-budget diagnostics, and convergence
+  diagnostics executable without introducing annual, physical-probability,
+  return-period, risk, exposure, vulnerability, or operational semantics.
+- Initial gap assessment: The hazard-layer runner already supported local
+  reducer workers, chunk manifests, deterministic sorted chunk merge, and
+  summary-only conditional curve export, but the run manifest did not yet
+  expose a compact conditional execution diagnostics section and the selected
+  Tschamut pilot lacked a validated decision record tying those controls to the
+  no-scale-up blockers.
+- Files changed:
+  `scripts/build_hazard_layers.py`,
+  `tests/test_hazard_layers.py`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
+  `scripts/validate_scalable_conditional_execution.py`,
+  `tests/test_scalable_conditional_execution.py`,
+  `docs/tschamut_public_scalable_conditional_execution.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added `conditional_hazard_execution_diagnostics_v1`
+  to hazard run manifests, covering conditional product labels, serial or
+  chunked reducer settings, chunk manifest counts, sorted merge order,
+  summary-only curve status, grid cell count, output file/byte counts, and
+  convergence diagnostics required before scale-up. Added a selected Tschamut
+  scalable conditional execution decision record plus validator/tests that keep
+  scale-up unauthorized until convergence, GIS visual QA, obstacle context, and
+  target output-budget evidence are complete.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_layers tests.test_scalable_conditional_execution`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_execution.py validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, sampling weights, defaults, generated outputs,
+  raw/public/private geodata, annual frequency support, physical probability
+  support, return-period semantics, risk/exposure/vulnerability semantics, or
+  operational claims are changed.
+- Decision: ACCEPT if final checks pass; scalable conditional execution is
+  design-ready and test-covered, but selected Tschamut ensemble-size increase
+  remains unauthorized.
+- Next proposed milestone: Run the selected Tschamut scalable conditional
+  command locally only after ignored input data are present, then record
+  target-scale convergence and output-budget evidence before reconsidering
+  ensemble-size increase.
+
 ### M041
 
 - Milestone id: M041.
