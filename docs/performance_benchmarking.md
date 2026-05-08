@@ -104,6 +104,27 @@ which can dominate small-to-medium hazard-stage timings.
 
 Use `--no-plots` for benchmark and larger workflow runs. Omit it only when a local PNG/HTML diagnostic report is needed for inspection.
 
+## Tschamut Pilot Scaling Summary
+
+For the ignored local Tschamut public conditional pilot outputs, summarize the
+existing validation, hazard, GIS-package, and reducer manifests without
+rerunning the simulator:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py \
+  --output-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json \
+  --output-md docs/tschamut_public_pilot_scaling_review.md
+```
+
+The JSON output is an ignored local artifact. The Markdown review can be
+committed as share-safe evidence because it records only manifest-derived
+timings, row counts, file counts, byte counts, reducer metadata, and claim
+boundaries. The script fails when the ignored pilot manifests are missing
+unless `--allow-missing` is supplied, in which case it writes a blocked
+summary. Optional `/usr/bin/time` sidecars can be passed with
+`--validation-time-file` and `--hazard-time-file` to record peak RSS memory;
+when they are absent, the memory field is explicitly marked `not_supplied`.
+
 ## Medium Private Benchmark Recipe
 
 Use this only with local/private data. Do not commit raw geodata or generated large outputs.

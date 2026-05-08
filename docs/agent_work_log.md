@@ -1515,3 +1515,49 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Priority 5 done at the automated
   diagnostic-review level.
 - Next proposed milestone: Stop after Priority 5 as requested.
+
+### M024
+
+- Milestone id: M024.
+- Roadmap item: Priority 6. Measure local scaling and output-volume
+  bottlenecks.
+- Hypothesis/objective: Complete one share-safe local scaling step for the
+  Tschamut public conditional pilot by summarizing existing ignored gate
+  manifests, without changing physics, defaults, source policy, annual
+  semantics, physical probability semantics, or operational claims.
+- Files changed:
+  `scripts/summarize_pilot_scaling.py`,
+  `tests/test_pilot_scaling_summary.py`,
+  `docs/tschamut_public_pilot_scaling_review.md`,
+  `docs/performance_benchmarking.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a manifest-driven Tschamut pilot scaling
+  summarizer that reads the validation manifest, hazard manifest, optional
+  GIS-package manifest, optional `/usr/bin/time` sidecars, and local ignored
+  output tree sizes. It fails clearly when required ignored outputs are absent
+  unless `--allow-missing` is supplied. The local review records validation and
+  hazard wall times, row counts, file counts, byte counts, deterministic
+  chunked reducer metadata, memory-sidecar status, and a no-default-change
+  decision identifying conditional-curve and raster output volume as the next
+  bottleneck before ensemble-size increase or orchestration.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_scaling_summary.py tests/test_pilot_gis_package_validator.py tests/test_public_real_site_conditional_pilot_run.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py --allow-missing --validation-manifest /tmp/missing_validation_manifest.json --hazard-manifest /tmp/missing_hazard_manifest.json --gis-package-manifest /tmp/missing_gis_manifest.json` passed and returned `blocked_missing_outputs`.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py --validation-manifest validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --hazard-manifest hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --gis-package-manifest hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --output-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json --output-md docs/tschamut_public_pilot_scaling_review.md` passed locally against ignored generated outputs.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `scripts/git-hooks/pre-push` passed.
+- Reviewer notes: No raw swisstopo data, processed DEM, generated hazard
+  rasters, conditional curve tables, or generated scaling JSON are committed.
+  Memory peak is not claimed unless optional external time sidecars are
+  supplied; the current review records that sidecars were not supplied.
+- Decision: ACCEPT if final checks pass; Priority 6 done at the local
+  manifest-summary level.
+- Next proposed milestone: Stop after Priority 6 as requested.

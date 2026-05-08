@@ -239,8 +239,16 @@ reducer results, timing, memory, file count, output bytes, and a decision on
 whether trajectory output, impact events, hazard accumulation, or orchestration
 is the bottleneck.
 
-Minimal acceptable deliverable: A pilot-scale performance note and no-default
-change recommendation for the next optimization slice.
+Minimal acceptable deliverable: complete. The Tschamut scaling summary script
+`scripts/summarize_pilot_scaling.py` reads the ignored local validation,
+hazard, GIS-package, and reducer manifests, fails clearly when required outputs
+are absent, and writes a share-safe review record in
+`docs/tschamut_public_pilot_scaling_review.md`. The current local evidence
+records validation and hazard wall times, row/file/byte counts, deterministic
+chunked reducer metadata, optional memory-sidecar status, and a no-default
+change decision that identifies conditional-curve and raster output volume as
+the next bottleneck to address before ensemble-size increases or
+orchestration.
 
 What not to do: Do not add MPI, GPU, SLURM, or distributed storage before local
 chunk/reducer contracts and bottlenecks are clear.
