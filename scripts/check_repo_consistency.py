@@ -434,6 +434,7 @@ def check_block_release_probability_evidence_contract() -> list[str]:
     required_paths = [
         ROOT / "docs/block_release_probability_evidence_contract.md",
         ROOT / "validation/templates/block_release_probability_evidence_v1.yaml",
+        ROOT / "tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml",
         ROOT / "scripts/validate_block_release_probability_evidence.py",
         ROOT / "tests/test_block_release_probability_evidence.py",
     ]
@@ -447,6 +448,9 @@ def check_block_release_probability_evidence_contract() -> list[str]:
 
     doc = (ROOT / "docs/block_release_probability_evidence_contract.md").read_text()
     template = (ROOT / "validation/templates/block_release_probability_evidence_v1.yaml").read_text()
+    fixture = (
+        ROOT / "tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml"
+    ).read_text()
     validator = (ROOT / "scripts/validate_block_release_probability_evidence.py").read_text()
     tests = (ROOT / "tests/test_block_release_probability_evidence.py").read_text()
 
@@ -458,6 +462,8 @@ def check_block_release_probability_evidence_contract() -> list[str]:
         "conditional_probability_given_source_event_and_block_scenario",
         "reuse of `sampling_weight` as physical probability",
         "swisstopo",
+        "block_release_probability_evidence_design_review_fixture_v1.yaml",
+        "not accepted evidence for Tschamut",
     ):
         if term not in doc:
             errors.append(f"docs/block_release_probability_evidence_contract.md omits {term!r}")
@@ -476,6 +482,22 @@ def check_block_release_probability_evidence_contract() -> list[str]:
                 f"validation/templates/block_release_probability_evidence_v1.yaml omits {term!r}"
             )
 
+    for term in (
+        "schema_version: block_release_probability_evidence_v1",
+        "record_status: accepted_for_design_review",
+        "prototype_authorized: false",
+        "conditional_probability_given_source_event",
+        "conditional_probability_given_source_event_and_block_scenario",
+        "sampling_weights_are_physical_probability: false",
+        "not accepted evidence for Tschamut",
+        "annual and physical products remain deferred",
+    ):
+        if term not in fixture:
+            errors.append(
+                "tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml "
+                f"omits {term!r}"
+            )
+
     for symbol in (
         "validate_block_release_probability_evidence",
         "conditional_probability_given_source_event",
@@ -490,6 +512,7 @@ def check_block_release_probability_evidence_contract() -> list[str]:
     for test_name in (
         "test_selected_template_records_no_accepted_block_release_probability_evidence",
         "test_accepts_complete_candidate_for_design_review_only",
+        "test_design_review_fixture_is_valid_but_not_runtime_authorized",
         "test_rejects_block_probabilities_that_do_not_sum_to_one",
         "test_rejects_release_probabilities_that_do_not_sum_by_block_scenario",
         "test_rejects_sampling_weight_reuse_as_physical_probability",

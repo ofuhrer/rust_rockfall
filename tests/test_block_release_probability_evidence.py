@@ -38,6 +38,16 @@ class BlockReleaseProbabilityEvidenceTests(unittest.TestCase):
             self.assertEqual(summary["release_cell_count"], 4)
             self.assertFalse(summary["prototype_authorized"])
 
+    def test_design_review_fixture_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_block_release_probability_evidence(
+            ROOT / "tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["block_scenario_count"], 2)
+        self.assertEqual(summary["release_cell_count"], 4)
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_rejects_block_probabilities_that_do_not_sum_to_one(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.candidate_record()

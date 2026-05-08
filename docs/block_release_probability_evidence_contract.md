@@ -20,6 +20,12 @@ The checked-in template is
 executable validator is
 `scripts/validate_block_release_probability_evidence.py`.
 
+A small synthetic design-review fixture lives at
+`tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml`.
+It proves the `accepted_for_design_review` record shape and validator behavior,
+but it is not accepted evidence for Tschamut or any real Swiss source zone and
+does not authorize runtime annual or physical products.
+
 ## Required Record States
 
 `record_status` must be one of:

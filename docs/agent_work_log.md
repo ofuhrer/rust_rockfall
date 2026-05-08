@@ -2465,3 +2465,56 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Resolve exactly one real blocker only if real
   accepted evidence or implemented reducer work is explicitly provided or
   requested.
+
+### M041
+
+- Milestone id: M041.
+- Roadmap item: Target 10 blocker: block/release probability evidence
+  design-review fixture.
+- Hypothesis/objective: Add one executable accepted-record fixture for the
+  block/release probability evidence contract without treating it as accepted
+  Tschamut evidence or authorizing annual/physical runtime support.
+- Initial gap assessment: The block/release probability evidence contract and
+  selected `no_accepted_block_release_probability_evidence` template existed,
+  and in-memory tests covered candidate records, but the repository did not
+  contain a small checked fixture exercising the `accepted_for_design_review`
+  state. Real accepted Swiss block-scenario and release-cell probability
+  evidence is still unavailable and must not be invented.
+- Files changed:
+  `tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml`,
+  `tests/test_block_release_probability_evidence.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/block_release_probability_evidence_contract.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a synthetic `accepted_for_design_review`
+  block/release evidence fixture with explicit LV95/LN02 metadata, conditional
+  block-scenario probabilities summing to one, release-cell probabilities
+  summing to one per block scenario, sampling-weight boundary checks,
+  uncertainty notes, separated calibration/validation fixture ids, and claim
+  boundaries. Tests and consistency checks validate the fixture while docs state
+  that it is not accepted evidence for Tschamut or any real Swiss source zone.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_block_release_probability_evidence.py tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_block_release_probability_evidence`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, operational claims, or selected
+  design-gate authorization are changed.
+- Decision: ACCEPT if final checks pass; block/release accepted-record
+  validation is now covered by a tiny committed fixture while the real evidence
+  blocker remains unresolved.
+- Next proposed milestone: Resolve exactly one real blocker only if real
+  accepted evidence or implemented reducer work is explicitly provided or
+  requested.

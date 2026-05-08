@@ -1,0 +1,77 @@
+schema_version: block_release_probability_evidence_v1
+record_id: block_release_probability_evidence_design_review_fixture_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+probability_model_id: synthetic_block_release_probability_fixture_v1
+probability_mode: block_release_probability_evidence_only
+source_zone_id: synthetic_source_zone_design_review_v1
+source_geometry_version: synthetic_source_zone_design_review_metadata_v1
+source_geometry_hash: sha256:synthetic_source_zone_design_review_fixture
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class_id: synthetic_detachment_event_class_v1
+block_scenario_distribution:
+  denominator: conditional_probability_given_source_event
+  total_probability: 1.0
+  scenarios:
+    - block_scenario_id: synthetic_small_sphere_v1
+      block_size_class: small
+      block_shape_class: sphere
+      probability: 0.35
+      evidence_basis: synthetic schema fixture
+    - block_scenario_id: synthetic_large_sphere_v1
+      block_size_class: large
+      block_shape_class: sphere
+      probability: 0.65
+      evidence_basis: synthetic schema fixture
+release_cell_distribution:
+  denominator: conditional_probability_given_source_event_and_block_scenario
+  total_probability_by_block_scenario:
+    - block_scenario_id: synthetic_small_sphere_v1
+      total_probability: 1.0
+    - block_scenario_id: synthetic_large_sphere_v1
+      total_probability: 1.0
+  release_cells:
+    - block_scenario_id: synthetic_small_sphere_v1
+      release_cell_id: synthetic_release_cell_001
+      probability: 0.5
+      evidence_basis: synthetic schema fixture
+    - block_scenario_id: synthetic_small_sphere_v1
+      release_cell_id: synthetic_release_cell_002
+      probability: 0.5
+      evidence_basis: synthetic schema fixture
+    - block_scenario_id: synthetic_large_sphere_v1
+      release_cell_id: synthetic_release_cell_001
+      probability: 0.25
+      evidence_basis: synthetic schema fixture
+    - block_scenario_id: synthetic_large_sphere_v1
+      release_cell_id: synthetic_release_cell_002
+      probability: 0.75
+      evidence_basis: synthetic schema fixture
+sampling_weight_boundary:
+  sampling_weights_are_physical_probability: false
+  sampling_weight_column_allowed_as_probability: false
+uncertainty:
+  type: expert_range
+  required_before_prototype: true
+  notes: Synthetic block/release probability uncertainty for schema review only.
+evidence_basis:
+  block_distribution: expert_elicitation
+  release_cell_distribution: inventory_measurement
+calibration_dataset_ids:
+  - synthetic_block_release_calibration_fixture_v1
+validation_dataset_ids:
+  - synthetic_block_release_holdout_fixture_v1
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - synthetic accepted-for-design-review fixture only
+  - not accepted evidence for Tschamut or any real Swiss source zone
+  - not used by runtime products
+  - current sampling weights remain conditional design weights
+  - annual and physical products remain deferred

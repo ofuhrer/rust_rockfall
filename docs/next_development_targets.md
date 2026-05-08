@@ -464,6 +464,9 @@ Estimated order: 10.
   candidate conditional block-scenario and release-cell probability evidence
   records while keeping the selected template at
   `no_accepted_block_release_probability_evidence`.
+- A synthetic block/release design-review fixture now exercises the
+  `accepted_for_design_review` record state without changing the selected gate
+  input or authorizing annual/physical runtime products.
 - The overlap-adjusted reducer and uncertainty-propagation blocker is
   partially resolved as an inactive precondition contract.
   `docs/physical_frequency_reducer_preconditions.md`,
