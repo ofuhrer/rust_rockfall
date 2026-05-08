@@ -146,6 +146,7 @@ def main() -> int:
     errors.extend(check_scarring_not_in_tschamut_workflows())
     errors.extend(check_hazard_layer_metadata())
     errors.extend(check_swisstopo_geodata_metadata())
+    errors.extend(check_hazard_claim_hygiene())
 
     if errors:
         for error in errors:
@@ -315,6 +316,11 @@ def check_schema_docs() -> list[str]:
         "hazard_probability",
         "sampling_weighted",
         "sampling_weight",
+        "conditional_intensity_exceedance_curves",
+        "pilot_gis_package",
+        "pilot_gis_package_manifest_v1",
+        "deterministic_local_reducer_v1",
+        "hazard_reducer_chunk_manifest_v1",
         "normalization_convention",
         "conditioned_on_filter",
         "kinetic_energy_exceedance_j",
@@ -413,11 +419,17 @@ def check_swisstopo_geodata_metadata() -> list[str]:
     required_paths = [
         ROOT / "docs/swisstopo_data_strategy.md",
         ROOT / "docs/swiss_terrain_ingestion_pilot.md",
+        ROOT / "docs/public_real_site_geodata_preparation.md",
+        ROOT / "docs/source_zone_block_scenario_policy_v1.md",
         ROOT / "docs/tschamut_swissalti3d_pilot.md",
         ROOT / "docs/swisstopo_terrain_tile_schema.yaml",
         ROOT / "data/processed/swisstopo/README.md",
         ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml",
+        ROOT / "data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml",
+        ROOT / "scripts/validate_public_real_site_geodata_manifest.py",
+        ROOT / "scripts/validate_source_scenario_policy.py",
         ROOT / "scripts/prepare_tschamut_swissalti3d_pilot.py",
+        ROOT / "validation/templates/public_real_site_source_scenario_policy_v1.yaml",
         ROOT / "validation/templates/tschamut_swissalti3d_baseline.yaml",
         ROOT / "validation/templates/tschamut_swissalti3d_rotational.yaml",
         ROOT / "validation/cases/swissalti3d_pilot.yaml",
@@ -478,6 +490,42 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ):
             if term not in strategy:
                 errors.append(f"docs/swisstopo_data_strategy.md omits {term!r}")
+
+    manifest_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_public_real_site_geodata_manifest.py",
+            "data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if manifest_check.returncode != 0:
+        output = "\n".join(
+            part for part in (manifest_check.stdout, manifest_check.stderr) if part
+        ).strip()
+        errors.append(f"public real-site geodata manifest template validation failed:\n{output}")
+
+    policy_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_source_scenario_policy.py",
+            "validation/templates/public_real_site_source_scenario_policy_v1.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if policy_check.returncode != 0:
+        output = "\n".join(
+            part for part in (policy_check.stdout, policy_check.stderr) if part
+        ).strip()
+        errors.append(f"source-zone/block-scenario policy template validation failed:\n{output}")
 
     hazard_docs = "\n".join(
         path.read_text()
@@ -613,6 +661,134 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         if not outputs.get("ensemble_trajectories_dir"):
             errors.append("swissalti3d hazard-statistics pilot must write ensemble_trajectories_dir")
     return errors
+
+
+MISLEADING_HAZARD_CLAIM_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("annual frequency claim", r"\bannual(?:ized)?\s+(?:exceedance\s+)?frequenc(?:y|ies)\b"),
+    ("annual probability claim", r"\bannual\s+probabilit(?:y|ies)\b"),
+    ("annual unit claim", r"\b1\s*/\s*year\b|\bper\s+year\b"),
+    ("return-period claim", r"\breturn[- ]period\b|\b(?:10|30|100)[- ]year\b"),
+    ("risk-map claim", r"\brisk[- ]map(?:s)?\b"),
+    (
+        "operational hazard-map claim",
+        r"\boperational(?:ly)?\s+(?:validated\s+)?hazard[- ]map(?:s)?\b",
+    ),
+    ("official hazard-map claim", r"\bofficial\s+hazard[- ]map(?:s)?\b"),
+    ("validated hazard-map claim", r"\bvalidated\s+hazard[- ]map(?:s)?\b"),
+)
+
+INTENSITY_FREQUENCY_PATTERN = re.compile(r"\bintensity[- ]frequency\b", re.IGNORECASE)
+
+CLAIM_HYGIENE_ALLOWLIST_TERMS = (
+    "future",
+    "unsupported",
+    "disallowed",
+    "not ",
+    "no ",
+    "do not",
+    "does not",
+    "must not",
+    "without",
+    "requires",
+    "require ",
+    "reserved",
+    "later",
+    "deferred",
+    "schema-visible",
+    "inactive",
+    "excluded",
+    "out of scope",
+    "before",
+    "only when",
+    "once ",
+    "explicit",
+    "reject",
+    "rejection",
+    "deferral",
+    "target",
+    "until",
+    "design",
+    "fields",
+    "physical probability",
+    "documentation-only",
+)
+
+INTENSITY_FREQUENCY_ALLOWLIST_TERMS = CLAIM_HYGIENE_ALLOWLIST_TERMS + (
+    "annual",
+    "physical",
+    "source-frequency",
+    "reserve",
+    "prototype",
+)
+
+
+def check_hazard_claim_hygiene() -> list[str]:
+    """Reject unsupported hazard-product claims in user-facing text.
+
+    The check is intentionally narrow: it allows future, unsupported, disallowed,
+    and explicit boundary language, while flagging bare labels that could make a
+    current product look annualized, return-period based, operational, or risk
+    oriented.
+    """
+
+    paths = [
+        ROOT / "README.md",
+        ROOT / "hazard/README.md",
+        ROOT / "docs/hazard_layers.md",
+        ROOT / "docs/hazard_map_semantics.md",
+        ROOT / "docs/roadmap_hazard_mapping.md",
+        ROOT / "docs/validation_plan.md",
+        ROOT / "docs/dataset_strategy.md",
+        ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md",
+        ROOT / "docs/probabilistic_scenario_model_design.md",
+        ROOT / "docs/validation_maturity_framework.md",
+        ROOT / "docs/pilot_gis_package.md",
+    ]
+    errors: list[str] = []
+    for path in paths:
+        if not path.exists():
+            errors.append(f"claim-hygiene path is missing: {path.relative_to(ROOT)}")
+            continue
+        errors.extend(
+            find_hazard_claim_hygiene_errors(
+                path.read_text(),
+                path.relative_to(ROOT).as_posix(),
+            )
+        )
+    return errors
+
+
+def find_hazard_claim_hygiene_errors(text: str, label: str) -> list[str]:
+    errors: list[str] = []
+    lines = text.splitlines()
+    for index, line in enumerate(lines, start=1):
+        window = _claim_hygiene_window(lines, index)
+        for claim_label, pattern in MISLEADING_HAZARD_CLAIM_PATTERNS:
+            if re.search(pattern, line, re.IGNORECASE) and not _has_claim_hygiene_allowance(
+                window,
+                CLAIM_HYGIENE_ALLOWLIST_TERMS,
+            ):
+                errors.append(
+                    f"{label}:{index}: unsupported bare {claim_label}: {line.strip()}"
+                )
+        if INTENSITY_FREQUENCY_PATTERN.search(line) and not _has_claim_hygiene_allowance(
+            window,
+            INTENSITY_FREQUENCY_ALLOWLIST_TERMS,
+        ):
+            errors.append(
+                f"{label}:{index}: intensity-frequency must be reserved for future physical/annual products: {line.strip()}"
+            )
+    return errors
+
+
+def _claim_hygiene_window(lines: list[str], one_based_index: int) -> str:
+    start = max(0, one_based_index - 6)
+    end = min(len(lines), one_based_index + 4)
+    return "\n".join(lines[start:end]).lower()
+
+
+def _has_claim_hygiene_allowance(text: str, terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in terms)
 
 
 def check_contact_model_docs() -> list[str]:

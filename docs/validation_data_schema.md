@@ -143,7 +143,7 @@ configured assumptions only; they are not calibrated material evidence.
 
 ## Hazard-Layer Statistics
 
-`hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. Existing validation pass/fail semantics are unchanged.
+`hazard_layers.statistics` is consumed by `scripts/build_hazard_layers.py`, not by the simulation kernel. Threshold lists are optional, finite, nonnegative values. When configured, the hazard builder writes trajectory-level exceedance probability rasters in addition to the existing reach, deposition, maximum-energy, jump-height, and impact-density layers. It also writes `conditional_intensity_exceedance_curves_v1` as `<prefix>_conditional_intensity_exceedance_curves.csv`, a tidy table over grid cell, intensity measure, threshold, numerator, denominator, conditional fraction, optional standard error, probability mode, and normalization scope. Existing validation pass/fail semantics are unchanged.
 
 ## Hazard Probability Block
 
@@ -610,6 +610,39 @@ nodata value, grid dimensions, extent, EPSG/vertical datum when available from
 `cog: true` is schema-reserved but rejected by the Phase 2A hazard builder until
 a verified COG writer is added. Existing cases that omit `hazard_exports`
 continue to write only CSV/ASCII/GeoJSON/JSON outputs.
+
+Local diagnostic GIS/QGIS review packages can opt in to a package inventory:
+
+```yaml
+pilot_gis_package:
+  enabled: true
+  visual_qa_status: not-run
+  visual_qa_note: "Manual GIS/QGIS inspection has not been run."
+  reviewed_artifacts: []
+  source_zone_context_paths: []
+```
+
+When enabled with GeoTIFF export, the hazard builder writes
+`pilot_gis_package_manifest_v1` as
+`<prefix>_pilot_gis_package_manifest.json`. The manifest inventories GeoTIFF
+rasters, CSV/ASCII parity grids, hazard metadata, optional map-package
+manifests, optional source-zone context sidecars, terrain metadata identity,
+grid/terrain provenance, visual QA status, and unsupported claim boundaries.
+It is a research-diagnostic review manifest only; it is not a QGZ, GeoPackage,
+COG, annual intensity-frequency product, return-period product, risk map, or
+operational hazard-map approval artifact.
+
+Hazard-layer builds can opt in to local chunked reducer execution with
+`--reducer-workers N` for `N > 1`. The hazard `run_manifest_v1` then records a
+`reducer_execution` section with schema version
+`deterministic_local_reducer_v1`, sorted chunk-id merge order, worker count,
+chunk ids, and reducer contract. Each chunk writes
+`hazard_reducer_chunk_manifest_v1` JSON under the output `chunks/` directory
+with input artifact identities, row counts, reducer counts, timings, completion
+status, and local in-memory partial-state limitations. The chunked reducer is
+required to preserve serial output values for current conditional diagnostic
+layers; it does not introduce annual frequency, physical probability, or
+distributed execution semantics.
 
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,

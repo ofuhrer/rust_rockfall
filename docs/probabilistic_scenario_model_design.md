@@ -21,6 +21,9 @@ and manifest support.
 This document defines the scenario metadata contract. Current hazard-map
 denominator, conditioning, language, and unsupported physical/annual claim
 semantics are defined in `docs/hazard_map_semantics.md`.
+The real-site pilot policy layer that freezes source-zone evidence,
+deterministic release sampling, and representative block scenarios before
+simulation is defined in `docs/source_zone_block_scenario_policy_v1.md`.
 
 ## Scenario Identity
 

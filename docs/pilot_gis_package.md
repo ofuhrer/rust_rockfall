@@ -12,6 +12,12 @@ post-processing outputs. It should make raster alignment, CRS metadata,
 vertical-datum provenance, source-zone context, and visual QA traceable enough
 for a reviewer to inspect the pilot in QGIS or another GIS tool.
 
+The current executable artifact is a package inventory, not a packaged QGIS
+project. `scripts/build_hazard_layers.py --pilot-gis-package --export-geotiff`
+or `pilot_gis_package.enabled: true` writes
+`<prefix>_pilot_gis_package_manifest.json` with schema version
+`pilot_gis_package_manifest_v1`.
+
 ## Package Classes
 
 Current and future GIS products must be distinguished explicitly:
@@ -51,6 +57,19 @@ A pilot GIS package should include:
 
 Private raw terrain crops, raw swisstopo products, and generated private outputs
 remain ignored unless a future task explicitly adds tiny synthetic fixtures.
+
+The package manifest records:
+
+- GeoTIFF raster outputs with checksums and non-COG/non-annual semantics;
+- CSV and ESRI ASCII parity outputs for the same generated layers;
+- hazard metadata and any map-package manifest outputs already generated;
+- optional source-zone context sidecars from
+  `pilot_gis_package.source_zone_context_paths`;
+- terrain metadata sidecar identity where `terrain.metadata_path` is available;
+- visual QA status, note, and reviewed artifact labels;
+- explicit unsupported-product labels for physical probability, annual
+  intensity-frequency, return-period, risk-map, and operational hazard-map
+  claims.
 
 ## CRS And Geodata Requirements
 
@@ -210,11 +229,17 @@ contract:
 - `tests/test_hazard_layers.py::HazardLayerTests.test_cog_export_is_explicitly_deferred`
   verifies `--export-cog` fails with an explicit deferred-implementation error
   instead of silently writing a non-COG product.
+- `tests/test_hazard_layers.py::HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries`
+  verifies the pilot package manifest records GeoTIFF outputs, CSV/ASCII parity
+  files, source-zone and terrain metadata sidecars, visual QA status, and
+  unsupported annual, return-period, risk, and operational claim boundaries.
+- `tests/test_hazard_layers.py::HazardLayerTests.test_pilot_gis_package_requires_geotiff_export`
+  verifies package manifest generation is gated on explicit GeoTIFF export.
 
 These checks prove value/metadata parity for the tiny fixture path and enforce
-the current unsupported COG boundary. They do not prove QGIS styling quality,
-QGZ packaging, Cloud-Optimized GeoTIFF conformance, production tiling, Swiss
-pilot scientific validity, operational approval, or risk-map validity.
+the current unsupported COG and package boundary. They do not prove QGIS styling
+quality, QGZ packaging, Cloud-Optimized GeoTIFF conformance, production tiling,
+Swiss pilot scientific validity, operational approval, or risk-map validity.
 
 ## Deferred Production Work
 

@@ -367,6 +367,79 @@ class HazardLayerTests(unittest.TestCase):
             self.assertFalse(reach_output["probability_semantics"]["annualized"])
             self.assertRegex(reach_output["sha256"], r"^[0-9a-f]{64}$")
 
+    def test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            source_zone_path = ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "source_zone_valid.yaml"
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case["pilot_gis_package"] = {
+                "enabled": True,
+                "visual_qa_status": "inconclusive",
+                "visual_qa_note": "Tiny fixture generated for package contract inspection.",
+                "reviewed_artifacts": ["manifest", "GeoTIFF"],
+                "source_zone_context_paths": [str(source_zone_path)],
+            }
+            case_path = work / "pilot_gis_package_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(FIXTURE / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                    "--export-geotiff",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            package_path = output_dir / "hazard_fixture_plane_pilot_gis_package_manifest.json"
+            package = json.loads(package_path.read_text())
+            self.assertTrue(any(output["kind"] == "pilot_gis_package_manifest" for output in manifest["outputs"]))
+            self.assertEqual(package["schema_version"], "pilot_gis_package_manifest_v1")
+            self.assertEqual(package["operational_status"], "research_diagnostic")
+            self.assertTrue(any(output["format"] == "geotiff" for output in package["raster_outputs"]))
+            self.assertTrue(any(output["format"] == "csv_grid" for output in package["parity_outputs"]))
+            self.assertTrue(any(output["format"] == "esri_ascii_grid" for output in package["parity_outputs"]))
+            self.assertEqual(package["source_zone_context"][0]["path"], str(source_zone_path))
+            self.assertEqual(package["terrain_metadata"]["path"], str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"))
+            self.assertFalse(package["raster_contract"]["cloud_optimized"])
+            self.assertFalse(package["raster_contract"]["qgis_project_included"])
+            self.assertFalse(package["probability_claim_boundary"]["annualized"])
+            self.assertIn("return_period", package["probability_claim_boundary"]["future_unsupported_product_labels"])
+            self.assertEqual(package["visual_qa"]["status"], "inconclusive")
+            self.assertFalse(package["visual_qa"]["accepted_for_operational_use"])
+
+    def test_pilot_gis_package_requires_geotiff_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(SystemExit, "pilot_gis_package requires GeoTIFF export"):
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(Path(tmp) / "hazard"),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                        "--pilot-gis-package",
+                    ]
+                )
+
     def test_cog_export_is_explicitly_deferred(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(SystemExit, "COG export is not implemented"):
@@ -509,6 +582,28 @@ class HazardLayerTests(unittest.TestCase):
             metadata = json.loads((exceedance_dir / "hazard_fixture_plane_metadata.json").read_text())
             manifest = json.loads((exceedance_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertEqual(metadata["hazard_statistics"]["kinetic_energy_exceedance_j"], [10.0])
+            curve_path = exceedance_dir / "hazard_fixture_plane_conditional_intensity_exceedance_curves.csv"
+            with curve_path.open(newline="") as file:
+                curve_rows = list(csv.DictReader(file))
+            self.assertTrue(curve_rows)
+            kinetic_curve_rows = [
+                row for row in curve_rows if row["layer_name"] == "kinetic_energy_exceedance_10j"
+            ]
+            self.assertEqual({row["probability_mode"] for row in kinetic_curve_rows}, {"unweighted_diagnostic"})
+            self.assertEqual({row["normalization_scope"] for row in kinetic_curve_rows}, {"supplied_trajectory_count"})
+            self.assertEqual({row["annualized"] for row in curve_rows}, {"false"})
+            self.assertAlmostEqual(float(kinetic_curve_rows[0]["denominator"]), 2.0)
+            self.assertEqual(
+                metadata["conditional_intensity_exceedance_curves"]["schema_version"],
+                "conditional_intensity_exceedance_curves_v1",
+            )
+            self.assertEqual(
+                metadata["conditional_intensity_exceedance_curves"]["row_count"],
+                len(curve_rows),
+            )
+            self.assertTrue(
+                any(output["kind"] == "conditional_intensity_exceedance_curves" for output in manifest["outputs"])
+            )
             self.assertIn(
                 "kinetic_energy_exceedance_10j",
                 manifest["hazard_statistics"]["generated_layer_names"],
@@ -678,6 +773,22 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("weighted_reach_probability", probability["generated_weighted_layer_names"])
             self.assertIn("weighted_deposition_density", probability["generated_weighted_layer_names"])
             self.assertEqual(metadata["hazard_probability"], probability)
+            curve_path = output_dir / "hazard_fixture_weighted_conditional_intensity_exceedance_curves.csv"
+            with curve_path.open(newline="") as file:
+                curve_rows = list(csv.DictReader(file))
+            weighted_curve_rows = [
+                row for row in curve_rows if row["layer_name"] == "weighted_velocity_exceedance_1p5mps"
+            ]
+            self.assertTrue(weighted_curve_rows)
+            self.assertEqual(
+                {row["probability_mode"] for row in weighted_curve_rows},
+                {"sampling_weighted_conditional"},
+            )
+            self.assertEqual(
+                {row["normalization_scope"] for row in weighted_curve_rows},
+                {"conditioned_on_filter"},
+            )
+            self.assertAlmostEqual(float(weighted_curve_rows[0]["denominator"]), 4.0)
 
     def test_map_package_metadata_labels_weighted_outputs_without_changing_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1413,6 +1524,65 @@ class HazardLayerTests(unittest.TestCase):
             )
             self.assertAlmostEqual(sum(full_impacts.values()), 1.0)
             self.assertEqual(len([value for value in full_impacts.values() if value > 0.0]), 2)
+
+    def test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            serial_dir = work / "serial"
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(serial_dir)]), 0)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        *common_args,
+                        "--output-dir",
+                        str(chunked_dir),
+                        "--reducer-workers",
+                        "3",
+                    ]
+                ),
+                0,
+            )
+
+            for layer in (
+                "reach_probability",
+                "kinetic_energy_exceedance_10j",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "deposition_density",
+                "significant_impact_density",
+            ):
+                self.assertEqual(
+                    read_layer(serial_dir / f"hazard_fixture_ensemble_{layer}.csv", layer),
+                    read_layer(chunked_dir / f"hazard_fixture_ensemble_{layer}.csv", layer),
+                )
+
+            manifest = json.loads((chunked_dir / "hazard_fixture_ensemble_manifest.json").read_text())
+            reducer = manifest["reducer_execution"]
+            self.assertEqual(reducer["schema_version"], "deterministic_local_reducer_v1")
+            self.assertEqual(reducer["worker_count"], 3)
+            self.assertEqual(reducer["chunk_count"], 3)
+            self.assertEqual(reducer["merge_order"], "sorted_chunk_id")
+            self.assertTrue(reducer["merge_order_independent"])
+            self.assertTrue(any(output["kind"] == "reducer_chunk_manifest" for output in manifest["outputs"]))
+            chunk_manifests = sorted((chunked_dir / "chunks").glob("*_manifest.json"))
+            self.assertEqual(len(chunk_manifests), 3)
+            first_chunk = json.loads(chunk_manifests[0].read_text())
+            self.assertEqual(first_chunk["schema_version"], "hazard_reducer_chunk_manifest_v1")
+            self.assertEqual(first_chunk["completion_status"], "completed")
+            self.assertIn("reach_counts", first_chunk["reducer_contract"])
 
     def test_parquet_impact_events_match_csv_impact_density(self) -> None:
         try:

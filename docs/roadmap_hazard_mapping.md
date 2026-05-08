@@ -6,7 +6,14 @@ The long-term goal is an independent, open, automated workflow for producing sci
 
 The first concrete milestone is a valley-scale pilot that demonstrates the full chain from pragmatic release-zone and block-scenario generation through large deterministic trajectory ensembles to GIS-ready hazard outputs. Development should prioritize the largest blockers to that milestone and to eventual national-scale mapping: uncertainty-aware scenario modelling, scalable trajectory execution, reproducible geospatial provenance, and defensible hazard-layer semantics.
 
-The main probabilistic target is pixel-scale intensity-frequency information, or the closest defensible national hazard-map quantity while annual source-frequency assumptions remain immature. The workflow should be designed for efficient single-socket execution, local parallelism, reproducible chunking, a later CSCS/SLURM path, and roughly 10,000 trajectories per release zone where appropriate.
+The current target path is pixel-scale conditional intensity-exceedance and
+related diagnostic hazard layers. The future probabilistic target is
+pixel-scale physical-probability or annual intensity-frequency information, or
+the closest defensible national hazard-map quantity once annual
+source-frequency assumptions are mature. The workflow should be designed for
+efficient single-socket execution, local parallelism, reproducible chunking, a
+later CSCS/SLURM path, and roughly 10,000 trajectories per release zone where
+appropriate.
 
 The goal is not to reproduce RAMMS::ROCKFALL internals, clone proprietary workflows, or claim equivalence with any operational tool. RAMMS and related literature are used as scientific context for understanding state-of-the-art modelling concepts, not as implementation targets.
 
@@ -32,7 +39,9 @@ Hazard modelling estimates where rockfall may travel and how intense it may be. 
 - maximum kinetic energy;
 - maximum jump height;
 - velocity or momentum summaries where useful;
-- intensity-frequency or threshold-exceedance summaries where source-frequency semantics allow them;
+- conditional threshold-exceedance summaries now, and physical-probability or
+  annual intensity-frequency summaries only where source-frequency semantics
+  allow them;
 - scenario uncertainty layers across release, terrain, block, roughness, and contact parameters.
 
 Risk modelling requires exposure and vulnerability information that is outside the current simulator:
@@ -84,7 +93,8 @@ Needed work:
 
 - pragmatic release-zone polygons or raster masks from public geodata and documented rules;
 - literature-informed sampling of release points, initial velocities, block volumes, and shape classes;
-- scenario metadata for return-period or event-family assumptions;
+- scenario metadata for event-family assumptions and, in a later phase only,
+  return-period assumptions backed by annual source-frequency contracts;
 - deterministic seeding by scenario, release cell, and trajectory id.
 
 Current status: deterministic seeded release perturbations exist, but no operational release-zone generation exists.
@@ -182,6 +192,6 @@ The next high-impact work should support the Swiss hazard-mapping goal and close
 
 1. Build a valley-scale pilot workflow from public geodata with explicit release-zone and block-scenario assumptions.
 2. Improve single-socket throughput, local parallelism, chunk manifests, and deterministic reducers toward roughly 10,000 trajectories per release zone where appropriate.
-3. Strengthen uncertainty and convergence reporting for weighted conditional hazard layers and intensity-frequency-style products.
+3. Strengthen uncertainty and convergence reporting for weighted conditional hazard layers and conditional intensity-exceedance products.
 4. Improve DEM/terrain handling, GeoTIFF/COG packaging, and CRS-aware visual QA for Swiss workflows.
 5. Use Chant Sura, Tschamut, Mel de la Niva, and Swiss pilot evidence to decide which physics gaps matter most, without hidden tuning or operational claims.

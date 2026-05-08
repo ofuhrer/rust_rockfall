@@ -12,6 +12,8 @@ This document defines how to label and interpret hazard layers produced by the
 existing post-processing workflow. It is not a calibration plan, source
 frequency model, exposure/vulnerability model, or operational acceptance
 standard.
+Evidence and claim maturity labels are defined separately in
+`docs/validation_maturity_framework.md`.
 
 ## Product Classes
 
@@ -98,6 +100,11 @@ No current denominator is physical probability mass or annual source frequency.
 `physical_probability` and `annual_frequency` are schema-visible future labels
 only. They are inactive for current map generation and must not appear as claims
 in map names, legends, reports, or review summaries.
+Current trajectory-threshold products should be described as conditional
+intensity-exceedance products when they are conditioned on the supplied
+trajectory set, metadata filter, or sampling-weighted scenario set. Reserve
+intensity-frequency wording for future `physical_probability` or
+`annual_frequency` products with explicit frequency semantics.
 
 ## Source-Zone And Block-Scenario Conditioning
 
@@ -142,6 +149,7 @@ only in future phases when the required contracts exist:
 | --- | --- | --- |
 | `unweighted_diagnostic` | "fraction of supplied trajectories reaching each cell"; "diagnostic reach fraction for this run set" | "probability of rockfall at this location"; "validated hazard probability" |
 | `sampling_weighted_conditional` | "sampling-weighted conditional reach fraction over the documented filtered scenario set" | "annual probability"; "physical probability"; "sampling weights as physical probability" |
+| Conditional intensity exceedance | "conditional kinetic-energy exceedance fraction over supplied trajectories"; "sampling-weighted conditional jump-height exceedance over the documented filter" | "intensity-frequency curve"; "annual exceedance frequency"; "return-period exceedance map" |
 | `conditional_probability` design-only | "design-only conditional probability class; not emitted as a distinct current map-product mode" | "this layer is conditional probability" for current outputs; future conditional-probability mode must still not imply physical occurrence probability, annual probability, risk, or operational validation |
 | `physical_probability` unsupported | "unsupported physical-probability claim; requires documented physical scenario probabilities" | "probability of occurrence"; "physically calibrated probability" |
 | `annual_frequency` unsupported | "annual frequency is not available in the current workflow" | "1/year frequency"; "30-year return period"; "100-year event map" |

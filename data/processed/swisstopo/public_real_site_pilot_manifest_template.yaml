@@ -1,0 +1,99 @@
+# Template only: copy to an ignored pilot directory before filling in real
+# swisstopo tile ids, checksums, crop metadata, or local paths.
+schema_version: 1
+manifest_type: public_real_site_geodata_preparation_v1
+pilot_id: public_real_site_pilot_template
+pilot_status: template_not_run
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+selected_domain:
+  name: to_be_selected
+  purpose: future_public_real_site_conditional_pilot
+  selection_status: not_selected
+  coordinate_reference_system:
+    epsg: 2056
+    horizontal_name: CH1903+ / LV95
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  extent_lv95_m:
+    xmin: null
+    ymin: null
+    xmax: null
+    ymax: null
+  source_zone_status: not_defined
+  forest_obstacle_relevance_status: not_scoped
+
+local_layout:
+  raw_root: data/raw/swisstopo/public_real_site_pilot_template
+  processed_root: data/processed/swisstopo/public_real_site_pilot_template
+  private_validation_root: validation/private/public_real_site_pilot_template
+  hazard_results_root: hazard/results/public_real_site_pilot_template
+  raw_files_committed: false
+  processed_large_files_committed: false
+
+required_datasets:
+  - dataset_id: swisstopo_swissalti3d
+    role: mandatory_bare_earth_terrain
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    license: swisstopo terms of use; verify current terms before download or redistribution
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+    processed_outputs: []
+
+optional_context_datasets:
+  - dataset_id: swisstopo_swissimage
+    role: orthophoto_visual_qa
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_swisstlm3d
+    role: topographic_context_and_qa
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_geocover
+    role: geology_context_for_future_source_zone_policy
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+
+preprocessing_plan:
+  status: not_run
+  steps:
+    - select bounded pilot domain and buffer before simulation
+    - record swissALTI3D tile ids, product version or date, source URL, license, and checksums
+    - crop to the pilot extent without changing LV95/LN02 coordinates
+    - export an internal DEM representation with metadata sidecar
+    - run DEM and terrain-representation sensitivity before parameter interpretation
+    - record visual QA for terrain, nodata, source-zone overlap, and context alignment
+  processed_dem:
+    path: null
+    format: null
+    resolution_m: null
+    width_px: null
+    height_px: null
+    nodata: null
+    processed_sha256: null
+  dem_terrain_sensitivity_status: not_run
+  visual_qa_status: not_run
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - swisstopo inputs are operational geodata, not validation evidence by themselves
+    - current pilot outputs must remain research diagnostics or sampling-weighted conditional products

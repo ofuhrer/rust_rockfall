@@ -20,6 +20,9 @@ The unified ingestion and reporting rules for these public benchmarks are in
 `docs/public_benchmark_framework.md`. That document defines the shared
 directory contract, preparation-manifest fields, grouped validation vocabulary,
 and no-tuning leakage controls.
+Validation and pilot claim levels are defined in
+`docs/validation_maturity_framework.md`; dataset roles should not be promoted
+above the evidence level they can support.
 
 ## Operational Swiss Geodata
 
@@ -130,8 +133,10 @@ default-model decision.
   conclusions from small-block experiments carry to a much larger public event,
   but only after a separate CRS-consistent ingestion package is prepared.
 - **Hazard-map layers:** Synthetic and Tschamut cases exercise hazard-layer
-  post-processing; real hazard-map validation requires larger ensembles, real
-  DEMs, CRS-aware exports, and release-zone workflows.
+  post-processing as unweighted diagnostic or sampling-weighted conditional
+  products; real hazard-map validation requires larger ensembles, real DEMs,
+  CRS-aware exports, release-zone workflows, and maturity evidence beyond the
+  current fixtures.
 - **Operational terrain/input geodata:** swissALTI3D and related swisstopo
   layers provide terrain and map context for future production-style workflows,
   but they do not validate model physics by themselves.
@@ -176,3 +181,5 @@ default-model decision.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and
   small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.
+- Do not use a dataset role to imply annual intensity-frequency, return-period,
+  physical-probability, or risk-map semantics for current products.

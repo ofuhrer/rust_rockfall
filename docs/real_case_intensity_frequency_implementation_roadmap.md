@@ -71,9 +71,8 @@ Implementation work:
   future physical/annual products;
 - use "conditional intensity-exceedance" for current threshold-exceedance
   curves based on trajectory counts or sampling weights;
-- add consistency checks for any newly introduced report headings or manifest
-  labels that imply annual frequency, return period, operational approval, or
-  risk.
+- add consistency checks that reject unsupported report headings or manifest
+  labels for annual frequency, return period, operational approval, or risk.
 
 Likely affected areas:
 
@@ -83,6 +82,12 @@ Likely affected areas:
 - `docs/next_development_targets.md`;
 - `scripts/check_repo_consistency.py`;
 - report templates.
+
+Phase 0 implementation should use the maturity levels in
+`docs/validation_maturity_framework.md` so pilot reports can label current
+evidence as diagnostic, conditional, or limited field-validation evidence
+without implying physical probability, annual frequency, or operational
+readiness.
 
 Done when:
 
@@ -164,6 +169,9 @@ Likely affected areas:
 - `tests/fixtures/probabilistic_phase1/`;
 - `validation/cases/*pilot*.yaml`;
 - `docs/probabilistic_scenario_model_design.md`.
+- `docs/source_zone_block_scenario_policy_v1.md`;
+- `validation/templates/public_real_site_source_scenario_policy_v1.yaml`;
+- `scripts/validate_source_scenario_policy.py`.
 
 Done when:
 
@@ -216,6 +224,11 @@ Done when:
   frequency;
 - outputs are readable by the pilot GIS package workflow.
 
+Implementation note: the current hazard-layer builder writes
+`conditional_intensity_exceedance_curves.csv` as a tidy table whenever
+threshold-exceedance layers are configured. It records unweighted diagnostic
+and sampling-weighted conditional denominators with `annualized: false`.
+
 Do not:
 
 - report "frequency" unless units and denominators are physical or annual;
@@ -239,6 +252,14 @@ Implementation work:
   placement, and layer interpretation;
 - keep COG and QGZ packaging deferred unless a verified writer/project package
   is added.
+
+Current Phase 4 implementation provides a diagnostic
+`pilot_gis_package_manifest_v1` inventory behind explicit
+`--pilot-gis-package --export-geotiff` or `pilot_gis_package.enabled: true`
+configuration. It records the review rasters, parity files, sidecars, QA note,
+and claim boundaries, but does not create a QGIS project, GeoPackage, COG,
+physical-probability layer, annual intensity-frequency layer, or operational
+hazard product.
 
 Likely affected areas:
 
@@ -276,6 +297,16 @@ Implementation work:
 - support merge of partial reducer states independent of execution order;
 - keep full trajectory/event CSV output as explicit debug/audit mode, not the
   default for large hazard runs.
+
+Current Phase 5 implementation starts this path in the hazard-layer reducer:
+`--reducer-workers N` partitions trajectory and impact input files into
+deterministic local chunks, accumulates in-memory partial reducer states in
+threads, merges chunks after sorting by chunk id, and writes
+`hazard_reducer_chunk_manifest_v1` sidecars. It covers current conditional
+diagnostic reducers for reach, threshold exceedance, maxima, deposition density,
+and significant-impact density. It does not add SLURM orchestration,
+distributed storage, annual source-frequency semantics, physical probabilities,
+or a new simulator kernel.
 
 Likely affected areas:
 

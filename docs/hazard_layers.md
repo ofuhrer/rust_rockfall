@@ -50,6 +50,8 @@ Exports:
   metadata when available, and SHA-256 manifest identity.
 - GeoJSON point file for deposition locations.
 - JSON metadata and `run_manifest_v1` provenance sidecars.
+- a tidy `conditional_intensity_exceedance_curves.csv` table when trajectory
+  threshold-exceedance layers are generated.
 - optional PNG layer plots when diagnostic rendering is enabled.
 - optional local `index.html` report when diagnostic rendering is enabled.
 
@@ -111,6 +113,16 @@ manifest carry the available EPSG, affine transform, nodata, extent, and grid
 metadata. Cloud-Optimized GeoTIFF is reserved for a later verified writer; COG
 requests fail explicitly rather than producing non-COG files.
 
+For local GIS/QGIS review bundles, pass `--pilot-gis-package` together with
+`--export-geotiff`, or set `pilot_gis_package.enabled: true` in the case file.
+The builder then writes `<prefix>_pilot_gis_package_manifest.json`, a
+`pilot_gis_package_manifest_v1` inventory of GeoTIFF rasters, CSV/ASCII parity
+files, manifest sidecars, terrain metadata, optional source-zone context
+sidecars, and manual visual-QA status. This is a diagnostic package manifest
+only. It does not create a QGIS project, GeoPackage, Cloud-Optimized GeoTIFF,
+annual intensity-frequency product, return-period map, risk map, or operational
+hazard map.
+
 For production-style tile experiments, provide an explicit reference grid. When
 all explicit-grid arguments are supplied, they override `--cell-size` for grid
 construction and the metadata/manifest record `source: explicit`:
@@ -125,6 +137,21 @@ python3 scripts/build_hazard_layers.py \
   --grid-nrows 100 \
   --grid-cell-size 5
 ```
+
+For local workstation-scale reducer checks, pass `--reducer-workers N` with
+`N > 1`. This opt-in path partitions trajectory and impact input files into
+deterministic contiguous chunks, accumulates partial reducer states in local
+threads, merges them after sorting by chunk id, and writes
+`chunks/<prefix>__chunk_####_manifest.json` sidecars. The merged hazard rasters
+use the same conditional diagnostics as the serial path: reach and threshold
+exceedance counts add by cell, maxima merge by cellwise maximum, and deposition
+and significant-impact counts add by cell before normalization. Full
+trajectory/event CSV output remains controlled by the validation case outputs
+and is not enabled by the reducer path.
+
+The reducer manifests are provenance and reproducibility aids for local runs,
+not SLURM, MPI, GPU, distributed execution, annual intensity-frequency support,
+or operational hazard-map evidence.
 
 For diagnostic intensity-style interpretation, add opt-in exceedance layers. These
 layers are additive and leave the existing reach, deposition, maximum-energy,
@@ -150,6 +177,16 @@ hazard_layers:
     jump_height_exceedance_m: [0.05, 0.10]
     velocity_exceedance_mps: [0.5, 1.0]
 ```
+
+When exceedance thresholds are configured, the builder also writes a tidy curve
+table named `<prefix>_conditional_intensity_exceedance_curves.csv`. Each row is
+one grid cell, intensity measure, and threshold, with columns for
+`probability_mode`, `normalization_scope`, `numerator`, `denominator`,
+`conditional_fraction`, optional `standard_error`, and `annualized: false`.
+For current unweighted layers the denominator is the supplied trajectory count.
+For sampling-weighted layers the denominator is the filtered sampling-weight
+sum. This table is a conditional intensity-exceedance product, not an annual
+intensity-frequency or return-period product.
 
 To add simple convergence diagnostics for trajectory-level probability layers,
 enable probability standard-error rasters:

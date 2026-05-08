@@ -16,6 +16,7 @@ import json
 import math
 import struct
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,6 +68,26 @@ class RasterLayer:
     values: list[list[float]]
     nodata: bool = False
     note: str = ""
+
+
+@dataclass(frozen=True)
+class ConditionalCurveRow:
+    row: int
+    col: int
+    x_center_m: float
+    y_center_m: float
+    intensity_measure: str
+    threshold: float
+    threshold_units: str
+    layer_name: str
+    probability_mode: str
+    normalization_scope: str
+    numerator: float
+    denominator: float
+    conditional_fraction: float
+    standard_error: float | None
+    weighted: bool
+    annualized: bool = False
 
 
 @dataclass(frozen=True)
@@ -223,12 +244,39 @@ class RasterExportConfig:
 
 
 @dataclass(frozen=True)
+class PilotGisPackageConfig:
+    package_manifest_json: Path | None = None
+    visual_qa_status: str = "not-run"
+    visual_qa_note: str = "Manual GIS/QGIS inspection has not been run for this generated package."
+    reviewed_artifacts: tuple[str, ...] = ()
+    source_zone_context_paths: tuple[Path, ...] = ()
+
+
+@dataclass(frozen=True)
 class InputStats:
     trajectory_count: int = 0
     trajectory_sample_count: int = 0
     deposition_point_count: int = 0
     impact_event_count: int = 0
     significant_impact_count: int = 0
+
+
+@dataclass(frozen=True)
+class ReducerChunk:
+    chunk_id: str
+    index: int
+    trajectory_paths: tuple[Path, ...]
+    deposition_path: Path | None
+    impact_event_paths: tuple[Path, ...]
+    impact_event_parquet_paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class ReducerChunkResult:
+    chunk: ReducerChunk
+    accumulator: "HazardAccumulator"
+    warnings: tuple[str, ...]
+    manifest: dict[str, Any]
 
 
 @dataclass
@@ -567,6 +615,34 @@ class HazardAccumulator:
                     self.weighted_impact_density[cell[0]][cell[1]] += self.probability.weight_for_trajectory(
                         point.trajectory_id
                     )
+
+    def merge(self, other: "HazardAccumulator") -> None:
+        add_grid_into(self.reach, other.reach)
+        merge_max_grid_into(self.max_ke, other.max_ke)
+        merge_max_grid_into(self.max_jump, other.max_jump)
+        add_threshold_grids_into(self.kinetic_exceedance, other.kinetic_exceedance)
+        add_threshold_grids_into(self.jump_exceedance, other.jump_exceedance)
+        add_threshold_grids_into(self.velocity_exceedance, other.velocity_exceedance)
+        add_grid_into(self.deposition, other.deposition)
+        add_grid_into(self.impact_density, other.impact_density)
+        if self.weighted_reach is not None and other.weighted_reach is not None:
+            add_grid_into(self.weighted_reach, other.weighted_reach)
+        add_threshold_grids_into(self.weighted_kinetic_exceedance, other.weighted_kinetic_exceedance)
+        add_threshold_grids_into(self.weighted_jump_exceedance, other.weighted_jump_exceedance)
+        add_threshold_grids_into(self.weighted_velocity_exceedance, other.weighted_velocity_exceedance)
+        if self.weighted_deposition is not None and other.weighted_deposition is not None:
+            add_grid_into(self.weighted_deposition, other.weighted_deposition)
+        if self.weighted_impact_density is not None and other.weighted_impact_density is not None:
+            add_grid_into(self.weighted_impact_density, other.weighted_impact_density)
+        self.weighted_significant_impact_weight += other.weighted_significant_impact_weight
+        self.deposition_points.extend(other.deposition_points)
+        self.trajectory_count += other.trajectory_count
+        self.trajectory_sample_count += other.trajectory_sample_count
+        self.deposition_point_count += other.deposition_point_count
+        self.impact_event_count += other.impact_event_count
+        self.significant_impact_count += other.significant_impact_count
+        self.warnings.extend(other.warnings)
+        self.terrain_warning_emitted = self.terrain_warning_emitted or other.terrain_warning_emitted
 
     def stats(self) -> InputStats:
         return InputStats(
@@ -961,6 +1037,34 @@ def main_with_args(argv: list[str] | None = None) -> int:
         action="store_true",
         help="reserved for future Cloud-Optimized GeoTIFF export; currently fails rather than writing non-COG TIFFs",
     )
+    parser.add_argument(
+        "--pilot-gis-package",
+        action="store_true",
+        help="write a diagnostic pilot GIS package manifest for GeoTIFF/QGIS review artifacts",
+    )
+    parser.add_argument(
+        "--pilot-gis-package-manifest-json",
+        type=Path,
+        help="optional output path for pilot_gis_package_manifest_v1; defaults next to the hazard manifest",
+    )
+    parser.add_argument(
+        "--pilot-gis-qa-status",
+        choices=["pass", "no-go", "inconclusive", "not-run"],
+        help="manual GIS/QGIS visual QA status recorded in the pilot package manifest",
+    )
+    parser.add_argument(
+        "--pilot-gis-qa-note",
+        help="manual GIS/QGIS visual QA note recorded in the pilot package manifest",
+    )
+    parser.add_argument(
+        "--reducer-workers",
+        type=int,
+        default=1,
+        help=(
+            "opt-in deterministic local chunk reducer worker count; values above 1 "
+            "partition input files and merge partial reducers by chunk id"
+        ),
+    )
     parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
@@ -997,6 +1101,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     probability_config = parse_hazard_probability(case)
     map_package_config = parse_hazard_map_package(case, args)
     raster_export_config = parse_raster_export_config(case, args)
+    pilot_gis_package_config = parse_pilot_gis_package(case, args, raster_export_config)
 
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
@@ -1028,22 +1133,30 @@ def main_with_args(argv: list[str] | None = None) -> int:
     map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
 
     accumulation_started = time.perf_counter()
-    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistic_config, probability_state)
-    deposition_started = time.perf_counter()
-    accumulator.accumulate_deposition(read_deposition_batch(deposition_path, input_warnings))
-    deposition_accumulation_seconds = time.perf_counter() - deposition_started
-    trajectory_started = time.perf_counter()
-    for trajectory_path in trajectory_paths:
-        batch = read_trajectory_sample_batch(trajectory_path, input_warnings)
-        if batch is not None:
-            accumulator.accumulate_trajectory(batch)
-    trajectory_accumulation_seconds = time.perf_counter() - trajectory_started
-    impact_started = time.perf_counter()
-    for batch in read_impact_event_csv_batches(impact_event_paths, input_warnings):
-        accumulator.accumulate_impacts(batch)
-    for batch in read_impact_event_parquet_batches(impact_event_parquet_paths, input_warnings):
-        accumulator.accumulate_impacts(batch)
-    impact_accumulation_seconds = time.perf_counter() - impact_started
+    (
+        accumulator,
+        reducer_warnings,
+        reducer_execution,
+        chunk_manifest_paths,
+        reducer_timings,
+    ) = run_reducer_accumulation(
+        output_dir,
+        prefix,
+        grid,
+        terrain,
+        block_radius_m,
+        statistic_config,
+        probability_state,
+        trajectory_paths,
+        deposition_path,
+        impact_event_paths,
+        impact_event_parquet_paths,
+        args.reducer_workers,
+    )
+    input_warnings.extend(reducer_warnings)
+    deposition_accumulation_seconds = reducer_timings.deposition_accumulation_seconds
+    trajectory_accumulation_seconds = reducer_timings.trajectory_accumulation_seconds
+    impact_accumulation_seconds = reducer_timings.impact_accumulation_seconds
     stats = accumulator.stats()
     if not stats.trajectory_count and not stats.deposition_point_count and not stats.impact_event_count:
         raise SystemExit("no trajectory, deposition, or impact-event inputs found")
@@ -1055,6 +1168,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
     accumulation_seconds = time.perf_counter() - accumulation_started
 
     core_write_started = time.perf_counter()
+    conditional_curve_rows = build_conditional_intensity_exceedance_curves(
+        grid,
+        layers,
+        stats,
+        probability_state,
+        map_package_state,
+    )
     metadata = build_metadata(
         case,
         diagnostics,
@@ -1067,6 +1187,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
         map_package_state,
         raster_export_config,
+        conditional_curve_rows,
     )
     write_core_hazard_outputs(
         output_dir,
@@ -1077,6 +1198,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         metadata,
         case,
         raster_export_config,
+        conditional_curve_rows,
     )
     manifest_metadata = dict(metadata)
     manifest_metadata["_trajectory_paths"] = [str(path) for path in trajectory_paths]
@@ -1129,6 +1251,14 @@ def main_with_args(argv: list[str] | None = None) -> int:
         ),
     )
     hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
+    if reducer_execution is not None:
+        manifest["reducer_execution"] = reducer_execution
+        for chunk_manifest_path in chunk_manifest_paths:
+            manifest["outputs"].append(output_manifest_entry(chunk_manifest_path, "reducer_chunk_manifest", "json"))
+        manifest["performance"]["output_file_count"] = sum(
+            int(output["file_count"]) for output in manifest["outputs"]
+        )
+        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
     write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
@@ -1140,6 +1270,15 @@ def main_with_args(argv: list[str] | None = None) -> int:
             geotiff_raster_outputs(manifest["outputs"]),
         )
         manifest["outputs"].append(output_manifest_entry(package_path, "map_package_manifest", "json"))
+        manifest["performance"]["output_file_count"] = sum(
+            int(output["file_count"]) for output in manifest["outputs"]
+        )
+        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+        write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    if pilot_gis_package_config is not None:
+        package_path = pilot_gis_package_output_path(pilot_gis_package_config, output_dir, prefix)
+        write_pilot_gis_package_manifest(package_path, pilot_gis_package_config, hazard_manifest_path, manifest)
+        manifest["outputs"].append(output_manifest_entry(package_path, "pilot_gis_package_manifest", "json"))
         manifest["performance"]["output_file_count"] = sum(
             int(output["file_count"]) for output in manifest["outputs"]
         )
@@ -1274,6 +1413,316 @@ def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -
         )
     compression = "none"
     return RasterExportConfig(geotiff=geotiff, cog=False, compression=compression)
+
+
+def parse_pilot_gis_package(
+    case: dict[str, Any],
+    args: argparse.Namespace,
+    raster_exports: RasterExportConfig,
+) -> PilotGisPackageConfig | None:
+    raw = case.get("pilot_gis_package") or {}
+    if raw and not isinstance(raw, dict):
+        raise SystemExit("pilot_gis_package must be a mapping")
+    enabled = bool(args.pilot_gis_package) or bool(raw.get("enabled", False))
+    values = {
+        "package_manifest_json": args.pilot_gis_package_manifest_json or raw.get("package_manifest_json"),
+        "visual_qa_status": args.pilot_gis_qa_status or raw.get("visual_qa_status") or "not-run",
+        "visual_qa_note": args.pilot_gis_qa_note
+        or raw.get("visual_qa_note")
+        or "Manual GIS/QGIS inspection has not been run for this generated package.",
+    }
+    source_zone_paths = tuple(ROOT / str(path) for path in list_from_any(raw.get("source_zone_context_paths")))
+    reviewed_artifacts = tuple(str(value) for value in list_from_any(raw.get("reviewed_artifacts")))
+    if not enabled and not any(value is not None for value in values.values()) and not source_zone_paths and not reviewed_artifacts:
+        return None
+    if not enabled:
+        enabled = bool(values["package_manifest_json"] or source_zone_paths or reviewed_artifacts)
+    if not enabled:
+        return None
+    if not raster_exports.geotiff:
+        raise SystemExit("pilot_gis_package requires GeoTIFF export; use --export-geotiff or hazard_exports.geotiff: true")
+    visual_qa_status = str(values["visual_qa_status"])
+    if visual_qa_status not in {"pass", "no-go", "inconclusive", "not-run"}:
+        raise SystemExit("pilot_gis_package.visual_qa_status must be pass, no-go, inconclusive, or not-run")
+    missing_context = [path for path in source_zone_paths if not path.exists()]
+    if missing_context:
+        raise SystemExit(
+            "pilot_gis_package.source_zone_context_paths entries do not exist: "
+            + ", ".join(str(path) for path in missing_context)
+        )
+    return PilotGisPackageConfig(
+        package_manifest_json=ROOT / str(values["package_manifest_json"])
+        if values["package_manifest_json"]
+        else None,
+        visual_qa_status=visual_qa_status,
+        visual_qa_note=str(values["visual_qa_note"]),
+        reviewed_artifacts=reviewed_artifacts,
+        source_zone_context_paths=source_zone_paths,
+    )
+
+
+def run_reducer_accumulation(
+    output_dir: Path,
+    prefix: str,
+    grid: GridSpec,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+    statistics: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+    trajectory_paths: list[Path],
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
+    worker_count: int,
+) -> tuple[HazardAccumulator, list[str], dict[str, Any] | None, list[Path], HazardAccumulationTimings]:
+    if worker_count < 1:
+        raise SystemExit("--reducer-workers must be at least 1")
+    if worker_count == 1:
+        return run_serial_reducer_accumulation(
+            grid,
+            terrain,
+            block_radius_m,
+            statistics,
+            probability,
+            trajectory_paths,
+            deposition_path,
+            impact_event_paths,
+            impact_event_parquet_paths,
+        )
+
+    chunks = build_reducer_chunks(
+        prefix,
+        worker_count,
+        trajectory_paths,
+        deposition_path,
+        impact_event_paths,
+        impact_event_parquet_paths,
+    )
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        results = list(
+            executor.map(
+                lambda chunk: run_reducer_chunk(
+                    chunk,
+                    grid,
+                    terrain,
+                    block_radius_m,
+                    statistics,
+                    probability,
+                ),
+                chunks,
+            )
+        )
+    results.sort(key=lambda result: result.chunk.chunk_id)
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    warnings: list[str] = []
+    chunk_manifest_paths: list[Path] = []
+    total_deposition_seconds = 0.0
+    total_trajectory_seconds = 0.0
+    total_impact_seconds = 0.0
+    chunk_dir = output_dir / "chunks"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    for result in results:
+        accumulator.merge(result.accumulator)
+        warnings.extend(result.warnings)
+        total_deposition_seconds += float(result.manifest["timings"]["deposition_accumulation_seconds"])
+        total_trajectory_seconds += float(result.manifest["timings"]["trajectory_accumulation_seconds"])
+        total_impact_seconds += float(result.manifest["timings"]["impact_accumulation_seconds"])
+        manifest_path = chunk_dir / f"{result.chunk.chunk_id}_manifest.json"
+        write_text(manifest_path, json.dumps(result.manifest, indent=2, sort_keys=True) + "\n")
+        chunk_manifest_paths.append(manifest_path)
+
+    reducer_execution = {
+        "schema_version": "deterministic_local_reducer_v1",
+        "mode": "chunked_local_threads",
+        "worker_count": worker_count,
+        "chunk_count": len(results),
+        "chunk_ids": [result.chunk.chunk_id for result in results],
+        "merge_order": "sorted_chunk_id",
+        "merge_order_independent": True,
+        "partial_state_storage": "in_memory",
+        "full_trajectory_output_default": False,
+        "reducer_contract": reducer_contract_manifest(),
+    }
+    timings = HazardAccumulationTimings(
+        bounds_discovery_seconds=0.0,
+        deposition_accumulation_seconds=total_deposition_seconds,
+        trajectory_accumulation_seconds=total_trajectory_seconds,
+        impact_accumulation_seconds=total_impact_seconds,
+        normalization_seconds=0.0,
+    )
+    return accumulator, warnings, reducer_execution, chunk_manifest_paths, timings
+
+
+def run_serial_reducer_accumulation(
+    grid: GridSpec,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+    statistics: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+    trajectory_paths: list[Path],
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
+) -> tuple[HazardAccumulator, list[str], None, list[Path], HazardAccumulationTimings]:
+    warnings: list[str] = []
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    deposition_started = time.perf_counter()
+    accumulator.accumulate_deposition(read_deposition_batch(deposition_path, warnings))
+    deposition_accumulation_seconds = time.perf_counter() - deposition_started
+    trajectory_started = time.perf_counter()
+    for trajectory_path in trajectory_paths:
+        batch = read_trajectory_sample_batch(trajectory_path, warnings)
+        if batch is not None:
+            accumulator.accumulate_trajectory(batch)
+    trajectory_accumulation_seconds = time.perf_counter() - trajectory_started
+    impact_started = time.perf_counter()
+    for batch in read_impact_event_csv_batches(impact_event_paths, warnings):
+        accumulator.accumulate_impacts(batch)
+    for batch in read_impact_event_parquet_batches(impact_event_parquet_paths, warnings):
+        accumulator.accumulate_impacts(batch)
+    impact_accumulation_seconds = time.perf_counter() - impact_started
+    timings = HazardAccumulationTimings(
+        bounds_discovery_seconds=0.0,
+        deposition_accumulation_seconds=deposition_accumulation_seconds,
+        trajectory_accumulation_seconds=trajectory_accumulation_seconds,
+        impact_accumulation_seconds=impact_accumulation_seconds,
+        normalization_seconds=0.0,
+    )
+    return accumulator, warnings, None, [], timings
+
+
+def build_reducer_chunks(
+    prefix: str,
+    worker_count: int,
+    trajectory_paths: list[Path],
+    deposition_path: Path | None,
+    impact_event_paths: list[Path],
+    impact_event_parquet_paths: list[Path],
+) -> list[ReducerChunk]:
+    chunks: list[ReducerChunk] = []
+    trajectory_partitions = contiguous_partitions(trajectory_paths, worker_count)
+    impact_partitions = contiguous_partitions(impact_event_paths, worker_count)
+    parquet_partitions = contiguous_partitions(impact_event_parquet_paths, worker_count)
+    for index in range(worker_count):
+        chunks.append(
+            ReducerChunk(
+                chunk_id=f"{stable_required_id(prefix, 'prefix')}__chunk_{index:04d}",
+                index=index,
+                trajectory_paths=tuple(trajectory_partitions[index]),
+                deposition_path=deposition_path if index == 0 else None,
+                impact_event_paths=tuple(impact_partitions[index]),
+                impact_event_parquet_paths=tuple(parquet_partitions[index]),
+            )
+        )
+    return chunks
+
+
+def contiguous_partitions(paths: list[Path], partition_count: int) -> list[list[Path]]:
+    partitions: list[list[Path]] = []
+    total = len(paths)
+    for index in range(partition_count):
+        start = index * total // partition_count
+        end = (index + 1) * total // partition_count
+        partitions.append(paths[start:end])
+    return partitions
+
+
+def run_reducer_chunk(
+    chunk: ReducerChunk,
+    grid: GridSpec,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+    statistics: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+) -> ReducerChunkResult:
+    warnings: list[str] = []
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    deposition_started = time.perf_counter()
+    accumulator.accumulate_deposition(read_deposition_batch(chunk.deposition_path, warnings))
+    deposition_seconds = time.perf_counter() - deposition_started
+    trajectory_started = time.perf_counter()
+    for trajectory_path in chunk.trajectory_paths:
+        batch = read_trajectory_sample_batch(trajectory_path, warnings)
+        if batch is not None:
+            accumulator.accumulate_trajectory(batch)
+    trajectory_seconds = time.perf_counter() - trajectory_started
+    impact_started = time.perf_counter()
+    for batch in read_impact_event_csv_batches(list(chunk.impact_event_paths), warnings):
+        accumulator.accumulate_impacts(batch)
+    for batch in read_impact_event_parquet_batches(list(chunk.impact_event_parquet_paths), warnings):
+        accumulator.accumulate_impacts(batch)
+    impact_seconds = time.perf_counter() - impact_started
+    stats = accumulator.stats()
+    manifest = {
+        "schema_version": "hazard_reducer_chunk_manifest_v1",
+        "chunk_id": chunk.chunk_id,
+        "execution_status": "completed",
+        "completion_status": "completed",
+        "scientific_status": "not_evaluated",
+        "worker_partition_index": chunk.index,
+        "input_file_counts": {
+            "trajectory_files": len(chunk.trajectory_paths),
+            "deposition_files": 1 if chunk.deposition_path is not None else 0,
+            "impact_csv_files": len(chunk.impact_event_paths),
+            "impact_parquet_tables": len(chunk.impact_event_parquet_paths),
+        },
+        "input_rows": {
+            "trajectory_sample_rows": stats.trajectory_sample_count,
+            "deposition_rows": stats.deposition_point_count,
+            "impact_event_rows": stats.impact_event_count,
+            "significant_impact_rows": stats.significant_impact_count,
+        },
+        "reducer_counts": {
+            "trajectory_count": stats.trajectory_count,
+            "deposition_point_count": stats.deposition_point_count,
+            "impact_event_count": stats.impact_event_count,
+            "significant_impact_count": stats.significant_impact_count,
+        },
+        "timings": {
+            "deposition_accumulation_seconds": max(0.0, deposition_seconds),
+            "trajectory_accumulation_seconds": max(0.0, trajectory_seconds),
+            "impact_accumulation_seconds": max(0.0, impact_seconds),
+        },
+        "input_artifacts": reducer_chunk_input_artifacts(chunk),
+        "reducer_contract": reducer_contract_manifest(),
+        "limitations": [
+            "Local in-memory partial reducer state; no distributed scheduler is involved.",
+            "Research diagnostic; not operational hazard-map evidence.",
+        ],
+    }
+    return ReducerChunkResult(
+        chunk=chunk,
+        accumulator=accumulator,
+        warnings=tuple(warnings),
+        manifest=manifest,
+    )
+
+
+def reducer_chunk_input_artifacts(chunk: ReducerChunk) -> list[dict[str, Any]]:
+    artifacts = [
+        input_artifact_collection([str(path) for path in chunk.trajectory_paths], "trajectory_samples", "csv_collection"),
+        input_artifact_collection([str(path) for path in chunk.impact_event_paths], "impact_events", "csv_collection"),
+        input_artifact_collection(
+            [str(path) for path in chunk.impact_event_parquet_paths],
+            "impact_events",
+            "parquet_collection",
+        ),
+    ]
+    if chunk.deposition_path is not None:
+        artifacts.append(input_artifact_entry(chunk.deposition_path, "deposition_points", "csv"))
+    return [artifact for artifact in artifacts if artifact["file_count"] > 0]
+
+
+def reducer_contract_manifest() -> dict[str, Any]:
+    return {
+        "reach_counts": "cellwise integer counts add across chunks",
+        "threshold_exceedance_counts": "cellwise integer or sampling-weighted counts add across chunks",
+        "max_kinetic_energy": "cellwise maximum across chunks",
+        "max_jump_height": "cellwise maximum across chunks",
+        "deposition_density_counts": "cellwise deposition counts add across chunks",
+        "significant_impact_counts": "cellwise significant-impact counts add across chunks",
+        "merge_order": "deterministic after sorting chunk_id",
+    }
 
 
 def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> HazardStatisticConfig:
@@ -1952,6 +2401,29 @@ def scale_grid(values: list[list[float]], factor: float) -> None:
                 values[row_index][col_index] = value * factor
 
 
+def add_grid_into(target: list[list[float]], source: list[list[float]]) -> None:
+    for row_index, row in enumerate(source):
+        for col_index, value in enumerate(row):
+            target[row_index][col_index] += value
+
+
+def merge_max_grid_into(target: list[list[float]], source: list[list[float]]) -> None:
+    for row_index, row in enumerate(source):
+        for col_index, value in enumerate(row):
+            if value == NODATA:
+                continue
+            if target[row_index][col_index] == NODATA or value > target[row_index][col_index]:
+                target[row_index][col_index] = value
+
+
+def add_threshold_grids_into(
+    target: dict[float, list[list[float]]],
+    source: dict[float, list[list[float]]],
+) -> None:
+    for threshold, source_grid in source.items():
+        add_grid_into(target[threshold], source_grid)
+
+
 def binomial_standard_error_grid(counts: list[list[float]], trajectory_count: int) -> list[list[float]]:
     if trajectory_count <= 0:
         raise SystemExit("trajectory count must be positive for probability standard-error layers")
@@ -2379,6 +2851,157 @@ def write_deposition_geojson(path: Path, depositions: list[DepositionPoint]) -> 
     write_text(path, json.dumps({"type": "FeatureCollection", "features": features}, indent=2) + "\n")
 
 
+def build_conditional_intensity_exceedance_curves(
+    grid: GridSpec,
+    layers: list[RasterLayer],
+    stats: InputStats,
+    probability: HazardProbabilityState | None,
+    map_package: HazardMapPackageState | None,
+) -> list[ConditionalCurveRow]:
+    standard_errors = {
+        layer.key.removesuffix("_standard_error"): layer
+        for layer in layers
+        if layer.key.endswith("_standard_error") and "exceedance" in layer.key
+    }
+    rows: list[ConditionalCurveRow] = []
+    for layer in layers:
+        parsed = parse_exceedance_layer_key(layer.key)
+        if parsed is None:
+            continue
+        intensity_measure, threshold, threshold_units, weighted = parsed
+        if weighted:
+            denominator = probability.total_filtered_weight if probability else 0.0
+            probability_mode = "sampling_weighted_conditional"
+            normalization_scope = (
+                map_package.config.normalization_scope
+                if map_package is not None
+                else "conditioned_on_filter"
+            )
+        else:
+            denominator = float(stats.trajectory_count)
+            probability_mode = "unweighted_diagnostic"
+            normalization_scope = "supplied_trajectory_count"
+        if denominator <= 0.0:
+            continue
+        standard_error_layer = standard_errors.get(layer.key)
+        for row in range(grid.nrows):
+            for col in range(grid.ncols):
+                value = layer.values[row][col]
+                if not math.isfinite(value) or value == NODATA:
+                    continue
+                x, y = grid.center(row, col)
+                standard_error = (
+                    standard_error_layer.values[row][col]
+                    if standard_error_layer is not None
+                    else None
+                )
+                rows.append(
+                    ConditionalCurveRow(
+                        row=row,
+                        col=col,
+                        x_center_m=x,
+                        y_center_m=y,
+                        intensity_measure=intensity_measure,
+                        threshold=threshold,
+                        threshold_units=threshold_units,
+                        layer_name=layer.key,
+                        probability_mode=probability_mode,
+                        normalization_scope=normalization_scope,
+                        numerator=value * denominator,
+                        denominator=denominator,
+                        conditional_fraction=value,
+                        standard_error=standard_error,
+                        weighted=weighted,
+                    )
+                )
+    return rows
+
+
+def parse_exceedance_layer_key(layer_key: str) -> tuple[str, float, str, bool] | None:
+    if layer_key.endswith("_standard_error"):
+        return None
+    specs = (
+        ("weighted_kinetic_energy_exceedance_", "kinetic_energy", "J", "j", True),
+        ("kinetic_energy_exceedance_", "kinetic_energy", "J", "j", False),
+        ("weighted_jump_height_exceedance_", "jump_height", "m", "m", True),
+        ("jump_height_exceedance_", "jump_height", "m", "m", False),
+        ("weighted_velocity_exceedance_", "velocity", "m/s", "mps", True),
+        ("velocity_exceedance_", "velocity", "m/s", "mps", False),
+    )
+    for prefix, measure, units, suffix, weighted in specs:
+        if layer_key.startswith(prefix) and layer_key.endswith(suffix):
+            raw = layer_key[len(prefix) : -len(suffix)]
+            threshold_text = raw.replace("neg_", "-").replace("p", ".")
+            try:
+                threshold = float(threshold_text)
+            except ValueError:
+                return None
+            return measure, threshold, units, weighted
+    return None
+
+
+def write_conditional_intensity_exceedance_curves(
+    path: Path,
+    rows: list[ConditionalCurveRow],
+) -> None:
+    with path.open("w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(
+            [
+                "row",
+                "col",
+                "x_center_m",
+                "y_center_m",
+                "intensity_measure",
+                "threshold",
+                "threshold_units",
+                "layer_name",
+                "probability_mode",
+                "normalization_scope",
+                "numerator",
+                "denominator",
+                "conditional_fraction",
+                "standard_error",
+                "weighted",
+                "annualized",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row.row,
+                    row.col,
+                    f"{row.x_center_m:.6f}",
+                    f"{row.y_center_m:.6f}",
+                    row.intensity_measure,
+                    f"{row.threshold:.12g}",
+                    row.threshold_units,
+                    row.layer_name,
+                    row.probability_mode,
+                    row.normalization_scope,
+                    f"{row.numerator:.12g}",
+                    f"{row.denominator:.12g}",
+                    f"{row.conditional_fraction:.12g}",
+                    "" if row.standard_error is None else f"{row.standard_error:.12g}",
+                    str(row.weighted).lower(),
+                    str(row.annualized).lower(),
+                ]
+            )
+
+
+def summarize_conditional_curve_rows(rows: list[ConditionalCurveRow]) -> dict[str, Any]:
+    if not rows:
+        return {"enabled": False, "row_count": 0}
+    return {
+        "enabled": True,
+        "schema_version": "conditional_intensity_exceedance_curves_v1",
+        "row_count": len(rows),
+        "intensity_measures": sorted({row.intensity_measure for row in rows}),
+        "probability_modes": sorted({row.probability_mode for row in rows}),
+        "annualized": False,
+    }
+
+
 def build_metadata(
     case: dict[str, Any],
     diagnostics: dict[str, Any],
@@ -2391,6 +3014,7 @@ def build_metadata(
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
     raster_exports: RasterExportConfig,
+    conditional_curve_rows: list[ConditionalCurveRow],
 ) -> dict[str, Any]:
     weighted_layer_names = [
         layer.key for layer in layers if layer.key.startswith("weighted_")
@@ -2421,6 +3045,7 @@ def build_metadata(
         "hazard_statistics": statistic_config.as_dict(),
         "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "conditional_intensity_exceedance_curves": summarize_conditional_curve_rows(conditional_curve_rows),
         "raster_exports": raster_exports.as_metadata(),
         "layer_semantics": layer_semantics,
         "layers": [
@@ -2552,9 +3177,15 @@ def write_core_hazard_outputs(
     metadata: dict[str, Any],
     case: dict[str, Any],
     raster_exports: RasterExportConfig,
+    conditional_curve_rows: list[ConditionalCurveRow],
 ) -> None:
     write_layers(output_dir, prefix, grid, layers)
     write_geotiff_layers(output_dir, prefix, grid, layers, case, raster_exports)
+    if conditional_curve_rows:
+        write_conditional_intensity_exceedance_curves(
+            output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
+            conditional_curve_rows,
+        )
     write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", deposition_points)
     write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
 
@@ -2565,6 +3196,14 @@ def map_package_output_path(
     prefix: str,
 ) -> Path:
     return map_package.config.map_package_manifest_json or output_dir / f"{prefix}_map_package_manifest.json"
+
+
+def pilot_gis_package_output_path(
+    package: PilotGisPackageConfig,
+    output_dir: Path,
+    prefix: str,
+) -> Path:
+    return package.package_manifest_json or output_dir / f"{prefix}_pilot_gis_package_manifest.json"
 
 
 def write_map_package_manifest(
@@ -2611,6 +3250,105 @@ def write_map_package_manifest(
     write_text(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
 
+def write_pilot_gis_package_manifest(
+    path: Path,
+    package: PilotGisPackageConfig,
+    hazard_manifest_path: Path,
+    hazard_manifest: dict[str, Any],
+) -> None:
+    outputs = hazard_manifest.get("outputs", [])
+    geotiff_outputs = geotiff_raster_outputs(outputs)
+    parity_outputs = [
+        compact_output_manifest_entry(output)
+        for output in outputs
+        if output.get("format") in {"csv_grid", "esri_ascii_grid"}
+    ]
+    manifest_outputs = [
+        compact_output_manifest_entry(output)
+        for output in outputs
+        if output.get("kind") in {"hazard_metadata", "map_package_manifest"}
+    ]
+    curve_outputs = [
+        compact_output_manifest_entry(output)
+        for output in outputs
+        if output.get("kind") == "conditional_intensity_exceedance_curves"
+    ]
+    source_zone_context = [
+        input_artifact_entry(path, "source_zone_context", path.suffix.lstrip(".") or "unknown")
+        for path in package.source_zone_context_paths
+    ]
+    terrain = hazard_manifest.get("terrain") or {}
+    terrain_metadata_path = terrain.get("metadata_path")
+    terrain_metadata = (
+        input_artifact_entry(ROOT / str(terrain_metadata_path), "terrain_metadata", "yaml")
+        if terrain_metadata_path
+        else None
+    )
+    review_status = {
+        "status": package.visual_qa_status,
+        "note": package.visual_qa_note,
+        "reviewed_artifacts": list(package.reviewed_artifacts),
+        "acceptance_scope": "local diagnostic GIS/QGIS review only",
+        "accepted_for_operational_use": False,
+    }
+    manifest = {
+        "schema_version": "pilot_gis_package_manifest_v1",
+        "package_version": "pilot_gis_package_v1",
+        "case_id": hazard_manifest.get("case_id"),
+        "operational_status": "research_diagnostic",
+        "hazard_manifest_paths": [str(hazard_manifest_path)],
+        "raster_outputs": geotiff_outputs,
+        "parity_outputs": parity_outputs,
+        "manifest_outputs": manifest_outputs,
+        "conditional_intensity_exceedance_curve_outputs": curve_outputs,
+        "source_zone_context": source_zone_context,
+        "terrain_metadata": terrain_metadata,
+        "grid": hazard_manifest.get("grid"),
+        "terrain": terrain,
+        "raster_contract": {
+            "geotiff_required": True,
+            "cloud_optimized": False,
+            "qgis_project_included": False,
+            "geopackage_included": False,
+            "csv_ascii_parity_required": True,
+        },
+        "probability_claim_boundary": {
+            "annualized": False,
+            "current_allowed_product_labels": [
+                "unweighted_diagnostic",
+                "sampling_weighted_conditional",
+                "conditional_intensity_exceedance",
+            ],
+            "future_unsupported_product_labels": [
+                "physical_probability",
+                "annual_intensity_frequency",
+                "return_period",
+                "risk_map",
+                "operational_hazard_map",
+            ],
+        },
+        "visual_qa": review_status,
+        "limitations": [
+            "Local diagnostic review package only; not an operational hazard map.",
+            "GeoTIFF rasters are uncompressed review rasters, not verified Cloud-Optimized GeoTIFFs.",
+            "Current probability layers are conditional diagnostics, not annual frequencies or return-period products.",
+            "Exposure, vulnerability, consequences, expected loss, and risk modelling are out of scope.",
+        ],
+    }
+    write_text(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+
+def compact_output_manifest_entry(output: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": output.get("kind"),
+        "format": output.get("format"),
+        "path": output.get("path"),
+        "sha256": output.get("sha256"),
+        "total_bytes": output.get("total_bytes"),
+        "layer_name": output.get("layer_name"),
+    }
+
+
 def build_hazard_manifest(
     case: dict[str, Any],
     diagnostics: dict[str, Any],
@@ -2642,6 +3380,15 @@ def build_hazard_manifest(
         outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.asc", "hazard_layer", "esri_ascii_grid"))
         if raster_exports.geotiff:
             outputs.append(geotiff_output_manifest_entry(output_dir / f"{prefix}_{layer.key}.tif", layer, grid, case))
+    curves = metadata.get("conditional_intensity_exceedance_curves") or {}
+    if curves.get("enabled"):
+        outputs.append(
+            output_manifest_entry(
+                output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
+                "conditional_intensity_exceedance_curves",
+                "csv_table",
+            )
+        )
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_deposition_points.geojson", "deposition_points", "geojson"))
     outputs.append(output_manifest_entry(output_dir / f"{prefix}_metadata.json", "hazard_metadata", "json"))
     if plots_enabled:

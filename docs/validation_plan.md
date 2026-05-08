@@ -2,6 +2,12 @@
 
 Validation asks whether the current model is useful when compared with observations or published benchmarks. It does not target RAMMS::ROCKFALL equivalence and does not use proprietary datasets.
 
+Claim levels for validation and pilot reports are defined in
+`docs/validation_maturity_framework.md`. Current validation evidence should be
+reported conservatively: analytic and synthetic checks are V0-V1 evidence,
+public field comparisons are limited V2 evidence, and no current result reaches
+operational V5 maturity.
+
 ## v0.6.1 Status
 
 Real-world validation is partial and qualitative. The current simulator is a spherical-block model with simple restitution, Coulomb friction, opt-in rotational sphere contact, opt-in stochastic contact roughness, opt-in minimal scarring_contact_v1 impact energy-loss diagnostics, analytic terrain, small DEM support, and deterministic release perturbations. It cannot yet represent block-shape effects, advanced contact, calibrated scarring with drag torque or slip-dependent friction, calibrated spatial roughness distributions, forest interaction, fragmentation, or calibrated field-scale parameter sets.
@@ -51,6 +57,12 @@ with public EnviDat observations, public swissALTI3D terrain, documented
 registration, explicit-grid hazard layers, and grouped no-tuning analysis. It
 is still a benchmark reproduction and failure-mode workflow, not operational
 hazard validation.
+
+Any hazard-layer products from validation or benchmark workflows must use the
+semantics in `docs/hazard_map_semantics.md`: current outputs are unweighted
+diagnostic or sampling-weighted conditional products. Threshold products are
+conditional intensity-exceedance diagnostics, not annual intensity-frequency or
+return-period products.
 
 Mel de la Niva is registered as an external high-energy/generalization
 benchmark. Its public Zenodo data are large and remain ignored locally. The

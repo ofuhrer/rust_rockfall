@@ -1,0 +1,61 @@
+# Template only: copy to an ignored pilot directory before filling in real
+# source-zone criteria, release-cell policy, and block-scenario rows.
+schema_version: source_zone_block_scenario_policy_v1
+policy_id: public_real_site_source_scenario_policy_template
+pilot_id: public_real_site_pilot_template
+policy_status: template_not_run
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+source_zone_policy:
+  source_zone_id: null
+  evidence_level: level1_manual_real_site_interpretation
+  geometry_status: not_defined
+  allowed_geometry_type: polygon
+  coordinate_reference_system:
+    epsg: 2056
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  derivation_inputs:
+    required:
+      - swisstopo_swissalti3d
+    optional_context:
+      - swisstopo_swissimage
+      - swisstopo_swisstlm3d
+      - swisstopo_geocover
+  derivation_criteria:
+    status: not_defined
+    slope_threshold_degrees: null
+    geology_or_material_filter: null
+    inventory_or_expert_review: null
+    manual_interpretation_notes: null
+  release_sampling:
+    mode: deterministic_grid
+    seed_policy: fixed_integer_recorded_before_simulation
+    release_cell_id_policy: stable_source_zone_prefixed_ids
+    sampling_weight_semantics: conditional_sampling_only
+    physical_release_probability_supported: false
+    annual_source_frequency_supported: false
+
+block_scenario_policy:
+  block_population_status: representative_scenarios_not_physical_population
+  active_shape_physics_supported: false
+  sampling_weight_semantics: conditional_sampling_only
+  scenarios: []
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - source-zone choices are input assumptions, not validation evidence by themselves
+    - block-scenario sampling weights are conditional sampling weights, not physical block-population probabilities

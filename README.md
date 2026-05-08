@@ -6,9 +6,26 @@ Current crate/model version: `v0.6.1`.
 
 The development goal is an automated, reproducible workflow that can produce rockfall hazard maps across Switzerland from public geodata, primarily swisstopo. The first concrete milestone is a valley-scale pilot that connects pragmatic release-zone and block-scenario generation, large deterministic trajectory ensembles, uncertainty-aware probabilistic post-processing, and GIS-ready hazard outputs. Development priorities are chosen by importance to that goal: close the largest workflow and scientific gaps first, prefer simple reproducible approaches when release-zone and block-probability uncertainty dominates, and treat performance and HPC readiness as core requirements rather than late additions.
 
-The main probabilistic target is pixel-scale intensity-frequency information, or the closest defensible national hazard-map quantity until source-frequency semantics are mature. The implementation should support efficient single-socket execution, local parallelism, reproducible chunked ensembles, a path to CSCS/SLURM orchestration, and roughly 10,000 trajectories per release zone where appropriate. The project is literature-based and transparent by design. It does not decompile or inspect proprietary binaries, and it does not claim numerical equivalence with any proprietary or operational hazard tool.
+The current hazard-map products are diagnostic or sampling-weighted conditional
+layers, including conditional intensity-exceedance products over configured
+trajectory/scenario sets. The future probabilistic target is pixel-scale
+intensity-frequency information, or the closest defensible national hazard-map
+quantity once physical source-frequency semantics are mature. The implementation
+should support efficient single-socket execution, local parallelism,
+reproducible chunked ensembles, a path to CSCS/SLURM orchestration, and roughly
+10,000 trajectories per release zone where appropriate. The project is
+literature-based and transparent by design. It does not decompile or inspect
+proprietary binaries, and it does not claim numerical equivalence with any
+proprietary or operational hazard tool.
 
-The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames future map outputs such as runout probability, deposition density, maximum kinetic energy, maximum jump height, intensity-frequency summaries, and scenario uncertainty layers. Risk modelling, exposure/vulnerability analysis, and operational warning systems are out of scope; hazard maps must not be presented as risk maps or operational products without separate validation and review.
+The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames current
+conditional products such as reach, deposition, maximum kinetic energy, maximum
+jump height, threshold exceedance, and scenario uncertainty layers, plus future
+physical-probability and annual intensity-frequency products. Claim levels are
+defined in `docs/validation_maturity_framework.md`. Risk modelling,
+exposure/vulnerability analysis, and operational warning systems are out of
+scope; hazard maps must not be presented as risk maps or operational products
+without separate validation and review.
 
 ## Current Model
 
@@ -81,6 +98,7 @@ Core documentation:
 - `docs/hazard_layers.md`
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`
+- `docs/validation_maturity_framework.md`
 - `docs/benchmark_catalog.md`
 - `docs/datasets.md`
 - `docs/validation_data_schema.md`
@@ -189,7 +207,7 @@ python3 scripts/build_hazard_layers.py \
   --cell-size 5
 ```
 
-Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, significant impact density when impact events are available, weighted conditional layers, and uncertainty diagnostics where available. These are hazard indicators intended to develop pixel-scale intensity-frequency or related national hazard-map quantities; they are not risk maps and not operational Swiss hazard products.
+Generated layers include reach probability, deposition density, maximum kinetic energy, maximum jump height, significant impact density when impact events are available, conditional intensity-exceedance layers, sampling-weighted conditional layers, and uncertainty diagnostics where available. These are hazard indicators intended to develop future physical-probability or annual intensity-frequency quantities; current products are not annualized, not risk maps, and not operational Swiss hazard products.
 
 The hazard builder writes both metadata JSON and a `run_manifest_v1` sidecar.
 For larger pilot-style runs, pass the explicit grid arguments
