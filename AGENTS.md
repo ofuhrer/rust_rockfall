@@ -69,6 +69,11 @@ When these files conflict, preserve the safety constraints first, then update th
 - Use idiomatic Rust with explicit units in field and variable names where practical.
 - Keep public APIs small and behavior-oriented.
 - Keep modules focused; follow the existing `src/` module boundaries instead of creating broad utility modules.
+- For real DEM, validation, or pilot runtime paths, use fallible terrain and
+  integrator APIs (`try_height`, `try_normal`, `try_simulate_fixed_step*`) and
+  propagate structured errors. Treat infallible `height`/`normal` and
+  `simulate_fixed_step*` wrappers as compatibility helpers for analytic tests
+  and simple callers only.
 - Prefer structured parsers and serializers over ad hoc text handling.
 - Prefer clear numerical code over premature optimization.
 

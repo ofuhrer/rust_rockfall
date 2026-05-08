@@ -282,7 +282,7 @@ pub enum SimulationError {
     Terrain(#[from] TerrainError),
     #[error("integration error: {0}")]
     Integration(#[from] IntegrationError),
-    #[error("integration aborted before completion: {0}")]
+    #[error("unexpected integration panic after structured error checks: {0}")]
     IntegrationPanic(String),
     #[error("configuration serialization error: {0}")]
     Serialize(#[from] serde_json::Error),

@@ -80,9 +80,15 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. increase ensemble size toward the target trajectory count only after the
+1. keep terrain and integration failures structured so real DEM nodata and
+   crop-edge errors cannot abort long pilot batches as panics;
+2. split the largest validation and experimental shape modules by concern so
+   pilot, schema, and output changes remain reviewable;
+3. add deterministic local parallel ensemble execution and reducer provenance
+   before attempting larger trajectory counts;
+4. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible, interpreted, and has convergence diagnostics;
-2. defer physical/annual frequency semantics until source-frequency and
+5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -139,9 +145,11 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   budgets, manual GIS/QGIS visual QA, and forest/obstacle context review are
   resolved.
 
-The immediate roadmap task is therefore not another new feature. It is to
-design physical/source-frequency semantics before any annual or physical
-probability prototype is attempted.
+The immediate roadmap task is therefore not another hazard semantics feature.
+It is to harden the execution and maintenance boundary: complete the fallible
+terrain/integrator migration, start splitting the largest V&V/experimental
+modules by concern, and then add deterministic local parallelism before larger
+ensembles or physical/source-frequency prototypes are attempted.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -649,7 +657,10 @@ the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
 conditional-curve table export now has an opt-in summary-only mode. Ensemble
 scale-up is explicitly no-go for the selected domain until convergence,
 manual-GIS, output-budget, and obstacle-context preconditions are resolved.
-The current bottleneck is source-frequency semantics before annual or physical
+The current bottleneck is execution robustness and maintainability before
+larger ensembles: terrain/integrator errors must remain structured for real
+DEMs, the largest V&V/experimental modules need concern-based splits, and local
+parallel ensemble execution must be deterministic before annual or physical
 products.
 
 | Priority | Item | Why this comes next | Done when |
@@ -659,8 +670,11 @@ products.
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Complete as a selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` records that increasing the Tschamut ensemble is not authorized until convergence diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle context review are resolved. |
-| 6 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
-| 7 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
+| 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | DEM-facing code uses `try_height`/`try_normal` and `try_simulate_fixed_step*`; remaining infallible wrappers are compatibility-only and documented or deprecated. |
+| 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | One coherent concern is split with behavior-preserving tests and unchanged public validation outputs. |
+| 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Serial and parallel runs produce identical reduced outputs, row counts, checksums, and manifests independent of worker count. |
+| 9 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
+| 10 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
 ## Earliest Useful Pilot
 
@@ -694,6 +708,7 @@ gate.
 | DEM sensitivity | Calibration and pilot interpretation | Terrain variants do not expose unresolved alignment, nodata, cliff, or smoothing artifacts that dominate the result. |
 | Source-zone policy | Conditional pilot | Source geometry, release cells, and evidence level are documented before simulation. |
 | Scenario semantics | Conditional curves | Block/scenario ids, sampling weights, and denominators join across outputs. |
+| Terrain error semantics | Larger real-DEM batches | Nodata, out-of-domain, and unsupported-contact failures propagate as structured errors rather than panics. |
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |

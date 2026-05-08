@@ -55,6 +55,14 @@ pub fn simulate_fixed_step(
     simulate_fixed_step_with_events(initial, block, terrain, settings).samples
 }
 
+/// Compatibility wrapper around the structured-error fixed-step integrator.
+///
+/// New runtime and DEM-facing code should call
+/// [`try_simulate_fixed_step_with_events`] or
+/// [`try_simulate_fixed_step_with_events_and_contact_parameters`] so terrain
+/// and unsupported-contact failures remain explicit. This wrapper is retained
+/// for older analytic tests and simple callers and will panic if the fallible
+/// path returns an error.
 pub fn simulate_fixed_step_with_events(
     initial: BodyState,
     block: SphereBlock,
@@ -75,6 +83,13 @@ pub fn try_simulate_fixed_step_with_events(
     )
 }
 
+/// Compatibility wrapper around the structured-error fixed-step integrator
+/// with optional terrain/material contact-parameter overrides.
+///
+/// New runtime and DEM-facing code should call the `try_` variant below. This
+/// infallible wrapper is retained for older analytic tests and simple callers
+/// and will panic if terrain, nodata, or unsupported-contact errors are
+/// returned by the fallible path.
 pub fn simulate_fixed_step_with_events_and_contact_parameters(
     initial: BodyState,
     block: SphereBlock,

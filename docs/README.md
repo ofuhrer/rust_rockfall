@@ -26,6 +26,8 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `model_design.md`: current equations, assumptions, contact models, terrain
   conventions, and API boundaries.
 - `validation_data_schema.md`: YAML case and validation-data schema.
+- `architecture_boundaries.md`: module responsibility map, panic/error
+  boundaries, and refactor targets for large files.
 - `validation_plan.md`: validation strategy and calibration policy.
 - `validation_maturity_framework.md`: evidence levels and claim hierarchy.
 - `dataset_strategy.md`: separation of calibration, validation, pilot, and

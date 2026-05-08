@@ -22,17 +22,28 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements-tools.txt
+
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Python tool requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-tools.txt
+
       - name: Run checks
         run: |
-          python3 -m pip install PyYAML \
-            && python3 -m unittest discover -s tests -p 'test_*.py' \
+          python -m unittest discover -s tests -p 'test_*.py' \
             && \
           cargo fmt --check \
             && cargo clippy --all-targets --all-features -- -D warnings \
             && cargo test \
             && cargo run -- verify --all \
             && cargo run -- validate --all \
-            && python3 scripts/check_repo_consistency.py
+            && python scripts/check_repo_consistency.py

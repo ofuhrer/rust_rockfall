@@ -4,8 +4,22 @@ use std::{fs, path::Path};
 use thiserror::Error;
 
 pub trait Terrain: Send + Sync {
+    /// Returns terrain height at a horizontal point.
+    ///
+    /// This legacy infallible method is appropriate for analytic terrain and
+    /// tightly controlled tests. New DEM-facing runtime code should call
+    /// [`Terrain::try_height`] so out-of-domain and nodata queries can be
+    /// reported as structured errors instead of panicking in concrete terrain
+    /// implementations.
     fn height(&self, x_m: f64, y_m: f64) -> f64;
 
+    /// Returns the local terrain normal at a horizontal point.
+    ///
+    /// This legacy infallible method is appropriate for analytic terrain and
+    /// tightly controlled tests. New DEM-facing runtime code should call
+    /// [`Terrain::try_normal`] so out-of-domain and nodata queries can be
+    /// reported as structured errors instead of panicking in concrete terrain
+    /// implementations.
     fn normal(&self, x_m: f64, y_m: f64) -> Vec3;
 
     fn try_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {

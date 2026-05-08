@@ -12,8 +12,10 @@ sensitivity gate, conditional pilot report, GIS package review, scaling review,
 and visual-QA review record have been reconciled against regenerated local
 ignored artifacts. The current critical gap is no longer evidence consistency,
 an unclassified visual-QA gate, or unscoped forest/obstacle omission. The next
-development task should increase ensemble size only if convergence,
-performance, and output-volume evidence justify it.
+development task should harden real-DEM execution boundaries and module
+maintainability before increasing ensemble size. Larger ensembles should still
+proceed only if convergence, performance, and output-volume evidence justify
+them.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -215,7 +217,109 @@ performance interpretation are stable.
 
 Estimated order: 5.
 
-## Target 6: Design Physical Source-Frequency Semantics
+## Target 6: Complete Fallible Terrain/Integrator API Migration
+
+Objective: remove remaining production footguns around infallible terrain and
+integration entry points before larger real-site or parallel runs.
+
+Rationale: Real DEMs can contain nodata, crop-edge gaps, and out-of-domain
+queries. The normal validation path now uses structured terrain errors, but the
+legacy `height`/`normal` terrain methods and `simulate_fixed_step*` wrappers can
+still panic if downstream code uses them with DEM terrain. This is the largest
+near-term robustness gap for batch execution semantics.
+
+Expected value for Swiss hazard-map goal: High.
+
+Scientific risk: Low if behavior is preserved and errors are only made more
+explicit.
+
+Engineering risk: Medium because public Rust callers may still use the
+compatibility wrappers.
+
+Likely affected areas: `src/terrain.rs`, `src/integrator.rs`,
+`src/simulation.rs`, direct Rust tests, `docs/architecture_boundaries.md`, and
+`docs/model_design.md`.
+
+Evidence needed: grep/test coverage showing new DEM-facing code uses
+`try_height`/`try_normal` and `try_simulate_fixed_step*`, structured
+terrain-error tests for strict DEM nodata/out-of-domain queries, and clear
+documentation of compatibility wrapper panic semantics.
+
+Minimal acceptable deliverable: a compatibility-preserving migration plan and
+guardrail tests that make misuse visible; a later versioned API change may
+deprecate or remove infallible wrappers.
+
+What not to do: Do not change DEM interpolation numerics, contact physics,
+defaults, validation baselines, or classify terrain failures as physical stops.
+
+Estimated order: 6.
+
+## Target 7: Split Validation And Experimental Shape Internals By Concern
+
+Objective: reduce maintenance and review risk in `src/validation.rs` and
+`src/shape.rs` without changing behavior.
+
+Rationale: Both files have grown into multi-thousand-line modules that mix
+library logic, V&V harnesses, exporters, manifests, diagnostics, and internal
+experimental scaffolds. This slows review, increases compile/check time, and
+blurs the boundary between reusable trajectory code and validation tooling.
+
+Expected value for Swiss hazard-map goal: Medium to high. It improves
+contributor velocity and makes later pilot, schema, and output work safer.
+
+Scientific risk: Low if the split is mechanical and tests prove behavior is
+unchanged.
+
+Engineering risk: Medium because these files touch many tests and workflows.
+
+Likely affected areas: `src/validation.rs`, new validation submodules,
+`src/shape.rs`, potential shape submodules, tests, and
+`docs/architecture_boundaries.md`.
+
+Evidence needed: behavior-preserving module splits with no output/schema
+changes, unchanged public validation and `shape_contact_v0` guard tests, and
+unchanged `cargo run -- validate --all` results.
+
+Minimal acceptable deliverable: split one coherent concern first, such as case
+loading/schema audit or metric evaluation, with no unrelated refactor.
+
+What not to do: Do not use this as a vehicle for new physics, new schemas,
+baseline refreshes, or public `shape_contact_v0` execution.
+
+Estimated order: 7.
+
+## Target 8: Add Deterministic Local Parallel Ensemble Driver
+
+Objective: introduce local parallel trajectory execution with deterministic
+ordering, chunk/reducer metadata, and identical reduced outputs.
+
+Rationale: Sequential ensemble execution is a scaling bottleneck relative to
+the 10,000-trajectory-per-release-zone design target. Parallelism should start
+locally and deterministically before CSCS/SLURM orchestration.
+
+Expected value for Swiss hazard-map goal: High.
+
+Scientific risk: Medium. Parallel execution must not change seeds, trajectory
+ids, reducers, convergence diagnostics, or output interpretation.
+
+Engineering risk: Medium to high.
+
+Likely affected areas: `src/simulation.rs`, validation runner/output modes,
+chunk manifests, hazard reducers, performance docs, and HPC-readiness tests.
+
+Evidence needed: order-independent ensemble tests, serial-versus-parallel
+bitwise or tolerance-controlled output comparisons, deterministic chunk
+manifests, row-count/checksum provenance, and pilot-scale timing evidence.
+
+Minimal acceptable deliverable: opt-in local parallel ensemble mode for
+existing deterministic cases, with serial default preserved until reviewed.
+
+What not to do: Do not add SLURM, MPI, GPU, distributed frameworks, or changed
+default execution order before local chunk/reducer contracts are stable.
+
+Estimated order: 8.
+
+## Target 9: Design Physical Source-Frequency Semantics
 
 Objective: Decide whether and how the project can represent physical or annual
 intensity-frequency products.
@@ -245,12 +349,12 @@ annual/physical prototype or keeps annual frequency deferred.
 What not to do: Do not back-fill annual frequencies from sampling weights or
 calibrate frequency to match one map pattern.
 
-Estimated order: 6.
+Estimated order: 9.
 
-## Target 7: Implement An Annual/Physical Intensity-Frequency Prototype
+## Target 10: Implement An Annual/Physical Intensity-Frequency Prototype
 
 Objective: Implement a clearly experimental annual or physical frequency path
-only if Target 6 passes.
+only if Target 9 passes.
 
 Rationale: This is the long-term national hazard-map quantity, but implementing
 it before the evidence model exists would create misleading products.
@@ -275,7 +379,7 @@ frequency sums with explicit units and complete provenance.
 What not to do: Do not promote annual-frequency defaults or imply regulatory
 readiness.
 
-Estimated order: 7.
+Estimated order: 10.
 
 ## Completed Selected-Domain Roadmap Items
 
@@ -315,6 +419,10 @@ Estimated order: 7.
   evidence, and holdout policy are available.
 - Production COG/tiled packages remain deferred until local GeoTIFF/QGIS
   acceptance and reducer contracts are stable.
+- `validation.rs` and `shape.rs` modularization is now an explicit
+  maintainability target, not a prerequisite for every feature.
+- A deterministic local parallel ensemble driver is a scaling target before
+  any CSCS/SLURM orchestration.
 
 ## Recommended Sequence
 
@@ -324,5 +432,8 @@ Estimated order: 7.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
-6. Design physical/source-frequency semantics.
-7. Implement an annual/physical prototype only if the design gate passes.
+6. Complete the fallible terrain/integrator API migration.
+7. Split one coherent validation or shape-contact concern by module boundary.
+8. Add deterministic local parallel ensemble execution.
+9. Design physical/source-frequency semantics.
+10. Implement an annual/physical prototype only if the design gate passes.

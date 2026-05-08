@@ -102,6 +102,7 @@ Core documentation:
 
 - `docs/literature_review.md`
 - `docs/model_design.md`
+- `docs/architecture_boundaries.md`
 - `docs/implementation_plan.md`
 - `docs/onboarding.md`
 - `docs/roadmap_hazard_mapping.md`

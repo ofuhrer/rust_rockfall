@@ -76,7 +76,9 @@ cargo clippy --version
 ## Python and PyYAML
 
 Use `uv` so repository Python tools do not depend on system Python packages or
-the system default Python version.
+the system default Python version. GitHub Actions installs the same
+`requirements-tools.txt` package set on Python 3.12, so local checks should use
+this environment rather than a hand-installed PyYAML-only interpreter.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh

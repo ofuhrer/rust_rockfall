@@ -32,8 +32,9 @@ scientific + Swiss pilot + hazard workflow + validation + reproducibility + alig
 Rank is not a pure sort by composite score. It also reflects dependency order
 and the current evidence state. In particular, the selected Tschamut pilot now
 has share-safe manifests, source/scenario policy, a DEM-sensitivity gate, a
-no-go run-freeze, and local ignored GIS/scaling evidence, but those records do
-not yet describe one authoritative reproducible execution state.
+reconciled local ignored run-freeze, GIS/scaling evidence, and a no-go
+ensemble-feasibility gate. The next work should harden execution robustness and
+maintainability before larger ensembles or annual/physical semantics.
 
 ## Scoring Matrix
 
@@ -44,8 +45,11 @@ not yet describe one authoritative reproducible execution state.
 | 3 | Forest/obstacle omission scoping for Tschamut | 4 | 5 | 4 | 3 | 4 | 5 | 2 | 3 | 2 | 18 |
 | 4 | Conditional-curve/raster output-volume bottleneck | 3 | 5 | 5 | 2 | 5 | 5 | 3 | 2 | 1 | 19 |
 | 5 | Ensemble-size increase with convergence diagnostics | 4 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 18 |
-| 6 | Physical/source-frequency semantics design | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 4 | 18 |
-| 7 | Annual/physical intensity-frequency prototype | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 14 |
+| 6 | Fallible terrain/integrator API migration | 3 | 5 | 5 | 4 | 5 | 5 | 3 | 2 | 1 | 21 |
+| 7 | Split validation and shape internals by concern | 2 | 4 | 4 | 4 | 5 | 5 | 4 | 2 | 1 | 17 |
+| 8 | Deterministic local parallel ensemble driver | 3 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 17 |
+| 9 | Physical/source-frequency semantics design | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 4 | 18 |
+| 10 | Annual/physical intensity-frequency prototype | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 14 |
 
 ## Interpretation
 
@@ -72,13 +76,27 @@ scaling review identifies this as the next practical bottleneck before
 ensemble-size increases. This should be an additive output-control or gating
 package, not a semantics change.
 
-Increasing ensemble size ranks fifth. The roughly 10,000 trajectories per
-release-zone design target is important, but larger runs are only meaningful
-after the small selected pilot is reconciled, interpretable, GIS-reviewed, and
-has convergence diagnostics.
+Increasing ensemble size ranks fifth as a scientific gate, but execution is
+not authorized yet. The roughly 10,000 trajectories per release-zone design
+target is important, but larger runs are only meaningful after the small
+selected pilot is reconciled, interpretable, GIS-reviewed, and has convergence
+diagnostics.
+
+Fallible terrain/integrator migration ranks next because real DEM batches must
+not be able to fail catastrophically through nodata or crop-edge panics. This
+is an engineering robustness target rather than a physics change.
+
+Splitting validation and shape internals ranks after the panic/error boundary.
+It is a maintainability target: avoid adding more schema, exporter, and
+experimental scaffold logic to already monolithic modules.
+
+Deterministic local parallel ensemble execution follows the maintainability and
+error-boundary work. It is the practical scaling bridge before CSCS/SLURM
+orchestration.
 
 Physical/source-frequency semantics and annual/physical prototypes remain
-deferred. Current products are conditional intensity-exceedance diagnostics,
+deferred behind robustness, maintainability, and deterministic local
+parallelism. Current products are conditional intensity-exceedance diagnostics,
 not annual intensity-frequency, return-period, physical-probability, or risk
 products.
 
@@ -103,9 +121,10 @@ claim hygiene, not obstacle-physics implementation.
 
 ### Best Near-Term Engineering Work Package
 
-Address conditional-curve and raster output volume before larger ensembles.
-Keep this local and deterministic; do not add SLURM, MPI, GPU, or distributed
-workflow orchestration before local output contracts and reducers are stable.
+Complete the fallible terrain/integrator API migration, then split one coherent
+`validation.rs` or `shape.rs` concern by module boundary. Keep behavior
+unchanged and use tests to prove the split is mechanical before adding local
+parallel ensemble execution.
 
 ## What Should Be Paused Or Deferred
 
@@ -121,6 +140,8 @@ Pause or defer:
 - production COG/tiled package work before local GeoTIFF/QGIS acceptance;
 - SLURM/CSCS orchestration before deterministic local chunk/reducer contracts
   and measured pilot bottlenecks.
+- annual/physical frequency implementation before source-frequency design and
+  deterministic larger-ensemble execution are stable.
 
 ## Roadmap Corrections
 
@@ -137,7 +158,7 @@ Pause or defer:
 
 ## Final Recommendation
 
-Do not start another broad roadmap item yet. The highest-value next move is to
-reconcile the selected Tschamut pilot evidence into one authoritative state,
-then run manual QGIS QA and scope forest/obstacle omission before scaling the
-ensemble or designing physical/annual frequency semantics.
+Do not start annual or physical probability work yet. The highest-value next
+move is to finish hardening real-DEM execution boundaries, then reduce
+maintenance risk in the largest V&V/experimental modules, and only then add a
+deterministic local parallel ensemble driver for the selected pilot workflow.
