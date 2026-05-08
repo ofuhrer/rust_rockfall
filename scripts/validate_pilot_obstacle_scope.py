@@ -34,6 +34,12 @@ DATASET_STATUSES = {
     "not_available",
     "deferred",
 }
+TARGET_REVIEW_STATUSES = {
+    "blocked_missing_context_layers",
+    "reviewed_accepting_omission",
+    "reviewed_limiting_omission",
+    "reviewed_invalidating_omission",
+}
 MISLEADING_PATTERNS = [
     re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
     re.compile(r"\bexpected\s+loss\b", re.IGNORECASE),
@@ -87,6 +93,10 @@ def validate_scope_record(record_path: Path) -> dict[str, Any]:
     require(inputs.get("changes_defaults") is False, "input_scope.changes_defaults must be false")
     require(inputs.get("adds_obstacle_model") is False, "input_scope.adds_obstacle_model must be false")
     require(inputs.get("adds_risk_or_exposure_model") is False, "input_scope.adds_risk_or_exposure_model must be false")
+    target_review = validate_target_scale_review(
+        require_mapping(record.get("target_scale_review"), "target_scale_review"),
+        classification,
+    )
 
     contexts = validate_context_inventory(require_list(record.get("context_inventory"), "context_inventory"))
     limitation = require_mapping(record.get("omission_interpretation"), "omission_interpretation")
@@ -104,10 +114,15 @@ def validate_scope_record(record_path: Path) -> dict[str, Any]:
     evidence = require_mapping(record.get("evidence"), "evidence")
     require_list(evidence.get("reviewed_documents"), "evidence.reviewed_documents")
     require_list(evidence.get("required_future_context_downloads"), "evidence.required_future_context_downloads")
+    validate_local_artifact_probe(require_mapping(evidence.get("local_artifact_probe"), "evidence.local_artifact_probe"), target_review)
 
     if classification == "acceptable":
         reviewed = [item for item in contexts if item["status"] == "available_reviewed"]
         require(reviewed, "acceptable classification requires at least one reviewed context dataset")
+        require(
+            target_review["status"] == "reviewed_accepting_omission",
+            "acceptable classification requires reviewed_accepting_omission target-scale review",
+        )
         require(
             not evidence.get("required_future_context_downloads"),
             "acceptable classification cannot require future context downloads",
@@ -117,8 +132,16 @@ def validate_scope_record(record_path: Path) -> dict[str, Any]:
             evidence.get("required_future_context_downloads"),
             "limiting classification requires explicit future context downloads or review actions",
         )
+        require(
+            target_review["status"] in {"blocked_missing_context_layers", "reviewed_limiting_omission"},
+            "limiting classification requires blocked or reviewed limiting target-scale context status",
+        )
     elif classification == "invalidating":
         require_text(record.get("invalidating_reason"), "invalidating_reason")
+        require(
+            target_review["status"] == "reviewed_invalidating_omission",
+            "invalidating classification requires reviewed_invalidating_omission target-scale review",
+        )
 
     scan_text_for_misleading_claims(record)
     return {
@@ -128,6 +151,8 @@ def validate_scope_record(record_path: Path) -> dict[str, Any]:
         "classification": classification,
         "context_category_count": len(contexts),
         "reviewed_context_count": sum(1 for item in contexts if item["status"] == "available_reviewed"),
+        "target_scale_context_review_status": target_review["status"],
+        "missing_context_artifact_count": target_review["missing_context_artifact_count"],
         "future_context_download_count": len(evidence.get("required_future_context_downloads", [])),
         "operational_status": claim_boundary["operational_status"],
     }
@@ -162,6 +187,65 @@ def validate_context_inventory(raw_items: list[Any]) -> list[dict[str, Any]]:
     missing = sorted(REQUIRED_CONTEXT_CATEGORIES - seen_categories)
     require(not missing, f"missing required context categories: {missing}")
     return items
+
+
+def validate_target_scale_review(section: dict[str, Any], classification: str) -> dict[str, Any]:
+    require_text(section.get("target_gate_record_path"), "target_scale_review.target_gate_record_path")
+    require(section.get("target_gate_status") == "inconclusive", "target_scale_review.target_gate_status must be inconclusive")
+    require_text(
+        section.get("target_package_visual_qa_record_path"),
+        "target_scale_review.target_package_visual_qa_record_path",
+    )
+    require(
+        section.get("target_package_visual_qa_status") in {"blocked", "pass", "no-go", "inconclusive"},
+        "target_scale_review.target_package_visual_qa_status must be classified",
+    )
+    status = require_text(section.get("local_context_review_status"), "target_scale_review.local_context_review_status")
+    require(status in TARGET_REVIEW_STATUSES, f"target_scale_review.local_context_review_status must be one of {sorted(TARGET_REVIEW_STATUSES)}")
+    require(section.get("context_artifacts_committed") is False, "target_scale_review.context_artifacts_committed must be false")
+    require_text(section.get("interpretation"), "target_scale_review.interpretation")
+    reviewed_paths = require_list(
+        section.get("reviewed_context_artifact_paths"),
+        "target_scale_review.reviewed_context_artifact_paths",
+    )
+    missing_paths = require_list(
+        section.get("missing_context_artifact_paths"),
+        "target_scale_review.missing_context_artifact_paths",
+    )
+    if status == "blocked_missing_context_layers":
+        require(
+            section.get("context_downloads_or_crops_present_in_checkout") is False,
+            "blocked target-scale context review must record no local context downloads or crops",
+        )
+        require(not reviewed_paths, "blocked target-scale context review must not list reviewed context artifacts")
+        require(missing_paths, "blocked target-scale context review must list missing context artifacts")
+    else:
+        require(
+            section.get("context_downloads_or_crops_present_in_checkout") is True,
+            "reviewed target-scale context status requires local context downloads or crops",
+        )
+        require(reviewed_paths, "reviewed target-scale context status requires reviewed context artifacts")
+    return {
+        "status": status,
+        "classification": classification,
+        "missing_context_artifact_count": len(missing_paths),
+    }
+
+
+def validate_local_artifact_probe(probe: dict[str, Any], target_review: dict[str, Any]) -> None:
+    require_text(probe.get("context_root"), "evidence.local_artifact_probe.context_root")
+    require_text(probe.get("probe_date"), "evidence.local_artifact_probe.probe_date")
+    require(isinstance(probe.get("context_root_present"), bool), "evidence.local_artifact_probe.context_root_present must be boolean")
+    require(isinstance(probe.get("raw_context_products_present"), bool), "evidence.local_artifact_probe.raw_context_products_present must be boolean")
+    if target_review["status"] == "blocked_missing_context_layers":
+        require(
+            probe.get("context_root_present") is False,
+            "blocked target-scale context review requires local_artifact_probe.context_root_present false",
+        )
+        require(
+            probe.get("raw_context_products_present") is False,
+            "blocked target-scale context review requires local_artifact_probe.raw_context_products_present false",
+        )
 
 
 def scan_text_for_misleading_claims(value: Any, *, path: str = "record") -> None:

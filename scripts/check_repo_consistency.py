@@ -159,6 +159,7 @@ def main() -> int:
     errors.extend(check_annual_physical_prototype_preflight())
     errors.extend(check_scalable_conditional_execution())
     errors.extend(check_scalable_conditional_target_gate())
+    errors.extend(check_pilot_obstacle_scope_contract())
 
     if errors:
         for error in errors:
@@ -999,6 +1000,84 @@ def check_scalable_conditional_target_gate() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_scalable_conditional_target_gate.py omits {test_name}")
+    return errors
+
+
+def check_pilot_obstacle_scope_contract() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/tschamut_public_obstacle_context_scope.md",
+        ROOT / "validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml",
+        ROOT / "scripts/validate_pilot_obstacle_scope.py",
+        ROOT / "tests/test_pilot_obstacle_scope.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"pilot obstacle-scope path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/tschamut_public_obstacle_context_scope.md").read_text()
+    record = (ROOT / "validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_pilot_obstacle_scope.py").read_text()
+    tests = (ROOT / "tests/test_pilot_obstacle_scope.py").read_text()
+
+    for term in (
+        "target-scale interpretation review",
+        "blocked_missing_context_layers",
+        "`limiting`",
+        "does not add obstacle physics",
+        "research_diagnostic",
+    ):
+        if term not in doc:
+            errors.append(f"docs/tschamut_public_obstacle_context_scope.md omits {term!r}")
+
+    for term in (
+        "run_id: tschamut_public_scalable_conditional_target_gate_v1",
+        "classification: limiting",
+        "target_scale_review:",
+        "target_gate_status: inconclusive",
+        "target_package_visual_qa_status: blocked",
+        "local_context_review_status: blocked_missing_context_layers",
+        "context_artifacts_committed: false",
+        "context_downloads_or_crops_present_in_checkout: false",
+        "forest_or_canopy",
+        "buildings_or_structures",
+        "roads_or_transport",
+        "barriers_or_protection",
+        "water_or_channel",
+        "orthophoto_visual_context",
+        "swissimage",
+        "swisstlm3d",
+        "swisssurface3d_raster",
+        "swissbuildings3d",
+        "obstacle_physics_implemented: false",
+        "annualized: false",
+        "physical_probability: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "TARGET_REVIEW_STATUSES",
+        "validate_target_scale_review",
+        "validate_local_artifact_probe",
+        "target_scale_context_review_status",
+        "missing_context_artifact_count",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_pilot_obstacle_scope.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_target_scope_is_limiting_with_blocked_context_review",
+        "test_rejects_blocked_context_review_with_reviewed_artifacts",
+        "test_rejects_acceptable_classification_without_reviewed_target_context",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_pilot_obstacle_scope.py omits {test_name}")
     return errors
 
 

@@ -1,27 +1,34 @@
 # Tschamut Public Pilot Forest And Obstacle Context Scope
 
-Status: share-safe scoping record for forest, building, road, channel, barrier,
-and visual-context omission in the selected Tschamut public conditional pilot.
-This document does not add obstacle physics, tune model parameters, download or
-commit context geodata, define exposure or vulnerability, or approve an
-operational hazard product.
+Status: share-safe target-scale interpretation review for forest, building,
+road, channel, barrier, and visual-context omission in the selected Tschamut
+public conditional pilot. This document does not add obstacle physics, tune
+model parameters, download or commit context geodata, define exposure or
+vulnerability, or approve an operational hazard product.
 
 ## Classification
 
 - Pilot id: `tschamut_public_pilot`
-- Run id: `tschamut_public_conditional_gate_v1`
+- Run id: `tschamut_public_scalable_conditional_target_gate_v1`
 - Scope record:
   `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`
 - Current classification: `limiting`
+- Target-scale context review status: `blocked_missing_context_layers`
 - Operational status: `research_diagnostic`
 
-Forest and obstacle omission is a limiting boundary condition for interpreting
-the selected conditional gate. The current gate uses bare-earth swissALTI3D
-terrain and no reviewed local context crop for canopy, buildings, roads,
-channels, protection works, or orthophoto alignment. The current conditional
-outputs may still be useful workflow diagnostics, but they must not be used to
-argue that vegetation, constructed features, channels, barriers, or protection
-structures are irrelevant in the corridor.
+Forest and obstacle omission remains a limiting boundary condition for
+interpreting the executed target-scale gate. The target run uses bare-earth
+swissALTI3D terrain and no reviewed local context crop for canopy, buildings,
+roads, channels, protection works, or orthophoto alignment. The current
+conditional outputs may still be useful workflow diagnostics, but they must not
+be used to argue that vegetation, constructed features, channels, barriers, or
+protection structures are irrelevant in the corridor.
+
+The local check for this milestone found no
+`data/processed/swisstopo/tschamut_public_pilot/context/` directory and no
+raw public context products beyond the existing swissALTI3D tile. Therefore
+the context review is not a passed visual/context review; it is a documented
+blocker for scientific interpretation of the target-scale package.
 
 ## Context Inventory
 
@@ -45,17 +52,19 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python \
   --format json
 ```
 
-Expected result: `classification` is `limiting`, all six required context
-categories are classified, and future context downloads/review actions are
-explicit. The validator rejects missing context categories, claimed obstacle
-physics, limiting records without future context actions, and unqualified
-annual/return-period/risk/operational language.
+Expected result: `classification` is `limiting`, target-scale context review
+status is `blocked_missing_context_layers`, all six required context categories
+are classified, and future context downloads/review actions are explicit. The
+validator rejects missing context categories, claimed obstacle physics,
+limiting records without future context actions, acceptable classifications
+without reviewed target context, and unqualified annual/return-period/risk or
+operational language.
 
 ## Interpretation Boundary
 
 Allowed current interpretation:
 
-- the selected conditional gate omits forest and obstacle effects;
+- the selected target-scale gate omits forest and obstacle effects;
 - omission is a documented limitation for spatial interpretation;
 - future review should use SWISSIMAGE, swissTLM3D, swissSURFACE3D or
   swissSURFACE3D Raster, and swissBUILDINGS3D where relevant;
@@ -71,10 +80,10 @@ Unsupported current interpretation:
 - current outputs are physical probability, annual frequency, return-period,
   risk, exposure, vulnerability, or operational hazard-map products.
 
-## Required Before Scale-Up Interpretation
+## Required Before Interpretation
 
-Before increasing ensemble size or interpreting Tschamut spatial patterns as
-more than an inconclusive local diagnostic gate, review public context layers
+Before interpreting Tschamut target-scale spatial patterns as more than an
+inconclusive local diagnostic gate, restore or download public context layers
 for the selected extent:
 
 1. SWISSIMAGE for visual corridor and release-zone sanity checks.
@@ -82,6 +91,7 @@ for the selected extent:
 3. swissSURFACE3D or swissSURFACE3D Raster for canopy/surface-height context.
 4. swissBUILDINGS3D where building or structure context is relevant.
 
-The next review should update the scope record to `acceptable`, `limiting`, or
-`invalidating` based on actual context evidence. It should not tune simulator
-parameters to absorb omitted forest or obstacle effects.
+The next context review should update the scope record to
+`acceptable`, `limiting`, or `invalidating` based on actual context evidence.
+It should not tune simulator parameters to absorb omitted forest or obstacle
+effects.

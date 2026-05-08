@@ -31,8 +31,8 @@ manual GIS/QGIS visual-QA classification. Milestone 1 is not complete until
 target-scale convergence decisions are recorded; the selected target-scale
 package visual-QA gate is currently `blocked` because QGIS and ignored target
 package artifacts are unavailable in this checkout, and forest/obstacle
-omission is classified `limiting` because public context layers have not been
-locally reviewed. It is not yet close to
+omission is classified `limiting` for the target-scale gate because public
+context layers have not been locally reviewed. It is not yet close to
 milestone 2 because source-zone occurrence frequency, block-population
 frequency, annualization, and validation semantics remain unsupported by
 `docs/hazard_map_semantics.md` and
@@ -65,10 +65,10 @@ Already available:
   generated packages, with small-gate automated manifest/file QA recorded and
   target-scale manual GIS/QGIS visual QA classified `blocked` by a checked
   review record because QGIS and ignored target package artifacts are absent;
-- share-safe Tschamut forest/obstacle context scope record, with SWISSIMAGE,
-  swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D
-  context documented but not locally reviewed and omission classified
-  `limiting`;
+- share-safe Tschamut target-scale forest/obstacle context scope record, with
+  SWISSIMAGE, swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and
+  swissBUILDINGS3D context documented but not locally reviewed and omission
+  classified `limiting`;
 - share-safe Tschamut public pilot scaling review note based on ignored local
   validation, hazard, GIS-package, and reducer manifests, identifying
   conditional-curve/raster output volume as the next bottleneck before
@@ -133,13 +133,14 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   absent in this checkout, and no overlay screenshots were produced.
   The generated rasters/manifests are not committed and are absent in a clean
   checkout.
-- Forest/obstacle omission is scoped at the selected interpretation level.
+- Forest/obstacle omission is scoped at the selected target-scale
+  interpretation level.
   `scripts/validate_pilot_obstacle_scope.py`,
   `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`, and
   `docs/tschamut_public_obstacle_context_scope.md` classify the omission as
-  `limiting`: public context layers are documented but not locally reviewed,
-  no obstacle physics is implemented, and parameter tuning must not absorb the
-  omission.
+  `limiting`: public context layers are documented but not locally reviewed in
+  this checkout, no obstacle physics is implemented, and parameter tuning must
+  not absorb the omission.
 - Local scaling/output-volume evidence is complete at the manifest-summary
   level. `scripts/summarize_pilot_scaling.py` and
   `docs/tschamut_public_pilot_scaling_review.md` record validation/hazard wall
@@ -441,12 +442,12 @@ local generated real-pilot outputs. The Tschamut local package review in
 manifest/file QA for an ignored local gate package.
 `scripts/validate_pilot_gis_visual_qa.py` validates the selected visual-QA
 record `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`, which
-classifies the manual GIS/QGIS gate as `inconclusive` because QGIS was
-unavailable and no visual overlay evidence was produced. The generated package
-artifacts are not tracked and may be absent in a clean checkout, but their
-manifest checksum is reconciled in the authoritative run-freeze. The current
-code does not create a QGIS project, GeoPackage, production COG, tiled package,
-or operational product.
+classifies the target-scale manual GIS/QGIS gate as `blocked` because QGIS and
+ignored target package artifacts are unavailable in this checkout. The
+generated package artifacts are not tracked and may be absent in a clean
+checkout, but their manifest checksum is reconciled in the authoritative
+run-freeze. The current code does not create a QGIS project, GeoPackage,
+production COG, tiled package, or operational product.
 
 Implementation work:
 
@@ -744,7 +745,7 @@ a separate deferred semantic/evidence problem.
 | --- | --- | --- | --- |
 | 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze, GIS review, scaling review, and conditional gate report needed one authoritative state. | Complete: the processed DEM and local ignored outputs were regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/memory/output metrics, and GIS review references are reflected consistently in the run-freeze and reports with `inconclusive` non-operational classification. |
 | 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
-| 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, and confirms no obstacle physics or tuning change. |
+| 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe target-scale scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, records blocked local context-artifact review, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the selected pilot is reproducible and scientifically interpretable. | Complete as a reassessed selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` reviews the executed but inconclusive target evidence and records that increasing the Tschamut ensemble is not authorized until convergence interpretation, validation output volume, manual GIS/QGIS review, forest/obstacle context, and validation-runner provenance scope are resolved. |
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
@@ -780,8 +781,8 @@ conditional execution diagnostics are available. The selected target-scale gate
 now has local ignored execution evidence with 1,000 observed-release
 trajectories, summary-only curves, output-budget/runtime/memory/checksum
 sidecars, and reducer worker parity. The result is still `inconclusive` because
-target-vs-gate convergence has not been accepted, manual GIS/QGIS visual QA has
-not been completed, obstacle context remains limiting, and validation-runner
+target-vs-gate convergence has not been accepted, manual GIS/QGIS visual QA is
+blocked, obstacle context remains limiting, and validation-runner
 `ensemble_execution` provenance covers only the auxiliary single-release
 ensemble path. Ensemble increase remains no-go until those preconditions are
 satisfied. The pilot remains an inconclusive local diagnostic gate.

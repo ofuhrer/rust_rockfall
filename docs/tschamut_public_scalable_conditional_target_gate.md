@@ -56,7 +56,8 @@ resolve:
 - target-vs-small-gate convergence interpretation;
 - manual GIS/QGIS visual QA, which is currently blocked by missing QGIS and
   absent ignored target package artifacts in this checkout;
-- forest/obstacle context limits;
+- forest/obstacle context limits, currently classified `limiting` because no
+  public context layer crop is available in this checkout;
 - the validation-runner provenance caveat that `ensemble_execution` records the
   auxiliary single-release 100-trajectory ensemble path, while the observed
   Tschamut validation outputs contain 1,000 trajectories.

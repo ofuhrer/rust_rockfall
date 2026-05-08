@@ -16,8 +16,9 @@ artifacts. The current critical gap is no longer missing execution contracts,
 missing target-scale execution evidence, or unclassified manual GIS/QGIS
 visual QA. The active blockers are interpretation and provenance: target-scale
 GIS/QGIS visual QA is explicitly `blocked` by missing ignored package artifacts
-and absent QGIS, forest/obstacle context remains limiting, convergence has not
-been accepted, validation-runner
+and absent QGIS, forest/obstacle context is explicitly `limiting` with public
+context layers not reviewed in this checkout, convergence has not been
+accepted, validation-runner
 parallel provenance covers only an auxiliary ensemble path, and validation-side
 debug output volume remains too large for another selected-domain increase
 without reduction or explicit justification.
@@ -137,13 +138,14 @@ for the selected gate.
 
 Minimal acceptable deliverable: complete at the share-safe scoping level. The
 selected scope record
-`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml` classifies
-forest and obstacle omission as `limiting` because public SWISSIMAGE,
-swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context
-layers are documented but not locally reviewed for the selected corridor. The
-validator `scripts/validate_pilot_obstacle_scope.py` checks the six required
-context categories, future context actions, and claim boundaries. No obstacle
-physics is implemented.
+`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml` now targets the
+executed target-scale gate and classifies forest and obstacle omission as
+`limiting` because public SWISSIMAGE, swissTLM3D,
+swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context layers are
+documented but not locally reviewed for the selected corridor. The validator
+`scripts/validate_pilot_obstacle_scope.py` checks the six required context
+categories, target-scale blocked/reviewed context status, future context
+actions, and claim boundaries. No obstacle physics is implemented.
 
 What not to do: Do not tune restitution, terrain classes, or stopping behavior
 to mimic omitted forest or barriers.
@@ -605,6 +607,12 @@ the omission `limiting`, upgrades it to `acceptable_for_diagnostic_pilot`, or
 downgrades it to `invalidating_for_interpretation`, with explicit evidence and
 claim boundaries.
 
+Current status: complete as a target-scale `limiting` review with a blocked
+local context-artifact state. `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`
+now points to the target-scale gate, records that public context crops are not
+present in this checkout, keeps all six required context categories classified,
+and preserves the no-obstacle-physics/no-risk claim boundary.
+
 What not to do: Do not implement forest/barrier physics, tune friction or
 restitution, or reinterpret omitted obstacles as validation failure modes.
 
@@ -665,9 +673,10 @@ Estimated order: 15.
   GIS/QGIS visual-QA gate is explicitly classified `blocked` by a share-safe
   checklist because QGIS is unavailable and ignored target package artifacts
   are absent in this checkout.
-- Forest and obstacle omission is scoped at the share-safe interpretation
-  level and classified `limiting` for the selected Tschamut corridor because
-  public context layers are documented but not locally reviewed.
+- Forest and obstacle omission is scoped at the share-safe target-scale
+  interpretation level and classified `limiting` for the selected Tschamut
+  corridor because public context layers are documented but not locally
+  reviewed in this checkout.
 - Conditional-curve output volume has an opt-in mitigation:
   `--conditional-curve-export summary-only`. The default remains full
   curve-table export for small debug/review runs.
@@ -779,21 +788,18 @@ Estimated order: 15.
 
 ## Recommended Sequence
 
-1. Review forest/obstacle context for the selected Tschamut corridor and decide
-   whether omission remains limiting, becomes acceptable for a diagnostic
-   pilot, or invalidates target-scale interpretation.
-2. Clarify validation-runner parallel provenance for observed-release
+1. Clarify validation-runner parallel provenance for observed-release
    ensembles if the next gate requires `ensemble_execution` to cover all 1,000
    target trajectories rather than the auxiliary single-release ensemble path.
-3. Reduce or explicitly justify validation-side debug output volume before any
+2. Reduce or explicitly justify validation-side debug output volume before any
    further selected-domain increase.
-4. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+3. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
    focused behavior-preserving change already touches that concern.
-5. Resolve the remaining physical/source-frequency design-gate blockers if
+4. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
-6. Implement an annual/physical prototype only if the design gate passes.
+5. Implement an annual/physical prototype only if the design gate passes.
    Until then, use the Target 10 preflight record as the executable no-go
    check rather than adding annual or physical runtime semantics.

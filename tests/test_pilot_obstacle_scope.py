@@ -18,6 +18,16 @@ SPEC.loader.exec_module(validator)
 
 
 class PilotObstacleScopeTests(unittest.TestCase):
+    def test_selected_target_scope_is_limiting_with_blocked_context_review(self) -> None:
+        summary = validator.validate_scope_record(
+            ROOT / "validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml"
+        )
+
+        self.assertEqual(summary["run_id"], "tschamut_public_scalable_conditional_target_gate_v1")
+        self.assertEqual(summary["classification"], "limiting")
+        self.assertEqual(summary["target_scale_context_review_status"], "blocked_missing_context_layers")
+        self.assertGreater(summary["missing_context_artifact_count"], 0)
+
     def test_accepts_limiting_scope_with_future_context_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record_path = self.write_record(Path(tmp), self.base_record())
@@ -27,6 +37,7 @@ class PilotObstacleScopeTests(unittest.TestCase):
             self.assertEqual(summary["classification"], "limiting")
             self.assertEqual(summary["context_category_count"], 6)
             self.assertEqual(summary["future_context_download_count"], 3)
+            self.assertEqual(summary["target_scale_context_review_status"], "blocked_missing_context_layers")
 
     def test_rejects_missing_required_context_category(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -57,6 +68,26 @@ class PilotObstacleScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.ObstacleScopeError, "adds_obstacle_model"):
                 validator.validate_scope_record(record_path)
 
+    def test_rejects_blocked_context_review_with_reviewed_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["target_scale_review"]["reviewed_context_artifact_paths"] = ["context/swissimage.tif"]
+            record_path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ObstacleScopeError, "must not list reviewed context artifacts"):
+                validator.validate_scope_record(record_path)
+
+    def test_rejects_acceptable_classification_without_reviewed_target_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["classification"] = "acceptable"
+            record["evidence"]["required_future_context_downloads"] = []
+            record["context_inventory"][0]["status"] = "available_reviewed"
+            record_path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ObstacleScopeError, "reviewed_accepting_omission"):
+                validator.validate_scope_record(record_path)
+
     def test_rejects_unqualified_risk_language(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.base_record()
@@ -84,6 +115,18 @@ class PilotObstacleScopeTests(unittest.TestCase):
                 "adds_obstacle_model": False,
                 "adds_risk_or_exposure_model": False,
             },
+            "target_scale_review": {
+                "target_gate_record_path": "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+                "target_gate_status": "inconclusive",
+                "target_package_visual_qa_record_path": "validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml",
+                "target_package_visual_qa_status": "blocked",
+                "local_context_review_status": "blocked_missing_context_layers",
+                "context_artifacts_committed": False,
+                "context_downloads_or_crops_present_in_checkout": False,
+                "reviewed_context_artifact_paths": [],
+                "missing_context_artifact_paths": ["data/processed/swisstopo/tschamut_public_pilot/context/swissimage/"],
+                "interpretation": "No local context layers are reviewed for this unit-test fixture.",
+            },
             "context_inventory": [
                 self.context("forest_or_canopy", "swisstopo_swisssurface3d_raster"),
                 self.context("buildings_or_structures", "swisstopo_swissbuildings3d"),
@@ -99,6 +142,12 @@ class PilotObstacleScopeTests(unittest.TestCase):
             },
             "evidence": {
                 "reviewed_documents": ["docs/swisstopo_data_strategy.md"],
+                "local_artifact_probe": {
+                    "context_root": "data/processed/swisstopo/tschamut_public_pilot/context",
+                    "context_root_present": False,
+                    "raw_context_products_present": False,
+                    "probe_date": "2026-05-09",
+                },
                 "required_future_context_downloads": [
                     "swisstopo_swissimage",
                     "swisstopo_swisstlm3d",

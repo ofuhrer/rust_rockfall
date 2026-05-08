@@ -3087,3 +3087,68 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Review forest and obstacle context for the selected
   Tschamut target-scale corridor, still without adding obstacle physics or
   tuning parameters.
+
+### M053
+
+- Milestone id: M053.
+- Roadmap item: Target 14 forest and obstacle context review for target-scale
+  Tschamut interpretation.
+- Hypothesis/objective: Retarget the obstacle-context scope from a small gate
+  scoping note to the executed target-scale package, and make missing public
+  context crops an explicit limiting blocker without adding obstacle physics or
+  tuning.
+- Initial gap assessment: The checked-in obstacle-scope record documented
+  public context requirements and claim boundaries, but it did not explicitly
+  bind the review to the executed target-scale gate, the blocked target package
+  visual-QA record, or a machine-checked local context-artifact absence.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`,
+  `scripts/validate_pilot_obstacle_scope.py`,
+  `tests/test_pilot_obstacle_scope.py`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `docs/tschamut_public_ensemble_feasibility.md`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: The selected obstacle-scope record now targets
+  `tschamut_public_scalable_conditional_target_gate_v1`, records
+  `blocked_missing_context_layers` for local target-scale context review, keeps
+  omission classified as `limiting`, lists required public context layers, and
+  preserves no-obstacle-physics, no-risk, no-annual-frequency, and
+  no-physical-probability boundaries. The validator and tests now reject
+  blocked reviews with reviewed artifacts and acceptable classifications without
+  reviewed target context. The repository consistency script checks that the
+  target-scale obstacle-scope contract remains present.
+- Checks run:
+  `test -e data/processed/swisstopo/tschamut_public_pilot/context`;
+  `find data/processed/swisstopo/tschamut_public_pilot -maxdepth 3 -type f`;
+  `find data/raw -maxdepth 3 -type f`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_obstacle_scope.py validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_pilot_obstacle_scope`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No simulator behavior, physics parameters, defaults, raw
+  geodata, generated hazard products, annual frequency semantics, physical
+  probability semantics, risk/exposure semantics, or operational claims are
+  added.
+- Decision: ACCEPT if final checks pass; Target 14 is complete as a limiting
+  target-scale review with an explicit missing-context-artifact blocker, not as
+  a resolved obstacle analysis.
+- Next proposed milestone: Implement Target 15, validation-runner provenance
+  and debug output-budget tightening for the selected Tschamut target-scale
+  evidence.

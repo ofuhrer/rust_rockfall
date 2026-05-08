@@ -1,18 +1,38 @@
 schema_version: pilot_obstacle_scope_v1
 pilot_id: tschamut_public_pilot
-run_id: tschamut_public_conditional_gate_v1
+run_id: tschamut_public_scalable_conditional_target_gate_v1
 classification: limiting
 classification_rationale: >
-  The selected conditional gate uses a bare-earth swissALTI3D DEM and no
-  downloaded context layers for canopy, roads, structures, protection works, or
-  orthophoto review. This omission is limiting for interpretation because the
-  current local evidence cannot rule out first-order forest or obstacle effects
-  in the Tschamut corridor.
+  The executed target-scale conditional gate still uses a bare-earth
+  swissALTI3D DEM and has no locally reviewed public context crop for canopy,
+  roads, structures, protection works, channels, or orthophoto interpretation.
+  The omission remains limiting for target-scale interpretation because the
+  current checkout cannot rule out first-order forest or obstacle effects in
+  the Tschamut corridor.
 input_scope:
   changes_physics: false
   changes_defaults: false
   adds_obstacle_model: false
   adds_risk_or_exposure_model: false
+target_scale_review:
+  target_gate_record_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  target_gate_status: inconclusive
+  target_package_visual_qa_record_path: validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml
+  target_package_visual_qa_status: blocked
+  local_context_review_status: blocked_missing_context_layers
+  context_artifacts_committed: false
+  context_downloads_or_crops_present_in_checkout: false
+  reviewed_context_artifact_paths: []
+  missing_context_artifact_paths:
+    - data/processed/swisstopo/tschamut_public_pilot/context/swissimage/
+    - data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/
+    - data/processed/swisstopo/tschamut_public_pilot/context/swisssurface3d_raster/
+    - data/processed/swisstopo/tschamut_public_pilot/context/swissbuildings3d/
+  interpretation: >
+    Target-scale trajectory and hazard artifacts exist only as ignored local
+    evidence, and no public context layer crop is available in this checkout.
+    The target-scale outputs therefore cannot be interpreted as showing that
+    forest, roads, buildings, channels, or protection works are irrelevant.
 context_inventory:
   - category: forest_or_canopy
     dataset_id: swisstopo_swisssurface3d_raster
@@ -21,14 +41,14 @@ context_inventory:
     interpretation: >
       swissSURFACE3D Raster or point-cloud context could compare surface height
       against swissALTI3D bare-earth terrain, but no local context crop is
-      reviewed for this gate.
+      reviewed for the target-scale gate.
   - category: buildings_or_structures
     dataset_id: swisstopo_swissbuildings3d
     status: documented_not_downloaded
     role: building_and_structure_context
     interpretation: >
-      Building and structure context is not reviewed. This gate must not infer
-      structure interaction, shielding, or consequence from current outputs.
+      Building and structure context is not reviewed. The target-scale outputs
+      must not infer structure interaction, shielding, or consequence.
   - category: roads_or_transport
     dataset_id: swisstopo_swisstlm3d
     status: documented_not_downloaded
@@ -36,7 +56,7 @@ context_inventory:
     interpretation: >
       swissTLM3D road, track, and transport features are not reviewed. This
       prevents corridor-level interpretation of whether transport corridors or
-      embankments are relevant obstacles for the selected runout path.
+      embankments are relevant obstacles for the target-scale runout path.
   - category: barriers_or_protection
     dataset_id: swisstopo_swisstlm3d
     status: documented_not_downloaded
@@ -51,27 +71,29 @@ context_inventory:
     role: hydrography_and_channel_context
     interpretation: >
       Watercourse or channel context is not reviewed. The current DEM-only
-      gate cannot classify whether channelized terrain or water features affect
-      the diagnostic runout corridor.
+      target-scale gate cannot classify whether channelized terrain or water
+      features affect the diagnostic runout corridor.
   - category: orthophoto_visual_context
     dataset_id: swisstopo_swissimage
     status: documented_not_downloaded
     role: visual_context_for_manual_qa
     interpretation: >
       SWISSIMAGE is identified as the appropriate share-safe visual QA layer,
-      but no orthophoto tile or screenshot is committed or reviewed here.
+      but no orthophoto tile, crop, screenshot, or QGIS layer review is
+      available for this target-scale review.
 omission_interpretation:
   summary: >
     Forest and obstacle omission is a limiting boundary condition for the
-    selected Tschamut conditional pilot gate. Current outputs may be useful for
-    workflow diagnostics, but they must not be interpreted as evidence that
-    vegetation, roads, buildings, channels, barriers, or protection structures
-    are irrelevant in the corridor.
+    executed target-scale Tschamut conditional pilot gate. Current outputs may
+    be useful for workflow diagnostics, but they must not be interpreted as
+    evidence that vegetation, roads, buildings, channels, barriers, or
+    protection structures are irrelevant in the corridor.
   required_before_interpretation: >
-    Before increasing ensemble size or interpreting spatial patterns, review
-    SWISSIMAGE plus swissTLM3D and swissSURFACE3D/swissSURFACE3D Raster
-    context for the selected extent, and classify whether the omission remains
-    limiting or becomes acceptable or invalidating.
+    Before interpreting target-scale spatial patterns or considering another
+    ensemble increase, restore or download SWISSIMAGE, swissTLM3D,
+    swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context for the
+    selected extent, then classify whether the omission remains limiting,
+    becomes acceptable for a diagnostic pilot, or invalidates interpretation.
   do_not_tune_to_absorb_omission:
     - restitution
     - roughness
@@ -82,8 +104,15 @@ evidence:
   reviewed_documents:
     - docs/swisstopo_data_strategy.md
     - data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
-    - docs/tschamut_public_conditional_pilot_gate_report.md
+    - docs/tschamut_public_scalable_conditional_target_gate.md
     - docs/tschamut_public_pilot_gis_package_review.md
+    - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+    - validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml
+  local_artifact_probe:
+    context_root: data/processed/swisstopo/tschamut_public_pilot/context
+    context_root_present: false
+    raw_context_products_present: false
+    probe_date: "2026-05-09"
   required_future_context_downloads:
     - swisstopo_swissimage
     - swisstopo_swisstlm3d
