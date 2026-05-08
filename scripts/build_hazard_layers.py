@@ -11,9 +11,11 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import os
 import html
 import json
 import math
+import socket
 import struct
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +32,7 @@ INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT = 32
 CHUNK_MANIFEST_SCHEMA_VERSION = "hazard_reducer_chunk_manifest_v1"
 CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION = "chunk_execution_manifest_v1"
 CHUNK_EXECUTION_PLAN_SCHEMA_VERSION = "execution_plan_v1"
+CHUNK_PARTIAL_STATE_SCHEMA_VERSION = "reducer_chunk_state_v1"
 
 
 @dataclass(frozen=True)
@@ -301,11 +304,20 @@ class ReducerChunkResult:
     chunk: ReducerChunk
     accumulator: "HazardAccumulator"
     warnings: tuple[str, ...]
+    partial_state_path: Path | None
     manifest: dict[str, Any]
 
 
 def chunk_manifest_path(output_dir: Path, chunk_id: str) -> Path:
     return output_dir / f"{chunk_id}_manifest.json"
+
+
+def chunk_partial_state_path(chunk_id: str, output_dir: Path) -> Path:
+    return output_dir / f"{chunk_id}_state.json"
+
+
+def execution_plan_path_from_prefix(output_dir: Path, prefix: str, explicit_plan_path: Path | None = None) -> Path:
+    return explicit_plan_path or execution_plan_path(output_dir, prefix)
 
 
 def execution_plan_path(output_dir: Path, prefix: str) -> Path:
@@ -2014,6 +2026,7 @@ def run_reducer_chunk(
         chunk=chunk,
         accumulator=accumulator,
         warnings=tuple(warnings),
+        partial_state_path=None,
         manifest=manifest,
     )
 
