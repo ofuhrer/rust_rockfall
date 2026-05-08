@@ -206,6 +206,8 @@ def validate_geotiff_outputs(outputs: list[Any], *, require_existing_files: bool
         require(output.get("annualized") is False, f"GeoTIFF {layer} must not be annualized")
         require(output.get("is_annualized") is False, f"GeoTIFF {layer} must not be annualized")
         validate_artifact(output, f"raster_outputs[{index}]", require_existing_files=require_existing_files)
+        if require_existing_files:
+            validate_tiff_signature(output, f"raster_outputs[{index}]")
         geotiffs[layer] = output
     require(geotiffs, "raster_outputs must include at least one GeoTIFF")
     return geotiffs
@@ -331,6 +333,24 @@ def validate_artifact(entry: dict[str, Any], field: str, *, require_existing_fil
     data = path.read_bytes()
     require(len(data) == total_bytes, f"{field}.total_bytes does not match file size: {path}")
     require(hashlib.sha256(data).hexdigest() == sha, f"{field}.sha256 does not match file content: {path}")
+
+
+def validate_tiff_signature(entry: dict[str, Any], field: str) -> None:
+    """Check that a local GeoTIFF artifact is at least a TIFF-family file.
+
+    This is intentionally a lightweight package-integrity check, not full
+    raster QA. Full CRS, transform, nodata, and value-parity checks remain in
+    the hazard-layer GeoTIFF tests and package manifests.
+    """
+
+    path = resolve_path(str(entry["path"]))
+    signature = path.read_bytes()[:4]
+    classic_tiff = signature in {b"II*\x00", b"MM\x00*"}
+    big_tiff = signature in {b"II+\x00", b"MM\x00+"}
+    require(
+        classic_tiff or big_tiff,
+        f"{field}.path is not a TIFF-family file: {path}",
+    )
 
 
 def resolve_path(path_text: str) -> Path:

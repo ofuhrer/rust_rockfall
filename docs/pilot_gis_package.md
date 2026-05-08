@@ -224,10 +224,13 @@ contract:
 - `scripts/validate_pilot_gis_package.py` validates a
   `pilot_gis_package_manifest_v1` inventory. With `--require-real-site` and
   `--require-existing-files`, it checks local generated file checksums,
-  GeoTIFF/CSV/ESRI ASCII parity inventory, EPSG:2056/LN02/nodata/grid metadata
-  in the hazard manifest, source-zone sidecar references through either
-  package context artifacts or the map-package manifest, and unsupported
-  annual/return-period/risk/operational claim boundaries.
+  GeoTIFF/CSV/ESRI ASCII parity inventory, TIFF-family signatures for local
+  GeoTIFF artifacts, EPSG:2056/LN02/nodata/grid metadata in the hazard
+  manifest, source-zone sidecar references through either package context
+  artifacts or the map-package manifest, and unsupported
+  annual/return-period/risk/operational claim boundaries. The TIFF signature
+  check catches placeholder or wrong-file artifacts; it is not full raster
+  readability or QGIS QA.
 - `tests/test_hazard_layers.py::HazardLayerTests.test_geotiff_export_preserves_values_grid_and_crs_metadata`
   builds a tiny GeoTIFF fixture, verifies GeoTIFF values match the CSV grid, and
   checks pixel scale, tiepoint, nodata, EPSG metadata, manifest affine
@@ -244,8 +247,8 @@ contract:
   verifies package manifest generation is gated on explicit GeoTIFF export.
 - `tests/test_pilot_gis_package_validator.py` covers the standalone package
   validator success path and rejection of missing ASCII parity, annualized
-  GeoTIFF claims, missing unsupported-claim boundaries, and checksum mismatch
-  when local files are required.
+  GeoTIFF claims, missing unsupported-claim boundaries, checksum mismatch, and
+  non-TIFF placeholder artifacts when local files are required.
 
 These checks prove value/metadata parity for the tiny fixture path and enforce
 the current unsupported COG and package boundary. The standalone validator can

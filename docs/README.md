@@ -16,17 +16,32 @@ The repository uses semantic versioning:
 - `MINOR`: new opt-in physics or model capabilities that preserve existing defaults.
 - `PATCH`: bug fixes, documentation, and test improvements.
 
-Core documents:
+Use this index by authority level. Current governing documents and current
+roadmaps should guide new work. Evidence reports describe what was observed at
+the time they were written. Historical decision records and work logs are
+retained for traceability and must not override the current governing docs or
+target list.
+
+Current governing documents:
 
 - `model_design.md`: current equations, assumptions, model options, and API boundaries.
 - `onboarding.md`: generic local prerequisites, Rust/Python installation, git-hook setup, optional public benchmark data commands, and handoff checks.
 - `balfrin_skills.md`: Balfrin cluster guide covering SLURM partitions, hardware, filesystems, and Rust job submission recipes.
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
+- `validation_maturity_framework.md`: conservative V0-V5 evidence and claim levels for verification, synthetic fixtures, field validation, site-scale hazard-pattern evidence, cross-site generalization, and operational reproducibility.
+- `validation_plan.md`: public-data validation strategy and calibration policy.
+- `dataset_strategy.md`: multi-dataset roles for physics calibration, trajectory validation, deposition validation, and hazard mapping.
+- `validation_data_schema.md`: YAML case and validation-data schema.
+
+Current roadmaps and target lists:
+
 - `next_development_targets.md`: current prioritized development targets after the latest repository review.
 - `roadmap_recommendation_matrix.md`: current scoring matrix and prioritization rationale for near-term roadmap choices.
-- `repository_scientific_roadmap_review.md`: current scientific roadmap review and gap analysis used to update the target list.
 - `real_case_intensity_frequency_implementation_roadmap.md`: staged roadmap from current conditional intensity-exceedance pilot products to future physical-probability or annual intensity-frequency products.
-- `validation_maturity_framework.md`: conservative V0-V5 evidence and claim levels for verification, synthetic fixtures, field validation, site-scale hazard-pattern evidence, cross-site generalization, and operational reproducibility.
+- `repository_scientific_roadmap_review.md`: historical snapshot review used to seed earlier target lists; prefer `next_development_targets.md` and `real_case_intensity_frequency_implementation_roadmap.md` for current priorities when they differ.
+
+Current implementation contracts and evidence reports:
+
 - `probabilistic_hazard_mapping_development_roadmap.md`: staged development roadmap reframing the project around transparent, reproducible probabilistic hazard-map production for selected Swiss regions.
 - `probabilistic_hazard_phase1_implementation_plan.md`: concrete Level 1-2 implementation plan for map semantics, source-zone identity, scenario tables, probability labels, normalization rules, and validation slices.
 - `probabilistic_hazard_phase1_closure.md`: closure record for Phase 1 Slices B-E, defining implemented Level 1/2 probabilistic map semantics, smoke-example coverage, compatibility guarantees, and the recommended Phase 2A GIS export step.
@@ -56,7 +71,6 @@ Core documents:
 - `shape_metadata_application_plan.md`: practical plan for attaching passive public block-shape metadata to Tschamut and Chant Sura validation cases without changing dynamics or tuning parameters.
 - `public_tschamut_shape_metadata_milestone.md`: concise scientific milestone report after the registered public Tschamut benchmark, passive shape scaffold, Tschamut sidecars, and inertness validation.
 - `swisstopo_terrain_tile_schema.yaml`: schema-style metadata example for future swisstopo terrain tile ingestion.
-- `dataset_strategy.md`: multi-dataset roles for physics calibration, trajectory validation, deposition validation, and hazard mapping.
 - `public_benchmark_framework.md`: unified public benchmark ingestion, provenance, grouped-validation, and no-tuning workflow for Tschamut, Chant Sura, Chant Sura EOTA221, and Mel de la Niva.
 - `public_benchmark_results_baseline.md`: first no-tuning execution inventory for the unified public benchmark framework, including Tschamut all-runs metrics, Chant Sura contact metrics, passive EOTA221 QA, and Mel de la Niva opt-in runnable smoke status.
 - `model_benchmark_execution_report.md`: expert-review benchmark execution package summarizing executed datasets, commands, grouped metrics, hazard-layer examples, probabilistic smoke evidence, provenance, and reproducibility limits.
@@ -94,9 +108,7 @@ Core documents:
 - `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
 - `autonomous_development_program.md`: operator prompt, tracking artifacts, and Git/GitHub conventions for long-running autonomous development sessions.
 - `verification_plan.md`: analytic and synthetic verification strategy.
-- `validation_plan.md`: public-data validation strategy and calibration policy.
 - `benchmark_catalog.md`: implemented verification and validation case inventory.
-- `validation_data_schema.md`: YAML case and validation-data schema.
 - `impact_diagnostics.md`: optional per-impact event logging fields and interpretation guide.
 - `implementation_plan.md`: phased implementation roadmap.
 - `literature_review.md`: public literature and grey-literature sources.
@@ -113,6 +125,6 @@ Historical decision records and superseded roadmap context:
 - `post_ce3959d_next_step_decision.md`: post-`ce3959d` current-state review, retained as historical context.
 - `post_swiss_pilot_stack_next_step_decision.md`: decision record after the swissALTI3D-style terrain, release-zone, terrain-class, and hazard-exceedance pilot stack.
 - `v0_5_next_steps_review.md`: current-state review after `v0.5.0`, retained as historical context.
-- `current_state_gap_analysis_next_directions.md`: older strategic post-benchmark gap analysis. Use current planning documents such as `next_development_targets.md`, `roadmap_recommendation_matrix.md`, `repository_scientific_roadmap_review.md`, and this index when priorities conflict.
+- `current_state_gap_analysis_next_directions.md`: older strategic post-benchmark gap analysis. Use current planning documents such as `next_development_targets.md`, `real_case_intensity_frequency_implementation_roadmap.md`, `roadmap_recommendation_matrix.md`, and this index when priorities conflict.
 
 Version notes are tracked in `../CHANGELOG.md`.

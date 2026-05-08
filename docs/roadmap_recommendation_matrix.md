@@ -1,7 +1,9 @@
 # Roadmap Recommendation Matrix
 
-Status: ranked recommendation after the current repository review. Scores are
-planning guidance, not implementation commitments.
+Status: current prioritization matrix after the selected Tschamut public pilot
+manifest, source/scenario policy, DEM-sensitivity gate, no-go run-freeze,
+automated GIS package review, and pilot scaling review. Scores are planning
+guidance, not implementation commitments.
 
 ## Scoring Method
 
@@ -27,106 +29,83 @@ scientific + Swiss pilot + hazard workflow + validation + reproducibility + alig
 - implementation risk - dependency risk - calibration/validation confusion risk
 ```
 
-Rank is not a pure sort by composite score. It also reflects dependency order,
-data availability, and the latest repository state: current hazard semantics,
-source/block semantics, lightweight GeoTIFF behavior, and a DEM sensitivity
-dry-run now have meaningful executable coverage, while controlled pilot
-evidence, real-site terrain sensitivity, and package-level GIS QA are still
-missing.
+Rank is not a pure sort by composite score. It also reflects dependency order
+and the current evidence state. In particular, the selected Tschamut pilot now
+has share-safe manifests, source/scenario policy, a DEM-sensitivity gate, a
+no-go run-freeze, and local ignored GIS/scaling evidence, but those records do
+not yet describe one authoritative reproducible execution state.
 
 ## Scoring Matrix
 
 | Rank | Direction | Scientific | Swiss pilot | Hazard workflow | Validation | Reproducibility | Alignment | Impl. risk | Dep. risk | Cal/val confusion risk | Composite |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Controlled real-site Tschamut/swissALTI3D pilot | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 2 | 18 |
-| 2 | DEM/terrain sensitivity evidence beyond the dry-run fixture | 5 | 5 | 4 | 4 | 5 | 5 | 3 | 2 | 3 | 20 |
-| 3 | Pilot GIS/QGIS package fixture | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 2 | 1 | 20 |
-| 4 | Remaining hazard-map semantics enforcement gaps | 4 | 5 | 5 | 3 | 5 | 5 | 2 | 1 | 2 | 22 |
-| 5 | Source-zone and block-scenario V1 tightening | 4 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 3 | 18 |
-| 6 | Validation maturity framework | 4 | 4 | 4 | 5 | 5 | 5 | 1 | 1 | 1 | 28 |
-| 7 | Chant Sura contact and shape-readiness evidence | 5 | 4 | 4 | 5 | 4 | 5 | 3 | 3 | 2 | 19 |
-| 8 | Forest/obstacle pilot-domain scoping | 4 | 4 | 4 | 2 | 4 | 5 | 2 | 3 | 2 | 16 |
-| 9 | Deterministic local parallel execution and streaming reduction | 2 | 5 | 5 | 2 | 5 | 5 | 4 | 2 | 1 | 17 |
-| 10 | Calibration and production data-format decision gates | 3 | 4 | 5 | 3 | 5 | 5 | 3 | 2 | 4 | 16 |
+| 1 | Reconcile and regenerate selected pilot gate evidence | 4 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 2 | 19 |
+| 2 | Manual QGIS visual QA for selected package | 3 | 5 | 5 | 2 | 5 | 5 | 2 | 3 | 1 | 19 |
+| 3 | Forest/obstacle omission scoping for Tschamut | 4 | 5 | 4 | 3 | 4 | 5 | 2 | 3 | 2 | 18 |
+| 4 | Conditional-curve/raster output-volume bottleneck | 3 | 5 | 5 | 2 | 5 | 5 | 3 | 2 | 1 | 19 |
+| 5 | Ensemble-size increase with convergence diagnostics | 4 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 18 |
+| 6 | Physical/source-frequency semantics design | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 4 | 18 |
+| 7 | Annual/physical intensity-frequency prototype | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 14 |
 
 ## Interpretation
 
-The controlled Tschamut/swissALTI3D pilot remains first even though its
-scientific score is only medium. It is the gateway workflow experiment and
-should be reported as pilot/confounder evidence, not decisive validation.
+Evidence reconciliation ranks first because the repository currently has two
+different pilot stories: the authoritative run-freeze remains no-go, while
+separate GIS and scaling notes reference local ignored artifacts. Before more
+features or larger ensembles, the selected pilot reports must agree on whether
+the processed DEM, trajectory outputs, conditional curves, GIS manifests,
+checksums, runtime metrics, and output-volume evidence are reproducible,
+local-only, or absent.
 
-DEM/terrain sensitivity ranks second and moves above several physics tasks. A
-dry-runnable fixture now exists, but real-site trajectory and hazard-layer
-sensitivity evidence is still missing. Terrain resolution, smoothing,
-interpolation, cliff/nodata handling, and vegetation representation can change
-map patterns before calibration or active shape decisions are meaningful.
+Manual QGIS visual QA ranks second. Automated manifest and file checks are
+useful, but they cannot verify visual alignment, nodata styling, layer labels,
+or reviewer interpretation in QGIS. The current package review is explicitly
+`inconclusive` until this happens.
 
-The GIS/QGIS package fixture remains immediate. Lightweight GeoTIFF exists, but
-the project still needs an inspectable package boundary with CRS, transform,
-nodata, semantic labels, parity, source-zone/context sidecars, and QA evidence.
-Verified COG is deferred.
+Forest and obstacle omission scoping ranks third. Missing vegetation,
+buildings, roads, barriers, or nets could dominate selected-corridor
+interpretation and must not be silently absorbed into terrain/material or
+contact-model assumptions.
 
-Remaining hazard-map semantics work ranks fourth. The current guide, denominator
-rules, annual/physical rejection checks, and weighted/unweighted fixture tests
-mean the broad semantics problem is no longer untouched. The valuable next step
-is to close residual manifest/report coverage gaps and keep unsupported
-probability, operational, annual-frequency, and risk claims out of products.
+Conditional-curve and raster output-volume work ranks fourth because the pilot
+scaling review identifies this as the next practical bottleneck before
+ensemble-size increases. This should be an additive output-control or gating
+package, not a semantics change.
 
-Source-zone/block scenario V1 tightening remains early because national hazard
-mapping depends on stable source and block denominators. Current polygon-only
-support and additive block labels should be enforced and documented honestly.
+Increasing ensemble size ranks fifth. The roughly 10,000 trajectories per
+release-zone design target is important, but larger runs are only meaningful
+after the small selected pilot is reconciled, interpretable, GIS-reviewed, and
+has convergence diagnostics.
 
-Validation maturity has the highest composite score because it is cheap and
-reduces overclaim risk. It can be done in parallel with other work, but it
-should be in place before any new public validation claim or publication.
-
-Chant Sura/shape-readiness remains the main medium-term scientific work. Active
-public shape-contact runtime should stay gated until the evidence base and
-diagnostic contract are stronger.
-
-Forest/obstacle scoping is earlier than implementation. The first Swiss pilot
-must state whether no-forest/no-obstacle assumptions are acceptable, limiting,
-or invalidating for the chosen corridor.
-
-Deterministic local parallel execution is the next engineering scaling
-prototype once measurements justify it. It should precede SLURM and should not
-be displaced by writer-only trajectory Parquet.
-
-Calibration and production data-format gates rank tenth because they protect
-against premature tuning and premature format work. Actual terrain/material
-calibration, trajectory sample tables, tiled reducers, and COG production
-should follow evidence, not convenience.
+Physical/source-frequency semantics and annual/physical prototypes remain
+deferred. Current products are conditional intensity-exceedance diagnostics,
+not annual intensity-frequency, return-period, physical-probability, or risk
+products.
 
 ## Recommended Work Packages
 
 ### Best Immediate Work Package
 
-Run the controlled real-site Tschamut/swissALTI3D pilot if the private DEM and
-source-zone inputs are available. The required output is a share-safe
-diagnostic report with no tuning, no default changes, no operational claims,
-G1-G9 gate status, manifest review, visual QA, performance observations,
-terrain-representation observations, and a clear under-run classification.
+Reconcile and regenerate the selected Tschamut pilot gate evidence. The output
+should be either:
 
-If private data are not available, the best immediate public work package is
-to extend the dry-runnable DEM sensitivity fixture toward real-site comparable
-terrain/hazard diagnostics and produce a tiny QGIS package fixture, with
-remaining hazard-semantics enforcement folded in where those products expose
-labels or denominators.
+- a completed local ignored gate with processed DEM metadata, DEM-sensitivity
+  evidence, conditional curves, hazard/map/GIS/scaling manifests, checksums,
+  runtime/output metrics, and reports that all point to the same execution; or
+- a clean no-go record that downgrades stale local-only GIS/scaling evidence
+  and records what must be regenerated.
 
-### Best Medium-Term Scientific Work Package
+### Best Near-Term Scientific Work Package
 
-Build DEM/terrain sensitivity evidence, expand Chant Sura contact and
-shape-readiness validation, and scope forest/obstacle relevance for the chosen
-Swiss pilot domain. This addresses the most likely non-parameter confounders:
-terrain representation, block/contact realism, and domain boundary conditions.
+After reconciliation, scope forest/obstacle omission for the selected Tschamut
+corridor before interpreting real-site pilot map patterns. This is scientific
+claim hygiene, not obstacle-physics implementation.
 
-### Best Medium-Term Engineering Work Package
+### Best Near-Term Engineering Work Package
 
-Prototype deterministic local parallel execution and streaming reduction after
-pilot or benchmark measurements identify throughput, memory, file count, or
-hazard accumulation as the limiting path. Required evidence is serial/parallel
-parity, order independence, worker-count independence, memory/file-count
-reporting, and scaling curves.
+Address conditional-curve and raster output volume before larger ensembles.
+Keep this local and deterministic; do not add SLURM, MPI, GPU, or distributed
+workflow orchestration before local output contracts and reducers are stable.
 
 ## What Should Be Paused Or Deferred
 
@@ -139,38 +118,26 @@ Pause or defer:
 - risk maps, expected loss, vulnerability, exposure, or operational approval
   language;
 - forest/barrier/fragmentation implementation before pilot-domain scoping;
-- trajectory sample Parquet as writer-only output;
-- COG/tiled production before local GeoTIFF/QGIS fixture and reducer contracts;
-- SLURM/CSCS orchestration before deterministic local parallel and chunk/reducer
-  contracts;
-- generic kernel optimization disconnected from pilot workloads.
+- production COG/tiled package work before local GeoTIFF/QGIS acceptance;
+- SLURM/CSCS orchestration before deterministic local chunk/reducer contracts
+  and measured pilot bottlenecks.
 
 ## Roadmap Corrections
 
-1. Treat `docs/hazard_map_semantics.md` and `docs/pilot_gis_package.md` as
-   current contracts with focused executable checks, not as empty scaffolds.
-   Their next gap is broader product/package evidence.
-2. Treat `docs/dem_terrain_sensitivity_benchmark.md` as the current
-   dry-runnable scaffold; the remaining scientific gap is real-site
-   trajectory/hazard-layer sensitivity evidence before calibration.
-3. Remove or reword stale references to older roadmap files such as
-   `current_state_gap_analysis_next_directions.md` where they imply current
-   authority.
+1. Treat `docs/next_development_targets.md` and
+   `docs/real_case_intensity_frequency_implementation_roadmap.md` as the
+   current near-term roadmap authority.
+2. Treat `docs/tschamut_public_pilot_gis_package_review.md` and
+   `docs/tschamut_public_pilot_scaling_review.md` as local ignored evidence
+   records until they are reconciled with the authoritative run-freeze.
+3. Keep `docs/hazard_map_semantics.md`, `docs/pilot_gis_package.md`, and
+   `docs/validation_maturity_framework.md` as active interpretation contracts.
 4. Keep `docs/agent_work_log.md` as an audit log only. It should not outrank
-   `AGENTS.md`, `README.md`, `docs/next_development_targets.md`, or this
-   matrix.
-5. Keep performance measurement coupled to pilot/benchmark workflows.
-6. Make validation maturity labels visible before new validation claims.
+   `AGENTS.md`, `README.md`, or the current roadmap docs.
 
 ## Final Recommendation
 
-The repository should now stop accumulating roadmap prose and start producing
-evidence from the highest-leverage scaffolds. The best next move is the
-controlled Tschamut/swissALTI3D pilot when data are available. Without private
-data, the best public next move is extending DEM sensitivity evidence beyond
-the dry-run and producing a tiny QGIS package fixture, while closing any
-remaining semantics checks exposed by those products. Medium-term scientific
-progress should focus on DEM sensitivity, Chant Sura/shape-readiness, and
-forest/obstacle scoping.
-Medium-term engineering should focus on deterministic local parallel execution
-and streaming reducers only after measured bottlenecks justify them.
+Do not start another broad roadmap item yet. The highest-value next move is to
+reconcile the selected Tschamut pilot evidence into one authoritative state,
+then run manual QGIS QA and scope forest/obstacle omission before scaling the
+ensemble or designing physical/annual frequency semantics.

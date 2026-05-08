@@ -6,6 +6,12 @@ and file-integrity checks only. It is not a QGIS project, production COG
 package, operational hazard map, physical-probability product, annual-frequency
 product, return-period product, or risk map.
 
+This is local-only evidence. The generated rasters, manifests, and parity files
+listed below are ignored outputs and are not reproducible from a clean checkout
+until the selected pilot run-freeze is regenerated or verified locally. If the
+artifacts cannot be reproduced, this review must be treated as historical
+developer-machine evidence, not as a completed pilot package.
+
 ## Scope
 
 - Pilot id: `tschamut_public_pilot`
@@ -21,7 +27,9 @@ product, return-period product, or risk map.
 
 All listed artifacts are ignored local outputs except for this review record.
 No raw swisstopo data, processed DEM crop, GeoTIFF, CSV, ESRI ASCII grid,
-conditional curve table, or generated package manifest is committed.
+conditional curve table, or generated package manifest is committed. The
+authoritative run-freeze remains the source of truth for whether the selected
+pilot gate is currently reproducible or no-go.
 
 ## Automated Package QA
 

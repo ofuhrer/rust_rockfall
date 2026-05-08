@@ -30,9 +30,15 @@ cargo run -- validate --case validation/cases/synthetic_plane_basic.yaml
 cargo run -- validate --case validation/cases/chant_sura_trajectory_subset.yaml
 cargo run -- validate --case validation/cases/tschamut_basic.yaml
 cargo run -- validate --all
+cargo run -- validate --all --json-lines
 ```
 
 Missing optional public observations cause a skipped report with instructions rather than a CI failure. The checked-in Tschamut subset is intentionally small enough for local and CI validation smoke tests.
+The legacy tab-separated output is kept for compatibility. For scientific or
+review use, prefer `--json-lines` so each case exposes `completion_status`,
+`execution_status`, `scientific_status`, warnings, failures, and metrics.
+`Passed` in the legacy output means the case contract completed; it is not by
+itself a claim of field validation, operational maturity, or V5 evidence.
 
 ## Metrics
 

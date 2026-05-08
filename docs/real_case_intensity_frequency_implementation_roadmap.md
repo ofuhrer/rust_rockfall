@@ -23,12 +23,14 @@ There are two distinct milestones:
    exceedance frequency with physical probability or annual units, for example
    `1/year`.
 
-The repository is close to milestone 1 at the tooling and contract level, but
-milestone 1 is not complete until a selected public Swiss pilot domain has been
-prepared, frozen, run, packaged, and reviewed. It is not yet close to milestone
-2 because source-zone occurrence frequency, block-population frequency,
-annualization, and validation semantics remain unsupported by
-`docs/hazard_map_semantics.md` and `docs/probabilistic_scenario_model_design.md`.
+The repository is close to milestone 1 at the tooling and selected-domain
+contract level, but milestone 1 is not complete until the selected public Swiss
+pilot has a reconciled run-freeze record, regenerated local outputs, conditional
+curves, checked GIS artifacts, performance/convergence evidence, and a reviewed
+pilot report. It is not yet close to milestone 2 because source-zone occurrence
+frequency, block-population frequency, annualization, and validation semantics
+remain unsupported by `docs/hazard_map_semantics.md` and
+`docs/probabilistic_scenario_model_design.md`.
 
 ## Current Baseline
 
@@ -52,24 +54,71 @@ Already available:
   validator;
 - selected Tschamut public conditional pilot no-go gate run-freeze and report
   for the missing processed DEM blocker;
+- share-safe Tschamut public GIS package review note for one local ignored
+  generated package, with automated manifest/file QA recorded and manual QGIS
+  visual QA still not run;
+- share-safe Tschamut public pilot scaling review note based on ignored local
+  validation, hazard, GIS-package, and reducer manifests, identifying
+  conditional-curve/raster output volume as the next bottleneck before
+  ensemble-size increases;
 - diagnostic pilot GIS package manifest behind explicit GeoTIFF export;
 - deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - strong verification and deterministic seed/order checks.
 
 Main remaining pieces, in priority order:
 
-1. resolve the selected Tschamut processed-DEM blocker and rerun the small
-   frozen conditional pilot gate to produce actual conditional curves,
-   manifests, checksums, GIS artifacts, runtime/output budget evidence, and
-   convergence notes;
-2. produce a real-pilot GIS/QGIS review package with CRS, nodata, value-parity,
-   source-zone overlay, and claim-boundary QA;
-3. measure and improve local single-node scaling for trajectory generation and
-   reducer workflows only after the pilot gate exposes bottlenecks;
-4. increase ensemble size toward the target trajectory count only after the
-   small gate run is reproducible and interpretable;
-5. defer physical/annual frequency semantics until source-frequency and
+1. reconcile the selected Tschamut pilot evidence by regenerating or verifying
+   the ignored processed DEM and gate outputs locally, then updating the
+   run-freeze evidence, gate report, and checksums so they agree with the GIS
+   package review record;
+2. run or record the manual QGIS visual QA for the selected pilot package,
+   including CRS alignment, nodata styling, source-zone overlay, and
+   conditional-product labels;
+3. scope forest/obstacle omission for the selected Tschamut corridor so missing
+   barriers or vegetation are not silently reinterpreted as terrain/material or
+   contact-model behavior;
+4. address the local output-volume bottleneck, especially conditional-curve and
+   raster outputs, before increasing ensemble size;
+5. increase ensemble size toward the target trajectory count only after the
+   small gate run is reproducible, interpreted, and has convergence diagnostics;
+6. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
+
+## Current Implementation Assessment
+
+The latest implementation work completed the first selected-domain pieces of
+the roadmap but left one important evidence consistency gap:
+
+- Priority 1 is complete at the share-safe manifest level. The selected public
+  Tschamut manifest records the real domain, public swissALTI3D tile, crop
+  metadata, checksums, ignored raw/processed paths, and preparation command.
+- Priority 2 is complete at the share-safe policy level. The selected
+  source-zone/block-scenario policy records Level 1 source evidence,
+  deterministic release-cell ids, representative block scenarios, and
+  conditional sampling weights.
+- Priority 3 is complete as an executable selected-domain DEM-sensitivity gate.
+  In a clean checkout it reports `blocked_missing_processed_dem`; with the
+  ignored processed DEM present it can run the predeclared terrain variants.
+- Priority 4 is complete only as a no-go run-freeze and recovery path. The
+  checked-in run-freeze still records no completed trajectory run, conditional
+  curves, runtime metrics, output-volume evidence, or artifact checksums.
+- Priority 5 is partially complete. `scripts/validate_pilot_gis_package.py`
+  and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
+  for a local ignored Tschamut package, but the generated rasters/manifests are
+  not committed and are absent in a clean checkout. Manual QGIS visual QA is
+  still `not-run`.
+- Local scaling/output-volume evidence is complete at the manifest-summary
+  level. `scripts/summarize_pilot_scaling.py` and
+  `docs/tschamut_public_pilot_scaling_review.md` record validation/hazard wall
+  times, row/file/byte counts, deterministic reducer metadata, memory-sidecar
+  status, and a no-default-change decision. This evidence also depends on
+  ignored local outputs and must be reconciled with the authoritative
+  run-freeze.
+
+The immediate roadmap task is therefore not another new feature. It is to
+reconcile and regenerate the selected pilot evidence so the run-freeze, DEM
+sensitivity gate, conditional pilot report, and GIS package review describe the
+same locally reproducible execution state.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -125,7 +174,8 @@ Objective: make one small real Swiss pilot domain reproducible from public
 input geodata without committing raw tiles.
 
 Current status: selected-domain package complete at the share-safe manifest
-level. The checked-in template
+level, with local execution still required for ignored raw/processed artifacts.
+The checked-in template
 `data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml`,
 selected-domain manifest
 `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`, and
@@ -138,7 +188,9 @@ execution still requires public downloads or preplaced ignored raw files; no
 raw/processed products are committed. The selected-domain DEM sensitivity gate
 now validates the manifest and source/scenario policy and writes a
 share-safe `blocked_missing_processed_dem` report from a clean checkout when
-the ignored processed DEM is absent.
+the ignored processed DEM is absent. This phase is sufficient as a manifest and
+recovery contract, but the actual DEM crop is intentionally outside git and
+must be regenerated locally before the pilot can be considered executed.
 
 Implementation work:
 
@@ -235,11 +287,13 @@ Do not:
 Objective: produce per-grid-cell conditional intensity curves over configured
 thresholds.
 
-Current status: implemented for fixture and workflow use, pending real-pilot
-execution. The hazard-layer builder can emit threshold-exceedance rasters and a
+Current status: implemented for fixture and workflow use, with local ignored
+pilot output evidence reported but not yet reconciled into the authoritative
+run-freeze. The hazard-layer builder can emit threshold-exceedance rasters and a
 tidy conditional curve table with current probability labels and `annualized:
-false`. The remaining work is to run this on the selected real pilot domain
-with frozen thresholds, scenario metadata, and an explicit grid.
+false`. The remaining work is to regenerate or verify the selected Tschamut
+gate outputs locally, then update the run-freeze evidence and report so
+conditional curve paths, checksums, and limitations are explicit.
 
 Implementation work:
 
@@ -294,10 +348,12 @@ exist, tests cover value/metadata parity and explicit COG rejection, and
 `scripts/validate_pilot_gis_package.py` can validate package inventories for
 local generated real-pilot outputs. The Tschamut local package review in
 `docs/tschamut_public_pilot_gis_package_review.md` records passing automated
-manifest/file QA for the ignored local gate package and an `inconclusive`
-overall status because manual QGIS inspection has not been run. The current
-code does not create a QGIS project, GeoPackage, production COG, tiled package,
-or operational product.
+manifest/file QA for an ignored local gate package and an `inconclusive`
+overall status because manual QGIS inspection has not been run. The generated
+package artifacts are not tracked and may be absent in a clean checkout; the
+next task must reconcile this review note with the authoritative run-freeze and
+regenerate the artifacts if needed. The current code does not create a QGIS
+project, GeoPackage, production COG, tiled package, or operational product.
 
 Implementation work:
 
@@ -344,12 +400,16 @@ Do not:
 Objective: make valley-scale ensembles feasible on one workstation or node
 before SLURM orchestration.
 
-Current status: partially implemented in hazard-layer post-processing. The
+Current status: partially implemented in hazard-layer post-processing, with
+selected-pilot local manifest-summary evidence now recorded. The
 `--reducer-workers` path gives deterministic local chunking and reducer
-manifests for current hazard products. The remaining gap is upstream
-trajectory-generation scale: pilot-size trajectory execution, output-volume
-control, chunk/resume contracts for trajectory/event outputs, and measured
-single-node performance evidence.
+manifests for current hazard products. `scripts/summarize_pilot_scaling.py` and
+`docs/tschamut_public_pilot_scaling_review.md` summarize ignored local gate
+outputs and identify conditional-curve/raster output volume as the next
+bottleneck. Remaining gaps are reconciliation with the authoritative
+run-freeze, output-mode optimization or gating before larger ensembles,
+chunk/resume contracts for trajectory/event outputs, optional memory sidecars,
+and measured single-node performance at larger ensemble sizes.
 
 Implementation work:
 
@@ -403,9 +463,10 @@ Do not:
 Objective: execute the first full public-dataset real-case pilot with
 conditional intensity-exceedance curves.
 
-Current status: selected-domain no-go gate complete. The template and validator
-can check populated run-freeze files and emit command plans. The selected
-Tschamut run-freeze
+Current status: selected-domain no-go gate complete, with a later automated GIS
+review note that must be reconciled before the pilot evidence is authoritative.
+The template and validator can check populated run-freeze files and emit command
+plans. The selected Tschamut run-freeze
 `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` freezes
 the available public geodata manifest, source/scenario policy, seed, thresholds,
 physics defaults, explicit grid, output roots, and output budget, then
@@ -414,7 +475,12 @@ metadata are absent from a clean checkout. The companion report
 `docs/tschamut_public_conditional_pilot_gate_report.md` records that this is an
 input-data/reproducibility blocker, not a model result. No conditional curves,
 runtime/output budget evidence, checksums, or GIS artifacts have been produced
-for the selected pilot yet.
+in the authoritative run-freeze yet. Separately,
+`docs/tschamut_public_pilot_gis_package_review.md` records automated QA for a
+local ignored package generated by a developer agent. The next roadmap item is
+to regenerate or verify those ignored outputs locally and promote the evidence
+into the run-freeze/report, or downgrade the GIS review note if the artifacts
+cannot be reproduced.
 
 Implementation work:
 
@@ -556,24 +622,24 @@ Do not:
 ## Prioritized Remaining Roadmap Items
 
 The order below supersedes the older phase-number order for near-term work.
-Several lower-numbered phases now have executable scaffolding, while their
-real-pilot evidence remains missing.
+The selected-domain manifest, selected source/scenario policy, and selected
+DEM-sensitivity no-go gate are complete at the share-safe contract level. The
+current bottleneck is reconciling local ignored pilot evidence into one
+authoritative, reproducible run state.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
-| 1 | Prepare one public real-site swisstopo pilot package | Everything downstream depends on a concrete domain, DEM, CRS/datum metadata, and provenance. | A documented clean checkout plus public/local downloads can recreate the processed pilot DEM and metadata; no raw geodata are committed. |
-| 2 | Apply a domain-specific source-zone and block-scenario policy | Conditional curves are uninterpretable without frozen source, release-cell, block, and sampling assumptions. | Source-zone sidecar, release-cell ids, scenario table, and policy manifest validate and join deterministically. |
-| 3 | Run DEM/terrain sensitivity on that domain | DEM representation can dominate runout and map patterns; this must be checked before calibration or physics interpretation. | Terrain variants and map/metric differences are reported with fixed physics, fixed source policy, and no tuning. |
-| 4 | Execute the small frozen conditional pilot gate run | This is the first end-to-end evidence that the real-case workflow works. | The run-freeze validator passes, generated outputs include conditional curves, manifests, checksums, GIS artifacts, performance numbers, and a pass/no-go/inconclusive report. |
-| 5 | Produce and review the real-pilot GIS/QGIS package | Hazard-map outputs must be interpretable in a GIS before scaling or external review. | A reviewer can inspect CRS alignment, nodata, value parity, source-zone overlays, labels, and claim boundaries without raw geodata. |
-| 6 | Measure local scaling and output-volume bottlenecks | Performance matters, but optimization should follow real pilot evidence. | Complete at the local manifest-summary level: `scripts/summarize_pilot_scaling.py` records Tschamut validation/hazard timings, row/file/byte counts, reducer metadata, memory-sidecar status, and a no-default-change bottleneck decision in `docs/tschamut_public_pilot_scaling_review.md`. |
-| 7 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
-| 8 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
-| 9 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
+| 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze still says no-go, while separate GIS and scaling notes record local ignored artifacts. The project needs one authoritative state. | The processed DEM is regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/output metrics, and GIS review references are reflected consistently in the run-freeze and reports, or the blocker remains explicitly no-go. |
+| 2 | Run manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | CRS alignment, nodata styling, source-zone overlay, raster labels, and conditional-product language are reviewed in QGIS and recorded as pass, no-go, or inconclusive. |
+| 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | A share-safe context memo classifies obstacle omission as acceptable, limiting, or invalidating for the selected corridor, without adding obstacle physics. |
+| 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Output modes, summaries, or gates are designed and tested so larger ensembles do not produce unmanageable conditional-curve/raster artifacts by default. |
+| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
+| 6 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
+| 7 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
 ## Earliest Useful Pilot
 
-The earliest scientifically honest full-chain pilot should produce:
+The earliest scientifically honest full-chain pilot should produce or record:
 
 - a public-data real-site DEM and source-zone package;
 - fixed block/scenario assumptions with sampling weights only;
@@ -585,6 +651,12 @@ The earliest scientifically honest full-chain pilot should produce:
 - convergence and performance diagnostics;
 - an explicit statement that outputs are conditional research diagnostics, not
   annual frequency, physical probability, risk, or operational hazard maps.
+
+At the current state, the first two bullets are complete at the share-safe
+contract level. The middle bullets have local-tooling support and a partial
+automated GIS review record, but the authoritative run-freeze still needs
+regenerated local outputs, artifact checksums, scaling evidence, and reconciled
+reports.
 
 ## Decision Gates
 

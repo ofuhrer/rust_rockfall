@@ -1,9 +1,10 @@
 # Repository Scientific Roadmap Review
 
-Status: strategic, scientific, technical, and roadmap review of the current
-post-`332e626` repository state. This document is planning-only; it does not
-change simulator behavior, defaults, validation cases, probability semantics,
-or operational claims.
+Status: historical strategic, scientific, technical, and roadmap review
+snapshot of the post-`332e626` repository state. This document is
+planning-only and may be superseded by later target lists, pilot reports, and
+roadmap refreshes. It does not change simulator behavior, defaults, validation
+cases, probability semantics, or operational claims.
 
 ## Scope And Sources
 

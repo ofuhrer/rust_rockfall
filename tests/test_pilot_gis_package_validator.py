@@ -88,6 +88,16 @@ class PilotGisPackageValidatorTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.PackageValidationError, "sha256 does not match"):
                 validator.validate_package(manifest_path, require_existing_files=True)
 
+    def test_rejects_non_tiff_geotiff_artifact_when_existing_files_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            paths = self.write_artifacts(work)
+            paths["tif"].write_bytes(b"not-a-tiff")
+            manifest_path = self.write_manifest(work, paths)
+
+            with self.assertRaisesRegex(validator.PackageValidationError, "not a TIFF-family file"):
+                validator.validate_package(manifest_path, require_existing_files=True)
+
     def write_artifacts(self, work: Path) -> dict[str, Path]:
         paths = {
             "tif": work / "gate_reach_probability.tif",
@@ -97,7 +107,7 @@ class PilotGisPackageValidatorTests(unittest.TestCase):
             "hazard": work / "gate_manifest.json",
             "map": work / "gate_map_package_manifest.json",
         }
-        paths["tif"].write_bytes(b"tiny-geotiff-placeholder")
+        paths["tif"].write_bytes(b"II*\x00tiny-geotiff-placeholder")
         paths["csv"].write_text("row,col,value\n0,0,1.0\n", encoding="utf-8")
         paths["asc"].write_text(
             "\n".join(

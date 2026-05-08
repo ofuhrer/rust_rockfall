@@ -1,268 +1,166 @@
 # Next Development Targets
 
-Status: prioritized development directions after the real-case
-intensity-exceedance roadmap refresh. These are planning recommendations only
-and do not change simulator behavior.
+Status: prioritized development directions after the selected Tschamut public
+pilot manifest, source/scenario policy, DEM-sensitivity gate, no-go run-freeze,
+and automated GIS package review record. These are planning recommendations
+only and do not change simulator behavior.
 
-The repository now has substantial scaffolding for Swiss hazard-map workflow
-semantics: claim hygiene, validation maturity labels, source-zone and
-block-scenario templates, conditional intensity-exceedance outputs, lightweight
-GeoTIFF export, diagnostic pilot GIS manifests, and deterministic hazard-layer
-reducer chunks. The main gap is no longer another contract document. The main
-gap is a populated, reproducible public real-site pilot that exercises those
-contracts without tuning or operational claims.
+The repository now has substantial scaffolding and selected-domain contracts
+for the Swiss hazard-map workflow. Priorities 1-3 from the previous roadmap are
+complete at the share-safe contract/gate level, and priority 5 has automated
+GIS package QA and local scaling evidence recorded for local ignored outputs.
+The current critical gap is evidence consistency: the authoritative run-freeze
+still records a no-go processed-DEM blocker, while separate GIS and scaling
+review notes record local ignored package artifacts. The next development task
+should reconcile that state before adding features or increasing ensemble size.
 
-## Target 1: Prepare One Public Real-Site swisstopo Pilot Package
+## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
-Objective: Select one small Swiss pilot domain and prepare a reproducible local
-swisstopo geodata package with terrain metadata, CRS/datum provenance,
-checksums, and share-safe manifest records.
+Objective: Bring the selected Tschamut run-freeze, DEM-sensitivity evidence,
+conditional pilot report, GIS package review, and scaling review into one
+authoritative, locally reproducible state.
 
-Rationale: Every downstream item depends on a concrete domain, DEM, extent,
-nodata policy, and provenance. Without this, source-zone policy, conditional
-curves, QGIS review, and performance measurements remain template-level.
+Rationale: The project cannot honestly claim a completed conditional pilot
+while the checked-in run-freeze says `no-go` and the GIS/scaling reviews
+reference ignored artifacts that are absent in a clean checkout. This must be
+resolved before ensemble scaling or source-frequency design.
 
 Expected value for Swiss hazard-map goal: Very high.
 
-Scientific risk: Medium. Terrain representation and domain choice can dominate
-pilot interpretation.
+Scientific risk: Medium. Reconciliation must not tune parameters or reinterpret
+missing data as model behavior.
 
-Engineering risk: Medium. CRS/datum, crop extent, nodata, source-tile
-identity, local ignored data paths, and raw-data hygiene must be correct.
+Engineering risk: Medium. Local ignored outputs, checksums, reports, and
+manifest paths must agree.
 
-Likely affected areas: `docs/public_real_site_geodata_preparation.md`,
-`docs/swisstopo_data_strategy.md`,
-`data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml`,
-`scripts/validate_public_real_site_geodata_manifest.py`, ignored
-`data/raw/swisstopo/` and `data/processed/swisstopo/` paths.
+Likely affected areas:
+`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
+`docs/tschamut_public_conditional_pilot_gate_report.md`,
+`docs/tschamut_public_pilot_gis_package_review.md`,
+`docs/tschamut_public_pilot_scaling_review.md`,
+`scripts/validate_public_real_site_conditional_pilot_run.py`,
+`scripts/run_dem_terrain_sensitivity.py`, `scripts/validate_pilot_gis_package.py`,
+ignored `data/processed/`, `validation/private/`, and `hazard/results/` paths.
 
-Evidence needed: validated `public_real_site_geodata_preparation_v1` manifest,
-processed DEM metadata, source-tile checksums, CRS/vertical-datum record, extent
-record, nodata record, and a clear statement that swisstopo terrain is input
-geodata, not validation evidence.
+Evidence needed: regenerated or verified processed DEM and metadata, DEM
+sensitivity report, conditional curve table, hazard/map/GIS/scaling manifests,
+artifact checksums, runtime and output-budget metrics, and a
+pass/no-go/inconclusive classification that is consistent across reports.
 
-Minimal acceptable deliverable: complete. The selected-domain manifest
-`data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` records the
-Tschamut public pilot domain, swissALTI3D tile `2696-1167`, crop metadata,
-checksums, ignored paths, and preparation command. No raw geodata or large
-generated outputs are committed.
+Minimal acceptable deliverable: either a reconciled completed gate record with
+local ignored artifact checksums, or a clear no-go record that removes or
+downgrades stale local GIS evidence.
 
-What not to do: Do not tune parameters, commit raw swisstopo products, or claim
-operational validation.
+What not to do: Do not tune physics, change defaults, commit raw geodata,
+commit large generated outputs, or claim operational/annual/physical/risk
+validity.
 
 Estimated order: 1.
 
-## Target 2: Apply A Domain-Specific Source-Zone And Block-Scenario Policy
+## Target 2: Run Manual QGIS Visual QA For The Selected Package
 
-Objective: Freeze one predeclared source-zone, release-cell, and block-scenario
-policy for the selected pilot domain.
+Objective: Complete the human GIS review step for the selected pilot package
+after the package artifacts are regenerated or verified.
 
-Rationale: Conditional intensity-exceedance curves are not interpretable unless
-the denominator, source-zone evidence, release-cell sampling, block scenarios,
-and sampling weights are documented before results are inspected.
+Rationale: Automated manifest/file QA can verify inventory and checksums, but
+it cannot confirm visual alignment, nodata styling, source-zone overlay
+interpretation, or map-label clarity in QGIS.
 
-Expected value for Swiss hazard-map goal: Very high.
+Expected value for Swiss hazard-map goal: High.
 
-Scientific risk: Medium to high. Source-zone and block assumptions can appear
-more precise than the evidence supports.
+Scientific risk: Low to medium. Visual QA can reveal spatial metadata errors
+that would mislead interpretation.
 
 Engineering risk: Low to medium.
 
-Likely affected areas: `docs/source_zone_block_scenario_policy_v1.md`,
-`validation/templates/public_real_site_source_scenario_policy_v1.yaml`,
-`scripts/validate_source_scenario_policy.py`,
-`docs/probabilistic_scenario_model_design.md`, pilot-specific ignored
-metadata paths.
+Likely affected areas: `docs/tschamut_public_pilot_gis_package_review.md`,
+`docs/pilot_gis_package.md`, local ignored package outputs.
 
-Evidence needed: validated source-zone/block-scenario policy, deterministic
-release-cell ids, block-scenario ids, conditional sampling weights, evidence
-level, derivation notes, and explicit rejection of physical or annual
-probability claims.
+Evidence needed: QGIS review notes for CRS alignment, DEM/hillshade or terrain
+context alignment, nodata styling, source-zone overlay, layer labels, and
+conditional-product language.
 
-Minimal acceptable deliverable: complete. The selected-domain policy
-`validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passes the
-validator and can be referenced by the pilot run-freeze file. It records the
-Tschamut source-zone interpretation, deterministic release-cell ids, block
-scenario ids, and conditional sampling weights without physical or annual
-probability claims.
+Minimal acceptable deliverable: manual visual QA classified as pass, no-go, or
+inconclusive with screenshots or a share-safe checklist where appropriate.
 
-What not to do: Do not implement a national source-zone algorithm, add annual
-source frequencies, or move source zones after seeing pilot outputs.
+What not to do: Do not create a production QGZ, GeoPackage, COG, risk map, or
+operational map product in this step.
 
 Estimated order: 2.
 
-## Target 3: Run DEM/Terrain Sensitivity On The Selected Domain
+## Target 3: Scope Forest And Obstacle Omission For Tschamut
 
-Objective: Use the existing DEM sensitivity framework on the selected pilot
-domain before interpreting trajectory, contact, material, or source-zone
-failures.
+Objective: Determine whether forest, buildings, roads, barriers, nets, or
+other obstacles are first-order boundary conditions for the selected Tschamut
+pilot corridor.
 
-Rationale: DEM representation can dominate runout and map patterns. This must
-be measured before calibration, physics selection, or operational-style
-interpretation.
+Rationale: A no-forest/no-obstacle conditional pilot may be acceptable,
+limiting, or invalidating depending on the corridor. This should be explicit
+before terrain/material, contact, or calibration conclusions are drawn.
 
-Expected value for Swiss hazard-map goal: Very high.
+Expected value for Swiss hazard-map goal: High.
 
-Scientific risk: Medium. Terrain variants must be predeclared and interpreted
-as sensitivity evidence, not validation evidence.
+Scientific risk: Medium if omission is silently absorbed into model parameters.
 
-Engineering risk: Medium.
+Engineering risk: Low for scoping.
 
-Likely affected areas: `docs/dem_terrain_sensitivity_benchmark.md`,
-`scripts/run_dem_terrain_sensitivity.py`, terrain metadata sidecars, ignored
-pilot result directories.
+Likely affected areas: `docs/swisstopo_data_strategy.md`,
+`docs/tschamut_public_conditional_pilot_gate_report.md`, future pilot report
+notes.
 
-Evidence needed: fixed source/scenario inputs, fixed physics, comparable
-terrain variants, map-difference metrics, terrain metadata, and a clear warning
-not to tune contact parameters to compensate for DEM effects.
+Evidence needed: share-safe inventory of available public context layers and a
+classification of obstacle omission as acceptable, limiting, or invalidating
+for the selected gate.
 
-Minimal acceptable deliverable: complete. The selected-domain command
-`scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --allow-missing-source-dem`
-validates the Tschamut geodata manifest and source/scenario policy, records the
-fixed source zone, ten release cells, three block scenarios, conditional-only
-sampling semantics, EPSG:2056/LN02 terrain metadata, and writes a share-safe
-`blocked_missing_processed_dem` no-go report when the ignored processed DEM is
-absent. Once the public preparation command creates the ignored DEM locally,
-the same command without `--allow-missing-source-dem` runs the predeclared
-baseline, 3x3 smoothing, and 2x2 coarsening terrain-variant diagnostics.
+Minimal acceptable deliverable: a concise pilot-domain context memo. No
+obstacle physics is implemented.
 
-What not to do: Do not tune restitution, friction, terrain classes, source
-zones, or thresholds after seeing sensitivity outcomes.
+What not to do: Do not tune restitution, terrain classes, or stopping behavior
+to mimic omitted forest or barriers.
 
 Estimated order: 3.
 
-## Target 4: Execute The Small Frozen Conditional Pilot Gate Run
+## Target 4: Address Conditional-Curve/Raster Output-Volume Bottleneck
 
-Objective: Run the first end-to-end public real-site conditional pilot gate
-using frozen terrain, source-zone policy, block scenarios, thresholds, seed,
-grid, and output budget.
+Objective: Reduce or gate the selected pilot's conditional-curve and raster
+output volume before increasing ensemble size.
 
-Rationale: The repository has the run-freeze template and command-plan
-validator, but no real public pilot evidence yet. A small gate run proves
-whether the full workflow works before scaling.
+Rationale: The local scaling review identifies hazard conditional-curve output
+volume as the next bottleneck. Larger ensembles should not proceed until the
+output contract is manageable and still reviewable.
 
-Expected value for Swiss hazard-map goal: Very high.
+Expected value for Swiss hazard-map goal: High.
 
-Scientific risk: Medium. The gate run is workflow evidence, not operational
-validation.
+Scientific risk: Low if numerical semantics and manifests remain unchanged.
 
-Engineering risk: Medium to high. Output volume, explicit grid alignment,
-manifest completeness, and runtime may expose gaps.
+Engineering risk: Medium.
 
-Likely affected areas:
-`validation/templates/public_real_site_conditional_pilot_run_v1.yaml`,
-`scripts/validate_public_real_site_conditional_pilot_run.py`, ignored
-`validation/private/`, `validation/results/`, and `hazard/results/` paths.
+Likely affected areas: `scripts/build_hazard_layers.py`,
+`scripts/summarize_pilot_scaling.py`, `docs/performance_benchmarking.md`,
+`docs/scalability_and_data_formats_review.md`, hazard-layer tests, and pilot
+run-freeze output budgets.
 
-Evidence needed: validated run-freeze file, generated command plan, conditional
-curve table, hazard manifests, GIS package manifest, reducer chunk manifest,
-checksums, runtime/memory/file-count records, convergence notes, and a
-pass/no-go/inconclusive pilot report.
+Evidence needed: output-mode comparison, manifest-visible output budgets,
+checks that selected summaries remain deterministic, and a no-default-change or
+explicit opt-in recommendation before ensemble scaling.
 
-Minimal acceptable deliverable: complete as a no-go gate. The selected
-Tschamut run-freeze
-`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
-validates and freezes the available geodata manifest, source/scenario policy,
-physics defaults, seed, thresholds, explicit grid, output roots, and output
-budget, then classifies the small gate as `no-go` because the ignored processed
-public DEM and metadata are absent from a clean checkout. The companion report
-`docs/tschamut_public_conditional_pilot_gate_report.md` records that no
-conditional curves, GIS artifacts, checksums, runtime/memory metrics, or output
-volume evidence exist yet. This is an input-data/reproducibility blocker, not a
-model result.
+Minimal acceptable deliverable: an opt-in output-volume control or documented
+gate that prevents larger pilot runs from creating unmanageable conditional
+curve/raster artifacts by default.
 
-What not to do: Do not run held-out or larger ensembles before the gate is
-interpretable; do not tune parameters after seeing outputs.
+What not to do: Do not remove existing debug outputs, change current hazard
+semantics, add distributed orchestration, or hide denominators/provenance.
 
 Estimated order: 4.
 
-## Target 5: Produce And Review The Real-Pilot GIS/QGIS Package
-
-Objective: Package selected pilot rasters and sidecars so a GIS reviewer can
-inspect CRS alignment, nodata, value parity, source-zone overlays, and
-semantics.
-
-Rationale: Current GeoTIFF and pilot GIS manifest tests prove the file contract
-at fixture scale. The real pilot still needs practical GIS acceptance.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Low to medium. Mislabelled GIS products can cause
-overinterpretation even when raster values are correct.
-
-Engineering risk: Medium.
-
-Likely affected areas: `docs/pilot_gis_package.md`,
-`scripts/build_hazard_layers.py`, `tests/test_hazard_layers.py`, ignored
-`hazard/results/` package paths.
-
-Evidence needed: GeoTIFF value parity, CSV/ASCII parity, CRS/transform/nodata
-checks, source-zone/context sidecar references, visual-QA status, and explicit
-non-COG/non-annual/non-risk labels.
-
-Minimal acceptable deliverable: complete at the automated diagnostic-review
-level. The real-pilot package manifest can be checked with
-`scripts/validate_pilot_gis_package.py`, and
-`docs/tschamut_public_pilot_gis_package_review.md` records the local Tschamut
-package evidence, CRS/nodata/parity/source-zone checks, and an `inconclusive`
-manual-QGIS status. A QGIS project, GeoPackage, production COG, and operational
-map styling remain deferred.
-
-What not to do: Do not call debug GeoTIFFs COG; do not style maps with annual,
-return-period, risk, or operational language.
-
-Estimated order: 5.
-
-## Target 6: Measure Local Scaling And Output-Volume Bottlenecks
-
-Objective: Measure single-node runtime, memory, row counts, file counts, and
-reducer behavior on the pilot workflow before adding CSCS/SLURM orchestration.
-
-Rationale: Performance is central to the Swiss hazard-map goal, but the next
-engineering work should be driven by real pilot bottlenecks. Current reducer
-chunking covers hazard post-processing, not the full trajectory-generation
-scale problem.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Low if numerical outputs are unchanged.
-
-Engineering risk: Medium.
-
-Likely affected areas: `tests/hpc_readiness.rs`,
-`docs/performance_benchmarking.md`, `docs/scalability_and_data_formats_review.md`,
-`src/simulation.rs`, `src/stochastic.rs`, `src/manifest.rs`, and future output
-reducers.
-
-Evidence needed: serial/parallel parity where applicable, order-independent
-reducer results, timing, memory, file count, output bytes, and a decision on
-whether trajectory output, impact events, hazard accumulation, or orchestration
-is the bottleneck.
-
-Minimal acceptable deliverable: complete. The Tschamut scaling summary script
-`scripts/summarize_pilot_scaling.py` reads the ignored local validation,
-hazard, GIS-package, and reducer manifests, fails clearly when required outputs
-are absent, and writes a share-safe review record in
-`docs/tschamut_public_pilot_scaling_review.md`. The current local evidence
-records validation and hazard wall times, row/file/byte counts, deterministic
-chunked reducer metadata, optional memory-sidecar status, and a no-default
-change decision that identifies conditional-curve and raster output volume as
-the next bottleneck to address before ensemble-size increases or
-orchestration.
-
-What not to do: Do not add MPI, GPU, SLURM, or distributed storage before local
-chunk/reducer contracts and bottlenecks are clear.
-
-Estimated order: 6.
-
-## Target 7: Increase Ensemble Size Toward The Target Count
+## Target 5: Increase Ensemble Size Toward The Target Count
 
 Objective: Increase trajectory count only after the small pilot gate and local
 scaling evidence are reproducible and interpretable.
 
-Rationale: The target of roughly 10,000 trajectories per release zone is
-scientifically useful only if convergence diagnostics and output handling can
-show what additional samples change.
+Rationale: The target of roughly 10,000 trajectories per release zone is useful
+only if convergence diagnostics and output handling can show what additional
+samples change.
 
 Expected value for Swiss hazard-map goal: High.
 
@@ -278,15 +176,15 @@ Evidence needed: convergence diagnostics for conditional curves and supporting
 layers, trajectory-count sensitivity, output budget compliance, and
 worker-count-independent reduced outputs.
 
-Minimal acceptable deliverable: A target-scale feasibility report for the
+Minimal acceptable deliverable: a target-scale feasibility report for the
 selected pilot domain, or a documented no-go with the limiting bottleneck.
 
-What not to do: Do not scale up before source-zone, DEM, and small-gate
-interpretation are stable.
+What not to do: Do not scale up before source-zone, DEM, small-gate, GIS, and
+performance interpretation are stable.
 
-Estimated order: 7.
+Estimated order: 5.
 
-## Target 8: Design Physical Source-Frequency Semantics
+## Target 6: Design Physical Source-Frequency Semantics
 
 Objective: Decide whether and how the project can represent physical or annual
 intensity-frequency products.
@@ -310,18 +208,18 @@ Evidence needed: source-frequency units, block-frequency semantics, uncertainty
 model, source-zone overlap rules, validation/calibration separation, fixtures,
 and rejection tests for incomplete frequency metadata.
 
-Minimal acceptable deliverable: A design gate that either authorizes a narrow
+Minimal acceptable deliverable: a design gate that either authorizes a narrow
 annual/physical prototype or keeps annual frequency deferred.
 
 What not to do: Do not back-fill annual frequencies from sampling weights or
 calibrate frequency to match one map pattern.
 
-Estimated order: 8.
+Estimated order: 6.
 
-## Target 9: Implement An Annual/Physical Intensity-Frequency Prototype
+## Target 7: Implement An Annual/Physical Intensity-Frequency Prototype
 
 Objective: Implement a clearly experimental annual or physical frequency path
-only if Target 8 passes.
+only if Target 6 passes.
 
 Rationale: This is the long-term national hazard-map quantity, but implementing
 it before the evidence model exists would create misleading products.
@@ -340,19 +238,34 @@ Evidence needed: complete frequency metadata, analytic frequency-sum fixture,
 unit-labelled per-cell curves, manifest provenance, and explicit
 non-operational report labels.
 
-Minimal acceptable deliverable: A small fixture proving annual or physical
+Minimal acceptable deliverable: a small fixture proving annual or physical
 frequency sums with explicit units and complete provenance.
 
 What not to do: Do not promote annual-frequency defaults or imply regulatory
 readiness.
 
-Estimated order: 9.
+Estimated order: 7.
+
+## Completed Selected-Domain Roadmap Items
+
+- Public Tschamut real-site swisstopo pilot package is complete at the
+  share-safe manifest level.
+- Domain-specific source-zone and block-scenario policy is complete at the
+  share-safe policy level.
+- DEM/terrain sensitivity is complete as a selected-domain gate, with actual
+  terrain metrics blocked until ignored processed DEM artifacts are present.
+- Small frozen conditional pilot gate is complete as a no-go run-freeze and
+  recovery path, not as a completed trajectory/hazard run.
+- Real-pilot GIS package is complete only at automated manifest/file QA level
+  for local ignored outputs; manual QGIS visual QA remains not run.
+- Local scaling/output-volume summary is complete at the manifest-summary
+  level. It records validation/hazard timings, row/file/byte counts, reducer
+  metadata, and a no-default-change bottleneck decision, but it still depends
+  on local ignored outputs and must be reconciled with the authoritative
+  run-freeze.
 
 ## Deferred But Important Cross-Cutting Work
 
-- Forest, buildings, roads, barriers, nets, and other obstacle relevance should
-  be scoped for the selected pilot domain before interpreting omissions as
-  physics or material failures.
 - Shape/contact runtime work remains paused until provenance and rebound
   blockers are resolved.
 - Terrain/material calibration remains deferred until DEM sensitivity, pilot
@@ -362,13 +275,11 @@ Estimated order: 9.
 
 ## Recommended Sequence
 
-1. Prepare one public real-site swisstopo pilot package.
-2. Apply a domain-specific source-zone and block-scenario policy.
-3. Run DEM/terrain sensitivity on that domain.
-4. Execute the small frozen conditional pilot gate run.
-5. Produce and review the real-pilot GIS/QGIS package.
-6. Measure local scaling and output-volume bottlenecks.
-7. Increase ensemble size toward the target count if convergence and
-   performance evidence justify it.
-8. Design physical/source-frequency semantics.
-9. Implement an annual/physical prototype only if the design gate passes.
+1. Reconcile and regenerate selected pilot gate evidence.
+2. Run manual QGIS visual QA for the selected package.
+3. Scope forest and obstacle omission for Tschamut.
+4. Address conditional-curve/raster output-volume bottleneck.
+5. Increase ensemble size only if convergence and performance evidence justify
+   it.
+6. Design physical/source-frequency semantics.
+7. Implement an annual/physical prototype only if the design gate passes.
