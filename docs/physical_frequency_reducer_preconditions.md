@@ -20,6 +20,13 @@ The checked-in template is
 the executable validator is
 `scripts/validate_physical_frequency_reducer_preconditions.py`.
 
+A small synthetic design-review fixture lives at
+`tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml`.
+It proves the `accepted_for_design_review` record shape and validator behavior
+for overlap policy, deterministic merge requirements, and uncertainty
+propagation preconditions, but it is not an implemented reducer and does not
+authorize runtime annual or physical products.
+
 ## Required Record States
 
 `record_status` must be one of:

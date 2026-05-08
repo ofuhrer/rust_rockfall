@@ -1,0 +1,70 @@
+schema_version: physical_frequency_reducer_preconditions_v1
+record_id: physical_frequency_reducer_preconditions_design_review_fixture_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+precondition_mode: physical_frequency_reducer_preconditions_only
+source_zone_scope:
+  source_zone_ids:
+    - synthetic_source_zone_design_review_a_v1
+    - synthetic_source_zone_design_review_b_v1
+  geometry_versions_required: true
+  geometry_hashes_required: true
+  crs_epsg: 2056
+  vertical_datum: LN02
+overlap_policy:
+  status: accepted_for_design_review
+  selected_policy: documented_overlap_adjustment
+  allowed_policies:
+    - mutually_exclusive_partition
+    - documented_overlap_adjustment
+  double_counting_guard_required: true
+  shared_release_cell_rule: shared synthetic release cells require one nominated source-zone owner and explicit residual-overlap weights
+  reducer_reports_overlap_adjustment: true
+reducer_contract:
+  status: accepted_for_design_review
+  deterministic_merge_required: true
+  order_independent_required: true
+  chunk_manifest_required: true
+  output_unit_support_active: false
+  annual_or_physical_output_supported: false
+  required_input_records:
+    - source_frequency_evidence_v1
+    - block_release_probability_evidence_v1
+uncertainty_propagation:
+  status: accepted_for_design_review
+  propagation_method: nested_monte_carlo_design_review_only
+  required_components:
+    - source_event_rate_uncertainty
+    - block_scenario_probability_uncertainty
+    - release_cell_probability_uncertainty
+    - trajectory_aleatory_uncertainty
+    - terrain_model_form_uncertainty
+  output_summary_fields:
+    - mean_exceedance_rate
+    - p05_exceedance_rate
+    - p50_exceedance_rate
+    - p95_exceedance_rate
+    - overlap_adjustment_factor
+    - source_frequency_record_ids
+    - block_release_probability_record_ids
+    - reducer_chunk_manifest_ids
+  seed_provenance_required: true
+  calibration_uncertainty_separated_from_validation: true
+calibration_dataset_ids:
+  - synthetic_frequency_reducer_calibration_fixture_v1
+validation_dataset_ids:
+  - synthetic_frequency_reducer_holdout_fixture_v1
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - synthetic accepted-for-design-review fixture only
+  - not an implemented overlap-adjusted reducer
+  - not implemented uncertainty propagation
+  - not accepted evidence for Tschamut or any real Swiss source zone
+  - output unit support remains inactive
+  - annual and physical products remain deferred

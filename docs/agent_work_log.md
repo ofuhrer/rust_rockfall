@@ -2466,6 +2466,60 @@ Planning only; these milestones do not implement roadmap item content yet.
   accepted evidence or implemented reducer work is explicitly provided or
   requested.
 
+### M042
+
+- Milestone id: M042.
+- Roadmap item: Target 10 blocker: physical frequency reducer precondition
+  design-review fixture.
+- Hypothesis/objective: Add one executable accepted-record fixture for the
+  reducer precondition contract without implementing overlap-adjusted reducers,
+  uncertainty propagation, or annual/physical runtime support.
+- Initial gap assessment: The reducer precondition contract and selected
+  `preconditions_not_satisfied` template existed, and in-memory tests covered
+  candidate records, but the repository did not contain a small checked fixture
+  exercising the `accepted_for_design_review` state. Implemented
+  overlap-adjusted reducers and uncertainty propagation are still unavailable
+  and must not be implied by a schema fixture.
+- Files changed:
+  `tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml`,
+  `tests/test_physical_frequency_reducer_preconditions.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_frequency_reducer_preconditions.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a synthetic `accepted_for_design_review`
+  reducer-precondition fixture with explicit LV95/LN02 source-zone scope,
+  documented-overlap-adjustment policy, double-counting guard requirement,
+  deterministic and order-independent merge requirements, inactive output-unit
+  support, required input record types, uncertainty components and summary
+  fields, separated calibration/validation fixture ids, and claim boundaries.
+  Tests and consistency checks validate the fixture while docs state that it is
+  not an implemented reducer and does not authorize runtime products.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_physical_frequency_reducer_preconditions.py tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_physical_frequency_reducer_preconditions`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, operational claims, reducer runtime
+  support, or selected design-gate authorization are changed.
+- Decision: ACCEPT if final checks pass; reducer precondition accepted-record
+  validation is now covered by a tiny committed fixture while implementation
+  remains unresolved.
+- Next proposed milestone: Resolve exactly one real blocker only if implemented
+  reducer work or accepted validation/calibration review evidence is explicitly
+  provided or requested.
+
 ### M041
 
 - Milestone id: M041.

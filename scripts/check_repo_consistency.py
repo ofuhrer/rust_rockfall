@@ -527,6 +527,7 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
     required_paths = [
         ROOT / "docs/physical_frequency_reducer_preconditions.md",
         ROOT / "validation/templates/physical_frequency_reducer_preconditions_v1.yaml",
+        ROOT / "tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml",
         ROOT / "scripts/validate_physical_frequency_reducer_preconditions.py",
         ROOT / "tests/test_physical_frequency_reducer_preconditions.py",
     ]
@@ -540,6 +541,9 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
 
     doc = (ROOT / "docs/physical_frequency_reducer_preconditions.md").read_text()
     template = (ROOT / "validation/templates/physical_frequency_reducer_preconditions_v1.yaml").read_text()
+    fixture = (
+        ROOT / "tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml"
+    ).read_text()
     validator = (ROOT / "scripts/validate_physical_frequency_reducer_preconditions.py").read_text()
     tests = (ROOT / "tests/test_physical_frequency_reducer_preconditions.py").read_text()
 
@@ -550,6 +554,8 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
         "mutually_exclusive_partition",
         "documented_overlap_adjustment",
         "swisstopo",
+        "physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml",
+        "not an implemented reducer",
     ):
         if term not in doc:
             errors.append(f"docs/physical_frequency_reducer_preconditions.md omits {term!r}")
@@ -569,6 +575,23 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
                 f"omits {term!r}"
             )
 
+    for term in (
+        "schema_version: physical_frequency_reducer_preconditions_v1",
+        "record_status: accepted_for_design_review",
+        "prototype_authorized: false",
+        "documented_overlap_adjustment",
+        "annual_or_physical_output_supported: false",
+        "nested_monte_carlo_design_review_only",
+        "terrain_model_form_uncertainty",
+        "not an implemented overlap-adjusted reducer",
+        "annual and physical products remain deferred",
+    ):
+        if term not in fixture:
+            errors.append(
+                "tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml "
+                f"omits {term!r}"
+            )
+
     for symbol in (
         "validate_physical_frequency_reducer_preconditions",
         "REQUIRED_UNCERTAINTY_COMPONENTS",
@@ -585,6 +608,7 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
     for test_name in (
         "test_selected_template_records_unsatisfied_preconditions",
         "test_accepts_complete_candidate_for_design_review_only",
+        "test_design_review_fixture_is_valid_but_not_runtime_authorized",
         "test_rejects_missing_overlap_policy",
         "test_rejects_nondeterministic_reducer_merge",
         "test_rejects_missing_uncertainty_component",

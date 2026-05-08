@@ -37,6 +37,15 @@ class PhysicalFrequencyReducerPreconditionsTests(unittest.TestCase):
             self.assertEqual(summary["selected_overlap_policy"], "mutually_exclusive_partition")
             self.assertFalse(summary["prototype_authorized"])
 
+    def test_design_review_fixture_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_physical_frequency_reducer_preconditions(
+            ROOT / "tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["selected_overlap_policy"], "documented_overlap_adjustment")
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_rejects_missing_overlap_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.candidate_record()

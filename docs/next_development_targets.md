@@ -474,6 +474,9 @@ Estimated order: 10.
   `scripts/validate_physical_frequency_reducer_preconditions.py` define and
   validate future reducer preconditions while keeping the selected template at
   `preconditions_not_satisfied`.
+- A synthetic reducer-precondition design-review fixture now exercises the
+  `accepted_for_design_review` record state without implementing reducers,
+  activating annual/physical output units, or authorizing runtime products.
 - The validation/calibration review blocker is partially resolved as an
   inactive review-gate contract.
   `docs/annual_physical_validation_calibration_review_gate.md`,
