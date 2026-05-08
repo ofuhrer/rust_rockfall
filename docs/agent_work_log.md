@@ -1283,3 +1283,46 @@ Planning only; these milestones do not implement roadmap item content yet.
   this item.
 - Decision: ACCEPT; item 5 done for current Definition of Done.
 - Next proposed milestone: Stop after one item as requested.
+
+### M019
+
+- Milestone id: M019.
+- Roadmap item: Priority 1. Prepare one public real-site swisstopo pilot
+  package.
+- Hypothesis/objective: Complete the highest-priority refreshed-roadmap item
+  by selecting one concrete public Swiss pilot domain and making its geodata
+  package reproducible from public downloads without committing raw or large
+  processed files.
+- Files changed:
+  `.gitignore`,
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`,
+  `data/processed/swisstopo/README.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `scripts/validate_public_real_site_geodata_manifest.py`,
+  `scripts/check_repo_consistency.py`,
+  `tests/test_public_real_site_geodata_manifest.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a selected-domain public Tschamut pilot
+  manifest tied to swissALTI3D tile `2696-1167`, EPSG:2056/LN02, ignored raw
+  and processed paths, crop extent, 2 m cell size, nodata, source and processed
+  SHA-256 digests, and the deterministic preparation command using
+  `scripts/prepare_tschamut_public_benchmark.py`. Tightened the geodata
+  manifest validator so selected manifests require concrete domain names,
+  source tile provenance, product version/date, processed-output metadata,
+  preprocessing commands, and valid checksums.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_geodata_manifest.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_geodata_manifest.py tests/test_public_real_site_conditional_pilot_run.py tests/test_source_scenario_policy.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: Local self-review against Priority 1 Definition of Done
+  found no remaining blocker; local execution still depends on public downloads
+  or manually preplaced ignored raw files.
+- Decision: ACCEPT; Priority 1 done at the share-safe selected-domain package
+  level.
+- Next proposed milestone: Stop after Priority 1 as requested.

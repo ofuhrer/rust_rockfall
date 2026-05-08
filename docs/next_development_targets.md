@@ -41,9 +41,11 @@ processed DEM metadata, source-tile checksums, CRS/vertical-datum record, extent
 record, nodata record, and a clear statement that swisstopo terrain is input
 geodata, not validation evidence.
 
-Minimal acceptable deliverable: A share-safe manifest plus documented commands
-showing how a clean checkout with local public downloads can recreate the pilot
-DEM and metadata. No raw geodata or large generated outputs are committed.
+Minimal acceptable deliverable: complete. The selected-domain manifest
+`data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` records the
+Tschamut public pilot domain, swissALTI3D tile `2696-1167`, crop metadata,
+checksums, ignored paths, and preparation command. No raw geodata or large
+generated outputs are committed.
 
 What not to do: Do not tune parameters, commit raw swisstopo products, or claim
 operational validation.

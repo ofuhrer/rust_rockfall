@@ -11,6 +11,7 @@ review/
 data/raw/**
 !data/raw/.gitkeep
 data/private/**
+data/processed/swisstopo/*/
 validation/private/**
 verification/results/**
 !verification/results/.gitkeep

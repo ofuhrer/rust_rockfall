@@ -93,6 +93,16 @@ the required public geodata inventory, local ignored directory layout,
 preprocessing gates, and claim boundaries without downloading or committing raw
 swisstopo products.
 
+The first selected public pilot-domain manifest is
+`data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`. It fixes the
+Tschamut 2014 public release/deposition corridor, public swissALTI3D tile
+`2696-1167`, EPSG:2056/LN02, the expected 2 m crop extent, source and processed
+checksums, and the command
+`scripts/prepare_tschamut_public_benchmark.py --output-root
+data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force`.
+Generated raw and processed files remain ignored; the manifest is provenance
+for input geodata, not validation evidence.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the

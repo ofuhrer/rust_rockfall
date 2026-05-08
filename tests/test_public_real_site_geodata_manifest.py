@@ -21,8 +21,16 @@ class PublicRealSiteGeodataManifestTests(unittest.TestCase):
             ROOT / "data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml"
         )
 
+    def load_selected_manifest(self) -> dict:
+        return validator.read_yaml(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml"
+        )
+
     def test_template_manifest_is_valid(self) -> None:
         validator.validate_manifest(self.load_template())
+
+    def test_selected_tschamut_public_pilot_manifest_is_valid(self) -> None:
+        validator.validate_manifest(self.load_selected_manifest())
 
     def test_requires_swissalti3d(self) -> None:
         manifest = self.load_template()
@@ -47,8 +55,31 @@ class PublicRealSiteGeodataManifestTests(unittest.TestCase):
             "xmax": 2601000.0,
             "ymax": 1201000.0,
         }
+        manifest["selected_domain"]["name"] = "test selected pilot domain"
+        manifest["selected_domain"]["selection_status"] = "selected_for_test"
 
         with self.assertRaisesRegex(validator.ManifestError, "source_tiles"):
+            validator.validate_manifest(manifest)
+
+    def test_selected_manifest_requires_concrete_domain_name(self) -> None:
+        manifest = self.load_selected_manifest()
+        manifest["selected_domain"]["name"] = "to_be_selected"
+
+        with self.assertRaisesRegex(validator.ManifestError, "concrete pilot domain"):
+            validator.validate_manifest(manifest)
+
+    def test_selected_manifest_rejects_invalid_raw_tile_checksum(self) -> None:
+        manifest = self.load_selected_manifest()
+        manifest["required_datasets"][0]["source_tiles"][0]["raw_sha256"] = "ABC123"
+
+        with self.assertRaisesRegex(validator.ManifestError, "raw_sha256"):
+            validator.validate_manifest(manifest)
+
+    def test_selected_manifest_rejects_processed_dem_extent_mismatch(self) -> None:
+        manifest = self.load_selected_manifest()
+        manifest["preprocessing_plan"]["processed_dem"]["crop_extent_lv95_m"]["xmax"] = 2696376.0
+
+        with self.assertRaisesRegex(validator.ManifestError, "xmax"):
             validator.validate_manifest(manifest)
 
     def test_rejects_missing_claim_boundary(self) -> None:

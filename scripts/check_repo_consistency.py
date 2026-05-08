@@ -451,8 +451,10 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ROOT / "data/processed/swisstopo/README.md",
         ROOT / "data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml",
         ROOT / "data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml",
+        ROOT / "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml",
         ROOT / "scripts/validate_public_real_site_geodata_manifest.py",
         ROOT / "scripts/validate_source_scenario_policy.py",
+        ROOT / "scripts/prepare_tschamut_public_benchmark.py",
         ROOT / "scripts/prepare_tschamut_swissalti3d_pilot.py",
         ROOT / "validation/templates/public_real_site_source_scenario_policy_v1.yaml",
         ROOT / "validation/templates/tschamut_swissalti3d_baseline.yaml",
@@ -533,6 +535,26 @@ def check_swisstopo_geodata_metadata() -> list[str]:
             part for part in (manifest_check.stdout, manifest_check.stderr) if part
         ).strip()
         errors.append(f"public real-site geodata manifest template validation failed:\n{output}")
+
+    selected_manifest_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_public_real_site_geodata_manifest.py",
+            "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if selected_manifest_check.returncode != 0:
+        output = "\n".join(
+            part
+            for part in (selected_manifest_check.stdout, selected_manifest_check.stderr)
+            if part
+        ).strip()
+        errors.append(f"selected public real-site geodata manifest validation failed:\n{output}")
 
     policy_check = subprocess.run(
         [

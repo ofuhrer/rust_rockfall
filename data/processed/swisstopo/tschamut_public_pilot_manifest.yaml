@@ -1,0 +1,149 @@
+# Concrete selected-domain manifest for the first public Swiss real-site pilot.
+# It records share-safe public inputs and deterministic preparation commands.
+# Raw tiles and generated processed outputs remain ignored.
+schema_version: 1
+manifest_type: public_real_site_geodata_preparation_v1
+pilot_id: tschamut_public_pilot
+pilot_status: domain_selected_template
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+selected_domain:
+  name: Tschamut 2014 public release/deposition corridor
+  purpose: public_real_site_conditional_pilot_geodata_package
+  selection_status: selected_public_domain_template
+  coordinate_reference_system:
+    epsg: 2056
+    horizontal_name: CH1903+ / LV95
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  extent_lv95_m:
+    xmin: 2696376.0
+    ymin: 1167384.0
+    xmax: 2696976.0
+    ymax: 1167992.0
+  source_zone_status: deferred_to_priority_2
+  forest_obstacle_relevance_status: not_scoped
+
+local_layout:
+  raw_root: data/raw/swisstopo
+  processed_root: data/processed/swisstopo/tschamut_public_pilot
+  private_validation_root: validation/private/tschamut_public_pilot
+  hazard_results_root: hazard/results/tschamut_public_pilot
+  raw_files_committed: false
+  processed_large_files_committed: false
+
+required_datasets:
+  - dataset_id: swisstopo_swissalti3d
+    role: mandatory_bare_earth_terrain
+    source_url: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif
+    license: swisstopo open data terms; cite swisstopo and preserve provenance
+    source_file_present: false
+    download_status: documented_public_download
+    source_tiles:
+      - tile_id: "2696-1167"
+        source_product: swissALTI3D 2 m COG
+        product_version: "2019"
+        product_date: "2019"
+        source_url: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif
+        source_filename: data/raw/swisstopo/swissalti3d_2019_2696-1167_2_2056_5728.tif
+        raw_sha256: e1fe4119d3fec60f1f6fcb3f15698af23c96c92a2a0b9d8f34c89b109a88becf
+        coordinate_reference_system:
+          epsg: 2056
+          horizontal_name: CH1903+ / LV95
+          vertical_datum: LN02
+          coordinate_unit: m
+          height_unit: m
+        extent_lv95_m:
+          xmin: 2696000.0
+          ymin: 1167000.0
+          xmax: 2697000.0
+          ymax: 1168000.0
+        resolution_m: 2.0
+        license: swisstopo open data terms; verify current terms before redistribution
+    processed_outputs:
+      - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+        metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+        format: ESRI ASCII GRID
+        resolution_m: 2.0
+        width_px: 300
+        height_px: 304
+        nodata: -9999.0
+        crop_extent_lv95_m:
+          xmin: 2696376.0
+          ymin: 1167384.0
+          xmax: 2696976.0
+          ymax: 1167992.0
+        processed_sha256: 36f3156bbc57a01536784807a09db214a46911b4df95c04af8182e420973ea8f
+        generated_by: scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
+
+optional_context_datasets:
+  - dataset_id: swisstopo_swissimage
+    role: orthophoto_visual_qa
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_swisstlm3d
+    role: topographic_context_and_qa
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_geocover
+    role: geology_context_for_future_source_zone_policy
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+
+preprocessing_plan:
+  status: ready_for_local_public_download
+  commands:
+    - UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
+    - UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  steps:
+    - download the public Tschamut 2014 EnviDat slope and LPS observation resources into ignored raw caches when absent
+    - download the public swissALTI3D 2019 tile 2696-1167 2 m COG into the ignored swisstopo raw cache when absent
+    - transform selected public Tschamut release/deposition rows to LV95 with the predeclared scan_surface_fit_v1 registration
+    - crop the swissALTI3D tile to the predeclared LV95 extent without resampling
+    - export the processed crop as ESRI ASCII and emit the terrain metadata sidecar
+    - record source and processed SHA-256 checksums, CRS EPSG:2056, vertical datum LN02, nodata, dimensions, and provenance
+    - keep raw downloads, processed DEM, generated cases, and validation outputs under ignored paths
+    - run DEM and terrain-representation sensitivity before interpreting simulator outputs
+  processed_dem:
+    path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+    metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+    format: ESRI ASCII GRID
+    resolution_m: 2.0
+    width_px: 300
+    height_px: 304
+    nodata: -9999.0
+    processed_sha256: 36f3156bbc57a01536784807a09db214a46911b4df95c04af8182e420973ea8f
+    crop_extent_lv95_m:
+      xmin: 2696376.0
+      ymin: 1167384.0
+      xmax: 2696976.0
+      ymax: 1167992.0
+  dem_terrain_sensitivity_status: not_run_priority_3
+  visual_qa_status: not_run
+  missing_download_path:
+    behavior: script exits with an explicit download or checksum error when public resources cannot be fetched or verified
+    no_network_reproduction: manually place the source files at the listed ignored raw paths, then rerun the preparation command
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - swisstopo inputs are operational geodata, not validation evidence by themselves
+    - current pilot outputs must remain research diagnostics or sampling-weighted conditional products
+    - the selected Tschamut domain is a reproducible public geodata package for workflow development, not operational hazard-map validation

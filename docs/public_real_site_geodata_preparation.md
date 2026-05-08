@@ -20,6 +20,8 @@ and claim boundaries.
 
 - Template manifest:
   `data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml`
+- Selected-domain manifest:
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`
 - Validator:
   `scripts/validate_public_real_site_geodata_manifest.py`
 - Conditional pilot run-freeze template:
@@ -33,6 +35,14 @@ The checked-in template is intentionally `template_not_run`. A real local pilot
 should copy it to an ignored working directory, fill in the selected domain and
 tile inventory, and run the validator before deriving source zones or
 simulation cases.
+
+The first selected public pilot domain is the Tschamut 2014 public
+release/deposition corridor. Its share-safe manifest is
+`data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`. That manifest
+binds the domain to public swissALTI3D tile `2696-1167`, EPSG:2056/LN02,
+the expected 2 m ESRI ASCII crop extent, source and processed SHA-256 digests,
+and the deterministic preparation command. It does not commit the raw tile,
+processed DEM, generated cases, validation outputs, or hazard outputs.
 
 The Phase 6 run-freeze template is also intentionally not run. It records the
 geodata manifest, source-zone/block-scenario policy, benchmark case, terrain
@@ -53,6 +63,20 @@ data/raw/swisstopo/<pilot_id>/
 data/processed/swisstopo/<pilot_id>/
 validation/private/<pilot_id>/
 hazard/results/<pilot_id>/
+```
+
+For the selected Tschamut public pilot, the preparation command writes ignored
+processed terrain artifacts under:
+
+```text
+data/processed/swisstopo/tschamut_public_pilot/
+```
+
+and uses the shared ignored public raw-data cache:
+
+```text
+data/raw/swisstopo/
+data/raw/tschamut2014/
 ```
 
 Raw swissALTI3D, SWISSIMAGE, swissSURFACE3D, swissTLM3D, GeoCover, Geological
@@ -91,13 +115,49 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python \
   data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml
 ```
 
+Validate the selected Tschamut public pilot manifest:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_public_real_site_geodata_manifest.py \
+  data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+```
+
 The validator checks the share-safe contract only. It verifies CRS/datum,
-dataset roles, required boundaries, local path conventions, and that template
-manifests do not pretend raw or processed geodata are present.
+dataset roles, required boundaries, local path conventions, source-tile
+identity, product version/date, source and processed SHA-256 digests, processed
+DEM dimensions, nodata, crop extent, and that template manifests do not pretend
+raw or processed geodata are present.
 
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
 does not prove scientific skill; it only gates provenance and claim hygiene.
+
+## Selected Tschamut Public Pilot Preparation
+
+The selected-domain manifest can be reproduced from a clean checkout plus
+public downloads with:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/prepare_tschamut_public_benchmark.py \
+  --output-root data/processed/swisstopo/tschamut_public_pilot \
+  --padding-m 250 \
+  --force
+```
+
+The script downloads public Tschamut 2014 EnviDat resources and the public
+swissALTI3D tile into ignored raw caches when absent, transforms the selected
+Tschamut release/deposition rows to LV95, crops the 2 m swissALTI3D tile to the
+manifested extent, writes the ESRI ASCII DEM and terrain metadata sidecar, and
+records checksums. If network access is unavailable, place the files listed in
+the manifest at the ignored raw paths and rerun the same command. A missing or
+checksum-mismatched download is an explicit no-go for Priority 1 reproduction.
+
+Only the selected-domain manifest is committed. The raw public downloads,
+processed crop, generated cases, validation outputs, and later hazard outputs
+remain ignored. The Tschamut terrain package is input geodata for workflow
+development; it is not validation evidence by itself.
 
 Before the first conditional pilot run, also run:
 

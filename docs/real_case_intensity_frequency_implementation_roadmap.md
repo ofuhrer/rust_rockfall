@@ -125,13 +125,18 @@ Do not:
 Objective: make one small real Swiss pilot domain reproducible from public
 input geodata without committing raw tiles.
 
-Current status: contract and validation are implemented, but no actual public
-pilot domain has been prepared in the repository state. The checked-in template
-`data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml` and
-`scripts/validate_public_real_site_geodata_manifest.py` define the share-safe
-manifest. The remaining work is execution: choose the domain, download or point
-to local public swisstopo inputs, crop/convert terrain, record checksums and
-metadata, and keep the raw/processed products out of git.
+Current status: selected-domain package complete at the share-safe manifest
+level. The checked-in template
+`data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml`,
+selected-domain manifest
+`data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`, and
+`scripts/validate_public_real_site_geodata_manifest.py` define the public
+Tschamut pilot geodata package. The selected manifest records public
+swissALTI3D tile `2696-1167`, product/version/date, source and processed
+checksums, EPSG:2056/LN02, crop extent, 2 m cell size, nodata, ignored
+raw/processed output roots, and the deterministic preparation command. Local
+execution still requires public downloads or preplaced ignored raw files; no
+raw/processed products are committed.
 
 Implementation work:
 

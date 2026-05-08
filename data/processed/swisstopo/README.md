@@ -15,6 +15,11 @@ Current fixture:
 - `public_real_site_pilot_manifest_template.yaml`: Phase 1 public real-site
   preparation manifest template. Copy it to an ignored local pilot directory
   before filling in real tile ids, checksums, or processed DEM paths.
+- `tschamut_public_pilot_manifest.yaml`: selected-domain Priority 1 manifest
+  for the public Tschamut corridor and swissALTI3D tile `2696-1167`. It records
+  expected ignored raw/processed paths, crop metadata, checksums, and the
+  deterministic preparation command, but does not include the raw tile or
+  processed DEM.
 
 Runtime pilot fixture:
 
