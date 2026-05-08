@@ -22,6 +22,10 @@ Real-world validation is partial and qualitative. The current simulator is a sph
 - Keep large real-data validation optional; small license-compatible derived fixtures may be checked in for CI smoke tests.
 
 The public dataset registry is in `data/datasets.yaml`; dataset notes are in `docs/datasets.md`. The multi-dataset role split is documented in `docs/dataset_strategy.md`. The unified public benchmark preparation and grouped-validation contract is documented in `docs/public_benchmark_framework.md`. swisstopo entries are operational input geodata for future Swiss hazard-map workflows, not experimental validation datasets.
+Future source-frequency evidence records are governed by
+`docs/source_frequency_evidence_contract.md`. Those records must separate
+calibration dataset ids from validation dataset ids and must not list swisstopo
+terrain as validation evidence by itself.
 
 ## Commands
 
@@ -69,6 +73,8 @@ semantics in `docs/hazard_map_semantics.md`: current outputs are unweighted
 diagnostic or sampling-weighted conditional products. Threshold products are
 conditional intensity-exceedance diagnostics, not annual intensity-frequency or
 return-period products.
+The inactive source-frequency evidence template does not change this
+interpretation; it only defines fields and rejection checks for future review.
 
 Mel de la Niva is registered as an external high-energy/generalization
 benchmark. Its public Zenodo data are large and remain ignored locally. The

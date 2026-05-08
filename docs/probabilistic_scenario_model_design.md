@@ -27,6 +27,8 @@ simulation is defined in `docs/source_zone_block_scenario_policy_v1.md`.
 The future annual/physical source-frequency contract is controlled by
 `docs/physical_source_frequency_design_gate.md`; that gate currently keeps the
 prototype deferred and does not add runtime support.
+The inactive source-rate evidence schema is documented separately in
+`docs/source_frequency_evidence_contract.md`.
 
 ## Scenario Identity
 

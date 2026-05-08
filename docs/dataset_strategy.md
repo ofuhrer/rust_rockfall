@@ -140,6 +140,10 @@ default-model decision.
 - **Operational terrain/input geodata:** swissALTI3D and related swisstopo
   layers provide terrain and map context for future production-style workflows,
   but they do not validate model physics by themselves.
+- **Future source-frequency evidence:** source-rate evidence records are
+  governed by `docs/source_frequency_evidence_contract.md`. They must keep
+  calibration datasets, validation datasets, and operational input geodata
+  separate, and the current template records no accepted frequency evidence.
 
 ## Inconsistencies and Gaps
 
@@ -178,6 +182,10 @@ default-model decision.
   manifest.
 - Keep swisstopo operational input geodata separate from experimental
   calibration and validation datasets.
+- Keep any future source-frequency evidence record separate from current
+  sampling weights and from swisstopo input geodata. A source-frequency record
+  may cite swisstopo for geometry provenance, but not as validation evidence by
+  itself.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and
   small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.

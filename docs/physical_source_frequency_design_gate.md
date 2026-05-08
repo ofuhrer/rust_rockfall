@@ -142,3 +142,19 @@ Blocking conditions:
 The executable gate record is
 `validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`, checked
 by `scripts/validate_physical_source_frequency_design_gate.py`.
+
+## Blocker Resolution Status
+
+One blocker is partially closed: `docs/source_frequency_evidence_contract.md`
+defines an inactive source-frequency evidence contract, with template
+`validation/templates/source_frequency_evidence_v1.yaml` and validator
+`scripts/validate_source_frequency_evidence.py`. The template records
+`no_accepted_frequency_evidence`, so this does not authorize annual or
+physical products.
+
+Remaining blockers before prototype authorization:
+
+- accepted source-frequency evidence for a source-event class;
+- complete block-scenario and release-cell physical probability evidence;
+- overlap-adjusted reducers and uncertainty propagation;
+- validation/calibration review for frequency products.

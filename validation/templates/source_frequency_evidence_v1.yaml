@@ -1,0 +1,46 @@
+schema_version: source_frequency_evidence_v1
+record_id: source_frequency_evidence_template_v1
+record_status: no_accepted_frequency_evidence
+prototype_authorized: false
+operational_status: research_diagnostic
+frequency_model_id: not_defined
+frequency_mode: source_event_rate_evidence_only
+source_zone_id: tschamut_public_source_zone_v1
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: not_available_in_template
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class:
+  event_class_id: not_defined
+  description: No accepted source-event class is available for annual or physical products.
+  occurrence_denominator: not_defined
+frequency_unit: events_per_source_zone_per_year
+source_event_rate_per_year: null
+rate_time_window_years: null
+rate_observation_period:
+  start_year: null
+  end_year: null
+rate_evidence_type: none_available
+rate_provenance:
+  source: none_available
+  citation_or_url: none_available
+  license: none_available
+rate_uncertainty:
+  type: not_available
+  lower_per_year: null
+  upper_per_year: null
+source_zone_overlap_policy:
+  policy: not_defined
+  overlap_adjustment: required_before_prototype
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - no accepted source-frequency evidence is recorded
+  - swisstopo terrain remains input geodata, not validation evidence
+  - annual and physical products remain deferred

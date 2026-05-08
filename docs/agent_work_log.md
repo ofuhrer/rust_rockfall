@@ -2055,3 +2055,63 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Resolve source-frequency evidence, overlap,
   uncertainty, and calibration/validation blockers before requesting an annual
   or physical prototype.
+
+### M034
+
+- Milestone id: M034.
+- Roadmap item: Resolve physical/source-frequency design-gate blockers:
+  source-frequency evidence contract.
+- Hypothesis/objective: Close the first source-frequency schema blocker by
+  defining an inactive source-rate evidence record contract and rejection
+  checks, while keeping annual/physical prototype authorization false.
+- Initial gap assessment: Target 9 defined the required source-frequency
+  evidence fields and rejection tests, but the repository still lacked a
+  concrete source-frequency evidence template and validator. Target 10 remains
+  blocked because the design gate is deferred.
+- Files changed:
+  `docs/source_frequency_evidence_contract.md`,
+  `validation/templates/source_frequency_evidence_v1.yaml`,
+  `scripts/validate_source_frequency_evidence.py`,
+  `tests/test_source_frequency_evidence.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/dataset_strategy.md`,
+  `docs/validation_plan.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added `source_frequency_evidence_v1` as an inactive
+  evidence contract with a selected template recording
+  `no_accepted_frequency_evidence`. The validator accepts complete candidate
+  records only for design review and rejects missing rates, bad units, missing
+  uncertainty, overlap-policy gaps, calibration/validation dataset overlap,
+  swisstopo geodata as validation evidence, misleading claims, and any
+  prototype authorization. Documentation now records that this closes one
+  schema blocker but leaves annual/physical products deferred.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_source_frequency_evidence.py validation/templates/source_frequency_evidence_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_source_frequency_evidence`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, trajectory execution, hazard reducer,
+  annual frequency runtime support, physical probability runtime support,
+  risk/exposure semantics, generated products, or raw/processed swisstopo
+  geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; one source-frequency evidence-schema
+  blocker is resolved, but Target 10 remains blocked by missing accepted
+  evidence, block/release probability evidence, overlap-adjusted reducers,
+  uncertainty propagation, and validation/calibration review.
+- Next proposed milestone: Define the block-scenario and release-cell physical
+  probability evidence contract, still without enabling runtime annual or
+  physical products.

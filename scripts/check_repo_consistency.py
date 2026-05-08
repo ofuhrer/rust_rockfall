@@ -152,6 +152,7 @@ def main() -> int:
     errors.extend(check_validation_module_boundaries())
     errors.extend(check_local_parallel_ensemble_contract())
     errors.extend(check_physical_source_frequency_design_gate())
+    errors.extend(check_source_frequency_evidence_contract())
 
     if errors:
         for error in errors:
@@ -324,6 +325,70 @@ def check_physical_source_frequency_design_gate() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_physical_source_frequency_design_gate.py omits {test_name}")
+    return errors
+
+
+def check_source_frequency_evidence_contract() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/source_frequency_evidence_contract.md",
+        ROOT / "validation/templates/source_frequency_evidence_v1.yaml",
+        ROOT / "scripts/validate_source_frequency_evidence.py",
+        ROOT / "tests/test_source_frequency_evidence.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"source-frequency evidence contract path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/source_frequency_evidence_contract.md").read_text()
+    template = (ROOT / "validation/templates/source_frequency_evidence_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_source_frequency_evidence.py").read_text()
+    tests = (ROOT / "tests/test_source_frequency_evidence.py").read_text()
+
+    for term in (
+        "Status: inactive evidence-schema contract",
+        "annual frequency products",
+        "no_accepted_frequency_evidence",
+        "source_event_rate_per_year",
+        "calibration and validation dataset overlap",
+        "swisstopo",
+    ):
+        if term not in doc:
+            errors.append(f"docs/source_frequency_evidence_contract.md omits {term!r}")
+
+    for term in (
+        "schema_version: source_frequency_evidence_v1",
+        "record_status: no_accepted_frequency_evidence",
+        "prototype_authorized: false",
+        "frequency_unit: events_per_source_zone_per_year",
+        "source_event_rate_per_year: null",
+        "annual_frequency_supported: false",
+        "physical_probability_supported: false",
+    ):
+        if term not in template:
+            errors.append(f"validation/templates/source_frequency_evidence_v1.yaml omits {term!r}")
+
+    for symbol in (
+        "validate_source_frequency_evidence",
+        "source_event_rate_per_year",
+        "validate_dataset_separation",
+        "swisstopo geodata must not be listed as validation evidence",
+        "prototype_authorized must be false",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_source_frequency_evidence.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_template_records_no_accepted_frequency_evidence",
+        "test_accepts_complete_candidate_for_design_review_only",
+        "test_rejects_candidate_missing_source_rate",
+        "test_rejects_uncertainty_that_excludes_rate",
+        "test_rejects_swisstopo_as_validation_evidence",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_source_frequency_evidence.py omits {test_name}")
     return errors
 
 
@@ -1041,6 +1106,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md",
         ROOT / "docs/probabilistic_scenario_model_design.md",
         ROOT / "docs/physical_source_frequency_design_gate.md",
+        ROOT / "docs/source_frequency_evidence_contract.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
     ]

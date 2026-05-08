@@ -81,6 +81,9 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `physical_source_frequency_design_gate.md`: design-gate decision for future
   physical/source-frequency semantics; the current decision keeps the
   annual/physical prototype deferred.
+- `source_frequency_evidence_contract.md`: inactive source-rate evidence
+  schema, validator, and template for closing one design-gate blocker without
+  enabling annual or physical products.
 - `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
   probabilistic scenario/source-zone propagation.
 - `probabilistic_hazard_phase1_closure.md`: implemented Level 1/2
