@@ -149,6 +149,7 @@ def main() -> int:
     errors.extend(check_swisstopo_geodata_metadata())
     errors.extend(check_hazard_claim_hygiene())
     errors.extend(check_fallible_terrain_boundaries())
+    errors.extend(check_validation_module_boundaries())
 
     if errors:
         for error in errors:
@@ -194,6 +195,30 @@ def check_fallible_terrain_boundaries() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/config_io_terrain.rs omits {test_name}")
+    return errors
+
+
+def check_validation_module_boundaries() -> list[str]:
+    errors = []
+    validation = (ROOT / "src/validation.rs").read_text()
+    metric_math = ROOT / "src/validation/metric_math.rs"
+    if "mod metric_math;" not in validation:
+        errors.append("src/validation.rs should declare the metric_math submodule")
+    if not metric_math.exists():
+        errors.append("src/validation/metric_math.rs is missing")
+        return errors
+
+    for helper in (
+        "mean",
+        "percentile",
+        "distance3",
+        "centroid2",
+        "cloud_overlap_fraction",
+    ):
+        if re.search(rf"\nfn {helper}\(", validation):
+            errors.append(
+                f"validation metric helper {helper} should live in src/validation/metric_math.rs"
+            )
     return errors
 
 

@@ -1,5 +1,12 @@
 //! Verification and validation helpers, case loading, and metric computation.
 
+mod metric_math;
+
+use metric_math::{
+    centroid2, cloud_overlap_fraction, distance2, distance3, mean, nonempty_mean, percentile,
+    stddev_axis_y, symmetric_mean_nearest_distance,
+};
+
 use crate::{
     dynamics::{ContactModel, ContactParameterProvider, ScarringDepthSource, SoilInteractionModel},
     geodata::{GeodataError, ReleaseZoneMetadata, TerrainClassMap, TerrainSourceMetadata},
@@ -5091,100 +5098,6 @@ fn observed_runout(point: &DepositionPoint) -> Option<f64> {
             (point.release_x_m?, point.release_y_m?),
         ))
     })
-}
-
-fn mean(values: &[f64]) -> f64 {
-    if values.is_empty() {
-        0.0
-    } else {
-        values.iter().sum::<f64>() / values.len() as f64
-    }
-}
-
-fn nonempty_mean(values: &[f64]) -> Option<f64> {
-    (!values.is_empty()).then(|| mean(values))
-}
-
-fn percentile(values: &[f64], p: f64) -> f64 {
-    if values.is_empty() {
-        return 0.0;
-    }
-    let rank = p.clamp(0.0, 1.0) * (values.len().saturating_sub(1)) as f64;
-    let lower = rank.floor() as usize;
-    let upper = rank.ceil() as usize;
-    if lower == upper {
-        values[lower]
-    } else {
-        let weight = rank - lower as f64;
-        values[lower] * (1.0 - weight) + values[upper] * weight
-    }
-}
-
-fn distance3(a: [f64; 3], b: [f64; 3]) -> f64 {
-    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
-}
-
-fn centroid2(points: &[(f64, f64)]) -> (f64, f64) {
-    if points.is_empty() {
-        return (0.0, 0.0);
-    }
-    let x = points.iter().map(|point| point.0).sum::<f64>() / points.len() as f64;
-    let y = points.iter().map(|point| point.1).sum::<f64>() / points.len() as f64;
-    (x, y)
-}
-
-fn distance2(a: (f64, f64), b: (f64, f64)) -> f64 {
-    ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2)).sqrt()
-}
-
-fn symmetric_mean_nearest_distance(left: &[(f64, f64)], right: &[(f64, f64)]) -> f64 {
-    0.5 * (mean_nearest_distance(left, right) + mean_nearest_distance(right, left))
-}
-
-fn mean_nearest_distance(from: &[(f64, f64)], to: &[(f64, f64)]) -> f64 {
-    if from.is_empty() || to.is_empty() {
-        return 0.0;
-    }
-    from.iter()
-        .map(|point| {
-            to.iter()
-                .map(|candidate| distance2(*point, *candidate))
-                .fold(f64::INFINITY, f64::min)
-        })
-        .sum::<f64>()
-        / from.len() as f64
-}
-
-fn stddev_axis_y(points: &[(f64, f64)]) -> f64 {
-    if points.len() <= 1 {
-        return 0.0;
-    }
-    let mean_y = points.iter().map(|point| point.1).sum::<f64>() / points.len() as f64;
-    let variance = points
-        .iter()
-        .map(|point| (point.1 - mean_y).powi(2))
-        .sum::<f64>()
-        / points.len() as f64;
-    variance.sqrt()
-}
-
-fn cloud_overlap_fraction(
-    simulated_points: &[(f64, f64)],
-    observed_points: &[(f64, f64)],
-    radius_m: f64,
-) -> f64 {
-    if simulated_points.is_empty() {
-        return 0.0;
-    }
-    let hits = simulated_points
-        .iter()
-        .filter(|point| {
-            observed_points
-                .iter()
-                .any(|observed| distance2(**point, *observed) <= radius_m)
-        })
-        .count();
-    hits as f64 / simulated_points.len() as f64
 }
 
 fn param(params: &BTreeMap<String, f64>, name: &str, default: f64) -> f64 {

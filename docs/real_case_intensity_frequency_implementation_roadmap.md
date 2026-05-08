@@ -79,17 +79,17 @@ Already available:
 - fallible DEM-facing fixed-step integration path that propagates terrain
   errors through `IntegrationError` while retaining infallible wrappers as
   compatibility helpers;
+- first validation-module concern split, with pure metric-math helpers moved to
+  a focused submodule and guarded by unit/consistency checks;
 - strong verification and deterministic seed/order checks.
 
 Main remaining pieces, in priority order:
 
-1. split the largest validation and experimental shape modules by concern so
-   pilot, schema, and output changes remain reviewable;
-2. add deterministic local parallel ensemble execution and reducer provenance
+1. add deterministic local parallel ensemble execution and reducer provenance
    before attempting larger trajectory counts;
-3. increase ensemble size toward the target trajectory count only after the
+2. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible, interpreted, and has convergence diagnostics;
-4. defer physical/annual frequency semantics until source-frequency and
+3. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -151,12 +151,14 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   as structured `SimulationError::Integration` failures, and consistency
   checks reject new infallible terrain/contact calls in the integrator. Legacy
   infallible terrain and integration wrappers remain compatibility helpers.
+- The first validation-module split is complete. Pure metric-math helpers used
+  by validation metrics now live in `src/validation/metric_math.rs`; focused
+  unit tests cover interpolation and cloud-metric edge cases, and consistency
+  checks keep those helpers out of the monolithic validation file.
 
 The immediate roadmap task is therefore not another hazard semantics feature.
-It is to harden the maintenance boundary: start splitting the largest
-V&V/experimental modules by concern, and then add deterministic local
-parallelism before larger ensembles or physical/source-frequency prototypes are
-attempted.
+It is to add deterministic local parallelism before larger ensembles or
+physical/source-frequency prototypes are attempted.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -664,10 +666,9 @@ the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
 conditional-curve table export now has an opt-in summary-only mode. Ensemble
 scale-up is explicitly no-go for the selected domain until convergence,
 manual-GIS, output-budget, and obstacle-context preconditions are resolved.
-The current bottleneck is maintainability and deterministic local scaling
-before larger ensembles: the largest V&V/experimental modules need
-concern-based splits, and local parallel ensemble execution must be
-deterministic before annual or physical products.
+The current bottleneck is deterministic local scaling before larger ensembles:
+local parallel ensemble execution must be deterministic before annual or
+physical products.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
@@ -677,7 +678,7 @@ deterministic before annual or physical products.
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Complete as a selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` records that increasing the Tschamut ensemble is not authorized until convergence diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle context review are resolved. |
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
-| 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | One coherent concern is split with behavior-preserving tests and unchanged public validation outputs. |
+| 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Complete for the first narrow concern: pure validation metric-math helpers are split into `src/validation/metric_math.rs` with behavior-preserving unit tests and consistency checks. Larger validation/shape splits remain future work. |
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Serial and parallel runs produce identical reduced outputs, row counts, checksums, and manifests independent of worker count. |
 | 9 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
 | 10 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |

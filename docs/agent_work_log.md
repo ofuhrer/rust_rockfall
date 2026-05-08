@@ -1900,3 +1900,51 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Target 6 done at the guardrail level.
 - Next proposed milestone: Split one coherent validation or shape-contact
   concern by module boundary.
+
+### M031
+
+- Milestone id: M031.
+- Roadmap item: Target 7. Split validation and experimental shape internals by
+  concern.
+- Hypothesis/objective: Complete the first behavior-preserving split from the
+  large validation module by extracting one pure concern without changing
+  schemas, outputs, validation baselines, physics, or public runtime behavior.
+- Initial gap assessment: `src/validation.rs` still mixed case orchestration,
+  output writing, manifests, observed-data metrics, and pure numeric helper
+  functions in one large file. A full case-loader or exporter split would have
+  high review risk, but pure metric-math helpers were a narrow, testable
+  concern.
+- Files changed:
+  `src/validation.rs`,
+  `src/validation/metric_math.rs`,
+  `scripts/check_repo_consistency.py`,
+  `docs/architecture_boundaries.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a private `validation::metric_math` submodule
+  for pure validation metric helpers (`mean`, `percentile`, distance/centroid,
+  nearest-cloud, spread, and overlap functions), imported those helpers from
+  `src/validation.rs`, and removed the duplicate definitions from the monolith.
+  Added focused unit tests for percentile interpolation/clamping and cloud
+  metric edge cases, plus a repository consistency guard that keeps the
+  extracted helpers out of `src/validation.rs`.
+- Checks run:
+  `cargo fmt --check`;
+  `cargo test validation::metric_math`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, validation baselines, schema fields,
+  output files, generated products, annual frequency, physical probability,
+  risk/exposure semantics, or raw/processed swisstopo geodata are changed or
+  committed. Larger validation and shape-contact splits remain future work.
+- Decision: ACCEPT if final checks pass; Target 7 done for the first narrow
+  concern split.
+- Next proposed milestone: Add deterministic local parallel ensemble
+  execution.

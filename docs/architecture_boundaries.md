@@ -24,11 +24,13 @@ files.
 
 ## Current Large-File Refactor Targets
 
-`src/validation.rs` is the highest-priority split once near-term pilot evidence
-is stable. Suggested extraction order:
+`src/validation.rs` is a high-priority split target now that near-term pilot
+evidence is stable. The first narrow split is complete: pure validation
+metric-math helpers live in `src/validation/metric_math.rs`. Suggested
+remaining extraction order:
 
 1. case loading and strict schema audit helpers;
-2. observed trajectory/contact/deposition metric evaluation;
+2. observed trajectory/contact/deposition metric evaluation beyond pure math;
 3. output exporters and sidecar writers;
 4. geodata and terrain/material provenance adapters;
 5. manifest and checksum assembly;

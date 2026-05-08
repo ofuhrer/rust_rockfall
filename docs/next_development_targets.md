@@ -12,10 +12,10 @@ sensitivity gate, conditional pilot report, GIS package review, scaling review,
 and visual-QA review record have been reconciled against regenerated local
 ignored artifacts. The current critical gap is no longer evidence consistency,
 an unclassified visual-QA gate, or unscoped forest/obstacle omission. The next
-development task should harden real-DEM execution boundaries and module
-maintainability before increasing ensemble size. Larger ensembles should still
-proceed only if convergence, performance, and output-volume evidence justify
-them.
+development task should add deterministic local parallel ensemble execution
+before any CSCS/SLURM orchestration or larger selected-domain runs. Larger
+ensembles should still proceed only if convergence, performance, and
+output-volume evidence justify them.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -285,8 +285,12 @@ Evidence needed: behavior-preserving module splits with no output/schema
 changes, unchanged public validation and `shape_contact_v0` guard tests, and
 unchanged `cargo run -- validate --all` results.
 
-Minimal acceptable deliverable: split one coherent concern first, such as case
-loading/schema audit or metric evaluation, with no unrelated refactor.
+Minimal acceptable deliverable: complete for one narrow concern. The pure
+metric-math helpers used by validation metrics now live in
+`src/validation/metric_math.rs` with focused unit tests, while
+`src/validation.rs` keeps the metric orchestration, case loading, output
+writing, manifests, and public behavior unchanged. `scripts/check_repo_consistency.py`
+guards the module boundary.
 
 What not to do: Do not use this as a vehicle for new physics, new schemas,
 baseline refreshes, or public `shape_contact_v0` execution.
@@ -415,6 +419,10 @@ Estimated order: 10.
   level. DEM-facing fixed-step runtime code propagates structured terrain
   errors through the fallible integration path, with compatibility wrappers
   retained for older analytic callers.
+- One validation-module concern has been split: pure metric-math helpers now
+  live in `src/validation/metric_math.rs`, with behavior-preserving unit tests
+  and a consistency guard. Larger validation and shape splits remain future
+  work.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
@@ -441,7 +449,6 @@ Estimated order: 10.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
-6. Split one coherent validation or shape-contact concern by module boundary.
-7. Add deterministic local parallel ensemble execution.
-8. Design physical/source-frequency semantics.
-9. Implement an annual/physical prototype only if the design gate passes.
+6. Add deterministic local parallel ensemble execution.
+7. Design physical/source-frequency semantics.
+8. Implement an annual/physical prototype only if the design gate passes.
