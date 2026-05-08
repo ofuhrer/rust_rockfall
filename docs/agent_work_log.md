@@ -1251,3 +1251,35 @@ Planning only; these milestones do not implement roadmap item content yet.
   Done bullets with no blocking gaps.
 - Decision: ACCEPT; item 4 done for current Definition of Done.
 - Next proposed milestone: Stop after one item as requested.
+
+### M018
+
+- Milestone id: M018.
+- Roadmap item: 5. DEM and terrain-representation sensitivity benchmark.
+- Hypothesis/objective: Complete one high-value incomplete roadmap item by
+  turning the DEM sensitivity scaffold into a CI-safe dry-runnable fixture.
+- Files changed:
+  `scripts/run_dem_terrain_sensitivity.py`,
+  `tests/test_dem_terrain_sensitivity.py`,
+  `docs/dem_terrain_sensitivity_benchmark.md`,
+  `docs/benchmark_catalog.md`,
+  `docs/README.md`,
+  `docs/repository_scientific_roadmap_review.md`.
+- Implementation summary: Added a deterministic DEM sensitivity dry run using
+  the tiny checked-in swissALTI3D-style DEM fixture. The script writes baseline,
+  3x3-smoothed, and 2x2 coarsened/reexpanded ESRI ASCII variants to a
+  user-provided output directory, emits JSON elevation/slope-proxy/nodata
+  comparison diagnostics, and writes a Markdown report with inventory,
+  invariants, command log, metric table, gates, limitations, and a no-tuning
+  warning.
+- Checks run:
+  `python3 -m unittest tests/test_dem_terrain_sensitivity.py` passed.
+  `python3 scripts/run_dem_terrain_sensitivity.py --output-dir "$(mktemp -d)"`
+  passed.
+  `python3 scripts/check_repo_consistency.py` passed.
+- Reviewer notes: Read-only reviewer accepted Item 5 against all Definition of
+  Done bullets. Minor workspace concern remains: duplicate untracked
+  `docs/* 2.md` files are intentionally left unstaged because they pre-existed
+  this item.
+- Decision: ACCEPT; item 5 done for current Definition of Done.
+- Next proposed milestone: Stop after one item as requested.

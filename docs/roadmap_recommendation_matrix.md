@@ -28,17 +28,18 @@ scientific + Swiss pilot + hazard workflow + validation + reproducibility + alig
 ```
 
 Rank is not a pure sort by composite score. It also reflects dependency order,
-data availability, and the need to turn current scaffolds into evidence or
-executable checks.
+data availability, and the latest repository state: current hazard semantics
+and lightweight GeoTIFF behavior now have meaningful executable coverage, while
+pilot evidence, DEM sensitivity, and package-level GIS QA are still missing.
 
 ## Scoring Matrix
 
 | Rank | Direction | Scientific | Swiss pilot | Hazard workflow | Validation | Reproducibility | Alignment | Impl. risk | Dep. risk | Cal/val confusion risk | Composite |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | Controlled real-site Tschamut/swissALTI3D pilot | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 2 | 18 |
-| 2 | Hazard-map semantics enforcement | 5 | 5 | 5 | 3 | 5 | 5 | 2 | 1 | 2 | 23 |
-| 3 | DEM/terrain sensitivity dry-run fixture | 5 | 5 | 4 | 4 | 5 | 5 | 3 | 2 | 3 | 20 |
-| 4 | Pilot GIS/QGIS package fixture | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 2 | 1 | 20 |
+| 2 | DEM/terrain sensitivity dry-run fixture | 5 | 5 | 4 | 4 | 5 | 5 | 3 | 2 | 3 | 20 |
+| 3 | Pilot GIS/QGIS package fixture | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 2 | 1 | 20 |
+| 4 | Remaining hazard-map semantics enforcement gaps | 4 | 5 | 5 | 3 | 5 | 5 | 2 | 1 | 2 | 22 |
 | 5 | Source-zone and block-scenario V1 tightening | 4 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 3 | 18 |
 | 6 | Validation maturity framework | 4 | 4 | 4 | 5 | 5 | 5 | 1 | 1 | 1 | 28 |
 | 7 | Chant Sura contact and shape-readiness evidence | 5 | 4 | 4 | 5 | 4 | 5 | 3 | 3 | 2 | 19 |
@@ -52,19 +53,21 @@ The controlled Tschamut/swissALTI3D pilot remains first even though its
 scientific score is only medium. It is the gateway workflow experiment and
 should be reported as pilot/confounder evidence, not decisive validation.
 
-Hazard-map semantics enforcement ranks second because the guide now exists.
-The valuable next step is not another semantics narrative; it is executable
-manifest/schema protection against unsupported probability, annual-frequency,
-operational, or risk claims.
-
-DEM/terrain sensitivity moves above several physics tasks. Terrain resolution,
-smoothing, interpolation, cliff/nodata handling, and vegetation representation
-can change map patterns before calibration or active shape decisions are
-meaningful.
+DEM/terrain sensitivity ranks second and moves above several physics tasks.
+Terrain resolution, smoothing, interpolation, cliff/nodata handling, and
+vegetation representation can change map patterns before calibration or active
+shape decisions are meaningful.
 
 The GIS/QGIS package fixture remains immediate. Lightweight GeoTIFF exists, but
 the project still needs an inspectable package boundary with CRS, transform,
-nodata, semantic labels, parity, and QA evidence. Verified COG is deferred.
+nodata, semantic labels, parity, source-zone/context sidecars, and QA evidence.
+Verified COG is deferred.
+
+Remaining hazard-map semantics work ranks fourth. The current guide, denominator
+rules, annual/physical rejection checks, and weighted/unweighted fixture tests
+mean the broad semantics problem is no longer untouched. The valuable next step
+is to close residual manifest/report coverage gaps and keep unsupported
+probability, operational, annual-frequency, and risk claims out of products.
 
 Source-zone/block scenario V1 tightening remains early because national hazard
 mapping depends on stable source and block denominators. Current polygon-only
@@ -102,7 +105,9 @@ G1-G9 gate status, manifest review, visual QA, performance observations,
 terrain-representation observations, and a clear under-run classification.
 
 If private data are not available, the best immediate public work package is
-hazard-map semantics enforcement plus a dry-runnable DEM sensitivity fixture.
+a dry-runnable DEM sensitivity fixture plus a tiny QGIS package fixture, with
+remaining hazard-semantics enforcement folded in where those products expose
+labels or denominators.
 
 ### Best Medium-Term Scientific Work Package
 
@@ -138,25 +143,28 @@ Pause or defer:
 
 ## Roadmap Corrections
 
-1. Treat `docs/hazard_map_semantics.md`, `docs/pilot_gis_package.md`, and
-   `docs/dem_terrain_sensitivity_benchmark.md` as scaffolds now present, not as
-   missing deliverables. The next gap is executable evidence.
-2. Remove or reword stale references to older roadmap files such as
+1. Treat `docs/hazard_map_semantics.md` and `docs/pilot_gis_package.md` as
+   current contracts with focused executable checks, not as empty scaffolds.
+   Their next gap is broader product/package evidence.
+2. Treat `docs/dem_terrain_sensitivity_benchmark.md` as the most important
+   remaining scientific scaffold to make runnable before calibration.
+3. Remove or reword stale references to older roadmap files such as
    `current_state_gap_analysis_next_directions.md` where they imply current
    authority.
-3. Keep `docs/agent_work_log.md` as an audit log only. It should not outrank
+4. Keep `docs/agent_work_log.md` as an audit log only. It should not outrank
    `AGENTS.md`, `README.md`, `docs/next_development_targets.md`, or this
    matrix.
-4. Keep performance measurement coupled to pilot/benchmark workflows.
-5. Make validation maturity labels visible before new validation claims.
+5. Keep performance measurement coupled to pilot/benchmark workflows.
+6. Make validation maturity labels visible before new validation claims.
 
 ## Final Recommendation
 
 The repository should now stop accumulating roadmap prose and start producing
 evidence from the highest-leverage scaffolds. The best next move is the
 controlled Tschamut/swissALTI3D pilot when data are available. Without private
-data, the best public next move is to enforce hazard-map semantics and create a
-small DEM sensitivity fixture. Medium-term scientific progress should focus on
-DEM sensitivity, Chant Sura/shape-readiness, and forest/obstacle scoping.
+data, the best public next move is a dry-runnable DEM sensitivity fixture and a
+tiny QGIS package fixture, while closing any remaining semantics checks exposed
+by those products. Medium-term scientific progress should focus on DEM
+sensitivity, Chant Sura/shape-readiness, and forest/obstacle scoping.
 Medium-term engineering should focus on deterministic local parallel execution
 and streaming reducers only after measured bottlenecks justify them.

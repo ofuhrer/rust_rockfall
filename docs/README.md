@@ -29,6 +29,7 @@ Core documents:
 - `tschamut_swissalti3d_pilot.md`: local/private Tschamut real-site pilot workflow using a manually supplied swissALTI3D-style DEM crop, source-area metadata, optional terrain classes, and existing hazard layers.
 - `tschamut_swissalti3d_controlled_pilot_plan.md`: concrete Work Package 1 execution plan for the controlled Tschamut/swissALTI3D real-site pilot, including private inputs, commands, metrics, QA, and interpretation rules.
 - `tschamut_public_benchmark_reproduction.md`: registration-reviewed public-data Tschamut benchmark reproduction workflow using EnviDat observations, a public swissALTI3D terrain crop, explicit-grid hazard layers, and no parameter tuning.
+- `dem_terrain_sensitivity_benchmark.md`: dry-runnable DEM/terrain-representation sensitivity fixture and real-site scaffold using fixed terrain variants, map-difference metrics, report gates, and an explicit warning not to tune contact parameters to compensate for DEM effects.
 - `public_tschamut_model_improvement_decision.md`: no-tuning decision record choosing the next scientific model-improvement direction after the registered public Tschamut benchmark.
 - `public_tschamut_failure_mode_analysis.md`: grouped public Tschamut failure-mode analysis by block, runout class, impact count, trajectory length, hazard-layer structure, and contact model.
 - `public_tschamut_all_runs_grouped_validation.md`: Work Package 1 all-usable public Tschamut grouped-validation report covering all 80 processed shared LPS/overview runs, exclusions, QA, hazard structure, and next-step criteria.

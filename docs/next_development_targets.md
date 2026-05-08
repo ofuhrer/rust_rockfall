@@ -4,9 +4,12 @@ Status: proposed development directions after the current repository review.
 These are planning recommendations only and do not change simulator behavior.
 
 The previous roadmap correctly avoided "more physics first." The current
-post-`d4bbdc4` state adds useful scaffolds for hazard semantics, pilot GIS
-packaging, source/block semantics, and DEM sensitivity. The next targets should
-therefore convert scaffolds into evidence, fixtures, or enforceable checks.
+post-`332e626` state has moved several items beyond scaffolding: current
+hazard-map semantics, source/block V1 metadata, lightweight GeoTIFF export,
+COG deferment, and several reject/accept paths now have executable coverage.
+The next targets should therefore focus on pilot evidence, DEM sensitivity,
+package-level QA, and the remaining semantic gaps rather than re-documenting
+contracts that already exist.
 
 ## Target 1: Execute The Controlled Real-Site Tschamut/swissALTI3D Pilot
 
@@ -48,50 +51,20 @@ claim operational validation, or promote a default contact-model change.
 
 Estimated order: 1.
 
-## Target 2: Enforce Hazard-Map Semantics In Manifests And Tests
-
-Objective: Convert `docs/hazard_map_semantics.md` from guidance into executable
-manifest/schema checks for current product classes.
-
-Rationale: The semantics guide is a good scaffold, but ambiguous denominators,
-weights, annual labels, and risk language can still leak into products unless
-checked.
-
-Expected value for Swiss hazard-map goal: Very high. It protects every future
-map product from probability and risk overclaims.
-
-Scientific risk: Low to medium. The risk is overformalizing unsupported
-probability modes; keep current modes narrow.
-
-Engineering risk: Low to medium.
-
-Likely affected areas: `src/probabilistic.rs`, `tests/probabilistic_phase1.rs`,
-`tests/fixtures/probabilistic_phase1/`, `scripts/build_hazard_layers.py`,
-`docs/hazard_layers.md`, `docs/hazard_map_semantics.md`.
-
-Evidence needed: tests rejecting annual/physical/risk claims, required
-denominator and normalization fields for current products, clear
-`unweighted_diagnostic` versus `sampling_weighted_conditional` manifests.
-
-Minimal acceptable deliverable: Expanded fixtures and tests covering semantic
-accept/reject cases without adding annual or physical probabilities.
-
-What not to do: Do not invent source frequency, physical block probabilities,
-exposure, vulnerability, or return periods.
-
-Estimated order: 2.
-
-## Target 3: Build A Dry-Runnable DEM/Terrain Sensitivity Fixture
+## Target 2: Build A Dry-Runnable DEM/Terrain Sensitivity Fixture
 
 Objective: Turn `docs/dem_terrain_sensitivity_benchmark.md` into a small
 deterministic benchmark fixture comparing terrain resolution, smoothing,
-interpolation, nodata/cliff handling, and hazard-layer map differences.
+interpolation, nodata/cliff handling, vegetation/surface representation, and
+hazard-layer map differences.
 
 Rationale: Terrain representation can dominate trajectory and hazard-map
-structure. This should be measured before calibration or physics selection.
+structure. This should be measured before calibration or physics selection and
+can be advanced without private data.
 
-Expected value for Swiss hazard-map goal: Very high. It separates DEM artifacts
-from contact or material failures and informs the real-site pilot.
+Expected value for Swiss hazard-map goal: Very high. It protects every future
+pilot interpretation from confusing DEM artifacts with contact, material,
+shape, or source-zone failures.
 
 Scientific risk: Medium. Synthetic perturbations can be arbitrary; they must be
 predeclared and interpreted as sensitivity evidence.
@@ -111,17 +84,19 @@ Minimal acceptable deliverable: A CI-safe dry-run fixture and report template.
 What not to do: Do not tune restitution or terrain classes to compensate for
 DEM changes; do not treat swisstopo terrain as validation evidence by itself.
 
-Estimated order: 3.
+Estimated order: 2.
 
-## Target 4: Produce A Pilot GIS/QGIS Package Fixture
+## Target 3: Produce A Pilot GIS/QGIS Package Fixture
 
-Objective: Convert `docs/pilot_gis_package.md` into a tiny reviewable package
-fixture with CRS-correct GeoTIFF, CSV/ASCII parity, source-zone sidecar,
-manifest labels, nodata styling guidance, and visual QA evidence.
+Objective: Convert `docs/pilot_gis_package.md` from a contract with tiny
+GeoTIFF parity checks into a complete reviewable package fixture with
+CRS-correct GeoTIFF, CSV/ASCII parity, source-zone sidecar, manifest labels,
+nodata styling guidance, and visual QA evidence.
 
-Rationale: The repo has lightweight GeoTIFF output, but not a proven
-QGIS-ready package boundary. Correct CRS, transform, nodata, alignment, and
-semantics matter more than COG optimization for the first pilot.
+Rationale: The repo now proves key GeoTIFF value/metadata behavior and
+explicitly rejects unverified COG claims. The missing step is a QGIS-ready
+package boundary that a pilot reviewer can inspect without interpreting raw
+debug files.
 
 Expected value for Swiss hazard-map goal: High.
 
@@ -133,8 +108,9 @@ Likely affected areas: `scripts/build_hazard_layers.py`,
 `tests/test_hazard_layers.py`, `docs/hazard_layers.md`,
 `docs/pilot_gis_package.md`, `hazard/results/` fixtures if intentionally tiny.
 
-Evidence needed: raster value parity, CRS/transform/nodata checks, explicit
-non-COG labeling, and a QGIS/raster-library smoke inspection note.
+Evidence needed: package-level raster value parity, CRS/transform/nodata
+checks, explicit non-COG labeling, source-zone/context sidecar review, and a
+QGIS/raster-library smoke inspection note.
 
 Minimal acceptable deliverable: A tiny generated/fixture package that proves
 the local review workflow and preserves current hazard values.
@@ -142,14 +118,52 @@ the local review workflow and preserves current hazard values.
 What not to do: Do not add GIS dependencies to the trajectory kernel; do not
 call unverified GeoTIFFs COG; do not conflate hazard with risk.
 
+Estimated order: 3.
+
+## Target 4: Close Remaining Hazard-Map Semantics Enforcement Gaps
+
+Objective: Extend the current executable semantics coverage to any remaining
+manifest/report paths that can emit map labels, denominators, probability
+language, source-zone joins, or unsupported annual/physical/risk claims.
+
+Rationale: `docs/hazard_map_semantics.md` is no longer just guidance; current
+`unweighted_diagnostic` and `sampling_weighted_conditional` modes have
+denominator rules and focused tests. The remaining risk is incomplete coverage
+as outputs multiply.
+
+Expected value for Swiss hazard-map goal: High. It protects future map
+products from probability and risk overclaims without inventing annual
+frequencies.
+
+Scientific risk: Low to medium. The risk is overformalizing unsupported
+probability modes; keep current modes narrow.
+
+Engineering risk: Low to medium.
+
+Likely affected areas: `src/probabilistic.rs`, `tests/probabilistic_phase1.rs`,
+`tests/fixtures/probabilistic_phase1/`, `scripts/build_hazard_layers.py`,
+`tests/test_hazard_layers.py`, `docs/hazard_layers.md`,
+`docs/hazard_map_semantics.md`.
+
+Evidence needed: remaining semantic accept/reject tests, required denominator
+and normalization fields where products are emitted, and language checks that
+prevent annual/physical/risk labels in current products.
+
+Minimal acceptable deliverable: Expanded fixtures and tests covering the
+remaining semantic accept/reject cases without adding annual or physical
+probabilities.
+
+What not to do: Do not invent source frequency, physical block probabilities,
+exposure, vulnerability, or return periods.
+
 Estimated order: 4.
 
 ## Target 5: Tighten Source-Zone And Block-Scenario Semantics V1
 
-Objective: Move source-zone/block semantics from documentation toward
-runner/manifest consistency: stable IDs, polygon-only current support,
-release-cell identity, block-scenario labels, sampling weights, and explicit
-non-support for physical/annual probability.
+Objective: Close remaining source-zone/block-policy gaps after the current V1
+metadata checks: stable IDs, polygon-only current support, release-cell
+identity, block-scenario labels, sampling weights, source-evidence levels, and
+explicit non-support for physical/annual probability.
 
 Rationale: National hazard mapping needs defensible source-zone policy and
 block scenario semantics before annualized products.
@@ -166,12 +180,14 @@ Likely affected areas: `src/probabilistic.rs`,
 `docs/validation_data_schema.md`, `tests/probabilistic_phase1.rs`,
 `validation/cases/probabilistic_phase1_smoke.yaml`.
 
-Evidence needed: join consistency tests, scenario-row propagation review,
-clear separation of release-zone sidecars from probabilistic source-zone
-metadata, and literature/source inventory for future source-zone derivation.
+Evidence needed: any remaining join consistency tests, scenario-row
+propagation review, clear separation of release-zone sidecars from
+probabilistic source-zone metadata, and literature/source inventory for future
+Level 2/3 source-zone derivation.
 
-Minimal acceptable deliverable: Fixture/test coverage for current V1 semantics
-plus a short policy note for future source-zone derivation evidence.
+Minimal acceptable deliverable: Fixture/test coverage for any remaining V1
+semantic gaps plus a short policy note for future source-zone derivation
+evidence.
 
 What not to do: Do not implement a national source-zone algorithm without
 documented slope/geology/inventory assumptions.
@@ -336,9 +352,9 @@ Estimated order: 10.
 
 1. Execute the controlled real-site Tschamut/swissALTI3D pilot if private data
    are available.
-2. Enforce hazard-map semantics in manifests and tests.
-3. Build a dry-runnable DEM/terrain sensitivity fixture.
-4. Produce a pilot GIS/QGIS package fixture.
+2. Build a dry-runnable DEM/terrain sensitivity fixture.
+3. Produce a pilot GIS/QGIS package fixture.
+4. Close remaining hazard-map semantics enforcement gaps.
 5. Tighten source-zone and block-scenario V1 semantics.
 6. Add validation maturity labels.
 7. Expand Chant Sura contact and shape-readiness evidence.

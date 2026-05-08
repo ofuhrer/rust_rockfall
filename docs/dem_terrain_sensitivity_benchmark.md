@@ -1,8 +1,10 @@
 # DEM And Terrain-Representation Sensitivity Benchmark
 
-Status: M014 documentation-only design scaffold. This document defines a future
-dry-runnable or real-site benchmark plan; it does not run private data, generate
-outputs, tune parameters, select physics, or claim operational validation.
+Status: dry-runnable fixture benchmark plus real-site design scaffold. The
+checked-in dry run derives deterministic terrain variants from a tiny public
+swissALTI3D-style DEM fixture and writes map-difference diagnostics to a
+user-provided output directory. It does not run private data, tune parameters,
+select physics, change defaults, or claim operational validation.
 
 ## Purpose
 
@@ -31,6 +33,15 @@ Private swissALTI3D crops, raw swisstopo tiles, and generated private outputs
 must remain ignored. Public/proxy and synthetic variants should stay clearly
 separated from private real-site evidence.
 
+The current dry-runnable fixture uses:
+
+- source DEM: `validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc`;
+- baseline variant: byte-preserved source DEM copy;
+- smoothing variant: 3x3 valid-cell mean with source nodata preserved;
+- coarsening variant: 2x2 valid-cell mean, reexpanded to the source grid;
+- output contract: same extent, dimensions, cell size, row order, and nodata
+  value for all variants.
+
 ## Invariants
 
 Each comparison must keep these fixed unless the report explicitly declares a
@@ -49,6 +60,11 @@ Terrain-class variants may vary only as representation/alignment inputs while
 the active physics parameters and class-to-parameter mapping remain fixed. If a
 class definition or parameter mapping changes, that is a separate
 physics/material experiment, not a DEM/terrain-representation sensitivity run.
+
+Do not tune contact parameters to compensate for DEM effects. A sensitivity
+finding should lead to terrain/provenance/alignment review, uncertainty
+reporting, or a separate predeclared experiment, not hidden restitution,
+friction, roughness, scarring, or release-condition adjustment.
 
 ## Required Metadata
 
@@ -82,7 +98,16 @@ Allowed resampling/coarsening behavior:
 
 ## Metrics And Observations
 
-Future benchmark reports should compare:
+The dry-runnable fixture writes
+`dem_terrain_sensitivity_summary.json` with:
+
+- schema version, source DEM path/checksum/header, and variant metadata;
+- invariant/no-tuning notes;
+- baseline-versus-variant metrics: compared cell count, mean elevation delta,
+  mean absolute elevation delta, maximum absolute elevation delta, elevation
+  RMSE, slope-proxy mean/max/RMSE delta, and nodata mismatch count.
+
+Real-site benchmark reports should additionally compare:
 
 - runout summaries: mean, median, extrema, selected quantiles, and runout error
   against available observations where appropriate;
@@ -132,7 +157,37 @@ Gate statuses:
 
 ## Minimum Dry-Run Or Real-Site Recipe
 
-Expected inputs:
+Dry-runnable public fixture:
+
+```bash
+OUT_DIR="$(mktemp -d)"
+python3 scripts/run_dem_terrain_sensitivity.py --output-dir "$OUT_DIR"
+```
+
+Optional explicit DEM path:
+
+```bash
+OUT_DIR="$(mktemp -d)"
+python3 scripts/run_dem_terrain_sensitivity.py \
+  --source-dem validation/data/processed/swisstopo_pilot/swissalti3d_pilot_crop.asc \
+  --output-dir "$OUT_DIR"
+```
+
+Expected dry-run outputs under the user-provided or temp directory:
+
+```text
+terrain_variants/baseline.asc
+terrain_variants/smooth_3x3_mean.asc
+terrain_variants/coarsen_2x2_mean_reexpanded.asc
+dem_terrain_sensitivity_summary.json
+dem_terrain_sensitivity_report.md
+```
+
+The report includes terrain representation inventory, invariant configuration,
+command log, metric comparison table, gate table, limitations, and an explicit
+warning not to tune contact parameters to compensate for DEM effects.
+
+Real-site expected inputs:
 
 - baseline case or case template;
 - terrain representation inventory and metadata sidecars;
@@ -149,13 +204,13 @@ validation/results/dem_terrain_sensitivity/
 hazard/results/dem_terrain_sensitivity/
 ```
 
-Command/report placeholders:
+Real-site command/report placeholders:
 
 ```text
 prepare terrain variants: <future command or documented manual preprocessing>
 run validation cases:    <future cargo run -- validate --case ...>
 build hazard layers:     <future python3 scripts/build_hazard_layers.py ...>
-write report:            <future M015/M016 report path>
+write report:            <future real-site report path>
 ```
 
 Paired output modes:
@@ -176,10 +231,10 @@ Minimum report gate table:
 | Visual QA | `pass` / `no-go` / `inconclusive` | Artifacts or manual/GIS inspection notes reviewed. |
 | Interpretation boundary | `pass` / `no-go` | No tuning, operational validation, annual-frequency, physical-probability, or risk claim. |
 
-## Future Report Sections
+## Real-Site Report Sections
 
-M015/M016 can turn this scaffold into a report or fixture plan. Expected report
-sections:
+The dry-run script already writes a compact report template. A later real-site
+extension should add these sections:
 
 - terrain representation inventory;
 - invariant configuration table;

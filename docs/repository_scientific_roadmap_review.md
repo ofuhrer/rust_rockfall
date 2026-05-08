@@ -1,7 +1,7 @@
 # Repository Scientific Roadmap Review
 
 Status: strategic, scientific, technical, and roadmap review of the current
-post-`d4bbdc4` repository state. This document is planning-only; it does not
+post-`332e626` repository state. This document is planning-only; it does not
 change simulator behavior, defaults, validation cases, probability semantics,
 or operational claims.
 
@@ -117,11 +117,11 @@ lightweight opt-in GeoTIFF. Sources: `docs/hazard_layers.md`,
 `docs/hazard_map_semantics.md`, `scripts/build_hazard_layers.py`,
 `tests/probabilistic_phase1.rs`, `tests/test_hazard_layers.py`.
 
-The current gap is not "no hazard maps" or "no GeoTIFF." The gap is verified
-pilot packaging: CRS/datum/grid/nodata semantics, QGIS review artifacts,
-production COG/tiled outputs, and executable enforcement for all semantic
-claims. `docs/pilot_gis_package.md` is now a good documentation scaffold, but
-it is not yet an actual package fixture or acceptance test.
+The current gap is not "no hazard maps" or "no GeoTIFF." The repository now
+has executable GeoTIFF value/metadata parity coverage and explicit COG
+deferment tests. The remaining gap is pilot packaging: QGIS review artifacts,
+share-safe visual QA, production COG/tiled outputs, and package-level
+acceptance evidence beyond the tiny raster fixture.
 
 ### Swiss Geodata Readiness
 
@@ -140,17 +140,24 @@ decisive physics validation.
 
 ### Probabilistic Semantics
 
-The repo now has stronger semantic scaffolding than before: current products
-are explicitly `unweighted_diagnostic` or `sampling_weighted_conditional`;
-`conditional_probability`, `physical_probability`, and `annual_frequency` are
-design-only or unsupported. Sources: `docs/hazard_map_semantics.md`,
+The repo now has a fairly mature current-product semantics layer: current
+products are explicitly `unweighted_diagnostic` or
+`sampling_weighted_conditional`; denominator rules are documented for
+trajectory, deposition, maximum-value, standard-error, weighted, and
+significant-impact layers; `conditional_probability`, `physical_probability`,
+and `annual_frequency` are design-only or unsupported. Executable checks cover
+current labels, unsupported annual/physical boundaries, source-zone/scenario
+joins, non-annual GeoTIFF outputs, and COG deferment. Sources:
+`docs/hazard_map_semantics.md`,
 `docs/probabilistic_scenario_model_design.md`,
-`docs/weighted_hazard_layer_review.md`, `tests/probabilistic_phase1.rs`.
+`docs/pilot_gis_package.md`, `tests/probabilistic_phase1.rs`,
+`tests/test_hazard_layers.py`.
 
-The remaining gap is enforcement coverage. Several semantic expectations are
-documented review gates rather than executable manifest/schema checks. That is
-acceptable for the current phase but should become near-term work before more
-map products are produced.
+The remaining semantic gap is narrower than before: denominator/conditioning
+coverage is good for current fixtures, but future Level 2/3 source-zone
+evidence, overlapping source zones, physical probabilities, annual frequency,
+and broader language scanning remain review gates rather than implemented
+products.
 
 ### Scalability And HPC Readiness
 
@@ -298,14 +305,15 @@ evidence, not triggers for hidden tuning or lower thresholds.
 | --- | --- | --- | --- | --- |
 | Controlled pilot plan and prep script | Executed no-tuning real swissALTI3D pilot | Site projects with real DEM/context layers | reproducible public-geodata pipeline | Pilot not yet run |
 | Deterministic release-zone sidecar | defensible source-zone policy | source polygons/lines/areas plus expert context | national source masks | Derivation policy missing |
-| Hazard builder plus semantics docs | accepted GIS/QGIS review package | GIS-ready rasters and legends | tiled COG/GeoTIFF products | Package fixture/QA not executable |
-| Performance benchmark docs | pilot-scale throughput gate | production-oriented ensemble execution | local parallel/chunk/reducer contracts | No local parallel runner/reducer |
+| Hazard builder plus semantics/GIS checks | accepted GIS/QGIS review package | GIS-ready rasters and legends | tiled COG/GeoTIFF products | Tiny GeoTIFF checks exist; package-level QGIS QA missing |
+| Performance benchmark docs and DEM sensitivity fixture | pilot-scale throughput and terrain-representation gates | production-oriented ensemble execution | local parallel/chunk/reducer contracts | No local parallel runner/reducer |
 
 ### Major Scientific Gaps
 
 - equivalent-sphere physics cannot represent shape-driven runout/spread;
 - no active public shape dynamics or multi-contact solver;
-- DEM/terrain representation sensitivity is designed but not executed;
+- DEM/terrain representation sensitivity has a dry-runnable fixture, but no
+  trajectory/hazard-layer real-site sensitivity execution yet;
 - no forest/barrier/fragmentation treatment;
 - terrain classes are parameter lookups, not calibrated materials;
 - scarring lacks field-scale validation and torque/slip coupling.
@@ -323,16 +331,21 @@ evidence, not triggers for hidden tuning or lower thresholds.
 
 - no source-zone physical probability or annual frequency;
 - no block population probability or fragmentation probability;
-- semantic guide exists, but enforcement is partial;
+- current-product semantic checks exist, but future source-frequency,
+  overlapping-zone, physical-probability, and annual-frequency semantics remain
+  unsupported;
 - weighted convergence diagnostics are limited;
 - no scenario uncertainty aggregation across terrain/source/block/model forms.
 
 ### GIS And Geodata Gaps
 
 - no executed real swisstopo pilot;
-- lightweight GeoTIFF exists, but verified COG/tiled products do not;
-- QGIS package spec exists, but package fixture/acceptance test does not;
-- DEM sensitivity benchmark is a scaffold, not a runnable fixture;
+- lightweight GeoTIFF and parity tests exist, but verified COG/tiled products
+  do not;
+- QGIS package spec exists, but share-safe QGIS visual QA/package acceptance
+  evidence does not;
+- DEM sensitivity now has a dry-runnable public fixture; real-site
+  terrain/hazard-layer sensitivity execution remains missing;
 - orthophoto/hillshade QA is procedural, not automated.
 
 ### Performance And Scalability Gaps
@@ -351,8 +364,8 @@ evidence, not triggers for hidden tuning or lower thresholds.
 - stale references remain in at least one pilot doc;
 - local ignored outputs, raw caches, and duplicate `* 2.*` files complicate
   review;
-- current documentation is strong but could overproduce scaffolds without
-  converting them into executable checks or pilot evidence.
+- current documentation is strong, but future work should avoid another round
+  of roadmap prose where executable checks or pilot evidence are now possible.
 
 ## Review Of Existing Roadmap Assumptions
 
@@ -360,8 +373,8 @@ evidence, not triggers for hidden tuning or lower thresholds.
 | --- | --- | --- | --- | --- | --- | --- |
 | Controlled Tschamut/swissALTI3D real-site pilot | Medium: pilot/confounding evidence, not decisive validation | Very high | Medium | Medium if overread | Medium: private crop likely needed | Immediate if data available |
 | Shape-aware block scaffold | Very high long-term | Medium | High | High if public too early | Medium for shape/contact provenance | Medium-term gate and validation first |
-| GeoTIFF/COG hazard raster export | Medium scientific, high interpretation value | High | Medium | Medium for CRS/nodata mistakes | Low | GeoTIFF/QGIS fixture immediate; COG deferred |
-| Source-zone/block semantics | High | High | Medium | High if annual/physical labels appear too early | Medium for source policy evidence | Immediate enforcement and examples |
+| GeoTIFF/COG hazard raster export | Medium scientific, high interpretation value | High | Medium | Medium for CRS/nodata mistakes | Low | Tiny GeoTIFF parity done; QGIS package evidence immediate; COG deferred |
+| Source-zone/block semantics | High | High | Medium | High if annual/physical labels appear too early | Medium for source policy evidence | V1 checks largely present; next is source-derivation evidence policy |
 | Expanded Chant Sura validation | High for contact/shape | Medium | Medium | Medium: proxy contacts can be overread | Low/medium | Medium-term scientific priority |
 | Terrain-class calibration | High only with holdout evidence | High | Medium/high | Very high hidden-tuning risk | Medium | Deferred until pilot + DEM sensitivity + maturity labels |
 | Tiled reducers / trajectory columnar input | Medium scientific, high production value | Very high | High | Low/medium | Low | Defer until local parallel/streaming reducer bottleneck is measured |
@@ -370,14 +383,17 @@ evidence, not triggers for hidden tuning or lower thresholds.
 
 1. The repo is scientifically cautious and has avoided the worst overclaims.
    That discipline should remain central.
-2. The newest docs correctly address several prior gaps, but many are still
-   scaffolds. The next step should produce evidence or executable checks, not
-   just more planning prose.
+2. The newest docs and tests correctly address several prior gaps. Hazard
+   semantics, source/block V1 semantics, and lightweight GeoTIFF contracts now
+   have meaningful executable coverage. The next step should produce pilot
+   evidence, DEM sensitivity evidence, and package-level QA rather than more
+   planning prose.
 3. The best immediate evidence remains the controlled real-site
    Tschamut/swissALTI3D pilot. It should be interpreted as workflow/confounder
    evidence only.
-4. Hazard semantics is now documented well enough to enforce. Manifest/schema
-   checks should be expanded before more map products are promoted.
+4. Hazard semantics should stay conservative. The remaining work is not to add
+   new probability modes, but to keep current checks tight and defer physical
+   or annual labels until source-frequency evidence exists.
 5. DEM representation sensitivity is now recognized, but not yet measured. This
    should precede calibration and should run even without private data using a
    small deterministic fixture.

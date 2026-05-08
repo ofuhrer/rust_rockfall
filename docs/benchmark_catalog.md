@@ -98,11 +98,20 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
 - `validation_swissalti3d_hazard_statistics_pilot`: same Swiss pilot fixture stack with full source-area trajectory/impact output enabled and additive hazard-layer threshold configuration. It supports post-processing into kinetic-energy, jump-height, and velocity exceedance probability rasters without changing simulation physics.
 - `validation_performance_smoke`: tiny Swiss-style source-area case that verifies additive manifest timing and output-volume instrumentation. It is CI-safe and is not a performance budget.
 - `scripts/run_performance_benchmark.py`: opt-in synthetic scale benchmark generator. It writes generated cases under ignored `validation/results/performance_synthetic_scale/` for 50/100/200 release trajectories, baseline/rotational contact modes, trajectory/impact output modes, and hazard layers with/without plots. It is not part of `validate --all`.
-- `docs/dem_terrain_sensitivity_benchmark.md`: documentation-only design
-  scaffold for future DEM and terrain-representation sensitivity benchmarks. It
-  defines comparison intent, invariants, metadata, metrics, and gates; it does
-  not generate cases, run private terrain, write outputs, or participate in
-  `validate --all`.
+- `scripts/run_dem_terrain_sensitivity.py`: dry-runnable DEM and
+  terrain-representation sensitivity fixture. It derives baseline,
+  3x3-smoothed, and 2x2-coarsened/reexpanded ESRI ASCII variants from the tiny
+  checked-in swissALTI3D-style pilot DEM, writes
+  `dem_terrain_sensitivity_summary.json` and
+  `dem_terrain_sensitivity_report.md` under a user-provided output directory,
+  and records no-tuning invariants plus elevation, slope-proxy, and nodata
+  mismatch diagnostics. It does not run simulations, change public benchmark
+  behavior, use private terrain, or participate in `validate --all`.
+- `docs/dem_terrain_sensitivity_benchmark.md`: dry-runnable fixture
+  documentation plus real-site design scaffold for DEM and
+  terrain-representation sensitivity benchmarks. It defines comparison intent,
+  invariants, metadata, metrics, gates, the public fixture command, and the
+  warning not to tune contact parameters to compensate for DEM effects.
 - `validation_chant_sura_trajectory_subset`: primary trajectory/physics validation fixture using three short public Chant Sura reconstructed first-flight segments. It compares trajectory-shape error, translational kinetic-energy relative error, and proxy jump-height error, but does not validate full runout, deposition, or shape-dependent dynamics.
 - `validation_chant_sura_contact`: DEM-backed RF16W200r1 contact-validation fixture using a small public RF16 UAS DEM crop, three reconstructed local-time-reset trajectory segments, and two segment-boundary contact/rebound proxies. It reports trajectory-shape, energy, jump-height-envelope, impact-timing, rebound-velocity, and post-impact kinetic-energy-change errors for the default `translational_v0` model.
 - `validation_chant_sura_contact_rotational`: same DEM-backed contact fixture with opt-in `sphere_rotational_v1`.
