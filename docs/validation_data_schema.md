@@ -654,6 +654,15 @@ classification. The committed template remains `template_not_run`; populated
 local copies belong in ignored pilot directories and generated outputs remain
 outside git.
 
+For populated non-template run-freeze files,
+`scripts/validate_public_real_site_conditional_pilot_run.py
+--print-command-plan` emits
+`public_real_site_conditional_pilot_command_plan_v1`. The plan is dry-run
+orchestration metadata: it lists validators, the frozen `cargo run -- validate`
+case, and the hazard-layer command with explicit grid, conditional thresholds,
+map-package metadata, GeoTIFF export, pilot GIS package manifest, and local
+reducer worker count. It does not execute commands or alter output semantics.
+
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total

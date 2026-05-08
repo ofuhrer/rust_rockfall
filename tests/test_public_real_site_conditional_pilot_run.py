@@ -36,6 +36,37 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
 
         validator.validate_pilot_run(manifest)
 
+    def test_template_run_rejects_command_plan(self) -> None:
+        with self.assertRaisesRegex(validator.PilotRunError, "template_not_run"):
+            validator.build_command_plan(self.load_template())
+
+    def test_predeclared_run_builds_dry_run_command_plan(self) -> None:
+        plan = validator.build_command_plan(self.predeclared_manifest())
+
+        self.assertEqual(
+            plan["schema_version"],
+            "public_real_site_conditional_pilot_command_plan_v1",
+        )
+        command_names = [entry["name"] for entry in plan["commands"]]
+        self.assertEqual(
+            command_names,
+            [
+                "validate_geodata_manifest",
+                "validate_source_scenario_policy",
+                "run_validation_gate",
+                "build_conditional_hazard_layers",
+            ],
+        )
+        hazard_command = plan["commands"][-1]["command"]
+        self.assertIn("--export-geotiff", hazard_command)
+        self.assertIn("--pilot-gis-package", hazard_command)
+        self.assertIn("--reducer-workers", hazard_command)
+        self.assertIn("--grid-xmin", hazard_command)
+        self.assertIn("--kinetic-energy-exceedance-j", hazard_command)
+        self.assertIn("validation/results/probabilistic_phase1_smoke_trajectory.csv", hazard_command)
+        self.assertIn("validation/results/probabilistic_phase1_smoke_trajectories", hazard_command)
+        self.assertIn("hazard/results/public_real_site_pilot_template", hazard_command)
+
     def test_rejects_missing_claim_boundary(self) -> None:
         manifest = copy.deepcopy(self.load_template())
         manifest["claim_boundary"]["unsupported_current_claims"].remove("risk_map")

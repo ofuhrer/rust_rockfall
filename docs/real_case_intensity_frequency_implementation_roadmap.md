@@ -357,6 +357,13 @@ classification. The checked-in template is `template_not_run`; real local runs
 must copy it to an ignored pilot directory and populate private paths and
 checksums before execution.
 
+For populated non-template freeze files, the same validator can print
+`public_real_site_conditional_pilot_command_plan_v1` with the exact upstream
+validators, frozen validation run, and hazard-layer command needed to generate
+conditional curves, selected GeoTIFFs, the GIS package manifest, and local
+reducer manifests. This keeps Phase 6 executable while still leaving generated
+products out of git.
+
 Likely affected areas:
 
 - `validation/cases/`;

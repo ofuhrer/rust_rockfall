@@ -110,6 +110,22 @@ frozen inputs, nonnegative thresholds, explicit grid metadata, local output
 budgets, and pass/no-go/inconclusive gate statuses. It does not run the
 simulator or hazard builder and does not create generated products.
 
+After a non-template freeze file validates, print the dry-run command plan:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_public_real_site_conditional_pilot_run.py \
+  validation/private/<pilot_id>/<run_id>.yaml \
+  --print-command-plan
+```
+
+The command plan validates the geodata manifest and source-scenario policy,
+runs the frozen validation case, and builds conditional hazard layers with the
+predeclared explicit grid, thresholds, map-package metadata, GeoTIFF export,
+pilot GIS package manifest, and deterministic local reducer options. It is a
+dry-run plan only; the user still executes the listed commands intentionally,
+and generated outputs remain under ignored validation and hazard result roots.
+
 ## Claim Boundary
 
 Phase 1 artifacts may claim:
