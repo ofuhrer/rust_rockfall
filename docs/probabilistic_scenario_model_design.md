@@ -35,6 +35,9 @@ documented separately in
 The inactive overlap-adjusted reducer and uncertainty-propagation precondition
 schema is documented in
 `docs/physical_frequency_reducer_preconditions.md`.
+The inactive validation/calibration review gate for future frequency products
+is documented in
+`docs/annual_physical_validation_calibration_review_gate.md`.
 
 ## Scenario Identity
 
@@ -430,6 +433,10 @@ evidence exists for current products.
 inactive precondition template for future overlap-adjusted reducers and
 uncertainty propagation. Its selected status records that those preconditions
 are not yet satisfied for current products.
+`validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml`
+is the inactive review template for future frequency-product calibration,
+validation, holdout, and maturity review. Its selected status records that the
+review has not passed for current products.
 
 ### Current Unweighted Validation Behavior
 

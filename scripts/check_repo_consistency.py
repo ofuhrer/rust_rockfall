@@ -155,6 +155,7 @@ def main() -> int:
     errors.extend(check_source_frequency_evidence_contract())
     errors.extend(check_block_release_probability_evidence_contract())
     errors.extend(check_physical_frequency_reducer_preconditions())
+    errors.extend(check_annual_physical_validation_calibration_review_gate())
 
     if errors:
         for error in errors:
@@ -533,6 +534,85 @@ def check_physical_frequency_reducer_preconditions() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_physical_frequency_reducer_preconditions.py omits {test_name}")
+    return errors
+
+
+def check_annual_physical_validation_calibration_review_gate() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/annual_physical_validation_calibration_review_gate.md",
+        ROOT / "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml",
+        ROOT / "scripts/validate_annual_physical_validation_calibration_review_gate.py",
+        ROOT / "tests/test_annual_physical_validation_calibration_review_gate.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(
+                f"annual/physical validation-calibration review gate path is missing: {path.relative_to(ROOT)}"
+            )
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/annual_physical_validation_calibration_review_gate.md").read_text()
+    template = (
+        ROOT / "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml"
+    ).read_text()
+    validator = (
+        ROOT / "scripts/validate_annual_physical_validation_calibration_review_gate.py"
+    ).read_text()
+    tests = (ROOT / "tests/test_annual_physical_validation_calibration_review_gate.py").read_text()
+
+    for term in (
+        "Status: inactive review-gate contract",
+        "validation/calibration review package",
+        "review_not_passed",
+        "no-tuning rule",
+        "swisstopo terrain and context layers are treated as input geodata",
+        "return-period claims",
+    ):
+        if term not in doc:
+            errors.append(f"docs/annual_physical_validation_calibration_review_gate.md omits {term!r}")
+
+    for term in (
+        "schema_version: annual_physical_validation_calibration_review_gate_v1",
+        "record_status: review_not_passed",
+        "prototype_authorized: false",
+        "review_mode: annual_physical_validation_calibration_review_only",
+        "runtime_support_added: false",
+        "swisstopo_input_geodata_is_validation_evidence: false",
+        "annual_frequency_supported: false",
+    ):
+        if term not in template:
+            errors.append(
+                "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_annual_physical_validation_calibration_review_gate",
+        "REQUIRED_REFERENCE_FIELDS",
+        "validate_dataset_separation",
+        "swisstopo geodata must not be listed as validation or holdout evidence",
+        "prototype_authorized must be false",
+    ):
+        if symbol not in validator:
+            errors.append(
+                "scripts/validate_annual_physical_validation_calibration_review_gate.py "
+                f"omits {symbol!r}"
+            )
+
+    for test_name in (
+        "test_selected_template_records_review_not_passed",
+        "test_accepts_complete_candidate_for_design_review_only",
+        "test_rejects_missing_record_reference",
+        "test_rejects_missing_no_tuning_rule",
+        "test_rejects_calibration_validation_overlap",
+        "test_rejects_swisstopo_as_validation_evidence",
+    ):
+        if test_name not in tests:
+            errors.append(
+                f"tests/test_annual_physical_validation_calibration_review_gate.py omits {test_name}"
+            )
     return errors
 
 
@@ -1253,6 +1333,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/source_frequency_evidence_contract.md",
         ROOT / "docs/block_release_probability_evidence_contract.md",
         ROOT / "docs/physical_frequency_reducer_preconditions.md",
+        ROOT / "docs/annual_physical_validation_calibration_review_gate.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
     ]

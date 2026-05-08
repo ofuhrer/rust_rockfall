@@ -1,0 +1,48 @@
+schema_version: annual_physical_validation_calibration_review_gate_v1
+record_id: annual_physical_validation_calibration_review_gate_template_v1
+record_status: review_not_passed
+prototype_authorized: false
+operational_status: research_diagnostic
+review_mode: annual_physical_validation_calibration_review_only
+product_scope:
+  current_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products_reviewed:
+    - physical_probability
+    - annual_intensity_frequency
+  runtime_support_added: false
+required_record_references:
+  source_frequency_evidence_record: null
+  block_release_probability_evidence_record: null
+  physical_frequency_reducer_preconditions_record: null
+calibration_review:
+  status: not_reviewed
+  objective: null
+  dataset_ids: []
+  no_tuning_to_validation_or_map_pattern: true
+validation_review:
+  status: not_reviewed
+  objective: null
+  dataset_ids: []
+  maturity_target: null
+  current_maturity_cap: null
+holdout_review:
+  status: not_reviewed
+  dataset_ids: []
+  external_generalization_required: true
+dataset_role_boundaries:
+  calibration_validation_holdout_overlap_allowed: false
+  swisstopo_input_geodata_is_validation_evidence: false
+  exposure_or_vulnerability_required_for_risk: true
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - validation/calibration review has not passed for annual or physical products
+  - swisstopo terrain remains input geodata, not validation evidence
+  - current products remain conditional diagnostics

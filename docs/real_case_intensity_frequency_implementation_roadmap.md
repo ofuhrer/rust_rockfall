@@ -181,6 +181,11 @@ The inactive physical frequency reducer precondition contract in
 blocker by defining overlap-adjusted reducer and uncertainty-propagation
 preconditions and rejection checks, but the selected template still records
 `preconditions_not_satisfied`.
+The inactive annual/physical validation-calibration review gate in
+`docs/annual_physical_validation_calibration_review_gate.md` closes the next
+review blocker by defining calibration, validation, holdout, maturity, and
+claim-boundary checks, but the selected template still records
+`review_not_passed`.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -742,7 +747,7 @@ gate.
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
-| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, and reducer-precondition contracts now exist, but accepted evidence and implemented reducer support remain deferred. |
+| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, reducer-precondition, and validation/calibration review contracts now exist, but accepted evidence and implemented reducer support remain deferred. |
 
 ## Explicit Deferrals
 

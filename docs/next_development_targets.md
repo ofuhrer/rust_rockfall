@@ -468,6 +468,14 @@ Estimated order: 10.
   `scripts/validate_physical_frequency_reducer_preconditions.py` define and
   validate future reducer preconditions while keeping the selected template at
   `preconditions_not_satisfied`.
+- The validation/calibration review blocker is partially resolved as an
+  inactive review-gate contract.
+  `docs/annual_physical_validation_calibration_review_gate.md`,
+  `validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml`,
+  and
+  `scripts/validate_annual_physical_validation_calibration_review_gate.py`
+  define and validate future review records while keeping the selected
+  template at `review_not_passed`.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -493,5 +501,5 @@ Estimated order: 10.
 6. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
-   and validation/calibration review.
+   and accepted validation/calibration review.
 7. Implement an annual/physical prototype only if the design gate passes.

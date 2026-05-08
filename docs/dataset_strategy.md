@@ -155,6 +155,11 @@ default-model decision.
   `docs/physical_frequency_reducer_preconditions.md`. They must preserve
   calibration/validation separation and must not turn swisstopo input geodata
   into validation evidence.
+- **Future validation/calibration review:** annual or physical
+  frequency-product review records are governed by
+  `docs/annual_physical_validation_calibration_review_gate.md`. They must keep
+  calibration, validation, and holdout datasets separate, and must not treat
+  swisstopo input geodata as validation evidence by itself.
 
 ## Inconsistencies and Gaps
 
@@ -205,6 +210,9 @@ default-model decision.
   separate from current conditional reducer outputs. It may require swisstopo
   geometry provenance, but not use swisstopo input geodata as validation
   evidence by itself.
+- Keep any future annual/physical validation-calibration review record separate
+  from current conditional pilot reports. It may cite swisstopo for geodata
+  provenance, but not as validation or holdout evidence by itself.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and
   small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.

@@ -91,6 +91,9 @@ into `decision_log.md`; they do not override the current roadmaps.
   reducer and uncertainty-propagation precondition schema, validator, and
   template for closing one design-gate blocker without enabling annual or
   physical products.
+- `annual_physical_validation_calibration_review_gate.md`: inactive
+  validation/calibration review-gate schema, validator, and template for
+  closing one design-gate blocker without enabling annual or physical products.
 - `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
   probabilistic scenario/source-zone propagation.
 - `probabilistic_hazard_phase1_closure.md`: implemented Level 1/2

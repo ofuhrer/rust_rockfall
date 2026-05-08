@@ -145,7 +145,7 @@ by `scripts/validate_physical_source_frequency_design_gate.py`.
 
 ## Blocker Resolution Status
 
-Three schema blockers are partially closed:
+Four schema blockers are partially closed:
 
 - `docs/source_frequency_evidence_contract.md` defines an inactive
   source-frequency evidence contract, with template
@@ -163,6 +163,12 @@ Three schema blockers are partially closed:
   `validation/templates/physical_frequency_reducer_preconditions_v1.yaml` and
   validator `scripts/validate_physical_frequency_reducer_preconditions.py`.
   The template records `preconditions_not_satisfied`.
+- `docs/annual_physical_validation_calibration_review_gate.md` defines an
+  inactive validation/calibration review gate, with template
+  `validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml`
+  and validator
+  `scripts/validate_annual_physical_validation_calibration_review_gate.py`.
+  The template records `review_not_passed`.
 
 These contracts do not authorize annual or physical products.
 
@@ -172,4 +178,4 @@ Remaining blockers before prototype authorization:
 - accepted block-scenario and release-cell physical probability evidence;
 - implemented and accepted overlap-adjusted reducers and uncertainty
   propagation;
-- validation/calibration review for frequency products.
+- accepted validation/calibration review for frequency products.

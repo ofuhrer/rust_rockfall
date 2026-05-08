@@ -116,6 +116,7 @@ Core documentation:
 - `docs/source_frequency_evidence_contract.md`
 - `docs/block_release_probability_evidence_contract.md`
 - `docs/physical_frequency_reducer_preconditions.md`
+- `docs/annual_physical_validation_calibration_review_gate.md`
 - `docs/benchmark_catalog.md`
 - `docs/datasets.md`
 - `docs/validation_data_schema.md`

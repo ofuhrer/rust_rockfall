@@ -35,6 +35,12 @@ Future overlap-adjusted reducer and uncertainty-propagation preconditions are
 governed by `docs/physical_frequency_reducer_preconditions.md`. Those records
 must keep calibration, uncertainty design, and validation review separate
 before any later prototype can use frequency products.
+Future annual or physical frequency-product validation/calibration review is
+governed by
+`docs/annual_physical_validation_calibration_review_gate.md`. Those records
+must separate calibration datasets, validation datasets, and holdout datasets,
+and must record maturity limits before any later prototype can use frequency
+products.
 
 ## Commands
 
@@ -90,6 +96,9 @@ review.
 The inactive physical frequency reducer precondition template also does not
 change current products; it only defines overlap, deterministic merge, and
 uncertainty-propagation checks for future review.
+The inactive annual/physical validation-calibration review template also does
+not change current products; it only defines calibration, validation, holdout,
+maturity, and claim-boundary checks for future review.
 
 Mel de la Niva is registered as an external high-energy/generalization
 benchmark. Its public Zenodo data are large and remain ignored locally. The
