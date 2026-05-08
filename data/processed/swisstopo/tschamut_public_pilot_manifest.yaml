@@ -124,7 +124,7 @@ preprocessing_plan:
       ymin: 1167384.0
       xmax: 2696976.0
       ymax: 1167992.0
-  dem_terrain_sensitivity_status: not_run_priority_3
+  dem_terrain_sensitivity_status: priority_3_gate_available_blocked_until_processed_dem_exists
   visual_qa_status: not_run
   missing_download_path:
     behavior: script exits with an explicit download or checksum error when public resources cannot be fetched or verified

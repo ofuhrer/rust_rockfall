@@ -10,6 +10,10 @@ from pathlib import Path
 
 import scripts.run_dem_terrain_sensitivity as dem_sensitivity
 
+ROOT = Path(__file__).resolve().parents[1]
+TSCHAMUT_MANIFEST = ROOT / "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml"
+TSCHAMUT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+
 
 class DemTerrainSensitivityTests(unittest.TestCase):
     def test_build_summary_writes_deterministic_variants_and_metrics(self) -> None:
@@ -107,6 +111,52 @@ class DemTerrainSensitivityTests(unittest.TestCase):
             )
             with self.assertRaises(dem_sensitivity.DemSensitivityError):
                 dem_sensitivity.build_summary(bad_dem, Path(tmp) / "out")
+
+    def test_tschamut_pilot_missing_dem_writes_blocked_gate_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            context = dem_sensitivity.build_pilot_context(TSCHAMUT_MANIFEST, TSCHAMUT_POLICY)
+            summary = dem_sensitivity.build_missing_pilot_dem_summary(context, output_dir)
+
+            self.assertEqual(summary["sensitivity_status"], "blocked_missing_processed_dem")
+            self.assertEqual(summary["gate_status"], "no-go")
+            self.assertEqual(summary["pilot_context"]["pilot_id"], "tschamut_public_pilot")
+            self.assertTrue(summary["invariants"]["source_scenario_inputs_fixed"])
+            self.assertFalse(summary["pilot_context"]["claim_boundary"]["annual_frequency_supported"])
+            self.assertFalse(summary["pilot_context"]["claim_boundary"]["physical_probability_supported"])
+            self.assertEqual(
+                summary["pilot_context"]["fixed_source_scenario_inputs"]["release_cell_count"],
+                10,
+            )
+            self.assertEqual(
+                summary["pilot_context"]["fixed_source_scenario_inputs"]["block_scenario_count"],
+                3,
+            )
+            self.assertEqual(summary["terrain_variants"], [])
+
+            summary_path = output_dir / "dem_terrain_sensitivity_summary.json"
+            report_path = output_dir / "dem_terrain_sensitivity_report.md"
+            self.assertTrue(summary_path.exists())
+            self.assertTrue(report_path.exists())
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn("## Selected Pilot Context", report)
+            self.assertIn("blocked_missing_processed_dem", report)
+            self.assertIn("conditional sampling only", report)
+            self.assertIn("not a model result", report)
+
+    def test_tschamut_pilot_context_rejects_policy_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bad_policy = Path(tmp) / "bad_policy.yaml"
+            bad_policy.write_text(
+                TSCHAMUT_POLICY.read_text(encoding="utf-8").replace(
+                    "pilot_id: tschamut_public_pilot",
+                    "pilot_id: other_pilot",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(dem_sensitivity.DemSensitivityError):
+                dem_sensitivity.build_pilot_context(TSCHAMUT_MANIFEST, bad_policy)
 
 
 if __name__ == "__main__":

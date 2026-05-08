@@ -15,7 +15,12 @@ import math
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
+
+try:
+    import yaml  # type: ignore
+except ImportError:  # pragma: no cover - CLI dependency check handles this.
+    yaml = None
 
 
 SCHEMA_VERSION = "dem_terrain_sensitivity_summary_v1"
@@ -122,6 +127,112 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def read_yaml(path: Path) -> dict[str, Any]:
+    if yaml is None:
+        raise DemSensitivityError("PyYAML is required; run through the project uv environment")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise DemSensitivityError(f"expected YAML mapping: {path}")
+    return data
+
+
+def build_pilot_context(manifest_path: Path, policy_path: Path) -> dict[str, Any]:
+    manifest = read_yaml(manifest_path)
+    policy = read_yaml(policy_path)
+
+    pilot_id = require_text(manifest.get("pilot_id"), "manifest.pilot_id")
+    if require_text(policy.get("pilot_id"), "policy.pilot_id") != pilot_id:
+        raise DemSensitivityError("manifest and source/scenario policy pilot_id values differ")
+    selected_domain = require_mapping(manifest.get("selected_domain"), "manifest.selected_domain")
+    manifest_policy_path = Path(str(selected_domain.get("source_scenario_policy_path")))
+    if manifest_policy_path.resolve() != policy_path.resolve():
+        raise DemSensitivityError("manifest selected_domain.source_scenario_policy_path does not match policy path")
+
+    crs = require_mapping(
+        selected_domain.get("coordinate_reference_system"),
+        "manifest.selected_domain.coordinate_reference_system",
+    )
+    if crs.get("epsg") != 2056 or crs.get("vertical_datum") != "LN02":
+        raise DemSensitivityError("selected pilot domain must use EPSG:2056 and LN02")
+
+    preprocessing = require_mapping(manifest.get("preprocessing_plan"), "manifest.preprocessing_plan")
+    processed_dem = require_mapping(preprocessing.get("processed_dem"), "preprocessing_plan.processed_dem")
+    source_dem_path = Path(require_text(processed_dem.get("path"), "processed_dem.path"))
+    for key in (
+        "metadata_path",
+        "format",
+        "resolution_m",
+        "width_px",
+        "height_px",
+        "nodata",
+        "processed_sha256",
+        "crop_extent_lv95_m",
+    ):
+        if key not in processed_dem:
+            raise DemSensitivityError(f"processed_dem missing required field: {key}")
+
+    source_policy = require_mapping(policy.get("source_zone_policy"), "policy.source_zone_policy")
+    release_sampling = require_mapping(source_policy.get("release_sampling"), "source_zone_policy.release_sampling")
+    block_policy = require_mapping(policy.get("block_scenario_policy"), "policy.block_scenario_policy")
+    release_cells = require_sequence(release_sampling.get("release_cells"), "release_sampling.release_cells")
+    block_scenarios = require_sequence(block_policy.get("scenarios"), "block_scenario_policy.scenarios")
+    if release_sampling.get("sampling_weight_semantics") != "conditional_sampling_only":
+        raise DemSensitivityError("release-cell weights must remain conditional_sampling_only")
+    if block_policy.get("sampling_weight_semantics") != "conditional_sampling_only":
+        raise DemSensitivityError("block-scenario weights must remain conditional_sampling_only")
+    if release_sampling.get("physical_release_probability_supported") is not False:
+        raise DemSensitivityError("physical release probability must be unsupported for Priority 3")
+    if release_sampling.get("annual_source_frequency_supported") is not False:
+        raise DemSensitivityError("annual source frequency must be unsupported for Priority 3")
+
+    return {
+        "pilot_id": pilot_id,
+        "manifest_path": str(manifest_path),
+        "source_scenario_policy_path": str(policy_path),
+        "domain_name": selected_domain.get("name"),
+        "terrain_source_dem": {
+            "path": str(source_dem_path),
+            "metadata_path": processed_dem["metadata_path"],
+            "expected_sha256": processed_dem["processed_sha256"],
+            "format": processed_dem["format"],
+            "resolution_m": processed_dem["resolution_m"],
+            "width_px": processed_dem["width_px"],
+            "height_px": processed_dem["height_px"],
+            "nodata": processed_dem["nodata"],
+            "crop_extent_lv95_m": processed_dem["crop_extent_lv95_m"],
+            "crs_epsg": 2056,
+            "vertical_datum": "LN02",
+        },
+        "fixed_source_scenario_inputs": {
+            "source_zone_id": source_policy.get("source_zone_id"),
+            "source_zone_evidence_level": source_policy.get("evidence_level"),
+            "release_cell_count": len(release_cells),
+            "release_cell_ids": [cell.get("release_cell_id") for cell in release_cells],
+            "block_scenario_count": len(block_scenarios),
+            "block_scenario_ids": [
+                scenario.get("block_scenario_id") for scenario in block_scenarios
+            ],
+            "sampling_weight_semantics": "conditional_sampling_only",
+            "physical_release_probability_supported": False,
+            "annual_source_frequency_supported": False,
+        },
+        "preparation_commands": preprocessing.get("commands", []),
+        "rerun_command_after_preparation": (
+            "UV_CACHE_DIR=/tmp/uv-cache uv run python "
+            "scripts/run_dem_terrain_sensitivity.py "
+            f"--pilot-manifest {manifest_path} "
+            f"--source-scenario-policy {policy_path} "
+            "--output-dir <ignored-output-dir>"
+        ),
+        "claim_boundary": {
+            "swisstopo_terrain_is_validation_evidence": False,
+            "annual_frequency_supported": False,
+            "physical_probability_supported": False,
+            "risk_or_operational_claim_supported": False,
+        },
+    }
 
 
 def smooth_3x3_mean(dem: AsciiDem) -> list[list[float]]:
@@ -259,7 +370,11 @@ def compare_to_baseline(
     }
 
 
-def build_summary(source_dem: Path, output_dir: Path) -> dict[str, object]:
+def build_summary(
+    source_dem: Path,
+    output_dir: Path,
+    pilot_context: dict[str, Any] | None = None,
+) -> dict[str, object]:
     dem = read_ascii_dem(source_dem)
     output_dir.mkdir(parents=True, exist_ok=True)
     variants_dir = output_dir / "terrain_variants"
@@ -320,6 +435,8 @@ def build_summary(source_dem: Path, output_dir: Path) -> dict[str, object]:
 
     summary: dict[str, object] = {
         "schema_version": SCHEMA_VERSION,
+        "sensitivity_status": "completed_terrain_variant_metrics",
+        "gate_status": "pass",
         "source_dem": {
             "path": str(source_dem),
             "sha256": sha256_file(source_dem),
@@ -341,6 +458,66 @@ def build_summary(source_dem: Path, output_dir: Path) -> dict[str, object]:
             "execution, calibration, operational validation, annual-frequency, or risk claim."
         ),
     }
+    if pilot_context is not None:
+        summary["pilot_context"] = pilot_context
+    summary_path = output_dir / "dem_terrain_sensitivity_summary.json"
+    with summary_path.open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+
+    report_path = output_dir / "dem_terrain_sensitivity_report.md"
+    report_path.write_text(render_report(summary, summary_path, report_path), encoding="utf-8")
+    return summary
+
+
+def build_missing_pilot_dem_summary(
+    pilot_context: dict[str, Any],
+    output_dir: Path,
+) -> dict[str, object]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    source_dem = pilot_context["terrain_source_dem"]
+    summary: dict[str, object] = {
+        "schema_version": SCHEMA_VERSION,
+        "sensitivity_status": "blocked_missing_processed_dem",
+        "gate_status": "no-go",
+        "source_dem": {
+            "path": source_dem["path"],
+            "expected_sha256": source_dem["expected_sha256"],
+            "format": source_dem["format"],
+            "header": {
+                "ncols": source_dem["width_px"],
+                "nrows": source_dem["height_px"],
+                "cellsize": source_dem["resolution_m"],
+                "NODATA_value": source_dem["nodata"],
+                "crs_epsg": source_dem["crs_epsg"],
+                "vertical_datum": source_dem["vertical_datum"],
+            },
+        },
+        "terrain_variants": [],
+        "invariants": {
+            "simulation_physics_changed": False,
+            "simulation_defaults_changed": False,
+            "validation_baselines_changed": False,
+            "hazard_semantics_changed": False,
+            "contact_parameter_tuning_allowed": False,
+            "source_scenario_inputs_fixed": True,
+            "note": NO_TUNING_WARNING,
+        },
+        "pairwise_baseline_comparisons": [],
+        "pilot_context": pilot_context,
+        "blocker": {
+            "reason": "processed pilot DEM is absent from the ignored local path",
+            "missing_path": source_dem["path"],
+            "recovery": (
+                "run the documented public preparation command or preplace verified "
+                "public downloads, then rerun without --allow-missing-source-dem"
+            ),
+        },
+        "diagnostic_scope": (
+            "Selected-domain DEM sensitivity gate only; no simulator execution, "
+            "calibration, operational validation, annual-frequency, physical-probability, or risk claim."
+        ),
+    }
     summary_path = output_dir / "dem_terrain_sensitivity_summary.json"
     with summary_path.open("w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2, sort_keys=True)
@@ -355,23 +532,55 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
     source = summary["source_dem"]  # type: ignore[index]
     variants = summary["terrain_variants"]  # type: ignore[index]
     comparisons = summary["pairwise_baseline_comparisons"]  # type: ignore[index]
+    pilot_context = summary.get("pilot_context")
+    status = summary.get("sensitivity_status", "completed_terrain_variant_metrics")
     lines = [
         "# DEM Terrain Sensitivity Report",
         "",
-        "Status: dry-runnable fixture report. This report compares terrain representations only.",
+        f"Status: {status}. This report compares or gates terrain representations only.",
         "",
         f"> {NO_TUNING_WARNING}",
         "",
-        "## Terrain Representation Inventory",
-        "",
-        "| Variant | Method | Same grid | Nodata policy | Output |",
-        "| --- | --- | --- | --- | --- |",
     ]
-    for variant in variants:  # type: ignore[assignment]
-        lines.append(
-            "| {id} | {method} | {same_grid_as_source} | {nodata_policy} | `{path}` |".format(
-                **variant
+
+    if isinstance(pilot_context, dict):
+        fixed_inputs = pilot_context["fixed_source_scenario_inputs"]
+        lines.extend(
+            [
+                "## Selected Pilot Context",
+                "",
+                "| Item | Value |",
+                "| --- | --- |",
+                f"| Pilot id | `{pilot_context['pilot_id']}` |",
+                f"| Geodata manifest | `{pilot_context['manifest_path']}` |",
+                f"| Source/scenario policy | `{pilot_context['source_scenario_policy_path']}` |",
+                f"| Source zone | `{fixed_inputs['source_zone_id']}` |",
+                f"| Release cells | {fixed_inputs['release_cell_count']} |",
+                f"| Block scenarios | {fixed_inputs['block_scenario_count']} |",
+                "| Sampling semantics | conditional sampling only |",
+                "| Annual/physical probability semantics | unsupported |",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Terrain Representation Inventory",
+            "",
+            "| Variant | Method | Same grid | Nodata policy | Output |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+    if variants:
+        for variant in variants:  # type: ignore[assignment]
+            lines.append(
+                "| {id} | {method} | {same_grid_as_source} | {nodata_policy} | `{path}` |".format(
+                    **variant
+                )
             )
+    else:
+        lines.append(
+            "| blocked_missing_processed_dem | not-run | false | source nodata policy pending local DEM | `(missing local processed DEM)` |"
         )
 
     lines.extend(
@@ -394,6 +603,17 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
             f"| Source DEM | `{source['path']}` |",  # type: ignore[index]
             f"| Summary JSON | `{summary_path}` |",
             f"| Report | `{report_path}` |",
+        ]
+    )
+    if isinstance(pilot_context, dict):
+        lines.extend(
+            [
+                f"| Preparation command | `{'; '.join(pilot_context.get('preparation_commands', []))}` |",
+                f"| Rerun command | `{pilot_context['rerun_command_after_preparation']}` |",
+            ]
+        )
+    lines.extend(
+        [
             "",
             "## Metric Comparison",
             "",
@@ -401,15 +621,32 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
             "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
-    for comparison in comparisons:  # type: ignore[assignment]
-        metrics = comparison["metrics"]
-        lines.append(
-            "| {baseline_variant} vs {comparison_variant} | {compared_cell_count} | {mean_elevation_delta_m:.6f} | {mean_abs_elevation_delta_m:.6f} | {max_abs_elevation_delta_m:.6f} | {rmse_elevation_delta_m:.6f} | {mean_abs_slope_proxy_delta:.6f} | {nodata_mismatch_count} |".format(
-                baseline_variant=comparison["baseline_variant"],
-                comparison_variant=comparison["comparison_variant"],
-                **metrics,
+    if comparisons:
+        for comparison in comparisons:  # type: ignore[assignment]
+            metrics = comparison["metrics"]
+            lines.append(
+                "| {baseline_variant} vs {comparison_variant} | {compared_cell_count} | {mean_elevation_delta_m:.6f} | {mean_abs_elevation_delta_m:.6f} | {max_abs_elevation_delta_m:.6f} | {rmse_elevation_delta_m:.6f} | {mean_abs_slope_proxy_delta:.6f} | {nodata_mismatch_count} |".format(
+                    baseline_variant=comparison["baseline_variant"],
+                    comparison_variant=comparison["comparison_variant"],
+                    **metrics,
+                )
             )
-        )
+    else:
+        lines.append("| baseline vs variants | 0 | n/a | n/a | n/a | n/a | n/a | 0 |")
+
+    gate_lines = [
+        "| Deterministic terrain variants | pass | Variants are derived by fixed local mean operations. |",
+        "| Same-grid comparison | pass | All outputs preserve source extent, cell size, dimensions, and nodata value. |",
+        "| Metric diagnostics | pass | Elevation, slope-proxy, and nodata-mismatch metrics are written to JSON. |",
+        "| Variant invariants | pass | No simulator physics, defaults, validation baselines, or hazard semantics changed. |",
+    ]
+    if summary.get("gate_status") == "no-go":
+        gate_lines = [
+            "| Deterministic terrain variants | no-go | Processed pilot DEM is absent, so variants were not generated. |",
+            "| Same-grid comparison | no-go | Grid metadata is recorded from the manifest; local DEM header is not available. |",
+            "| Metric diagnostics | no-go | Metrics require the ignored processed DEM to exist locally. |",
+            "| Variant invariants | pass | Source, scenario, physics, defaults, and semantics remain fixed. |",
+        ]
 
     lines.extend(
         [
@@ -418,10 +655,7 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
             "",
             "| Gate | Status | Required note |",
             "| --- | --- | --- |",
-            "| Deterministic terrain variants | pass | Variants are derived by fixed local mean operations. |",
-            "| Same-grid comparison | pass | All outputs preserve source extent, cell size, dimensions, and nodata value. |",
-            "| Metric diagnostics | pass | Elevation, slope-proxy, and nodata-mismatch metrics are written to JSON. |",
-            "| Variant invariants | pass | No simulator physics, defaults, validation baselines, or hazard semantics changed. |",
+            *gate_lines,
             "| Interpretation boundary | pass | Terrain sensitivity only; no operational validation, annual-frequency, or risk claim. |",
             "",
             "## Limitations",
@@ -430,6 +664,7 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
             "- The default fixture is tiny and deterministic; it tests workflow mechanics, not Swiss terrain representativeness.",
             "- Slope proxy is a local map-difference diagnostic, not the simulator normal calculation.",
             "- swisstopo-style terrain inputs are operational geodata context, not validation evidence by themselves.",
+            "- A no-go status for the selected pilot means local public downloads or processed DEM preparation are missing; it is not a model result.",
             "",
             "## No-Tuning Warning",
             "",
@@ -440,6 +675,24 @@ def render_report(summary: dict[str, object], summary_path: Path, report_path: P
     return "\n".join(lines)
 
 
+def require_mapping(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise DemSensitivityError(f"{label} must be a mapping")
+    return value
+
+
+def require_sequence(value: Any, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise DemSensitivityError(f"{label} must be a list")
+    return value
+
+
+def require_text(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise DemSensitivityError(f"{label} must be a non-empty string")
+    return value
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate deterministic DEM terrain-sensitivity variants and diagnostics."
@@ -447,8 +700,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source-dem",
         type=Path,
-        default=DEFAULT_SOURCE_DEM,
+        default=None,
         help=f"ESRI ASCII DEM fixture or user-supplied DEM crop (default: {DEFAULT_SOURCE_DEM})",
+    )
+    parser.add_argument(
+        "--pilot-manifest",
+        type=Path,
+        default=None,
+        help="Selected public real-site pilot geodata manifest for a domain-specific sensitivity gate.",
+    )
+    parser.add_argument(
+        "--source-scenario-policy",
+        type=Path,
+        default=None,
+        help="Selected source-zone/block-scenario policy to keep source and scenarios fixed.",
+    )
+    parser.add_argument(
+        "--allow-missing-source-dem",
+        action="store_true",
+        help="Emit a blocked selected-pilot report instead of failing when the ignored processed DEM is absent.",
     )
     parser.add_argument(
         "--output-dir",
@@ -461,9 +731,22 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if not args.source_dem.exists():
-        raise SystemExit(f"source DEM does not exist: {args.source_dem}")
-    summary = build_summary(args.source_dem, args.output_dir)
+    pilot_context = None
+    source_dem = args.source_dem
+    if args.pilot_manifest or args.source_scenario_policy:
+        if not args.pilot_manifest or not args.source_scenario_policy:
+            raise SystemExit("--pilot-manifest and --source-scenario-policy must be provided together")
+        pilot_context = build_pilot_context(args.pilot_manifest, args.source_scenario_policy)
+        source_dem = Path(pilot_context["terrain_source_dem"]["path"])
+    if source_dem is None:
+        source_dem = DEFAULT_SOURCE_DEM
+    if not source_dem.exists():
+        if pilot_context is not None and args.allow_missing_source_dem:
+            summary = build_missing_pilot_dem_summary(pilot_context, args.output_dir)
+        else:
+            raise SystemExit(f"source DEM does not exist: {source_dem}")
+    else:
+        summary = build_summary(source_dem, args.output_dir, pilot_context=pilot_context)
     print(args.output_dir / "dem_terrain_sensitivity_summary.json")
     print(args.output_dir / "dem_terrain_sensitivity_report.md")
     print(summary["invariants"]["note"])  # type: ignore[index]

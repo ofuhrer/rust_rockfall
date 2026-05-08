@@ -44,7 +44,8 @@ Already available:
 - lightweight GeoTIFF export with value/metadata parity tests;
 - explicit rejection/deferment of COG, annual frequency, and physical
   probability claims;
-- dry-runnable DEM/terrain-representation sensitivity fixture;
+- dry-runnable DEM/terrain-representation sensitivity fixture and selected
+  Tschamut no-go gate for missing ignored processed DEM;
 - public real-site geodata manifest template and validator;
 - source-zone/block-scenario policy template and validator;
 - public real-site conditional pilot run-freeze template and command-plan
@@ -53,23 +54,17 @@ Already available:
 - deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - strong verification and deterministic seed/order checks.
 
-Main missing pieces, in priority order:
+Main remaining pieces, in priority order:
 
-1. select one public Swiss pilot domain and prepare a reproducible local
-   swisstopo geodata package without committing raw tiles;
-2. apply a predeclared source-zone, release-cell, and block-scenario policy to
-   that domain;
-3. run DEM/terrain-representation sensitivity for the selected domain before
-   interpreting model behavior;
-4. execute a small frozen conditional pilot gate run and record convergence,
+1. execute a small frozen conditional pilot gate run and record convergence,
    performance, output volume, and limitations;
-5. produce a real-pilot GIS/QGIS review package with CRS, nodata, value-parity,
+2. produce a real-pilot GIS/QGIS review package with CRS, nodata, value-parity,
    source-zone overlay, and claim-boundary QA;
-6. measure and improve local single-node scaling for trajectory generation and
+3. measure and improve local single-node scaling for trajectory generation and
    reducer workflows only after the pilot gate exposes bottlenecks;
-7. increase ensemble size toward the target trajectory count only after the
+4. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible and interpretable;
-8. defer physical/annual frequency semantics until source-frequency and
+5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Phase 0: Roadmap And Claim Hygiene
@@ -136,7 +131,10 @@ swissALTI3D tile `2696-1167`, product/version/date, source and processed
 checksums, EPSG:2056/LN02, crop extent, 2 m cell size, nodata, ignored
 raw/processed output roots, and the deterministic preparation command. Local
 execution still requires public downloads or preplaced ignored raw files; no
-raw/processed products are committed.
+raw/processed products are committed. The selected-domain DEM sensitivity gate
+now validates the manifest and source/scenario policy and writes a
+share-safe `blocked_missing_processed_dem` report from a clean checkout when
+the ignored processed DEM is absent.
 
 Implementation work:
 

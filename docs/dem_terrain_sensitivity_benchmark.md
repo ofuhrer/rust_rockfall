@@ -1,10 +1,14 @@
 # DEM And Terrain-Representation Sensitivity Benchmark
 
-Status: dry-runnable fixture benchmark plus real-site design scaffold. The
-checked-in dry run derives deterministic terrain variants from a tiny public
-swissALTI3D-style DEM fixture and writes map-difference diagnostics to a
-user-provided output directory. It does not run private data, tune parameters,
-select physics, change defaults, or claim operational validation.
+Status: dry-runnable fixture benchmark plus selected Tschamut public-pilot
+gate. The checked-in dry run derives deterministic terrain variants from a
+tiny public swissALTI3D-style DEM fixture and writes map-difference diagnostics
+to a user-provided output directory. The selected Tschamut mode validates the
+fixed geodata manifest and source/scenario policy, then either writes the same
+terrain-variant diagnostics when the ignored processed DEM exists locally or a
+share-safe `blocked_missing_processed_dem` report when it does not. It does not
+run private data, tune parameters, select physics, change defaults, or claim
+operational validation.
 
 ## Purpose
 
@@ -41,6 +45,19 @@ The current dry-runnable fixture uses:
 - coarsening variant: 2x2 valid-cell mean, reexpanded to the source grid;
 - output contract: same extent, dimensions, cell size, row order, and nodata
   value for all variants.
+
+The selected public Tschamut gate uses:
+
+- geodata manifest:
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`;
+- fixed source-zone/block-scenario policy:
+  `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`;
+- expected ignored processed DEM:
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc`;
+- fixed source inputs: source zone `tschamut_public_lps_release_bbox`, ten
+  deterministic release cells, and three representative block scenarios;
+- sampling semantics: conditional sampling only, with annual/source-frequency
+  and physical-probability semantics unsupported.
 
 ## Invariants
 
@@ -173,6 +190,24 @@ python3 scripts/run_dem_terrain_sensitivity.py \
   --output-dir "$OUT_DIR"
 ```
 
+Selected Tschamut public-pilot gate from a clean checkout:
+
+```bash
+OUT_DIR="$(mktemp -d)"
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py \
+  --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml \
+  --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml \
+  --allow-missing-source-dem \
+  --output-dir "$OUT_DIR"
+```
+
+When the ignored processed DEM is absent, this command writes a no-go
+`blocked_missing_processed_dem` summary and report. That status is a
+reproducibility blocker, not a model result. After running the public geodata
+preparation command from the manifest, rerun the same command without
+`--allow-missing-source-dem` to generate comparable baseline, smoothing, and
+coarsening terrain variants from the selected Tschamut DEM.
+
 Expected dry-run outputs under the user-provided or temp directory:
 
 ```text
@@ -207,10 +242,10 @@ hazard/results/dem_terrain_sensitivity/
 Real-site command/report placeholders:
 
 ```text
-prepare terrain variants: <future command or documented manual preprocessing>
-run validation cases:    <future cargo run -- validate --case ...>
-build hazard layers:     <future python3 scripts/build_hazard_layers.py ...>
-write report:            <future real-site report path>
+prepare terrain variants: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --output-dir <ignored-output-dir>
+run validation cases:    deferred to the small frozen conditional pilot gate
+build hazard layers:     deferred to the small frozen conditional pilot gate
+write report:            <ignored-output-dir>/dem_terrain_sensitivity_report.md
 ```
 
 Paired output modes:

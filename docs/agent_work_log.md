@@ -41,9 +41,24 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Files intended to change: `docs/agent_work_log.md`
 - Implementation summary: Created this control log, entry template, and
   roadmap items 1-5 micro-milestone plan.
-- Checks run: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/run_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --allow-missing-source-dem --output-dir /tmp/rust_rockfall_tschamut_dem_sensitivity_priority3_check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_source_scenario_policy.py validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
+  `git diff --check` passed.
 - Reviewer notes: Pending reviewer input.
-- Decision: Pending.
+- Decision: ACCEPT; Priority 3 done at the selected-domain gate level, with
+  terrain-variant metrics blocked only by the intentionally ignored processed
+  DEM being absent from a clean checkout.
 - Next proposed milestone: M002.
 
 ## Correction: Roadmap Items 1-5 Target Mapping
@@ -1365,3 +1380,51 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: Pending.
 - Decision: Pending.
 - Next proposed milestone: Stop after Priority 2 as requested.
+
+### M021
+
+- Milestone id: M021.
+- Roadmap item: Priority 3. Run DEM/terrain sensitivity on the selected
+  domain.
+- Hypothesis/objective: Complete the selected Tschamut public pilot
+  DEM/terrain sensitivity step without simulator behavior changes, parameter
+  tuning, annual frequency, physical probability, risk, exposure,
+  vulnerability, or operational claims.
+- Files changed:
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`,
+  `scripts/run_dem_terrain_sensitivity.py`,
+  `tests/test_dem_terrain_sensitivity.py`,
+  `docs/dem_terrain_sensitivity_benchmark.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Extended the DEM sensitivity dry-run script with a
+  selected Tschamut pilot gate that validates the public geodata manifest and
+  source/scenario policy, fixes the source zone, ten release cells, three block
+  scenarios, conditional-only sampling semantics, and EPSG:2056/LN02 terrain
+  metadata. In clean checkouts where the ignored processed DEM is absent, the
+  command writes a share-safe `blocked_missing_processed_dem` no-go summary and
+  report; after local public preparation, the same command runs the existing
+  baseline, smoothing, and coarsening terrain-variant diagnostics on the
+  selected DEM.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/run_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --allow-missing-source-dem --output-dir /tmp/rust_rockfall_tschamut_dem_sensitivity_priority3_check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_source_scenario_policy.py validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
+  `git diff --check` passed.
+- Reviewer notes: No raw swisstopo geodata or generated sensitivity outputs
+  are committed; the no-go gate is a reproducibility blocker, not a model
+  result.
+- Decision: ACCEPT; Priority 3 done at the selected-domain gate level, with
+  terrain-variant metrics blocked only by the intentionally ignored processed
+  DEM being absent from a clean checkout.
+- Next proposed milestone: Stop after Priority 3 as requested.

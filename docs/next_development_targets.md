@@ -116,9 +116,15 @@ Evidence needed: fixed source/scenario inputs, fixed physics, comparable
 terrain variants, map-difference metrics, terrain metadata, and a clear warning
 not to tune contact parameters to compensate for DEM effects.
 
-Minimal acceptable deliverable: A share-safe sensitivity summary for the pilot
-domain, or a documented blocker if required terrain variants cannot yet be
-prepared.
+Minimal acceptable deliverable: complete. The selected-domain command
+`scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --allow-missing-source-dem`
+validates the Tschamut geodata manifest and source/scenario policy, records the
+fixed source zone, ten release cells, three block scenarios, conditional-only
+sampling semantics, EPSG:2056/LN02 terrain metadata, and writes a share-safe
+`blocked_missing_processed_dem` no-go report when the ignored processed DEM is
+absent. Once the public preparation command creates the ignored DEM locally,
+the same command without `--allow-missing-source-dem` runs the predeclared
+baseline, 3x3 smoothing, and 2x2 coarsening terrain-variant diagnostics.
 
 What not to do: Do not tune restitution, friction, terrain classes, source
 zones, or thresholds after seeing sensitivity outcomes.
