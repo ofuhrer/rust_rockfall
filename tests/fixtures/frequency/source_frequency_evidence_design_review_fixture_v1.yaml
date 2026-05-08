@@ -1,0 +1,49 @@
+schema_version: source_frequency_evidence_v1
+record_id: source_frequency_evidence_design_review_fixture_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+frequency_model_id: synthetic_source_frequency_fixture_v1
+frequency_mode: source_event_rate_evidence_only
+source_zone_id: synthetic_source_zone_design_review_v1
+source_geometry_version: synthetic_source_zone_design_review_metadata_v1
+source_geometry_hash: sha256:synthetic_source_zone_design_review_fixture
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class:
+  event_class_id: synthetic_detachment_event_class_v1
+  description: Synthetic source-frequency schema fixture for design review only.
+  occurrence_denominator: source_zone_event_class
+frequency_unit: events_per_source_zone_per_year
+source_event_rate_per_year: 0.02
+rate_time_window_years: 50
+rate_observation_period:
+  start_year: 1970
+  end_year: 2020
+rate_evidence_type: inventory_count
+rate_provenance:
+  source: synthetic_schema_fixture
+  citation_or_url: synthetic fixture in tests/fixtures/frequency
+  license: not_applicable
+rate_uncertainty:
+  type: interval
+  lower_per_year: 0.005
+  upper_per_year: 0.08
+source_zone_overlap_policy:
+  policy: mutually_exclusive_partition
+  overlap_adjustment: not_needed_for_single_synthetic_fixture_source
+calibration_dataset_ids:
+  - synthetic_inventory_calibration_fixture_v1
+validation_dataset_ids:
+  - synthetic_holdout_validation_fixture_v1
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - synthetic accepted-for-design-review fixture only
+  - not accepted evidence for Tschamut or any real Swiss source zone
+  - not used by runtime products
+  - annual and physical products remain deferred

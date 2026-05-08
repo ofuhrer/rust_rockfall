@@ -453,6 +453,9 @@ Estimated order: 10.
   `scripts/validate_source_frequency_evidence.py` define and validate
   candidate source-rate evidence records while keeping the selected template at
   `no_accepted_frequency_evidence`.
+- A synthetic source-frequency design-review fixture now exercises the
+  `accepted_for_design_review` record state without changing the selected gate
+  input or authorizing annual/physical runtime products.
 - The block/release probability evidence blocker is partially resolved as an
   inactive evidence contract.
   `docs/block_release_probability_evidence_contract.md`,

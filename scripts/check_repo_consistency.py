@@ -348,6 +348,7 @@ def check_source_frequency_evidence_contract() -> list[str]:
     required_paths = [
         ROOT / "docs/source_frequency_evidence_contract.md",
         ROOT / "validation/templates/source_frequency_evidence_v1.yaml",
+        ROOT / "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml",
         ROOT / "scripts/validate_source_frequency_evidence.py",
         ROOT / "tests/test_source_frequency_evidence.py",
     ]
@@ -359,6 +360,9 @@ def check_source_frequency_evidence_contract() -> list[str]:
 
     doc = (ROOT / "docs/source_frequency_evidence_contract.md").read_text()
     template = (ROOT / "validation/templates/source_frequency_evidence_v1.yaml").read_text()
+    fixture = (
+        ROOT / "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml"
+    ).read_text()
     validator = (ROOT / "scripts/validate_source_frequency_evidence.py").read_text()
     tests = (ROOT / "tests/test_source_frequency_evidence.py").read_text()
 
@@ -369,6 +373,8 @@ def check_source_frequency_evidence_contract() -> list[str]:
         "source_event_rate_per_year",
         "calibration and validation dataset overlap",
         "swisstopo",
+        "source_frequency_evidence_design_review_fixture_v1.yaml",
+        "not accepted evidence for Tschamut",
     ):
         if term not in doc:
             errors.append(f"docs/source_frequency_evidence_contract.md omits {term!r}")
@@ -385,6 +391,21 @@ def check_source_frequency_evidence_contract() -> list[str]:
         if term not in template:
             errors.append(f"validation/templates/source_frequency_evidence_v1.yaml omits {term!r}")
 
+    for term in (
+        "schema_version: source_frequency_evidence_v1",
+        "record_status: accepted_for_design_review",
+        "prototype_authorized: false",
+        "frequency_unit: events_per_source_zone_per_year",
+        "source_event_rate_per_year: 0.02",
+        "not accepted evidence for Tschamut",
+        "annual and physical products remain deferred",
+    ):
+        if term not in fixture:
+            errors.append(
+                "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml "
+                f"omits {term!r}"
+            )
+
     for symbol in (
         "validate_source_frequency_evidence",
         "source_event_rate_per_year",
@@ -398,6 +419,7 @@ def check_source_frequency_evidence_contract() -> list[str]:
     for test_name in (
         "test_selected_template_records_no_accepted_frequency_evidence",
         "test_accepts_complete_candidate_for_design_review_only",
+        "test_design_review_fixture_is_valid_but_not_runtime_authorized",
         "test_rejects_candidate_missing_source_rate",
         "test_rejects_uncertainty_that_excludes_rate",
         "test_rejects_swisstopo_as_validation_evidence",

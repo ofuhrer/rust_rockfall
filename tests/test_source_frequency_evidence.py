@@ -36,6 +36,15 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
             self.assertTrue(summary["source_event_rate_available"])
             self.assertFalse(summary["prototype_authorized"])
 
+    def test_design_review_fixture_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_source_frequency_evidence(
+            ROOT / "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertTrue(summary["source_event_rate_available"])
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_rejects_candidate_missing_source_rate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.candidate_record()
