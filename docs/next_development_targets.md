@@ -202,8 +202,13 @@ Evidence needed: convergence diagnostics for conditional curves and supporting
 layers, trajectory-count sensitivity, output budget compliance, and
 worker-count-independent reduced outputs.
 
-Minimal acceptable deliverable: a target-scale feasibility report for the
-selected pilot domain, or a documented no-go with the limiting bottleneck.
+Minimal acceptable deliverable: complete as a documented no-go feasibility
+gate. `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
+`docs/tschamut_public_ensemble_feasibility.md` record that ensemble increase is
+not authorized yet because target-scale convergence is not established, manual
+GIS/QGIS visual QA remains inconclusive, and forest/obstacle omission remains
+limiting. `scripts/validate_pilot_ensemble_feasibility.py` checks the decision,
+required preconditions, output-budget controls, and claim boundaries.
 
 What not to do: Do not scale up before source-zone, DEM, small-gate, GIS, and
 performance interpretation are stable.
@@ -293,6 +298,10 @@ Estimated order: 7.
 - Conditional-curve output volume has an opt-in mitigation:
   `--conditional-curve-export summary-only`. The default remains full
   curve-table export for small debug/review runs.
+- Ensemble-size increase has a selected-domain no-go feasibility gate. The
+  gate records that larger Tschamut runs are not authorized until convergence
+  diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle
+  context review are resolved.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
@@ -314,6 +323,6 @@ Estimated order: 7.
 3. Scope forest and obstacle omission for Tschamut.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
-   it.
+   it; current selected-domain decision is no-go.
 6. Design physical/source-frequency semantics.
 7. Implement an annual/physical prototype only if the design gate passes.

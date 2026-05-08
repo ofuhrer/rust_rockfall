@@ -1801,3 +1801,53 @@ Planning only; these milestones do not implement roadmap item content yet.
   work.
 - Next proposed milestone: Increase ensemble size only if convergence,
   performance, and output-volume evidence justify it.
+
+### M029
+
+- Milestone id: M029.
+- Roadmap item: Target 5. Increase ensemble size toward the target count.
+- Hypothesis/objective: Complete the selected-domain ensemble-size decision
+  without launching a larger ignored run or weakening claim boundaries. The
+  acceptable completion path is a documented no-go if convergence, output,
+  visual-QA, or interpretation preconditions are not met.
+- Initial gap assessment: The small Tschamut conditional gate is reproducible,
+  and conditional-curve output volume now has a summary-only control, but the
+  repository still lacked an executable decision record stating whether an
+  ensemble increase is authorized. Target-scale convergence is not established,
+  manual GIS/QGIS visual QA is inconclusive, and forest/obstacle omission is
+  limiting.
+- Files changed:
+  `scripts/validate_pilot_ensemble_feasibility.py`,
+  `tests/test_pilot_ensemble_feasibility.py`,
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+  `docs/tschamut_public_ensemble_feasibility.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `pilot_ensemble_feasibility_v1` validator
+  and selected Tschamut no-go record. The record blocks ensemble increase until
+  target-scale convergence diagnostics, output-budget evidence with
+  `--conditional-curve-export summary-only`, manual GIS/QGIS visual QA, and
+  forest/obstacle context review are resolved. The validator rejects missing
+  blockers, non-increasing trajectory counts, full curve-table export for the
+  increase path, missing preconditions, and unqualified misleading claims.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_pilot_ensemble_feasibility`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo fmt --check`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No larger ensemble was executed or committed. No physics,
+  defaults, source weights, annual frequency, physical probability,
+  risk/exposure semantics, generated hazard products, or raw/processed
+  swisstopo geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; Target 5 done as a selected-domain
+  no-go feasibility gate.
+- Next proposed milestone: Design physical/source-frequency semantics.

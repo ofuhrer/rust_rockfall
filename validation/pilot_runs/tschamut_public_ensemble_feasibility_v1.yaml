@@ -1,0 +1,112 @@
+schema_version: pilot_ensemble_feasibility_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_gate_v1
+roadmap_item: target_5_ensemble_size_feasibility
+decision: no_go
+decision_rationale: >
+  The selected small conditional gate is reproducible and the largest
+  curve-table output now has a summary-only control, but increasing the
+  Tschamut ensemble is not authorized yet. The current evidence does not show
+  target-scale convergence, manual GIS visual QA remains inconclusive, and
+  forest/obstacle omission remains limiting for interpretation.
+operational_status: research_diagnostic
+
+input_evidence:
+  run_freeze_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  scaling_review_path: docs/tschamut_public_pilot_scaling_review.md
+  obstacle_scope_path: validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml
+  visual_qa_record_path: validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml
+  small_gate_status: gate_run_completed
+  gate_trajectories_per_release_zone: 6
+  proposed_trajectories_per_release_zone: 100
+  release_cell_count: 10
+
+convergence_assessment:
+  status: no-go
+  diagnostics_reviewed:
+    - small_gate_conditional_intensity_exceedance_curves
+    - small_gate_standard_error_layers
+    - deterministic_reducer_metadata
+  missing_diagnostics:
+    - trajectory_count_sensitivity_between_gate_and_proposed_count
+    - convergence_of_conditional_curves_by_threshold
+    - convergence_of_supporting_rasters
+    - worker_count_independent_reducer_parity_for_the_proposed_count
+  interpretation: >
+    The gate has only 60 simulated trajectories from ten release cells and
+    three conditional block scenarios. It is sufficient for workflow execution
+    evidence, but it does not establish whether conditional curves or raster
+    patterns are stable enough to justify a larger selected-domain run.
+
+output_budget_assessment:
+  status: inconclusive
+  gate_output_total_bytes: 226925754
+  gate_output_file_count: 186
+  required_curve_export_mode: summary-only
+  full_curve_table_export_allowed_for_increase: false
+  budget_controls:
+    - conditional_curve_summary_only
+    - explicit_grid_required
+    - deterministic_local_reducer_required
+    - generated_outputs_remain_ignored
+  interpretation: >
+    The small gate's full-output local artifact budget was already close to the
+    configured private byte limit. Any future increase must use the
+    summary-only conditional-curve export and record file-count, byte-count,
+    runtime, memory, and reducer-parity evidence before being treated as a
+    completed target-size step.
+
+execution_plan:
+  run_now: false
+  generated_outputs_committed: false
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+  next_command_when_authorized: >
+    UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py
+    --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+    --diagnostics validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv
+    --trajectory-dir validation/private/tschamut_public_pilot/gate_v1/trajectories
+    --output-dir hazard/results/tschamut_public_pilot/ensemble_feasibility_v1
+    --cell-size 2.0
+    --grid-xmin 2696376.0
+    --grid-ymin 1167384.0
+    --grid-ncols 300
+    --grid-nrows 304
+    --grid-cell-size 2.0
+    --probability-mode sampling_weighted_conditional
+    --kinetic-energy-exceedance-j 1000.0
+    --kinetic-energy-exceedance-j 10000.0
+    --jump-height-exceedance-m 1.0
+    --jump-height-exceedance-m 2.0
+    --conditional-curve-export summary-only
+    --reducer-workers 2
+    --no-plots
+
+blockers:
+  - target_scale_convergence_not_established
+  - manual_gis_visual_qa_inconclusive
+  - forest_obstacle_omission_limiting
+
+required_preconditions_before_increase:
+  - use_summary_only_conditional_curve_export
+  - record_convergence_diagnostics
+  - record_output_budget
+  - review_manual_gis_visual_qa
+  - review_forest_obstacle_context
+
+claim_boundary:
+  operational_status: research_diagnostic
+  annualized: false
+  physical_probability: false
+  risk_or_exposure: false
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map

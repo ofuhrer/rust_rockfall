@@ -132,10 +132,16 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `--conditional-curve-export summary-only` keeps the existing rasters and
   metadata summaries but skips the large per-cell curve CSV table. The default
   remains full export for small debug/review workflows.
+- Ensemble-size increase has a selected-domain no-go feasibility gate.
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
+  `docs/tschamut_public_ensemble_feasibility.md` record that larger Tschamut
+  runs are not authorized until target-scale convergence diagnostics, output
+  budgets, manual GIS/QGIS visual QA, and forest/obstacle context review are
+  resolved.
 
 The immediate roadmap task is therefore not another new feature. It is to
-evaluate whether a larger ensemble is justified and feasible with the selected
-frozen inputs and output-volume controls.
+design physical/source-frequency semantics before any annual or physical
+probability prototype is attempted.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -640,8 +646,11 @@ The selected-domain manifest, selected source/scenario policy, selected
 DEM-sensitivity gate, and selected conditional gate evidence are complete at
 the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
 `inconclusive`, forest/obstacle omission is explicitly `limiting`, and
-conditional-curve table export now has an opt-in summary-only mode. The current
-bottleneck is convergence and scale-up evidence before target-size ensembles.
+conditional-curve table export now has an opt-in summary-only mode. Ensemble
+scale-up is explicitly no-go for the selected domain until convergence,
+manual-GIS, output-budget, and obstacle-context preconditions are resolved.
+The current bottleneck is source-frequency semantics before annual or physical
+products.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
@@ -649,7 +658,7 @@ bottleneck is convergence and scale-up evidence before target-size ensembles.
 | 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
-| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
+| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Complete as a selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` records that increasing the Tschamut ensemble is not authorized until convergence diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle context review are resolved. |
 | 6 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
 | 7 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
@@ -672,9 +681,10 @@ At the current state, the first two bullets are complete at the share-safe
 contract level and the middle bullets have reconciled local ignored-artifact
 evidence for the small gate. The package visual-QA gate is explicitly
 `inconclusive` rather than unclassified, and obstacle/forest omission is
-explicitly classified `limiting`. Output-volume control and convergence
-interpretation are still needed before the pilot can be treated as more than an
-inconclusive local diagnostic gate.
+explicitly classified `limiting`. Output-volume control is available, but
+ensemble increase is no-go until convergence, manual-GIS, and obstacle-context
+preconditions are satisfied. The pilot remains an inconclusive local diagnostic
+gate.
 
 ## Decision Gates
 

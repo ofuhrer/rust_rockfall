@@ -633,6 +633,29 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ).strip()
         errors.append(f"selected public real-site conditional pilot run validation failed:\n{output}")
 
+    selected_ensemble_feasibility_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_pilot_ensemble_feasibility.py",
+            "validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if selected_ensemble_feasibility_check.returncode != 0:
+        output = "\n".join(
+            part
+            for part in (
+                selected_ensemble_feasibility_check.stdout,
+                selected_ensemble_feasibility_check.stderr,
+            )
+            if part
+        ).strip()
+        errors.append(f"selected pilot ensemble feasibility validation failed:\n{output}")
+
     hazard_docs = "\n".join(
         path.read_text()
         for path in (

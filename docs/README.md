@@ -48,6 +48,7 @@ Current implementation contracts and evidence reports:
 - `swisstopo_data_strategy.md`: authoritative Swiss geodata roles, swissALTI3D terrain-ingestion metadata, and first pilot workflow design.
 - `swiss_terrain_ingestion_pilot.md`: minimal runtime terrain-source, release-zone, and terrain-class metadata contracts with checked-in swissALTI3D-style pilot fixtures.
 - `public_real_site_geodata_preparation.md`: Phase 1 manifest contract for share-safe public real-site swisstopo preparation before source-zone or ensemble work.
+- `tschamut_public_ensemble_feasibility.md`: selected-domain no-go gate for increasing the Tschamut conditional pilot ensemble.
 - `tschamut_swissalti3d_pilot.md`: local/private Tschamut real-site pilot workflow using a manually supplied swissALTI3D-style DEM crop, source-area metadata, optional terrain classes, and existing hazard layers.
 - `tschamut_swissalti3d_controlled_pilot_plan.md`: concrete Work Package 1 execution plan for the controlled Tschamut/swissALTI3D real-site pilot, including private inputs, commands, metrics, QA, and interpretation rules.
 - `tschamut_public_benchmark_reproduction.md`: registration-reviewed public-data Tschamut benchmark reproduction workflow using EnviDat observations, a public swissALTI3D terrain crop, explicit-grid hazard layers, and no parameter tuning.
@@ -105,6 +106,7 @@ Current implementation contracts and evidence reports:
 - `source_zone_block_scenario_policy_v1.md`: Phase 2 policy contract for predeclared real-site source-zone evidence, deterministic release sampling, and representative block scenarios.
 - `public_real_site_geodata_preparation.md`: Phase 1/6 share-safe public real-site geodata manifest and conditional pilot run-freeze workflow.
 - `public_real_site_conditional_pilot_report_template.md`: Phase 6 report scaffold for pass/no-go/inconclusive local conditional pilot classification.
+- `tschamut_public_ensemble_feasibility.md`: Target 5 ensemble-size feasibility decision and validator command for the selected public pilot.
 - `tschamut_public_conditional_pilot_gate_report.md`: selected Tschamut public conditional pilot gate report for the reconciled local ignored gate evidence and remaining inconclusive interpretation boundaries.
 - `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
 - `autonomous_development_program.md`: operator prompt, tracking artifacts, and Git/GitHub conventions for long-running autonomous development sessions.
