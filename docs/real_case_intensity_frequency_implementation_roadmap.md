@@ -1,10 +1,10 @@
 # Real-Case Intensity-Frequency Pilot Implementation Roadmap
 
-Status: implementation roadmap for reaching a public-dataset, real-case Swiss
-pilot that produces grid-cell intensity-exceedance products and, later, true
-intensity-frequency curves. This document does not change simulator behavior,
-claim operational validity, introduce annual frequencies, or redefine current
-hazard-map semantics.
+Status: progress-aware implementation roadmap for reaching a public-dataset,
+real-case Swiss pilot that produces grid-cell conditional intensity-exceedance
+products and, later, true physical or annual intensity-frequency curves. This
+document does not change simulator behavior, claim operational validity,
+introduce annual frequencies, or redefine current hazard-map semantics.
 
 ## Target Definition
 
@@ -23,9 +23,11 @@ There are two distinct milestones:
    exceedance frequency with physical probability or annual units, for example
    `1/year`.
 
-The repository is close to milestone 1 at diagnostic pilot scale. It is not yet
-close to milestone 2 because source-zone occurrence frequency, block-population
-frequency, annualization, and validation semantics remain unsupported by
+The repository is close to milestone 1 at the tooling and contract level, but
+milestone 1 is not complete until a selected public Swiss pilot domain has been
+prepared, frozen, run, packaged, and reviewed. It is not yet close to milestone
+2 because source-zone occurrence frequency, block-population frequency,
+annualization, and validation semantics remain unsupported by
 `docs/hazard_map_semantics.md` and `docs/probabilistic_scenario_model_design.md`.
 
 ## Current Baseline
@@ -43,26 +45,44 @@ Already available:
 - explicit rejection/deferment of COG, annual frequency, and physical
   probability claims;
 - dry-runnable DEM/terrain-representation sensitivity fixture;
+- public real-site geodata manifest template and validator;
+- source-zone/block-scenario policy template and validator;
+- public real-site conditional pilot run-freeze template and command-plan
+  validator;
+- diagnostic pilot GIS package manifest behind explicit GeoTIFF export;
+- deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - strong verification and deterministic seed/order checks.
 
-Main missing pieces:
+Main missing pieces, in priority order:
 
-- public real-site geodata preparation from swisstopo products into a checked
-  local pilot directory;
-- source-zone derivation policy from public terrain/geology/inventory/context
-  data;
-- block-scenario population policy and physical frequency semantics;
-- valley-scale local parallel execution, chunk manifests, and streaming
-  reducers;
-- QGIS package fixture and real-pilot GIS acceptance;
-- validation maturity labels and site-scale hazard-pattern evidence;
-- forest/obstacle relevance scoping for the selected pilot domain;
-- annual or physical probability mode support.
+1. select one public Swiss pilot domain and prepare a reproducible local
+   swisstopo geodata package without committing raw tiles;
+2. apply a predeclared source-zone, release-cell, and block-scenario policy to
+   that domain;
+3. run DEM/terrain-representation sensitivity for the selected domain before
+   interpreting model behavior;
+4. execute a small frozen conditional pilot gate run and record convergence,
+   performance, output volume, and limitations;
+5. produce a real-pilot GIS/QGIS review package with CRS, nodata, value-parity,
+   source-zone overlay, and claim-boundary QA;
+6. measure and improve local single-node scaling for trajectory generation and
+   reducer workflows only after the pilot gate exposes bottlenecks;
+7. increase ensemble size toward the target trajectory count only after the
+   small gate run is reproducible and interpretable;
+8. defer physical/annual frequency semantics until source-frequency and
+   block-population evidence are designed and reviewable.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
 Objective: keep the conditional and annual targets separate before new code is
 added.
+
+Current status: substantially complete. The repository now has
+`docs/validation_maturity_framework.md`, claim-boundary checks in
+`scripts/check_repo_consistency.py`, and user-facing wording that separates
+current conditional intensity-exceedance products from future physical or
+annual products. Future pilot reports still need to apply the maturity labels
+consistently.
 
 Implementation work:
 
@@ -105,6 +125,14 @@ Do not:
 Objective: make one small real Swiss pilot domain reproducible from public
 input geodata without committing raw tiles.
 
+Current status: contract and validation are implemented, but no actual public
+pilot domain has been prepared in the repository state. The checked-in template
+`data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml` and
+`scripts/validate_public_real_site_geodata_manifest.py` define the share-safe
+manifest. The remaining work is execution: choose the domain, download or point
+to local public swisstopo inputs, crop/convert terrain, record checksums and
+metadata, and keep the raw/processed products out of git.
+
 Implementation work:
 
 - choose one pilot domain with a bounded source area and runout corridor;
@@ -146,6 +174,14 @@ Do not:
 
 Objective: create defensible conditional scenario inputs for the real-site
 pilot.
+
+Current status: policy semantics, template, and validator are implemented, but
+they have not been applied to a selected real pilot domain. The current
+executable coverage proves the policy contract and rejects unsupported annual
+or physical probability claims. The remaining work is to predeclare one domain
+specific source-zone interpretation, deterministic release-cell policy, and
+representative block-scenario table before any real pilot simulation results
+are inspected.
 
 Implementation work:
 
@@ -190,6 +226,12 @@ Do not:
 
 Objective: produce per-grid-cell conditional intensity curves over configured
 thresholds.
+
+Current status: implemented for fixture and workflow use, pending real-pilot
+execution. The hazard-layer builder can emit threshold-exceedance rasters and a
+tidy conditional curve table with current probability labels and `annualized:
+false`. The remaining work is to run this on the selected real pilot domain
+with frozen thresholds, scenario metadata, and an explicit grid.
 
 Implementation work:
 
@@ -239,6 +281,12 @@ Do not:
 Objective: make the real-site conditional hazard package inspectable by a GIS
 reviewer.
 
+Current status: diagnostic GeoTIFF export and `pilot_gis_package_manifest_v1`
+exist, and tests cover value/metadata parity and explicit COG rejection. The
+remaining work is a real-pilot review package and visual QA. The current code
+does not create a QGIS project, GeoPackage, production COG, tiled package, or
+operational product.
+
 Implementation work:
 
 - create a tiny QGIS package fixture with GeoTIFF rasters, CSV/ASCII parity
@@ -283,6 +331,13 @@ Do not:
 
 Objective: make valley-scale ensembles feasible on one workstation or node
 before SLURM orchestration.
+
+Current status: partially implemented in hazard-layer post-processing. The
+`--reducer-workers` path gives deterministic local chunking and reducer
+manifests for current hazard products. The remaining gap is upstream
+trajectory-generation scale: pilot-size trajectory execution, output-volume
+control, chunk/resume contracts for trajectory/event outputs, and measured
+single-node performance evidence.
 
 Implementation work:
 
@@ -335,6 +390,11 @@ Do not:
 
 Objective: execute the first full public-dataset real-case pilot with
 conditional intensity-exceedance curves.
+
+Current status: pre-run freeze gate only. The template and validator can check
+a populated run-freeze file and emit a command plan, but the checked-in state is
+`template_not_run`. No public real-site conditional pilot output, convergence
+evidence, QGIS package, or pilot report has been produced yet.
 
 Implementation work:
 
@@ -389,6 +449,9 @@ Do not:
 Objective: decide whether the repo has enough evidence to add true
 intensity-frequency semantics.
 
+Current status: not started beyond guardrails and schema-visible placeholders.
+Current code paths reject or defer annual and physical probability claims.
+
 Implementation work:
 
 - define whether frequency means conditional event frequency, annual source
@@ -428,6 +491,8 @@ Do not:
 Objective: implement a clearly experimental annual or physical
 intensity-frequency prototype after Phase 7 passes.
 
+Current status: not started and intentionally blocked by Phase 7.
+
 Implementation work:
 
 - add source-frequency and block-frequency fields to scenario metadata under a
@@ -462,17 +527,23 @@ Do not:
 - promote annual-frequency defaults;
 - imply regulatory or operational hazard-map readiness.
 
-## Minimal Implementation Order
+## Prioritized Remaining Roadmap Items
 
-1. Validation maturity and claim-label hygiene.
-2. Public real-site swisstopo preparation workflow.
-3. Source-zone and block-scenario policy V1 for that domain.
-4. Conditional intensity-exceedance curve outputs.
-5. Pilot GIS/QGIS package fixture and real-pilot package.
-6. Deterministic local parallel runner and streaming reducers.
-7. Public real-site conditional pilot run at increasing ensemble scale.
-8. Physical/annual frequency design gate.
-9. Annual intensity-frequency prototype only if the gate passes.
+The order below supersedes the older phase-number order for near-term work.
+Several lower-numbered phases now have executable scaffolding, while their
+real-pilot evidence remains missing.
+
+| Priority | Item | Why this comes next | Done when |
+| --- | --- | --- | --- |
+| 1 | Prepare one public real-site swisstopo pilot package | Everything downstream depends on a concrete domain, DEM, CRS/datum metadata, and provenance. | A documented clean checkout plus public/local downloads can recreate the processed pilot DEM and metadata; no raw geodata are committed. |
+| 2 | Apply a domain-specific source-zone and block-scenario policy | Conditional curves are uninterpretable without frozen source, release-cell, block, and sampling assumptions. | Source-zone sidecar, release-cell ids, scenario table, and policy manifest validate and join deterministically. |
+| 3 | Run DEM/terrain sensitivity on that domain | DEM representation can dominate runout and map patterns; this must be checked before calibration or physics interpretation. | Terrain variants and map/metric differences are reported with fixed physics, fixed source policy, and no tuning. |
+| 4 | Execute the small frozen conditional pilot gate run | This is the first end-to-end evidence that the real-case workflow works. | The run-freeze validator passes, generated outputs include conditional curves, manifests, checksums, GIS artifacts, performance numbers, and a pass/no-go/inconclusive report. |
+| 5 | Produce and review the real-pilot GIS/QGIS package | Hazard-map outputs must be interpretable in a GIS before scaling or external review. | A reviewer can inspect CRS alignment, nodata, value parity, source-zone overlays, labels, and claim boundaries without raw geodata. |
+| 6 | Measure local scaling and output-volume bottlenecks | Performance matters, but optimization should follow real pilot evidence. | Single-node timing, memory, row counts, file counts, reducer parity, and output-mode tradeoffs are documented for pilot-scale runs. |
+| 7 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
+| 8 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
+| 9 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
 ## Earliest Useful Pilot
 
