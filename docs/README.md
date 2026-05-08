@@ -94,6 +94,9 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `annual_physical_validation_calibration_review_gate.md`: inactive
   validation/calibration review-gate schema, validator, and template for
   closing one design-gate blocker without enabling annual or physical products.
+- `annual_physical_prototype_preflight.md`: inactive Target 10 preflight
+  schema, validator, and template that keeps the annual/physical prototype
+  blocked while the design gate remains deferred.
 - `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
   probabilistic scenario/source-zone propagation.
 - `probabilistic_hazard_phase1_closure.md`: implemented Level 1/2

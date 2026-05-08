@@ -199,6 +199,10 @@ checks before those labels can be used as current claims.
   design-gate record. The selected record requires source-rate units, overlap
   policy, uncertainty, calibration/validation separation, and rejection tests
   before a future prototype can be authorized.
+- `tests/test_annual_physical_prototype_preflight.py` and
+  `scripts/validate_annual_physical_prototype_preflight.py` check the current
+  Target 10 preflight record. The selected record verifies that annual/physical
+  prototype work remains blocked while the design gate is deferred.
 
 ## Later Milestone Placeholders
 

@@ -1,0 +1,31 @@
+schema_version: annual_physical_prototype_preflight_v1
+record_id: annual_physical_prototype_preflight_template_v1
+record_status: blocked_by_design_gate
+prototype_authorized: false
+operational_status: research_diagnostic
+preflight_mode: annual_physical_prototype_preflight_only
+design_gate_record: validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml
+required_design_gate_decision_before_prototype: authorize_prototype
+observed_design_gate_decision: deferred
+observed_design_gate_authorized: false
+runtime_support_added: false
+requested_future_product_modes:
+  - physical_probability
+  - annual_intensity_frequency
+remaining_blockers:
+  - accepted_source_frequency_evidence
+  - accepted_block_release_probability_evidence
+  - implemented_overlap_adjusted_reducers
+  - implemented_uncertainty_propagation
+  - accepted_validation_calibration_review
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - annual and physical prototype remains blocked by the deferred design gate
+  - no annual frequency or physical probability runtime support is implemented
+  - current products remain conditional diagnostics
+  - swisstopo terrain remains input geodata, not validation evidence

@@ -1734,6 +1734,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `docs/tschamut_public_conditional_pilot_gate_report.md`,
   `docs/real_case_intensity_frequency_implementation_roadmap.md`,
   `docs/next_development_targets.md`,
+  `docs/hazard_map_semantics.md`,
   `docs/README.md`,
   `docs/agent_work_log.md`.
 - Implementation summary: Added a `pilot_obstacle_scope_v1` validator and a
@@ -2358,3 +2359,58 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Resolve exactly one remaining blocker only if
   accepted evidence or implemented reducer work is explicitly requested;
   otherwise keep annual/physical prototype work deferred.
+
+### M039
+
+- Milestone id: M039.
+- Roadmap item: Target 10. Annual/physical intensity-frequency prototype
+  preflight.
+- Hypothesis/objective: Record the first incomplete roadmap item as explicitly
+  blocked by the deferred physical/source-frequency design gate, with an
+  executable preflight check that prevents accidental annual/physical runtime
+  work before accepted evidence and implemented reducers exist.
+- Initial gap assessment: Targets 1-9 were complete at their documented levels.
+  Target 10 was the first incomplete item, but the selected design gate remains
+  `deferred` and all four blocker contracts are inactive. Implementing runtime
+  annual or physical products would violate the current roadmap and claim
+  boundaries; the missing safe artifact was a Target 10 preflight record tying
+  prototype work to the gate decision.
+- Files changed:
+  `docs/annual_physical_prototype_preflight.md`,
+  `validation/templates/annual_physical_prototype_preflight_v1.yaml`,
+  `scripts/validate_annual_physical_prototype_preflight.py`,
+  `tests/test_annual_physical_prototype_preflight.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added `annual_physical_prototype_preflight_v1` as an
+  inactive Target 10 guard with selected status `blocked_by_design_gate`. The
+  validator reads the selected physical/source-frequency design gate, verifies
+  that the observed gate decision remains `deferred`, rejects prototype
+  authorization and runtime support, requires the remaining blocker list, and
+  preserves annual/physical/risk/operational claim boundaries.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_annual_physical_prototype_preflight.py validation/templates/annual_physical_prototype_preflight_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_annual_physical_prototype_preflight`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, or operational claims are changed.
+- Decision: ACCEPT if final checks pass; Target 10 is now guarded by an
+  executable no-go preflight while the prototype remains blocked.
+- Next proposed milestone: Resolve exactly one real blocker only if accepted
+  evidence or implemented reducer work is explicitly requested; otherwise keep
+  annual/physical prototype work deferred.

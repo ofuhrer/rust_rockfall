@@ -482,6 +482,11 @@ Estimated order: 10.
   `scripts/validate_physical_source_frequency_design_gate.py` verifies that
   the gate remains deferred while those records are not accepted or
   implemented.
+- Target 10 has an inactive preflight guard. `docs/annual_physical_prototype_preflight.md`,
+  `validation/templates/annual_physical_prototype_preflight_v1.yaml`, and
+  `scripts/validate_annual_physical_prototype_preflight.py` verify that the
+  annual/physical prototype remains blocked by the deferred design gate and
+  that no runtime support is added.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -510,3 +515,5 @@ Estimated order: 10.
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
 7. Implement an annual/physical prototype only if the design gate passes.
+   Until then, use the Target 10 preflight record as the executable no-go
+   check rather than adding annual or physical runtime semantics.

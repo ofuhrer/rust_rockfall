@@ -156,6 +156,7 @@ def main() -> int:
     errors.extend(check_block_release_probability_evidence_contract())
     errors.extend(check_physical_frequency_reducer_preconditions())
     errors.extend(check_annual_physical_validation_calibration_review_gate())
+    errors.extend(check_annual_physical_prototype_preflight())
 
     if errors:
         for error in errors:
@@ -624,6 +625,71 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
             errors.append(
                 f"tests/test_annual_physical_validation_calibration_review_gate.py omits {test_name}"
             )
+    return errors
+
+
+def check_annual_physical_prototype_preflight() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/annual_physical_prototype_preflight.md",
+        ROOT / "validation/templates/annual_physical_prototype_preflight_v1.yaml",
+        ROOT / "scripts/validate_annual_physical_prototype_preflight.py",
+        ROOT / "tests/test_annual_physical_prototype_preflight.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"annual/physical prototype preflight path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/annual_physical_prototype_preflight.md").read_text()
+    template = (ROOT / "validation/templates/annual_physical_prototype_preflight_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_annual_physical_prototype_preflight.py").read_text()
+    tests = (ROOT / "tests/test_annual_physical_prototype_preflight.py").read_text()
+
+    for term in (
+        "Status: inactive preflight contract",
+        "Target 10",
+        "blocked_by_design_gate",
+        "runtime_support_added: false",
+        "accepted source-frequency evidence",
+        "accepted validation/calibration review",
+    ):
+        if term not in doc:
+            errors.append(f"docs/annual_physical_prototype_preflight.md omits {term!r}")
+
+    for term in (
+        "schema_version: annual_physical_prototype_preflight_v1",
+        "record_status: blocked_by_design_gate",
+        "prototype_authorized: false",
+        "design_gate_record: validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml",
+        "observed_design_gate_decision: deferred",
+        "runtime_support_added: false",
+        "implemented_uncertainty_propagation",
+        "annual_frequency_supported: false",
+    ):
+        if term not in template:
+            errors.append(f"validation/templates/annual_physical_prototype_preflight_v1.yaml omits {term!r}")
+
+    for symbol in (
+        "validate_prototype_preflight",
+        "REQUIRED_REMAINING_BLOCKERS",
+        "validate_design_gate_reference",
+        "current preflight expects the design gate to remain deferred",
+        "prototype_authorized must be false",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_annual_physical_prototype_preflight.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_preflight_is_valid_and_blocked",
+        "test_rejects_prototype_authorization",
+        "test_rejects_runtime_support",
+        "test_rejects_missing_remaining_blocker",
+        "test_rejects_observed_gate_decision_drift",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_annual_physical_prototype_preflight.py omits {test_name}")
     return errors
 
 

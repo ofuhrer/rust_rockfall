@@ -189,6 +189,13 @@ Four schema blockers are partially closed:
 
 These contracts do not authorize annual or physical products.
 
+Target 10 also has an inactive prototype preflight record:
+`docs/annual_physical_prototype_preflight.md`,
+`validation/templates/annual_physical_prototype_preflight_v1.yaml`, and
+`scripts/validate_annual_physical_prototype_preflight.py`. That preflight is
+not a blocker-resolution contract; it records that prototype implementation is
+currently blocked by this deferred gate.
+
 Remaining blockers before prototype authorization:
 
 - accepted source-frequency evidence for a source-event class;
