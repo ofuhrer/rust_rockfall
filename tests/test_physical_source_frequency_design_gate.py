@@ -27,6 +27,7 @@ class PhysicalSourceFrequencyDesignGateTests(unittest.TestCase):
         self.assertFalse(summary["annual_physical_prototype_authorized"])
         self.assertEqual(summary["blocker_contract_count"], 4)
         self.assertEqual(summary["blocking_contract_count"], 4)
+        self.assertEqual(summary["design_review_fixture_count"], 4)
 
     def test_rejects_authorized_prototype_in_current_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -93,6 +94,24 @@ class PhysicalSourceFrequencyDesignGateTests(unittest.TestCase):
             path = self.write_record(Path(tmp), record)
 
             with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "observed_status must match"):
+                validator.validate_design_gate_record(path)
+
+    def test_rejects_design_review_fixture_status_that_does_not_match_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["design_review_fixtures"][0]["observed_status"] = "candidate_not_authorized"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "observed_status must match"):
+                validator.validate_design_gate_record(path)
+
+    def test_rejects_design_review_fixture_as_runtime_authorized(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["design_review_fixtures"][0]["runtime_authorization"] = "authorized"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "runtime_authorization"):
                 validator.validate_design_gate_record(path)
 
     def test_rejects_nonblocking_inactive_contract(self) -> None:

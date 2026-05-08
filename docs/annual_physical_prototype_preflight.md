@@ -35,6 +35,12 @@ The validator reads the referenced design-gate record and verifies that the
 preflight stays synchronized with the gate decision. It intentionally rejects
 prototype authorization while the design gate remains deferred.
 
+The referenced design gate now also verifies four synthetic design-review fixtures
+for the source-frequency, block/release probability, reducer
+precondition, and validation/calibration review schemas. These fixtures are
+schema coverage only and are not accepted real evidence or implemented reducer
+support, so they do not change the blocked preflight state.
+
 ## Current Decision
 
 Target 10 remains blocked. The first safe implementation step is therefore a

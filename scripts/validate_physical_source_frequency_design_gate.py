@@ -87,6 +87,24 @@ REQUIRED_BLOCKER_CONTRACTS = {
         "required_status_before_prototype": "accepted_for_design_review",
     },
 }
+REQUIRED_DESIGN_REVIEW_FIXTURES = {
+    "source_frequency_evidence_design_review_fixture": {
+        "schema_version": "source_frequency_evidence_v1",
+        "record_path": "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml",
+    },
+    "block_release_probability_evidence_design_review_fixture": {
+        "schema_version": "block_release_probability_evidence_v1",
+        "record_path": "tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml",
+    },
+    "physical_frequency_reducer_preconditions_design_review_fixture": {
+        "schema_version": "physical_frequency_reducer_preconditions_v1",
+        "record_path": "tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml",
+    },
+    "annual_physical_validation_calibration_review_gate_design_review_fixture": {
+        "schema_version": "annual_physical_validation_calibration_review_gate_v1",
+        "record_path": "tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml",
+    },
+}
 MISLEADING_PATTERNS = [
     re.compile(r"\breturn[- ]?period\b", re.IGNORECASE),
     re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
@@ -156,6 +174,7 @@ def validate_design_gate_record(record_path: Path) -> dict[str, Any]:
         "validation_calibration_separation",
     )
     contract_summary = validate_gate_reassessment(record, decision, authorized)
+    fixture_summary = validate_design_review_fixture_reassessment(record)
     validate_schema_plan(require_mapping(record.get("required_schema_plan"), "required_schema_plan"))
     validate_rejection_tests(require_list(record.get("rejection_tests_required_before_prototype"), "rejection_tests_required_before_prototype"))
     validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
@@ -171,6 +190,7 @@ def validate_design_gate_record(record_path: Path) -> dict[str, Any]:
         "annual_physical_prototype_authorized": authorized,
         "blocker_contract_count": contract_summary["blocker_contract_count"],
         "blocking_contract_count": contract_summary["blocking_contract_count"],
+        "design_review_fixture_count": fixture_summary["design_review_fixture_count"],
         "required_schema_field_count": len(record["required_schema_plan"]["required_fields"]),
         "rejection_test_count": len(record["rejection_tests_required_before_prototype"]),
     }
@@ -288,6 +308,82 @@ def validate_blocker_contract_entry(blocker_id: str, contract: dict[str, Any], e
             contract.get("prototype_blocker") is True,
             f"blocker_contracts.{blocker_id}.prototype_blocker must be true for {observed_status}",
         )
+
+
+def validate_design_review_fixture_reassessment(record: dict[str, Any]) -> dict[str, int]:
+    reassessment = require_mapping(
+        record.get("design_review_fixture_reassessment"),
+        "design_review_fixture_reassessment",
+    )
+    require_text(reassessment.get("reassessment_id"), "design_review_fixture_reassessment.reassessment_id")
+    require(
+        reassessment.get("assessment_status") == "synthetic_fixtures_valid_but_not_gate_inputs",
+        "design_review_fixture_reassessment.assessment_status must keep fixtures separate from gate inputs",
+    )
+    require(
+        reassessment.get("prototype_authorization_basis")
+        == "synthetic_design_review_fixtures_do_not_replace_real_accepted_evidence_or_implemented_reducers",
+        "design_review_fixture_reassessment.prototype_authorization_basis must preserve real-evidence blockers",
+    )
+    fixtures = require_list(record.get("design_review_fixtures"), "design_review_fixtures")
+    require(
+        reassessment.get("checked_fixture_count") == len(fixtures),
+        "design_review_fixture_reassessment.checked_fixture_count must match design_review_fixtures length",
+    )
+    require(
+        len(fixtures) == len(REQUIRED_DESIGN_REVIEW_FIXTURES),
+        f"design_review_fixtures must list {len(REQUIRED_DESIGN_REVIEW_FIXTURES)} required fixtures",
+    )
+
+    by_id: dict[str, dict[str, Any]] = {}
+    for fixture in fixtures:
+        mapping = require_mapping(fixture, "design_review_fixtures[]")
+        fixture_id = require_text(mapping.get("fixture_id"), "design_review_fixtures[].fixture_id")
+        require(fixture_id not in by_id, f"duplicate design_review_fixtures entry: {fixture_id}")
+        by_id[fixture_id] = mapping
+
+    missing = sorted(set(REQUIRED_DESIGN_REVIEW_FIXTURES) - set(by_id))
+    require(not missing, f"design_review_fixtures missing: {missing}")
+
+    for fixture_id, expected in REQUIRED_DESIGN_REVIEW_FIXTURES.items():
+        validate_design_review_fixture_entry(fixture_id, by_id[fixture_id], expected)
+
+    return {"design_review_fixture_count": len(fixtures)}
+
+
+def validate_design_review_fixture_entry(fixture_id: str, fixture: dict[str, Any], expected: dict[str, str]) -> None:
+    record_path = require_text(fixture.get("record_path"), f"design_review_fixtures.{fixture_id}.record_path")
+    require(
+        record_path == expected["record_path"],
+        f"design_review_fixtures.{fixture_id}.record_path must be {expected['record_path']}",
+    )
+    require(
+        fixture.get("required_schema_version") == expected["schema_version"],
+        f"design_review_fixtures.{fixture_id}.required_schema_version must be {expected['schema_version']}",
+    )
+    referenced_record = read_yaml(REPO_ROOT / record_path)
+    require(
+        referenced_record.get("schema_version") == expected["schema_version"],
+        f"{record_path} schema_version must be {expected['schema_version']}",
+    )
+    observed_status = require_text(fixture.get("observed_status"), f"design_review_fixtures.{fixture_id}.observed_status")
+    actual_status = require_text(referenced_record.get("record_status"), f"{record_path}.record_status")
+    require(
+        observed_status == actual_status,
+        f"design_review_fixtures.{fixture_id}.observed_status must match {record_path}.record_status",
+    )
+    require(
+        observed_status == "accepted_for_design_review",
+        f"design_review_fixtures.{fixture_id}.observed_status must be accepted_for_design_review",
+    )
+    require(
+        referenced_record.get("prototype_authorized") is False,
+        f"{record_path}.prototype_authorized must be false",
+    )
+    require(
+        fixture.get("runtime_authorization") == "not_authorized",
+        f"design_review_fixtures.{fixture_id}.runtime_authorization must be not_authorized",
+    )
 
 
 def validate_schema_plan(plan: dict[str, Any]) -> None:

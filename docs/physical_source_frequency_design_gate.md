@@ -147,6 +147,13 @@ implemented. This reassessment is a claim-control check only; it does not add
 annual units, physical probabilities, return-period labels, operational hazard
 maps, or risk semantics.
 
+A follow-up fixture reassessment verifies that the four tiny synthetic
+design-review fixtures are internally valid and have
+`accepted_for_design_review` status. Those fixtures exercise schema shape only:
+they are not selected gate inputs, they do not replace real accepted evidence,
+and they do not implement overlap-adjusted reducers or uncertainty propagation.
+The prototype remains unauthorized.
+
 Blocking conditions:
 
 - no accepted source-frequency evidence contract exists;
@@ -188,6 +195,18 @@ Four schema blockers are partially closed:
   The template records `review_not_passed`.
 
 These contracts do not authorize annual or physical products.
+
+Four synthetic design-review fixtures are also checked by the design-gate
+validator:
+
+- `tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml`;
+- `tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml`;
+- `tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml`;
+- `tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml`.
+
+The fixture reassessment is executable coverage for accepted-record schema
+states only. The selected inactive templates above remain the authoritative
+gate inputs.
 
 Target 10 also has an inactive prototype preflight record:
 `docs/annual_physical_prototype_preflight.md`,

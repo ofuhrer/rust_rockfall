@@ -65,6 +65,11 @@ gate_reassessment:
   assessment_status: deferred_after_inactive_contract_review
   prototype_authorization_basis: all_required_contracts_present_but_not_accepted_or_implemented
   checked_contract_count: 4
+design_review_fixture_reassessment:
+  reassessment_id: physical_source_frequency_design_review_fixture_reassessment_v1
+  assessment_status: synthetic_fixtures_valid_but_not_gate_inputs
+  prototype_authorization_basis: synthetic_design_review_fixtures_do_not_replace_real_accepted_evidence_or_implemented_reducers
+  checked_fixture_count: 4
 blocker_contracts:
   - blocker_id: source_frequency_evidence
     record_path: validation/templates/source_frequency_evidence_v1.yaml
@@ -90,6 +95,27 @@ blocker_contracts:
     observed_status: review_not_passed
     required_status_before_prototype: accepted_for_design_review
     prototype_blocker: true
+design_review_fixtures:
+  - fixture_id: source_frequency_evidence_design_review_fixture
+    record_path: tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml
+    required_schema_version: source_frequency_evidence_v1
+    observed_status: accepted_for_design_review
+    runtime_authorization: not_authorized
+  - fixture_id: block_release_probability_evidence_design_review_fixture
+    record_path: tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml
+    required_schema_version: block_release_probability_evidence_v1
+    observed_status: accepted_for_design_review
+    runtime_authorization: not_authorized
+  - fixture_id: physical_frequency_reducer_preconditions_design_review_fixture
+    record_path: tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml
+    required_schema_version: physical_frequency_reducer_preconditions_v1
+    observed_status: accepted_for_design_review
+    runtime_authorization: not_authorized
+  - fixture_id: annual_physical_validation_calibration_review_gate_design_review_fixture
+    record_path: tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml
+    required_schema_version: annual_physical_validation_calibration_review_gate_v1
+    observed_status: accepted_for_design_review
+    runtime_authorization: not_authorized
 required_schema_plan:
   status: deferred_schema_not_implemented
   required_fields:

@@ -310,6 +310,14 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "validation/templates/block_release_probability_evidence_v1.yaml",
         "validation/templates/physical_frequency_reducer_preconditions_v1.yaml",
         "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml",
+        "design_review_fixture_reassessment:",
+        "synthetic_fixtures_valid_but_not_gate_inputs",
+        "design_review_fixtures:",
+        "source_frequency_evidence_design_review_fixture_v1.yaml",
+        "block_release_probability_evidence_design_review_fixture_v1.yaml",
+        "physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml",
+        "annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml",
+        "runtime_authorization: not_authorized",
     ):
         if term not in record:
             errors.append(
@@ -322,7 +330,9 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "REQUIRED_UNITS",
         "REQUIRED_REJECTION_TESTS",
         "REQUIRED_BLOCKER_CONTRACTS",
+        "REQUIRED_DESIGN_REVIEW_FIXTURES",
         "validate_gate_reassessment",
+        "validate_design_review_fixture_reassessment",
         "authorize_prototype is intentionally unsupported",
     ):
         if symbol not in validator:
@@ -336,6 +346,8 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "test_rejects_missing_overlap_policy",
         "test_rejects_missing_blocker_contract",
         "test_rejects_blocker_status_that_does_not_match_template",
+        "test_rejects_design_review_fixture_status_that_does_not_match_fixture",
+        "test_rejects_design_review_fixture_as_runtime_authorized",
         "test_rejects_nonblocking_inactive_contract",
     ):
         if test_name not in tests:
@@ -749,6 +761,7 @@ def check_annual_physical_prototype_preflight() -> list[str]:
         "runtime_support_added: false",
         "accepted source-frequency evidence",
         "accepted validation/calibration review",
+        "synthetic design-review fixtures",
     ):
         if term not in doc:
             errors.append(f"docs/annual_physical_prototype_preflight.md omits {term!r}")

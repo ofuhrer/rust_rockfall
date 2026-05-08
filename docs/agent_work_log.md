@@ -2575,6 +2575,66 @@ Planning only; these milestones do not implement roadmap item content yet.
   reassess the Target 10 preflight/design gate against the now-covered synthetic
   fixture states without enabling runtime products.
 
+### M044
+
+- Milestone id: M044.
+- Roadmap item: Target 10 blocker: design-gate/preflight reassessment against
+  synthetic accepted-record fixture coverage.
+- Hypothesis/objective: Reassess the physical/source-frequency design gate
+  against the four completed synthetic design-review fixtures while preserving
+  the selected inactive templates as blocking gate inputs and keeping the
+  annual/physical prototype unauthorized.
+- Initial gap assessment: The source-frequency, block/release probability,
+  reducer-precondition, and validation/calibration design-review fixtures all
+  existed and were individually validated, but the central design gate did not
+  yet enumerate or verify those fixture states. The preflight still correctly
+  referenced the deferred gate, but documentation did not explicitly state that
+  fixture coverage is schema-only and does not close real evidence or reducer
+  blockers.
+- Files changed:
+  `validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`,
+  `scripts/validate_physical_source_frequency_design_gate.py`,
+  `tests/test_physical_source_frequency_design_gate.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/annual_physical_prototype_preflight.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `design_review_fixture_reassessment` section
+  and four `design_review_fixtures` entries to the executable design-gate
+  record. The gate validator now reads those fixture files, verifies their
+  schema versions, `accepted_for_design_review` statuses, false prototype
+  authorization, and `not_authorized` runtime state, while still requiring the
+  selected inactive templates to remain prototype blockers. Tests cover fixture
+  status drift and accidental runtime authorization.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_physical_source_frequency_design_gate.py validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_physical_source_frequency_design_gate`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_annual_physical_prototype_preflight.py validation/templates/annual_physical_prototype_preflight_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_annual_physical_prototype_preflight`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, operational claims, accepted real
+  validation evidence, implemented reducers, or selected design-gate
+  authorization are changed.
+- Decision: ACCEPT if final checks pass; synthetic accepted-record fixture
+  coverage is now centrally reassessed by the design gate while Target 10
+  remains blocked.
+- Next proposed milestone: Resolve exactly one real blocker only if real
+  accepted evidence or implemented reducer work is explicitly provided;
+  otherwise keep annual/physical prototype implementation deferred.
+
 ### M041
 
 - Milestone id: M041.

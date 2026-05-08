@@ -494,6 +494,9 @@ Estimated order: 10.
   `scripts/validate_physical_source_frequency_design_gate.py` verifies that
   the gate remains deferred while those records are not accepted or
   implemented.
+- The same design gate now also reassesses the four synthetic design-review
+  fixtures and verifies that they are accepted-record schema fixtures only, not
+  selected gate inputs or runtime authorization evidence.
 - Target 10 has an inactive preflight guard. `docs/annual_physical_prototype_preflight.md`,
   `validation/templates/annual_physical_prototype_preflight_v1.yaml`, and
   `scripts/validate_annual_physical_prototype_preflight.py` verify that the
