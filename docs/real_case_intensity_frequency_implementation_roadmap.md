@@ -348,6 +348,15 @@ Implementation work:
 - write a pilot report that classifies the result as pass, no-go, or
   inconclusive against workflow gates, not as operational validation.
 
+Current Phase 6 implementation starts with the pre-run freeze gate:
+`validation/templates/public_real_site_conditional_pilot_run_v1.yaml` and
+`scripts/validate_public_real_site_conditional_pilot_run.py` define the
+share-safe contract for frozen inputs, gate scale, target scale, explicit grid,
+conditional thresholds, output budget, and pass/no-go/inconclusive report
+classification. The checked-in template is `template_not_run`; real local runs
+must copy it to an ignored pilot directory and populate private paths and
+checksums before execution.
+
 Likely affected areas:
 
 - `validation/cases/`;

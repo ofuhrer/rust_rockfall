@@ -1,0 +1,81 @@
+# Public Real-Site Conditional Pilot Report Template
+
+Status: template only. This report is a scaffold for the first public-data
+conditional pilot run. It does not record a completed run, operational hazard
+approval, physical probability, annual frequency, return-period products, or
+risk-map results.
+
+## Classification
+
+- Pilot id: `public_real_site_pilot_template`
+- Run id: `public_real_site_conditional_pilot_template`
+- Current classification: `not_run`
+- Allowed completed classifications: `pass`, `no-go`, `inconclusive`
+- Operational status: research diagnostic
+- Validation maturity target: V1 preparation fixture before a real local run;
+  higher evidence levels require actual field or cross-site evidence.
+
+## Frozen Inputs
+
+Before running, copy
+`validation/templates/public_real_site_conditional_pilot_run_v1.yaml` to an
+ignored pilot directory and replace all template values with the selected public
+real-site inputs:
+
+- validated public real-site geodata manifest;
+- validated source-zone and block-scenario policy;
+- frozen validation or benchmark case path;
+- terrain metadata sidecar with LV95 / EPSG:2056 and LN02 provenance;
+- source-zone metadata sidecar and scenario table;
+- fixed random seed, gate-run scale, target scale, worker count, and reducer
+  mode;
+- explicit hazard grid matching the DEM crop;
+- predeclared conditional intensity thresholds and output roots.
+
+The run must not tune parameters after seeing pilot outputs.
+
+## Required Generated Artifacts
+
+Generated artifacts remain outside git unless a later task explicitly adds a
+tiny fixture. The local report should record paths and checksums for:
+
+- validation runner manifest and diagnostics;
+- hazard-layer `run_manifest_v1`;
+- `conditional_intensity_exceedance_curves.csv`;
+- selected GeoTIFF rasters;
+- pilot GIS package manifest;
+- reducer chunk manifests when `--reducer-workers` is used;
+- convergence diagnostics, runtime, memory, output file count, and output byte
+  volume.
+
+## Gate Questions
+
+- Did the geodata manifest pass its validator before the run?
+- Did the source-zone/block-scenario policy pass its validator before the run?
+- Were terrain, source-zone, block scenarios, thresholds, seeds, physics
+  settings, explicit grid, and output plan frozen before execution?
+- Did a small gate run complete before any larger target run?
+- Were per-cell conditional intensity-exceedance curves generated?
+- Do selected GIS rasters align with terrain and source-zone context?
+- Are DEM, source-zone, block-scenario, forest/obstacle, shape, model-form, and
+  frequency limitations visible?
+- Are all labels restricted to diagnostic or sampling-weighted conditional
+  semantics?
+
+## Claim Boundary
+
+Allowed current claims:
+
+- the workflow ran from predeclared public-input provenance;
+- outputs are unweighted diagnostics, sampling-weighted conditional products,
+  or conditional intensity-exceedance products;
+- GIS outputs are local review artifacts when GeoTIFF and package manifests are
+  present.
+
+Unsupported current claims:
+
+- annual frequency;
+- return-period products;
+- physical probability;
+- risk-map meaning;
+- operational or validated hazard-map status.

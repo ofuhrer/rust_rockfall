@@ -1,0 +1,110 @@
+# Template only: copy to an ignored pilot directory before filling in real
+# local geodata paths, source-zone sidecars, run checksums, or output reports.
+schema_version: public_real_site_conditional_pilot_run_v1
+pilot_id: public_real_site_pilot_template
+run_id: public_real_site_conditional_pilot_template
+run_status: template_not_run
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+input_freeze:
+  geodata_manifest_path: data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml
+  source_scenario_policy_path: validation/templates/public_real_site_source_scenario_policy_v1.yaml
+  benchmark_case_path: null
+  terrain_metadata_path: null
+  source_zone_metadata_path: null
+  scenario_table_path: null
+  map_product_id: null
+  freeze_status: not_frozen
+  freeze_notes:
+    - template only; no real public pilot inputs are frozen in git
+
+physics_freeze:
+  defaults_changed: false
+  simulator_behavior_changed: false
+  contact_model: translational_v0
+  soil_interaction_model: none
+  roughness_model: none
+  parameters_status: template_not_run
+  tuning_after_output_review_allowed: false
+
+sampling_plan:
+  random_seed: null
+  gate_run_trajectories_per_release_zone: null
+  target_trajectories_per_release_zone: null
+  release_cell_policy: deterministic_grid
+  scenario_weight_semantics: conditional_sampling_only
+  worker_count: null
+  reducer_mode: deterministic_local_reducer
+
+hazard_output_plan:
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  kinetic_energy_exceedance_j: []
+  jump_height_exceedance_m: []
+  velocity_exceedance_mps: []
+  conditional_curve_table_required: true
+  geotiff_required: true
+  pilot_gis_package_required: true
+  explicit_grid_required: true
+  explicit_grid:
+    xmin: null
+    ymin: null
+    ncols: null
+    nrows: null
+    cell_size_m: null
+  output_roots:
+    validation_results: validation/private/public_real_site_pilot_template
+    hazard_results: hazard/results/public_real_site_pilot_template
+  generated_outputs_committed: false
+
+workflow_gates:
+  geodata_manifest_validated: not_run
+  source_scenario_policy_validated: not_run
+  benchmark_case_frozen: not_run
+  small_gate_run_completed: not_run
+  conditional_curves_generated: not_run
+  gis_package_generated: not_run
+  convergence_diagnostics_recorded: not_run
+  output_budget_recorded: not_run
+  visual_qa_recorded: not_run
+  report_classification: not_run
+
+output_budget:
+  max_committed_generated_files: 0
+  max_private_file_count: null
+  max_private_total_bytes: null
+  required_recorded_metrics:
+    - runtime_seconds
+    - memory_peak_mb
+    - output_file_count
+    - output_total_bytes
+    - trajectory_count
+    - release_cell_count
+
+report_plan:
+  report_path: docs/public_real_site_conditional_pilot_report_template.md
+  allowed_classifications:
+    - pass
+    - no-go
+    - inconclusive
+  current_classification: not_run
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - public geodata and source-zone policies are input provenance, not validation evidence by themselves
+    - current pilot outputs must be classified as research diagnostics or sampling-weighted conditional products

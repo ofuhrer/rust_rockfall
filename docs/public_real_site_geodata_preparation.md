@@ -22,11 +22,24 @@ and claim boundaries.
   `data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml`
 - Validator:
   `scripts/validate_public_real_site_geodata_manifest.py`
+- Conditional pilot run-freeze template:
+  `validation/templates/public_real_site_conditional_pilot_run_v1.yaml`
+- Conditional pilot run-freeze validator:
+  `scripts/validate_public_real_site_conditional_pilot_run.py`
+- Report scaffold:
+  `docs/public_real_site_conditional_pilot_report_template.md`
 
 The checked-in template is intentionally `template_not_run`. A real local pilot
 should copy it to an ignored working directory, fill in the selected domain and
 tile inventory, and run the validator before deriving source zones or
 simulation cases.
+
+The Phase 6 run-freeze template is also intentionally not run. It records the
+geodata manifest, source-zone/block-scenario policy, benchmark case, terrain
+metadata, source-zone sidecar, scenario table, random seed, gate scale, target
+scale, thresholds, explicit grid, output budget, and report classification
+before any local pilot execution. It is the gate that prevents tuning or
+claim-language drift after outputs are inspected.
 
 ## Ignored Local Layout
 
@@ -82,6 +95,20 @@ manifests do not pretend raw or processed geodata are present.
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
 does not prove scientific skill; it only gates provenance and claim hygiene.
+
+Before the first conditional pilot run, also run:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_public_real_site_conditional_pilot_run.py \
+  validation/templates/public_real_site_conditional_pilot_run_v1.yaml
+```
+
+For a real local run, copy the template to an ignored pilot directory and use
+the same validator after all freeze fields are populated. The validator requires
+frozen inputs, nonnegative thresholds, explicit grid metadata, local output
+budgets, and pass/no-go/inconclusive gate statuses. It does not run the
+simulator or hazard builder and does not create generated products.
 
 ## Claim Boundary
 

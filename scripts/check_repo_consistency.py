@@ -552,6 +552,24 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ).strip()
         errors.append(f"source-zone/block-scenario policy template validation failed:\n{output}")
 
+    pilot_run_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_public_real_site_conditional_pilot_run.py",
+            "validation/templates/public_real_site_conditional_pilot_run_v1.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if pilot_run_check.returncode != 0:
+        output = "\n".join(
+            part for part in (pilot_run_check.stdout, pilot_run_check.stderr) if part
+        ).strip()
+        errors.append(f"public real-site conditional pilot run template validation failed:\n{output}")
+
     hazard_docs = "\n".join(
         path.read_text()
         for path in (

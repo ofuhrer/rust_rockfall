@@ -644,6 +644,16 @@ required to preserve serial output values for current conditional diagnostic
 layers; it does not introduce annual frequency, physical probability, or
 distributed execution semantics.
 
+Phase 6 public real-site conditional pilots must be predeclared with
+`public_real_site_conditional_pilot_run_v1` before execution. The run-freeze
+YAML records validated geodata and source-scenario policy paths, frozen case
+and terrain/source-zone/scenario sidecars, physics defaults, random seed,
+gate-run scale, target scale, reducer mode, conditional thresholds, explicit
+grid, output roots, output budget, workflow gate statuses, and report
+classification. The committed template remains `template_not_run`; populated
+local copies belong in ignored pilot directories and generated outputs remain
+outside git.
+
 If `outputs.ensemble_impact_events_parquet` is present, the manifest `outputs`
 array includes `kind: ensemble_impact_events`, `format: parquet`,
 `schema_version: impact_events_table_v1`, path, row count, file count, total
