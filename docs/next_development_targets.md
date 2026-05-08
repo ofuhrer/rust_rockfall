@@ -8,11 +8,12 @@ simulator behavior.
 
 The repository now has substantial scaffolding and selected-domain contracts
 for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
-sensitivity gate, conditional pilot report, GIS package review, and scaling
-review have been reconciled against regenerated local ignored artifacts. The
-current critical gap is no longer evidence consistency; the next development
-task should run or record the manual QGIS visual QA before adding features or
-increasing ensemble size.
+sensitivity gate, conditional pilot report, GIS package review, scaling review,
+and visual-QA review record have been reconciled against regenerated local
+ignored artifacts. The current critical gap is no longer evidence consistency
+or an unclassified visual-QA gate; the next development task should scope
+forest and obstacle omission before adding features or increasing ensemble
+size.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -78,14 +79,23 @@ that would mislead interpretation.
 Engineering risk: Low to medium.
 
 Likely affected areas: `docs/tschamut_public_pilot_gis_package_review.md`,
-`docs/pilot_gis_package.md`, local ignored package outputs.
+`docs/pilot_gis_package.md`,
+`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`, local ignored
+package outputs.
 
 Evidence needed: QGIS review notes for CRS alignment, DEM/hillshade or terrain
 context alignment, nodata styling, source-zone overlay, layer labels, and
 conditional-product language.
 
-Minimal acceptable deliverable: manual visual QA classified as pass, no-go, or
-inconclusive with screenshots or a share-safe checklist where appropriate.
+Minimal acceptable deliverable: complete at the share-safe checklist level. The
+selected visual-QA record
+`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` classifies manual
+GIS/QGIS visual QA as `inconclusive` because QGIS was unavailable in the
+non-GUI agent environment, while automated package QA passed and all required
+CRS, datum, alignment, nodata, source-zone, label, and claim-boundary checks are
+classified. The validator
+`scripts/validate_pilot_gis_visual_qa.py --require-existing-package` checks the
+record against the ignored local package when artifacts exist.
 
 What not to do: Do not create a production QGZ, GeoPackage, COG, risk map, or
 operational map product in this step.
@@ -261,8 +271,10 @@ Estimated order: 7.
 - Small frozen conditional pilot gate is complete as a regenerated local
   ignored trajectory/hazard run with `inconclusive` report classification, not
   as an operational or target-scale result.
-- Real-pilot GIS package is complete only at automated manifest/file QA level
-  for local ignored outputs; manual QGIS visual QA remains not run.
+- Real-pilot GIS package is complete at automated manifest/file QA level for
+  local ignored outputs, and the selected manual GIS/QGIS visual-QA gate is
+  explicitly classified `inconclusive` by a share-safe checklist because QGIS
+  was unavailable and no visual overlay evidence was produced.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
@@ -280,7 +292,7 @@ Estimated order: 7.
 ## Recommended Sequence
 
 1. Reconcile and regenerate selected pilot gate evidence.
-2. Run manual QGIS visual QA for the selected package.
+2. Run or classify manual QGIS visual QA for the selected package.
 3. Scope forest and obstacle omission for Tschamut.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify

@@ -2,9 +2,10 @@
 
 Status: share-safe diagnostic review record for the local Tschamut public
 conditional pilot GIS package. This review records automated package-manifest
-and file-integrity checks only. It is not a QGIS project, production COG
-package, operational hazard map, physical-probability product, annual-frequency
-product, return-period product, or risk map.
+and file-integrity checks plus an explicit manual GIS/QGIS visual-QA checklist
+classification. It is not a QGIS project, production COG package, operational
+hazard map, physical-probability product, annual-frequency product,
+return-period product, or risk map.
 
 This is local-only evidence. The generated rasters, manifests, and parity files
 listed below are ignored outputs and are not present in a clean checkout. The
@@ -79,16 +80,48 @@ The validator checked:
 
 ## Visual QA Result
 
-Manual QGIS inspection was not run. The package therefore has this gate status:
+The selected visual-QA record is:
+`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`.
+
+Command:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_pilot_gis_visual_qa.py \
+  validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml \
+  --require-existing-package \
+  --format json
+```
+
+Result: pass for the review-record contract, with overall visual-QA
+classification `inconclusive`.
+
+Manual QGIS inspection could not be completed in the non-GUI agent environment:
+`which qgis` returned no executable and no QGIS screenshots, layer-list export,
+or metadata-dialog evidence was produced. The package therefore has this gate
+status:
 
 - Automated manifest/file QA: `pass`
-- Manual QGIS visual QA: `not-run`
+- Manual GIS/QGIS visual QA: `inconclusive`
 - Overall local diagnostic package acceptance: `inconclusive`
 
-The package is suitable for the next manual GIS review step because the rasters,
-parity grids, manifests, CRS/datum metadata, nodata metadata, and source-zone
-sidecar references are present and internally consistent at the manifest level.
-It is not yet accepted as a visually reviewed QGIS package.
+Checklist outcome:
+
+- CRS metadata: `pass` at automated manifest level for EPSG:2056 / LV95.
+- Vertical datum metadata: `pass` at automated manifest level for LN02.
+- Raster grid alignment: `inconclusive` because DEM/hazard/source-zone overlay
+  was not opened in QGIS.
+- Nodata versus valid-zero styling: `inconclusive` because QGIS styling was not
+  inspected.
+- Source-zone overlay: `inconclusive` because no QGIS overlay screenshot or
+  layer-list evidence was produced.
+- Conditional layer labels: `pass` at manifest/report level.
+- Unsupported-claim boundaries: `pass` at manifest/report level.
+
+The package remains suitable for a future hands-on QGIS review because the
+rasters, parity grids, manifests, CRS/datum metadata, nodata metadata, and
+source-zone sidecar references are present and internally consistent at the
+manifest level. It is not accepted as a visually reviewed QGIS package.
 
 ## Claim Boundary
 
@@ -110,8 +143,8 @@ Unsupported current interpretation:
 
 ## Next GIS Action
 
-The next reviewer should load the ignored local package in QGIS with the
+The next reviewer should run QGIS locally, load the ignored package with the
 terrain DEM or hillshade, source-zone sidecar, and selected rasters; verify
 spatial alignment, nodata versus valid zero styling, layer labels, and
-conditional-product wording; then update the package visual QA status only if
-the manual GIS findings support it.
+conditional-product wording; then update the visual-QA record only if the
+manual GIS findings support a `pass` or `no-go` classification.

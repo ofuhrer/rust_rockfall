@@ -1,0 +1,90 @@
+schema_version: pilot_gis_visual_qa_record_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_gate_v1
+package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json
+hazard_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
+map_package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json
+terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+review_environment:
+  reviewer: codex-development-agent
+  review_date: "2026-05-08"
+  qgis_available: false
+  qgis_version:
+  execution_context: non-GUI repository agent session; `which qgis` returned no executable
+status:
+  automated_package_qa_status: pass
+  manual_qgis_visual_qa_status: inconclusive
+  overall_acceptance: inconclusive
+  accepted_for_operational_use: false
+checks:
+  - id: project_crs_epsg_2056
+    status: pass
+    finding: Automated package QA confirms EPSG:2056 in the package and hazard manifests.
+    evidence:
+      - scripts/validate_pilot_gis_package.py --require-real-site --require-existing-files passed locally
+      - package manifest records EPSG:2056 / LV95 metadata
+  - id: vertical_datum_ln02
+    status: pass
+    finding: Automated package QA confirms LN02 vertical-datum metadata in the package and terrain sidecar references.
+    evidence:
+      - scripts/validate_pilot_gis_package.py --require-real-site --require-existing-files passed locally
+      - terrain metadata path is recorded for the ignored local swissALTI3D crop
+  - id: raster_grid_alignment
+    status: inconclusive
+    finding: Manifest grid metadata is internally consistent, but no QGIS overlay inspection was possible in this non-GUI environment.
+    evidence:
+      - package grid records 300 by 304 cells at 2 m cell size
+      - manual DEM/hazard/source-zone overlay was not opened in QGIS
+  - id: nodata_vs_valid_zero_styling
+    status: inconclusive
+    finding: Nodata value is recorded as -9999.0, but QGIS styling of nodata versus valid zero was not inspected.
+    evidence:
+      - package and hazard manifests record nodata -9999.0
+      - no QGIS layer styling screenshot or project was produced
+  - id: source_zone_overlay
+    status: inconclusive
+    finding: Source-zone metadata is referenced through the map-package manifest, but visual overlay alignment was not inspected.
+    evidence:
+      - map package manifest records source_zone_metadata_path
+      - no QGIS source-zone overlay screenshot was produced
+  - id: layer_labels_conditional
+    status: pass
+    finding: Manifest and report wording identify the package as conditional intensity-exceedance and sampling-weighted conditional diagnostic outputs.
+    evidence:
+      - package claim boundary allows conditional_intensity_exceedance
+      - current reports avoid annual, physical-probability, return-period, and risk-map labels for current products
+  - id: unsupported_claim_boundaries
+    status: pass
+    finding: Unsupported annual-frequency, physical-probability, return-period, risk, and operational claims remain rejected or explicitly deferred.
+    evidence:
+      - package manifest records unsupported future product labels
+      - repository consistency checks reject misleading current-product claims
+evidence:
+  automated_validator_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json
+  automated_validator_result: pass
+  reviewed_artifacts:
+    - validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+    - docs/tschamut_public_pilot_gis_package_review.md
+    - hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json
+    - hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
+    - hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json
+  screenshots: []
+blockers:
+  - qgis executable is not available in the current non-GUI agent environment
+  - no DEM/hillshade, source-zone, and hazard-raster overlay was manually inspected
+  - no QGIS layer-list, metadata-dialog, styling, or screenshot artifact was produced
+claim_boundary:
+  operational_status: research_diagnostic
+  annualized: false
+  physical_probability: false
+  risk_or_exposure: false
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  deferred_or_unsupported_labels:
+    - physical_probability
+    - annual_intensity_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map

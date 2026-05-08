@@ -26,9 +26,11 @@ There are two distinct milestones:
 The repository is close to milestone 1 at the tooling and selected-domain
 contract level, and the selected public Swiss pilot now has a reconciled
 run-freeze record with regenerated local ignored outputs, conditional curves,
-automated GIS artifact checks, and local performance evidence. Milestone 1 is
-not complete until manual GIS visual QA, obstacle/forest omission scoping, and
-target-scale convergence decisions are recorded. It is not yet close to
+automated GIS artifact checks, local performance evidence, and an explicit
+manual GIS/QGIS visual-QA classification. Milestone 1 is not complete until
+obstacle/forest omission scoping and target-scale convergence decisions are
+recorded; the selected package visual-QA gate is currently `inconclusive`
+because QGIS was unavailable in the non-GUI review environment. It is not yet close to
 milestone 2 because source-zone occurrence frequency, block-population
 frequency, annualization, and validation semantics remain unsupported by
 `docs/hazard_map_semantics.md` and
@@ -58,8 +60,8 @@ Already available:
   ignored DEM-sensitivity, validation, hazard, GIS package, scaling, runtime,
   memory, and checksum evidence;
 - share-safe Tschamut public GIS package review note for one local ignored
-  generated package, with automated manifest/file QA recorded and manual QGIS
-  visual QA still not run;
+  generated package, with automated manifest/file QA recorded and manual
+  GIS/QGIS visual QA classified `inconclusive` by a checked review record;
 - share-safe Tschamut public pilot scaling review note based on ignored local
   validation, hazard, GIS-package, and reducer manifests, identifying
   conditional-curve/raster output volume as the next bottleneck before
@@ -70,23 +72,20 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. run or record the manual QGIS visual QA for the selected pilot package,
-   including CRS alignment, nodata styling, source-zone overlay, and
-   conditional-product labels;
-2. scope forest/obstacle omission for the selected Tschamut corridor so missing
+1. scope forest/obstacle omission for the selected Tschamut corridor so missing
    barriers or vegetation are not silently reinterpreted as terrain/material or
    contact-model behavior;
-3. address the local output-volume bottleneck, especially conditional-curve and
+2. address the local output-volume bottleneck, especially conditional-curve and
    raster outputs, before increasing ensemble size;
-4. increase ensemble size toward the target trajectory count only after the
+3. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible, interpreted, and has convergence diagnostics;
-5. defer physical/annual frequency semantics until source-frequency and
+4. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
 
 The latest implementation work completed the first selected-domain pieces of
-the roadmap but left one important evidence consistency gap:
+the roadmap and left interpretation gaps that should be resolved before scale-up:
 
 - Priority 1 is complete at the share-safe manifest level. The selected public
   Tschamut manifest records the real domain, public swissALTI3D tile, crop
@@ -102,11 +101,17 @@ the roadmap but left one important evidence consistency gap:
   `inconclusive` report classification. The checked-in run-freeze records
   regenerated ignored DEM-sensitivity, validation, hazard, GIS package,
   scaling, runtime, memory, file-count, byte-count, and checksum evidence.
-- Priority 5 is partially complete. `scripts/validate_pilot_gis_package.py`
+- Priority 5 is complete at the selected checklist level.
+  `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
   for a local ignored Tschamut package that now matches the reconciled
-  run-freeze evidence. The generated rasters/manifests are not committed and
-  are absent in a clean checkout. Manual QGIS visual QA is still `not-run`.
+  run-freeze evidence. `scripts/validate_pilot_gis_visual_qa.py` and
+  `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` record the
+  selected manual GIS/QGIS visual-QA gate as `inconclusive`: QGIS was not
+  available in the non-GUI environment, no overlay screenshots were produced,
+  and CRS/datum/label/claim checks pass only at the automated manifest level.
+  The generated rasters/manifests are not committed and are absent in a clean
+  checkout.
 - Local scaling/output-volume evidence is complete at the manifest-summary
   level. `scripts/summarize_pilot_scaling.py` and
   `docs/tschamut_public_pilot_scaling_review.md` record validation/hazard wall
@@ -114,9 +119,9 @@ the roadmap but left one important evidence consistency gap:
   status, and a no-default-change decision. This evidence depends on ignored
   local outputs and is reconciled with the authoritative run-freeze.
 
-The immediate roadmap task is therefore not another new feature. It is to run
-or record manual GIS/QGIS visual QA for the reconciled selected pilot package
-before interpreting or scaling the conditional products.
+The immediate roadmap task is therefore not another new feature. It is to scope
+forest and obstacle omission for the selected Tschamut corridor before
+interpreting or scaling the conditional products.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -345,12 +350,15 @@ exist, tests cover value/metadata parity and explicit COG rejection, and
 `scripts/validate_pilot_gis_package.py` can validate package inventories for
 local generated real-pilot outputs. The Tschamut local package review in
 `docs/tschamut_public_pilot_gis_package_review.md` records passing automated
-manifest/file QA for an ignored local gate package and an `inconclusive`
-overall status because manual QGIS inspection has not been run. The generated
-package artifacts are not tracked and may be absent in a clean checkout, but
-their manifest checksum is reconciled in the authoritative run-freeze. The
-current code does not create a QGIS project, GeoPackage, production COG, tiled
-package, or operational product.
+manifest/file QA for an ignored local gate package.
+`scripts/validate_pilot_gis_visual_qa.py` validates the selected visual-QA
+record `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`, which
+classifies the manual GIS/QGIS gate as `inconclusive` because QGIS was
+unavailable and no visual overlay evidence was produced. The generated package
+artifacts are not tracked and may be absent in a clean checkout, but their
+manifest checksum is reconciled in the authoritative run-freeze. The current
+code does not create a QGIS project, GeoPackage, production COG, tiled package,
+or operational product.
 
 Implementation work:
 
@@ -621,7 +629,7 @@ scaling.
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
 | 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze, GIS review, scaling review, and conditional gate report needed one authoritative state. | Complete: the processed DEM and local ignored outputs were regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/memory/output metrics, and GIS review references are reflected consistently in the run-freeze and reports with `inconclusive` non-operational classification. |
-| 2 | Run manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | CRS alignment, nodata styling, source-zone overlay, raster labels, and conditional-product language are reviewed in QGIS and recorded as pass, no-go, or inconclusive. |
+| 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | A share-safe context memo classifies obstacle omission as acceptable, limiting, or invalidating for the selected corridor, without adding obstacle physics. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Output modes, summaries, or gates are designed and tested so larger ensembles do not produce unmanageable conditional-curve/raster artifacts by default. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
@@ -645,9 +653,10 @@ The earliest scientifically honest full-chain pilot should produce or record:
 
 At the current state, the first two bullets are complete at the share-safe
 contract level and the middle bullets have reconciled local ignored-artifact
-evidence for the small gate. The package still needs manual GIS visual QA,
-obstacle/forest omission scoping, and convergence interpretation before the
-pilot can be treated as more than an inconclusive local diagnostic gate.
+evidence for the small gate. The package visual-QA gate is explicitly
+`inconclusive` rather than unclassified. Obstacle/forest omission scoping and
+convergence interpretation are still needed before the pilot can be treated as
+more than an inconclusive local diagnostic gate.
 
 ## Decision Gates
 

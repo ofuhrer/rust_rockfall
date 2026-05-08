@@ -231,6 +231,15 @@ contract:
   annual/return-period/risk/operational claim boundaries. The TIFF signature
   check catches placeholder or wrong-file artifacts; it is not full raster
   readability or QGIS QA.
+- `scripts/validate_pilot_gis_visual_qa.py` validates a
+  `pilot_gis_visual_qa_record_v1` checklist for the selected manual GIS/QGIS
+  review step. It requires the core CRS, vertical-datum, raster-alignment,
+  nodata-styling, source-zone-overlay, conditional-label, and unsupported-claim
+  checks to be classified as `pass`, `no-go`, or `inconclusive`; rejects
+  selected-pilot `not-run` visual-QA records; and only allows an overall `pass`
+  when QGIS availability plus reviewed visual artifacts are recorded. With
+  `--require-existing-package`, it also validates the referenced local package
+  manifest and generated files through `scripts/validate_pilot_gis_package.py`.
 - `tests/test_hazard_layers.py::HazardLayerTests.test_geotiff_export_preserves_values_grid_and_crs_metadata`
   builds a tiny GeoTIFF fixture, verifies GeoTIFF values match the CSV grid, and
   checks pixel scale, tiepoint, nodata, EPSG metadata, manifest affine
@@ -249,13 +258,20 @@ contract:
   validator success path and rejection of missing ASCII parity, annualized
   GeoTIFF claims, missing unsupported-claim boundaries, checksum mismatch, and
   non-TIFF placeholder artifacts when local files are required.
+- `tests/test_pilot_gis_visual_qa.py` covers the visual-QA review-record
+  validator success path for an explicit `inconclusive` selected-pilot record
+  and rejection of pass records without QGIS evidence, missing required checks,
+  selected-pilot `not-run` status, and unqualified misleading current-product
+  claims.
 
 These checks prove value/metadata parity for the tiny fixture path and enforce
 the current unsupported COG and package boundary. The standalone validator can
 also check local real-pilot generated package inventories when ignored outputs
-exist. These checks do not prove QGIS styling quality, QGZ packaging,
-Cloud-Optimized GeoTIFF conformance, production tiling, Swiss pilot scientific
-validity, operational approval, or risk-map validity.
+exist, and the visual-QA validator can record an explicit `pass`, `no-go`, or
+`inconclusive` manual-review classification. These checks do not themselves
+prove QGIS styling quality, QGZ packaging, Cloud-Optimized GeoTIFF conformance,
+production tiling, Swiss pilot scientific validity, operational approval, or
+risk-map validity.
 
 ## Deferred Production Work
 

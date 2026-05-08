@@ -54,6 +54,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `cargo test` passed.
   `cargo run -- verify --all` passed.
   `cargo run -- validate --all` passed.
+  `scripts/git-hooks/pre-commit` passed.
   `git diff --check` passed.
 - Reviewer notes: Pending reviewer input.
 - Decision: ACCEPT; Priority 3 done at the selected-domain gate level, with
@@ -274,7 +275,21 @@ Planning only; these milestones do not implement roadmap item content yet.
   decision, and limitations. Added share-safe reporting constraints for raw
   data, private paths, restricted tile identifiers, and share-sensitive
   provenance.
-- Checks run: Pending.
+- Checks run:
+  `which qgis` returned no executable.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_gis_visual_qa.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_gis_visual_qa.py tests/test_pilot_gis_package_validator.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_visual_qa.py validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_visual_qa.py validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml --require-existing-package --format json` passed locally against ignored generated outputs.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json` passed locally against ignored generated outputs.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
 - Reviewer notes: Docs-only scope; no report scripts, templates, physics
   changes, private geodata, operational validation claims, or risk-map language.
 - Decision: Pending.
@@ -1628,3 +1643,42 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Target 1 done at the reconciled local
   ignored-artifact level.
 - Next proposed milestone: Stop after Target 1 as requested.
+
+### M026
+
+- Milestone id: M026.
+- Roadmap item: Target 2. Run or classify manual QGIS visual QA for the
+  selected package.
+- Hypothesis/objective: Complete the next selected visual-QA gate with a
+  share-safe, executable review record that does not pretend a QGIS pass was
+  achieved in the non-GUI agent environment.
+- Initial gap assessment: The selected package had passing automated
+  manifest/file QA but still recorded manual QGIS visual QA as `not-run`.
+  The local environment has no `qgis` executable, so a visual acceptance pass
+  would be unsupported.
+- Files changed:
+  `scripts/validate_pilot_gis_visual_qa.py`,
+  `tests/test_pilot_gis_visual_qa.py`,
+  `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`,
+  `docs/tschamut_public_pilot_gis_package_review.md`,
+  `docs/pilot_gis_package.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `pilot_gis_visual_qa_record_v1` validator
+  and selected Tschamut review record. The record classifies manual GIS/QGIS
+  visual QA as `inconclusive`, with automated CRS/LN02/label/claim-boundary
+  checks passing and raster-grid alignment, nodata styling, and source-zone
+  overlay remaining inconclusive because QGIS was unavailable and no visual
+  screenshots or layer-list artifacts were produced. The validator rejects
+  selected `not-run` records, pass records without QGIS evidence, missing core
+  checklist items, and unqualified misleading current-product claims.
+- Checks run: Pending.
+- Reviewer notes: No raw swisstopo data, processed DEM, generated validation
+  outputs, generated hazard rasters, screenshots, QGIS projects, GeoPackages,
+  COGs, or generated package outputs are committed. This completes the visual
+  QA gate only as an explicit `inconclusive` classification, not as visual
+  acceptance.
+- Decision: ACCEPT if final checks pass; Target 2 done at the share-safe
+  checklist-classification level.
+- Next proposed milestone: Scope forest and obstacle omission for Tschamut.
