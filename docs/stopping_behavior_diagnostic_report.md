@@ -38,7 +38,7 @@ The additive stopping-diagnostic schema records:
 | `final_status_counts` | Final `contact_state` counts when trajectory rows are available. | trajectory CSV |
 | `explicit_stop_state_available` | Whether explicit simulator stop-state records were available. | run manifest / stop-state sidecar |
 | `stop_reason`, `final_contact_state` | Explicit stop reason and final contact state when instrumented. | run manifest |
-| `termination_low_velocity`, `termination_max_steps`, `termination_t_max`, `termination_domain_exit`, `termination_terrain_error` | Explicit termination flags when instrumented. | run manifest |
+| `termination_low_velocity`, `termination_max_steps`, `termination_t_max`, `termination_domain_exit`, `termination_terrain_error` | Explicit termination flags when instrumented. `domain_exit` is not yet emitted as a completed stop-state mode. Runtime terrain query failures now return run errors before stop-state rows are written; `terrain_error` in completed rows only marks unavailable final-terrain diagnostics. | run manifest |
 | `stop_reason_counts` | Explicit stop reason when present, otherwise conservative inferred stop/status reason. | manifest / trajectory/deposition CSV |
 | `final_speed_mean_mps`, `final_speed_p95_mps`, `final_speed_max_mps` | Final speed summary. | trajectory/deposition/stop-state CSV |
 | `final_kinetic_mean_j`, `final_kinetic_max_j` | Final translational kinetic-energy summary. | trajectory/stop-state CSV |

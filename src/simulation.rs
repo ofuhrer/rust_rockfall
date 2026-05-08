@@ -2,7 +2,7 @@ use crate::{
     dynamics::{ContactModel, ContactParameterProvider, ScarringSettings, SoilInteractionModel},
     geometry::SphereBlock,
     integrator::{
-        simulate_fixed_step_with_events, simulate_fixed_step_with_events_and_contact_parameters,
+        try_simulate_fixed_step_with_events_and_contact_parameters, IntegrationError,
         IntegratorSettings,
     },
     state::{BodyState, ContactState, ImpactEvent, TrajectorySample},
@@ -17,7 +17,11 @@ use crate::{
     Vec3,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{
+    any::Any,
+    collections::BTreeMap,
+    panic::{catch_unwind, AssertUnwindSafe},
+};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -276,6 +280,10 @@ pub struct EnsembleResult {
 pub enum SimulationError {
     #[error("terrain error: {0}")]
     Terrain(#[from] TerrainError),
+    #[error("integration error: {0}")]
+    Integration(#[from] IntegrationError),
+    #[error("integration aborted before completion: {0}")]
+    IntegrationPanic(String),
     #[error("configuration serialization error: {0}")]
     Serialize(#[from] serde_json::Error),
     #[error("configuration value must be positive: {0}")]
@@ -350,17 +358,26 @@ impl SimulationConfig {
             },
             roughness_seed: self.random_seed,
         };
-        let result = if let Some(contact_parameters) = contact_parameters {
-            simulate_fixed_step_with_events_and_contact_parameters(
-                self.initial_state(),
-                self.block,
-                terrain,
-                settings,
-                Some(contact_parameters),
-            )
-        } else {
-            simulate_fixed_step_with_events(self.initial_state(), self.block, terrain, settings)
-        };
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            if let Some(contact_parameters) = contact_parameters {
+                try_simulate_fixed_step_with_events_and_contact_parameters(
+                    self.initial_state(),
+                    self.block,
+                    terrain,
+                    settings,
+                    Some(contact_parameters),
+                )
+            } else {
+                try_simulate_fixed_step_with_events_and_contact_parameters(
+                    self.initial_state(),
+                    self.block,
+                    terrain,
+                    settings,
+                    None,
+                )
+            }
+        }))
+        .map_err(|payload| SimulationError::IntegrationPanic(panic_payload_message(payload)))??;
         let stop_state =
             build_stop_state_provenance(&result.samples, &result.impact_events, terrain, &settings);
         Ok(SimulationResult {
@@ -420,6 +437,16 @@ impl SimulationConfig {
         .validate()
         .map_err(SimulationError::NonPositive)?;
         Ok(())
+    }
+}
+
+fn panic_payload_message(payload: Box<dyn Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "non-string panic payload".to_string()
     }
 }
 
@@ -616,12 +643,15 @@ fn build_stop_state_provenance(
             ) && sample.speed_mps <= STOP_LOW_ENERGY_CONTACT_SPEED_MPS
         })
         .count();
-    let normal = terrain.normal(last.x_m, last.y_m);
-    let terrain_slope_abs = if normal.z.abs() > 1.0e-12 {
-        Some((normal.x.hypot(normal.y) / normal.z.abs()).abs())
-    } else {
-        None
-    };
+    let final_terrain_normal = terrain.try_normal(last.x_m, last.y_m).ok();
+    let terrain_slope_abs = final_terrain_normal.and_then(|normal| {
+        if normal.z.abs() > 1.0e-12 {
+            Some((normal.x.hypot(normal.y) / normal.z.abs()).abs())
+        } else {
+            None
+        }
+    });
+    let final_terrain_normal_unavailable = final_terrain_normal.is_none();
 
     Some(StopStateProvenance {
         stop_reason,
@@ -633,7 +663,7 @@ fn build_stop_state_provenance(
             max_steps: max_steps_reached && final_contact_state != ContactState::Stopped,
             t_max: t_max_reached && final_contact_state != ContactState::Stopped,
             domain_exit: false,
-            terrain_error: false,
+            terrain_error: final_terrain_normal_unavailable,
         },
         last_significant_impact_time_s: last_significant_impact.map(|event| event.time_s),
         last_significant_impact_x_m: last_significant_impact.map(|event| event.x_m),
@@ -642,9 +672,9 @@ fn build_stop_state_provenance(
         distance_last_significant_impact_to_final_m,
         significant_impact_count,
         low_energy_contact_count,
-        terrain_normal_x: Some(normal.x),
-        terrain_normal_y: Some(normal.y),
-        terrain_normal_z: Some(normal.z),
+        terrain_normal_x: final_terrain_normal.map(|normal| normal.x),
+        terrain_normal_y: final_terrain_normal.map(|normal| normal.y),
+        terrain_normal_z: final_terrain_normal.map(|normal| normal.z),
         terrain_slope_abs,
         terrain_material_context_available: false,
         final_terrain_class_id: None,
@@ -658,10 +688,25 @@ fn build_stop_state_provenance(
         significant_impact_terrain_class_sequence_tail: Vec::new(),
         significant_impact_terrain_class_sequence_truncated: false,
         significant_impact_terrain_class_unavailable_count: 0,
-        terrain_material_instrumentation_gaps: vec![
-            "terrain_classes metadata is not configured for this run".to_string(),
-        ],
+        terrain_material_instrumentation_gaps: stop_state_instrumentation_gaps(
+            final_terrain_normal_unavailable,
+        ),
     })
+}
+
+fn stop_state_instrumentation_gaps(final_terrain_normal_unavailable: bool) -> Vec<String> {
+    let mut gaps = vec![
+        "domain_exit is not yet emitted as a completed stop_state termination mode".to_string(),
+        "runtime terrain query failures abort the run before stop_state is written; terrain_error only covers unavailable final-terrain diagnostics"
+            .to_string(),
+        "terrain_classes metadata is not configured for this run".to_string(),
+    ];
+    if final_terrain_normal_unavailable {
+        gaps.push(
+            "final terrain normal/slope lookup failed for stop_state diagnostics".to_string(),
+        );
+    }
+    gaps
 }
 
 impl TerrainConfig {

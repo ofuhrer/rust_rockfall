@@ -1,10 +1,12 @@
 # Tschamut/swissALTI3D Controlled Pilot Plan
 
-Status: execution plan for Work Package 1 from
-`current_state_gap_analysis_next_directions.md`. This document defines a
-controlled local/private pilot. It does not implement new physics, tune
-parameters, change defaults, add shape models, add GeoTIFF export, or add
-trajectory Parquet.
+Status: historical execution plan for a controlled local/private Tschamut
+swissALTI3D-style pilot. Current priorities are tracked in
+`next_development_targets.md`,
+`real_case_intensity_frequency_implementation_roadmap.md`, and
+`roadmap_recommendation_matrix.md`. This document does not implement new
+physics, tune parameters, change defaults, add shape models, add GeoTIFF
+export, or add trajectory Parquet.
 
 ## Purpose
 

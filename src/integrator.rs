@@ -12,8 +12,9 @@ use crate::{
         TrajectorySample,
     },
     stochastic::{sample_contact_roughness, seeded_rng, ContactRoughness},
-    terrain::Terrain,
+    terrain::{Terrain, TerrainError},
 };
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegratorSettings {
@@ -37,6 +38,14 @@ pub struct IntegrationResult {
     pub impact_events: Vec<ImpactEvent>,
 }
 
+#[derive(Debug, Error)]
+pub enum IntegrationError {
+    #[error("terrain query failed during integration: {0}")]
+    Terrain(#[from] TerrainError),
+    #[error("unsupported contact model for fixed-step integration: {0}")]
+    UnsupportedContactModel(&'static str),
+}
+
 pub fn simulate_fixed_step(
     initial: BodyState,
     block: SphereBlock,
@@ -55,6 +64,17 @@ pub fn simulate_fixed_step_with_events(
     simulate_fixed_step_with_events_and_contact_parameters(initial, block, terrain, settings, None)
 }
 
+pub fn try_simulate_fixed_step_with_events(
+    initial: BodyState,
+    block: SphereBlock,
+    terrain: &dyn Terrain,
+    settings: IntegratorSettings,
+) -> Result<IntegrationResult, IntegrationError> {
+    try_simulate_fixed_step_with_events_and_contact_parameters(
+        initial, block, terrain, settings, None,
+    )
+}
+
 pub fn simulate_fixed_step_with_events_and_contact_parameters(
     initial: BodyState,
     block: SphereBlock,
@@ -62,6 +82,28 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
     settings: IntegratorSettings,
     contact_parameters: Option<&dyn ContactParameterProvider>,
 ) -> IntegrationResult {
+    try_simulate_fixed_step_with_events_and_contact_parameters(
+        initial,
+        block,
+        terrain,
+        settings,
+        contact_parameters,
+    )
+    .expect("fixed-step terrain query failed")
+}
+
+pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
+    initial: BodyState,
+    block: SphereBlock,
+    terrain: &dyn Terrain,
+    settings: IntegratorSettings,
+    contact_parameters: Option<&dyn ContactParameterProvider>,
+) -> Result<IntegrationResult, IntegrationError> {
+    if settings.contact_model == ContactModel::ShapeContactV0 {
+        return Err(IntegrationError::UnsupportedContactModel(
+            "shape_contact_v0 is an internal verification scaffold and is not wired into fixed-step integration",
+        ));
+    }
     let mut state = initial;
     let mut time_s = 0.0;
     let mut samples = Vec::new();
@@ -97,11 +139,11 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
             })
             .unwrap_or(base_parameters);
 
-        let base_normal = terrain.normal(state.position_m.x, state.position_m.y);
+        let base_normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
         let pre_contact_state = state;
         let incoming_velocity = state.velocity_mps;
         let signed_distance_before_response =
-            terrain.signed_distance_sphere(state.position_m, block.radius_m);
+            terrain.try_signed_distance_sphere(state.position_m, block.radius_m)?;
         let incoming =
             signed_distance_before_response <= 0.0 && state.velocity_mps.dot(&base_normal) < 0.0;
         let effective_contact = if incoming {
@@ -143,7 +185,11 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
             ),
-            ContactModel::ShapeContactV0 => shape_contact_v0_integrator_guard(),
+            ContactModel::ShapeContactV0 => {
+                return Err(IntegrationError::UnsupportedContactModel(
+                    "shape_contact_v0 is not wired into fixed-step integration",
+                ))
+            }
         };
         let post_contact_state = state;
         let scarring = if incoming {
@@ -170,8 +216,9 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
             ContactState::Airborne
         };
 
-        let signed_distance = terrain.signed_distance_sphere(state.position_m, block.radius_m);
-        let normal = terrain.normal(state.position_m.x, state.position_m.y);
+        let signed_distance =
+            terrain.try_signed_distance_sphere(state.position_m, block.radius_m)?;
+        let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
         if signed_distance.abs() < 1.0e-7 && state.velocity_mps.dot(&normal) <= 1.0e-7 {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
@@ -214,14 +261,18 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
                         ContactState::Sliding
                     }
                 }
-                ContactModel::ShapeContactV0 => shape_contact_v0_integrator_guard(),
+                ContactModel::ShapeContactV0 => {
+                    return Err(IntegrationError::UnsupportedContactModel(
+                        "shape_contact_v0 is not wired into fixed-step integration",
+                    ))
+                }
             };
         }
 
         let contact_tangent_speed_mps = if signed_distance.abs() < 1.0e-7 {
             contact_point_tangent_velocity(
                 &state,
-                terrain.normal(state.position_m.x, state.position_m.y),
+                terrain.try_normal(state.position_m.x, state.position_m.y)?,
                 block.radius_m,
             )
             .norm()
@@ -231,7 +282,7 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
         let rolling_residual_mps = if signed_distance.abs() < 1.0e-7 {
             rolling_residual(
                 &state,
-                terrain.normal(state.position_m.x, state.position_m.y),
+                terrain.try_normal(state.position_m.x, state.position_m.y)?,
                 block.radius_m,
             )
         } else {
@@ -272,10 +323,10 @@ pub fn simulate_fixed_step_with_events_and_contact_parameters(
         }
     }
 
-    IntegrationResult {
+    Ok(IntegrationResult {
         samples,
         impact_events,
-    }
+    })
 }
 
 #[allow(dead_code)]
@@ -302,13 +353,15 @@ pub(crate) fn shape_contact_v0_integrator_smoke_prediction(
     }
     let mut predicted_state = pre_step_state;
     ballistic_step(&mut predicted_state, dt_s, gravity_mps2);
-    let terrain_height_m =
-        terrain.height(predicted_state.position_m.x, predicted_state.position_m.y);
+    let terrain_height_m = terrain
+        .try_height(predicted_state.position_m.x, predicted_state.position_m.y)
+        .map_err(|_| "terrain height query failed")?;
     if !terrain_height_m.is_finite() {
         return Err("terrain height must be finite");
     }
-    let terrain_normal_world =
-        terrain.normal(predicted_state.position_m.x, predicted_state.position_m.y);
+    let terrain_normal_world = terrain
+        .try_normal(predicted_state.position_m.x, predicted_state.position_m.y)
+        .map_err(|_| "terrain normal query failed")?;
     if !terrain_normal_world.x.is_finite()
         || !terrain_normal_world.y.is_finite()
         || !terrain_normal_world.z.is_finite()
@@ -326,12 +379,6 @@ pub(crate) fn shape_contact_v0_integrator_smoke_prediction(
         ),
         terrain_normal_world,
     })
-}
-
-fn shape_contact_v0_integrator_guard() -> ! {
-    panic!(
-        "shape_contact_v0 has an isolated analytic impulse kernel but is not wired into the fixed-step integrator"
-    )
 }
 
 #[derive(Debug, Clone, Copy)]

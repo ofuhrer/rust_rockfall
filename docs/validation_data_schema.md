@@ -66,7 +66,10 @@ are the outer lower-left cell corner, raster values are samples at cell
 centers, and `extent_lv95_m` describes the full outer raster footprint. Strict
 `ascii_dem` interpolation accepts cell-center-domain queries; the opt-in
 `ascii_dem_clamped` variant clamps out-of-domain queries to the nearest cell
-center before interpolating.
+center before interpolating and falls back to the nearest valid finite cell if
+the clamped interpolation stencil touches nodata. Strict DEM queries outside
+the center-domain, or strict DEM queries whose interpolation stencil touches
+nodata, return terrain errors through normal case execution.
 
 If `t_max` and `max_steps` are both supplied, the runner uses the shorter
 horizon: `min(t_max, max_steps * dt)`. YAML case defaults are intentionally
@@ -354,7 +357,7 @@ runner rejection; it is not public validation or benchmark evidence.
 - `gaussian_bump`: `z0_m`, `slope_x`, `center_x_m`, `center_y_m`, `height_m`, `sigma_m`
 - `channelized_gully`: `z0_m`, `slope_x`, `depth_m`, `width_m`
 - `esri_ascii_grid`: `path`
-- `ascii_dem_clamped` / `esri_ascii_grid_clamped`: `path`; bilinear ESRI ASCII grid with boundary-clamped queries for limited validation patches
+- `ascii_dem_clamped` / `esri_ascii_grid_clamped`: `path`; bilinear ESRI ASCII grid with boundary-clamped queries and nearest-valid-cell fallback for limited validation patches
 
 For Swiss terrain-ingestion pilot cases, add `terrain.metadata_path` pointing to a YAML sidecar with CRS/provenance metadata. The current runtime parser validates the small `schema_version: 1` metadata contract:
 

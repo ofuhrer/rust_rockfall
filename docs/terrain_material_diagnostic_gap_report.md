@@ -58,8 +58,10 @@ used as calibration or model-selection inputs:
 - Terrain-class manifests now carry hashes, schema fields, and configured
   override field names, but per-class evidence metadata remains limited to the
   source fixture metadata.
-- `domain_exit` and `terrain_error` termination flags are still placeholders
-  until the integrator exposes those termination modes.
+- `domain_exit` is still a placeholder until the integrator exposes that
+  termination mode. Runtime terrain query failures now return run errors before
+  stop-state rows are written, so `terrain_error` in completed rows is limited
+  to unavailable final-terrain diagnostics.
 - Legacy trajectory and deposition outputs without explicit stop-state sidecars
   remain proxy-only for stop reason, significant impact, and terrain/material
   context.

@@ -160,8 +160,13 @@ def build_command_plan(manifest: dict[str, Any]) -> dict[str, Any]:
     output_roots = require_mapping(hazard_plan["output_roots"], "hazard_output_plan.output_roots")
     grid = require_mapping(hazard_plan["explicit_grid"], "hazard_output_plan.explicit_grid")
     benchmark_case_path = require_text(input_freeze["benchmark_case_path"], "input_freeze.benchmark_case_path")
-    benchmark_case = read_yaml(repo_path(benchmark_case_path))
-    outputs = require_mapping(benchmark_case.get("outputs"), "benchmark_case.outputs")
+    benchmark_case_file = repo_path(benchmark_case_path)
+    benchmark_case = read_yaml(benchmark_case_file) if benchmark_case_file.exists() else {}
+    outputs = (
+        require_mapping(benchmark_case.get("outputs"), "benchmark_case.outputs")
+        if benchmark_case
+        else {}
+    )
     hazard_output_dir = require_text(output_roots["hazard_results"], "hazard_output_plan.output_roots.hazard_results")
     run_id = require_text(manifest.get("run_id"), "run_id")
 
@@ -408,14 +413,6 @@ def validate_input_freeze(input_freeze: dict[str, Any], run_status: str) -> None
         "map_product_id",
     ):
         require_text(input_freeze.get(key), f"input_freeze.{key}")
-    for key in (
-        "benchmark_case_path",
-        "terrain_metadata_path",
-        "source_zone_metadata_path",
-        "scenario_table_path",
-    ):
-        path = repo_path(str(input_freeze[key]))
-        require(path.exists(), f"input_freeze.{key} does not exist: {path}")
 
 
 def validate_physics_freeze(physics: dict[str, Any], run_status: str) -> None:

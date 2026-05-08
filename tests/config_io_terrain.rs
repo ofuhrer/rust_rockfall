@@ -575,6 +575,22 @@ fn clamped_dem_keeps_boundary_queries_finite_without_changing_strict_dem() {
 }
 
 #[test]
+fn clamped_dem_falls_back_to_nearest_valid_cell_when_nodata_touches_query() {
+    let dem = DemGrid::from_ascii_grid_str(
+        "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 -9999 4\n0 1 2\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        dem.try_height(1.5, 1.5),
+        Err(TerrainError::NoData { .. })
+    ));
+
+    let clamped = ClampedDemGrid::from_grid(dem);
+    assert_abs_diff_eq!(clamped.height(1.5, 1.5), 1.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(clamped.normal(1.5, 1.5).norm(), 1.0, epsilon = 1.0e-12);
+}
+
+#[test]
 fn clamped_dem_normal_matches_planar_dem_interior_and_edge() {
     let dem = DemGrid::from_ascii_grid_str(
         "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
@@ -595,6 +611,53 @@ fn clamped_dem_normal_matches_planar_dem_interior_and_edge() {
     assert_abs_diff_eq!(edge.x, expected.x, epsilon = 1.0e-12);
     assert_abs_diff_eq!(edge.y, expected.y, epsilon = 1.0e-12);
     assert_abs_diff_eq!(edge.z, expected.z, epsilon = 1.0e-12);
+}
+
+#[test]
+fn strict_dem_terrain_query_errors_return_simulation_errors_instead_of_panicking() {
+    let path = temp_path("strict_dem_oob.asc");
+    fs::write(
+        &path,
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n2 4\n0 2\n",
+    )
+    .unwrap();
+    let config = SimulationConfig {
+        block: SphereBlock {
+            radius_m: 0.1,
+            mass_kg: 1.0,
+        },
+        initial_position_m: [-1.0, 0.5, 1.0],
+        initial_velocity_mps: [0.0, 0.0, 0.0],
+        initial_angular_velocity_radps: [0.0; 3],
+        terrain: TerrainConfig::EsriAsciiGrid {
+            path: path.to_string_lossy().into_owned(),
+        },
+        dt_s: 0.01,
+        max_time_s: 0.01,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.5,
+        tangential_restitution: 0.5,
+        friction_coefficient: 0.5,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.1,
+        random_seed: None,
+        release_perturbation: ReleasePerturbation::default(),
+    };
+
+    let error = config.run().unwrap_err();
+    assert!(matches!(error, SimulationError::Integration(_)));
+    assert!(error.to_string().contains("terrain query failed"));
+    fs::remove_file(path).unwrap();
 }
 
 #[test]

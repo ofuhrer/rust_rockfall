@@ -74,6 +74,18 @@ cargo run -- validate --all
 
 The output CSV contains time, position, velocity, speed, energy diagnostics, and contact state for every trajectory sample.
 
+DEM safety checklist for validation and pilot cases:
+
+- use strict `esri_ascii_grid` only when every possible trajectory query is
+  expected to remain inside the DEM cell-center domain and away from nodata;
+- use `esri_ascii_grid_clamped` / `ascii_dem_clamped` only when deterministic
+  boundary extrapolation and nearest-valid-cell fallback are acceptable
+  validation assumptions;
+- treat any strict DEM terrain error as a failed input/workflow condition, not
+  as a normal physical stop;
+- keep CRS, vertical datum, nodata, extent, resolution, and source-tile
+  provenance in the associated terrain metadata sidecar.
+
 ## Repository Notes
 
 The `background/` folder contains third-party background material and publications. Those documents retain their own copyrights and licenses. They are used only as public scientific and grey-literature references for the independent implementation.

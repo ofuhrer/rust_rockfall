@@ -8,6 +8,25 @@ pub trait Terrain: Send + Sync {
 
     fn normal(&self, x_m: f64, y_m: f64) -> Vec3;
 
+    fn try_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
+        Ok(self.height(x_m, y_m))
+    }
+
+    fn try_normal(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
+        Ok(self.normal(x_m, y_m))
+    }
+
+    fn try_signed_distance_sphere(
+        &self,
+        center_m: Vec3,
+        radius_m: f64,
+    ) -> Result<f64, TerrainError> {
+        let ground = self.try_height(center_m.x, center_m.y)?;
+        let n = self.try_normal(center_m.x, center_m.y)?;
+        let point_on_surface = Vec3::new(center_m.x, center_m.y, ground);
+        Ok((center_m - point_on_surface).dot(&n) - radius_m)
+    }
+
     fn signed_distance_sphere(&self, center_m: Vec3, radius_m: f64) -> f64 {
         let ground = self.height(center_m.x, center_m.y);
         let n = self.normal(center_m.x, center_m.y);
@@ -437,16 +456,65 @@ impl DemGrid {
         Ok(Vec3::new(-dzdx, -dzdy, 1.0).normalize())
     }
 
-    pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
+    pub fn try_height_clamped(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
         let (x_m, y_m) = self.clamp_xy(x_m, y_m);
         self.try_height(x_m, y_m)
-            .expect("clamped DEM query must be inside grid and avoid nodata")
+            .or_else(|_| self.nearest_valid_height(x_m, y_m))
+    }
+
+    pub fn try_normal_clamped(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
+        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
+        let h = 0.5 * self.cellsize_m.max(EPS);
+        let x0 = (x_m - h).max(self.xmin_center_m());
+        let x1 = (x_m + h).min(self.xmax_center_m());
+        let y0 = (y_m - h).max(self.ymin_center_m());
+        let y1 = (y_m + h).min(self.ymax_center_m());
+        let dzdx = if (x1 - x0).abs() > EPS {
+            (self.try_height_clamped(x1, y_m)? - self.try_height_clamped(x0, y_m)?) / (x1 - x0)
+        } else {
+            0.0
+        };
+        let dzdy = if (y1 - y0).abs() > EPS {
+            (self.try_height_clamped(x_m, y1)? - self.try_height_clamped(x_m, y0)?) / (y1 - y0)
+        } else {
+            0.0
+        };
+        Ok(Vec3::new(-dzdx, -dzdy, 1.0).normalize())
+    }
+
+    fn nearest_valid_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
+        let mut best: Option<(f64, f64)> = None;
+        for row_from_bottom in 0..self.nrows {
+            let y_center = self.ymin_center_m() + row_from_bottom as f64 * self.cellsize_m;
+            for col in 0..self.ncols {
+                let value = self.value(col, row_from_bottom);
+                if self.value_is_nodata(value) || !value.is_finite() {
+                    continue;
+                }
+                let x_center = self.xmin_center_m() + col as f64 * self.cellsize_m;
+                let distance2 = (x_center - x_m).powi(2) + (y_center - y_m).powi(2);
+                match best {
+                    Some((best_distance2, _)) if best_distance2 <= distance2 => {}
+                    _ => best = Some((distance2, value)),
+                }
+            }
+        }
+        best.map(|(_, value)| value).ok_or(TerrainError::NoData {
+            x_m,
+            y_m,
+            col: 0,
+            row_from_bottom: 0,
+        })
+    }
+
+    pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
+        self.try_height_clamped(x_m, y_m)
+            .expect("clamped DEM query must have at least one valid cell")
     }
 
     pub fn normal_clamped(&self, x_m: f64, y_m: f64) -> Vec3 {
-        let (x_m, y_m) = self.clamp_xy(x_m, y_m);
-        self.try_normal(x_m, y_m)
-            .expect("clamped DEM normal query must be inside grid and avoid nodata")
+        self.try_normal_clamped(x_m, y_m)
+            .expect("clamped DEM normal query must have at least one valid cell")
     }
 }
 
@@ -459,6 +527,14 @@ impl Terrain for DemGrid {
     fn normal(&self, x_m: f64, y_m: f64) -> Vec3 {
         self.try_normal(x_m, y_m)
             .unwrap_or_else(|err| panic!("DEM normal query failed at ({x_m}, {y_m}): {err}"))
+    }
+
+    fn try_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
+        DemGrid::try_height(self, x_m, y_m)
+    }
+
+    fn try_normal(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
+        DemGrid::try_normal(self, x_m, y_m)
     }
 }
 
@@ -486,6 +562,14 @@ impl Terrain for ClampedDemGrid {
 
     fn normal(&self, x_m: f64, y_m: f64) -> Vec3 {
         self.grid.normal_clamped(x_m, y_m)
+    }
+
+    fn try_height(&self, x_m: f64, y_m: f64) -> Result<f64, TerrainError> {
+        self.grid.try_height_clamped(x_m, y_m)
+    }
+
+    fn try_normal(&self, x_m: f64, y_m: f64) -> Result<Vec3, TerrainError> {
+        self.grid.try_normal_clamped(x_m, y_m)
     }
 }
 
