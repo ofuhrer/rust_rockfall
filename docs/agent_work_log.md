@@ -2695,6 +2695,61 @@ Planning only; these milestones do not implement roadmap item content yet.
   target-scale convergence and output-budget evidence before reconsidering
   ensemble-size increase.
 
+### M046
+
+- Milestone id: M046.
+- Roadmap item: Deterministic chunked ensemble execution architecture.
+- Hypothesis/objective: Move deterministic local ensemble chunk execution from
+  library-only support into the real validation case runner so large
+  conditional trajectory ensembles can record reproducible chunk provenance
+  before any future CSCS/SLURM orchestration.
+- Initial gap assessment: `simulate_ensemble_parallel` already provided
+  deterministic local-thread chunks and HPC-readiness tests, but validation
+  cases still used the serial ensemble path and `run_manifest_v1` did not
+  record trajectory-execution chunk ids, worker counts, or merge order for
+  configured ensemble runs.
+- Files changed:
+  `src/validation.rs`,
+  `src/manifest.rs`,
+  `tests/config_io_terrain.rs`,
+  `scripts/check_repo_consistency.py`,
+  `docs/model_design.md`,
+  `docs/validation_data_schema.md`,
+  `docs/scalability_and_data_formats_review.md`,
+  `docs/decision_log.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added optional `random.ensemble_workers` to
+  validation cases. When configured with `ensemble_size > 1`, the validation
+  runner uses `simulate_ensemble_parallel_with_contact_parameters`, preserves
+  deterministic requested-trajectory ordering, and serializes
+  `local_parallel_ensemble_v1` as `ensemble_execution` in `run_manifest_v1`.
+  Cases that omit `ensemble_workers` keep the previous serial path.
+- Checks run:
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test --test hpc_readiness`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test --test config_io_terrain`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, sampling weights, generated large
+  outputs, raw/public/private geodata, annual frequency support, physical
+  probability support, calibration, benchmark enablement, risk/exposure
+  semantics, SLURM/MPI/GPU code, or operational claims are changed.
+- Decision: ACCEPT if final checks pass; this closes the first validation-runner
+  provenance gap but resumable cross-process chunk manifests and scheduler
+  orchestration remain future work.
+- Next proposed milestone: Add a design-only or fixture-backed resumable
+  trajectory chunk manifest contract with idempotent chunk completion and
+  output checksum preconditions, still without adding scheduler execution.
+
 ### M041
 
 - Milestone id: M041.

@@ -1,6 +1,6 @@
 //! Run manifest records for reproducible batch and hazard workflows.
 
-use crate::simulation::StopStateProvenance;
+use crate::simulation::{LocalParallelEnsembleExecution, StopStateProvenance};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -30,6 +30,8 @@ pub struct RunManifest {
     pub shape_metadata: Option<ShapeMetadataManifest>,
     #[serde(default)]
     pub trajectory_metadata: Option<TrajectoryMetadataManifest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ensemble_execution: Option<LocalParallelEnsembleExecution>,
     pub outputs: Vec<OutputManifest>,
     #[serde(default)]
     pub performance: Option<PerformanceManifest>,

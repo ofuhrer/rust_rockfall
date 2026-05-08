@@ -647,6 +647,27 @@ required to preserve serial output values for current conditional diagnostic
 layers; it does not introduce annual frequency, physical probability, or
 distributed execution semantics.
 
+Validation and verification cases can also opt in to deterministic local
+parallel ensemble execution with:
+
+```yaml
+random:
+  seed: 123
+  ensemble_size: 100
+  ensemble_workers: 4
+```
+
+When `ensemble_workers` is present and `ensemble_size > 1`, the validation
+runner uses the existing local threaded ensemble kernel and writes
+`ensemble_execution` into `run_manifest_v1`. The section uses
+`local_parallel_ensemble_v1` and records requested/effective worker count,
+deterministic contiguous chunk ids, trajectory index ranges, trajectory counts,
+and merge order `requested_trajectory_index`. Cases that omit
+`ensemble_workers` keep the previous serial ensemble path and do not write this
+section. This is local execution provenance only; it is not a resume model,
+SLURM/MPI orchestration, annual frequency, physical probability, or operational
+hazard-map semantics.
+
 Phase 6 public real-site conditional pilots must be predeclared with
 `public_real_site_conditional_pilot_run_v1` before execution. The run-freeze
 YAML records validated geodata and source-scenario policy paths, frozen case

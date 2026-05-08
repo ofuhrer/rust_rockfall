@@ -170,8 +170,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   contract level. `simulate_ensemble_parallel` executes deterministic
   contiguous local-thread chunks, restores requested trajectory order after
   joining, records `local_parallel_ensemble_v1` metadata, and has
-  serial-vs-parallel and worker-count parity tests. Serial execution remains
-  the default validation path.
+  serial-vs-parallel and worker-count parity tests. Validation cases can opt in
+  with `random.ensemble_workers`, which writes `ensemble_execution` provenance
+  into `run_manifest_v1`; serial execution remains the default validation path.
 
 The physical/source-frequency semantics gate is now documented as a deferred
 decision in `docs/physical_source_frequency_design_gate.md`. Any annual or

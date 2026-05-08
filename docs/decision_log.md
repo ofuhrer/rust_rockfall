@@ -116,6 +116,15 @@ and trajectory/hazard accumulation throughput become bottlenecks before raw
 simulation alone. The national hazard-map target needs chunkable, mergeable,
 checksum-backed outputs.
 
+Update: validation cases can opt in to deterministic local threaded ensemble
+execution with `random.ensemble_workers`. Configured runs preserve the serial
+default for all other cases, use the existing per-trajectory seed derivation,
+and write `local_parallel_ensemble_v1` `ensemble_execution` provenance into
+`run_manifest_v1`. This records local chunk ids, trajectory index ranges,
+worker counts, and merge order, but it is not a resumable scheduler,
+SLURM/MPI/GPU integration, annual-frequency product, physical probability
+model, or operational hazard-map claim.
+
 Detailed sources: `scalability_and_data_formats_review.md`,
 `performance_benchmarking.md`, `performance_benchmark_profile_reference.md`,
 `parquet_impact_benchmark_results.md`,

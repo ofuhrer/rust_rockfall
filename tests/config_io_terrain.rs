@@ -1642,7 +1642,7 @@ parameters:
   tangential_restitution: 0.8
   friction_coefficient: 0.4
 simulation: {{ dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }}
-random: {{ seed: 123, ensemble_size: 3 }}
+random: {{ seed: 123, ensemble_size: 3, ensemble_workers: 2 }}
 expected:
   metrics: [ensemble_mean_runout_m]
 outputs:
@@ -1689,6 +1689,34 @@ outputs:
     assert_eq!(manifest_json["execution_status"], "completed");
     assert_eq!(manifest_json["scientific_status"], "not_evaluated");
     assert_eq!(manifest_json["seed_policy"]["global_seed"], 123);
+    let ensemble_execution = &manifest_json["ensemble_execution"];
+    assert_eq!(
+        ensemble_execution["schema_version"],
+        "local_parallel_ensemble_v1"
+    );
+    assert_eq!(ensemble_execution["mode"], "local_threads");
+    assert_eq!(ensemble_execution["requested_worker_count"], 2);
+    assert_eq!(ensemble_execution["worker_count"], 2);
+    assert_eq!(ensemble_execution["chunk_count"], 2);
+    assert_eq!(ensemble_execution["trajectory_count"], 3);
+    assert_eq!(
+        ensemble_execution["merge_order"],
+        "requested_trajectory_index"
+    );
+    assert_eq!(
+        ensemble_execution["chunks"][0]["chunk_id"],
+        "ensemble_trajectory_output__chunk_0000"
+    );
+    assert_eq!(ensemble_execution["chunks"][0]["trajectory_start_index"], 0);
+    assert_eq!(
+        ensemble_execution["chunks"][0]["trajectory_end_index_exclusive"],
+        2
+    );
+    assert_eq!(ensemble_execution["chunks"][1]["trajectory_start_index"], 2);
+    assert_eq!(
+        ensemble_execution["chunks"][1]["trajectory_end_index_exclusive"],
+        3
+    );
     assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 6);
     assert_eq!(
         manifest_json["trajectory_metadata"]["schema_version"],

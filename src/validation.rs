@@ -26,6 +26,7 @@ use crate::{
     },
     shape::{BlockShapeMetadata, ShapeContactV0Scaffold, PASSIVE_SHAPE_WARNING},
     simulation::{
+        simulate_ensemble_parallel_with_contact_parameters,
         simulate_ensemble_with_contact_parameters,
         simulate_one_trajectory_with_terrain_and_contact_parameters, SimulationConfig,
         SimulationError, SimulationResult, StopReason, StopStateProvenance, TerrainConfig,
@@ -282,6 +283,8 @@ pub struct CaseRandom {
     pub seed: Option<u64>,
     #[serde(default = "default_ensemble_size")]
     pub ensemble_size: usize,
+    #[serde(default)]
+    pub ensemble_workers: Option<usize>,
 }
 
 impl Default for CaseRandom {
@@ -289,6 +292,7 @@ impl Default for CaseRandom {
         Self {
             seed: None,
             ensemble_size: default_ensemble_size(),
+            ensemble_workers: None,
         }
     }
 }
@@ -727,6 +731,7 @@ struct RunManifestContext<'a> {
     terrain_classes: Option<&'a TerrainClassManifest>,
     shape_metadata: Option<&'a BlockShapeMetadata>,
     trajectory_metadata: Option<TrajectoryMetadataManifest>,
+    ensemble_execution: Option<crate::simulation::LocalParallelEnsembleExecution>,
     performance: PerformanceManifest,
     stop_state_summary: Option<StopStateSummaryManifest>,
     terrain_material_exposure_summary: Option<TerrainMaterialExposureSummaryManifest>,
@@ -1005,6 +1010,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         load_probabilistic_metadata_context(case, release_zone_source.as_ref())?;
     let mut trajectory_metadata =
         TrajectoryMetadataCollector::with_probabilistic_metadata(probabilistic_metadata.clone());
+    let mut ensemble_execution = None;
     timing.terrain_load_seconds += load_started.elapsed().as_secs_f64();
     let mut release_zone_manifest = release_zone_source
         .as_ref()
@@ -1049,6 +1055,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                         terrain_classes: terrain_class_manifest.as_ref(),
                         shape_metadata: shape_metadata.as_ref(),
                         trajectory_metadata: None,
+                        ensemble_execution: None,
                         performance,
                         stop_state_summary: None,
                         terrain_material_exposure_summary: None,
@@ -1153,6 +1160,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
         shape_metadata: shape_metadata.as_ref(),
         stop_state_summary: &mut stop_state_summary,
         terrain_material_exposure_summary: &mut terrain_material_exposure_summary,
+        ensemble_execution: &mut ensemble_execution,
     })?;
     compute_validation_ensemble_metrics(ValidationEnsembleContext {
         case,
@@ -1313,6 +1321,7 @@ pub fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationError> {
                 terrain_classes: terrain_class_manifest.as_ref(),
                 shape_metadata: shape_metadata.as_ref(),
                 trajectory_metadata: trajectory_metadata_manifest,
+                ensemble_execution,
                 performance,
                 stop_state_summary,
                 terrain_material_exposure_summary,
@@ -1353,6 +1362,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         terrain_classes,
         shape_metadata,
         trajectory_metadata,
+        ensemble_execution,
         performance,
         stop_state_summary,
         terrain_material_exposure_summary,
@@ -1379,6 +1389,7 @@ fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
         terrain_classes: terrain_classes.cloned(),
         shape_metadata: shape_metadata.map(|metadata| shape_metadata_manifest(case, metadata)),
         trajectory_metadata,
+        ensemble_execution,
         outputs,
         performance: Some(performance),
         stop_state: report.stop_state.clone(),
@@ -2426,6 +2437,7 @@ struct EnsembleMetricContext<'a> {
     shape_metadata: Option<&'a BlockShapeMetadata>,
     stop_state_summary: &'a mut Option<StopStateSummaryManifest>,
     terrain_material_exposure_summary: &'a mut Option<TerrainMaterialExposureSummaryManifest>,
+    ensemble_execution: &'a mut Option<crate::simulation::LocalParallelEnsembleExecution>,
 }
 
 fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), ValidationError> {
@@ -2441,6 +2453,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
         shape_metadata,
         stop_state_summary: _stop_state_summary,
         terrain_material_exposure_summary: _terrain_material_exposure_summary,
+        ensemble_execution,
     } = context;
     let ensemble_size = case.random.ensemble_size.max(1);
     if case.random.seed.is_some() {
@@ -2487,13 +2500,26 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
     let mut ensemble_config = build_simulation_config(case)?;
     ensemble_config.random_seed = None;
     let simulation_started = Instant::now();
-    let ensemble = simulate_ensemble_with_contact_parameters(
-        &ensemble_config,
-        case.case_id.clone(),
-        global_seed,
-        &trajectory_ids,
-        contact_parameters,
-    )?;
+    let ensemble = if let Some(worker_count) = case.random.ensemble_workers {
+        let result = simulate_ensemble_parallel_with_contact_parameters(
+            &ensemble_config,
+            case.case_id.clone(),
+            global_seed,
+            &trajectory_ids,
+            worker_count,
+            contact_parameters,
+        )?;
+        *ensemble_execution = Some(result.execution);
+        result.ensemble
+    } else {
+        simulate_ensemble_with_contact_parameters(
+            &ensemble_config,
+            case.case_id.clone(),
+            global_seed,
+            &trajectory_ids,
+            contact_parameters,
+        )?
+    };
     timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
     timing.record_runs(&ensemble.trajectories);
     for run in &ensemble.trajectories {

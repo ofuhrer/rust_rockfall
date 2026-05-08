@@ -233,8 +233,20 @@ def check_validation_module_boundaries() -> list[str]:
 def check_local_parallel_ensemble_contract() -> list[str]:
     errors = []
     simulation = (ROOT / "src/simulation.rs").read_text()
+    validation = (ROOT / "src/validation.rs").read_text()
+    manifest = (ROOT / "src/manifest.rs").read_text()
     lib = (ROOT / "src/lib.rs").read_text()
     tests = (ROOT / "tests/hpc_readiness.rs").read_text()
+    config_tests = (ROOT / "tests/config_io_terrain.rs").read_text()
+    docs = "\n".join(
+        path.read_text()
+        for path in (
+            ROOT / "docs/model_design.md",
+            ROOT / "docs/validation_data_schema.md",
+            ROOT / "docs/scalability_and_data_formats_review.md",
+            ROOT / "docs/next_development_targets.md",
+        )
+    )
 
     for symbol in (
         "LOCAL_PARALLEL_ENSEMBLE_SCHEMA_VERSION",
@@ -261,6 +273,30 @@ def check_local_parallel_ensemble_contract() -> list[str]:
         errors.append(
             "local parallel ensemble execution should record merge_order 'requested_trajectory_index'"
         )
+    for term in (
+        "ensemble_workers",
+        "simulate_ensemble_parallel_with_contact_parameters",
+        "ensemble_execution",
+    ):
+        if term not in validation:
+            errors.append(f"src/validation.rs omits validation ensemble execution term {term!r}")
+    if "pub ensemble_execution: Option<LocalParallelEnsembleExecution>" not in manifest:
+        errors.append("run manifests should serialize optional LocalParallelEnsembleExecution")
+    for term in (
+        "ensemble_workers: 2",
+        "local_parallel_ensemble_v1",
+        "requested_trajectory_index",
+    ):
+        if term not in config_tests:
+            errors.append(f"tests/config_io_terrain.rs omits ensemble execution assertion {term!r}")
+    for term in (
+        "random.ensemble_workers",
+        "ensemble_execution",
+        "run_manifest_v1",
+        "local_parallel_ensemble_v1",
+    ):
+        if term not in docs:
+            errors.append(f"local parallel ensemble docs omit {term!r}")
     return errors
 
 

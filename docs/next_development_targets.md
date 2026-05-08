@@ -327,7 +327,11 @@ threaded ensemble path with serial default preserved. The returned
 provenance, requested/effective worker counts, deterministic contiguous chunks,
 and merge order `requested_trajectory_index`. Focused HPC-readiness tests prove
 serial-vs-parallel equality, worker-count-independent reduced outputs, and
-zero-worker rejection.
+zero-worker rejection. Validation cases can now opt in through
+`random.ensemble_workers`; when configured, the case runner uses the same
+deterministic local threaded kernel and writes `ensemble_execution` provenance
+into `run_manifest_v1` while cases that omit the field keep the serial ensemble
+path.
 
 What not to do: Do not add SLURM, MPI, GPU, distributed frameworks, or changed
 default execution order before local chunk/reducer contracts are stable.

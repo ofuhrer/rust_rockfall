@@ -35,7 +35,7 @@ only reduced hazard layers are needed.
 | Block parameters | YAML `block` and optional release CSV mass/radius | Small scenario inputs |
 | Contact/scarring/roughness parameters | YAML case parameters | Explicit and reproducible, but not spatial fields |
 | Calibration parameters | Committed experiment summaries, not defaults | Research diagnostics only |
-| Scenario metadata | Case YAML plus diagnostics JSON plus optional `run_manifest_v1` sidecars, source/block policy templates, and hazard reducer chunk manifests | Partial; trajectory-execution chunk/resume manifests are still future work |
+| Scenario metadata | Case YAML plus diagnostics JSON plus optional `run_manifest_v1` sidecars, source/block policy templates, hazard reducer chunk manifests, and opt-in local ensemble execution provenance | Partial; resumable trajectory chunk manifests are still future work |
 
 ### Simulation Execution
 
@@ -54,6 +54,9 @@ Current execution modes:
   `outputs.ensemble_trajectories_dir`;
 - opt-in full ensemble impact-event output through
   `outputs.ensemble_impact_events_dir`;
+- opt-in local threaded validation ensemble execution through
+  `random.ensemble_workers`, with `local_parallel_ensemble_v1` provenance in
+  `run_manifest_v1`;
 - diagnostics JSON reports for cases;
 - calibration scripts that generate temporary cases and collect metrics.
 
@@ -116,9 +119,9 @@ not a production-scale data layout.
 | Repeated DEM loading | Current APIs can reuse terrain within local loops, but workflows rebuild by case/script boundary | Large DEMs will be expensive to parse repeatedly; ASCII DEM is not tiled or indexed | Large DEM tiles or many worker processes | Medium | Future after real terrain ingestion |
 | ESRI ASCII terrain format | DEM fixtures and hazard grids | No CRS, inefficient text format, no tiling/compression | Pilot geodata exchange and large rasters | High | Near-term for Swiss pilot outputs |
 | Lack of CRS/reference-grid metadata | Hazard outputs and some case metadata | Products cannot be safely aligned or exchanged as Swiss geodata | Any LV95/LN02 pilot product | High | Urgent before Swiss pilot |
-| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; hazard reducer chunk manifests exist; calibration and trajectory-execution chunk manifests are still absent | Hard to track simulation chunk IDs, partial completion, seed ranges across jobs, and resume state | Multiple chunks/jobs/scenarios | High | Near-term |
+| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; hazard reducer chunk manifests exist; opt-in validation ensembles record local trajectory chunk ids and index ranges; calibration and resumable trajectory chunk manifests are still absent | Hard to track partial completion, seed ranges across jobs, and resume state outside one local process | Multiple chunks/jobs/scenarios | High | Near-term |
 | No restart/resume model | Validation and hazard scripts | Failed large jobs require manual inspection and rerun; partial outputs lack a formal completion record | Long ensembles and job arrays | High | Near-term |
-| Serial local ensemble orchestration | `simulate_ensemble` and validation loops | Deterministic but local; no chunk IDs, job partitions, or merge contracts | Many release zones or national domains | Medium to high | Future after manifest/chunk schema |
+| Serial default ensemble orchestration | `simulate_ensemble` remains the default; validation cases can opt in to `random.ensemble_workers` for local deterministic chunks | Deterministic but still local; no separate chunk jobs, resumable completion records, or distributed merge contracts | Many release zones or national domains | Medium to high | Future after manifest/chunk schema |
 | Python row-oriented processing | Hazard builder | Simple and flexible, but pure-Python loops and dict rows are slow for very large tables | Millions to billions of rows | Medium to high | Future after streaming design |
 | JSON diagnostics growth | Case reports and impact-event JSON | JSON is readable but inefficient for large nested records; impact-event JSON can become huge | Full event logs or many case reports | Medium | Future; keep JSON for summaries |
 | PNG/HTML report generation | Visualization and hazard reports | Useful for local review but expensive and unnecessary for production batches | Many tiles/scenarios | Low to medium | Future; disable by default for batch production |
@@ -185,9 +188,11 @@ requires per-cell curve rows.
   partial reducer states.
 - `run_manifest_v1` sidecars now describe run outputs, file sizes, row counts,
   config hashes, terrain source, warnings, and completion status. Hazard-layer
-  reducer chunk manifests exist for the local post-processing reducer, but
-  trajectory-execution chunk manifests describing job status, trajectory ID
-  ranges, CRS, or calibration state are still missing.
+  reducer chunk manifests exist for the local post-processing reducer, and
+  opt-in validation ensembles record local trajectory-execution chunk ids and
+  trajectory index ranges. Resumable chunk manifests with independent job
+  status, output checksums, CRS context, and restart semantics are still
+  missing.
 - There is no deterministic tiled/distributed partial-reducer contract for
   merging hazard rasters from many jobs.
 - Debug/report artifacts and production artifacts are not yet separated by
@@ -440,9 +445,9 @@ geospatial hazard layer.
 1. **Where will the current workflow break first?** The first breaking point is
    file-heavy full ensemble output: one CSV per trajectory and one CSV per
    impact-event trajectory, followed by Python rereading all rows. At larger
-   map scales, missing trajectory-execution chunk/resume manifests and missing
-   tiled reducers become equally limiting because failed jobs cannot be resumed
-   or merged systematically.
+   map scales, current local-only trajectory chunk provenance will need to
+   become resumable chunk manifests, and missing tiled reducers become equally
+   limiting because failed jobs cannot be resumed or merged systematically.
 
 2. **Which outputs are debug/development formats versus scalable formats?** CSV
    trajectories, impact CSV/JSON, diagnostics JSON, ASCII grids, GeoJSON, PNG,

@@ -317,7 +317,9 @@ architecture ready for later scaling:
   requested trajectory order after joining deterministic contiguous chunks and
   records local execution metadata with schema
   `local_parallel_ensemble_v1`. Serial `simulate_ensemble` remains the default
-  path.
+  path. Validation cases can opt in to this runner with
+  `random.ensemble_workers`; configured runs write `ensemble_execution`
+  provenance into `run_manifest_v1`.
 - `TrajectorySummary` separates per-trajectory diagnostics from full trajectory samples so future runners can aggregate summaries while streaming or chunking detailed outputs.
 - Future CSCS/SLURM orchestration should build on the same deterministic seeds, chunk manifests, row counts, checksums, and reducer merge rules rather than changing the trajectory kernel.
 
