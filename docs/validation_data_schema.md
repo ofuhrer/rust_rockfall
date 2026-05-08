@@ -658,6 +658,12 @@ map-package manifest, and pilot GIS package manifest. The committed template
 remains `template_not_run`; populated local copies belong in ignored pilot
 directories and generated outputs remain outside git.
 
+A selected pilot can also be committed as `run_status: no_go` when execution is
+blocked before trajectory generation by a share-safe input-data or
+reproducibility issue. Such files must include `no_go_blocker`, keep generated
+artifact paths and checksums null, classify the report as `no-go`, and explain
+that the blocker is not a model result.
+
 For populated non-template run-freeze files,
 `scripts/validate_public_real_site_conditional_pilot_run.py
 --print-command-plan` emits

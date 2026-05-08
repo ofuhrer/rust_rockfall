@@ -613,6 +613,26 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ).strip()
         errors.append(f"public real-site conditional pilot run template validation failed:\n{output}")
 
+    selected_pilot_run_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_public_real_site_conditional_pilot_run.py",
+            "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if selected_pilot_run_check.returncode != 0:
+        output = "\n".join(
+            part
+            for part in (selected_pilot_run_check.stdout, selected_pilot_run_check.stderr)
+            if part
+        ).strip()
+        errors.append(f"selected public real-site conditional pilot run validation failed:\n{output}")
+
     hazard_docs = "\n".join(
         path.read_text()
         for path in (

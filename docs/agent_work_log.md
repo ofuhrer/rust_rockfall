@@ -105,7 +105,19 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Files intended to change: `docs/agent_work_log.md`
 - Implementation summary: Appended corrected target mapping, corrected
   M002-M015 sequence, and this revision note.
-- Checks run: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_conditional_pilot_run.py tests/test_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/templates/public_real_site_conditional_pilot_run_v1.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --print-command-plan` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --allow-missing-source-dem --output-dir validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
 - Reviewer notes: Initial M001 micro-plan used the wrong roadmap mapping:
   Impact/Contact, Terrain/GIS, Release-Zone, Ensemble Orchestration, and
   Hazard-Layer Generation instead of the requested recommendation targets.
@@ -147,7 +159,9 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run: Pending.
 - Reviewer notes: No physics changes, no private geodata, no report scripts or
   templates, no operational validation claims, and no risk-map language.
-- Decision: Pending.
+- Decision: ACCEPT; Priority 4 done as an executable selected-domain no-go
+  gate, with actual pilot simulation and hazard artifacts blocked only by the
+  intentionally ignored processed DEM being absent from the local checkout.
 - Next proposed milestone: M003.
 
 ### M002 Check Addendum
@@ -1428,3 +1442,39 @@ Planning only; these milestones do not implement roadmap item content yet.
   terrain-variant metrics blocked only by the intentionally ignored processed
   DEM being absent from a clean checkout.
 - Next proposed milestone: Stop after Priority 3 as requested.
+
+### M022
+
+- Milestone id: M022.
+- Roadmap item: Priority 4. Execute the small frozen conditional pilot gate
+  run.
+- Hypothesis/objective: Complete the selected Tschamut public pilot gate as an
+  executable no-go run-freeze and report, without simulator behavior changes,
+  parameter tuning, annual frequency, physical probability, risk, exposure,
+  vulnerability, or operational claims.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `scripts/validate_public_real_site_conditional_pilot_run.py`,
+  `tests/test_public_real_site_conditional_pilot_run.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/validation_data_schema.md`,
+  `docs/README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a selected Tschamut public conditional pilot
+  run-freeze that validates and freezes the available geodata manifest,
+  source/scenario policy, physics defaults, random seed, conditional
+  thresholds, explicit EPSG:2056/LN02 grid, output roots, and output budget.
+  The gate is classified `no-go` because the ignored processed public DEM and
+  metadata are absent from a clean checkout. The report and validator record
+  that no conditional curves, GIS artifacts, checksums, runtime/memory metrics,
+  output-volume evidence, or model results exist yet.
+- Checks run: Pending.
+- Reviewer notes: The no-go command plan validates upstream inputs and records
+  the DEM-sensitivity blocker only; it intentionally does not run trajectories
+  or hazard-layer post-processing until the local public DEM blocker is
+  resolved.
+- Decision: Pending.
+- Next proposed milestone: Stop after Priority 4 as requested.

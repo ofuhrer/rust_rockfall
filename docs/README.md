@@ -90,6 +90,7 @@ Core documents:
 - `source_zone_block_scenario_policy_v1.md`: Phase 2 policy contract for predeclared real-site source-zone evidence, deterministic release sampling, and representative block scenarios.
 - `public_real_site_geodata_preparation.md`: Phase 1/6 share-safe public real-site geodata manifest and conditional pilot run-freeze workflow.
 - `public_real_site_conditional_pilot_report_template.md`: Phase 6 report scaffold for pass/no-go/inconclusive local conditional pilot classification.
+- `tschamut_public_conditional_pilot_gate_report.md`: selected Tschamut Phase 6 no-go gate report for the missing processed public DEM blocker.
 - `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
 - `autonomous_development_program.md`: operator prompt, tracking artifacts, and Git/GitHub conventions for long-running autonomous development sessions.
 - `verification_plan.md`: analytic and synthetic verification strategy.

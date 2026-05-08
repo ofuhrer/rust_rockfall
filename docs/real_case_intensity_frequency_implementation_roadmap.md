@@ -50,14 +50,18 @@ Already available:
 - source-zone/block-scenario policy template and validator;
 - public real-site conditional pilot run-freeze template and command-plan
   validator;
+- selected Tschamut public conditional pilot no-go gate run-freeze and report
+  for the missing processed DEM blocker;
 - diagnostic pilot GIS package manifest behind explicit GeoTIFF export;
 - deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - strong verification and deterministic seed/order checks.
 
 Main remaining pieces, in priority order:
 
-1. execute a small frozen conditional pilot gate run and record convergence,
-   performance, output volume, and limitations;
+1. resolve the selected Tschamut processed-DEM blocker and rerun the small
+   frozen conditional pilot gate to produce actual conditional curves,
+   manifests, checksums, GIS artifacts, runtime/output budget evidence, and
+   convergence notes;
 2. produce a real-pilot GIS/QGIS review package with CRS, nodata, value-parity,
    source-zone overlay, and claim-boundary QA;
 3. measure and improve local single-node scaling for trajectory generation and
@@ -395,10 +399,18 @@ Do not:
 Objective: execute the first full public-dataset real-case pilot with
 conditional intensity-exceedance curves.
 
-Current status: pre-run freeze gate only. The template and validator can check
-a populated run-freeze file and emit a command plan, but the checked-in state is
-`template_not_run`. No public real-site conditional pilot output, convergence
-evidence, QGIS package, or pilot report has been produced yet.
+Current status: selected-domain no-go gate complete. The template and validator
+can check populated run-freeze files and emit command plans. The selected
+Tschamut run-freeze
+`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` freezes
+the available public geodata manifest, source/scenario policy, seed, thresholds,
+physics defaults, explicit grid, output roots, and output budget, then
+classifies the small gate as `no-go` because the ignored processed DEM and
+metadata are absent from a clean checkout. The companion report
+`docs/tschamut_public_conditional_pilot_gate_report.md` records that this is an
+input-data/reproducibility blocker, not a model result. No conditional curves,
+runtime/output budget evidence, checksums, or GIS artifacts have been produced
+for the selected pilot yet.
 
 Implementation work:
 
@@ -428,6 +440,12 @@ validators, frozen validation run, and hazard-layer command needed to generate
 conditional curves, selected GeoTIFFs, the GIS package manifest, and local
 reducer manifests. This keeps Phase 6 executable while still leaving generated
 products out of git.
+
+For the selected no-go Tschamut gate, the command plan intentionally contains
+only the validated upstream checks and the DEM-sensitivity blocker recording
+command. It does not run trajectories or hazard-layer post-processing until the
+public geodata preparation command has created the ignored processed DEM
+locally.
 
 Likely affected areas:
 

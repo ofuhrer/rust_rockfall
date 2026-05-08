@@ -159,9 +159,17 @@ curve table, hazard manifests, GIS package manifest, reducer chunk manifest,
 checksums, runtime/memory/file-count records, convergence notes, and a
 pass/no-go/inconclusive pilot report.
 
-Minimal acceptable deliverable: A share-safe gate-run report that classifies
-the workflow result without claiming physical probability, annual frequency,
-risk, or operational readiness.
+Minimal acceptable deliverable: complete as a no-go gate. The selected
+Tschamut run-freeze
+`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
+validates and freezes the available geodata manifest, source/scenario policy,
+physics defaults, seed, thresholds, explicit grid, output roots, and output
+budget, then classifies the small gate as `no-go` because the ignored processed
+public DEM and metadata are absent from a clean checkout. The companion report
+`docs/tschamut_public_conditional_pilot_gate_report.md` records that no
+conditional curves, GIS artifacts, checksums, runtime/memory metrics, or output
+volume evidence exist yet. This is an input-data/reproducibility blocker, not a
+model result.
 
 What not to do: Do not run held-out or larger ensembles before the gate is
 interpretable; do not tune parameters after seeing outputs.

@@ -62,6 +62,7 @@ REQUIRED_BUDGET_METRICS = {
     "trajectory_count",
     "release_cell_count",
 }
+NO_GO_RUN_STATUSES = {"no_go", "inconclusive"}
 
 
 class PilotRunError(ValueError):
@@ -135,6 +136,8 @@ def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = No
     validate_run_evidence(require_mapping(manifest.get("run_evidence"), "run_evidence"), run_status)
     validate_report_plan(require_mapping(manifest.get("report_plan"), "report_plan"), run_status)
     validate_claim_boundary(require_mapping(manifest.get("claim_boundary"), "claim_boundary"))
+    if run_status == "no_go":
+        validate_no_go_blocker(require_mapping(manifest.get("no_go_blocker"), "no_go_blocker"))
 
     if manifest_path is not None and run_status == "template_not_run":
         require(
@@ -148,6 +151,8 @@ def build_command_plan(manifest: dict[str, Any]) -> dict[str, Any]:
     run_status = str(manifest["run_status"])
     if run_status == "template_not_run":
         raise PilotRunError("template_not_run manifests do not have enough frozen inputs for a command plan")
+    if run_status == "no_go":
+        return build_no_go_command_plan(manifest)
 
     input_freeze = require_mapping(manifest["input_freeze"], "input_freeze")
     sampling = require_mapping(manifest["sampling_plan"], "sampling_plan")
@@ -213,6 +218,65 @@ def build_command_plan(manifest: dict[str, Any]) -> dict[str, Any]:
         "operational_status": "research_diagnostic",
         "generated_outputs_committed": False,
         "commands": commands,
+        "claim_boundary": manifest["claim_boundary"],
+    }
+
+
+def build_no_go_command_plan(manifest: dict[str, Any]) -> dict[str, Any]:
+    input_freeze = require_mapping(manifest["input_freeze"], "input_freeze")
+    blocker = require_mapping(manifest["no_go_blocker"], "no_go_blocker")
+    commands = [
+        command_entry(
+            "validate_geodata_manifest",
+            "Validate the selected public geodata manifest before resolving the gate blocker.",
+            [
+                "uv",
+                "run",
+                "python",
+                "scripts/validate_public_real_site_geodata_manifest.py",
+                str(input_freeze["geodata_manifest_path"]),
+            ],
+            env={"UV_CACHE_DIR": "/tmp/uv-cache"},
+        ),
+        command_entry(
+            "validate_source_scenario_policy",
+            "Validate the selected source-zone and block-scenario policy before resolving the gate blocker.",
+            [
+                "uv",
+                "run",
+                "python",
+                "scripts/validate_source_scenario_policy.py",
+                str(input_freeze["source_scenario_policy_path"]),
+            ],
+            env={"UV_CACHE_DIR": "/tmp/uv-cache"},
+        ),
+        command_entry(
+            "record_dem_sensitivity_blocker",
+            "Record the selected-domain DEM sensitivity no-go gate until public geodata preparation creates the ignored processed DEM.",
+            [
+                "uv",
+                "run",
+                "python",
+                "scripts/run_dem_terrain_sensitivity.py",
+                "--pilot-manifest",
+                str(input_freeze["geodata_manifest_path"]),
+                "--source-scenario-policy",
+                str(input_freeze["source_scenario_policy_path"]),
+                "--allow-missing-source-dem",
+                "--output-dir",
+                str(blocker["evidence_output_dir"]),
+            ],
+            env={"UV_CACHE_DIR": "/tmp/uv-cache"},
+        ),
+    ]
+    return {
+        "schema_version": "public_real_site_conditional_pilot_command_plan_v1",
+        "run_id": require_text(manifest.get("run_id"), "run_id"),
+        "run_status": "no_go",
+        "operational_status": "research_diagnostic",
+        "generated_outputs_committed": False,
+        "commands": commands,
+        "blocker": blocker,
         "claim_boundary": manifest["claim_boundary"],
     }
 
@@ -324,6 +388,16 @@ def validate_input_freeze(input_freeze: dict[str, Any], run_status: str) -> None
     freeze_status = require_text(input_freeze.get("freeze_status"), "input_freeze.freeze_status")
     if run_status == "template_not_run":
         require(freeze_status == "not_frozen", "template run freeze_status must be not_frozen")
+        return
+    if run_status in NO_GO_RUN_STATUSES:
+        require(
+            freeze_status in {"blocked_missing_processed_dem", "frozen"},
+            "no-go or inconclusive pilot runs must set freeze_status to blocked_missing_processed_dem or frozen",
+        )
+        for key in ("benchmark_case_path", "terrain_metadata_path", "source_zone_metadata_path", "scenario_table_path"):
+            value = input_freeze.get(key)
+            require(value is None or isinstance(value, str), f"input_freeze.{key} must be null or a string")
+        require_text(input_freeze.get("map_product_id"), "input_freeze.map_product_id")
         return
     require(freeze_status == "frozen", "non-template pilot runs must set freeze_status to frozen")
     for key in (
@@ -490,6 +564,21 @@ def validate_run_evidence(evidence: dict[str, Any], run_status: str) -> None:
             diagnostics.get("status") == "not_run",
             f"{run_status} manifests must keep convergence diagnostics not_run",
         )
+    elif run_status in NO_GO_RUN_STATUSES:
+        require(evidence_status == run_status.replace("_", "-"), f"{run_status} manifests must use matching run_evidence.evidence_status")
+        for key in set(REQUIRED_EVIDENCE_PATHS) | REQUIRED_BUDGET_METRICS:
+            require(evidence.get(key) is None, f"{run_status} manifests must keep run_evidence.{key} null")
+        checksums = require_mapping(evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
+        for key in REQUIRED_ARTIFACT_CHECKSUMS:
+            require(checksums.get(key) is None, f"{run_status} manifests must keep run_evidence.artifact_checksums.{key} null")
+        diagnostics = require_mapping(
+            evidence.get("convergence_diagnostics"),
+            "run_evidence.convergence_diagnostics",
+        )
+        status = require_text(diagnostics.get("status"), "run_evidence.convergence_diagnostics.status")
+        require(status in {"no-go", "inconclusive"}, f"{run_status} convergence status must be no-go or inconclusive")
+        notes = require_list(diagnostics.get("notes"), "run_evidence.convergence_diagnostics.notes")
+        require(notes, f"{run_status} convergence diagnostics notes must not be empty")
 
 
 def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
@@ -563,6 +652,24 @@ def validate_claim_boundary(boundary: dict[str, Any]) -> None:
     notes = "\n".join(str(note).lower() for note in require_list(boundary.get("notes"), "claim_boundary.notes"))
     require("not validation evidence" in notes, "claim_boundary notes must keep input provenance out of validation evidence")
     require("sampling-weighted conditional" in notes, "claim_boundary notes must keep current products conditional")
+
+
+def validate_no_go_blocker(blocker: dict[str, Any]) -> None:
+    require_text(blocker.get("blocker_id"), "no_go_blocker.blocker_id")
+    require_text(blocker.get("status"), "no_go_blocker.status")
+    require_text(blocker.get("classification"), "no_go_blocker.classification")
+    require(blocker["classification"] == "no-go", "no_go_blocker.classification must be no-go")
+    missing_paths = require_list(blocker.get("missing_paths"), "no_go_blocker.missing_paths")
+    require(missing_paths, "no_go_blocker.missing_paths must not be empty")
+    for index, value in enumerate(missing_paths):
+        require_text(value, f"no_go_blocker.missing_paths[{index}]")
+    commands = require_list(blocker.get("recovery_commands"), "no_go_blocker.recovery_commands")
+    require(commands, "no_go_blocker.recovery_commands must not be empty")
+    for index, value in enumerate(commands):
+        require_text(value, f"no_go_blocker.recovery_commands[{index}]")
+    require_text(blocker.get("evidence_output_dir"), "no_go_blocker.evidence_output_dir")
+    notes = "\n".join(str(note).lower() for note in require_list(blocker.get("notes"), "no_go_blocker.notes"))
+    require("not a model result" in notes, "no_go_blocker.notes must say the no-go is not a model result")
 
 
 def repo_path(value: str) -> Path:

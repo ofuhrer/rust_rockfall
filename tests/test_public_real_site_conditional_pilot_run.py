@@ -98,6 +98,44 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.PilotRunError, "hazard_manifest_sha256"):
             validator.validate_pilot_run(manifest)
 
+    def test_selected_tschamut_no_go_gate_contract_is_valid(self) -> None:
+        manifest = validator.read_yaml(
+            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+        )
+
+        validator.validate_pilot_run(manifest)
+
+    def test_no_go_gate_builds_blocker_command_plan(self) -> None:
+        manifest = validator.read_yaml(
+            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+        )
+
+        plan = validator.build_command_plan(manifest)
+
+        self.assertEqual(plan["run_status"], "no_go")
+        self.assertEqual(plan["blocker"]["blocker_id"], "missing_processed_tschamut_public_dem")
+        command_names = [entry["name"] for entry in plan["commands"]]
+        self.assertEqual(
+            command_names,
+            [
+                "validate_geodata_manifest",
+                "validate_source_scenario_policy",
+                "record_dem_sensitivity_blocker",
+            ],
+        )
+        blocker_command = plan["commands"][-1]["command"]
+        self.assertIn("--allow-missing-source-dem", blocker_command)
+        self.assertIn("validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1", blocker_command)
+
+    def test_no_go_gate_requires_explicit_blocker(self) -> None:
+        manifest = validator.read_yaml(
+            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+        )
+        del manifest["no_go_blocker"]
+
+        with self.assertRaisesRegex(validator.PilotRunError, "no_go_blocker"):
+            validator.validate_pilot_run(manifest)
+
     def predeclared_manifest(self) -> dict:
         manifest = copy.deepcopy(self.load_template())
         manifest["run_status"] = "predeclared_ready"
