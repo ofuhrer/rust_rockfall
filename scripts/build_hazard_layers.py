@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[1]
 NODATA = -9999.0
 SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS = 0.05
 INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT = 32
+CHUNK_MANIFEST_SCHEMA_VERSION = "hazard_reducer_chunk_manifest_v1"
+CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION = "chunk_execution_manifest_v1"
+CHUNK_EXECUTION_PLAN_SCHEMA_VERSION = "execution_plan_v1"
 
 
 @dataclass(frozen=True)
@@ -281,9 +284,15 @@ class InputStats:
 class ReducerChunk:
     chunk_id: str
     index: int
+    trajectory_start: int
+    trajectory_end_exclusive: int
     trajectory_paths: tuple[Path, ...]
     deposition_path: Path | None
+    impact_csv_start: int
+    impact_csv_end_exclusive: int
     impact_event_paths: tuple[Path, ...]
+    impact_parquet_start: int
+    impact_parquet_end_exclusive: int
     impact_event_parquet_paths: tuple[Path, ...]
 
 
@@ -293,6 +302,126 @@ class ReducerChunkResult:
     accumulator: "HazardAccumulator"
     warnings: tuple[str, ...]
     manifest: dict[str, Any]
+
+
+def chunk_manifest_path(output_dir: Path, chunk_id: str) -> Path:
+    return output_dir / f"{chunk_id}_manifest.json"
+
+
+def execution_plan_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_execution_plan_v1.json"
+
+
+def file_fingerprint(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {
+            "path": str(path),
+            "status": "missing",
+            "size_bytes": None,
+            "sha256": None,
+        }
+    return {
+        "path": str(path),
+        "status": "present",
+        "size_bytes": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+
+
+def _chunk_id_range_start(index: int, total_chunks: int, total_items: int) -> int:
+    return index * total_items // total_chunks
+
+
+def _chunk_id_range_end(index: int, total_chunks: int, total_items: int) -> int:
+    return (index + 1) * total_items // total_chunks
+
+
+def chunk_partition_ranges(total_items: int, partition_count: int) -> list[tuple[int, int]]:
+    return [
+        (_chunk_id_range_start(index, partition_count, total_items), _chunk_id_range_end(index, partition_count, total_items))
+        for index in range(partition_count)
+    ]
+
+
+def build_chunk_execution_plan(
+    prefix: str,
+    chunks: list[ReducerChunk],
+    reducer_workers: int,
+    output_dir: Path,
+) -> dict[str, Any]:
+    chunk_records: list[dict[str, Any]] = []
+    for chunk in chunks:
+        chunk_records.append(
+            {
+                "chunk_id": chunk.chunk_id,
+                "chunk_index": chunk.index,
+                "trajectory_file_index_start": chunk.trajectory_start,
+                "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
+                "impact_csv_file_index_start": chunk.impact_csv_start,
+                "impact_csv_file_index_end_exclusive": chunk.impact_csv_end_exclusive,
+                "impact_parquet_file_index_start": chunk.impact_parquet_start,
+                "impact_parquet_file_index_end_exclusive": chunk.impact_parquet_end_exclusive,
+                "deposition_file_count": 1 if chunk.deposition_path is not None else 0,
+                "execution_status": "planned",
+                "completion_status": "not_started",
+                "completion_reason": None,
+                "manifest_path": str(chunk_manifest_path(output_dir / "chunks", chunk.chunk_id)),
+                "input_artifacts": [
+                    file_fingerprint(path)
+                    for path in (
+                        *chunk.trajectory_paths,
+                        *chunk.impact_event_paths,
+                        *chunk.impact_event_parquet_paths,
+                    )
+                    if path
+                ]
+                + ([file_fingerprint(chunk.deposition_path)] if chunk.deposition_path is not None else []),
+            }
+        )
+    plan_id_source = json.dumps(
+        {
+            "prefix": prefix,
+            "reducer_workers": reducer_workers,
+            "chunk_ids": [chunk.chunk_id for chunk in chunks],
+            "chunking_signature": [
+                {
+                    "trajectory_start": chunk.trajectory_start,
+                    "trajectory_end_exclusive": chunk.trajectory_end_exclusive,
+                    "impact_csv_start": chunk.impact_csv_start,
+                    "impact_csv_end_exclusive": chunk.impact_csv_end_exclusive,
+                    "impact_parquet_start": chunk.impact_parquet_start,
+                    "impact_parquet_end_exclusive": chunk.impact_parquet_end_exclusive,
+                }
+                for chunk in chunks
+            ],
+            "artifact_inventory": [
+                input_artifact["sha256"]
+                for chunk_record in chunk_records
+                for input_artifact in chunk_record["input_artifacts"]
+            ],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    digest = hashlib.sha256(plan_id_source).hexdigest()[:24]
+    plan_id = f"{prefix}__execution_plan__{digest}"
+    return {
+        "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
+        "plan_id": plan_id,
+        "plan_status": "planned",
+        "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
+        "reducer_mode": "chunked_local_threads",
+        "merge_order": "sorted_chunk_id",
+        "merge_group_id": digest,
+        "reducer_workers": reducer_workers,
+        "chunk_count": len(chunks),
+        "chunk_id_policy": "stable_prefix_sorted_chunk_index",
+        "chunk_manifests": chunk_records,
+        "output_manifest_path": str(execution_plan_path(output_dir, prefix)),
+        "output_artifacts": {
+            "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
+            "path": str(execution_plan_path(output_dir, prefix)),
+        },
+    }
 
 
 @dataclass
@@ -1287,6 +1416,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
     hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
     if reducer_execution is not None:
         manifest["reducer_execution"] = reducer_execution
+        manifest["outputs"].append(
+            output_manifest_entry(
+                execution_plan_path(output_dir, prefix),
+                "reducer_execution_plan",
+                "json",
+            )
+        )
         for chunk_manifest_path in chunk_manifest_paths:
             manifest["outputs"].append(output_manifest_entry(chunk_manifest_path, "reducer_chunk_manifest", "json"))
         manifest["performance"]["output_file_count"] = sum(
@@ -1548,6 +1684,40 @@ def run_reducer_accumulation(
         impact_event_paths,
         impact_event_parquet_paths,
     )
+    chunk_dir = output_dir / "chunks"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    execution_plan = execution_plan_path(output_dir, prefix)
+    chunk_plan = build_chunk_execution_plan(prefix, chunks, worker_count, output_dir)
+    existing_chunk_retries: dict[str, int] = {}
+    previous_plan = {}
+    if execution_plan.exists():
+        try:
+            previous_plan = read_json(execution_plan)
+        except (OSError, json.JSONDecodeError, ValueError):
+            previous_plan = {}
+    if (
+        isinstance(previous_plan, dict)
+        and previous_plan.get("schema_version") == CHUNK_EXECUTION_PLAN_SCHEMA_VERSION
+        and previous_plan.get("chunk_count") == chunk_plan.get("chunk_count")
+        and sorted((record.get("chunk_id") for record in previous_plan.get("chunk_manifests", [])))
+        == sorted((record.get("chunk_id") for record in chunk_plan.get("chunk_manifests", [])))
+    ):
+        for record in previous_plan.get("chunk_manifests", []):
+            chunk_id = record.get("chunk_id")
+            retry_count = record.get("retry_count")
+            if isinstance(chunk_id, str) and isinstance(retry_count, int):
+                existing_chunk_retries[chunk_id] = max(0, retry_count)
+    chunk_plan["plan_status"] = "running"
+    chunk_plan["input_file_count"] = {
+        "trajectory_files": len(trajectory_paths),
+        "impact_csv_files": len(impact_event_paths),
+        "impact_parquet_tables": len(impact_event_parquet_paths),
+        "deposition_files": 1 if deposition_path is not None else 0,
+    }
+    write_text(
+        execution_plan,
+        json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
+    )
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         results = list(
             executor.map(
@@ -1558,6 +1728,9 @@ def run_reducer_accumulation(
                     block_radius_m,
                     statistics,
                     probability,
+                    existing_chunk_retries.get(chunk.chunk_id, 0),
+                    execution_plan,
+                    chunk_plan.get("plan_id"),
                 ),
                 chunks,
             )
@@ -1566,26 +1739,63 @@ def run_reducer_accumulation(
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
     warnings: list[str] = []
     chunk_manifest_paths: list[Path] = []
+    completed_chunks = 0
+    failed_chunks: list[str] = []
     total_deposition_seconds = 0.0
     total_trajectory_seconds = 0.0
     total_impact_seconds = 0.0
-    chunk_dir = output_dir / "chunks"
-    chunk_dir.mkdir(parents=True, exist_ok=True)
     for result in results:
-        accumulator.merge(result.accumulator)
+        manifest = result.manifest
+        chunk_status = str(manifest.get("completion_status") or "unknown")
+        if chunk_status == "completed":
+            accumulator.merge(result.accumulator)
+            completed_chunks += 1
+        else:
+            failed_chunks.append(result.chunk.chunk_id)
         warnings.extend(result.warnings)
-        total_deposition_seconds += float(result.manifest["timings"]["deposition_accumulation_seconds"])
-        total_trajectory_seconds += float(result.manifest["timings"]["trajectory_accumulation_seconds"])
-        total_impact_seconds += float(result.manifest["timings"]["impact_accumulation_seconds"])
+        total_deposition_seconds += float(manifest["timings"]["deposition_accumulation_seconds"])
+        total_trajectory_seconds += float(manifest["timings"]["trajectory_accumulation_seconds"])
+        total_impact_seconds += float(manifest["timings"]["impact_accumulation_seconds"])
         manifest_path = chunk_dir / f"{result.chunk.chunk_id}_manifest.json"
-        write_text(manifest_path, json.dumps(result.manifest, indent=2, sort_keys=True) + "\n")
+        write_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         chunk_manifest_paths.append(manifest_path)
+        for record in chunk_plan.get("chunk_manifests", []):
+            if record.get("chunk_id") == result.chunk.chunk_id:
+                record["execution_status"] = manifest.get("execution_status")
+                record["completion_status"] = manifest.get("completion_status")
+                record["completion_reason"] = manifest.get("completion_reason")
+                record["manifest_path"] = str(manifest_path)
+                record["timings"] = manifest.get("timings", {})
+                record["input_row_counts"] = manifest.get("input_rows", {})
+                record["reducer_counts"] = manifest.get("reducer_counts", {})
+                record["retry_count"] = manifest.get("retry_count")
+                break
+    if failed_chunks:
+        chunk_plan["plan_status"] = "failed"
+        chunk_plan["failed_chunk_ids"] = failed_chunks
+        chunk_plan["completed_chunk_count"] = completed_chunks
+        chunk_plan["failed_chunk_count"] = len(failed_chunks)
+        chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
+        write_text(
+            execution_plan,
+            json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
+        )
+        raise SystemExit(
+            "chunk reducer execution failed for one or more chunks: "
+            + ", ".join(sorted(failed_chunks))
+        )
 
     reducer_execution = {
         "schema_version": "deterministic_local_reducer_v1",
         "mode": "chunked_local_threads",
         "worker_count": worker_count,
         "chunk_count": len(results),
+        "plan_id": chunk_plan.get("plan_id"),
+        "execution_plan_path": str(execution_plan),
+        "merge_group_id": chunk_plan.get("merge_group_id"),
+        "retry_policy": "deterministic_chunk_retry_count_by_manifest",
+        "failed_chunk_count": len(failed_chunks),
+        "completed_chunk_count": completed_chunks,
         "chunk_ids": [result.chunk.chunk_id for result in results],
         "merge_order": "sorted_chunk_id",
         "merge_order_independent": True,
@@ -1593,6 +1803,15 @@ def run_reducer_accumulation(
         "full_trajectory_output_default": False,
         "reducer_contract": reducer_contract_manifest(),
     }
+    chunk_plan["plan_status"] = "completed"
+    chunk_plan["completed_chunk_count"] = completed_chunks
+    chunk_plan["failed_chunk_count"] = len(failed_chunks)
+    chunk_plan["chunk_ids_completed"] = [result.chunk.chunk_id for result in results if result.manifest.get("completion_status") == "completed"]
+    chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
+    write_text(
+        execution_plan,
+        json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
+    )
     timings = HazardAccumulationTimings(
         bounds_discovery_seconds=0.0,
         deposition_accumulation_seconds=total_deposition_seconds,
@@ -1653,14 +1872,26 @@ def build_reducer_chunks(
     trajectory_partitions = contiguous_partitions(trajectory_paths, worker_count)
     impact_partitions = contiguous_partitions(impact_event_paths, worker_count)
     parquet_partitions = contiguous_partitions(impact_event_parquet_paths, worker_count)
+    trajectory_ranges = chunk_partition_ranges(len(trajectory_paths), worker_count)
+    impact_ranges = chunk_partition_ranges(len(impact_event_paths), worker_count)
+    parquet_ranges = chunk_partition_ranges(len(impact_event_parquet_paths), worker_count)
     for index in range(worker_count):
+        trajectory_start, trajectory_end_exclusive = trajectory_ranges[index]
+        impact_start, impact_end_exclusive = impact_ranges[index]
+        parquet_start, parquet_end_exclusive = parquet_ranges[index]
         chunks.append(
             ReducerChunk(
                 chunk_id=f"{stable_required_id(prefix, 'prefix')}__chunk_{index:04d}",
                 index=index,
+                trajectory_start=trajectory_start,
+                trajectory_end_exclusive=trajectory_end_exclusive,
                 trajectory_paths=tuple(trajectory_partitions[index]),
                 deposition_path=deposition_path if index == 0 else None,
+                impact_csv_start=impact_start,
+                impact_csv_end_exclusive=impact_end_exclusive,
                 impact_event_paths=tuple(impact_partitions[index]),
+                impact_parquet_start=parquet_start,
+                impact_parquet_end_exclusive=parquet_end_exclusive,
                 impact_event_parquet_paths=tuple(parquet_partitions[index]),
             )
         )
@@ -1684,32 +1915,71 @@ def run_reducer_chunk(
     block_radius_m: float,
     statistics: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    retry_count: int,
+    execution_plan_path: Path,
+    plan_id: str | None,
 ) -> ReducerChunkResult:
     warnings: list[str] = []
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    execution_status = "completed"
+    completion_status = "completed"
+    completion_reason = None
+    deposition_seconds = 0.0
+    trajectory_seconds = 0.0
+    impact_seconds = 0.0
     deposition_started = time.perf_counter()
-    accumulator.accumulate_deposition(read_deposition_batch(chunk.deposition_path, warnings))
-    deposition_seconds = time.perf_counter() - deposition_started
     trajectory_started = time.perf_counter()
-    for trajectory_path in chunk.trajectory_paths:
-        batch = read_trajectory_sample_batch(trajectory_path, warnings)
-        if batch is not None:
-            accumulator.accumulate_trajectory(batch)
-    trajectory_seconds = time.perf_counter() - trajectory_started
     impact_started = time.perf_counter()
-    for batch in read_impact_event_csv_batches(list(chunk.impact_event_paths), warnings):
-        accumulator.accumulate_impacts(batch)
-    for batch in read_impact_event_parquet_batches(list(chunk.impact_event_parquet_paths), warnings):
-        accumulator.accumulate_impacts(batch)
-    impact_seconds = time.perf_counter() - impact_started
-    stats = accumulator.stats()
+    try:
+        accumulator.accumulate_deposition(read_deposition_batch(chunk.deposition_path, warnings))
+        deposition_seconds = time.perf_counter() - deposition_started
+        trajectory_started = time.perf_counter()
+        for trajectory_path in chunk.trajectory_paths:
+            batch = read_trajectory_sample_batch(trajectory_path, warnings)
+            if batch is not None:
+                accumulator.accumulate_trajectory(batch)
+        trajectory_seconds = time.perf_counter() - trajectory_started
+        impact_started = time.perf_counter()
+        for batch in read_impact_event_csv_batches(list(chunk.impact_event_paths), warnings):
+            accumulator.accumulate_impacts(batch)
+        for batch in read_impact_event_parquet_batches(list(chunk.impact_event_parquet_paths), warnings):
+            accumulator.accumulate_impacts(batch)
+        impact_seconds = time.perf_counter() - impact_started
+        stats = accumulator.stats()
+        completion_status = "completed"
+    except Exception as exc:  # noqa: BLE001 - chunk-level failure is surfaced by chunk manifest and rerun contract.
+        execution_status = "failed"
+        completion_status = "failed"
+        completion_reason = str(exc)
+        warnings.append(completion_reason)
+        stats = accumulator.stats()
     manifest = {
-        "schema_version": "hazard_reducer_chunk_manifest_v1",
+        "schema_version": CHUNK_MANIFEST_SCHEMA_VERSION,
         "chunk_id": chunk.chunk_id,
-        "execution_status": "completed",
-        "completion_status": "completed",
+        "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "execution_plan": {
+            "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
+            "chunk_id": chunk.chunk_id,
+            "chunk_index": chunk.index,
+            "plan_id": plan_id,
+            "plan_path": str(execution_plan_path),
+            "plan_reference": None,
+        },
+        "execution_status": execution_status,
+        "completion_status": completion_status,
+        "completion_reason": completion_reason,
         "scientific_status": "not_evaluated",
+        "retry_count": max(0, retry_count) + (1 if completion_status == "failed" else 0),
+        "attempt_count": 1 + max(0, retry_count),
         "worker_partition_index": chunk.index,
+        "input_file_indices": {
+            "trajectory_file_index_start": chunk.trajectory_start,
+            "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
+            "impact_csv_file_index_start": chunk.impact_csv_start,
+            "impact_csv_file_index_end_exclusive": chunk.impact_csv_end_exclusive,
+            "impact_parquet_file_index_start": chunk.impact_parquet_start,
+            "impact_parquet_file_index_end_exclusive": chunk.impact_parquet_end_exclusive,
+        },
         "input_file_counts": {
             "trajectory_files": len(chunk.trajectory_paths),
             "deposition_files": 1 if chunk.deposition_path is not None else 0,

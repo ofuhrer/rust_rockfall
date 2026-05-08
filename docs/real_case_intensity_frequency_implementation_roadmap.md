@@ -502,6 +502,9 @@ before SLURM orchestration.
 Current status: implemented at the local contract level, but not yet exercised
 for a selected target-scale run. The `--reducer-workers` path gives
 deterministic local chunking and reducer manifests for current hazard products.
+`execution_plan_v1` and per-chunk retry-aware `hazard_reducer_chunk_manifest_v1`
+sidecars are now emitted so partial chunk lifecycle and failure provenance is
+recorded during reducer runs.
 `scripts/build_hazard_layers.py --conditional-curve-export summary-only`
 provides an opt-in no-default-change gate for larger pre-scale runs that need
 threshold rasters and metadata summaries without the large per-cell curve CSV
@@ -512,8 +515,8 @@ record now defines the selected Tschamut target-scale diagnostics and keeps
 scale-up unauthorized until convergence, output budget, manual GIS visual QA,
 and forest/obstacle context evidence are complete. Remaining gaps are executing
 the selected target-scale gate locally, recording convergence/output-budget
-evidence, and adding resumable cross-process trajectory chunk manifests before
-cluster orchestration.
+evidence, and generalizing plan-side partial-reducer restart semantics from
+local reducer chunks to trajectory-generation and cluster orchestration.
 
 Implementation work:
 
@@ -523,9 +526,8 @@ Implementation work:
   the selected run before changing any gate decision;
 - keep full trajectory/event CSV output as explicit debug/audit mode, not the
   default for large hazard runs;
-- add resumable cross-process trajectory chunk manifests only after the local
-  target-scale evidence shows that file count, output bytes, and runtime
-  justify that next complexity step;
+- record deterministic per-chunk retry and completion transitions in execution plans
+  before moving from local reducer validation to job-array orchestration;
 - defer SLURM/CSCS orchestration until local chunk/reducer contracts and
   target-scale evidence are stable.
 
@@ -533,7 +535,9 @@ Current Phase 5 implementation starts this path in the hazard-layer reducer:
 `--reducer-workers N` partitions trajectory and impact input files into
 deterministic local chunks, accumulates in-memory partial reducer states in
 threads, merges chunks after sorting by chunk id, and writes
-`hazard_reducer_chunk_manifest_v1` sidecars. It covers current conditional
+`hazard_reducer_chunk_manifest_v1` plus `execution_plan_v1` sidecars that
+capture chunk statuses, index provenance, and deterministic retry-aware lifecycle.
+It covers current conditional
 diagnostic reducers for reach, threshold exceedance, maxima, deposition density,
 and significant-impact density. It does not add SLURM orchestration,
 distributed storage, annual source-frequency semantics, physical probabilities,

@@ -639,13 +639,17 @@ Hazard-layer builds can opt in to local chunked reducer execution with
 `--reducer-workers N` for `N > 1`. The hazard `run_manifest_v1` then records a
 `reducer_execution` section with schema version
 `deterministic_local_reducer_v1`, sorted chunk-id merge order, worker count,
-chunk ids, and reducer contract. Each chunk writes
-`hazard_reducer_chunk_manifest_v1` JSON under the output `chunks/` directory
-with input artifact identities, row counts, reducer counts, timings, completion
-status, and local in-memory partial-state limitations. The chunked reducer is
-required to preserve serial output values for current conditional diagnostic
-layers; it does not introduce annual frequency, physical probability, or
-distributed execution semantics.
+chunk ids, and reducer contract. `run` output now includes a manifest for each
+chunk (`hazard_reducer_chunk_manifest_v1`) and a per-run
+`<prefix>_execution_plan_v1.json` `execution_plan_v1` sidecar under the same
+output root. Chunk manifests include input artifact identities, deterministic
+input index ranges, row counts, reducer counts, timings, completion status,
+explicit retry count, and local in-memory partial-state limitations. The
+execution plan persists planned/completed chunk state, schema version, merge-group
+id, deterministic chunk partition ranges, and completion transitions. The chunked
+reducer is required to preserve serial output values for current conditional
+diagnostic layers; it does not introduce annual frequency, physical
+probability, or distributed execution semantics.
 
 Validation and verification cases can also opt in to deterministic local
 parallel ensemble execution with:

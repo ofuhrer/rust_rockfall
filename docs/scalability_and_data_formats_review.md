@@ -86,8 +86,10 @@ representative-trajectory layers.
 Current note: the hazard builder also has an opt-in local threaded reducer with
 deterministic chunk manifests and serial/chunk parity tests. This is a
 post-processing reducer only. It is not a parallel trajectory runner, not a
-resumeable execution workflow, not a tiled/distributed raster reducer, and not
-SLURM orchestration.
+partially resumable execution workflow; the current `execution_plan_v1` and
+`chunk_execution_manifest_v1` sidecars allow deterministic chunk lifecycle and
+retry tracking within the post-processing reducer. It is still not a tiled/
+distributed raster reducer, and not SLURM orchestration.
 
 ### Outputs
 
@@ -185,14 +187,16 @@ requires per-cell curve rows.
   chunked dataset.
 - The hazard builder streams CSV rows into one complete in-memory raster, but
   does not yet receive samples/events directly from the simulator or emit tiled
-  partial reducer states.
+  partial reducer states. The `execution_plan_v1` plus per-chunk manifests now
+  provide deterministic local resumability for completed/failed chunk states.
 - `run_manifest_v1` sidecars now describe run outputs, file sizes, row counts,
   config hashes, terrain source, warnings, and completion status. Hazard-layer
   reducer chunk manifests exist for the local post-processing reducer, and
   opt-in validation ensembles record local trajectory-execution chunk ids and
   trajectory index ranges. Resumable chunk manifests with independent job
-  status, output checksums, CRS context, and restart semantics are still
-  missing.
+  status, output checksums, CRS context, and restart semantics are partially
+  implemented for chunked reducer post-processing via `execution_plan_v1`; full
+  cross-process restart scheduling is still pending.
 - There is no deterministic tiled/distributed partial-reducer contract for
   merging hazard rasters from many jobs.
 - Debug/report artifacts and production artifacts are not yet separated by

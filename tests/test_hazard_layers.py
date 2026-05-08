@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import scripts.build_hazard_layers as hazard
 import scripts.prepare_tschamut_swissalti3d_pilot as tschamut_pilot
@@ -1687,13 +1688,25 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(reducer["merge_order"], "sorted_chunk_id")
             self.assertTrue(reducer["merge_order_independent"])
             self.assertEqual(reducer["chunk_ids"], sorted(reducer["chunk_ids"]))
+            self.assertEqual(reducer["retry_policy"], "deterministic_chunk_retry_count_by_manifest")
             self.assertTrue(any(output["kind"] == "reducer_chunk_manifest" for output in manifest["outputs"]))
+            self.assertTrue(any(output["kind"] == "reducer_execution_plan" for output in manifest["outputs"]))
             chunk_manifests = sorted((chunked_dir / "chunks").glob("*_manifest.json"))
             self.assertEqual(len(chunk_manifests), 3)
             first_chunk = json.loads(chunk_manifests[0].read_text())
             self.assertEqual(first_chunk["schema_version"], "hazard_reducer_chunk_manifest_v1")
             self.assertEqual(first_chunk["completion_status"], "completed")
+            self.assertEqual(first_chunk["execution_status"], "completed")
+            self.assertEqual(first_chunk["execution_state_schema_version"], "chunk_execution_manifest_v1")
             self.assertIn("reach_counts", first_chunk["reducer_contract"])
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            self.assertTrue(execution_plan_path.exists())
+            execution_plan = json.loads(execution_plan_path.read_text())
+            self.assertEqual(execution_plan["schema_version"], "execution_plan_v1")
+            self.assertEqual(execution_plan["plan_status"], "completed")
+            self.assertEqual(execution_plan["chunk_count"], 3)
+            self.assertEqual(execution_plan["chunk_id_policy"], "stable_prefix_sorted_chunk_index")
+            self.assertTrue(all(record["completion_status"] == "completed" for record in execution_plan["chunk_manifests"]))
             execution = manifest["conditional_execution"]
             self.assertEqual(execution["reducer"]["mode"], "chunked_local_threads")
             self.assertEqual(execution["reducer"]["worker_count"], 3)
@@ -1715,6 +1728,81 @@ class HazardLayerTests(unittest.TestCase):
             )
             self.assertTrue(execution["output_budget"]["generated_outputs_should_remain_ignored"])
             self.assertTrue(execution["convergence_diagnostics"]["requires_worker_count_reducer_parity_before_scale_up"])
+
+            self.assertEqual(execution["reducer"]["chunk_ids"], sorted(execution["reducer"]["chunk_ids"]))
+
+    def test_chunk_execution_plan_is_deterministic_between_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+            ]
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            first_plan = json.loads(execution_plan_path.read_text())
+            self.assertEqual(first_plan["schema_version"], "execution_plan_v1")
+            self.assertEqual(first_plan["plan_status"], "completed")
+            self.assertIn("__execution_plan__", first_plan["plan_id"])
+            self.assertEqual(
+                first_plan["chunk_id_policy"],
+                "stable_prefix_sorted_chunk_index",
+            )
+
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            second_plan = json.loads(execution_plan_path.read_text())
+            self.assertEqual(second_plan["schema_version"], "execution_plan_v1")
+            self.assertEqual(second_plan["plan_status"], "completed")
+            self.assertEqual(first_plan["plan_id"], second_plan["plan_id"])
+
+    def test_chunk_execution_plan_records_failed_chunks(self) -> None:
+        original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+        def fail_first_trajectory(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
+            if path.name == "trajectory_000000.csv":
+                raise RuntimeError("simulated chunk execution failure")
+            return original_read_trajectory_sample_batch(path, warnings)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+            ]
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_first_trajectory):
+                with self.assertRaises(SystemExit):
+                    hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)])
+
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            failed_plan = json.loads(execution_plan_path.read_text())
+            self.assertEqual(failed_plan["schema_version"], "execution_plan_v1")
+            self.assertEqual(failed_plan["plan_status"], "failed")
+            failed_chunks = [record for record in failed_plan.get("chunk_manifests", []) if record.get("completion_status") == "failed"]
+            completed_chunks = [
+                record
+                for record in failed_plan.get("chunk_manifests", [])
+                if record.get("completion_status") == "completed"
+            ]
+            self.assertEqual(len(failed_chunks), 1)
+            self.assertEqual(len(completed_chunks), 1)
+            self.assertIn("simulated chunk execution failure", failed_chunks[0].get("completion_reason") or "")
+            self.assertEqual(failed_chunks[0].get("retry_count"), 1)
 
     def test_parquet_impact_events_match_csv_impact_density(self) -> None:
         try:

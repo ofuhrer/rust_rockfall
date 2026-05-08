@@ -130,6 +130,26 @@ Detailed sources: `scalability_and_data_formats_review.md`,
 `parquet_impact_benchmark_results.md`,
 `hazard_throughput_bottleneck_report.md`.
 
+### Deterministic Chunk Execution Plans
+
+Decision: emit deterministic per-chunk reducer execution plans for local post-processing
+reducers so partial completion and failure states are recoverable without changing
+physics or defaults.
+
+Current status: active and implemented for hazard-layer runs using
+`--reducer-workers N` with `N > 1`; each run now writes `execution_plan_v1`
+and `chunk_execution_manifest_v1`/`hazard_reducer_chunk_manifest_v1`-style state
+with deterministic chunk ids, input index provenance, retry counters, and manifest
+artifact output accounting.
+
+Rationale: large Swiss-scale pre-pilots require stable partial-reducer provenance
+before introducing job arrays or scheduler-level restart logic.
+
+Detailed sources: `docs/validation_data_schema.md`,
+`docs/scalability_and_data_formats_review.md`,
+`docs/real_case_intensity_frequency_implementation_roadmap.md`,
+`scripts/build_hazard_layers.py`.
+
 ### Expert Review Baseline
 
 Decision: the expert-review baseline was a historical review checkpoint, not an
