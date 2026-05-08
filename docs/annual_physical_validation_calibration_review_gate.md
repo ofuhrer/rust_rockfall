@@ -20,6 +20,14 @@ The checked-in template is
 and the executable validator is
 `scripts/validate_annual_physical_validation_calibration_review_gate.py`.
 
+A small synthetic design-review fixture lives at
+`tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml`.
+It proves the `accepted_for_design_review` record shape and validator behavior
+for record references, separated calibration/validation/holdout roles, maturity
+bounds, and no-tuning boundaries, but it is not accepted validation evidence
+for Tschamut or any real Swiss source zone and does not authorize runtime annual
+or physical products.
+
 ## Required Record States
 
 `record_status` must be one of:

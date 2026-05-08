@@ -485,6 +485,9 @@ Estimated order: 10.
   `scripts/validate_annual_physical_validation_calibration_review_gate.py`
   define and validate future review records while keeping the selected
   template at `review_not_passed`.
+- A synthetic validation/calibration review design-review fixture now exercises
+  the `accepted_for_design_review` record state without accepting real
+  validation evidence or authorizing annual/physical runtime products.
 - The physical/source-frequency design gate has been reassessed against all
   four inactive contracts. The selected gate record now lists the contract
   paths and checked statuses, and

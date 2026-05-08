@@ -2520,6 +2520,61 @@ Planning only; these milestones do not implement roadmap item content yet.
   reducer work or accepted validation/calibration review evidence is explicitly
   provided or requested.
 
+### M043
+
+- Milestone id: M043.
+- Roadmap item: Target 10 blocker: annual/physical validation-calibration
+  review design-review fixture.
+- Hypothesis/objective: Add one executable accepted-record fixture for the
+  validation/calibration review gate without accepting real validation evidence
+  or authorizing annual/physical runtime support.
+- Initial gap assessment: The validation/calibration review gate and selected
+  `review_not_passed` template existed, and in-memory tests covered candidate
+  records, but the repository did not contain a small checked fixture exercising
+  the `accepted_for_design_review` state. Real accepted annual/physical
+  validation-calibration review evidence is still unavailable and must not be
+  invented.
+- Files changed:
+  `tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml`,
+  `tests/test_annual_physical_validation_calibration_review_gate.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/annual_physical_validation_calibration_review_gate.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a synthetic `accepted_for_design_review`
+  validation/calibration review fixture with explicit references to the
+  source-frequency, block/release, and reducer-precondition design-review
+  fixtures; separated calibration, validation, and holdout fixture ids;
+  no-tuning and external-generalization requirements; maturity target/cap
+  fields; swisstopo input-geodata boundaries; and claim boundaries. Tests and
+  consistency checks validate the fixture while docs state that it is not
+  accepted validation evidence for Tschamut or any real Swiss source zone.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_annual_physical_validation_calibration_review_gate.py tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_annual_physical_validation_calibration_review_gate`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, operational claims, accepted real
+  validation evidence, or selected design-gate authorization are changed.
+- Decision: ACCEPT if final checks pass; validation/calibration review
+  accepted-record validation is now covered by a tiny committed fixture while
+  real review acceptance remains unresolved.
+- Next proposed milestone: Resolve exactly one real blocker only if real
+  accepted evidence or implemented reducer work is explicitly provided; otherwise
+  reassess the Target 10 preflight/design gate against the now-covered synthetic
+  fixture states without enabling runtime products.
+
 ### M041
 
 - Milestone id: M041.

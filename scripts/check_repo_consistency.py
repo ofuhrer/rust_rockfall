@@ -623,6 +623,7 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
     required_paths = [
         ROOT / "docs/annual_physical_validation_calibration_review_gate.md",
         ROOT / "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml",
+        ROOT / "tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml",
         ROOT / "scripts/validate_annual_physical_validation_calibration_review_gate.py",
         ROOT / "tests/test_annual_physical_validation_calibration_review_gate.py",
     ]
@@ -638,6 +639,9 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
     template = (
         ROOT / "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml"
     ).read_text()
+    fixture = (
+        ROOT / "tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml"
+    ).read_text()
     validator = (
         ROOT / "scripts/validate_annual_physical_validation_calibration_review_gate.py"
     ).read_text()
@@ -650,6 +654,8 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
         "no-tuning rule",
         "swisstopo terrain and context layers are treated as input geodata",
         "return-period claims",
+        "annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml",
+        "not accepted validation evidence",
     ):
         if term not in doc:
             errors.append(f"docs/annual_physical_validation_calibration_review_gate.md omits {term!r}")
@@ -669,6 +675,25 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
                 f"omits {term!r}"
             )
 
+    for term in (
+        "schema_version: annual_physical_validation_calibration_review_gate_v1",
+        "record_status: accepted_for_design_review",
+        "prototype_authorized: false",
+        "runtime_support_added: false",
+        "source_frequency_evidence_design_review_fixture_v1.yaml",
+        "block_release_probability_evidence_design_review_fixture_v1.yaml",
+        "physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml",
+        "maturity_target: V3",
+        "current_maturity_cap: V2",
+        "swisstopo_input_geodata_is_validation_evidence: false",
+        "not accepted validation or calibration evidence",
+    ):
+        if term not in fixture:
+            errors.append(
+                "tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml "
+                f"omits {term!r}"
+            )
+
     for symbol in (
         "validate_annual_physical_validation_calibration_review_gate",
         "REQUIRED_REFERENCE_FIELDS",
@@ -685,6 +710,7 @@ def check_annual_physical_validation_calibration_review_gate() -> list[str]:
     for test_name in (
         "test_selected_template_records_review_not_passed",
         "test_accepts_complete_candidate_for_design_review_only",
+        "test_design_review_fixture_is_valid_but_not_runtime_authorized",
         "test_rejects_missing_record_reference",
         "test_rejects_missing_no_tuning_rule",
         "test_rejects_calibration_validation_overlap",

@@ -39,6 +39,17 @@ class AnnualPhysicalValidationCalibrationReviewGateTests(unittest.TestCase):
             self.assertEqual(summary["holdout_dataset_count"], 1)
             self.assertFalse(summary["prototype_authorized"])
 
+    def test_design_review_fixture_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_annual_physical_validation_calibration_review_gate(
+            ROOT / "tests/fixtures/frequency/annual_physical_validation_calibration_review_gate_design_review_fixture_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["calibration_dataset_count"], 1)
+        self.assertEqual(summary["validation_dataset_count"], 1)
+        self.assertEqual(summary["holdout_dataset_count"], 1)
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_rejects_missing_record_reference(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.candidate_record()

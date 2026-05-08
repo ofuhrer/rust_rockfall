@@ -1,0 +1,53 @@
+schema_version: annual_physical_validation_calibration_review_gate_v1
+record_id: annual_physical_validation_calibration_review_gate_design_review_fixture_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+review_mode: annual_physical_validation_calibration_review_only
+product_scope:
+  current_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products_reviewed:
+    - physical_probability
+    - annual_intensity_frequency
+  runtime_support_added: false
+required_record_references:
+  source_frequency_evidence_record: tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml
+  block_release_probability_evidence_record: tests/fixtures/frequency/block_release_probability_evidence_design_review_fixture_v1.yaml
+  physical_frequency_reducer_preconditions_record: tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml
+calibration_review:
+  status: accepted_for_design_review
+  objective: Synthetic calibration review fixture for frequency-schema design review only.
+  dataset_ids:
+    - synthetic_frequency_calibration_fixture_v1
+  no_tuning_to_validation_or_map_pattern: true
+validation_review:
+  status: accepted_for_design_review
+  objective: Synthetic validation review fixture for frequency-schema design review only.
+  dataset_ids:
+    - synthetic_frequency_validation_fixture_v1
+  maturity_target: V3
+  current_maturity_cap: V2
+holdout_review:
+  status: accepted_for_design_review
+  dataset_ids:
+    - synthetic_frequency_holdout_fixture_v1
+  external_generalization_required: true
+dataset_role_boundaries:
+  calibration_validation_holdout_overlap_allowed: false
+  swisstopo_input_geodata_is_validation_evidence: false
+  exposure_or_vulnerability_required_for_risk: true
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - synthetic accepted-for-design-review fixture only
+  - not accepted validation or calibration evidence for Tschamut or any real Swiss source zone
+  - no runtime annual or physical product support is added
+  - no tuning to validation data or map pattern is represented
+  - swisstopo terrain remains input geodata, not validation evidence

@@ -756,7 +756,7 @@ gate.
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
-| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, reducer-precondition, and validation/calibration review contracts now exist; synthetic source-frequency, block/release, and reducer-precondition design-review fixtures exercise accepted-record validation, but real accepted evidence and implemented reducer support remain deferred. |
+| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, reducer-precondition, and validation/calibration review contracts now exist; synthetic source-frequency, block/release, reducer-precondition, and validation/calibration design-review fixtures exercise accepted-record validation, but real accepted evidence and implemented reducer support remain deferred. |
 | Target 10 preflight | Annual/physical prototype implementation | The physical/source-frequency design gate must pass before runtime work starts. | The inactive preflight record verifies that prototype implementation remains blocked while the design gate is deferred. |
 
 ## Explicit Deferrals
