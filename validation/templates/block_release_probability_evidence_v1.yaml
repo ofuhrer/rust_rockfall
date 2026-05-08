@@ -1,0 +1,44 @@
+schema_version: block_release_probability_evidence_v1
+record_id: block_release_probability_evidence_template_v1
+record_status: no_accepted_block_release_probability_evidence
+prototype_authorized: false
+operational_status: research_diagnostic
+probability_model_id: not_defined
+probability_mode: block_release_probability_evidence_only
+source_zone_id: tschamut_public_source_zone_v1
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: not_available_in_template
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class_id: not_defined
+block_scenario_distribution:
+  denominator: conditional_probability_given_source_event
+  total_probability: null
+  scenarios: []
+release_cell_distribution:
+  denominator: conditional_probability_given_source_event_and_block_scenario
+  total_probability_by_block_scenario: []
+  release_cells: []
+sampling_weight_boundary:
+  sampling_weights_are_physical_probability: false
+  sampling_weight_column_allowed_as_probability: false
+uncertainty:
+  type: not_available
+  required_before_prototype: true
+  notes: no accepted block-scenario or release-cell probability uncertainty is recorded
+evidence_basis:
+  block_distribution: none_available
+  release_cell_distribution: none_available
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - no accepted block-scenario or release-cell physical probability evidence is recorded
+  - current sampling weights remain conditional design weights
+  - swisstopo terrain remains input geodata, not validation evidence
+  - annual and physical products remain deferred

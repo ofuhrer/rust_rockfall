@@ -453,6 +453,14 @@ Estimated order: 10.
   `scripts/validate_source_frequency_evidence.py` define and validate
   candidate source-rate evidence records while keeping the selected template at
   `no_accepted_frequency_evidence`.
+- The block/release probability evidence blocker is partially resolved as an
+  inactive evidence contract.
+  `docs/block_release_probability_evidence_contract.md`,
+  `validation/templates/block_release_probability_evidence_v1.yaml`, and
+  `scripts/validate_block_release_probability_evidence.py` define and validate
+  candidate conditional block-scenario and release-cell probability evidence
+  records while keeping the selected template at
+  `no_accepted_block_release_probability_evidence`.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -476,5 +484,7 @@ Estimated order: 10.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
 6. Resolve the remaining physical/source-frequency design-gate blockers if
-   annual or physical products are still desired.
+   annual or physical products are still desired: accepted evidence,
+   overlap-adjusted reducers, uncertainty propagation, and
+   validation/calibration review.
 7. Implement an annual/physical prototype only if the design gate passes.

@@ -84,6 +84,9 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `source_frequency_evidence_contract.md`: inactive source-rate evidence
   schema, validator, and template for closing one design-gate blocker without
   enabling annual or physical products.
+- `block_release_probability_evidence_contract.md`: inactive block-scenario
+  and release-cell probability evidence schema, validator, and template for
+  closing one design-gate blocker without enabling annual or physical products.
 - `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
   probabilistic scenario/source-zone propagation.
 - `probabilistic_hazard_phase1_closure.md`: implemented Level 1/2

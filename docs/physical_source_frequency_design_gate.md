@@ -145,16 +145,24 @@ by `scripts/validate_physical_source_frequency_design_gate.py`.
 
 ## Blocker Resolution Status
 
-One blocker is partially closed: `docs/source_frequency_evidence_contract.md`
-defines an inactive source-frequency evidence contract, with template
-`validation/templates/source_frequency_evidence_v1.yaml` and validator
-`scripts/validate_source_frequency_evidence.py`. The template records
-`no_accepted_frequency_evidence`, so this does not authorize annual or
-physical products.
+Two schema blockers are partially closed:
+
+- `docs/source_frequency_evidence_contract.md` defines an inactive
+  source-frequency evidence contract, with template
+  `validation/templates/source_frequency_evidence_v1.yaml` and validator
+  `scripts/validate_source_frequency_evidence.py`. The template records
+  `no_accepted_frequency_evidence`.
+- `docs/block_release_probability_evidence_contract.md` defines an inactive
+  block-scenario and release-cell probability evidence contract, with template
+  `validation/templates/block_release_probability_evidence_v1.yaml` and
+  validator `scripts/validate_block_release_probability_evidence.py`. The
+  template records `no_accepted_block_release_probability_evidence`.
+
+These contracts do not authorize annual or physical products.
 
 Remaining blockers before prototype authorization:
 
 - accepted source-frequency evidence for a source-event class;
-- complete block-scenario and release-cell physical probability evidence;
+- accepted block-scenario and release-cell physical probability evidence;
 - overlap-adjusted reducers and uncertainty propagation;
 - validation/calibration review for frequency products.

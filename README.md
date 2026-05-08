@@ -113,6 +113,8 @@ Core documentation:
 - `docs/verification_plan.md`
 - `docs/validation_plan.md`
 - `docs/validation_maturity_framework.md`
+- `docs/source_frequency_evidence_contract.md`
+- `docs/block_release_probability_evidence_contract.md`
 - `docs/benchmark_catalog.md`
 - `docs/datasets.md`
 - `docs/validation_data_schema.md`

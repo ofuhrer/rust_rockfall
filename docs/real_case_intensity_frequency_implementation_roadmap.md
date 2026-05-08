@@ -171,6 +171,11 @@ The inactive source-frequency evidence contract in
 `docs/source_frequency_evidence_contract.md` closes the first schema blocker by
 defining source-rate evidence records and rejection checks, but the selected
 template still records `no_accepted_frequency_evidence`.
+The inactive block/release probability evidence contract in
+`docs/block_release_probability_evidence_contract.md` closes the next schema
+blocker by defining conditional block-scenario and release-cell probability
+records and rejection checks, but the selected template still records
+`no_accepted_block_release_probability_evidence`.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -732,7 +737,7 @@ gate.
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
-| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The source-frequency evidence contract now exists, but accepted evidence and reducer support remain deferred. |
+| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency and block/release probability evidence contracts now exist, but accepted evidence and reducer support remain deferred. |
 
 ## Explicit Deferrals
 

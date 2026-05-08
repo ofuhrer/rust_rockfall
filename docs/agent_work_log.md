@@ -2115,3 +2115,67 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Define the block-scenario and release-cell physical
   probability evidence contract, still without enabling runtime annual or
   physical products.
+
+### M035
+
+- Milestone id: M035.
+- Roadmap item: Resolve physical/source-frequency design-gate blockers:
+  block-scenario and release-cell physical probability evidence contract.
+- Hypothesis/objective: Close the block/release probability schema blocker by
+  defining an inactive evidence record contract and rejection checks, while
+  keeping annual/physical prototype authorization false.
+- Initial gap assessment: The source-frequency evidence contract existed, but
+  the repository still lacked a concrete template and validator for conditional
+  block-scenario probabilities, release-cell probabilities by block scenario,
+  denominator checks, uncertainty notes, dataset separation, and sampling-weight
+  boundary enforcement.
+- Files changed:
+  `docs/block_release_probability_evidence_contract.md`,
+  `validation/templates/block_release_probability_evidence_v1.yaml`,
+  `scripts/validate_block_release_probability_evidence.py`,
+  `tests/test_block_release_probability_evidence.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/dataset_strategy.md`,
+  `docs/validation_plan.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added
+  `block_release_probability_evidence_v1` as an inactive evidence contract with
+  a selected template recording
+  `no_accepted_block_release_probability_evidence`. The validator accepts
+  complete candidate records only for design review and rejects invalid
+  denominators, missing or non-summing block probabilities, missing or
+  non-summing release-cell probabilities by block scenario, unknown block joins,
+  sampling weights reused as physical probability, missing candidate
+  uncertainty, calibration/validation dataset overlap, swisstopo geodata as
+  validation evidence, misleading claims, and any prototype authorization.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_block_release_probability_evidence.py validation/templates/block_release_probability_evidence_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_block_release_probability_evidence`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, trajectory execution, hazard reducer,
+  annual frequency runtime support, physical probability runtime support,
+  risk/exposure semantics, generated products, or raw/processed swisstopo
+  geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; one block/release probability
+  evidence-schema blocker is resolved, but Target 10 remains blocked by missing
+  accepted evidence, overlap-adjusted reducers, uncertainty propagation, and
+  validation/calibration review.
+- Next proposed milestone: Define overlap-adjusted reducer and uncertainty
+  propagation preconditions for future annual/physical products, still without
+  enabling runtime annual or physical products.

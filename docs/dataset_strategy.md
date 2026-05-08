@@ -144,6 +144,12 @@ default-model decision.
   governed by `docs/source_frequency_evidence_contract.md`. They must keep
   calibration datasets, validation datasets, and operational input geodata
   separate, and the current template records no accepted frequency evidence.
+- **Future block/release probability evidence:** block-scenario and
+  release-cell probability evidence records are governed by
+  `docs/block_release_probability_evidence_contract.md`. They must keep
+  conditional sampling weights separate from physical probability evidence,
+  keep calibration datasets separate from validation datasets, and not treat
+  swisstopo input geodata as validation evidence by itself.
 
 ## Inconsistencies and Gaps
 
@@ -186,6 +192,10 @@ default-model decision.
   sampling weights and from swisstopo input geodata. A source-frequency record
   may cite swisstopo for geometry provenance, but not as validation evidence by
   itself.
+- Keep any future block/release probability evidence record separate from
+  current conditional sampling weights and from swisstopo input geodata. A
+  block/release record may cite swisstopo for geometry provenance or local
+  interpretation context, but not as validation evidence by itself.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and
   small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.

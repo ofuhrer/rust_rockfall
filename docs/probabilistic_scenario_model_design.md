@@ -29,6 +29,9 @@ The future annual/physical source-frequency contract is controlled by
 prototype deferred and does not add runtime support.
 The inactive source-rate evidence schema is documented separately in
 `docs/source_frequency_evidence_contract.md`.
+The inactive block-scenario and release-cell probability evidence schema is
+documented separately in
+`docs/block_release_probability_evidence_contract.md`.
 
 ## Scenario Identity
 
@@ -416,6 +419,10 @@ scenario probabilities, release-cell probabilities, source-zone overlap rules,
 and uncertainty metadata are required before any annual or physical prototype
 can proceed. Sampling weights remain conditional design weights unless replaced
 by evidence-backed physical probabilities in a future schema.
+`validation/templates/block_release_probability_evidence_v1.yaml` is the
+inactive evidence template for those future block and release-cell probability
+records. Its selected status records that no accepted block/release probability
+evidence exists for current products.
 
 ### Current Unweighted Validation Behavior
 

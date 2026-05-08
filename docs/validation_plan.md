@@ -26,6 +26,11 @@ Future source-frequency evidence records are governed by
 `docs/source_frequency_evidence_contract.md`. Those records must separate
 calibration dataset ids from validation dataset ids and must not list swisstopo
 terrain as validation evidence by itself.
+Future block-scenario and release-cell probability evidence records are
+governed by `docs/block_release_probability_evidence_contract.md`. Those
+records must not reuse conditional sampling weights as physical probability
+evidence, and must keep calibration dataset ids separate from validation
+dataset ids.
 
 ## Commands
 
@@ -75,6 +80,9 @@ conditional intensity-exceedance diagnostics, not annual intensity-frequency or
 return-period products.
 The inactive source-frequency evidence template does not change this
 interpretation; it only defines fields and rejection checks for future review.
+The inactive block/release probability evidence template likewise does not
+change current products; it only defines fields and rejection checks for future
+review.
 
 Mel de la Niva is registered as an external high-energy/generalization
 benchmark. Its public Zenodo data are large and remain ignored locally. The

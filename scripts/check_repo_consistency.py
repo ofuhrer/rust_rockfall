@@ -153,6 +153,7 @@ def main() -> int:
     errors.extend(check_local_parallel_ensemble_contract())
     errors.extend(check_physical_source_frequency_design_gate())
     errors.extend(check_source_frequency_evidence_contract())
+    errors.extend(check_block_release_probability_evidence_contract())
 
     if errors:
         for error in errors:
@@ -389,6 +390,76 @@ def check_source_frequency_evidence_contract() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_source_frequency_evidence.py omits {test_name}")
+    return errors
+
+
+def check_block_release_probability_evidence_contract() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/block_release_probability_evidence_contract.md",
+        ROOT / "validation/templates/block_release_probability_evidence_v1.yaml",
+        ROOT / "scripts/validate_block_release_probability_evidence.py",
+        ROOT / "tests/test_block_release_probability_evidence.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(
+                f"block/release probability evidence contract path is missing: {path.relative_to(ROOT)}"
+            )
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/block_release_probability_evidence_contract.md").read_text()
+    template = (ROOT / "validation/templates/block_release_probability_evidence_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_block_release_probability_evidence.py").read_text()
+    tests = (ROOT / "tests/test_block_release_probability_evidence.py").read_text()
+
+    for term in (
+        "Status: inactive evidence-schema contract",
+        "block-scenario and release-cell physical probability evidence",
+        "no_accepted_block_release_probability_evidence",
+        "conditional_probability_given_source_event",
+        "conditional_probability_given_source_event_and_block_scenario",
+        "reuse of `sampling_weight` as physical probability",
+        "swisstopo",
+    ):
+        if term not in doc:
+            errors.append(f"docs/block_release_probability_evidence_contract.md omits {term!r}")
+
+    for term in (
+        "schema_version: block_release_probability_evidence_v1",
+        "record_status: no_accepted_block_release_probability_evidence",
+        "prototype_authorized: false",
+        "probability_mode: block_release_probability_evidence_only",
+        "sampling_weights_are_physical_probability: false",
+        "sampling_weight_column_allowed_as_probability: false",
+        "physical_probability_supported: false",
+    ):
+        if term not in template:
+            errors.append(
+                f"validation/templates/block_release_probability_evidence_v1.yaml omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_block_release_probability_evidence",
+        "conditional_probability_given_source_event",
+        "conditional_probability_given_source_event_and_block_scenario",
+        "validate_sampling_weight_boundary",
+        "swisstopo geodata must not be listed as validation evidence",
+        "prototype_authorized must be false",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_block_release_probability_evidence.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_template_records_no_accepted_block_release_probability_evidence",
+        "test_accepts_complete_candidate_for_design_review_only",
+        "test_rejects_block_probabilities_that_do_not_sum_to_one",
+        "test_rejects_release_probabilities_that_do_not_sum_by_block_scenario",
+        "test_rejects_sampling_weight_reuse_as_physical_probability",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_block_release_probability_evidence.py omits {test_name}")
     return errors
 
 
@@ -1107,6 +1178,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/probabilistic_scenario_model_design.md",
         ROOT / "docs/physical_source_frequency_design_gate.md",
         ROOT / "docs/source_frequency_evidence_contract.md",
+        ROOT / "docs/block_release_probability_evidence_contract.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
     ]
