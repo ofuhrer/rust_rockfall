@@ -23,7 +23,8 @@ selected_domain:
     ymin: 1167384.0
     xmax: 2696976.0
     ymax: 1167992.0
-  source_zone_status: deferred_to_priority_2
+  source_zone_status: predeclared_policy_available
+  source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
   forest_obstacle_relevance_status: not_scoped
 
 local_layout:

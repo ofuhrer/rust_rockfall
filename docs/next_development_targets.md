@@ -79,9 +79,12 @@ release-cell ids, block-scenario ids, conditional sampling weights, evidence
 level, derivation notes, and explicit rejection of physical or annual
 probability claims.
 
-Minimal acceptable deliverable: A domain-specific policy file outside public
-validation discovery that passes the validator and can be referenced by the
-pilot run-freeze file.
+Minimal acceptable deliverable: complete. The selected-domain policy
+`validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passes the
+validator and can be referenced by the pilot run-freeze file. It records the
+Tschamut source-zone interpretation, deterministic release-cell ids, block
+scenario ids, and conditional sampling weights without physical or annual
+probability claims.
 
 What not to do: Do not implement a national source-zone algorithm, add annual
 source frequencies, or move source zones after seeing pilot outputs.

@@ -87,11 +87,63 @@ def validate_source_zone_policy(source_zone: dict[str, Any], status: str) -> Non
     if status != "template_not_run":
         require(criteria_status != "not_defined", "prepared policies must define source-zone derivation criteria")
         require_text(source_zone.get("source_zone_id"), "source_zone_policy.source_zone_id")
+        validate_source_zone_geometry(require_mapping(source_zone.get("geometry"), "source_zone_policy.geometry"))
+        evidence_level = require_text(source_zone.get("evidence_level"), "source_zone_policy.evidence_level")
+        if evidence_level == "level1_manual_real_site_interpretation":
+            require_text(
+                criteria.get("manual_interpretation_notes"),
+                "source_zone_policy.derivation_criteria.manual_interpretation_notes",
+            )
     sampling = require_mapping(source_zone.get("release_sampling"), "source_zone_policy.release_sampling")
     require(sampling.get("mode") == "deterministic_grid", "release_sampling.mode must be deterministic_grid")
     require(sampling.get("sampling_weight_semantics") == "conditional_sampling_only", "release sampling weights must remain conditional_sampling_only")
     require(sampling.get("physical_release_probability_supported") is False, "physical release probability must remain unsupported")
     require(sampling.get("annual_source_frequency_supported") is False, "annual source frequency must remain unsupported")
+    if status != "template_not_run":
+        validate_release_sampling(sampling)
+
+
+def validate_source_zone_geometry(geometry: dict[str, Any]) -> None:
+    geometry_type = require_text(geometry.get("type"), "source_zone_policy.geometry.type")
+    require(geometry_type.lower() == "polygon", "source-zone geometry.type must be polygon")
+    vertices = require_list(geometry.get("coordinates"), "source_zone_policy.geometry.coordinates")
+    require(len(vertices) >= 3, "source-zone polygon must contain at least three vertices")
+    for index, vertex in enumerate(vertices):
+        coords = require_list(vertex, f"source_zone_policy.geometry.coordinates[{index}]")
+        require(len(coords) == 2, f"source-zone polygon vertex {index} must contain x and y")
+        require_number(coords[0], f"source-zone polygon vertex {index} x")
+        require_number(coords[1], f"source-zone polygon vertex {index} y")
+
+
+def validate_release_sampling(sampling: dict[str, Any]) -> None:
+    require_text(sampling.get("seed_policy"), "release_sampling.seed_policy")
+    require_int(sampling.get("seed"), "release_sampling.seed", minimum=0)
+    prefix = require_text(sampling.get("release_cell_id_prefix"), "release_sampling.release_cell_id_prefix")
+    requested_count = require_int(
+        sampling.get("requested_release_cell_count"),
+        "release_sampling.requested_release_cell_count",
+        minimum=1,
+    )
+    cells = require_list(sampling.get("release_cells"), "release_sampling.release_cells")
+    require(len(cells) == requested_count, "release_sampling.release_cells must match requested_release_cell_count")
+    ids: set[str] = set()
+    total_weight = 0.0
+    for index, raw in enumerate(cells):
+        cell = require_mapping(raw, f"release_sampling.release_cells[{index}]")
+        cell_id = require_text(cell.get("release_cell_id"), f"release cell {index}.release_cell_id")
+        require(cell_id.startswith(prefix), f"release cell {cell_id} must start with release_cell_id_prefix")
+        require(cell_id not in ids, f"duplicate release_cell_id {cell_id!r}")
+        ids.add(cell_id)
+        center = require_list(cell.get("center_lv95_m"), f"release cell {cell_id}.center_lv95_m")
+        require(len(center) == 2, f"release cell {cell_id}.center_lv95_m must contain x and y")
+        require_number(center[0], f"release cell {cell_id}.center_lv95_m x")
+        require_number(center[1], f"release cell {cell_id}.center_lv95_m y")
+        weight = require_number(cell.get("sampling_weight"), f"release cell {cell_id}.sampling_weight")
+        require(math.isfinite(weight) and weight >= 0.0, f"release cell {cell_id} sampling_weight must be finite and nonnegative")
+        for forbidden in ("physical_release_probability", "annual_release_frequency_per_year", "return_period_years"):
+            require(cell.get(forbidden) in (None, ""), f"release cell {cell_id} must not set {forbidden}")
+        total_weight += weight
+    require(total_weight > 0.0, "release cell sampling_weight total must be positive")
 
 
 def validate_block_scenario_policy(block_policy: dict[str, Any], status: str) -> None:
@@ -154,6 +206,13 @@ def require_number(value: Any, label: str) -> float:
     if not isinstance(value, (int, float)):
         raise PolicyError(f"{label} must be numeric")
     return float(value)
+
+
+def require_int(value: Any, label: str, *, minimum: int) -> int:
+    if not isinstance(value, int):
+        raise PolicyError(f"{label} must be an integer")
+    require(value >= minimum, f"{label} must be at least {minimum}")
+    return value
 
 
 def require(condition: bool, message: str) -> None:

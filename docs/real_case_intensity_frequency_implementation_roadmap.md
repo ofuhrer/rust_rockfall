@@ -180,13 +180,14 @@ Do not:
 Objective: create defensible conditional scenario inputs for the real-site
 pilot.
 
-Current status: policy semantics, template, and validator are implemented, but
-they have not been applied to a selected real pilot domain. The current
-executable coverage proves the policy contract and rejects unsupported annual
-or physical probability claims. The remaining work is to predeclare one domain
-specific source-zone interpretation, deterministic release-cell policy, and
-representative block-scenario table before any real pilot simulation results
-are inspected.
+Current status: selected-domain policy complete at the share-safe contract
+level. The policy semantics, template, validator, and selected Tschamut public
+pilot policy `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
+are implemented. The selected policy predeclares a Level 1 public-release
+bounding source zone, deterministic release-cell grid, representative block
+scenarios, and conditional-only sampling weights before any real conditional
+pilot simulation results are inspected. It rejects unsupported annual or
+physical probability claims.
 
 Implementation work:
 

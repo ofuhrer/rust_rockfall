@@ -456,6 +456,7 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         ROOT / "scripts/validate_source_scenario_policy.py",
         ROOT / "scripts/prepare_tschamut_public_benchmark.py",
         ROOT / "scripts/prepare_tschamut_swissalti3d_pilot.py",
+        ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
         ROOT / "validation/templates/public_real_site_source_scenario_policy_v1.yaml",
         ROOT / "validation/templates/tschamut_swissalti3d_baseline.yaml",
         ROOT / "validation/templates/tschamut_swissalti3d_rotational.yaml",
@@ -573,6 +574,26 @@ def check_swisstopo_geodata_metadata() -> list[str]:
             part for part in (policy_check.stdout, policy_check.stderr) if part
         ).strip()
         errors.append(f"source-zone/block-scenario policy template validation failed:\n{output}")
+
+    selected_policy_check = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_source_scenario_policy.py",
+            "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if selected_policy_check.returncode != 0:
+        output = "\n".join(
+            part
+            for part in (selected_policy_check.stdout, selected_policy_check.stderr)
+            if part
+        ).strip()
+        errors.append(f"selected source-zone/block-scenario policy validation failed:\n{output}")
 
     pilot_run_check = subprocess.run(
         [

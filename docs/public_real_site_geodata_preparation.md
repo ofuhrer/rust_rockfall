@@ -41,8 +41,10 @@ release/deposition corridor. Its share-safe manifest is
 `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`. That manifest
 binds the domain to public swissALTI3D tile `2696-1167`, EPSG:2056/LN02,
 the expected 2 m ESRI ASCII crop extent, source and processed SHA-256 digests,
-and the deterministic preparation command. It does not commit the raw tile,
-processed DEM, generated cases, validation outputs, or hazard outputs.
+the deterministic preparation command, and the selected source-scenario policy
+`validation/policies/tschamut_public_source_scenario_policy_v1.yaml`. It does
+not commit the raw tile, processed DEM, generated cases, validation outputs, or
+hazard outputs.
 
 The Phase 6 run-freeze template is also intentionally not run. It records the
 geodata manifest, source-zone/block-scenario policy, benchmark case, terrain

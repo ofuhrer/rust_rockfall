@@ -21,6 +21,14 @@ The checked-in template is
 share-safe template and should be copied to an ignored pilot directory before a
 real domain is selected.
 
+The selected Tschamut public pilot policy is
+`validation/policies/tschamut_public_source_scenario_policy_v1.yaml`. It
+predeclares the Level 1 public-release bounding source zone, deterministic
+release-cell grid, and representative block scenarios for
+`tschamut_public_pilot`. It is share-safe and conditional-only: the release
+cells and block scenarios carry sampling weights, not physical release
+probabilities, annual frequencies, or return-period semantics.
+
 ## Required Policy Fields
 
 The policy must record:
@@ -29,10 +37,11 @@ The policy must record:
 - source-zone evidence level from
   `docs/probabilistic_scenario_model_design.md`;
 - allowed geometry type, currently polygon only;
+- source-zone geometry for prepared policies;
 - derivation inputs and criteria, such as terrain, slope, geology, inventory,
   or expert-review notes;
 - deterministic release sampling mode, seed policy, and stable release-cell id
-  requirements;
+  requirements, including explicit release-cell ids for prepared policies;
 - block scenarios with stable `block_scenario_id`, size class, shape class,
   representative radius or mass, and sampling weight;
 - explicit unsupported claims: annual frequency, return period, physical
@@ -58,6 +67,14 @@ conditional semantics. Prepared local policies must list at least one block
 scenario, use finite nonnegative sampling weights with a positive total, keep
 `block_shape_class: sphere` until active shape physics is explicitly added, and
 leave physical and annual probability fields absent.
+
+Validate the selected Tschamut policy with:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_source_scenario_policy.py \
+  validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+```
 
 ## Boundary
 

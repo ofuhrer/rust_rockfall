@@ -864,9 +864,17 @@ Planning only; these milestones do not implement roadmap item content yet.
   source frequency, physical source probability, swisstopo-as-validation, and
   operational source-zone approval. Added a schema cross-reference near
   release-zone metadata.
-- Checks run: Pending.
-- Reviewer notes: Pending.
-- Decision: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_source_scenario_policy.py tests/test_public_real_site_geodata_manifest.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_source_scenario_policy.py validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: Local self-review against Priority 2 found no blocker. The
+  policy is ready as a conditional source/scenario input contract, but source
+  metadata sidecars, DEM sensitivity, and a frozen gate run remain later
+  priorities.
+- Decision: ACCEPT; Priority 2 done at the selected-domain policy level.
 - Next proposed milestone: M012.
 
 ### M011 Revision Note
@@ -1326,3 +1334,34 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT; Priority 1 done at the share-safe selected-domain package
   level.
 - Next proposed milestone: Stop after Priority 1 as requested.
+
+### M020
+
+- Milestone id: M020.
+- Roadmap item: Priority 2. Apply a domain-specific source-zone and
+  block-scenario policy.
+- Hypothesis/objective: Complete the selected Tschamut public pilot
+  source/scenario policy without adding annual frequency, physical probability,
+  risk, exposure, vulnerability, or simulator behavior changes.
+- Files changed:
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`,
+  `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`,
+  `scripts/validate_source_scenario_policy.py`,
+  `scripts/check_repo_consistency.py`,
+  `tests/test_source_scenario_policy.py`,
+  `docs/source_zone_block_scenario_policy_v1.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a selected Tschamut public source-zone and
+  block-scenario policy with a Level 1 public-release bounding source zone,
+  deterministic release-cell grid, stable release-cell ids, representative
+  block scenarios, and conditional-only sampling weights. Extended the policy
+  validator and tests to require prepared policy geometry, explicit release
+  cells, finite nonnegative conditional weights, and absent physical/annual
+  probability fields.
+- Checks run: Pending.
+- Reviewer notes: Pending.
+- Decision: Pending.
+- Next proposed milestone: Stop after Priority 2 as requested.
