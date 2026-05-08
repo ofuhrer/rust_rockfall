@@ -3016,14 +3016,19 @@ Planning only; these milestones do not implement roadmap item content yet.
   interpretation review, validation-runner provenance and debug output budget)
   and refresh the executive summary and recommended sequence now that
   target-scale evidence exists and ensemble increase remains no-go.
-- Files changed: `docs/next_development_targets.md`, `docs/agent_work_log.md`.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/agent_work_log.md`.
 - Implementation summary: Intro paragraph and recommended sequence now emphasize
   interpretation/provenance blockers; added explicit Target 13–15 definitions
   tied to existing pilot records and guardrails; CSCS/SLURM deferral wording
   aligned with current evidence posture.
-- Checks run: `python3 scripts/check_repo_consistency.py` (or uv equivalent).
+- Checks run:
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
 - Reviewer notes: Docs-only; no simulator, validator behavior, or geodata changes.
-- Decision: ACCEPT after consistency check passes.
+- Decision: ACCEPT; documentation consistency checks pass.
 - Next proposed milestone: Execute Target 13 (manual GIS/QGIS review record) or
   record a concrete GUI/package blocker.
 

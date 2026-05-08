@@ -26,18 +26,18 @@ There are two distinct milestones:
 The repository is close to milestone 1 at the tooling and selected-domain
 contract level, and the selected public Swiss pilot now has a reconciled
 run-freeze record with regenerated local ignored outputs, conditional curves,
-automated GIS artifact checks, local performance evidence, and an explicit
-manual GIS/QGIS visual-QA classification. Milestone 1 is not complete until
-target-scale convergence decisions are recorded; the selected target-scale
-package visual-QA gate is currently `blocked` because QGIS and ignored target
-package artifacts are unavailable in this checkout, and forest/obstacle
-omission is classified `limiting` for the target-scale gate because public
-context layers have not been locally reviewed. It is not yet close to
-milestone 2 because source-zone occurrence frequency, block-population
-frequency, annualization, and validation semantics remain unsupported by
-`docs/hazard_map_semantics.md` and
+automated GIS artifact checks, local performance evidence, executed
+  target-scale conditional evidence, and a reassessed no-go ensemble-size gate.
+Milestone 1 is still not complete because target-scale convergence decisions
+are not yet accepted. In this checkout, the selected package visual-QA gate is
+`blocked` because QGIS and ignored target package artifacts are unavailable,
+forest/obstacle omission is classified `limiting` because public context layers
+have not been locally reviewed, and validation-runner provenance/output-volume
+questions remain open. It is not yet close to
+milestone 2 because source-zone occurrence frequency,
+block-population frequency, annualization, and validation semantics remain
+unsupported by `docs/hazard_map_semantics.md` and
 `docs/probabilistic_scenario_model_design.md`.
-
 ## Current Baseline
 
 Already available:
@@ -93,16 +93,21 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. keep the explicitly blocked target-scale manual GIS/QGIS visual QA visible
-   until a GUI/package review can be run;
-2. keep forest/obstacle context limitations explicit when interpreting the
-   Tschamut outputs;
+1. keep the target-scale manual GIS/QGIS visual QA decision explicit and visible
+   until a GUI/package review can be completed or a share-safe classification
+   is documented;
+2. locally review forest/obstacle context and decide whether omission remains
+   limiting, becomes acceptable for a diagnostic pilot, or invalidates
+   target-scale interpretation;
 3. clarify validation-runner parallel provenance for observed-release
    ensembles if future gates require chunk metadata to cover every target
    trajectory;
-4. defer physical/annual frequency semantics until source-frequency and
+4. reduce or explicitly justify validation-side debug output volume before any
+   further selected-domain increase;
+5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
+## Current Implementation Assessment
 ## Current Implementation Assessment
 
 The latest implementation work completed the first selected-domain pieces of
@@ -753,8 +758,11 @@ a separate deferred semantic/evidence problem.
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Complete at the library-contract level: `simulate_ensemble_parallel` is opt-in, preserves serial default behavior, records deterministic local chunk metadata, and focused tests prove serial/parallel and worker-count parity. |
 | 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, manual GIS QA, obstacle context, and validation-runner provenance scope remain unresolved. |
 | 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | Complete: the selected ensemble-feasibility record remains `no_go` with explicit target-evidence limitations and no authorization for a further diagnostic scale step. |
-| 11 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
-| 12 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
+| 11 | Complete target-scale manual GIS/QGIS visual QA | The target-scale package has automated QA, but visual alignment and interpretation are still unresolved. | A share-safe visual-QA record is `passed`, `failed`, or explicitly `blocked` for the target-scale package with CRS, nodata, source-zone overlay, label, and interpretation notes. |
+| 12 | Review target-scale forest/obstacle context | The selected Tschamut outputs remain hard to interpret while forest/obstacle omission is only scoped, not locally reviewed. | The obstacle-context record is updated to `acceptable_for_diagnostic_pilot`, `limiting`, or `invalidating_for_interpretation` based on locally reviewed public context layers and claim boundaries. |
+| 13 | Clarify target-run provenance and debug output budget | Further scaling should not proceed while auxiliary ensemble provenance can be confused with observed-release target provenance or while validation debug output volume is unjustified. | Target-run reports/manifests clearly separate observed-release outputs from auxiliary ensemble provenance and record a debug-output reduction, hard budget, or explicit audit justification. |
+| 14 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
+| 15 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
 ## Earliest Useful Pilot
 
