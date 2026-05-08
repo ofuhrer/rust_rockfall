@@ -1,0 +1,106 @@
+schema_version: scalable_conditional_target_gate_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_scalable_conditional_target_gate_v1
+roadmap_item: target_11_scalable_conditional_target_scale_gate
+gate_status: blocked_missing_inputs
+decision_rationale: >
+  The selected target-scale conditional workflow was not executed because the
+  ignored local Tschamut inputs and prior generated gate artifacts required by
+  the frozen command plan are absent in this checkout. This record captures the
+  blocker without changing physics, defaults, sampling weights, or hazard
+  semantics.
+operational_status: research_diagnostic
+
+upstream_records:
+  small_gate_run_freeze: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  scalable_execution_contract: validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml
+  ensemble_feasibility_gate: validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml
+  scaling_review: docs/tschamut_public_pilot_scaling_review.md
+  geodata_manifest: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  source_scenario_policy: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+
+target_execution_plan:
+  selected_domain: tschamut_public_pilot
+  gate_trajectories_per_release_zone: 6
+  target_trajectories_per_release_zone: 100
+  release_cell_count: 10
+  validation_runner_ensemble_workers_required: true
+  validation_runner_ensemble_workers: 2
+  hazard_reducer_workers: 2
+  conditional_curve_export_mode: summary-only
+  probability_mode: sampling_weighted_conditional
+  explicit_grid_required: true
+  generated_outputs_committed: false
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+
+local_input_check:
+  check_status: failed_missing_ignored_inputs
+  command_plan_validated: true
+  target_execution_started: false
+  generated_outputs_written: false
+  required_paths:
+    - path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+      status: missing
+      role: frozen_private_validation_case
+    - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+      status: missing
+      role: processed_public_dem_metadata
+    - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+      status: missing
+      role: selected_scenario_table
+    - path: validation/private/tschamut_public_pilot/gate_v1/trajectories
+      status: missing
+      role: prior_gate_trajectory_directory
+    - path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
+      status: missing
+      role: prior_gate_hazard_manifest
+
+evidence_result:
+  target_scale_executed: false
+  evidence_status: blocked_missing_inputs
+  convergence_diagnostics_status: not_recorded
+  output_budget_status: not_recorded
+  worker_count_parity_status: not_run
+  reducer_manifest_status: not_generated
+  ensemble_execution_manifest_status: not_generated
+  interpretation: >
+    No target-scale convergence or output-budget conclusion can be drawn from
+    this checkout. Recreate or restore the ignored prepared inputs, rerun the
+    validated command plan with summary-only curves and deterministic workers,
+    and then replace this blocker with executed or inconclusive target-scale
+    evidence.
+
+remaining_before_gate_reassessment:
+  - restore_or_regenerate_ignored_processed_dem_and_private_case
+  - run_validation_case_with_random_ensemble_workers
+  - build_hazard_layers_with_summary_only_curves
+  - record_conditional_hazard_execution_diagnostics
+  - record_output_budget_runtime_memory_and_checksums
+  - record_worker_count_parity
+  - compare_target_scale_outputs_against_small_gate
+  - keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible
+
+claim_boundary:
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+  unsupported_current_claims:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk_map
+    - operational_hazard_map
+
+limitations:
+  - blocked evidence record only; no target-scale trajectories were generated
+  - missing local paths are ignored artifacts and must not be committed as substitutes
+  - no convergence, output-budget, or worker-parity conclusion is available yet
+  - no annual, physical-probability, return-period, risk, or operational semantics are included

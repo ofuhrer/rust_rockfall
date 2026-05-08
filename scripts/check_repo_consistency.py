@@ -158,6 +158,7 @@ def main() -> int:
     errors.extend(check_annual_physical_validation_calibration_review_gate())
     errors.extend(check_annual_physical_prototype_preflight())
     errors.extend(check_scalable_conditional_execution())
+    errors.extend(check_scalable_conditional_target_gate())
 
     if errors:
         for error in errors:
@@ -923,6 +924,76 @@ def check_scalable_conditional_execution() -> list[str]:
     ):
         if test_name not in hazard_tests:
             errors.append(f"tests/test_hazard_layers.py omits {test_name}")
+    return errors
+
+
+def check_scalable_conditional_target_gate() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md",
+        ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+        ROOT / "scripts/validate_scalable_conditional_target_gate.py",
+        ROOT / "tests/test_scalable_conditional_target_gate.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"scalable conditional target gate path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md").read_text()
+    record = (
+        ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml"
+    ).read_text()
+    validator = (ROOT / "scripts/validate_scalable_conditional_target_gate.py").read_text()
+    tests = (ROOT / "tests/test_scalable_conditional_target_gate.py").read_text()
+
+    for term in (
+        "Status: blocked missing ignored inputs",
+        "blocked_missing_inputs",
+        "random.ensemble_workers",
+        "conditional_hazard_execution_diagnostics_v1",
+        "hazard_reducer_chunk_manifest_v1",
+        "not change physics",
+    ):
+        if term not in doc:
+            errors.append(f"docs/tschamut_public_scalable_conditional_target_gate.md omits {term!r}")
+
+    for term in (
+        "schema_version: scalable_conditional_target_gate_v1",
+        "gate_status: blocked_missing_inputs",
+        "validation_runner_ensemble_workers_required: true",
+        "conditional_curve_export_mode: summary-only",
+        "check_status: failed_missing_ignored_inputs",
+        "target_scale_executed: false",
+        "convergence_diagnostics_status: not_recorded",
+        "physical_probability: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_target_gate_record",
+        "REQUIRED_MISSING_ROLES",
+        "REQUIRED_REMAINING_STEPS",
+        "conditional_curve_export_mode must be summary-only",
+        "blocked records must not start target execution",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_scalable_conditional_target_gate.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_blocked_missing_inputs_record_is_valid",
+        "test_rejects_full_curve_export_for_target_gate",
+        "test_rejects_missing_validation_runner_workers",
+        "test_rejects_blocked_record_that_started_execution",
+        "test_rejects_missing_required_path_role",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_scalable_conditional_target_gate.py omits {test_name}")
     return errors
 
 

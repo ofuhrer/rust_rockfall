@@ -14,8 +14,9 @@ ignored artifacts. The current critical gap is no longer evidence consistency,
 an unclassified visual-QA gate, unscoped forest/obstacle omission, or missing
 local threaded ensemble semantics. Larger ensembles should still proceed only
 if convergence, performance, and output-volume evidence justify them. The next
-development task should design physical/source-frequency semantics before any
-annual or physical prototype is attempted.
+development task should execute the selected scalable conditional run locally
+against ignored prepared inputs, record target-scale convergence and
+output-budget evidence, and then reassess the selected ensemble-size gate.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -407,6 +408,102 @@ readiness.
 
 Estimated order: 10.
 
+## Target 11: Execute Selected Scalable Conditional Target-Scale Gate
+
+Objective: run the selected Tschamut scalable conditional execution workflow
+with ignored local inputs present and record convergence and output-budget
+evidence without changing physics, defaults, sampling weights, or probability
+semantics.
+
+Rationale: The repository now has the required scalable conditional execution
+contract, summary-only curve export, deterministic hazard reducer chunks,
+validation-runner ensemble chunk provenance, and no-scale-up decision record.
+What is still missing is actual target-scale evidence for the selected domain:
+whether the proposed larger conditional ensemble is reproducible, bounded by
+output budgets, and materially different from the 60-trajectory gate.
+
+Expected value for Swiss hazard-map goal: Very high.
+
+Scientific risk: Medium. Larger trajectory counts can make uncertain
+source-zone, block-scenario, forest/obstacle, and terrain assumptions look
+more precise than they are.
+
+Engineering risk: Medium. This depends on ignored local geodata and generated
+outputs, and must not commit large artifacts.
+
+Likely affected areas:
+`validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
+`docs/tschamut_public_scalable_conditional_execution.md`,
+`docs/tschamut_public_ensemble_feasibility.md`,
+`docs/tschamut_public_pilot_scaling_review.md`,
+`docs/tschamut_public_conditional_pilot_gate_report.md`,
+ignored `validation/private/`, ignored `hazard/results/`, and possibly
+`scripts/summarize_pilot_scaling.py` if report fields are missing.
+
+Evidence needed: executed validation command with `random.ensemble_workers`,
+run manifest `ensemble_execution`, hazard manifest
+`conditional_hazard_execution_diagnostics_v1`, reducer chunk manifests,
+summary-only conditional-curve status, output file count and bytes, wall time,
+hazard input rows per second, memory sidecars where available, worker-count
+parity for the selected run, and convergence diagnostics comparing gate and
+target trajectory counts by threshold and supporting raster.
+
+Minimal acceptable deliverable: a share-safe updated record/report stating
+`target_scale_executed`, `blocked_missing_inputs`, or `inconclusive`, with
+checksums and generated-artifact paths kept outside git. The deliverable does
+not by itself authorize operational use or annual/physical probability.
+
+Current status: complete as an initial blocked evidence record for a clean
+checkout. `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+`docs/tschamut_public_scalable_conditional_target_gate.md`, and
+`scripts/validate_scalable_conditional_target_gate.py` record
+`blocked_missing_inputs` because the ignored private case, processed DEM
+metadata, scenario table, prior trajectory directory, and prior hazard manifest
+are absent. No target-scale trajectories were generated.
+
+What not to do: Do not tune parameters, change release/source assumptions
+after seeing results, change defaults, commit raw geodata or generated
+products, use annual/physical/risk labels, or claim operational validation.
+
+Estimated order: 11.
+
+## Target 12: Reassess Selected Ensemble-Size Increase Gate
+
+Objective: decide whether the selected Tschamut ensemble-size gate remains
+blocked, becomes conditionally authorized for a larger diagnostic run, or
+should stop because convergence/output/GIS/obstacle evidence is insufficient.
+
+Rationale: Target 5 intentionally recorded a no-go feasibility state. Target
+11 can produce the missing target-scale execution evidence, but the gate must
+still consider manual GIS visual QA and forest/obstacle omission before any
+larger run is interpreted scientifically.
+
+Expected value for Swiss hazard-map goal: High.
+
+Scientific risk: Medium to high if the gate is relaxed without resolving
+interpretation blockers.
+
+Engineering risk: Low to medium once Target 11 evidence exists.
+
+Likely affected areas:
+`validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+`docs/tschamut_public_ensemble_feasibility.md`,
+`docs/tschamut_public_scalable_conditional_execution.md`, and selected pilot
+reports.
+
+Evidence needed: Target 11 convergence/output-budget result, current GIS visual
+QA classification, current forest/obstacle context classification, and a clear
+pass/no-go/inconclusive decision with claim boundaries.
+
+Minimal acceptable deliverable: an updated ensemble-feasibility record that
+keeps scale-up blocked or authorizes exactly one next diagnostic scale step
+with explicit evidence and limitations.
+
+What not to do: Do not treat a successful technical run as scientific or
+operational validation.
+
+Estimated order: 12.
+
 ## Completed Selected-Domain Roadmap Items
 
 - Public Tschamut real-site swisstopo pilot package is complete at the
@@ -513,6 +610,13 @@ Estimated order: 10.
   local chunking, chunk manifests, sorted merge rules, summary-only conditional
   curve export, output-budget fields, and convergence diagnostics required
   before any ensemble-size increase.
+- Validation-runner ensemble chunk provenance is wired for opt-in configured
+  cases through `random.ensemble_workers`; selected target-scale evidence still
+  has to be generated locally with ignored inputs before any ensemble-size
+  gate changes.
+- The first selected target-scale gate attempt is recorded as
+  `blocked_missing_inputs`; ignored prepared inputs must be regenerated or
+  restored before convergence and output-budget evidence can be produced.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -529,12 +633,20 @@ Estimated order: 10.
 
 ## Recommended Sequence
 
-1. Reconcile and regenerate selected pilot gate evidence.
-2. Run or classify manual QGIS visual QA for the selected package.
-3. Scope forest and obstacle omission for Tschamut.
-4. Address conditional-curve/raster output-volume bottleneck.
-5. Increase ensemble size only if convergence and performance evidence justify
-   it; current selected-domain decision is no-go.
+1. Regenerate or restore the ignored Tschamut processed DEM, private frozen
+   validation case, scenario table, and prior gate outputs required by the
+   selected target-scale command plan.
+2. Run the selected Tschamut scalable conditional target-scale gate locally
+   with ignored inputs present, summary-only conditional curves, deterministic
+   reducer workers, validation-runner ensemble chunk provenance, and no tuning.
+3. Record convergence, output budget, wall-time, memory, checksum, and
+   worker-count parity evidence in share-safe reports while keeping generated
+   outputs ignored.
+4. Reassess the selected ensemble-size gate. Keep it blocked unless target
+   convergence, output budget, manual GIS/QGIS visual QA, and forest/obstacle
+   context evidence justify exactly one further diagnostic step.
+5. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+   focused behavior-preserving change already touches that concern.
 6. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,

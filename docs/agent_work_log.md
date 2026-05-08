@@ -2802,3 +2802,95 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Resolve exactly one real blocker only if real
   accepted evidence or implemented reducer work is explicitly provided or
   requested.
+
+### M047
+
+- Milestone id: M047.
+- Roadmap item: Roadmap reassessment after scalable conditional execution and
+  validation-runner ensemble provenance.
+- Hypothesis/objective: Update the active roadmaps so they reflect the current
+  repository state: the selected scalable conditional execution contract and
+  local parallel ensemble provenance exist, but selected target-scale
+  convergence and output-budget evidence have not yet been generated.
+- Initial gap assessment: `docs/next_development_targets.md` still pointed to
+  physical/source-frequency semantics as the next task, and
+  `docs/roadmap_recommendation_matrix.md` still ranked completed guardrail work
+  such as fallible DEM-facing integration and deterministic local parallel
+  ensemble execution above the actual missing evidence step.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reprioritized near-term work around executing or
+  explicitly blocking the selected Tschamut scalable conditional target-scale
+  gate, then reassessing the ensemble-size gate with convergence,
+  output-budget, manual GIS/QGIS, and forest/obstacle evidence. Annual and
+  physical intensity-frequency work remains deferred behind accepted
+  source-frequency evidence and preflight gates.
+- Checks run:
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+- Reviewer notes: Documentation-only roadmap update; no physics, defaults,
+  sampling weights, generated outputs, raw geodata, annual frequency support,
+  physical probability support, risk/exposure semantics, or operational claims
+  are changed.
+- Decision: ACCEPT; documentation consistency checks pass.
+- Next proposed milestone: Run the selected Tschamut scalable conditional
+  target-scale gate locally with ignored prepared inputs and record
+  convergence, output-budget, runtime, memory, checksum, and worker-parity
+  evidence before changing the ensemble-size gate.
+
+### M048
+
+- Milestone id: M048.
+- Roadmap item: Target 11 scalable conditional target-scale gate.
+- Hypothesis/objective: Attempt the selected Tschamut target-scale conditional
+  gate from the current checkout and record a share-safe evidence state without
+  fabricating missing ignored inputs or generated results.
+- Initial gap assessment: The scalable conditional contract and command plan
+  are valid, but the checkout lacks the ignored private validation case,
+  processed DEM metadata, scenario table, prior trajectory directory, and prior
+  hazard manifest required to execute or compare the target-scale run.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `scripts/validate_scalable_conditional_target_gate.py`,
+  `tests/test_scalable_conditional_target_gate.py`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `scalable_conditional_target_gate_v1`
+  selected-pilot record with `gate_status: blocked_missing_inputs`. The record
+  lists the missing ignored paths, confirms target execution did not start,
+  keeps generated outputs uncommitted, requires summary-only conditional curves,
+  validation-runner `random.ensemble_workers`, deterministic reducer workers,
+  convergence/output-budget evidence, and explicit claim boundaries before any
+  ensemble-size gate reassessment. A validator, tests, docs, and consistency
+  checks now guard the blocked target-gate state.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_scalable_conditional_target_gate`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo fmt --check`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo clippy --all-targets --all-features -- -D warnings`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo test`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- verify --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target cargo run -- validate --all`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `CARGO_TARGET_DIR=/Users/fuhrer/Desktop/rust_rockfall/target scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, sampling weights, generated outputs,
+  raw/public/private geodata, annual frequency support, physical probability
+  support, calibration, risk/exposure semantics, SLURM/MPI/GPU code, or
+  operational claims are changed.
+- Decision: ACCEPT if final checks pass; Target 11 is now represented by a
+  checked `blocked_missing_inputs` evidence record rather than an unrecorded
+  failed local attempt.
+- Next proposed milestone: Regenerate or restore the ignored processed DEM,
+  private frozen validation case, scenario table, prior gate trajectories, and
+  prior hazard manifest, then rerun the target-scale gate and replace the
+  blocker with executed or inconclusive evidence.
