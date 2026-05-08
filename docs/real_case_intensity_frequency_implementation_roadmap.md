@@ -24,12 +24,14 @@ There are two distinct milestones:
    `1/year`.
 
 The repository is close to milestone 1 at the tooling and selected-domain
-contract level, but milestone 1 is not complete until the selected public Swiss
-pilot has a reconciled run-freeze record, regenerated local outputs, conditional
-curves, checked GIS artifacts, performance/convergence evidence, and a reviewed
-pilot report. It is not yet close to milestone 2 because source-zone occurrence
-frequency, block-population frequency, annualization, and validation semantics
-remain unsupported by `docs/hazard_map_semantics.md` and
+contract level, and the selected public Swiss pilot now has a reconciled
+run-freeze record with regenerated local ignored outputs, conditional curves,
+automated GIS artifact checks, and local performance evidence. Milestone 1 is
+not complete until manual GIS visual QA, obstacle/forest omission scoping, and
+target-scale convergence decisions are recorded. It is not yet close to
+milestone 2 because source-zone occurrence frequency, block-population
+frequency, annualization, and validation semantics remain unsupported by
+`docs/hazard_map_semantics.md` and
 `docs/probabilistic_scenario_model_design.md`.
 
 ## Current Baseline
@@ -46,14 +48,15 @@ Already available:
 - lightweight GeoTIFF export with value/metadata parity tests;
 - explicit rejection/deferment of COG, annual frequency, and physical
   probability claims;
-- dry-runnable DEM/terrain-representation sensitivity fixture and selected
-  Tschamut no-go gate for missing ignored processed DEM;
+- dry-runnable DEM/terrain-representation sensitivity fixture and reconciled
+  selected Tschamut DEM-sensitivity gate evidence;
 - public real-site geodata manifest template and validator;
 - source-zone/block-scenario policy template and validator;
 - public real-site conditional pilot run-freeze template and command-plan
   validator;
-- selected Tschamut public conditional pilot no-go gate run-freeze and report
-  for the missing processed DEM blocker;
+- reconciled Tschamut public conditional gate run-freeze with regenerated local
+  ignored DEM-sensitivity, validation, hazard, GIS package, scaling, runtime,
+  memory, and checksum evidence;
 - share-safe Tschamut public GIS package review note for one local ignored
   generated package, with automated manifest/file QA recorded and manual QGIS
   visual QA still not run;
@@ -67,21 +70,17 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. reconcile the selected Tschamut pilot evidence by regenerating or verifying
-   the ignored processed DEM and gate outputs locally, then updating the
-   run-freeze evidence, gate report, and checksums so they agree with the GIS
-   package review record;
-2. run or record the manual QGIS visual QA for the selected pilot package,
+1. run or record the manual QGIS visual QA for the selected pilot package,
    including CRS alignment, nodata styling, source-zone overlay, and
    conditional-product labels;
-3. scope forest/obstacle omission for the selected Tschamut corridor so missing
+2. scope forest/obstacle omission for the selected Tschamut corridor so missing
    barriers or vegetation are not silently reinterpreted as terrain/material or
    contact-model behavior;
-4. address the local output-volume bottleneck, especially conditional-curve and
+3. address the local output-volume bottleneck, especially conditional-curve and
    raster outputs, before increasing ensemble size;
-5. increase ensemble size toward the target trajectory count only after the
+4. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible, interpreted, and has convergence diagnostics;
-6. defer physical/annual frequency semantics until source-frequency and
+5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -99,26 +98,25 @@ the roadmap but left one important evidence consistency gap:
 - Priority 3 is complete as an executable selected-domain DEM-sensitivity gate.
   In a clean checkout it reports `blocked_missing_processed_dem`; with the
   ignored processed DEM present it can run the predeclared terrain variants.
-- Priority 4 is complete only as a no-go run-freeze and recovery path. The
-  checked-in run-freeze still records no completed trajectory run, conditional
-  curves, runtime metrics, output-volume evidence, or artifact checksums.
+- Priority 4 is reconciled as a completed local small gate run with
+  `inconclusive` report classification. The checked-in run-freeze records
+  regenerated ignored DEM-sensitivity, validation, hazard, GIS package,
+  scaling, runtime, memory, file-count, byte-count, and checksum evidence.
 - Priority 5 is partially complete. `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
-  for a local ignored Tschamut package, but the generated rasters/manifests are
-  not committed and are absent in a clean checkout. Manual QGIS visual QA is
-  still `not-run`.
+  for a local ignored Tschamut package that now matches the reconciled
+  run-freeze evidence. The generated rasters/manifests are not committed and
+  are absent in a clean checkout. Manual QGIS visual QA is still `not-run`.
 - Local scaling/output-volume evidence is complete at the manifest-summary
   level. `scripts/summarize_pilot_scaling.py` and
   `docs/tschamut_public_pilot_scaling_review.md` record validation/hazard wall
   times, row/file/byte counts, deterministic reducer metadata, memory-sidecar
-  status, and a no-default-change decision. This evidence also depends on
-  ignored local outputs and must be reconciled with the authoritative
-  run-freeze.
+  status, and a no-default-change decision. This evidence depends on ignored
+  local outputs and is reconciled with the authoritative run-freeze.
 
-The immediate roadmap task is therefore not another new feature. It is to
-reconcile and regenerate the selected pilot evidence so the run-freeze, DEM
-sensitivity gate, conditional pilot report, and GIS package review describe the
-same locally reproducible execution state.
+The immediate roadmap task is therefore not another new feature. It is to run
+or record manual GIS/QGIS visual QA for the reconciled selected pilot package
+before interpreting or scaling the conditional products.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -288,12 +286,11 @@ Objective: produce per-grid-cell conditional intensity curves over configured
 thresholds.
 
 Current status: implemented for fixture and workflow use, with local ignored
-pilot output evidence reported but not yet reconciled into the authoritative
-run-freeze. The hazard-layer builder can emit threshold-exceedance rasters and a
-tidy conditional curve table with current probability labels and `annualized:
-false`. The remaining work is to regenerate or verify the selected Tschamut
-gate outputs locally, then update the run-freeze evidence and report so
-conditional curve paths, checksums, and limitations are explicit.
+pilot output evidence reconciled into the authoritative run-freeze. The
+hazard-layer builder can emit threshold-exceedance rasters and a tidy
+conditional curve table with current probability labels and `annualized:
+false`. The selected Tschamut gate records conditional curve paths, checksums,
+and limitations; target-scale convergence remains future work.
 
 Implementation work:
 
@@ -350,10 +347,10 @@ local generated real-pilot outputs. The Tschamut local package review in
 `docs/tschamut_public_pilot_gis_package_review.md` records passing automated
 manifest/file QA for an ignored local gate package and an `inconclusive`
 overall status because manual QGIS inspection has not been run. The generated
-package artifacts are not tracked and may be absent in a clean checkout; the
-next task must reconcile this review note with the authoritative run-freeze and
-regenerate the artifacts if needed. The current code does not create a QGIS
-project, GeoPackage, production COG, tiled package, or operational product.
+package artifacts are not tracked and may be absent in a clean checkout, but
+their manifest checksum is reconciled in the authoritative run-freeze. The
+current code does not create a QGIS project, GeoPackage, production COG, tiled
+package, or operational product.
 
 Implementation work:
 
@@ -463,24 +460,17 @@ Do not:
 Objective: execute the first full public-dataset real-case pilot with
 conditional intensity-exceedance curves.
 
-Current status: selected-domain no-go gate complete, with a later automated GIS
-review note that must be reconciled before the pilot evidence is authoritative.
-The template and validator can check populated run-freeze files and emit command
-plans. The selected Tschamut run-freeze
+Current status: selected-domain small gate complete at the reconciled local
+ignored-artifact level, with `inconclusive` report classification. The template
+and validator can check populated run-freeze files and emit command plans. The
+selected Tschamut run-freeze
 `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` freezes
-the available public geodata manifest, source/scenario policy, seed, thresholds,
-physics defaults, explicit grid, output roots, and output budget, then
-classifies the small gate as `no-go` because the ignored processed DEM and
-metadata are absent from a clean checkout. The companion report
-`docs/tschamut_public_conditional_pilot_gate_report.md` records that this is an
-input-data/reproducibility blocker, not a model result. No conditional curves,
-runtime/output budget evidence, checksums, or GIS artifacts have been produced
-in the authoritative run-freeze yet. Separately,
-`docs/tschamut_public_pilot_gis_package_review.md` records automated QA for a
-local ignored package generated by a developer agent. The next roadmap item is
-to regenerate or verify those ignored outputs locally and promote the evidence
-into the run-freeze/report, or downgrade the GIS review note if the artifacts
-cannot be reproduced.
+the public geodata manifest, source/scenario policy, seed, thresholds, physics
+settings, explicit grid, output roots, and output budget, then records local
+ignored DEM-sensitivity, validation, hazard, GIS-package, scaling, runtime,
+memory, file-count, byte-count, and checksum evidence. Generated products
+remain outside git and absent in a clean checkout. Manual QGIS visual QA and
+target-scale convergence remain incomplete.
 
 Implementation work:
 
@@ -511,11 +501,11 @@ conditional curves, selected GeoTIFFs, the GIS package manifest, and local
 reducer manifests. This keeps Phase 6 executable while still leaving generated
 products out of git.
 
-For the selected no-go Tschamut gate, the command plan intentionally contains
-only the validated upstream checks and the DEM-sensitivity blocker recording
-command. It does not run trajectories or hazard-layer post-processing until the
-public geodata preparation command has created the ignored processed DEM
-locally.
+For the selected reconciled Tschamut gate, the command plan validates upstream
+inputs, runs the frozen validation case, and builds conditional hazard layers,
+selected GeoTIFFs, the GIS package manifest, and local reducer manifests. Clean
+checkouts still need the documented public geodata preparation command before
+those ignored outputs can be reproduced locally.
 
 Likely affected areas:
 
@@ -622,14 +612,15 @@ Do not:
 ## Prioritized Remaining Roadmap Items
 
 The order below supersedes the older phase-number order for near-term work.
-The selected-domain manifest, selected source/scenario policy, and selected
-DEM-sensitivity no-go gate are complete at the share-safe contract level. The
-current bottleneck is reconciling local ignored pilot evidence into one
-authoritative, reproducible run state.
+The selected-domain manifest, selected source/scenario policy, selected
+DEM-sensitivity gate, and selected conditional gate evidence are complete at
+the reconciled local ignored-artifact level. The current bottleneck is manual
+GIS visual QA and interpretation of the generated diagnostic package before
+scaling.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
-| 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze still says no-go, while separate GIS and scaling notes record local ignored artifacts. The project needs one authoritative state. | The processed DEM is regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/output metrics, and GIS review references are reflected consistently in the run-freeze and reports, or the blocker remains explicitly no-go. |
+| 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze, GIS review, scaling review, and conditional gate report needed one authoritative state. | Complete: the processed DEM and local ignored outputs were regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/memory/output metrics, and GIS review references are reflected consistently in the run-freeze and reports with `inconclusive` non-operational classification. |
 | 2 | Run manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | CRS alignment, nodata styling, source-zone overlay, raster labels, and conditional-product language are reviewed in QGIS and recorded as pass, no-go, or inconclusive. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | A share-safe context memo classifies obstacle omission as acceptable, limiting, or invalidating for the selected corridor, without adding obstacle physics. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Output modes, summaries, or gates are designed and tested so larger ensembles do not produce unmanageable conditional-curve/raster artifacts by default. |
@@ -653,10 +644,10 @@ The earliest scientifically honest full-chain pilot should produce or record:
   annual frequency, physical probability, risk, or operational hazard maps.
 
 At the current state, the first two bullets are complete at the share-safe
-contract level. The middle bullets have local-tooling support and a partial
-automated GIS review record, but the authoritative run-freeze still needs
-regenerated local outputs, artifact checksums, scaling evidence, and reconciled
-reports.
+contract level and the middle bullets have reconciled local ignored-artifact
+evidence for the small gate. The package still needs manual GIS visual QA,
+obstacle/forest omission scoping, and convergence interpretation before the
+pilot can be treated as more than an inconclusive local diagnostic gate.
 
 ## Decision Gates
 

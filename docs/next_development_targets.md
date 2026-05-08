@@ -1,18 +1,18 @@
 # Next Development Targets
 
 Status: prioritized development directions after the selected Tschamut public
-pilot manifest, source/scenario policy, DEM-sensitivity gate, no-go run-freeze,
-and automated GIS package review record. These are planning recommendations
-only and do not change simulator behavior.
+pilot manifest, source/scenario policy, reconciled DEM-sensitivity and
+conditional gate evidence, automated GIS package review record, and local
+scaling review. These are planning recommendations only and do not change
+simulator behavior.
 
 The repository now has substantial scaffolding and selected-domain contracts
-for the Swiss hazard-map workflow. Priorities 1-3 from the previous roadmap are
-complete at the share-safe contract/gate level, and priority 5 has automated
-GIS package QA and local scaling evidence recorded for local ignored outputs.
-The current critical gap is evidence consistency: the authoritative run-freeze
-still records a no-go processed-DEM blocker, while separate GIS and scaling
-review notes record local ignored package artifacts. The next development task
-should reconcile that state before adding features or increasing ensemble size.
+for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
+sensitivity gate, conditional pilot report, GIS package review, and scaling
+review have been reconciled against regenerated local ignored artifacts. The
+current critical gap is no longer evidence consistency; the next development
+task should run or record the manual QGIS visual QA before adding features or
+increasing ensemble size.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -20,9 +20,9 @@ Objective: Bring the selected Tschamut run-freeze, DEM-sensitivity evidence,
 conditional pilot report, GIS package review, and scaling review into one
 authoritative, locally reproducible state.
 
-Rationale: The project cannot honestly claim a completed conditional pilot
-while the checked-in run-freeze says `no-go` and the GIS/scaling reviews
-reference ignored artifacts that are absent in a clean checkout. This must be
+Rationale: The project could not honestly claim a completed conditional pilot
+while the checked-in run-freeze said `no-go` and the GIS/scaling reviews
+referenced ignored artifacts that are absent in a clean checkout. This was
 resolved before ensemble scaling or source-frequency design.
 
 Expected value for Swiss hazard-map goal: Very high.
@@ -47,9 +47,13 @@ sensitivity report, conditional curve table, hazard/map/GIS/scaling manifests,
 artifact checksums, runtime and output-budget metrics, and a
 pass/no-go/inconclusive classification that is consistent across reports.
 
-Minimal acceptable deliverable: either a reconciled completed gate record with
-local ignored artifact checksums, or a clear no-go record that removes or
-downgrades stale local GIS evidence.
+Minimal acceptable deliverable: complete. The selected run-freeze
+`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` now
+records `gate_run_completed` with an `inconclusive` report classification. It
+references regenerated ignored DEM-sensitivity, validation, hazard, GIS
+package, reducer, scaling, runtime, memory, file-count, byte-count, and
+checksum evidence, while the reports consistently state that generated
+artifacts remain ignored and non-operational.
 
 What not to do: Do not tune physics, change defaults, commit raw geodata,
 commit large generated outputs, or claim operational/annual/physical/risk
@@ -252,17 +256,17 @@ Estimated order: 7.
   share-safe manifest level.
 - Domain-specific source-zone and block-scenario policy is complete at the
   share-safe policy level.
-- DEM/terrain sensitivity is complete as a selected-domain gate, with actual
-  terrain metrics blocked until ignored processed DEM artifacts are present.
-- Small frozen conditional pilot gate is complete as a no-go run-freeze and
-  recovery path, not as a completed trajectory/hazard run.
+- DEM/terrain sensitivity is complete as a selected-domain gate with local
+  ignored terrain-variant metrics recorded in the reconciled run-freeze.
+- Small frozen conditional pilot gate is complete as a regenerated local
+  ignored trajectory/hazard run with `inconclusive` report classification, not
+  as an operational or target-scale result.
 - Real-pilot GIS package is complete only at automated manifest/file QA level
   for local ignored outputs; manual QGIS visual QA remains not run.
 - Local scaling/output-volume summary is complete at the manifest-summary
-  level. It records validation/hazard timings, row/file/byte counts, reducer
-  metadata, and a no-default-change bottleneck decision, but it still depends
-  on local ignored outputs and must be reconciled with the authoritative
-  run-freeze.
+  level and is reconciled with the authoritative run-freeze. It records
+  validation/hazard timings, row/file/byte counts, reducer metadata, memory
+  sidecars, and a no-default-change bottleneck decision.
 
 ## Deferred But Important Cross-Cutting Work
 

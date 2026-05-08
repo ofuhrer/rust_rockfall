@@ -1,41 +1,42 @@
 # Share-safe selected-domain run-freeze for the first Tschamut public
-# conditional pilot gate. This records a no-go gate because the ignored
-# processed public DEM is absent in clean checkouts; it is not a completed
-# simulation run and does not carry operational, annual, physical-probability,
-# or risk semantics.
+# conditional pilot gate. This records local ignored execution evidence after
+# the processed public DEM was regenerated or verified locally. Generated DEM,
+# validation, hazard, GIS, and scaling artifacts remain ignored and are not
+# committed. The gate remains a research diagnostic conditional product, not an
+# operational, annual, physical-probability, return-period, or risk product.
 schema_version: public_real_site_conditional_pilot_run_v1
 pilot_id: tschamut_public_pilot
 run_id: tschamut_public_conditional_gate_v1
-run_status: no_go
+run_status: gate_run_completed
 operational_status: research_diagnostic
 validation_maturity_target: V1_preparation_fixture
 
 input_freeze:
   geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
   source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
-  benchmark_case_path: null
-  terrain_metadata_path: null
-  source_zone_metadata_path: null
-  scenario_table_path: null
+  benchmark_case_path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+  terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
   map_product_id: tschamut_public_conditional_gate_v1
-  freeze_status: blocked_missing_processed_dem
+  freeze_status: frozen
   freeze_notes:
-    - selected Tschamut geodata manifest and source/scenario policy are frozen
-    - benchmark case and terrain/source/scenario sidecars are blocked until the ignored processed DEM exists locally
-    - this no-go gate must be resolved before any trajectory or hazard-layer output is interpreted
+    - local ignored processed Tschamut public DEM and metadata are present
+    - local DEM sensitivity, validation, hazard, GIS package, and scaling artifacts were regenerated or verified for this gate
+    - this freeze authorizes only a small sampling-weighted conditional research diagnostic gate
 
 physics_freeze:
   defaults_changed: false
   simulator_behavior_changed: false
   contact_model: translational_v0
   soil_interaction_model: none
-  roughness_model: none
+  roughness_model: stochastic_contact_v1
   parameters_status: frozen
   tuning_after_output_review_allowed: false
 
 sampling_plan:
   random_seed: 34014
-  gate_run_trajectories_per_release_zone: 1
+  gate_run_trajectories_per_release_zone: 6
   target_trajectories_per_release_zone: 100
   release_cell_policy: deterministic_grid
   scenario_weight_semantics: conditional_sampling_only
@@ -66,19 +67,19 @@ hazard_output_plan:
 workflow_gates:
   geodata_manifest_validated: pass
   source_scenario_policy_validated: pass
-  benchmark_case_frozen: no-go
-  small_gate_run_completed: no-go
-  conditional_curves_generated: no-go
-  gis_package_generated: no-go
-  convergence_diagnostics_recorded: no-go
-  output_budget_recorded: no-go
-  visual_qa_recorded: no-go
-  report_classification: no-go
+  benchmark_case_frozen: pass
+  small_gate_run_completed: pass
+  conditional_curves_generated: pass
+  gis_package_generated: pass
+  convergence_diagnostics_recorded: inconclusive
+  output_budget_recorded: pass
+  visual_qa_recorded: inconclusive
+  report_classification: inconclusive
 
 output_budget:
   max_committed_generated_files: 0
   max_private_file_count: 200
-  max_private_total_bytes: 50000000
+  max_private_total_bytes: 250000000
   required_recorded_metrics:
     - runtime_seconds
     - memory_peak_mb
@@ -88,47 +89,36 @@ output_budget:
     - release_cell_count
 
 run_evidence:
-  evidence_status: no-go
-  validation_manifest_path: null
-  hazard_manifest_path: null
-  conditional_curve_table_path: null
-  map_package_manifest_path: null
-  pilot_gis_package_manifest_path: null
-  reducer_chunk_manifest_dir: null
-  runtime_seconds: null
-  memory_peak_mb: null
-  output_file_count: null
-  output_total_bytes: null
-  trajectory_count: null
-  release_cell_count: null
+  evidence_status: gate_run_completed
+  validation_manifest_path: validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
+  hazard_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
+  conditional_curve_table_path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_conditional_intensity_exceedance_curves.csv
+  map_package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json
+  pilot_gis_package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json
+  reducer_chunk_manifest_dir: hazard/results/tschamut_public_pilot/gate_v1/chunks
+  dem_sensitivity_summary_path: validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1/dem_terrain_sensitivity_summary.json
+  scaling_summary_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json
+  runtime_seconds: 20.64
+  memory_peak_mb: 381.43
+  output_file_count: 186
+  output_total_bytes: 226925754
+  trajectory_count: 60
+  release_cell_count: 10
   convergence_diagnostics:
-    status: no-go
+    status: inconclusive
     notes:
-      - no trajectories or hazard layers were run because the selected public pilot DEM is absent from the ignored local processed path
-      - the no-go classification records a reproducibility/input-data blocker, not model behavior
+      - small local gate completed with 60 simulated trajectories from ten release cells and three conditional block scenarios
+      - target-scale convergence is not established by this small gate
+      - manual QGIS visual QA has not been run
+      - local scaling evidence identifies conditional-curve and raster output volume as the next bottleneck before increasing ensemble size
   artifact_checksums:
-    validation_manifest_sha256: null
-    hazard_manifest_sha256: null
-    conditional_curve_table_sha256: null
-    map_package_manifest_sha256: null
-    pilot_gis_package_manifest_sha256: null
-
-no_go_blocker:
-  blocker_id: missing_processed_tschamut_public_dem
-  status: active
-  classification: no-go
-  evidence_output_dir: validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1
-  missing_paths:
-    - data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
-    - data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
-  recovery_commands:
-    - UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
-    - UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --output-dir validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1
-    - UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --print-command-plan
-  notes:
-    - this no-go gate is not a model result
-    - no conditional curves, GIS artifacts, checksums, runtime, memory, or output budget evidence exists yet
-    - generated outputs must stay under ignored validation/private and hazard/results paths
+    validation_manifest_sha256: f0981caae1da4d3cf5a93c9d1b0a1ae88ac28a9d067824b813e6455a9ec0bf50
+    hazard_manifest_sha256: 6a5cc5711406d01caf2e62585368c4acedf1fc3eaaf5dd815226e9dcaca4043e
+    conditional_curve_table_sha256: cb2d0c5636c3a177c825258acfa6aef2f215fd5ddd99e9cfea92d34256681541
+    map_package_manifest_sha256: 27a95fb037639ac961d6b8eaa1e2de383fb0ebfa91b116b5547a83f28e9f7621
+    pilot_gis_package_manifest_sha256: ab9bc43b1d4ae8a61724f3f951e1127064d1b841b1d74b391516016efd0b9f92
+    dem_sensitivity_summary_sha256: 85c1ba97f012167ab29f2772b5893aa84fc21cc483bd7d5c7f3f12a155701fa6
+    scaling_summary_sha256: 48014766d5844ab7404be604168519518dc8d24f389cef8984a7ba36c13caefc
 
 report_plan:
   report_path: docs/tschamut_public_conditional_pilot_gate_report.md
@@ -136,7 +126,7 @@ report_plan:
     - pass
     - no-go
     - inconclusive
-  current_classification: no-go
+  current_classification: inconclusive
 
 claim_boundary:
   current_allowed_products:
@@ -156,4 +146,4 @@ claim_boundary:
   notes:
     - public geodata and source-zone policies are input provenance, not validation evidence by themselves
     - current pilot outputs must be classified as research diagnostics or sampling-weighted conditional products
-    - this no-go run-freeze authorizes only conditional diagnostic execution after the missing local DEM blocker is resolved
+    - this run-freeze records local conditional diagnostic execution only; generated outputs remain ignored and non-operational

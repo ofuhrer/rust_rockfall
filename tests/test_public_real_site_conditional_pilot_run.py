@@ -98,19 +98,46 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.PilotRunError, "hazard_manifest_sha256"):
             validator.validate_pilot_run(manifest)
 
-    def test_selected_tschamut_no_go_gate_contract_is_valid(self) -> None:
+    def test_selected_tschamut_gate_contract_is_valid(self) -> None:
         manifest = validator.read_yaml(
             ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
         )
 
         validator.validate_pilot_run(manifest)
 
-    def test_no_go_gate_builds_blocker_command_plan(self) -> None:
+    def test_selected_tschamut_completed_gate_builds_execution_command_plan(self) -> None:
         manifest = validator.read_yaml(
             ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
         )
 
         plan = validator.build_command_plan(manifest)
+
+        self.assertEqual(plan["run_status"], "gate_run_completed")
+        command_names = [entry["name"] for entry in plan["commands"]]
+        self.assertEqual(
+            command_names,
+            [
+                "validate_geodata_manifest",
+                "validate_source_scenario_policy",
+                "run_validation_gate",
+                "build_conditional_hazard_layers",
+            ],
+        )
+        hazard_command = plan["commands"][-1]["command"]
+        self.assertNotIn("--allow-missing-source-dem", hazard_command)
+        self.assertIn("--pilot-gis-package", hazard_command)
+        self.assertIn("--reducer-workers", hazard_command)
+        self.assertIn("validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml", hazard_command)
+
+    def test_no_go_gate_requires_explicit_blocker(self) -> None:
+        manifest = self.no_go_manifest()
+        del manifest["no_go_blocker"]
+
+        with self.assertRaisesRegex(validator.PilotRunError, "no_go_blocker"):
+            validator.validate_pilot_run(manifest)
+
+    def test_no_go_gate_builds_blocker_command_plan(self) -> None:
+        plan = validator.build_command_plan(self.no_go_manifest())
 
         self.assertEqual(plan["run_status"], "no_go")
         self.assertEqual(plan["blocker"]["blocker_id"], "missing_processed_tschamut_public_dem")
@@ -126,15 +153,6 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         blocker_command = plan["commands"][-1]["command"]
         self.assertIn("--allow-missing-source-dem", blocker_command)
         self.assertIn("validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1", blocker_command)
-
-    def test_no_go_gate_requires_explicit_blocker(self) -> None:
-        manifest = validator.read_yaml(
-            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
-        )
-        del manifest["no_go_blocker"]
-
-        with self.assertRaisesRegex(validator.PilotRunError, "no_go_blocker"):
-            validator.validate_pilot_run(manifest)
 
     def predeclared_manifest(self) -> dict:
         manifest = copy.deepcopy(self.load_template())
@@ -186,6 +204,69 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
             }
         )
         manifest["report_plan"]["current_classification"] = "inconclusive"
+        return manifest
+
+    def no_go_manifest(self) -> dict:
+        manifest = self.predeclared_manifest()
+        manifest["run_status"] = "no_go"
+        manifest["input_freeze"]["freeze_status"] = "blocked_missing_processed_dem"
+        for key in ("benchmark_case_path", "terrain_metadata_path", "source_zone_metadata_path", "scenario_table_path"):
+            manifest["input_freeze"][key] = None
+        manifest["workflow_gates"].update(
+            {
+                "benchmark_case_frozen": "no-go",
+                "small_gate_run_completed": "no-go",
+                "conditional_curves_generated": "no-go",
+                "gis_package_generated": "no-go",
+                "convergence_diagnostics_recorded": "no-go",
+                "output_budget_recorded": "no-go",
+                "visual_qa_recorded": "no-go",
+                "report_classification": "no-go",
+            }
+        )
+        manifest["run_evidence"].update(
+            {
+                "evidence_status": "no-go",
+                "validation_manifest_path": None,
+                "hazard_manifest_path": None,
+                "conditional_curve_table_path": None,
+                "map_package_manifest_path": None,
+                "pilot_gis_package_manifest_path": None,
+                "reducer_chunk_manifest_dir": None,
+                "runtime_seconds": None,
+                "memory_peak_mb": None,
+                "output_file_count": None,
+                "output_total_bytes": None,
+                "trajectory_count": None,
+                "release_cell_count": None,
+                "convergence_diagnostics": {
+                    "status": "no-go",
+                    "notes": ["required processed DEM inputs are absent; this is not a model result"],
+                },
+                "artifact_checksums": {
+                    "validation_manifest_sha256": None,
+                    "hazard_manifest_sha256": None,
+                    "conditional_curve_table_sha256": None,
+                    "map_package_manifest_sha256": None,
+                    "pilot_gis_package_manifest_sha256": None,
+                },
+            }
+        )
+        manifest["no_go_blocker"] = {
+            "blocker_id": "missing_processed_tschamut_public_dem",
+            "status": "active",
+            "classification": "no-go",
+            "evidence_output_dir": "validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1",
+            "missing_paths": [
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+            ],
+            "recovery_commands": [
+                "UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force",
+            ],
+            "notes": ["this no-go gate is not a model result"],
+        }
+        manifest["report_plan"]["current_classification"] = "no-go"
         return manifest
 
     def completed_gate_manifest(self) -> dict:

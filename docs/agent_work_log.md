@@ -156,7 +156,24 @@ Planning only; these milestones do not implement roadmap item content yet.
   source-zone independence, frozen no-tuning settings, manifest completeness,
   spatial QA, comparison evidence, private-data boundaries, and scoped
   non-operational interpretation.
-- Checks run: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_source_scenario_policy.py validation/policies/tschamut_public_source_scenario_policy_v1.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/run_dem_terrain_sensitivity.py --pilot-manifest data/processed/swisstopo/tschamut_public_pilot_manifest.yaml --source-scenario-policy validation/policies/tschamut_public_source_scenario_policy_v1.yaml --output-dir validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1` passed.
+  `cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml --output-dir hazard/results/tschamut_public_pilot/gate_v1 --grid-xmin 2696376.0 --grid-ymin 1167384.0 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 --map-product-id tschamut_public_conditional_gate_v1 --probability-mode sampling_weighted_conditional --normalization-scope conditioned_on_filter --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv --map-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json --export-geotiff --pilot-gis-package --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --pilot-gis-qa-status not-run --pilot-gis-qa-note "Manual GIS/QGIS inspection has not been run for this generated package." --reducer-workers 2 --no-plots --diagnostics validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_metrics.json --trajectory validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv --ensemble-trajectories-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectories --deposition validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_deposition.csv --ensemble-impact-events-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_impacts --kinetic-energy-exceedance-j 1000.0 --kinetic-energy-exceedance-j 10000.0 --jump-height-exceedance-m 1.0 --jump-height-exceedance-m 2.0` passed.
+  `/usr/bin/time` sidecar reruns passed for the validation and hazard commands, with `UV_CACHE_DIR=/tmp/uv-cache` required for the hazard command.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py --validation-manifest validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --hazard-manifest hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --gis-package-manifest hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --validation-time-file validation/private/tschamut_public_pilot/gate_v1/validation_gate_time.txt --hazard-time-file hazard/results/tschamut_public_pilot/gate_v1/hazard_gate_time.txt --output-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json --output-md docs/tschamut_public_pilot_scaling_review.md` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_conditional_pilot_run.py tests/test_pilot_gis_package_validator.py tests/test_pilot_scaling_summary.py tests/test_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
 - Reviewer notes: No physics changes, no private geodata, no report scripts or
   templates, no operational validation claims, and no risk-map language.
 - Decision: ACCEPT; Priority 4 done as an executable selected-domain no-go
@@ -200,7 +217,19 @@ Planning only; these milestones do not implement roadmap item content yet.
   with batch diagnostic wording; added private-path/provenance redaction and
   processed-checksum notes; and noted that real pilot acceptance should use
   explicit DEM-derived hazard-grid arguments.
-- Checks run: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_conditional_pilot_run.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_public_real_site_conditional_pilot_run.py tests/test_pilot_gis_package_validator.py tests/test_pilot_scaling_summary.py tests/test_dem_terrain_sensitivity.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `git diff --check` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
+  `scripts/git-hooks/pre-push` passed.
 - Reviewer notes: First M002 pass needed revision for performance
   interpretability evidence, scientific wording around validation and contact
   recommendations, and GIS/geodata handling for private paths, checksums, and
@@ -1561,3 +1590,41 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Priority 6 done at the local
   manifest-summary level.
 - Next proposed milestone: Stop after Priority 6 as requested.
+
+### M025
+
+- Milestone id: M025.
+- Roadmap item: Target 1. Reconcile and regenerate selected pilot gate
+  evidence.
+- Hypothesis/objective: Resolve the refreshed roadmap evidence-consistency gap
+  by making the selected Tschamut run-freeze, DEM-sensitivity report,
+  conditional pilot report, GIS package review, and scaling review describe
+  the same regenerated local ignored gate state.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
+  `tests/test_public_real_site_conditional_pilot_run.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_pilot_gis_package_review.md`,
+  `docs/tschamut_public_pilot_scaling_review.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Regenerated or verified the local ignored processed
+  DEM sensitivity gate, frozen validation gate, conditional hazard layers, GIS
+  package manifest, reducer chunk manifests, scaling summary, and external
+  `/usr/bin/time` sidecars. Updated the committed selected run-freeze from a
+  missing-DEM no-go state to `gate_run_completed` with `inconclusive` report
+  classification, artifact paths, SHA-256 checksums, runtime, peak memory,
+  file-count, byte-count, trajectory-count, release-cell-count, and explicit
+  non-operational/conditional claim boundaries. Updated tests so the selected
+  Tschamut run-freeze builds the full execution command plan while fixture
+  coverage still exercises the no-go blocker plan.
+- Checks run: Pending.
+- Reviewer notes: No raw swisstopo data, processed DEM, generated validation
+  outputs, generated hazard rasters, generated conditional curve tables,
+  generated GIS package manifests, generated scaling JSON, or time sidecars
+  are committed. The gate remains `inconclusive` because target-scale
+  convergence and manual QGIS visual QA are not established.
+- Decision: ACCEPT if final checks pass; Target 1 done at the reconciled local
+  ignored-artifact level.
+- Next proposed milestone: Stop after Target 1 as requested.

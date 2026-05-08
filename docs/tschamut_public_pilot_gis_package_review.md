@@ -7,10 +7,11 @@ package, operational hazard map, physical-probability product, annual-frequency
 product, return-period product, or risk map.
 
 This is local-only evidence. The generated rasters, manifests, and parity files
-listed below are ignored outputs and are not reproducible from a clean checkout
-until the selected pilot run-freeze is regenerated or verified locally. If the
-artifacts cannot be reproduced, this review must be treated as historical
-developer-machine evidence, not as a completed pilot package.
+listed below are ignored outputs and are not present in a clean checkout. The
+selected pilot run-freeze has now been reconciled against regenerated local
+artifacts and records the package manifest checksum, but reproduction still
+requires the documented public Tschamut preparation and ignored local output
+paths.
 
 ## Scope
 
@@ -28,8 +29,9 @@ developer-machine evidence, not as a completed pilot package.
 All listed artifacts are ignored local outputs except for this review record.
 No raw swisstopo data, processed DEM crop, GeoTIFF, CSV, ESRI ASCII grid,
 conditional curve table, or generated package manifest is committed. The
-authoritative run-freeze remains the source of truth for whether the selected
-pilot gate is currently reproducible or no-go.
+authoritative run-freeze now classifies the small local gate as
+`gate_run_completed` with an `inconclusive` report classification because
+manual QGIS visual QA and target-scale convergence remain incomplete.
 
 ## Automated Package QA
 
@@ -59,6 +61,8 @@ Observed summary:
   `source_zone_metadata_path`
 - Visual QA status in package manifest: `not-run`
 - Operational status: `research_diagnostic`
+- Package manifest SHA-256 in the reconciled run-freeze:
+  `ab9bc43b1d4ae8a61724f3f951e1127064d1b841b1d74b391516016efd0b9f92`
 
 The validator checked:
 
