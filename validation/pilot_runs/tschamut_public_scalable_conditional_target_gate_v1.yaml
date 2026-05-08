@@ -2,13 +2,15 @@ schema_version: scalable_conditional_target_gate_v1
 pilot_id: tschamut_public_pilot
 run_id: tschamut_public_scalable_conditional_target_gate_v1
 roadmap_item: target_11_scalable_conditional_target_scale_gate
-gate_status: blocked_missing_inputs
+gate_status: inconclusive
 decision_rationale: >
-  The selected target-scale conditional workflow was not executed because the
-  ignored local Tschamut inputs and prior generated gate artifacts required by
-  the frozen command plan are absent in this checkout. This record captures the
-  blocker without changing physics, defaults, sampling weights, or hazard
-  semantics.
+  The selected target-scale conditional workflow was regenerated and executed
+  locally after restoring ignored public/processed inputs. The run is
+  inconclusive rather than scale-up authorizing because target-vs-gate
+  convergence has not been accepted, manual GIS visual QA remains not-run,
+  obstacle/forest context remains limiting, and validation-runner parallel
+  provenance covers only the auxiliary single-release ensemble path rather than
+  the 1,000 observed-release trajectory outputs.
 operational_status: research_diagnostic
 
 upstream_records:
@@ -36,50 +38,100 @@ target_execution_plan:
   changes_sampling_weights: false
 
 local_input_check:
-  check_status: failed_missing_ignored_inputs
+  check_status: restored_or_regenerated
   command_plan_validated: true
-  target_execution_started: false
-  generated_outputs_written: false
+  target_execution_started: true
+  generated_outputs_written: true
   required_paths:
-    - path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
-      status: missing
+    - path: validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml
+      status: regenerated_ignored
       role: frozen_private_validation_case
     - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
-      status: missing
+      status: regenerated_ignored
       role: processed_public_dem_metadata
     - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
-      status: missing
+      status: regenerated_ignored
       role: selected_scenario_table
-    - path: validation/private/tschamut_public_pilot/gate_v1/trajectories
-      status: missing
-      role: prior_gate_trajectory_directory
-    - path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
-      status: missing
-      role: prior_gate_hazard_manifest
+    - path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+      status: regenerated_ignored
+      role: source_zone_metadata
+    - path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+      status: generated_ignored
+      role: target_validation_manifest
+    - path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+      status: generated_ignored
+      role: target_hazard_manifest
 
 evidence_result:
-  target_scale_executed: false
-  evidence_status: blocked_missing_inputs
-  convergence_diagnostics_status: not_recorded
-  output_budget_status: not_recorded
-  worker_count_parity_status: not_run
-  reducer_manifest_status: not_generated
-  ensemble_execution_manifest_status: not_generated
+  target_scale_executed: true
+  evidence_status: inconclusive
+  convergence_diagnostics_status: inconclusive
+  output_budget_status: recorded
+  worker_count_parity_status: pass_for_hazard_reducer_outputs
+  reducer_manifest_status: generated
+  ensemble_execution_manifest_status: partial_auxiliary_single_release_only
   interpretation: >
-    No target-scale convergence or output-budget conclusion can be drawn from
-    this checkout. Recreate or restore the ignored prepared inputs, rerun the
-    validated command plan with summary-only curves and deterministic workers,
-    and then replace this blocker with executed or inconclusive target-scale
-    evidence.
+    The target-scale workflow completed with 1,000 observed-release trajectories
+    and summary-only conditional curves. Hazard reducer parity passed for the
+    compared 1-worker and 2-worker layer/deposition outputs. The evidence is
+    still inconclusive because manual GIS visual QA is not complete, obstacle
+    context remains limiting, and the validation-runner ensemble_execution
+    manifest records a 100-trajectory auxiliary single-release ensemble rather
+    than the 1,000 observed-release validation trajectories.
+
+execution_evidence:
+  regenerated_inputs:
+    preparation_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
+    geodata_manifest_validation: pass
+    raw_public_inputs_already_present: true
+    raw_or_generated_inputs_committed: false
+  validation_run:
+    case_path: validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml
+    manifest_path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+    metrics_path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_metrics.json
+    timing_sidecar_path: validation/private/tschamut_public_pilot/target_gate_v1/validation_target_time.json
+    manifest_sha256: 73b5db351727522264c10e48f24a646150122903d2296457c08eb34814819fc0
+    command_returncode: 0
+    validation_release_count: 10
+    validation_simulated_trajectory_count: 1000
+    wall_seconds: 77.0243719999853
+    memory_peak_bytes_on_darwin: 367017984
+    output_file_count: 2004
+    output_total_bytes: 571131205
+    ensemble_execution_schema: local_parallel_ensemble_v1
+    ensemble_execution_trajectory_count: 100
+    ensemble_execution_scope_note: auxiliary single-release ensemble path; observed-release validation outputs are 1,000 trajectories
+  hazard_run:
+    manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+    evidence_summary_path: hazard/results/tschamut_public_pilot/target_gate_v1/target_gate_evidence_summary.json
+    map_package_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json
+    pilot_gis_package_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json
+    timing_sidecar_path: hazard/results/tschamut_public_pilot/target_gate_v1/hazard_target_time.json
+    manifest_sha256: 2d743fbd28fc4af2d65dfcc00cf3801aad9805126b87362a32de8b5f767fbc8b
+    command_returncode: 0
+    reducer_workers: 2
+    reducer_chunk_count: 2
+    reducer_merge_order: sorted_chunk_id
+    conditional_curve_export_mode: summary-only
+    conditional_curve_rows_suppressed: 729600
+    wall_seconds: 57.85906245899969
+    memory_peak_bytes_on_darwin: 411058176
+    output_file_count: 54
+    output_total_bytes: 75423367
+    total_hazard_input_rows_read: 1344854
+  worker_parity:
+    comparison_output_dir: hazard/results/tschamut_public_pilot/target_gate_v1_worker1
+    worker_counts_compared: [1, 2]
+    compared_output_kinds:
+      deposition_points: true
+      hazard_layer: true
+    all_compared_outputs_match: true
 
 remaining_before_gate_reassessment:
-  - restore_or_regenerate_ignored_processed_dem_and_private_case
-  - run_validation_case_with_random_ensemble_workers
-  - build_hazard_layers_with_summary_only_curves
-  - record_conditional_hazard_execution_diagnostics
-  - record_output_budget_runtime_memory_and_checksums
-  - record_worker_count_parity
-  - compare_target_scale_outputs_against_small_gate
+  - accept_or_reject_target_vs_small_gate_convergence
+  - complete_manual_gis_visual_qa
+  - resolve_or_bound_forest_obstacle_context_limitation
+  - clarify_validation_runner_parallel_provenance_for_observed_release_ensembles
   - keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible
 
 claim_boundary:
@@ -100,7 +152,7 @@ claim_boundary:
     - operational_hazard_map
 
 limitations:
-  - blocked evidence record only; no target-scale trajectories were generated
-  - missing local paths are ignored artifacts and must not be committed as substitutes
-  - no convergence, output-budget, or worker-parity conclusion is available yet
+  - target-scale workflow evidence is inconclusive and does not authorize ensemble-size increase
+  - regenerated inputs and generated outputs are ignored artifacts and must not be committed
+  - validation-runner ensemble_execution provenance is partial for this observed-release target run
   - no annual, physical-probability, return-period, risk, or operational semantics are included

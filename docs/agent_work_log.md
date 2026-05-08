@@ -2894,3 +2894,62 @@ Planning only; these milestones do not implement roadmap item content yet.
   private frozen validation case, scenario table, prior gate trajectories, and
   prior hazard manifest, then rerun the target-scale gate and replace the
   blocker with executed or inconclusive evidence.
+
+### M049
+
+- Milestone id: M049.
+- Roadmap item: Target 11 scalable conditional target-scale gate evidence.
+- Hypothesis/objective: Regenerate the ignored Tschamut inputs, run the selected
+  target-scale conditional workflow, and replace the `blocked_missing_inputs`
+  record with executed or inconclusive evidence.
+- Initial gap assessment: Raw public Tschamut and swissALTI3D inputs were
+  present locally. The processed public DEM, conditional source/scenario
+  sidecars, private target case, validation outputs, and hazard outputs had to
+  be regenerated under ignored paths. Validation-runner `ensemble_execution`
+  provenance was expected to require careful interpretation because observed
+  multi-release validation outputs and the local parallel ensemble path are not
+  identical.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `scripts/validate_scalable_conditional_target_gate.py`,
+  `tests/test_scalable_conditional_target_gate.py`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Local ignored inputs and outputs regenerated:
+  `data/processed/swisstopo/tschamut_public_pilot/input/*`,
+  `validation/private/tschamut_public_pilot/target_gate_v1/*`,
+  `hazard/results/tschamut_public_pilot/target_gate_v1/*`, and
+  `hazard/results/tschamut_public_pilot/target_gate_v1_worker1/*`.
+- Implementation summary: The selected target-gate record now reports
+  `gate_status: inconclusive`. It records restored/regenerated inputs, a
+  completed 1,000-trajectory observed-release validation run, summary-only
+  conditional hazard layers, suppressed full curve-table output, reducer chunk
+  metadata, output file/byte counts, runtime and Darwin memory sidecars,
+  checksums, and 1-vs-2 worker reducer parity for compared outputs. The
+  validator and tests now enforce executed/inconclusive evidence fields in
+  addition to the original blocked-record semantics.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`;
+  `cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py ... --conditional-curve-export summary-only --reducer-workers 2 --no-plots`;
+  matching 1-worker hazard reducer parity command in
+  `hazard/results/tschamut_public_pilot/target_gate_v1_worker1`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_scalable_conditional_target_gate`.
+- Reviewer notes: The run does not tune parameters, change physics, change
+  defaults, add annual/physical/risk semantics, or commit generated/raw/private
+  artifacts. The target evidence remains inconclusive because convergence has
+  not been accepted, manual GIS/QGIS visual QA remains incomplete, obstacle
+  context remains limiting, and `ensemble_execution` provenance covers only the
+  auxiliary single-release 100-trajectory ensemble path rather than all 1,000
+  observed-release validation outputs.
+- Decision: ACCEPT if final repository checks pass; Target 11 now has executed
+  but inconclusive evidence and no longer has a missing-input blocker.
+- Next proposed milestone: Reassess the selected ensemble-size gate against the
+  new target evidence, keeping convergence, manual GIS QA, obstacle context, and
+  validation-runner provenance limitations visible.

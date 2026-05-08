@@ -453,13 +453,16 @@ Minimal acceptable deliverable: a share-safe updated record/report stating
 checksums and generated-artifact paths kept outside git. The deliverable does
 not by itself authorize operational use or annual/physical probability.
 
-Current status: complete as an initial blocked evidence record for a clean
-checkout. `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+Current status: complete as an executed but inconclusive evidence record.
+`validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
 `docs/tschamut_public_scalable_conditional_target_gate.md`, and
-`scripts/validate_scalable_conditional_target_gate.py` record
-`blocked_missing_inputs` because the ignored private case, processed DEM
-metadata, scenario table, prior trajectory directory, and prior hazard manifest
-are absent. No target-scale trajectories were generated.
+`scripts/validate_scalable_conditional_target_gate.py` now record
+`inconclusive` target-scale evidence: ignored inputs were regenerated, 1,000
+observed-release trajectories were produced, summary-only hazard layers were
+built, output budget/runtime/memory/checksum evidence was recorded, and 1-vs-2
+worker reducer parity matched compared outputs. The result does not authorize
+scale-up because convergence interpretation, manual GIS QA, obstacle context,
+and validation-runner provenance scope remain unresolved.
 
 What not to do: Do not tune parameters, change release/source assumptions
 after seeing results, change defaults, commit raw geodata or generated
@@ -610,13 +613,12 @@ Estimated order: 12.
   local chunking, chunk manifests, sorted merge rules, summary-only conditional
   curve export, output-budget fields, and convergence diagnostics required
   before any ensemble-size increase.
-- Validation-runner ensemble chunk provenance is wired for opt-in configured
-  cases through `random.ensemble_workers`; selected target-scale evidence still
-  has to be generated locally with ignored inputs before any ensemble-size
-  gate changes.
-- The first selected target-scale gate attempt is recorded as
-  `blocked_missing_inputs`; ignored prepared inputs must be regenerated or
-  restored before convergence and output-budget evidence can be produced.
+- The selected target-scale gate now has local ignored execution evidence:
+  regenerated public/processed inputs, 1,000 observed-release trajectories,
+  summary-only conditional hazard layers, output-budget/runtime/memory
+  sidecars, checksums, and reducer worker parity. It remains `inconclusive`
+  because convergence, manual GIS QA, obstacle context, and validation-runner
+  provenance scope are not accepted.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -633,25 +635,19 @@ Estimated order: 12.
 
 ## Recommended Sequence
 
-1. Regenerate or restore the ignored Tschamut processed DEM, private frozen
-   validation case, scenario table, and prior gate outputs required by the
-   selected target-scale command plan.
-2. Run the selected Tschamut scalable conditional target-scale gate locally
-   with ignored inputs present, summary-only conditional curves, deterministic
-   reducer workers, validation-runner ensemble chunk provenance, and no tuning.
-3. Record convergence, output budget, wall-time, memory, checksum, and
-   worker-count parity evidence in share-safe reports while keeping generated
-   outputs ignored.
-4. Reassess the selected ensemble-size gate. Keep it blocked unless target
+1. Reassess the selected ensemble-size gate. Keep it blocked unless target
    convergence, output budget, manual GIS/QGIS visual QA, and forest/obstacle
    context evidence justify exactly one further diagnostic step.
-5. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+2. Clarify validation-runner parallel provenance for observed-release
+   ensembles if the next gate requires `ensemble_execution` to cover all 1,000
+   target trajectories rather than the auxiliary single-release ensemble path.
+3. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
    focused behavior-preserving change already touches that concern.
-6. Resolve the remaining physical/source-frequency design-gate blockers if
+4. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
-7. Implement an annual/physical prototype only if the design gate passes.
+5. Implement an annual/physical prototype only if the design gate passes.
    Until then, use the Target 10 preflight record as the executable no-go
    check rather than adding annual or physical runtime semantics.

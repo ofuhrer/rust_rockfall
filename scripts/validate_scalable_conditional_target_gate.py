@@ -41,7 +41,15 @@ REQUIRED_MISSING_ROLES = {
     "prior_gate_trajectory_directory",
     "prior_gate_hazard_manifest",
 }
-REQUIRED_REMAINING_STEPS = {
+REQUIRED_EXECUTED_ROLES = {
+    "frozen_private_validation_case",
+    "processed_public_dem_metadata",
+    "selected_scenario_table",
+    "source_zone_metadata",
+    "target_validation_manifest",
+    "target_hazard_manifest",
+}
+REQUIRED_BLOCKED_REMAINING_STEPS = {
     "restore_or_regenerate_ignored_processed_dem_and_private_case",
     "run_validation_case_with_random_ensemble_workers",
     "build_hazard_layers_with_summary_only_curves",
@@ -49,6 +57,13 @@ REQUIRED_REMAINING_STEPS = {
     "record_output_budget_runtime_memory_and_checksums",
     "record_worker_count_parity",
     "compare_target_scale_outputs_against_small_gate",
+    "keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible",
+}
+REQUIRED_INCONCLUSIVE_REMAINING_STEPS = {
+    "accept_or_reject_target_vs_small_gate_convergence",
+    "complete_manual_gis_visual_qa",
+    "resolve_or_bound_forest_obstacle_context_limitation",
+    "clarify_validation_runner_parallel_provenance_for_observed_release_ensembles",
     "keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible",
 }
 MISLEADING_PATTERNS = [
@@ -107,8 +122,15 @@ def validate_target_gate_record(record_path: Path) -> dict[str, Any]:
     )
     validate_evidence_result(require_mapping(record.get("evidence_result"), "evidence_result"), gate_status)
     remaining = set(require_list(record.get("remaining_before_gate_reassessment"), "remaining_before_gate_reassessment"))
-    missing_remaining = sorted(REQUIRED_REMAINING_STEPS - remaining)
+    required_remaining = (
+        REQUIRED_BLOCKED_REMAINING_STEPS
+        if gate_status == "blocked_missing_inputs"
+        else REQUIRED_INCONCLUSIVE_REMAINING_STEPS
+    )
+    missing_remaining = sorted(required_remaining - remaining)
     require(not missing_remaining, f"remaining_before_gate_reassessment missing: {missing_remaining}")
+    if gate_status != "blocked_missing_inputs":
+        validate_execution_evidence(require_mapping(record.get("execution_evidence"), "execution_evidence"))
     validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
     limitations = require_list(record.get("limitations"), "limitations")
     require(limitations, "limitations must be nonempty")
@@ -161,6 +183,22 @@ def validate_local_input_check(local_check: dict[str, Any], gate_status: str) ->
         }
         missing_required = sorted(REQUIRED_MISSING_ROLES - missing_roles)
         require(not missing_required, f"blocked record missing required missing path roles: {missing_required}")
+    else:
+        require(
+            local_check.get("check_status") == "restored_or_regenerated",
+            "executed or inconclusive records must use check_status restored_or_regenerated",
+        )
+        require(local_check.get("target_execution_started") is True, "executed or inconclusive records must start target execution")
+        require(local_check.get("generated_outputs_written") is True, "executed or inconclusive records must write ignored outputs")
+        roles = {
+            require_text(require_mapping(row, "required_path").get("role"), "required_path.role")
+            for row in required_paths
+        }
+        missing_roles = sorted(REQUIRED_EXECUTED_ROLES - roles)
+        require(not missing_roles, f"executed or inconclusive record missing required path roles: {missing_roles}")
+        for row in required_paths:
+            row = require_mapping(row, "required_path")
+            require(row.get("status") != "missing", "executed or inconclusive records must not list missing required paths")
     require(local_check.get("command_plan_validated") is True, "command_plan_validated must be true")
     return sum(1 for row in required_paths if isinstance(row, dict) and row.get("status") == "missing")
 
@@ -178,7 +216,79 @@ def validate_evidence_result(evidence: dict[str, Any], gate_status: str) -> None
             ("ensemble_execution_manifest_status", "not_generated"),
         ):
             require(evidence.get(field) == expected, f"evidence_result.{field} must be {expected}")
+    else:
+        require(evidence.get("target_scale_executed") is True, "executed or inconclusive records must mark target_scale_executed")
+        require(evidence.get("output_budget_status") == "recorded", "output_budget_status must be recorded")
+        require(evidence.get("worker_count_parity_status") != "not_run", "worker_count_parity_status must not be not_run")
+        require(evidence.get("reducer_manifest_status") == "generated", "reducer_manifest_status must be generated")
+        require(
+            evidence.get("ensemble_execution_manifest_status")
+            in {"generated", "partial_auxiliary_single_release_only"},
+            "ensemble_execution_manifest_status must be generated or partial_auxiliary_single_release_only",
+        )
     require_text(evidence.get("interpretation"), "evidence_result.interpretation")
+
+
+def validate_execution_evidence(evidence: dict[str, Any]) -> None:
+    validate_regenerated_inputs(require_mapping(evidence.get("regenerated_inputs"), "execution_evidence.regenerated_inputs"))
+    validate_validation_run_evidence(require_mapping(evidence.get("validation_run"), "execution_evidence.validation_run"))
+    validate_hazard_run_evidence(require_mapping(evidence.get("hazard_run"), "execution_evidence.hazard_run"))
+    validate_worker_parity(require_mapping(evidence.get("worker_parity"), "execution_evidence.worker_parity"))
+
+
+def validate_regenerated_inputs(inputs: dict[str, Any]) -> None:
+    require_text(inputs.get("preparation_command"), "regenerated_inputs.preparation_command")
+    require(inputs.get("geodata_manifest_validation") == "pass", "geodata_manifest_validation must be pass")
+    require(inputs.get("raw_public_inputs_already_present") is True, "raw public inputs must be recorded present")
+    require(inputs.get("raw_or_generated_inputs_committed") is False, "raw or generated inputs must not be committed")
+
+
+def validate_validation_run_evidence(run: dict[str, Any]) -> None:
+    for field in ("case_path", "manifest_path", "metrics_path", "timing_sidecar_path", "manifest_sha256"):
+        require_text(run.get(field), f"validation_run.{field}")
+    require(run.get("command_returncode") == 0, "validation_run.command_returncode must be 0")
+    require_positive_int(run.get("validation_release_count"), "validation_release_count")
+    require_positive_int(run.get("validation_simulated_trajectory_count"), "validation_simulated_trajectory_count")
+    require_positive_number(run.get("wall_seconds"), "validation_run.wall_seconds")
+    require_positive_int(run.get("memory_peak_bytes_on_darwin"), "validation_run.memory_peak_bytes_on_darwin")
+    require_positive_int(run.get("output_file_count"), "validation_run.output_file_count")
+    require_positive_int(run.get("output_total_bytes"), "validation_run.output_total_bytes")
+    require(run.get("ensemble_execution_schema") == "local_parallel_ensemble_v1", "ensemble execution schema must be local_parallel_ensemble_v1")
+    require_positive_int(run.get("ensemble_execution_trajectory_count"), "ensemble_execution_trajectory_count")
+    require_text(run.get("ensemble_execution_scope_note"), "validation_run.ensemble_execution_scope_note")
+
+
+def validate_hazard_run_evidence(run: dict[str, Any]) -> None:
+    for field in (
+        "manifest_path",
+        "evidence_summary_path",
+        "map_package_manifest_path",
+        "pilot_gis_package_manifest_path",
+        "timing_sidecar_path",
+        "manifest_sha256",
+    ):
+        require_text(run.get(field), f"hazard_run.{field}")
+    require(run.get("command_returncode") == 0, "hazard_run.command_returncode must be 0")
+    require_positive_int(run.get("reducer_workers"), "hazard_run.reducer_workers")
+    require_positive_int(run.get("reducer_chunk_count"), "hazard_run.reducer_chunk_count")
+    require(run.get("reducer_merge_order") == "sorted_chunk_id", "hazard reducer merge order must be sorted_chunk_id")
+    require(run.get("conditional_curve_export_mode") == "summary-only", "hazard conditional curve export must be summary-only")
+    require_positive_int(run.get("conditional_curve_rows_suppressed"), "conditional_curve_rows_suppressed")
+    require_positive_number(run.get("wall_seconds"), "hazard_run.wall_seconds")
+    require_positive_int(run.get("memory_peak_bytes_on_darwin"), "hazard_run.memory_peak_bytes_on_darwin")
+    require_positive_int(run.get("output_file_count"), "hazard_run.output_file_count")
+    require_positive_int(run.get("output_total_bytes"), "hazard_run.output_total_bytes")
+    require_positive_int(run.get("total_hazard_input_rows_read"), "hazard_run.total_hazard_input_rows_read")
+
+
+def validate_worker_parity(parity: dict[str, Any]) -> None:
+    require_text(parity.get("comparison_output_dir"), "worker_parity.comparison_output_dir")
+    counts = require_list(parity.get("worker_counts_compared"), "worker_parity.worker_counts_compared")
+    require(set(counts) == {1, 2}, "worker parity must compare worker counts 1 and 2")
+    compared = require_mapping(parity.get("compared_output_kinds"), "worker_parity.compared_output_kinds")
+    require(compared.get("hazard_layer") is True, "worker parity must match hazard_layer outputs")
+    require(compared.get("deposition_points") is True, "worker parity must match deposition_points outputs")
+    require(parity.get("all_compared_outputs_match") is True, "all compared worker-parity outputs must match")
 
 
 def validate_claim_boundary(boundary: dict[str, Any]) -> None:
@@ -257,6 +367,11 @@ def require_text(value: Any, field: str) -> str:
 def require_positive_int(value: Any, field: str) -> int:
     require(isinstance(value, int) and value > 0, f"{field} must be a positive integer")
     return int(value)
+
+
+def require_positive_number(value: Any, field: str) -> float:
+    require(isinstance(value, int | float) and value > 0, f"{field} must be a positive number")
+    return float(value)
 
 
 if __name__ == "__main__":

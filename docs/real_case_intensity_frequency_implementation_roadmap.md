@@ -91,15 +91,15 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. regenerate or restore the ignored Tschamut target-scale inputs that are
-   absent from a clean checkout;
-2. run the selected scalable conditional target-scale gate locally with ignored
-   inputs present, summary-only conditional curves, deterministic local
-   reducers, and validation-runner ensemble chunk provenance;
-3. record convergence, output-budget, runtime, memory, checksum, and
-   worker-count parity evidence in share-safe reports;
-4. reassess the selected ensemble-size gate while keeping manual GIS/QGIS
-   visual QA and forest/obstacle context limitations explicit;
+1. reassess the selected ensemble-size gate using the executed but inconclusive
+   target-scale evidence;
+2. complete or explicitly classify manual GIS/QGIS visual QA for the selected
+   package;
+3. keep forest/obstacle context limitations explicit when interpreting the
+   Tschamut outputs;
+4. clarify validation-runner parallel provenance for observed-release
+   ensembles if future gates require chunk metadata to cover every target
+   trajectory;
 5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
@@ -748,7 +748,7 @@ products remain a separate deferred semantic/evidence problem.
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
 | 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Complete for the first narrow concern: pure validation metric-math helpers are split into `src/validation/metric_math.rs` with behavior-preserving unit tests and consistency checks. Larger validation/shape splits remain future work. |
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Complete at the library-contract level: `simulate_ensemble_parallel` is opt-in, preserves serial default behavior, records deterministic local chunk metadata, and focused tests prove serial/parallel and worker-count parity. |
-| 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence have not been generated. The first clean-checkout attempt is `blocked_missing_inputs`. | The ignored processed DEM, private frozen case, scenario table, and prior gate outputs are regenerated or restored, then a share-safe record reports `target_scale_executed` or `inconclusive` with convergence diagnostics, worker/reducer parity, output bytes, file counts, runtime, memory, checksums, and generated outputs kept ignored. |
+| 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, manual GIS QA, obstacle context, and validation-runner provenance scope remain unresolved. |
 | 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | The selected ensemble-feasibility record is updated to remain blocked or authorize exactly one further diagnostic scale step with explicit limitations. |
 | 11 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
 | 12 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
@@ -774,12 +774,15 @@ evidence for the small gate. The package visual-QA gate is explicitly
 `inconclusive` rather than unclassified, and obstacle/forest omission is
 explicitly classified `limiting`. Output-volume control, deterministic local
 reducer chunks, validation-runner ensemble chunk provenance, and scalable
-conditional execution diagnostics are available. The first target-scale gate
-attempt is now recorded as `blocked_missing_inputs` because the required ignored
-local inputs are absent, so convergence/output-budget evidence has not yet been
-generated. Ensemble increase remains no-go until convergence, manual-GIS, and
-obstacle-context preconditions are satisfied. The pilot remains an inconclusive
-local diagnostic gate.
+conditional execution diagnostics are available. The selected target-scale gate
+now has local ignored execution evidence with 1,000 observed-release
+trajectories, summary-only curves, output-budget/runtime/memory/checksum
+sidecars, and reducer worker parity. The result is still `inconclusive` because
+target-vs-gate convergence has not been accepted, manual GIS/QGIS visual QA has
+not been completed, obstacle context remains limiting, and validation-runner
+`ensemble_execution` provenance covers only the auxiliary single-release
+ensemble path. Ensemble increase remains no-go until those preconditions are
+satisfied. The pilot remains an inconclusive local diagnostic gate.
 
 ## Decision Gates
 
@@ -791,8 +794,8 @@ local diagnostic gate.
 | Scenario semantics | Conditional curves | Block/scenario ids, sampling weights, and denominators join across outputs. |
 | Terrain error semantics | Larger real-DEM batches | Nodata, out-of-domain, and unsupported-contact failures propagate as structured errors rather than panics. |
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
-| Scalable conditional target gate | Selected ensemble-size decision | The selected target-scale run is executed or explicitly blocked with convergence, output-budget, wall-time, memory, checksum, reducer, worker-parity, and ignored-artifact evidence. The current share-safe state is `blocked_missing_inputs`; ignored inputs must be regenerated before execution evidence can exist. |
-| Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. The local contracts exist; the selected target-scale run still needs to be executed or explicitly blocked with share-safe evidence. |
+| Scalable conditional target gate | Selected ensemble-size decision | Complete as an `inconclusive` evidence gate: execution, output-budget, wall-time, memory, checksum, reducer, worker-parity, and ignored-artifact evidence exist, but convergence/GIS/obstacle/provenance blockers prevent scale-up authorization. |
+| Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. The local contracts and selected target-scale evidence exist; the next blocker is interpreting that evidence before any larger diagnostic run. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
 | Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, reducer-precondition, and validation/calibration review contracts now exist; synthetic source-frequency, block/release, reducer-precondition, and validation/calibration design-review fixtures exercise accepted-record validation and are reassessed by the design gate, but real accepted evidence and implemented reducer support remain deferred. |
 | Target 10 preflight | Annual/physical prototype implementation | The physical/source-frequency design gate must pass before runtime work starts; the inactive preflight record verifies that prototype implementation remains blocked while the design gate is deferred. |

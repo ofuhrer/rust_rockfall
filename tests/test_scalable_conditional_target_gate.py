@@ -18,13 +18,13 @@ SPEC.loader.exec_module(validator)
 
 
 class ScalableConditionalTargetGateTests(unittest.TestCase):
-    def test_selected_blocked_missing_inputs_record_is_valid(self) -> None:
+    def test_selected_inconclusive_executed_record_is_valid(self) -> None:
         summary = validator.validate_target_gate_record(
             ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml"
         )
 
-        self.assertEqual(summary["gate_status"], "blocked_missing_inputs")
-        self.assertEqual(summary["missing_path_count"], 5)
+        self.assertEqual(summary["gate_status"], "inconclusive")
+        self.assertEqual(summary["missing_path_count"], 0)
 
     def test_rejects_full_curve_export_for_target_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -44,13 +44,13 @@ class ScalableConditionalTargetGateTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "ensemble workers"):
                 validator.validate_target_gate_record(path)
 
-    def test_rejects_blocked_record_that_started_execution(self) -> None:
+    def test_rejects_inconclusive_record_that_did_not_start_execution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.base_record()
-            record["local_input_check"]["target_execution_started"] = True
+            record["local_input_check"]["target_execution_started"] = False
             path = self.write_record(Path(tmp), record)
 
-            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "must not start"):
+            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "must start"):
                 validator.validate_target_gate_record(path)
 
     def test_rejects_missing_required_path_role(self) -> None:
@@ -73,6 +73,15 @@ class ScalableConditionalTargetGateTests(unittest.TestCase):
             path = self.write_record(Path(tmp), record)
 
             with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "physical_probability"):
+                validator.validate_target_gate_record(path)
+
+    def test_rejects_unrecorded_output_budget_after_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["evidence_result"]["output_budget_status"] = "not_recorded"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "output_budget_status"):
                 validator.validate_target_gate_record(path)
 
     def write_record(self, work: Path, record: dict) -> Path:

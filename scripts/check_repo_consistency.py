@@ -949,11 +949,12 @@ def check_scalable_conditional_target_gate() -> list[str]:
     tests = (ROOT / "tests/test_scalable_conditional_target_gate.py").read_text()
 
     for term in (
-        "Status: blocked missing ignored inputs",
-        "blocked_missing_inputs",
-        "random.ensemble_workers",
+        "Status: executed but inconclusive",
+        "`inconclusive`",
+        "1,000 simulated trajectories",
         "conditional_hazard_execution_diagnostics_v1",
         "hazard_reducer_chunk_manifest_v1",
+        "1-worker vs 2-worker",
         "not change physics",
     ):
         if term not in doc:
@@ -961,12 +962,14 @@ def check_scalable_conditional_target_gate() -> list[str]:
 
     for term in (
         "schema_version: scalable_conditional_target_gate_v1",
-        "gate_status: blocked_missing_inputs",
+        "gate_status: inconclusive",
         "validation_runner_ensemble_workers_required: true",
         "conditional_curve_export_mode: summary-only",
-        "check_status: failed_missing_ignored_inputs",
-        "target_scale_executed: false",
-        "convergence_diagnostics_status: not_recorded",
+        "check_status: restored_or_regenerated",
+        "target_scale_executed: true",
+        "convergence_diagnostics_status: inconclusive",
+        "output_budget_status: recorded",
+        "all_compared_outputs_match: true",
         "physical_probability: false",
     ):
         if term not in record:
@@ -978,19 +981,21 @@ def check_scalable_conditional_target_gate() -> list[str]:
     for symbol in (
         "validate_target_gate_record",
         "REQUIRED_MISSING_ROLES",
-        "REQUIRED_REMAINING_STEPS",
+        "REQUIRED_INCONCLUSIVE_REMAINING_STEPS",
+        "validate_execution_evidence",
         "conditional_curve_export_mode must be summary-only",
-        "blocked records must not start target execution",
+        "executed or inconclusive records must start target execution",
     ):
         if symbol not in validator:
             errors.append(f"scripts/validate_scalable_conditional_target_gate.py omits {symbol!r}")
 
     for test_name in (
-        "test_selected_blocked_missing_inputs_record_is_valid",
+        "test_selected_inconclusive_executed_record_is_valid",
         "test_rejects_full_curve_export_for_target_gate",
         "test_rejects_missing_validation_runner_workers",
-        "test_rejects_blocked_record_that_started_execution",
+        "test_rejects_inconclusive_record_that_did_not_start_execution",
         "test_rejects_missing_required_path_role",
+        "test_rejects_unrecorded_output_budget_after_execution",
     ):
         if test_name not in tests:
             errors.append(f"tests/test_scalable_conditional_target_gate.py omits {test_name}")

@@ -44,32 +44,30 @@ ensemble-size gate is relaxed or annual/physical semantics are attempted.
 
 | Rank | Direction | Scientific | Swiss pilot | Hazard workflow | Validation | Reproducibility | Alignment | Impl. risk | Dep. risk | Cal/val confusion risk | Composite |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Execute selected scalable conditional target-scale gate | 4 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 2 | 19 |
-| 2 | Reassess selected ensemble-size increase gate | 4 | 5 | 5 | 4 | 5 | 5 | 2 | 3 | 2 | 21 |
-| 3 | Manual QGIS visual QA for selected package | 3 | 5 | 5 | 2 | 5 | 5 | 2 | 3 | 1 | 19 |
-| 4 | Forest/obstacle context review for Tschamut | 4 | 5 | 4 | 3 | 4 | 5 | 2 | 3 | 2 | 18 |
-| 5 | Resumable cross-process trajectory chunk manifests | 3 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 17 |
-| 6 | Continue focused validation/shape module splits | 2 | 4 | 4 | 4 | 5 | 5 | 3 | 2 | 1 | 18 |
-| 7 | Source-frequency evidence acquisition or acceptance review | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 5 | 4 | 17 |
-| 8 | Physical-frequency reducer implementation design | 5 | 5 | 5 | 4 | 5 | 5 | 4 | 5 | 4 | 16 |
-| 9 | Annual/physical prototype preflight reassessment | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 5 | 5 | 16 |
-| 10 | Annual/physical intensity-frequency prototype | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 14 |
+| 1 | Reassess selected ensemble-size increase gate | 4 | 5 | 5 | 4 | 5 | 5 | 2 | 3 | 2 | 21 |
+| 2 | Manual QGIS visual QA for selected package | 3 | 5 | 5 | 2 | 5 | 5 | 2 | 3 | 1 | 19 |
+| 3 | Forest/obstacle context review for Tschamut | 4 | 5 | 4 | 3 | 4 | 5 | 2 | 3 | 2 | 18 |
+| 4 | Resumable cross-process trajectory chunk manifests | 3 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 17 |
+| 5 | Continue focused validation/shape module splits | 2 | 4 | 4 | 4 | 5 | 5 | 3 | 2 | 1 | 18 |
+| 6 | Source-frequency evidence acquisition or acceptance review | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 5 | 4 | 17 |
+| 7 | Physical-frequency reducer implementation design | 5 | 5 | 5 | 4 | 5 | 5 | 4 | 5 | 4 | 16 |
+| 8 | Annual/physical prototype preflight reassessment | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 5 | 5 | 16 |
+| 9 | Annual/physical intensity-frequency prototype | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 5 | 14 |
 
 ## Interpretation
 
-The active bottleneck is no longer missing execution contracts. The repository
-has a selected scalable conditional execution record, deterministic local
-hazard reducer chunks, summary-only conditional curves, and validation-runner
-ensemble chunk provenance. What it does not yet have is target-scale evidence
-showing that the selected Tschamut conditional run is reproducible, bounded by
-output budgets, and scientifically interpretable.
+The active bottleneck is no longer missing execution contracts or target-scale
+execution evidence. The repository has a selected scalable conditional
+execution record, deterministic local hazard reducer chunks, summary-only
+conditional curves, validation-runner ensemble chunk provenance, and an
+executed but inconclusive selected Tschamut target-scale gate.
 
-Executing the selected target-scale gate ranks first because it turns the
-current design-ready contract into evidence. The first clean-checkout attempt is
-now recorded as `blocked_missing_inputs`; the next move is to regenerate or
-restore the ignored processed DEM, private frozen case, scenario table, and
-prior gate outputs, then rerun with ignored outputs, current conditional
-semantics, and a `target_scale_executed` or `inconclusive` record.
+The target-scale gate produced 1,000 observed-release trajectories, summary-only
+conditional hazard layers, output-budget/runtime/memory/checksum evidence, and
+1-vs-2 worker reducer parity. It remains `inconclusive` because convergence has
+not been accepted, manual GIS/QGIS visual QA is not complete, forest/obstacle
+context remains limiting, and validation-runner `ensemble_execution` provenance
+covers only the auxiliary single-release ensemble path.
 
 Reassessing the ensemble-size gate ranks second. A successful technical run is
 not enough by itself: convergence, output budget, manual GIS/QGIS visual QA,
@@ -101,20 +99,16 @@ return-period, physical-probability, or risk products.
 
 ### Best Immediate Work Package
 
-Unblock and run the selected Tschamut scalable conditional target-scale gate
-locally using ignored prepared inputs. The output should be either:
-
-- a share-safe target-scale evidence update with convergence, output budget,
-  wall time, memory, worker-count parity, checksums, reducer manifests,
-  `ensemble_execution`, and `conditional_hazard_execution_diagnostics_v1`; or
-- an updated inconclusive record if regenerated local inputs or review steps
-  still prevent target-scale interpretation.
+Reassess the selected Tschamut ensemble-size gate using the new target-scale
+evidence. Keep the gate blocked unless the review explicitly accepts the
+target-vs-small-gate convergence evidence, output budget, manual GIS/QGIS
+status, forest/obstacle context, and validation-runner provenance scope.
 
 ### Best Near-Term Scientific Work Package
 
-After target-scale execution evidence exists, reassess the ensemble-size gate
-with manual GIS/QGIS visual QA and forest/obstacle context still visible. This
-is scientific claim hygiene, not obstacle-physics implementation.
+Complete or explicitly classify manual GIS/QGIS visual QA with the new
+target-scale package still treated as a research diagnostic. This is scientific
+claim hygiene, not obstacle-physics implementation.
 
 ### Best Near-Term Engineering Work Package
 
@@ -157,9 +151,7 @@ Pause or defer:
 ## Final Recommendation
 
 Do not start annual or physical probability work yet. The highest-value next
-move is to regenerate or restore the ignored Tschamut inputs needed by the
-selected target-scale command plan, then run the scalable conditional gate
-locally and record convergence, output budget, runtime, memory, checksum, and
-worker-parity evidence. Only after that evidence exists should the selected
-ensemble-size gate be reassessed; larger diagnostic execution should remain
-blocked if GIS visual QA or forest/obstacle context is still insufficient.
+move is to reassess the selected ensemble-size gate against the executed but
+inconclusive target-scale evidence. Larger diagnostic execution should remain
+blocked if convergence, GIS visual QA, forest/obstacle context, or
+validation-runner provenance scope is still insufficient.
