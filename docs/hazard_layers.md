@@ -348,7 +348,9 @@ summary statistics. The most important distinction is the input source:
 
 - trajectory-derived layers (`reach_probability`, `max_kinetic_energy`,
   `max_jump_height`) only represent the trajectory CSV files supplied to the
-  script. Use `outputs.ensemble_trajectories_dir` for full ensemble layers;
+  script. Each trajectory CSV must contain at most one `trajectory_id`; mixed
+  multi-trajectory CSVs are rejected so trajectory-level denominators remain
+  explicit. Use `outputs.ensemble_trajectories_dir` for full ensemble layers;
 - deposition-derived layers (`deposition_density`) can already represent the
   current validation ensemble, because validation writes an ensemble deposition
   CSV;

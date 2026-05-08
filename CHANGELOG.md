@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Hardened runtime configuration, DEM parsing, hazard-layer input semantics,
+  and reducer layer construction by rejecting unknown simulation JSON fields,
+  rejecting panic-prone DEM grids, rejecting mixed `trajectory_id` trajectory
+  CSVs, and making hazard-layer normalization idempotent.
+- Added Python workflow unit tests to the local pre-push gate.
+- Updated roadmap, scalability, and performance documentation to distinguish
+  implemented local hazard-reducer scaffolding from still-missing parallel
+  trajectory execution, resumeable chunks, tiled reducers, and annual/physical
+  hazard products.
+- Added validation maturity, public real-site geodata preparation, source/block
+  scenario policy, and conditional real-site pilot run scaffolds and validators.
+- Removed duplicate copy-suffix roadmap documents and added a repository
+  consistency guard against reintroducing tracked copy-suffix docs.
 - Added a pre-runtime, opt-in `shape_contact_v0` scaffold for analytic
   box-shape metadata validation, support selection, impulse diagnostics, and
   internal dry-run checks. It remains blocked from fixed-step simulation,

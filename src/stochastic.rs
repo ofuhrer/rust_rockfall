@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::TAU;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ReleasePerturbation {
     pub position_uniform_m: f64,
     pub velocity_uniform_mps: f64,

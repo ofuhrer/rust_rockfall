@@ -217,6 +217,8 @@ pub enum TerrainError {
     Header(&'static str),
     #[error("DEM has {actual} elevation values, expected {expected}")]
     ValueCount { expected: usize, actual: usize },
+    #[error("invalid DEM grid: {0}")]
+    InvalidGrid(String),
     #[error("DEM query outside grid: x={x_m}, y={y_m}")]
     OutOfBounds { x_m: f64, y_m: f64 },
     #[error("DEM query touches nodata or non-finite elevation at col={col}, row_from_bottom={row_from_bottom}: x={x_m}, y={y_m}")]
@@ -243,6 +245,37 @@ impl DemGrid {
         let cellsize_m = parse_header_f64(lines.next(), "cellsize")?;
         let nodata_value = parse_header_f64(lines.next(), "NODATA_value")?;
 
+        if ncols < 2 {
+            return Err(TerrainError::InvalidGrid(
+                "ncols must be at least 2 for bilinear interpolation".to_string(),
+            ));
+        }
+        if nrows < 2 {
+            return Err(TerrainError::InvalidGrid(
+                "nrows must be at least 2 for bilinear interpolation".to_string(),
+            ));
+        }
+        if !xllcorner_m.is_finite() {
+            return Err(TerrainError::InvalidGrid(
+                "xllcorner must be finite".to_string(),
+            ));
+        }
+        if !yllcorner_m.is_finite() {
+            return Err(TerrainError::InvalidGrid(
+                "yllcorner must be finite".to_string(),
+            ));
+        }
+        if !cellsize_m.is_finite() || cellsize_m <= 0.0 {
+            return Err(TerrainError::InvalidGrid(
+                "cellsize must be finite and positive".to_string(),
+            ));
+        }
+        if !nodata_value.is_finite() {
+            return Err(TerrainError::InvalidGrid(
+                "NODATA_value must be finite".to_string(),
+            ));
+        }
+
         let values_m = lines
             .flat_map(|line| line.split_whitespace())
             .map(|value| {
@@ -252,12 +285,20 @@ impl DemGrid {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let expected = ncols * nrows;
+        let expected = ncols.checked_mul(nrows).ok_or_else(|| {
+            TerrainError::InvalidGrid("ncols * nrows overflows usize".to_string())
+        })?;
         if values_m.len() != expected {
             return Err(TerrainError::ValueCount {
                 expected,
                 actual: values_m.len(),
             });
+        }
+        if values_m.iter().any(|value| !value.is_finite()) {
+            return Err(TerrainError::InvalidGrid(
+                "elevation values must be finite; use the finite NODATA_value sentinel for missing cells"
+                    .to_string(),
+            ));
         }
 
         Ok(Self {

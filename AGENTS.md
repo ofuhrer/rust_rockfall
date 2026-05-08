@@ -127,11 +127,13 @@ Before committing:
     && cargo test \
     && cargo run -- verify --all \
     && cargo run -- validate --all \
+    && python3 -m unittest discover -s tests -p 'test_*.py' \
     && python3 scripts/check_repo_consistency.py
   ```
 
-  If system `python3` is incompatible, run the consistency check through the
-  project-local `uv` environment and record the exact command used.
+  If system `python3` is incompatible, run the Python unittest and consistency
+  checks through the project-local `uv` environment and record the exact
+  command used.
 
 - Do a quick consistency pass:
   - inspect `git status -sb`;

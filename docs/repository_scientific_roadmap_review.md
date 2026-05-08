@@ -173,9 +173,10 @@ impact-density workflows. Sources: `src/simulation.rs`, `src/stochastic.rs`,
 Remaining scaling gaps are central to the Swiss goal:
 
 - no public deterministic multithreaded runner;
-- no thread-safe streaming reducer;
+- local threaded hazard-reducer parity exists, but no streaming reducer is
+  integrated with trajectory execution;
 - no local chunk/resume execution workflow;
-- no deterministic tiled reducer merge implementation;
+- no deterministic tiled/distributed reducer merge implementation;
 - no trajectory sample table and batched reader for trajectory-derived layers;
 - no valley-scale performance budget tied to real pilot workloads;
 - no CSCS/SLURM orchestration, correctly deferred until local contracts exist.
@@ -306,7 +307,7 @@ evidence, not triggers for hidden tuning or lower thresholds.
 | Controlled pilot plan and prep script | Executed no-tuning local/private controlled swissALTI3D pilot | Site projects with real DEM/context layers | reproducible public-geodata pipeline | Public Tschamut/swissALTI3D benchmark exists; controlled private/local pilot not yet run |
 | Deterministic release-zone sidecar | defensible source-zone policy | source polygons/lines/areas plus expert context | national source masks | Derivation policy missing |
 | Hazard builder plus semantics/GIS checks | accepted GIS/QGIS review package | GIS-ready rasters and legends | tiled COG/GeoTIFF products | Tiny GeoTIFF checks exist; package-level QGIS QA missing |
-| Performance benchmark docs and DEM sensitivity fixture | pilot-scale throughput and terrain-representation gates | production-oriented ensemble execution | local parallel/chunk/reducer contracts | No local parallel runner/reducer |
+| Performance benchmark docs and DEM sensitivity fixture | pilot-scale throughput and terrain-representation gates | production-oriented ensemble execution | local parallel/chunk/reducer contracts | Local hazard reducer exists; no parallel trajectory runner or resume workflow |
 
 ### Major Scientific Gaps
 
@@ -353,7 +354,8 @@ evidence, not triggers for hidden tuning or lower thresholds.
 ### Performance And Scalability Gaps
 
 - no deterministic local multithreaded public runner;
-- no streaming hazard reducer or thread-safe accumulation contract;
+- local hazard-reducer parity exists; no simulator-integrated streaming
+  reducer or tiled/distributed accumulation contract;
 - no local chunk/resume implementation;
 - no trajectory sample table/batched reader for trajectory-derived layers;
 - no performance regression guard tied to pilot workload and output volume;

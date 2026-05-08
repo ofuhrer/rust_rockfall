@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SimulationConfig {
     pub block: SphereBlock,
     pub initial_position_m: [f64; 3],
@@ -73,7 +74,7 @@ pub const STOP_SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS: f64 = 0.05;
 pub const STOP_LOW_ENERGY_CONTACT_SPEED_MPS: f64 = 0.05;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TerrainConfig {
     Plane {
         z0_m: f64,

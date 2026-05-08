@@ -146,6 +146,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo run -- verify --all
 cargo run -- validate --all
+python -m unittest discover -s tests -p 'test_*.py'
 .venv/bin/python scripts/check_repo_consistency.py
 scripts/git-hooks/pre-commit
 ```

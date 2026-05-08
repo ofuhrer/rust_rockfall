@@ -537,6 +537,27 @@ fn dem_parser_reports_header_value_count_and_bounds_errors() {
 }
 
 #[test]
+fn dem_parser_rejects_panic_prone_grid_headers() {
+    for text in [
+        "ncols 1\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 2\n",
+        "ncols 2\nnrows 1\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 2\n",
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 0\nNODATA_value -9999\n1 2\n3 4\n",
+        "ncols 2\nnrows 2\nxllcorner NaN\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 2\n3 4\n",
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner inf\ncellsize 1\nNODATA_value -9999\n1 2\n3 4\n",
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value NaN\n1 2\n3 4\n",
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 2\n3 inf\n",
+    ] {
+        assert!(
+            matches!(
+                DemGrid::from_ascii_grid_str(text),
+                Err(TerrainError::InvalidGrid(_))
+            ),
+            "DEM should be rejected: {text}"
+        );
+    }
+}
+
+#[test]
 fn clamped_dem_keeps_boundary_queries_finite_without_changing_strict_dem() {
     let dem = DemGrid::from_ascii_grid_str(
         "ncols 3\nnrows 3\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n4 5 6\n2 3 4\n0 1 2\n",
@@ -1163,6 +1184,50 @@ fn write_csv_reports_path_errors() {
 
     assert!(io::write_trajectory_csv(&directory_path, &result.samples).is_err());
     fs::remove_dir(directory_path).unwrap();
+}
+
+#[test]
+fn read_config_rejects_unknown_runtime_config_fields() {
+    let unknown_top_level_path = temp_path("unknown_top_level_config.json");
+    fs::write(
+        &unknown_top_level_path,
+        r#"{
+            "block": { "radius_m": 0.5, "mass_kg": 10.0 },
+            "initial_position_m": [0.0, 0.0, 2.0],
+            "initial_velocity_mps": [1.0, 0.0, 0.0],
+            "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0 },
+            "dt_s": 0.01,
+            "max_time_s": 1.0,
+            "friction_coefficent": 0.2
+        }"#,
+    )
+    .unwrap();
+    let error = io::read_config(&unknown_top_level_path)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("unknown field"));
+    assert!(error.contains("friction_coefficent"));
+    fs::remove_file(unknown_top_level_path).unwrap();
+
+    let unknown_terrain_path = temp_path("unknown_terrain_config.json");
+    fs::write(
+        &unknown_terrain_path,
+        r#"{
+            "block": { "radius_m": 0.5, "mass_kg": 10.0 },
+            "initial_position_m": [0.0, 0.0, 2.0],
+            "initial_velocity_mps": [1.0, 0.0, 0.0],
+            "terrain": { "kind": "plane", "z0_m": 0.0, "slope_x": 0.0, "slope_y": 0.0, "slope_z": 0.0 },
+            "dt_s": 0.01,
+            "max_time_s": 1.0
+        }"#,
+    )
+    .unwrap();
+    let error = io::read_config(&unknown_terrain_path)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("unknown field"));
+    assert!(error.contains("slope_z"));
+    fs::remove_file(unknown_terrain_path).unwrap();
 }
 
 #[test]
@@ -2467,13 +2532,14 @@ fn terrain_class_stop_state_reports_out_of_grid_gap() {
 
     fs::write(
         &grid_path,
-        r#"ncols 1
-nrows 1
+        r#"ncols 2
+nrows 2
 xllcorner 100
 yllcorner 100
 cellsize 1
 NODATA_value -9999
-1
+1 1
+1 1
 "#,
     )
     .unwrap();
@@ -2494,14 +2560,14 @@ coordinate_reference_system:
 raster:
   format: ESRI ASCII GRID
   resolution_m: 1.0
-  width_px: 1
-  height_px: 1
+  width_px: 2
+  height_px: 2
   nodata: -9999.0
 extent_lv95_m:
   xmin: 100.0
   ymin: 100.0
-  xmax: 101.0
-  ymax: 101.0
+  xmax: 102.0
+  ymax: 102.0
 class_grid_path: {}
 classes:
   - id: 1

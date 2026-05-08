@@ -662,13 +662,13 @@ class HazardAccumulator:
                 if self.statistics.probability_standard_error
                 else None
             )
-            scale_grid(self.reach, 1.0 / self.trajectory_count)
+            reach = scaled_grid(self.reach, 1.0 / self.trajectory_count)
             layers.append(
                 RasterLayer(
                     "reach_probability",
                     "Reach probability",
                     "fraction of supplied trajectories",
-                    self.reach,
+                    reach,
                     note="Cells touched by each supplied trajectory, normalized by the number of trajectory CSVs.",
                 )
             )
@@ -700,13 +700,13 @@ class HazardAccumulator:
                 if denominator <= 0.0:
                     raise SystemExit("filtered total sampling weight must be positive")
                 if self.weighted_reach is not None:
-                    scale_grid(self.weighted_reach, 1.0 / denominator)
+                    weighted_reach = scaled_grid(self.weighted_reach, 1.0 / denominator)
                     layers.append(
                         RasterLayer(
                             "weighted_reach_probability",
                             "Weighted reach probability",
                             "sampling-weighted fraction of filtered trajectories",
-                            self.weighted_reach,
+                            weighted_reach,
                             note=(
                                 "Sampling-weighted conditional reach probability using "
                                 "trajectory_metadata_table_v1 and normalization conditioned on filters."
@@ -719,14 +719,14 @@ class HazardAccumulator:
                     if self.statistics.probability_standard_error
                     else None
                 )
-                scale_grid(values, 1.0 / self.trajectory_count)
+                scaled_values = scaled_grid(values, 1.0 / self.trajectory_count)
                 layer_key = exceedance_layer_key("kinetic_energy_exceedance", threshold, "j")
                 layers.append(
                     RasterLayer(
                         layer_key,
                         f"Kinetic energy exceedance >= {threshold:g} J",
                         "fraction of supplied trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if kinetic_j >= {threshold:g} J in that cell."
@@ -744,16 +744,16 @@ class HazardAccumulator:
                                 "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
                                 "trajectory-level exceedance probability."
                             ),
-                        )
                     )
+                )
             for threshold, values in self.weighted_kinetic_exceedance.items():
-                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                scaled_values = scaled_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
                     RasterLayer(
                         exceedance_layer_key("weighted_kinetic_energy_exceedance", threshold, "j"),
                         f"Weighted kinetic energy exceedance >= {threshold:g} J",
                         "sampling-weighted fraction of filtered trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if kinetic_j >= {threshold:g} J in that cell."
@@ -766,14 +766,14 @@ class HazardAccumulator:
                     if self.statistics.probability_standard_error
                     else None
                 )
-                scale_grid(values, 1.0 / self.trajectory_count)
+                scaled_values = scaled_grid(values, 1.0 / self.trajectory_count)
                 layer_key = exceedance_layer_key("jump_height_exceedance", threshold, "m")
                 layers.append(
                     RasterLayer(
                         layer_key,
                         f"Jump height exceedance >= {threshold:g} m",
                         "fraction of supplied trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if jump height >= {threshold:g} m in that cell."
@@ -791,16 +791,16 @@ class HazardAccumulator:
                                 "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
                                 "trajectory-level exceedance probability."
                             ),
-                        )
                     )
+                )
             for threshold, values in self.weighted_jump_exceedance.items():
-                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                scaled_values = scaled_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
                     RasterLayer(
                         exceedance_layer_key("weighted_jump_height_exceedance", threshold, "m"),
                         f"Weighted jump height exceedance >= {threshold:g} m",
                         "sampling-weighted fraction of filtered trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if jump height >= {threshold:g} m in that cell."
@@ -813,14 +813,14 @@ class HazardAccumulator:
                     if self.statistics.probability_standard_error
                     else None
                 )
-                scale_grid(values, 1.0 / self.trajectory_count)
+                scaled_values = scaled_grid(values, 1.0 / self.trajectory_count)
                 layer_key = exceedance_layer_key("velocity_exceedance", threshold, "mps")
                 layers.append(
                     RasterLayer(
                         layer_key,
                         f"Velocity exceedance >= {threshold:g} m/s",
                         "fraction of supplied trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if speed_mps >= {threshold:g} m/s in that cell."
@@ -838,16 +838,16 @@ class HazardAccumulator:
                                 "Binomial standard error sqrt(p(1-p)/n) for the unweighted "
                                 "trajectory-level exceedance probability."
                             ),
-                        )
                     )
+                )
             for threshold, values in self.weighted_velocity_exceedance.items():
-                scale_grid(values, 1.0 / self.probability.total_filtered_weight)
+                scaled_values = scaled_grid(values, 1.0 / self.probability.total_filtered_weight)
                 layers.append(
                     RasterLayer(
                         exceedance_layer_key("weighted_velocity_exceedance", threshold, "mps"),
                         f"Weighted velocity exceedance >= {threshold:g} m/s",
                         "sampling-weighted fraction of filtered trajectories",
-                        values,
+                        scaled_values,
                         note=(
                             "Sampling-weighted trajectory-level exceedance probability: a cell is counted once per "
                             f"trajectory if speed_mps >= {threshold:g} m/s in that cell."
@@ -858,13 +858,13 @@ class HazardAccumulator:
             warnings.append("no trajectory CSVs supplied; reach, energy, and jump-height layers were not created")
 
         if self.deposition_point_count:
-            scale_grid(self.deposition, 1.0 / self.deposition_point_count)
+            deposition = scaled_grid(self.deposition, 1.0 / self.deposition_point_count)
             layers.append(
                 RasterLayer(
                     "deposition_density",
                     "Deposition density",
                     "fraction of deposition points",
-                    self.deposition,
+                    deposition,
                     note="Final-position density from ensemble deposition CSV.",
                 )
             )
@@ -872,13 +872,13 @@ class HazardAccumulator:
                 denominator = self.probability.total_filtered_weight
                 if denominator <= 0.0:
                     raise SystemExit("filtered total sampling weight must be positive")
-                scale_grid(self.weighted_deposition, 1.0 / denominator)
+                weighted_deposition = scaled_grid(self.weighted_deposition, 1.0 / denominator)
                 layers.append(
                     RasterLayer(
                         "weighted_deposition_density",
                         "Weighted deposition density",
                         "sampling-weighted fraction of filtered trajectories",
-                        self.weighted_deposition,
+                        weighted_deposition,
                         note=(
                             "Sampling-weighted conditional final-position density using "
                             "trajectory_metadata_table_v1 and normalization conditioned on filters."
@@ -890,25 +890,30 @@ class HazardAccumulator:
 
         if self.impact_event_count:
             if self.significant_impact_count:
-                scale_grid(self.impact_density, 1.0 / self.significant_impact_count)
+                impact_density = scaled_grid(self.impact_density, 1.0 / self.significant_impact_count)
+            else:
+                impact_density = copy_grid(self.impact_density)
             layers.append(
                 RasterLayer(
                     "significant_impact_density",
                     "Significant impact density",
                     "fraction of significant impact events",
-                    self.impact_density,
+                    impact_density,
                     note=f"Significant impacts use incoming_normal_speed_mps >= {SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:g} m/s.",
                 )
             )
             if self.weighted_impact_density is not None:
                 if self.weighted_significant_impact_weight > 0.0:
-                    scale_grid(self.weighted_impact_density, 1.0 / self.weighted_significant_impact_weight)
+                    weighted_impact_density = scaled_grid(
+                        self.weighted_impact_density,
+                        1.0 / self.weighted_significant_impact_weight,
+                    )
                     layers.append(
                         RasterLayer(
                             "weighted_significant_impact_density",
                             "Weighted significant impact density",
                             "sampling-weighted fraction of significant impact events",
-                            self.weighted_impact_density,
+                            weighted_impact_density,
                             note=(
                                 "Sampling-weighted significant-impact event density using trajectory_id and "
                                 "normalization by the filtered significant-impact event weight sum."
@@ -2159,8 +2164,14 @@ def read_trajectory_sample_batch(path: Path, warnings: list[str]) -> TrajectoryS
     samples: list[TrajectorySample] = []
     trajectory_id: str | None = None
     for row in iter_numeric_csv(path, f"trajectory:{path}", warnings):
+        row_trajectory_id = trajectory_id_from_sample_or_path(row, path)
         if trajectory_id is None:
-            trajectory_id = trajectory_id_from_sample_or_path(row, path)
+            trajectory_id = row_trajectory_id
+        elif row_trajectory_id != trajectory_id:
+            raise SystemExit(
+                f"trajectory CSV {path} contains multiple trajectory_id values; "
+                "current hazard-layer accumulation expects one trajectory per CSV"
+            )
         samples.append(
             TrajectorySample(
                 x_m=numeric(row.get("x_m")),
@@ -2399,6 +2410,16 @@ def scale_grid(values: list[list[float]], factor: float) -> None:
         for col_index, value in enumerate(row):
             if value != NODATA:
                 values[row_index][col_index] = value * factor
+
+
+def copy_grid(values: list[list[float]]) -> list[list[float]]:
+    return [list(row) for row in values]
+
+
+def scaled_grid(values: list[list[float]], factor: float) -> list[list[float]]:
+    result = copy_grid(values)
+    scale_grid(result, factor)
+    return result
 
 
 def add_grid_into(target: list[list[float]], source: list[list[float]]) -> None:

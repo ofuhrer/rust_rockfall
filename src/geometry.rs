@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Spherical block used by the v0 computational model.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SphereBlock {
     pub radius_m: f64,
     pub mass_kg: f64,

@@ -87,6 +87,57 @@ class HazardLayerTests(unittest.TestCase):
         self.assertEqual(batch.samples, ())
         self.assertEqual(warnings, [])
 
+    def test_trajectory_csv_batch_reader_rejects_mixed_trajectory_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "mixed_trajectory.csv"
+            path.write_text(
+                "trajectory_id,time_s,x_m,y_m,z_m\n"
+                "trajectory_a,0.0,0.0,0.0,1.0\n"
+                "trajectory_b,0.1,1.0,0.0,1.0\n"
+            )
+            warnings: list[str] = []
+
+            with self.assertRaisesRegex(SystemExit, "multiple trajectory_id values"):
+                hazard.read_trajectory_sample_batch(path, warnings)
+
+    def test_hazard_layers_are_idempotent_and_do_not_mutate_counts(self) -> None:
+        grid = hazard.GridSpec(xmin=0.0, ymin=0.0, ncols=1, nrows=1, cell_size=1.0)
+        accumulator = hazard.HazardAccumulator(
+            grid=grid,
+            terrain=hazard.PlaneTerrain(z0=0.0, slope_x=0.0, slope_y=0.0),
+            block_radius_m=0.0,
+            statistics=hazard.HazardStatisticConfig(kinetic_energy_exceedance_j=(1.0,)),
+        )
+        for index in range(2):
+            accumulator.accumulate_trajectory(
+                hazard.TrajectorySampleBatch(
+                    path=Path(f"trajectory_{index}.csv"),
+                    trajectory_id=f"trajectory_{index}",
+                    samples=(
+                        hazard.TrajectorySample(
+                            x_m=0.5,
+                            y_m=0.5,
+                            z_m=1.0,
+                            kinetic_j=2.0,
+                            speed_mps=1.0,
+                        ),
+                    ),
+                )
+            )
+
+        first_layers, _ = accumulator.layers()
+        second_layers, _ = accumulator.layers()
+
+        def layer_value(layers: list[hazard.RasterLayer], key: str) -> float:
+            return next(layer for layer in layers if layer.key == key).values[0][0]
+
+        self.assertEqual(accumulator.reach[0][0], 2.0)
+        self.assertEqual(accumulator.kinetic_exceedance[1.0][0][0], 2.0)
+        self.assertEqual(layer_value(first_layers, "reach_probability"), 1.0)
+        self.assertEqual(layer_value(second_layers, "reach_probability"), 1.0)
+        self.assertEqual(layer_value(first_layers, "kinetic_energy_exceedance_1j"), 1.0)
+        self.assertEqual(layer_value(second_layers, "kinetic_energy_exceedance_1j"), 1.0)
+
     def test_deposition_batch_reader_preserves_coordinates_and_properties(self) -> None:
         warnings: list[str] = []
         batch = hazard.read_deposition_batch(FIXTURE / "deposition.csv", warnings)

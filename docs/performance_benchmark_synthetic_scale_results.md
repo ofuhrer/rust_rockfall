@@ -1,6 +1,11 @@
 # Synthetic Scale Performance Benchmark Results
 
-Status: measured local benchmark result. This document interprets the opt-in synthetic scale benchmark output from `scripts/run_performance_benchmark.py`. It does not change physics, validation semantics, or output formats.
+Status: historical measured local benchmark result from the May 5, 2026
+synthetic scale matrix. This document remains useful for trend context, but
+current routine benchmark profiles and default commands are defined in
+`docs/performance_benchmarking.md` and
+`docs/performance_benchmark_profile_reference.md`. It does not change physics,
+validation semantics, or output formats.
 
 ## Setup
 

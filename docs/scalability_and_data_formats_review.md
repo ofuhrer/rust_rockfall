@@ -1,6 +1,7 @@
 # Scalability And Data Formats Review
 
-Status: planning review for the v0.5.x workflow. This document proposes
+Status: historical planning review for the v0.5.x workflow with current
+v0.6.1 notes where implementation has moved on. This document proposes
 architecture and data-format changes only. It does not define new physics,
 change validation semantics, or make current outputs operational hazard products.
 
@@ -30,11 +31,11 @@ only reduced hazard layers are needed.
 | DEM terrain | Small ESRI ASCII grids, strict or clamped | Small fixtures and validation patches |
 | swisstopo terrain | Metadata strategy and sample metadata only | Future operational geodata input |
 | Release points | CSV observations or YAML single release | Validation/debug; not release-zone scale |
-| Release zones | Not implemented | Required for hazard mapping |
+| Release zones | Validation release-zone metadata, deterministic sampling, and pilot fixtures exist | Early pilot scaffolding; national derivation policy still required |
 | Block parameters | YAML `block` and optional release CSV mass/radius | Small scenario inputs |
 | Contact/scarring/roughness parameters | YAML case parameters | Explicit and reproducible, but not spatial fields |
 | Calibration parameters | Committed experiment summaries, not defaults | Research diagnostics only |
-| Scenario metadata | Case YAML plus diagnostics JSON plus optional `run_manifest_v1` sidecars | Partial; chunk manifests are still future work |
+| Scenario metadata | Case YAML plus diagnostics JSON plus optional `run_manifest_v1` sidecars, source/block policy templates, and hazard reducer chunk manifests | Partial; trajectory-execution chunk/resume manifests are still future work |
 
 ### Simulation Execution
 
@@ -79,6 +80,12 @@ deposition points for the small GeoJSON debug export. It can prefer
 which makes small-to-medium ensemble layers scientifically more meaningful than
 representative-trajectory layers.
 
+Current note: the hazard builder also has an opt-in local threaded reducer with
+deterministic chunk manifests and serial/chunk parity tests. This is a
+post-processing reducer only. It is not a parallel trajectory runner, not a
+resumeable execution workflow, not a tiled/distributed raster reducer, and not
+SLURM orchestration.
+
 ### Outputs
 
 | Output | Current format | Intended current use |
@@ -102,14 +109,14 @@ not a production-scale data layout.
 | Many small trajectory files | `ensemble_trajectories_dir`, one CSV per trajectory | Creates high metadata overhead, slow directory scans, poor HPC filesystem behavior, and expensive post-processing discovery | Tens of thousands to millions of trajectories | High | Urgent before large ensembles |
 | Many small impact-event files | `ensemble_impact_events_dir`, one CSV per trajectory with impacts | Contact-rich trajectories can produce large event logs and many files; empty files are skipped, complicating completeness checks | Large contact-rich ensembles | High | Urgent before impact-density production |
 | Text CSV parse/write cost | Rust/validation output and Python hazard input | CPU and I/O cost scale with text formatting, repeated headers, and string parsing | Millions of samples or repeated runs | High | Near-term |
-| In-memory hazard raster arrays | `build_hazard_layers.py` | Full raster arrays are still held in memory; there is no tiled reducer or tile merge | Large rasters and high-resolution Swiss tiles | High | Near-term for pilot scaling |
+| In-memory hazard raster arrays | `build_hazard_layers.py` | Full raster arrays are still held in memory; the local reducer is deterministic but not tiled/distributed | Large rasters and high-resolution Swiss tiles | High | Near-term for pilot scaling |
 | Representative trajectory defaults | Validation writes one full trajectory plus ensemble deposition by default | Reach, energy, jump-height layers can silently represent only one path unless full ensemble outputs are enabled | Any scientific ensemble interpretation | Medium | Already documented; keep warnings visible |
 | Full trajectory storage volume | Per-sample outputs for every ensemble member | Full trajectories are often unnecessary once reduced hazard layers are available | Large ensembles or long run durations | High | Near-term design issue |
 | Impact-event storage volume | Raw event ledger includes low-energy chatter | Raw logs are valuable for audit but too large for routine map production | Rough/contact-rich slopes, small time steps | Medium to high | Future for national scale; near-term for dense diagnostics |
 | Repeated DEM loading | Current APIs can reuse terrain within local loops, but workflows rebuild by case/script boundary | Large DEMs will be expensive to parse repeatedly; ASCII DEM is not tiled or indexed | Large DEM tiles or many worker processes | Medium | Future after real terrain ingestion |
 | ESRI ASCII terrain format | DEM fixtures and hazard grids | No CRS, inefficient text format, no tiling/compression | Pilot geodata exchange and large rasters | High | Near-term for Swiss pilot outputs |
 | Lack of CRS/reference-grid metadata | Hazard outputs and some case metadata | Products cannot be safely aligned or exchanged as Swiss geodata | Any LV95/LN02 pilot product | High | Urgent before Swiss pilot |
-| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; calibration and chunk manifests are still absent | Hard to track chunk IDs, partial completion, seed ranges across jobs, and reducer merge state | Multiple chunks/jobs/scenarios | High | Near-term |
+| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; hazard reducer chunk manifests exist; calibration and trajectory-execution chunk manifests are still absent | Hard to track simulation chunk IDs, partial completion, seed ranges across jobs, and resume state | Multiple chunks/jobs/scenarios | High | Near-term |
 | No restart/resume model | Validation and hazard scripts | Failed large jobs require manual inspection and rerun; partial outputs lack a formal completion record | Long ensembles and job arrays | High | Near-term |
 | Serial local ensemble orchestration | `simulate_ensemble` and validation loops | Deterministic but local; no chunk IDs, job partitions, or merge contracts | Many release zones or national domains | Medium to high | Future after manifest/chunk schema |
 | Python row-oriented processing | Hazard builder | Simple and flexible, but pure-Python loops and dict rows are slow for very large tables | Millions to billions of rows | Medium to high | Future after streaming design |
@@ -169,11 +176,12 @@ not a production-scale data layout.
   does not yet receive samples/events directly from the simulator or emit tiled
   partial reducer states.
 - `run_manifest_v1` sidecars now describe run outputs, file sizes, row counts,
-  config hashes, terrain source, warnings, and completion status, but there is
-  not yet a formal chunk manifest describing tile/job status, trajectory ID
-  ranges, reducer checksums, CRS, or calibration state.
-- There is no deterministic partial-reducer contract for merging hazard rasters
-  from many jobs.
+  config hashes, terrain source, warnings, and completion status. Hazard-layer
+  reducer chunk manifests exist for the local post-processing reducer, but
+  trajectory-execution chunk manifests describing job status, trajectory ID
+  ranges, CRS, or calibration state are still missing.
+- There is no deterministic tiled/distributed partial-reducer contract for
+  merging hazard rasters from many jobs.
 - Debug/report artifacts and production artifacts are not yet separated by
   schema or layout.
 - Output rasters are not aligned to a reference grid and do not carry CRS or
@@ -423,10 +431,10 @@ geospatial hazard layer.
 
 1. **Where will the current workflow break first?** The first breaking point is
    file-heavy full ensemble output: one CSV per trajectory and one CSV per
-   impact-event trajectory, followed by Python rereading all rows into memory.
-   At larger map scales, missing manifests and missing tiled reducers become
-   equally limiting because failed jobs cannot be resumed or merged
-   systematically.
+   impact-event trajectory, followed by Python rereading all rows. At larger
+   map scales, missing trajectory-execution chunk/resume manifests and missing
+   tiled reducers become equally limiting because failed jobs cannot be resumed
+   or merged systematically.
 
 2. **Which outputs are debug/development formats versus scalable formats?** CSV
    trajectories, impact CSV/JSON, diagnostics JSON, ASCII grids, GeoJSON, PNG,
