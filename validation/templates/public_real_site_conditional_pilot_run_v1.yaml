@@ -82,6 +82,30 @@ output_budget:
     - trajectory_count
     - release_cell_count
 
+run_evidence:
+  evidence_status: not_run
+  validation_manifest_path: null
+  hazard_manifest_path: null
+  conditional_curve_table_path: null
+  map_package_manifest_path: null
+  pilot_gis_package_manifest_path: null
+  reducer_chunk_manifest_dir: null
+  runtime_seconds: null
+  memory_peak_mb: null
+  output_file_count: null
+  output_total_bytes: null
+  trajectory_count: null
+  release_cell_count: null
+  convergence_diagnostics:
+    status: not_run
+    notes: []
+  artifact_checksums:
+    validation_manifest_sha256: null
+    hazard_manifest_sha256: null
+    conditional_curve_table_sha256: null
+    map_package_manifest_sha256: null
+    pilot_gis_package_manifest_sha256: null
+
 report_plan:
   report_path: docs/public_real_site_conditional_pilot_report_template.md
   allowed_classifications:

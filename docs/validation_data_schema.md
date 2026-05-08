@@ -650,9 +650,13 @@ YAML records validated geodata and source-scenario policy paths, frozen case
 and terrain/source-zone/scenario sidecars, physics defaults, random seed,
 gate-run scale, target scale, reducer mode, conditional thresholds, explicit
 grid, output roots, output budget, workflow gate statuses, and report
-classification. The committed template remains `template_not_run`; populated
-local copies belong in ignored pilot directories and generated outputs remain
-outside git.
+classification. Completed gate or target runs must also populate
+`run_evidence` with private validation/hazard output paths, runtime and
+output-volume metrics, convergence-diagnostic notes, and SHA-256 digests for
+the generated validation manifest, hazard manifest, conditional curve table,
+map-package manifest, and pilot GIS package manifest. The committed template
+remains `template_not_run`; populated local copies belong in ignored pilot
+directories and generated outputs remain outside git.
 
 For populated non-template run-freeze files,
 `scripts/validate_public_real_site_conditional_pilot_run.py

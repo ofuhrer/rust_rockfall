@@ -81,6 +81,23 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.PilotRunError, "small_gate_run_completed"):
             validator.validate_pilot_run(manifest)
 
+    def test_completed_gate_requires_run_evidence(self) -> None:
+        manifest = self.completed_gate_manifest()
+        manifest["run_evidence"]["evidence_status"] = "not_run"
+
+        with self.assertRaisesRegex(validator.PilotRunError, "matching run_evidence"):
+            validator.validate_pilot_run(manifest)
+
+    def test_completed_gate_accepts_share_safe_evidence(self) -> None:
+        validator.validate_pilot_run(self.completed_gate_manifest())
+
+    def test_completed_gate_rejects_invalid_artifact_checksum(self) -> None:
+        manifest = self.completed_gate_manifest()
+        manifest["run_evidence"]["artifact_checksums"]["hazard_manifest_sha256"] = "ABC123"
+
+        with self.assertRaisesRegex(validator.PilotRunError, "hazard_manifest_sha256"):
+            validator.validate_pilot_run(manifest)
+
     def predeclared_manifest(self) -> dict:
         manifest = copy.deepcopy(self.load_template())
         manifest["run_status"] = "predeclared_ready"
@@ -131,6 +148,50 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
             }
         )
         manifest["report_plan"]["current_classification"] = "inconclusive"
+        return manifest
+
+    def completed_gate_manifest(self) -> dict:
+        manifest = self.predeclared_manifest()
+        manifest["run_status"] = "gate_run_completed"
+        manifest["workflow_gates"].update(
+            {
+                "small_gate_run_completed": "pass",
+                "conditional_curves_generated": "pass",
+                "gis_package_generated": "pass",
+                "convergence_diagnostics_recorded": "pass",
+                "output_budget_recorded": "pass",
+                "visual_qa_recorded": "inconclusive",
+                "report_classification": "inconclusive",
+            }
+        )
+        manifest["run_evidence"].update(
+            {
+                "evidence_status": "gate_run_completed",
+                "validation_manifest_path": "validation/private/public_real_site_pilot_template/gate_run_manifest.json",
+                "hazard_manifest_path": "hazard/results/public_real_site_pilot_template/gate_run_manifest.json",
+                "conditional_curve_table_path": "hazard/results/public_real_site_pilot_template/gate_conditional_intensity_exceedance_curves.csv",
+                "map_package_manifest_path": "hazard/results/public_real_site_pilot_template/gate_map_package_manifest.json",
+                "pilot_gis_package_manifest_path": "hazard/results/public_real_site_pilot_template/gate_pilot_gis_package_manifest.json",
+                "reducer_chunk_manifest_dir": "hazard/results/public_real_site_pilot_template/chunks",
+                "runtime_seconds": 12.5,
+                "memory_peak_mb": 512.0,
+                "output_file_count": 8,
+                "output_total_bytes": 2048,
+                "trajectory_count": 4,
+                "release_cell_count": 2,
+                "convergence_diagnostics": {
+                    "status": "inconclusive",
+                    "notes": ["gate run completed; target-scale convergence is not established"],
+                },
+                "artifact_checksums": {
+                    "validation_manifest_sha256": "a" * 64,
+                    "hazard_manifest_sha256": "b" * 64,
+                    "conditional_curve_table_sha256": "c" * 64,
+                    "map_package_manifest_sha256": "d" * 64,
+                    "pilot_gis_package_manifest_sha256": "e" * 64,
+                },
+            }
+        )
         return manifest
 
 

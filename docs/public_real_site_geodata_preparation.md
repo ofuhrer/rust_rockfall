@@ -38,8 +38,11 @@ The Phase 6 run-freeze template is also intentionally not run. It records the
 geodata manifest, source-zone/block-scenario policy, benchmark case, terrain
 metadata, source-zone sidecar, scenario table, random seed, gate scale, target
 scale, thresholds, explicit grid, output budget, and report classification
-before any local pilot execution. It is the gate that prevents tuning or
-claim-language drift after outputs are inspected.
+before any local pilot execution. Completed gate or target runs must also fill
+the `run_evidence` block with share-safe paths, checksums, runtime, output
+counts, and convergence-diagnostic status for the generated private artifacts.
+It is the gate that prevents tuning or claim-language drift after outputs are
+inspected.
 
 ## Ignored Local Layout
 
@@ -107,8 +110,12 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python \
 For a real local run, copy the template to an ignored pilot directory and use
 the same validator after all freeze fields are populated. The validator requires
 frozen inputs, nonnegative thresholds, explicit grid metadata, local output
-budgets, and pass/no-go/inconclusive gate statuses. It does not run the
-simulator or hazard builder and does not create generated products.
+budgets, and pass/no-go/inconclusive gate statuses. When a run is marked
+`gate_run_completed` or `target_run_completed`, it also requires `run_evidence`
+paths under the ignored validation/hazard output roots, recorded runtime and
+output-volume metrics, convergence notes, and SHA-256 digests for the generated
+manifests/tables. It does not run the simulator or hazard builder and does not
+create or commit generated products.
 
 After a non-template freeze file validates, print the dry-run command plan:
 

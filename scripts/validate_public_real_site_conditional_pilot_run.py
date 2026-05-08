@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -27,6 +28,24 @@ SUPPORTED_RUN_STATUSES = {
     "inconclusive",
 }
 SUPPORTED_GATE_STATUSES = {"not_run", "pass", "no-go", "inconclusive"}
+SUPPORTED_EVIDENCE_STATUSES = {"not_run", "gate_run_completed", "target_run_completed", "no-go", "inconclusive"}
+COMPLETED_RUN_STATUSES = {"gate_run_completed", "target_run_completed"}
+REQUIRED_EVIDENCE_PATHS = (
+    "validation_manifest_path",
+    "hazard_manifest_path",
+    "conditional_curve_table_path",
+    "map_package_manifest_path",
+    "pilot_gis_package_manifest_path",
+    "reducer_chunk_manifest_dir",
+)
+REQUIRED_ARTIFACT_CHECKSUMS = (
+    "validation_manifest_sha256",
+    "hazard_manifest_sha256",
+    "conditional_curve_table_sha256",
+    "map_package_manifest_sha256",
+    "pilot_gis_package_manifest_sha256",
+)
+HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 REQUIRED_UNSUPPORTED_CLAIMS = {
     "annual_frequency",
     "return_period",
@@ -113,6 +132,7 @@ def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = No
     )
     validate_workflow_gates(require_mapping(manifest.get("workflow_gates"), "workflow_gates"), run_status)
     validate_output_budget(require_mapping(manifest.get("output_budget"), "output_budget"), run_status)
+    validate_run_evidence(require_mapping(manifest.get("run_evidence"), "run_evidence"), run_status)
     validate_report_plan(require_mapping(manifest.get("report_plan"), "report_plan"), run_status)
     validate_claim_boundary(require_mapping(manifest.get("claim_boundary"), "claim_boundary"))
 
@@ -438,6 +458,86 @@ def validate_output_budget(budget: dict[str, Any], run_status: str) -> None:
     if run_status != "template_not_run":
         require_int(budget.get("max_private_file_count"), "output_budget.max_private_file_count", minimum=1)
         require_int(budget.get("max_private_total_bytes"), "output_budget.max_private_total_bytes", minimum=1)
+
+
+def validate_run_evidence(evidence: dict[str, Any], run_status: str) -> None:
+    evidence_status = require_text(evidence.get("evidence_status"), "run_evidence.evidence_status")
+    require(
+        evidence_status in SUPPORTED_EVIDENCE_STATUSES,
+        f"run_evidence.evidence_status must be one of {sorted(SUPPORTED_EVIDENCE_STATUSES)}",
+    )
+
+    if run_status in COMPLETED_RUN_STATUSES:
+        require(
+            evidence_status == run_status,
+            f"completed run_status {run_status} requires matching run_evidence.evidence_status",
+        )
+        validate_completed_run_evidence(evidence)
+        return
+
+    if run_status in {"template_not_run", "predeclared_ready"}:
+        require(evidence_status == "not_run", f"{run_status} manifests must keep run_evidence.evidence_status not_run")
+        for key in set(REQUIRED_EVIDENCE_PATHS) | REQUIRED_BUDGET_METRICS:
+            require(evidence.get(key) is None, f"{run_status} manifests must keep run_evidence.{key} null")
+        checksums = require_mapping(evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
+        for key in REQUIRED_ARTIFACT_CHECKSUMS:
+            require(checksums.get(key) is None, f"{run_status} manifests must keep run_evidence.artifact_checksums.{key} null")
+        diagnostics = require_mapping(
+            evidence.get("convergence_diagnostics"),
+            "run_evidence.convergence_diagnostics",
+        )
+        require(
+            diagnostics.get("status") == "not_run",
+            f"{run_status} manifests must keep convergence diagnostics not_run",
+        )
+
+
+def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
+    validation_manifest_path = require_text(
+        evidence.get("validation_manifest_path"),
+        "run_evidence.validation_manifest_path",
+    )
+    require(
+        validation_manifest_path.startswith("validation/"),
+        "run_evidence.validation_manifest_path must stay under validation/",
+    )
+    for key in (
+        "hazard_manifest_path",
+        "conditional_curve_table_path",
+        "map_package_manifest_path",
+        "pilot_gis_package_manifest_path",
+        "reducer_chunk_manifest_dir",
+    ):
+        value = require_text(evidence.get(key), f"run_evidence.{key}")
+        require(value.startswith("hazard/results/"), f"run_evidence.{key} must stay under hazard/results/")
+
+    for key in ("runtime_seconds", "memory_peak_mb"):
+        value = require_number(evidence.get(key), f"run_evidence.{key}")
+        require(math.isfinite(value) and value >= 0.0, f"run_evidence.{key} must be finite and nonnegative")
+    for key in ("output_file_count", "output_total_bytes", "trajectory_count", "release_cell_count"):
+        require_int(evidence.get(key), f"run_evidence.{key}", minimum=1)
+
+    diagnostics = require_mapping(
+        evidence.get("convergence_diagnostics"),
+        "run_evidence.convergence_diagnostics",
+    )
+    status = require_text(diagnostics.get("status"), "run_evidence.convergence_diagnostics.status")
+    require(
+        status in {"pass", "no-go", "inconclusive"},
+        "completed run_evidence.convergence_diagnostics.status must be pass, no-go, or inconclusive",
+    )
+    notes = require_list(diagnostics.get("notes"), "run_evidence.convergence_diagnostics.notes")
+    require(notes, "completed run_evidence.convergence_diagnostics.notes must not be empty")
+    for index, note in enumerate(notes):
+        require_text(note, f"run_evidence.convergence_diagnostics.notes[{index}]")
+
+    checksums = require_mapping(evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
+    for key in REQUIRED_ARTIFACT_CHECKSUMS:
+        checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
+        require(
+            HEX_SHA256_RE.fullmatch(checksum) is not None,
+            f"run_evidence.artifact_checksums.{key} must be a lowercase SHA-256 hex digest",
+        )
 
 
 def validate_report_plan(report: dict[str, Any], run_status: str) -> None:
