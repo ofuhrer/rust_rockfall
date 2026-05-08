@@ -176,6 +176,11 @@ The inactive block/release probability evidence contract in
 blocker by defining conditional block-scenario and release-cell probability
 records and rejection checks, but the selected template still records
 `no_accepted_block_release_probability_evidence`.
+The inactive physical frequency reducer precondition contract in
+`docs/physical_frequency_reducer_preconditions.md` closes the next design
+blocker by defining overlap-adjusted reducer and uncertainty-propagation
+preconditions and rejection checks, but the selected template still records
+`preconditions_not_satisfied`.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -737,7 +742,7 @@ gate.
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
-| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency and block/release probability evidence contracts now exist, but accepted evidence and reducer support remain deferred. |
+| Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, and reducer-precondition contracts now exist, but accepted evidence and implemented reducer support remain deferred. |
 
 ## Explicit Deferrals
 

@@ -150,6 +150,11 @@ default-model decision.
   conditional sampling weights separate from physical probability evidence,
   keep calibration datasets separate from validation datasets, and not treat
   swisstopo input geodata as validation evidence by itself.
+- **Future reducer and uncertainty preconditions:** overlap-adjusted reducer
+  and uncertainty-propagation precondition records are governed by
+  `docs/physical_frequency_reducer_preconditions.md`. They must preserve
+  calibration/validation separation and must not turn swisstopo input geodata
+  into validation evidence.
 
 ## Inconsistencies and Gaps
 
@@ -196,6 +201,10 @@ default-model decision.
   current conditional sampling weights and from swisstopo input geodata. A
   block/release record may cite swisstopo for geometry provenance or local
   interpretation context, but not as validation evidence by itself.
+- Keep any future overlap-adjusted reducer or uncertainty-propagation record
+  separate from current conditional reducer outputs. It may require swisstopo
+  geometry provenance, but not use swisstopo input geodata as validation
+  evidence by itself.
 - Do not commit large swisstopo raw tiles or imagery; use metadata records and
   small intentional fixtures only.
 - Do not claim operational hazard validity from any single dataset.

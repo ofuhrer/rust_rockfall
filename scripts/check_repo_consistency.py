@@ -154,6 +154,7 @@ def main() -> int:
     errors.extend(check_physical_source_frequency_design_gate())
     errors.extend(check_source_frequency_evidence_contract())
     errors.extend(check_block_release_probability_evidence_contract())
+    errors.extend(check_physical_frequency_reducer_preconditions())
 
     if errors:
         for error in errors:
@@ -460,6 +461,78 @@ def check_block_release_probability_evidence_contract() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_block_release_probability_evidence.py omits {test_name}")
+    return errors
+
+
+def check_physical_frequency_reducer_preconditions() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/physical_frequency_reducer_preconditions.md",
+        ROOT / "validation/templates/physical_frequency_reducer_preconditions_v1.yaml",
+        ROOT / "scripts/validate_physical_frequency_reducer_preconditions.py",
+        ROOT / "tests/test_physical_frequency_reducer_preconditions.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(
+                f"physical frequency reducer precondition path is missing: {path.relative_to(ROOT)}"
+            )
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/physical_frequency_reducer_preconditions.md").read_text()
+    template = (ROOT / "validation/templates/physical_frequency_reducer_preconditions_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_physical_frequency_reducer_preconditions.py").read_text()
+    tests = (ROOT / "tests/test_physical_frequency_reducer_preconditions.py").read_text()
+
+    for term in (
+        "Status: inactive precondition contract",
+        "overlap-adjusted reducer and uncertainty-propagation conditions",
+        "preconditions_not_satisfied",
+        "mutually_exclusive_partition",
+        "documented_overlap_adjustment",
+        "swisstopo",
+    ):
+        if term not in doc:
+            errors.append(f"docs/physical_frequency_reducer_preconditions.md omits {term!r}")
+
+    for term in (
+        "schema_version: physical_frequency_reducer_preconditions_v1",
+        "record_status: preconditions_not_satisfied",
+        "prototype_authorized: false",
+        "precondition_mode: physical_frequency_reducer_preconditions_only",
+        "annual_or_physical_output_supported: false",
+        "source_frequency_evidence_v1",
+        "block_release_probability_evidence_v1",
+    ):
+        if term not in template:
+            errors.append(
+                "validation/templates/physical_frequency_reducer_preconditions_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_physical_frequency_reducer_preconditions",
+        "REQUIRED_UNCERTAINTY_COMPONENTS",
+        "validate_overlap_policy",
+        "validate_reducer_contract",
+        "swisstopo geodata must not be listed as validation evidence",
+        "prototype_authorized must be false",
+    ):
+        if symbol not in validator:
+            errors.append(
+                f"scripts/validate_physical_frequency_reducer_preconditions.py omits {symbol!r}"
+            )
+
+    for test_name in (
+        "test_selected_template_records_unsatisfied_preconditions",
+        "test_accepts_complete_candidate_for_design_review_only",
+        "test_rejects_missing_overlap_policy",
+        "test_rejects_nondeterministic_reducer_merge",
+        "test_rejects_missing_uncertainty_component",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_physical_frequency_reducer_preconditions.py omits {test_name}")
     return errors
 
 
@@ -1179,6 +1252,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/physical_source_frequency_design_gate.md",
         ROOT / "docs/source_frequency_evidence_contract.md",
         ROOT / "docs/block_release_probability_evidence_contract.md",
+        ROOT / "docs/physical_frequency_reducer_preconditions.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
     ]

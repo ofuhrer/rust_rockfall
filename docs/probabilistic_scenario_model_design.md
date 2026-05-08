@@ -32,6 +32,9 @@ The inactive source-rate evidence schema is documented separately in
 The inactive block-scenario and release-cell probability evidence schema is
 documented separately in
 `docs/block_release_probability_evidence_contract.md`.
+The inactive overlap-adjusted reducer and uncertainty-propagation precondition
+schema is documented in
+`docs/physical_frequency_reducer_preconditions.md`.
 
 ## Scenario Identity
 
@@ -423,6 +426,10 @@ by evidence-backed physical probabilities in a future schema.
 inactive evidence template for those future block and release-cell probability
 records. Its selected status records that no accepted block/release probability
 evidence exists for current products.
+`validation/templates/physical_frequency_reducer_preconditions_v1.yaml` is the
+inactive precondition template for future overlap-adjusted reducers and
+uncertainty propagation. Its selected status records that those preconditions
+are not yet satisfied for current products.
 
 ### Current Unweighted Validation Behavior
 

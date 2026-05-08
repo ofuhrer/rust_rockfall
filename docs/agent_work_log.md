@@ -2179,3 +2179,66 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Define overlap-adjusted reducer and uncertainty
   propagation preconditions for future annual/physical products, still without
   enabling runtime annual or physical products.
+
+### M036
+
+- Milestone id: M036.
+- Roadmap item: Resolve physical/source-frequency design-gate blockers:
+  overlap-adjusted reducer and uncertainty-propagation preconditions.
+- Hypothesis/objective: Close the reducer/uncertainty design blocker by
+  defining an inactive precondition record contract and rejection checks, while
+  keeping annual/physical prototype authorization false.
+- Initial gap assessment: Source-frequency and block/release probability
+  evidence contracts existed, but the repository still lacked a concrete
+  template and validator for overlap policy selection, double-counting guards,
+  deterministic reducer merge preconditions, required uncertainty components,
+  output summary requirements, and calibration/validation separation.
+- Files changed:
+  `docs/physical_frequency_reducer_preconditions.md`,
+  `validation/templates/physical_frequency_reducer_preconditions_v1.yaml`,
+  `scripts/validate_physical_frequency_reducer_preconditions.py`,
+  `tests/test_physical_frequency_reducer_preconditions.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/dataset_strategy.md`,
+  `docs/validation_plan.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added
+  `physical_frequency_reducer_preconditions_v1` as an inactive precondition
+  contract with a selected template recording `preconditions_not_satisfied`.
+  The validator accepts complete candidate records only for design review and
+  rejects missing overlap policies, missing double-counting guards,
+  non-deterministic reducer merge preconditions, active annual/physical output
+  support, missing uncertainty components, missing uncertainty output
+  summaries, calibration/validation dataset overlap, swisstopo geodata as
+  validation evidence, misleading claims, and any prototype authorization.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_physical_frequency_reducer_preconditions.py validation/templates/physical_frequency_reducer_preconditions_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_physical_frequency_reducer_preconditions`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, trajectory execution, hazard reducer,
+  annual frequency runtime support, physical probability runtime support,
+  risk/exposure semantics, generated products, or raw/processed swisstopo
+  geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; the reducer/uncertainty precondition
+  blocker is resolved at the inactive contract level, but Target 10 remains
+  blocked by missing accepted evidence, implemented overlap-adjusted reducers,
+  implemented uncertainty propagation, and validation/calibration review.
+- Next proposed milestone: Define the validation/calibration review gate for
+  future annual/physical products, still without enabling runtime annual or
+  physical products.

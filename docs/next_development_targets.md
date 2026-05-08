@@ -461,6 +461,13 @@ Estimated order: 10.
   candidate conditional block-scenario and release-cell probability evidence
   records while keeping the selected template at
   `no_accepted_block_release_probability_evidence`.
+- The overlap-adjusted reducer and uncertainty-propagation blocker is
+  partially resolved as an inactive precondition contract.
+  `docs/physical_frequency_reducer_preconditions.md`,
+  `validation/templates/physical_frequency_reducer_preconditions_v1.yaml`, and
+  `scripts/validate_physical_frequency_reducer_preconditions.py` define and
+  validate future reducer preconditions while keeping the selected template at
+  `preconditions_not_satisfied`.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -485,6 +492,6 @@ Estimated order: 10.
    it; current selected-domain decision is no-go.
 6. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
-   overlap-adjusted reducers, uncertainty propagation, and
-   validation/calibration review.
+   implemented overlap-adjusted reducers, implemented uncertainty propagation,
+   and validation/calibration review.
 7. Implement an annual/physical prototype only if the design gate passes.

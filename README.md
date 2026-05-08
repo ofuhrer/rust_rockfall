@@ -115,6 +115,7 @@ Core documentation:
 - `docs/validation_maturity_framework.md`
 - `docs/source_frequency_evidence_contract.md`
 - `docs/block_release_probability_evidence_contract.md`
+- `docs/physical_frequency_reducer_preconditions.md`
 - `docs/benchmark_catalog.md`
 - `docs/datasets.md`
 - `docs/validation_data_schema.md`

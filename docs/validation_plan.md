@@ -31,6 +31,10 @@ governed by `docs/block_release_probability_evidence_contract.md`. Those
 records must not reuse conditional sampling weights as physical probability
 evidence, and must keep calibration dataset ids separate from validation
 dataset ids.
+Future overlap-adjusted reducer and uncertainty-propagation preconditions are
+governed by `docs/physical_frequency_reducer_preconditions.md`. Those records
+must keep calibration, uncertainty design, and validation review separate
+before any later prototype can use frequency products.
 
 ## Commands
 
@@ -83,6 +87,9 @@ interpretation; it only defines fields and rejection checks for future review.
 The inactive block/release probability evidence template likewise does not
 change current products; it only defines fields and rejection checks for future
 review.
+The inactive physical frequency reducer precondition template also does not
+change current products; it only defines overlap, deterministic merge, and
+uncertainty-propagation checks for future review.
 
 Mel de la Niva is registered as an external high-energy/generalization
 benchmark. Its public Zenodo data are large and remain ignored locally. The

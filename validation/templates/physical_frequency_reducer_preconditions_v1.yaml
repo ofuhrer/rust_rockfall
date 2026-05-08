@@ -1,0 +1,56 @@
+schema_version: physical_frequency_reducer_preconditions_v1
+record_id: physical_frequency_reducer_preconditions_template_v1
+record_status: preconditions_not_satisfied
+prototype_authorized: false
+operational_status: research_diagnostic
+precondition_mode: physical_frequency_reducer_preconditions_only
+source_zone_scope:
+  source_zone_ids: []
+  geometry_versions_required: true
+  geometry_hashes_required: true
+  crs_epsg: 2056
+  vertical_datum: LN02
+overlap_policy:
+  status: not_implemented
+  selected_policy: null
+  allowed_policies:
+    - mutually_exclusive_partition
+    - documented_overlap_adjustment
+  double_counting_guard_required: true
+  shared_release_cell_rule: required_before_prototype
+  reducer_reports_overlap_adjustment: true
+reducer_contract:
+  status: not_implemented
+  deterministic_merge_required: true
+  order_independent_required: true
+  chunk_manifest_required: true
+  output_unit_support_active: false
+  annual_or_physical_output_supported: false
+  required_input_records:
+    - source_frequency_evidence_v1
+    - block_release_probability_evidence_v1
+uncertainty_propagation:
+  status: not_implemented
+  propagation_method: null
+  required_components:
+    - source_event_rate_uncertainty
+    - block_scenario_probability_uncertainty
+    - release_cell_probability_uncertainty
+    - trajectory_aleatory_uncertainty
+    - terrain_model_form_uncertainty
+  output_summary_fields: []
+  seed_provenance_required: true
+  calibration_uncertainty_separated_from_validation: true
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - overlap-adjusted reducers are not implemented for annual or physical products
+  - uncertainty propagation is not implemented for annual or physical products
+  - current reducers remain conditional diagnostic or sampling-weighted conditional tools
+  - swisstopo terrain remains input geodata, not validation evidence
