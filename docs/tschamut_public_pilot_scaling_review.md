@@ -50,10 +50,27 @@ External `/usr/bin/time` sidecars:
 - Primary bottleneck: `hazard_conditional_curve_output_volume`
 - Largest hazard output kind: `conditional_intensity_exceedance_curves`
 - Largest hazard output bytes: `117305412`
-- Next action: optimize or gate conditional-curve table and raster output modes before increasing ensemble size.
+- Next action: use or compare `--conditional-curve-export summary-only` before
+  increasing ensemble size; keep full curve-table export only for small debug
+  or review runs that require per-cell curve rows.
 
 Do not add MPI, GPU, SLURM orchestration, annual frequency, physical
 probability, or ensemble-size increases from this evidence alone.
+
+## Output-Volume Control
+
+`scripts/build_hazard_layers.py` now supports:
+
+```bash
+--conditional-curve-export summary-only
+```
+
+The default remains `full`, which writes the existing
+`*_conditional_intensity_exceedance_curves.csv` table. The `summary-only` mode
+keeps conditional exceedance rasters and metadata summaries but omits the large
+curve CSV table from the output manifest. This is the recommended pre-scale
+gate for Tschamut until a future task proves that full curve-table export is
+needed and affordable at larger ensemble sizes.
 
 ## Claim Boundary
 

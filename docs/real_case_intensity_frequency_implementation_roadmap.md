@@ -71,17 +71,18 @@ Already available:
   validation, hazard, GIS-package, and reducer manifests, identifying
   conditional-curve/raster output volume as the next bottleneck before
   ensemble-size increases;
+- opt-in `--conditional-curve-export summary-only` hazard-build mode that keeps
+  threshold rasters and metadata summaries while omitting the large per-cell
+  conditional curve CSV table;
 - diagnostic pilot GIS package manifest behind explicit GeoTIFF export;
 - deterministic local hazard-layer reducer chunks through `--reducer-workers`;
 - strong verification and deterministic seed/order checks.
 
 Main remaining pieces, in priority order:
 
-1. address the local output-volume bottleneck, especially conditional-curve and
-   raster outputs, before increasing ensemble size;
-2. increase ensemble size toward the target trajectory count only after the
+1. increase ensemble size toward the target trajectory count only after the
    small gate run is reproducible, interpreted, and has convergence diagnostics;
-3. defer physical/annual frequency semantics until source-frequency and
+2. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -127,10 +128,14 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   times, row/file/byte counts, deterministic reducer metadata, memory-sidecar
   status, and a no-default-change decision. This evidence depends on ignored
   local outputs and is reconciled with the authoritative run-freeze.
+- Conditional-curve output-volume control is available as an explicit opt-in.
+  `--conditional-curve-export summary-only` keeps the existing rasters and
+  metadata summaries but skips the large per-cell curve CSV table. The default
+  remains full export for small debug/review workflows.
 
 The immediate roadmap task is therefore not another new feature. It is to
-address the local conditional-curve and raster output-volume bottleneck before
-increasing ensemble size.
+evaluate whether a larger ensemble is justified and feasible with the selected
+frozen inputs and output-volume controls.
 
 ## Phase 0: Roadmap And Claim Hygiene
 
@@ -420,10 +425,12 @@ selected-pilot local manifest-summary evidence now recorded. The
 manifests for current hazard products. `scripts/summarize_pilot_scaling.py` and
 `docs/tschamut_public_pilot_scaling_review.md` summarize ignored local gate
 outputs and identify conditional-curve/raster output volume as the next
-bottleneck. Remaining gaps are reconciliation with the authoritative
-run-freeze, output-mode optimization or gating before larger ensembles,
-chunk/resume contracts for trajectory/event outputs, optional memory sidecars,
-and measured single-node performance at larger ensemble sizes.
+bottleneck. `scripts/build_hazard_layers.py --conditional-curve-export
+summary-only` now provides an opt-in no-default-change gate for larger
+pre-scale runs that need threshold rasters and metadata summaries without the
+large per-cell curve CSV table. Remaining gaps are raster-output-mode
+optimization, chunk/resume contracts for trajectory/event outputs, optional
+memory sidecars, and measured single-node performance at larger ensemble sizes.
 
 Implementation work:
 
@@ -632,16 +639,16 @@ The order below supersedes the older phase-number order for near-term work.
 The selected-domain manifest, selected source/scenario policy, selected
 DEM-sensitivity gate, and selected conditional gate evidence are complete at
 the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
-`inconclusive`, and forest/obstacle omission is explicitly `limiting`. The
-current bottleneck is conditional-curve and raster output volume before
-scaling.
+`inconclusive`, forest/obstacle omission is explicitly `limiting`, and
+conditional-curve table export now has an opt-in summary-only mode. The current
+bottleneck is convergence and scale-up evidence before target-size ensembles.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
 | 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze, GIS review, scaling review, and conditional gate report needed one authoritative state. | Complete: the processed DEM and local ignored outputs were regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/memory/output metrics, and GIS review references are reflected consistently in the run-freeze and reports with `inconclusive` non-operational classification. |
 | 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, and confirms no obstacle physics or tuning change. |
-| 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Output modes, summaries, or gates are designed and tested so larger ensembles do not produce unmanageable conditional-curve/raster artifacts by default. |
+| 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the small gate is reproducible and scientifically interpretable. | Convergence diagnostics show whether increasing toward roughly 10,000 trajectories per release zone is feasible and useful for the selected domain. |
 | 6 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Frequency units, source/block frequency inputs, uncertainty, overlap rules, schemas, and rejection tests are specified. |
 | 7 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |

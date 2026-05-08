@@ -91,6 +91,22 @@ class ConditionalCurveRow:
 
 
 @dataclass(frozen=True)
+class ConditionalCurveExportConfig:
+    mode: str = "full"
+
+    @property
+    def write_table(self) -> bool:
+        return self.mode == "full"
+
+    def as_metadata(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "csv_table_written": self.write_table,
+            "annualized": False,
+        }
+
+
+@dataclass(frozen=True)
 class HazardStatisticConfig:
     kinetic_energy_exceedance_j: tuple[float, ...] = ()
     jump_height_exceedance_m: tuple[float, ...] = ()
@@ -996,6 +1012,15 @@ def main_with_args(argv: list[str] | None = None) -> int:
             "reach and exceedance probability layers"
         ),
     )
+    parser.add_argument(
+        "--conditional-curve-export",
+        choices=["full", "summary-only"],
+        help=(
+            "conditional intensity-exceedance curve export mode; full writes the "
+            "per-cell CSV table, summary-only records metadata without writing "
+            "the large curve table"
+        ),
+    )
     parser.add_argument("--map-product-id", help="optional Phase 1 map product id for hazard-map package metadata")
     parser.add_argument(
         "--probability-mode",
@@ -1106,6 +1131,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     probability_config = parse_hazard_probability(case)
     map_package_config = parse_hazard_map_package(case, args)
     raster_export_config = parse_raster_export_config(case, args)
+    conditional_curve_export = parse_conditional_curve_export(case, args)
     pilot_gis_package_config = parse_pilot_gis_package(case, args, raster_export_config)
 
     explicit_grid = parse_explicit_grid(args)
@@ -1192,6 +1218,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
         map_package_state,
         raster_export_config,
+        conditional_curve_export,
         conditional_curve_rows,
     )
     write_core_hazard_outputs(
@@ -1203,6 +1230,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         metadata,
         case,
         raster_export_config,
+        conditional_curve_export,
         conditional_curve_rows,
     )
     manifest_metadata = dict(metadata)
@@ -1235,6 +1263,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
         map_package_state,
         raster_export_config,
+        conditional_curve_export,
         total_wall_seconds=time.perf_counter() - total_started,
         accumulation_seconds=accumulation_seconds,
         core_output_write_seconds=core_output_write_seconds,
@@ -1418,6 +1447,19 @@ def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -
         )
     compression = "none"
     return RasterExportConfig(geotiff=geotiff, cog=False, compression=compression)
+
+
+def parse_conditional_curve_export(
+    case: dict[str, Any],
+    args: argparse.Namespace,
+) -> ConditionalCurveExportConfig:
+    raw = case.get("conditional_curve_export") or case.get("hazard_output_volume") or {}
+    if not isinstance(raw, dict):
+        raise SystemExit("conditional_curve_export must be a mapping")
+    mode = args.conditional_curve_export or raw.get("conditional_curve_export") or raw.get("mode") or "full"
+    if mode not in {"full", "summary-only"}:
+        raise SystemExit("conditional_curve_export.mode must be full or summary-only")
+    return ConditionalCurveExportConfig(mode=str(mode))
 
 
 def parse_pilot_gis_package(
@@ -3010,16 +3052,19 @@ def write_conditional_intensity_exceedance_curves(
             )
 
 
-def summarize_conditional_curve_rows(rows: list[ConditionalCurveRow]) -> dict[str, Any]:
+def summarize_conditional_curve_rows(
+    rows: list[ConditionalCurveRow],
+    export_config: ConditionalCurveExportConfig,
+) -> dict[str, Any]:
     if not rows:
-        return {"enabled": False, "row_count": 0}
+        return {"enabled": False, "row_count": 0, **export_config.as_metadata()}
     return {
         "enabled": True,
         "schema_version": "conditional_intensity_exceedance_curves_v1",
         "row_count": len(rows),
         "intensity_measures": sorted({row.intensity_measure for row in rows}),
         "probability_modes": sorted({row.probability_mode for row in rows}),
-        "annualized": False,
+        **export_config.as_metadata(),
     }
 
 
@@ -3035,6 +3080,7 @@ def build_metadata(
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
     raster_exports: RasterExportConfig,
+    conditional_curve_export: ConditionalCurveExportConfig,
     conditional_curve_rows: list[ConditionalCurveRow],
 ) -> dict[str, Any]:
     weighted_layer_names = [
@@ -3066,7 +3112,10 @@ def build_metadata(
         "hazard_statistics": statistic_config.as_dict(),
         "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
-        "conditional_intensity_exceedance_curves": summarize_conditional_curve_rows(conditional_curve_rows),
+        "conditional_intensity_exceedance_curves": summarize_conditional_curve_rows(
+            conditional_curve_rows,
+            conditional_curve_export,
+        ),
         "raster_exports": raster_exports.as_metadata(),
         "layer_semantics": layer_semantics,
         "layers": [
@@ -3198,11 +3247,12 @@ def write_core_hazard_outputs(
     metadata: dict[str, Any],
     case: dict[str, Any],
     raster_exports: RasterExportConfig,
+    conditional_curve_export: ConditionalCurveExportConfig,
     conditional_curve_rows: list[ConditionalCurveRow],
 ) -> None:
     write_layers(output_dir, prefix, grid, layers)
     write_geotiff_layers(output_dir, prefix, grid, layers, case, raster_exports)
-    if conditional_curve_rows:
+    if conditional_curve_rows and conditional_curve_export.write_table:
         write_conditional_intensity_exceedance_curves(
             output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
             conditional_curve_rows,
@@ -3385,6 +3435,7 @@ def build_hazard_manifest(
     probability: HazardProbabilityState | None,
     map_package: HazardMapPackageState | None,
     raster_exports: RasterExportConfig,
+    conditional_curve_export: ConditionalCurveExportConfig,
     *,
     total_wall_seconds: float,
     accumulation_seconds: float,
@@ -3402,7 +3453,7 @@ def build_hazard_manifest(
         if raster_exports.geotiff:
             outputs.append(geotiff_output_manifest_entry(output_dir / f"{prefix}_{layer.key}.tif", layer, grid, case))
     curves = metadata.get("conditional_intensity_exceedance_curves") or {}
-    if curves.get("enabled"):
+    if curves.get("enabled") and conditional_curve_export.write_table:
         outputs.append(
             output_manifest_entry(
                 output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",

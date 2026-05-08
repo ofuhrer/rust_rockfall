@@ -125,6 +125,14 @@ not a production-scale data layout.
 | Filesystem cleanup and staging risk | Ignored result directories | Many generated products increase clutter and accidental staging risk | Regular large experiments | Medium | Near-term guardrails |
 | Deterministic reduction of maxima/percentiles | Future hazard layers | Merging maxima is easy; percentiles/exceedances need defined sketches or histograms | Scenario uncertainty and production intensity layers | Medium | Future, before percentile products |
 
+The selected Tschamut pilot identified the full per-cell conditional
+intensity-exceedance curve CSV as the largest local hazard output. The current
+mitigation is an explicit no-default-change mode:
+`scripts/build_hazard_layers.py --conditional-curve-export summary-only`. It
+keeps threshold rasters and metadata summaries but skips the large curve table.
+Use that mode for pre-scale gate runs unless the review question specifically
+requires per-cell curve rows.
+
 ## Data-Format Assessment
 
 ### Current Formats

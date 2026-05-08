@@ -725,6 +725,46 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(semantics["numerator"], "estimated standard error of trajectory-level probability")
             self.assertEqual(semantics["denominator"], "supplied trajectory count")
 
+    def test_conditional_curve_summary_only_suppresses_large_curve_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--kinetic-energy-exceedance-j",
+                        "10",
+                        "--conditional-curve-export",
+                        "summary-only",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            curve_path = output_dir / "hazard_fixture_plane_conditional_intensity_exceedance_curves.csv"
+            self.assertFalse(curve_path.exists())
+            metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            curves = metadata["conditional_intensity_exceedance_curves"]
+            self.assertTrue(curves["enabled"])
+            self.assertEqual(curves["mode"], "summary-only")
+            self.assertFalse(curves["csv_table_written"])
+            self.assertGreater(curves["row_count"], 0)
+            self.assertFalse(
+                any(output["kind"] == "conditional_intensity_exceedance_curves" for output in manifest["outputs"])
+            )
+            self.assertTrue(
+                any(output["path"].endswith("_kinetic_energy_exceedance_10j.csv") for output in manifest["outputs"])
+            )
+
     def test_sampling_weighted_layers_equal_unweighted_when_weights_are_uniform(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)

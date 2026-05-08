@@ -1753,3 +1753,51 @@ Planning only; these milestones do not implement roadmap item content yet.
   scoping-classification level.
 - Next proposed milestone: Address the conditional-curve/raster output-volume
   bottleneck before increasing ensemble size.
+
+### M028
+
+- Milestone id: M028.
+- Roadmap item: Target 4. Address conditional-curve/raster output-volume
+  bottleneck.
+- Hypothesis/objective: Add a no-default-change output-volume gate for the
+  largest selected Tschamut local hazard artifact before any ensemble-size
+  increase.
+- Initial gap assessment: The selected scaling review identified
+  `conditional_intensity_exceedance_curves` as the largest local hazard output
+  at 117,305,412 bytes. The hazard builder could write the full per-cell curve
+  table, but it lacked an explicit opt-in path for pre-scale runs that need
+  threshold rasters and metadata summaries without committing to the large CSV
+  table.
+- Files changed:
+  `scripts/build_hazard_layers.py`,
+  `tests/test_hazard_layers.py`,
+  `docs/performance_benchmarking.md`,
+  `docs/tschamut_public_pilot_scaling_review.md`,
+  `docs/scalability_and_data_formats_review.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added
+  `scripts/build_hazard_layers.py --conditional-curve-export {full,summary-only}`.
+  The default remains `full`. The `summary-only` mode preserves conditional
+  exceedance rasters, curve metadata summaries, denominators, and non-annual
+  semantics while omitting the large per-cell curve CSV table and its manifest
+  output entry.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_conditional_curve_summary_only_suppresses_large_curve_table tests.test_hazard_layers.HazardLayerTests.test_exceedance_layers_are_additive_and_manifested`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, source weights, annual frequency,
+  physical probability, risk/exposure semantics, generated hazard products, or
+  raw/processed swisstopo geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; Target 4 done for the largest
+  curve-table output bottleneck. Raster-output optimization remains future
+  work.
+- Next proposed milestone: Increase ensemble size only if convergence,
+  performance, and output-volume evidence justify it.

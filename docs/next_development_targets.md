@@ -10,10 +10,10 @@ The repository now has substantial scaffolding and selected-domain contracts
 for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
 sensitivity gate, conditional pilot report, GIS package review, scaling review,
 and visual-QA review record have been reconciled against regenerated local
-ignored artifacts. The current critical gap is no longer evidence consistency
-or an unclassified visual-QA gate; the next development task should scope
-forest and obstacle omission before adding features or increasing ensemble
-size.
+ignored artifacts. The current critical gap is no longer evidence consistency,
+an unclassified visual-QA gate, or unscoped forest/obstacle omission. The next
+development task should increase ensemble size only if convergence,
+performance, and output-volume evidence justify it.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -167,9 +167,12 @@ Evidence needed: output-mode comparison, manifest-visible output budgets,
 checks that selected summaries remain deterministic, and a no-default-change or
 explicit opt-in recommendation before ensemble scaling.
 
-Minimal acceptable deliverable: an opt-in output-volume control or documented
-gate that prevents larger pilot runs from creating unmanageable conditional
-curve/raster artifacts by default.
+Minimal acceptable deliverable: complete for the curve-table bottleneck.
+`scripts/build_hazard_layers.py --conditional-curve-export summary-only`
+provides an opt-in no-default-change mode that keeps conditional exceedance
+rasters and metadata summaries but skips the large per-cell curve CSV table.
+Focused tests verify the full default path remains available and the
+summary-only path omits the table from the output manifest.
 
 What not to do: Do not remove existing debug outputs, change current hazard
 semantics, add distributed orchestration, or hide denominators/provenance.
@@ -287,6 +290,9 @@ Estimated order: 7.
 - Forest and obstacle omission is scoped at the share-safe interpretation
   level and classified `limiting` for the selected Tschamut corridor because
   public context layers are documented but not locally reviewed.
+- Conditional-curve output volume has an opt-in mitigation:
+  `--conditional-curve-export summary-only`. The default remains full
+  curve-table export for small debug/review runs.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory

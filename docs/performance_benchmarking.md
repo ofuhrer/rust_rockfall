@@ -104,6 +104,19 @@ which can dominate small-to-medium hazard-stage timings.
 
 Use `--no-plots` for benchmark and larger workflow runs. Omit it only when a local PNG/HTML diagnostic report is needed for inspection.
 
+For pilot-scale or pre-scale hazard builds that need threshold rasters but do
+not need the full per-cell conditional intensity-exceedance curve table, use:
+
+```bash
+--conditional-curve-export summary-only
+```
+
+This opt-in mode leaves the existing raster layers, metadata summary, and
+manifest semantics in place, but skips writing the large
+`*_conditional_intensity_exceedance_curves.csv` table. The default remains
+`full` so existing debug/review workflows and tests keep the detailed table
+unless a run explicitly chooses the lighter output mode.
+
 ## Tschamut Pilot Scaling Summary
 
 For the ignored local Tschamut public conditional pilot outputs, summarize the
