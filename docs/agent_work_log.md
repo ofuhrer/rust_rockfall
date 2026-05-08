@@ -1478,3 +1478,40 @@ Planning only; these milestones do not implement roadmap item content yet.
   resolved.
 - Decision: Pending.
 - Next proposed milestone: Stop after Priority 4 as requested.
+
+### M023
+
+- Milestone id: M023.
+- Roadmap item: Priority 5. Produce/review real-pilot GIS/QGIS package.
+- Hypothesis/objective: Complete the next highest-priority incomplete item by
+  adding a share-safe validator and review record for the locally generated
+  Tschamut pilot GIS package, without committing generated rasters or claiming
+  manual QGIS acceptance.
+- Files changed:
+  `scripts/validate_pilot_gis_package.py`,
+  `tests/test_pilot_gis_package_validator.py`,
+  `docs/tschamut_public_pilot_gis_package_review.md`,
+  `docs/pilot_gis_package.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a standalone validator for
+  `pilot_gis_package_manifest_v1` inventories. With `--require-real-site` and
+  `--require-existing-files`, it checks generated file checksums, GeoTIFF/CSV/
+  ESRI ASCII parity inventory, EPSG:2056/LN02/nodata/grid metadata from the
+  hazard manifest, source-zone sidecar references through package context or
+  map-package metadata, and unsupported annual/return-period/risk/operational
+  claim boundaries. Added a Tschamut review note recording that the ignored
+  local package has 16 GeoTIFFs, 16 CSV parity grids, and 16 ESRI ASCII parity
+  grids, with automated package QA passing and manual QGIS visual QA still
+  `not-run`.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_gis_package_validator.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json` passed locally against ignored generated outputs.
+- Reviewer notes: No raw swisstopo geodata or generated hazard products are
+  committed. The GIS package is accepted only at automated manifest/file QA
+  level; manual QGIS inspection remains inconclusive/not-run and production
+  COG/QGZ/GeoPackage work remains deferred.
+- Decision: ACCEPT if final checks pass; Priority 5 done at the automated
+  diagnostic-review level.
+- Next proposed milestone: Stop after Priority 5 as requested.

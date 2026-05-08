@@ -200,9 +200,13 @@ Evidence needed: GeoTIFF value parity, CSV/ASCII parity, CRS/transform/nodata
 checks, source-zone/context sidecar references, visual-QA status, and explicit
 non-COG/non-annual/non-risk labels.
 
-Minimal acceptable deliverable: A real-pilot diagnostic package manifest plus
-review notes. A QGIS project, GeoPackage, production COG, and operational map
-styling remain deferred.
+Minimal acceptable deliverable: complete at the automated diagnostic-review
+level. The real-pilot package manifest can be checked with
+`scripts/validate_pilot_gis_package.py`, and
+`docs/tschamut_public_pilot_gis_package_review.md` records the local Tschamut
+package evidence, CRS/nodata/parity/source-zone checks, and an `inconclusive`
+manual-QGIS status. A QGIS project, GeoPackage, production COG, and operational
+map styling remain deferred.
 
 What not to do: Do not call debug GeoTIFFs COG; do not style maps with annual,
 return-period, risk, or operational language.

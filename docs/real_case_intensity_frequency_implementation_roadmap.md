@@ -290,10 +290,14 @@ Objective: make the real-site conditional hazard package inspectable by a GIS
 reviewer.
 
 Current status: diagnostic GeoTIFF export and `pilot_gis_package_manifest_v1`
-exist, and tests cover value/metadata parity and explicit COG rejection. The
-remaining work is a real-pilot review package and visual QA. The current code
-does not create a QGIS project, GeoPackage, production COG, tiled package, or
-operational product.
+exist, tests cover value/metadata parity and explicit COG rejection, and
+`scripts/validate_pilot_gis_package.py` can validate package inventories for
+local generated real-pilot outputs. The Tschamut local package review in
+`docs/tschamut_public_pilot_gis_package_review.md` records passing automated
+manifest/file QA for the ignored local gate package and an `inconclusive`
+overall status because manual QGIS inspection has not been run. The current
+code does not create a QGIS project, GeoPackage, production COG, tiled package,
+or operational product.
 
 Implementation work:
 
