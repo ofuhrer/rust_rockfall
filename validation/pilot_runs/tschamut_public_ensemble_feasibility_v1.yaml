@@ -8,7 +8,8 @@ decision_rationale: >
   output-budget, runtime, checksum, summary-only curve, and reducer-parity
   evidence, but increasing the Tschamut ensemble is still not authorized.
   Target-vs-small-gate convergence has not been accepted, manual GIS visual QA
-  remains incomplete, forest/obstacle omission remains limiting for
+  is blocked by missing QGIS and absent ignored target package artifacts,
+  forest/obstacle omission remains limiting for
   interpretation, and validation-runner parallel provenance is partial for the
   observed-release target outputs.
 operational_status: research_diagnostic
@@ -44,7 +45,7 @@ convergence_assessment:
     summary-only conditional hazard layers, so the earlier missing-execution
     blocker is closed. The ensemble increase remains no-go because the
     target-scale record itself is inconclusive: target-vs-small-gate stability
-    has not been accepted, manual GIS/QGIS review is incomplete, obstacle
+    has not been accepted, manual GIS/QGIS review is blocked, obstacle
     context remains limiting, and validation-runner local parallel provenance
     does not cover every observed-release target trajectory.
 

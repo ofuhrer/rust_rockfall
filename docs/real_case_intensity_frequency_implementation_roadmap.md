@@ -28,10 +28,11 @@ contract level, and the selected public Swiss pilot now has a reconciled
 run-freeze record with regenerated local ignored outputs, conditional curves,
 automated GIS artifact checks, local performance evidence, and an explicit
 manual GIS/QGIS visual-QA classification. Milestone 1 is not complete until
-target-scale convergence decisions are recorded; the selected package
-visual-QA gate is currently `inconclusive` because QGIS was unavailable in the
-non-GUI review environment, and forest/obstacle omission is classified
-`limiting` because public context layers have not been locally reviewed. It is not yet close to
+target-scale convergence decisions are recorded; the selected target-scale
+package visual-QA gate is currently `blocked` because QGIS and ignored target
+package artifacts are unavailable in this checkout, and forest/obstacle
+omission is classified `limiting` because public context layers have not been
+locally reviewed. It is not yet close to
 milestone 2 because source-zone occurrence frequency, block-population
 frequency, annualization, and validation semantics remain unsupported by
 `docs/hazard_map_semantics.md` and
@@ -60,9 +61,10 @@ Already available:
 - reconciled Tschamut public conditional gate run-freeze with regenerated local
   ignored DEM-sensitivity, validation, hazard, GIS package, scaling, runtime,
   memory, and checksum evidence;
-- share-safe Tschamut public GIS package review note for one local ignored
-  generated package, with automated manifest/file QA recorded and manual
-  GIS/QGIS visual QA classified `inconclusive` by a checked review record;
+- share-safe Tschamut public GIS package review note for local ignored
+  generated packages, with small-gate automated manifest/file QA recorded and
+  target-scale manual GIS/QGIS visual QA classified `blocked` by a checked
+  review record because QGIS and ignored target package artifacts are absent;
 - share-safe Tschamut forest/obstacle context scope record, with SWISSIMAGE,
   swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D
   context documented but not locally reviewed and omission classified
@@ -91,16 +93,14 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. reassess the selected ensemble-size gate using the executed but inconclusive
-   target-scale evidence;
-2. complete or explicitly classify manual GIS/QGIS visual QA for the selected
-   package;
-3. keep forest/obstacle context limitations explicit when interpreting the
+1. keep the explicitly blocked target-scale manual GIS/QGIS visual QA visible
+   until a GUI/package review can be run;
+2. keep forest/obstacle context limitations explicit when interpreting the
    Tschamut outputs;
-4. clarify validation-runner parallel provenance for observed-release
+3. clarify validation-runner parallel provenance for observed-release
    ensembles if future gates require chunk metadata to cover every target
    trajectory;
-5. defer physical/annual frequency semantics until source-frequency and
+4. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -128,9 +128,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   for a local ignored Tschamut package that now matches the reconciled
   run-freeze evidence. `scripts/validate_pilot_gis_visual_qa.py` and
   `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` record the
-  selected manual GIS/QGIS visual-QA gate as `inconclusive`: QGIS was not
-  available in the non-GUI environment, no overlay screenshots were produced,
-  and CRS/datum/label/claim checks pass only at the automated manifest level.
+  selected target-scale manual GIS/QGIS visual-QA gate as `blocked`: QGIS is
+  not available in the non-GUI environment, ignored target package artifacts are
+  absent in this checkout, and no overlay screenshots were produced.
   The generated rasters/manifests are not committed and are absent in a clean
   checkout.
 - Forest/obstacle omission is scoped at the selected interpretation level.

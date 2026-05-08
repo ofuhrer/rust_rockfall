@@ -54,7 +54,8 @@ Before the selected ensemble-size gate can be reassessed, follow-up review must
 resolve:
 
 - target-vs-small-gate convergence interpretation;
-- manual GIS/QGIS visual QA;
+- manual GIS/QGIS visual QA, which is currently blocked by missing QGIS and
+  absent ignored target package artifacts in this checkout;
 - forest/obstacle context limits;
 - the validation-runner provenance caveat that `ensemble_execution` records the
   auxiliary single-release 100-trajectory ensemble path, while the observed

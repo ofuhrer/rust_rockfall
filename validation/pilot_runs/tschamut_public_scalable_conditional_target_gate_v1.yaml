@@ -7,7 +7,8 @@ decision_rationale: >
   The selected target-scale conditional workflow was regenerated and executed
   locally after restoring ignored public/processed inputs. The run is
   inconclusive rather than scale-up authorizing because target-vs-gate
-  convergence has not been accepted, manual GIS visual QA remains not-run,
+  convergence has not been accepted, manual GIS visual QA is blocked by missing
+  QGIS and absent ignored target package artifacts,
   obstacle/forest context remains limiting, and validation-runner parallel
   provenance covers only the auxiliary single-release ensemble path rather than
   the 1,000 observed-release trajectory outputs.
@@ -74,7 +75,7 @@ evidence_result:
     The target-scale workflow completed with 1,000 observed-release trajectories
     and summary-only conditional curves. Hazard reducer parity passed for the
     compared 1-worker and 2-worker layer/deposition outputs. The evidence is
-    still inconclusive because manual GIS visual QA is not complete, obstacle
+    still inconclusive because manual GIS visual QA is blocked, obstacle
     context remains limiting, and the validation-runner ensemble_execution
     manifest records a 100-trajectory auxiliary single-release ensemble rather
     than the 1,000 observed-release validation trajectories.

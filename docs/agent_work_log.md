@@ -3026,3 +3026,64 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT after consistency check passes.
 - Next proposed milestone: Execute Target 13 (manual GIS/QGIS review record) or
   record a concrete GUI/package blocker.
+
+### M052
+
+- Milestone id: M052.
+- Roadmap item: Target 13 manual GIS/QGIS review for the executed target-scale
+  package.
+- Hypothesis/objective: Replace the unclassified target-scale manual GIS/QGIS
+  review gap with an explicit share-safe blocker record, without generating or
+  committing package artifacts.
+- Initial gap assessment: The target-scale conditional gate had executed but
+  remained inconclusive, and the roadmap identified manual GIS/QGIS review as
+  the highest-priority interpretation blocker. In this checkout QGIS is not
+  installed and the ignored target-scale package manifests/rasters are absent,
+  so visual inspection cannot honestly be completed.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`,
+  `scripts/validate_pilot_gis_visual_qa.py`,
+  `tests/test_pilot_gis_visual_qa.py`,
+  `docs/tschamut_public_pilot_gis_package_review.md`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `docs/tschamut_public_ensemble_feasibility.md`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Retargeted the selected visual-QA record to the
+  target-scale package paths and classified automated package QA, manual QGIS
+  visual QA, and overall visual-QA acceptance as `blocked`. The validator now
+  accepts `blocked` selected-review statuses only with explicit blockers, and
+  tests cover the selected blocked record and a synthetic blocked record.
+  Related target-gate and ensemble-feasibility records now state that manual
+  GIS/QGIS review is blocked by absent QGIS and absent ignored target package
+  artifacts.
+- Checks run:
+  `which qgis` returned no executable;
+  `test -f hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json` returned `missing`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_visual_qa.py validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_pilot_gis_visual_qa`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, sampling weights, generated outputs,
+  raw/public/private geodata, annual frequency support, physical probability
+  support, risk/exposure semantics, QGIS project, screenshots, or operational
+  claims are added.
+- Decision: ACCEPT if final checks pass; Target 13 is complete as an explicit
+  blocked review record, not as a passed visual QA.
+- Next proposed milestone: Review forest and obstacle context for the selected
+  Tschamut target-scale corridor, still without adding obstacle physics or
+  tuning parameters.

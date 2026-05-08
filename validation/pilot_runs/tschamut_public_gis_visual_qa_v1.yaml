@@ -1,77 +1,79 @@
 schema_version: pilot_gis_visual_qa_record_v1
 pilot_id: tschamut_public_pilot
-run_id: tschamut_public_conditional_gate_v1
-package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json
-hazard_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
-map_package_manifest_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json
+run_id: tschamut_public_scalable_conditional_target_gate_v1
+package_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json
+hazard_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+map_package_manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json
 terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
 review_environment:
   reviewer: codex-development-agent
-  review_date: "2026-05-08"
+  review_date: "2026-05-09"
   qgis_available: false
   qgis_version:
-  execution_context: non-GUI repository agent session; `which qgis` returned no executable
+  execution_context: non-GUI repository agent session; `which qgis` returned no executable and target-scale ignored package artifacts are absent in this checkout
 status:
-  automated_package_qa_status: pass
-  manual_qgis_visual_qa_status: inconclusive
-  overall_acceptance: inconclusive
+  automated_package_qa_status: blocked
+  manual_qgis_visual_qa_status: blocked
+  overall_acceptance: blocked
   accepted_for_operational_use: false
 checks:
   - id: project_crs_epsg_2056
-    status: pass
-    finding: Automated package QA confirms EPSG:2056 in the package and hazard manifests.
+    status: blocked
+    finding: Target-scale package CRS alignment cannot be visually reviewed because the ignored target package manifest and rasters are absent in this checkout.
     evidence:
-      - scripts/validate_pilot_gis_package.py --require-real-site --require-existing-files passed locally
-      - package manifest records EPSG:2056 / LV95 metadata
+      - target package manifest path is recorded by validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+      - local file hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json is absent
   - id: vertical_datum_ln02
-    status: pass
-    finding: Automated package QA confirms LN02 vertical-datum metadata in the package and terrain sidecar references.
+    status: blocked
+    finding: Target-scale vertical-datum metadata cannot be cross-checked in GIS because the ignored processed terrain metadata and package artifacts are absent here.
     evidence:
-      - scripts/validate_pilot_gis_package.py --require-real-site --require-existing-files passed locally
-      - terrain metadata path is recorded for the ignored local swissALTI3D crop
+      - terrain metadata path is recorded as data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+      - processed swisstopo artifacts remain ignored local files
   - id: raster_grid_alignment
-    status: inconclusive
-    finding: Manifest grid metadata is internally consistent, but no QGIS overlay inspection was possible in this non-GUI environment.
+    status: blocked
+    finding: DEM, source-zone, and target hazard raster overlay alignment was not inspected in QGIS.
     evidence:
-      - package grid records 300 by 304 cells at 2 m cell size
-      - manual DEM/hazard/source-zone overlay was not opened in QGIS
+      - QGIS is unavailable in the current environment
+      - target-scale package rasters are ignored artifacts and absent in this checkout
   - id: nodata_vs_valid_zero_styling
-    status: inconclusive
-    finding: Nodata value is recorded as -9999.0, but QGIS styling of nodata versus valid zero was not inspected.
+    status: blocked
+    finding: Nodata versus valid-zero styling could not be inspected for the target-scale rasters.
     evidence:
-      - package and hazard manifests record nodata -9999.0
-      - no QGIS layer styling screenshot or project was produced
+      - no QGIS project, layer styling export, or screenshot was produced
+      - ignored target-scale GeoTIFFs are absent in this checkout
   - id: source_zone_overlay
-    status: inconclusive
-    finding: Source-zone metadata is referenced through the map-package manifest, but visual overlay alignment was not inspected.
+    status: blocked
+    finding: Source-zone and release-cell overlays were not visually inspected against the target-scale package.
     evidence:
-      - map package manifest records source_zone_metadata_path
-      - no QGIS source-zone overlay screenshot was produced
+      - source-zone metadata path is recorded by the target-scale gate
+      - no QGIS overlay screenshot or layer list was produced
   - id: layer_labels_conditional
     status: pass
-    finding: Manifest and report wording identify the package as conditional intensity-exceedance and sampling-weighted conditional diagnostic outputs.
+    finding: Checked-in target-scale records continue to describe outputs as conditional intensity-exceedance and sampling-weighted conditional diagnostics.
     evidence:
-      - package claim boundary allows conditional_intensity_exceedance
+      - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml records probability_mode sampling_weighted_conditional
       - current reports avoid annual, physical-probability, return-period, and risk-map labels for current products
   - id: unsupported_claim_boundaries
     status: pass
     finding: Unsupported annual-frequency, physical-probability, return-period, risk, and operational claims remain rejected or explicitly deferred.
     evidence:
-      - package manifest records unsupported future product labels
+      - target-scale gate claim boundary keeps annualized, physical_probability, risk_or_exposure, and operational_hazard_map false
       - repository consistency checks reject misleading current-product claims
 evidence:
-  automated_validator_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json
-  automated_validator_result: pass
+  automated_validator_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_gis_package.py hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json --require-real-site --require-existing-files --format json
+  automated_validator_result: blocked_missing_ignored_target_package
   reviewed_artifacts:
-    - validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
-    - docs/tschamut_public_pilot_gis_package_review.md
-    - hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json
-    - hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json
-    - hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json
+    - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+    - docs/tschamut_public_scalable_conditional_target_gate.md
+    - docs/tschamut_public_ensemble_feasibility.md
+    - hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json
+    - hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+    - hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json
   screenshots: []
 blockers:
   - qgis executable is not available in the current non-GUI agent environment
-  - no DEM/hillshade, source-zone, and hazard-raster overlay was manually inspected
+  - ignored target-scale package manifest and rasters are absent in this checkout
+  - no DEM or hillshade, source-zone, release-cell, and hazard-raster overlay was manually inspected
   - no QGIS layer-list, metadata-dialog, styling, or screenshot artifact was produced
 claim_boundary:
   operational_status: research_diagnostic

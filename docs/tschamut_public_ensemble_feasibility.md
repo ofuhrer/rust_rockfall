@@ -42,7 +42,9 @@ the target evidence is itself `inconclusive`.
 ## Blockers
 
 - Target-vs-small-gate convergence has not been accepted.
-- Manual GIS/QGIS visual QA remains incomplete or `inconclusive`.
+- Manual GIS/QGIS visual QA is explicitly blocked for the target-scale package
+  because QGIS is unavailable and the ignored target package artifacts are
+  absent in this checkout.
 - Forest/obstacle omission remains `limiting` for interpretation.
 - Validation-runner `ensemble_execution` provenance covers the auxiliary
   single-release 100-trajectory path, not all 1,000 observed-release target

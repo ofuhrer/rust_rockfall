@@ -12,10 +12,12 @@ for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
 sensitivity gate, conditional pilot report, GIS package review, scaling review,
 visual-QA review record, target-scale conditional evidence, and ensemble-size
 feasibility record have been reconciled against regenerated local ignored
-artifacts. The current critical gap is no longer missing execution contracts or
-missing target-scale execution evidence. The active blockers are interpretation
-and provenance: manual GIS/QGIS visual QA is still incomplete, forest/obstacle
-context remains limiting, convergence has not been accepted, validation-runner
+artifacts. The current critical gap is no longer missing execution contracts,
+missing target-scale execution evidence, or unclassified manual GIS/QGIS
+visual QA. The active blockers are interpretation and provenance: target-scale
+GIS/QGIS visual QA is explicitly `blocked` by missing ignored package artifacts
+and absent QGIS, forest/obstacle context remains limiting, convergence has not
+been accepted, validation-runner
 parallel provenance covers only an auxiliary ensemble path, and validation-side
 debug output volume remains too large for another selected-domain increase
 without reduction or explicit justification.
@@ -94,11 +96,11 @@ conditional-product language.
 
 Minimal acceptable deliverable: complete at the share-safe checklist level. The
 selected visual-QA record
-`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` classifies manual
-GIS/QGIS visual QA as `inconclusive` because QGIS was unavailable in the
-non-GUI agent environment, while automated package QA passed and all required
-CRS, datum, alignment, nodata, source-zone, label, and claim-boundary checks are
-classified. The validator
+`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` first classified
+the small package as `inconclusive` in a non-GUI environment. The current
+selected record now targets the executed target-scale package and classifies
+visual QA as `blocked` because QGIS and ignored target package artifacts are
+unavailable in this checkout. The validator
 `scripts/validate_pilot_gis_visual_qa.py --require-existing-package` checks the
 record against the ignored local package when artifacts exist.
 
@@ -508,11 +510,11 @@ with explicit evidence and limitations.
 Current status: complete as a reassessed `no_go` gate. The updated
 `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` reviews the
 executed but inconclusive Target 11 evidence and keeps ensemble increase blocked
-because convergence has not been accepted, manual GIS/QGIS visual QA is
-incomplete, forest/obstacle context remains limiting, validation-runner
-parallel provenance is partial for observed-release outputs, and validation
-debug output volume remains too large for another increase without reduction or
-explicit justification.
+because convergence has not been accepted, target-scale manual GIS/QGIS visual
+QA is now explicitly blocked, forest/obstacle context remains limiting,
+validation-runner parallel provenance is partial for observed-release outputs,
+and validation debug output volume remains too large for another increase
+without reduction or explicit justification.
 
 What not to do: Do not treat a successful technical run as scientific or
 operational validation.
@@ -554,6 +556,13 @@ Minimal acceptable deliverable: a share-safe visual-QA record that is either
 `passed`, `failed`, or explicitly `blocked`, replacing the current non-GUI
 `inconclusive` state for the target-scale package. Generated images and QGIS
 projects remain untracked unless deliberately tiny fixtures are approved.
+
+Current status: complete as an explicit `blocked` target-scale visual-QA record.
+`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` now points to the
+target-scale package paths and records that QGIS is unavailable and the ignored
+target package artifacts are absent in this checkout. The package is not
+visually accepted; the next scientific blocker is forest/obstacle context
+review.
 
 What not to do: Do not style or describe the package as operational,
 annual-frequency, physical-probability, risk, or regulatory evidence.
@@ -652,9 +661,10 @@ Estimated order: 15.
   ignored trajectory/hazard run with `inconclusive` report classification, not
   as an operational or target-scale result.
 - Real-pilot GIS package is complete at automated manifest/file QA level for
-  local ignored outputs, and the selected manual GIS/QGIS visual-QA gate is
-  explicitly classified `inconclusive` by a share-safe checklist because QGIS
-  was unavailable and no visual overlay evidence was produced.
+  local ignored small-gate outputs, and the selected target-scale manual
+  GIS/QGIS visual-QA gate is explicitly classified `blocked` by a share-safe
+  checklist because QGIS is unavailable and ignored target package artifacts
+  are absent in this checkout.
 - Forest and obstacle omission is scoped at the share-safe interpretation
   level and classified `limiting` for the selected Tschamut corridor because
   public context layers are documented but not locally reviewed.
@@ -769,23 +779,21 @@ Estimated order: 15.
 
 ## Recommended Sequence
 
-1. Complete manual GIS/QGIS visual QA for the executed target-scale package, or
-   record a concrete local-package/GUI blocker.
-2. Review forest/obstacle context for the selected Tschamut corridor and decide
+1. Review forest/obstacle context for the selected Tschamut corridor and decide
    whether omission remains limiting, becomes acceptable for a diagnostic
    pilot, or invalidates target-scale interpretation.
-3. Clarify validation-runner parallel provenance for observed-release
+2. Clarify validation-runner parallel provenance for observed-release
    ensembles if the next gate requires `ensemble_execution` to cover all 1,000
    target trajectories rather than the auxiliary single-release ensemble path.
-4. Reduce or explicitly justify validation-side debug output volume before any
+3. Reduce or explicitly justify validation-side debug output volume before any
    further selected-domain increase.
-5. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+4. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
    focused behavior-preserving change already touches that concern.
-6. Resolve the remaining physical/source-frequency design-gate blockers if
+5. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
-7. Implement an annual/physical prototype only if the design gate passes.
+6. Implement an annual/physical prototype only if the design gate passes.
    Until then, use the Target 10 preflight record as the executable no-go
    check rather than adding annual or physical runtime semantics.

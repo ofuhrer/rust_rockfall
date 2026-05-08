@@ -18,6 +18,16 @@ SPEC.loader.exec_module(validator)
 
 
 class PilotGisVisualQaTests(unittest.TestCase):
+    def test_selected_target_record_is_blocked(self) -> None:
+        summary = validator.validate_visual_qa_record(
+            ROOT / "validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml"
+        )
+
+        self.assertEqual(summary["run_id"], "tschamut_public_scalable_conditional_target_gate_v1")
+        self.assertEqual(summary["manual_qgis_visual_qa_status"], "blocked")
+        self.assertEqual(summary["overall_acceptance"], "blocked")
+        self.assertFalse(summary["qgis_available"])
+
     def test_accepts_inconclusive_record_with_explicit_blocker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record_path = self.write_record(Path(tmp), self.base_record())
@@ -58,8 +68,24 @@ class PilotGisVisualQaTests(unittest.TestCase):
             record["status"]["manual_qgis_visual_qa_status"] = "not-run"
             record_path = self.write_record(Path(tmp), record)
 
-            with self.assertRaisesRegex(validator.VisualQaValidationError, "must be pass, no-go, or inconclusive"):
+            with self.assertRaisesRegex(validator.VisualQaValidationError, "must be pass, no-go, blocked, or inconclusive"):
                 validator.validate_visual_qa_record(record_path)
+
+    def test_accepts_blocked_record_with_explicit_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["status"]["automated_package_qa_status"] = "blocked"
+            record["status"]["manual_qgis_visual_qa_status"] = "blocked"
+            record["status"]["overall_acceptance"] = "blocked"
+            for check in record["checks"]:
+                if check["status"] == "inconclusive":
+                    check["status"] = "blocked"
+            record_path = self.write_record(Path(tmp), record)
+
+            summary = validator.validate_visual_qa_record(record_path)
+
+            self.assertEqual(summary["overall_acceptance"], "blocked")
+            self.assertEqual(summary["manual_qgis_visual_qa_status"], "blocked")
 
     def test_rejects_unqualified_risk_map_claim(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

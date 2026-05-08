@@ -30,8 +30,8 @@ REQUIRED_CHECK_IDS = {
     "layer_labels_conditional",
     "unsupported_claim_boundaries",
 }
-QA_STATUSES = {"pass", "no-go", "inconclusive", "not-run"}
-FINAL_STATUSES = {"pass", "no-go", "inconclusive"}
+QA_STATUSES = {"pass", "no-go", "inconclusive", "blocked", "not-run"}
+FINAL_STATUSES = {"pass", "no-go", "inconclusive", "blocked"}
 MISLEADING_CLAIM_PATTERNS = [
     re.compile(r"\breturn[- ]?period\b", re.IGNORECASE),
     re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
@@ -127,6 +127,12 @@ def validate_visual_qa_record(
         require(screenshots, "overall pass requires screenshot or exported visual artifact references")
         failing = sorted(check_id for check_id, check in checks.items() if check["status"] != "pass")
         require(not failing, f"overall pass requires all required checks to pass: {failing}")
+    elif overall == "blocked":
+        require(blockers, "overall blocked requires at least one explicit blocker")
+        require(
+            manual_status == "blocked" or automated_status == "blocked",
+            "overall blocked requires manual or automated QA to be blocked",
+        )
     else:
         require(blockers, f"overall {overall} requires at least one explicit blocker or limitation")
 
@@ -134,7 +140,9 @@ def validate_visual_qa_record(
         require(qgis_available, "manual QGIS pass requires qgis_available true")
         require(reviewed_artifacts, "manual QGIS pass requires reviewed_artifacts")
     elif manual_status == "not-run":
-        raise VisualQaValidationError("manual_qgis_visual_qa_status must be pass, no-go, or inconclusive for a selected roadmap review")
+        raise VisualQaValidationError("manual_qgis_visual_qa_status must be pass, no-go, blocked, or inconclusive for a selected roadmap review")
+    elif manual_status == "blocked":
+        require(blockers, "manual QGIS blocked status requires explicit blockers")
 
     validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
     scan_text_for_misleading_claims(record)
