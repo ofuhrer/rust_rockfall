@@ -119,15 +119,24 @@ Scientific risk: Medium if omission is silently absorbed into model parameters.
 Engineering risk: Low for scoping.
 
 Likely affected areas: `docs/swisstopo_data_strategy.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`, future pilot report
-notes.
+`docs/tschamut_public_conditional_pilot_gate_report.md`,
+`docs/tschamut_public_obstacle_context_scope.md`,
+`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`, future pilot
+report notes.
 
 Evidence needed: share-safe inventory of available public context layers and a
 classification of obstacle omission as acceptable, limiting, or invalidating
 for the selected gate.
 
-Minimal acceptable deliverable: a concise pilot-domain context memo. No
-obstacle physics is implemented.
+Minimal acceptable deliverable: complete at the share-safe scoping level. The
+selected scope record
+`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml` classifies
+forest and obstacle omission as `limiting` because public SWISSIMAGE,
+swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context
+layers are documented but not locally reviewed for the selected corridor. The
+validator `scripts/validate_pilot_obstacle_scope.py` checks the six required
+context categories, future context actions, and claim boundaries. No obstacle
+physics is implemented.
 
 What not to do: Do not tune restitution, terrain classes, or stopping behavior
 to mimic omitted forest or barriers.
@@ -275,6 +284,9 @@ Estimated order: 7.
   local ignored outputs, and the selected manual GIS/QGIS visual-QA gate is
   explicitly classified `inconclusive` by a share-safe checklist because QGIS
   was unavailable and no visual overlay evidence was produced.
+- Forest and obstacle omission is scoped at the share-safe interpretation
+  level and classified `limiting` for the selected Tschamut corridor because
+  public context layers are documented but not locally reviewed.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory

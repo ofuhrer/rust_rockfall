@@ -103,6 +103,17 @@ data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force`.
 Generated raw and processed files remain ignored; the manifest is provenance
 for input geodata, not validation evidence.
 
+The selected Tschamut pilot now also has a share-safe forest/obstacle omission
+scope record at `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`,
+validated by `scripts/validate_pilot_obstacle_scope.py`. It classifies current
+forest and obstacle omission as `limiting` because SWISSIMAGE, swissTLM3D,
+swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context layers have
+not been locally downloaded or reviewed for the selected corridor. This record
+does not add obstacle physics, risk or exposure semantics, or operational
+approval; it only prevents DEM-only conditional outputs from being interpreted
+as evidence that vegetation, roads, buildings, barriers, or channels are
+irrelevant.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the

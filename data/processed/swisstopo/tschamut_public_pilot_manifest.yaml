@@ -25,7 +25,7 @@ selected_domain:
     ymax: 1167992.0
   source_zone_status: predeclared_policy_available
   source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
-  forest_obstacle_relevance_status: not_scoped
+  forest_obstacle_relevance_status: scoped_limiting_context_not_reviewed
 
 local_layout:
   raw_root: data/raw/swisstopo
@@ -87,6 +87,16 @@ optional_context_datasets:
     source_tiles: []
   - dataset_id: swisstopo_swisstlm3d
     role: topographic_context_and_qa
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_swisssurface3d_raster
+    role: canopy_surface_height_and_obstacle_context
+    source_file_present: false
+    download_status: not_downloaded
+    source_tiles: []
+  - dataset_id: swisstopo_swissbuildings3d
+    role: building_and_structure_context_for_future_obstacle_review
     source_file_present: false
     download_status: not_downloaded
     source_tiles: []

@@ -83,6 +83,7 @@ Current implementation contracts and evidence reports:
 - `chant_sura_model_improvement_evaluation.md`: comparison of candidate model options against the Chant Sura trajectory subset.
 - `hazard_layers.md`: first post-processing workflow for diagnostic reach, deposition, energy, jump-height, and impact-density layers.
 - `pilot_gis_package.md`: diagnostic GIS/QGIS review-package contract, GeoTIFF/parity expectations, visual-QA gate, and current package manifest boundary.
+- `tschamut_public_obstacle_context_scope.md`: selected Tschamut forest/obstacle omission scope record, classifying current omission as limiting without adding obstacle physics or risk semantics.
 - `hazard_workflow_scale_review.md`: stress-test observations, bottlenecks, DEM/GIS gaps, and Swiss-scale requirements for hazard-layer generation.
 - `scalability_and_data_formats_review.md`: end-to-end scalability, bottleneck, data-format, and staged architecture review for future large-ensemble and Swiss-scale hazard-map production.
 - `hazard_layer_scientific_analysis.md`: scientific interpretation of current ensemble hazard-layer outputs and Swiss-scale readiness gaps.
@@ -104,7 +105,7 @@ Current implementation contracts and evidence reports:
 - `source_zone_block_scenario_policy_v1.md`: Phase 2 policy contract for predeclared real-site source-zone evidence, deterministic release sampling, and representative block scenarios.
 - `public_real_site_geodata_preparation.md`: Phase 1/6 share-safe public real-site geodata manifest and conditional pilot run-freeze workflow.
 - `public_real_site_conditional_pilot_report_template.md`: Phase 6 report scaffold for pass/no-go/inconclusive local conditional pilot classification.
-- `tschamut_public_conditional_pilot_gate_report.md`: selected Tschamut Phase 6 no-go gate report for the missing processed public DEM blocker.
+- `tschamut_public_conditional_pilot_gate_report.md`: selected Tschamut public conditional pilot gate report for the reconciled local ignored gate evidence and remaining inconclusive interpretation boundaries.
 - `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
 - `autonomous_development_program.md`: operator prompt, tracking artifacts, and Git/GitHub conventions for long-running autonomous development sessions.
 - `verification_plan.md`: analytic and synthetic verification strategy.

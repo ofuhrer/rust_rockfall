@@ -1,0 +1,113 @@
+schema_version: pilot_obstacle_scope_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_gate_v1
+classification: limiting
+classification_rationale: >
+  The selected conditional gate uses a bare-earth swissALTI3D DEM and no
+  downloaded context layers for canopy, roads, structures, protection works, or
+  orthophoto review. This omission is limiting for interpretation because the
+  current local evidence cannot rule out first-order forest or obstacle effects
+  in the Tschamut corridor.
+input_scope:
+  changes_physics: false
+  changes_defaults: false
+  adds_obstacle_model: false
+  adds_risk_or_exposure_model: false
+context_inventory:
+  - category: forest_or_canopy
+    dataset_id: swisstopo_swisssurface3d_raster
+    status: documented_not_downloaded
+    role: canopy_and_surface_height_context
+    interpretation: >
+      swissSURFACE3D Raster or point-cloud context could compare surface height
+      against swissALTI3D bare-earth terrain, but no local context crop is
+      reviewed for this gate.
+  - category: buildings_or_structures
+    dataset_id: swisstopo_swissbuildings3d
+    status: documented_not_downloaded
+    role: building_and_structure_context
+    interpretation: >
+      Building and structure context is not reviewed. This gate must not infer
+      structure interaction, shielding, or consequence from current outputs.
+  - category: roads_or_transport
+    dataset_id: swisstopo_swisstlm3d
+    status: documented_not_downloaded
+    role: road_and_transport_context
+    interpretation: >
+      swissTLM3D road, track, and transport features are not reviewed. This
+      prevents corridor-level interpretation of whether transport corridors or
+      embankments are relevant obstacles for the selected runout path.
+  - category: barriers_or_protection
+    dataset_id: swisstopo_swisstlm3d
+    status: documented_not_downloaded
+    role: protection_and_constructed_feature_context
+    interpretation: >
+      Protection works, nets, walls, or other constructed barriers are not
+      inventoried. Current trajectories are therefore not evidence for
+      protection-structure performance or omission.
+  - category: water_or_channel
+    dataset_id: swisstopo_swisstlm3d
+    status: documented_not_downloaded
+    role: hydrography_and_channel_context
+    interpretation: >
+      Watercourse or channel context is not reviewed. The current DEM-only
+      gate cannot classify whether channelized terrain or water features affect
+      the diagnostic runout corridor.
+  - category: orthophoto_visual_context
+    dataset_id: swisstopo_swissimage
+    status: documented_not_downloaded
+    role: visual_context_for_manual_qa
+    interpretation: >
+      SWISSIMAGE is identified as the appropriate share-safe visual QA layer,
+      but no orthophoto tile or screenshot is committed or reviewed here.
+omission_interpretation:
+  summary: >
+    Forest and obstacle omission is a limiting boundary condition for the
+    selected Tschamut conditional pilot gate. Current outputs may be useful for
+    workflow diagnostics, but they must not be interpreted as evidence that
+    vegetation, roads, buildings, channels, barriers, or protection structures
+    are irrelevant in the corridor.
+  required_before_interpretation: >
+    Before increasing ensemble size or interpreting spatial patterns, review
+    SWISSIMAGE plus swissTLM3D and swissSURFACE3D/swissSURFACE3D Raster
+    context for the selected extent, and classify whether the omission remains
+    limiting or becomes acceptable or invalidating.
+  do_not_tune_to_absorb_omission:
+    - restitution
+    - roughness
+    - terrain classes
+    - stopping thresholds
+    - block scenario weights
+evidence:
+  reviewed_documents:
+    - docs/swisstopo_data_strategy.md
+    - data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+    - docs/tschamut_public_conditional_pilot_gate_report.md
+    - docs/tschamut_public_pilot_gis_package_review.md
+  required_future_context_downloads:
+    - swisstopo_swissimage
+    - swisstopo_swisstlm3d
+    - swisstopo_swisssurface3d_raster
+    - swisstopo_swissbuildings3d
+  clean_checkout_behavior: >
+    This record validates without local context downloads and intentionally
+    does not require raw or processed swisstopo context products in git.
+claim_boundary:
+  operational_status: research_diagnostic
+  annualized: false
+  physical_probability: false
+  risk_or_exposure: false
+  obstacle_physics_implemented: false
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  deferred_or_unsupported_labels:
+    - obstacle_physics
+    - forest_interaction
+    - protection_structure_model
+    - physical_probability
+    - annual_intensity_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map

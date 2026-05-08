@@ -55,6 +55,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `cargo run -- verify --all` passed.
   `cargo run -- validate --all` passed.
   `scripts/git-hooks/pre-commit` passed.
+  `scripts/git-hooks/pre-commit` passed.
   `git diff --check` passed.
 - Reviewer notes: Pending reviewer input.
 - Decision: ACCEPT; Priority 3 done at the selected-domain gate level, with
@@ -328,7 +329,14 @@ Planning only; these milestones do not implement roadmap item content yet.
   outputs or GeoTIFF metadata where applicable. Updated visual QA notes to
   require reviewed PNG, HTML, GIS, or QGIS artifact references where present,
   or an explicit no-artifact QA statement.
-- Checks run: Pending.
+- Checks run:
+  Full local verification and pre-push checks passed in commit `1e80234`
+  (`Reconcile Tschamut pilot gate evidence`), including `cargo fmt --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`,
+  `cargo run -- verify --all`, `cargo run -- validate --all`, full Python
+  unittest discovery through `UV_CACHE_DIR=/tmp/uv-cache uv run python`,
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`, and `scripts/git-hooks/pre-push`.
 - Reviewer notes: M003 needed stronger GIS metadata carry-through and visual QA
   artifact traceability requirements.
 - Decision: ACCEPT if corrected.
@@ -370,7 +378,15 @@ Planning only; these milestones do not implement roadmap item content yet.
   terrain-representation confounders, comparison evidence, and interpretation
   boundaries. Clarified that no-go outcomes lead to data, provenance, or
   process fixes, rerun, or deferral, not parameter tuning.
-- Checks run: Pending.
+- Checks run:
+  Full local verification and pre-push checks passed in commit `ae7bbe5`
+  (`Record Tschamut GIS visual QA gate`), including focused visual-QA tests and
+  validators, `cargo fmt --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`,
+  `cargo run -- verify --all`, `cargo run -- validate --all`, full Python
+  unittest discovery through `UV_CACHE_DIR=/tmp/uv-cache uv run python`,
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`, and `scripts/git-hooks/pre-push`.
 - Reviewer notes: Docs-only scope; no report scripts, templates, physics
   changes, private geodata, operational validation claims, risk-map language,
   or tuning response to failures.
@@ -413,7 +429,19 @@ Planning only; these milestones do not implement roadmap item content yet.
   reasons, required actual-vs-expected release/ensemble/output counts and
   hazard input rows, required performance run context, and required
   failure-mode labels for every `no-go` and `inconclusive` report gate.
-- Checks run: Pending.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_obstacle_scope.py validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_obstacle_scope.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_pilot_obstacle_scope.py tests/test_public_real_site_geodata_manifest.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `cargo fmt --check` passed.
+  `cargo clippy --all-targets --all-features -- -D warnings` passed.
+  `cargo test` passed.
+  `cargo run -- verify --all` passed.
+  `cargo run -- validate --all` passed.
 - Reviewer notes: M004 needed stronger distinction between optional not-run
   branches and missing required evidence, plus sharper GIS alignment,
   checksum, output-count, performance-context, and gate-label requirements.
@@ -1682,3 +1710,46 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Target 2 done at the share-safe
   checklist-classification level.
 - Next proposed milestone: Scope forest and obstacle omission for Tschamut.
+
+### M027
+
+- Milestone id: M027.
+- Roadmap item: Target 3. Scope forest and obstacle omission for Tschamut.
+- Hypothesis/objective: Complete one share-safe interpretation gate that
+  classifies whether omitted forest, roads, structures, channels, barriers, or
+  visual-context layers limit the selected Tschamut conditional gate, without
+  changing physics, defaults, or probability semantics.
+- Initial gap assessment: The selected public geodata manifest still recorded
+  forest/obstacle relevance as not scoped. The conditional gate used
+  bare-earth swissALTI3D terrain and no reviewed local SWISSIMAGE, swissTLM3D,
+  swissSURFACE3D/swissSURFACE3D Raster, or swissBUILDINGS3D context, so the
+  omission needed an explicit interpretation classification before scale-up.
+- Files changed:
+  `scripts/validate_pilot_obstacle_scope.py`,
+  `tests/test_pilot_obstacle_scope.py`,
+  `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `pilot_obstacle_scope_v1` validator and a
+  selected Tschamut scope record. The record classifies forest/obstacle
+  omission as `limiting`, inventories six required context categories, records
+  public context layers that still need local review, and states that
+  restitution, roughness, terrain classes, stopping thresholds, and scenario
+  weights must not be tuned to absorb omitted vegetation or constructed
+  features. Updated current roadmap/report docs and the selected geodata
+  manifest to reflect the scoped limitation.
+- Checks run: Pending.
+- Reviewer notes: No raw SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+  swissBUILDINGS3D, processed context crop, screenshots, obstacle layers,
+  generated hazard products, risk/exposure layers, or obstacle physics are
+  committed.
+- Decision: ACCEPT if final checks pass; Target 3 done at the share-safe
+  scoping-classification level.
+- Next proposed milestone: Address the conditional-curve/raster output-volume
+  bottleneck before increasing ensemble size.

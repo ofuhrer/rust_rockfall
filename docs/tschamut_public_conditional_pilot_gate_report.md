@@ -100,9 +100,18 @@ Runtime and output-volume evidence:
 
 The classification remains `inconclusive`, not `pass`, because this is a small
 gate run only: target-scale convergence is not established, manual QGIS visual
-QA is still not run, and local scaling evidence identifies conditional-curve
-and raster output volume as the next bottleneck before increasing ensemble
-size.
+QA is classified `inconclusive`, forest/obstacle omission is classified
+`limiting`, and local scaling evidence identifies conditional-curve and raster
+output volume as the next bottleneck before increasing ensemble size.
+
+The forest and obstacle omission scope record is:
+`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`. It records
+SWISSIMAGE, swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and
+swissBUILDINGS3D context as documented but not locally reviewed for this gate.
+The classification is `limiting`; it does not add obstacle physics and does
+not justify tuning restitution, roughness, terrain classes, stopping
+thresholds, or scenario weights to absorb omitted vegetation or constructed
+features.
 
 ## Executable Checks
 
