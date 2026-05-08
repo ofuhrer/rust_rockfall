@@ -24,6 +24,9 @@ semantics are defined in `docs/hazard_map_semantics.md`.
 The real-site pilot policy layer that freezes source-zone evidence,
 deterministic release sampling, and representative block scenarios before
 simulation is defined in `docs/source_zone_block_scenario_policy_v1.md`.
+The future annual/physical source-frequency contract is controlled by
+`docs/physical_source_frequency_design_gate.md`; that gate currently keeps the
+prototype deferred and does not add runtime support.
 
 ## Scenario Identity
 
@@ -405,6 +408,12 @@ reach and trajectory-level exceedance layers before physical or
 annual-frequency layers. The next probabilistic step should define source-zone
 or scenario probability inputs before adding physical-probability or
 annual-frequency rasters.
+`validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml` records
+the first design decision for those future inputs: source event rates, block
+scenario probabilities, release-cell probabilities, source-zone overlap rules,
+and uncertainty metadata are required before any annual or physical prototype
+can proceed. Sampling weights remain conditional design weights unless replaced
+by evidence-backed physical probabilities in a future schema.
 
 ### Current Unweighted Validation Behavior
 

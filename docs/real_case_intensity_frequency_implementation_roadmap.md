@@ -162,9 +162,11 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   serial-vs-parallel and worker-count parity tests. Serial execution remains
   the default validation path.
 
-The immediate roadmap task is therefore not another hazard semantics feature.
-It is to design physical/source-frequency semantics before any annual or
-physical prototype is attempted.
+The physical/source-frequency semantics gate is now documented as a deferred
+decision in `docs/physical_source_frequency_design_gate.md`. Any annual or
+physical prototype remains blocked until the source-rate evidence, overlap,
+uncertainty, and calibration/validation schema requirements in that gate are
+met.
 
 ## Phase 0: Roadmap And Claim Hygiene
 

@@ -1,0 +1,107 @@
+schema_version: physical_source_frequency_design_gate_v1
+design_gate_id: physical_source_frequency_design_gate_v1
+roadmap_item: target_9_physical_source_frequency_semantics
+decision: deferred
+annual_physical_prototype_authorized: false
+operational_status: research_diagnostic
+current_supported_products:
+  - unweighted_diagnostic
+  - sampling_weighted_conditional
+  - conditional_intensity_exceedance
+future_product_modes:
+  - physical_probability
+  - annual_intensity_frequency
+required_frequency_units:
+  source_event_rate: events_per_source_zone_per_year
+  block_scenario_probability: conditional_probability_given_source_event
+  release_cell_probability: conditional_probability_given_source_and_block
+  cell_exceedance_output: exceedances_per_cell_per_year
+required_evidence:
+  source_event_rate:
+    - stable_source_zone_id
+    - source_geometry_version_or_hash
+    - source_event_class
+    - rate_unit_and_time_window
+    - observation_or_derivation_period
+    - provenance
+    - uncertainty_interval_or_distribution
+    - calibration_validation_separation
+  block_scenario_distribution:
+    - stable_block_scenario_id
+    - conditional_denominator_given_source_event
+    - size_shape_evidence_basis
+    - uncertainty_representation_or_deferral
+    - sampling_weight_not_reused_as_physical_probability
+  release_cell_allocation:
+    - stable_release_cell_id
+    - conditional_denominator_given_source_and_block
+    - deterministic_sampling_policy
+    - geometry_and_crs_provenance
+overlap_policy:
+  status: required_before_prototype
+  requirements:
+    - mutually_exclusive_source_partition_or_overlap_adjustment
+    - shared_release_cells_not_double_counted_without_distinct_event_classes
+    - source_geometry_version_recorded
+    - reducer_reports_overlap_adjustment_status
+uncertainty_model:
+  status: required_before_prototype
+  required_components:
+    - aleatory_trajectory_variation
+    - block_scenario_distribution_uncertainty
+    - release_cell_distribution_uncertainty
+    - source_event_rate_epistemic_uncertainty
+    - model_form_and_terrain_material_uncertainty
+    - calibration_uncertainty_separate_from_validation_evidence
+validation_calibration_separation:
+  status: required_before_prototype
+  rules:
+    - swisstopo_geodata_is_input_not_validation_evidence
+    - frequency_calibration_not_tuned_to_match_one_map_pattern
+    - calibration_dataset_ids_separate_from_validation_dataset_ids
+    - holdout_policy_required_before_current_claims
+required_schema_plan:
+  status: deferred_schema_not_implemented
+  required_fields:
+    - frequency_model_id
+    - frequency_mode
+    - source_zone_id
+    - source_geometry_version
+    - source_event_class
+    - source_event_rate_per_year
+    - rate_time_window_years
+    - rate_evidence_type
+    - rate_provenance
+    - rate_uncertainty
+    - block_scenario_id
+    - block_scenario_probability
+    - release_cell_id
+    - release_cell_probability
+    - source_zone_overlap_policy
+    - calibration_dataset_ids
+    - validation_dataset_ids
+    - operational_status
+rejection_tests_required_before_prototype:
+  - missing_source_event_rate_per_year
+  - invalid_or_missing_frequency_units
+  - sampling_weight_reused_as_physical_probability
+  - missing_source_zone_overlap_policy
+  - missing_rate_uncertainty
+  - missing_calibration_validation_separation
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  risk_or_exposure_supported: false
+  operational_hazard_map_supported: false
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+limitations:
+  - no_annual_frequency_or_physical_probability_runtime_support_implemented
+  - no_source_frequency_evidence_contract_accepted
+  - no_overlap_adjustment_reducer_implemented
+  - no_operational_validation_or_risk_semantics

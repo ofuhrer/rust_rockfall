@@ -151,6 +151,7 @@ def main() -> int:
     errors.extend(check_fallible_terrain_boundaries())
     errors.extend(check_validation_module_boundaries())
     errors.extend(check_local_parallel_ensemble_contract())
+    errors.extend(check_physical_source_frequency_design_gate())
 
     if errors:
         for error in errors:
@@ -254,6 +255,75 @@ def check_local_parallel_ensemble_contract() -> list[str]:
         errors.append(
             "local parallel ensemble execution should record merge_order 'requested_trajectory_index'"
         )
+    return errors
+
+
+def check_physical_source_frequency_design_gate() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/physical_source_frequency_design_gate.md",
+        ROOT / "validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml",
+        ROOT / "scripts/validate_physical_source_frequency_design_gate.py",
+        ROOT / "tests/test_physical_source_frequency_design_gate.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(
+                f"physical/source-frequency design gate path is missing: {path.relative_to(ROOT)}"
+            )
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/physical_source_frequency_design_gate.md").read_text()
+    record = (ROOT / "validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_physical_source_frequency_design_gate.py").read_text()
+    tests = (ROOT / "tests/test_physical_source_frequency_design_gate.py").read_text()
+
+    for term in (
+        "Decision: deferred",
+        "Prototype authorization: false",
+        "sampling weights",
+        "overlap",
+        "uncertainty",
+        "calibration",
+        "validation",
+    ):
+        if term not in doc:
+            errors.append(f"docs/physical_source_frequency_design_gate.md omits {term!r}")
+
+    for term in (
+        "decision: deferred",
+        "annual_physical_prototype_authorized: false",
+        "source_event_rate: events_per_source_zone_per_year",
+        "sampling_weight_reused_as_physical_probability",
+        "missing_source_zone_overlap_policy",
+        "missing_rate_uncertainty",
+        "missing_calibration_validation_separation",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_design_gate_record",
+        "REQUIRED_UNITS",
+        "REQUIRED_REJECTION_TESTS",
+        "authorize_prototype is intentionally unsupported",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_physical_source_frequency_design_gate.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_gate_record_is_valid_and_deferred",
+        "test_rejects_authorized_prototype_in_current_gate",
+        "test_rejects_missing_source_rate_unit",
+        "test_rejects_sampling_weight_reused_as_physical_probability",
+        "test_rejects_missing_overlap_policy",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_physical_source_frequency_design_gate.py omits {test_name}")
     return errors
 
 
@@ -970,6 +1040,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/dataset_strategy.md",
         ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md",
         ROOT / "docs/probabilistic_scenario_model_design.md",
+        ROOT / "docs/physical_source_frequency_design_gate.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
     ]

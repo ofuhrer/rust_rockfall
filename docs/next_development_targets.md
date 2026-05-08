@@ -358,8 +358,15 @@ Evidence needed: source-frequency units, block-frequency semantics, uncertainty
 model, source-zone overlap rules, validation/calibration separation, fixtures,
 and rejection tests for incomplete frequency metadata.
 
-Minimal acceptable deliverable: a design gate that either authorizes a narrow
-annual/physical prototype or keeps annual frequency deferred.
+Minimal acceptable deliverable: complete as a deferred design gate.
+`docs/physical_source_frequency_design_gate.md` and
+`validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml` define
+required source-rate units, block and release-cell conditional denominators,
+source-zone overlap rules, uncertainty components, and validation/calibration
+separation. The validator
+`scripts/validate_physical_source_frequency_design_gate.py` rejects missing
+units, sampling-weight reuse as physical probability, missing overlap policy,
+missing uncertainty, and premature prototype authorization.
 
 What not to do: Do not back-fill annual frequencies from sampling weights or
 calibrate frequency to match one map pattern.
@@ -437,6 +444,9 @@ Estimated order: 10.
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
   sidecars, and a no-default-change bottleneck decision.
+- Physical/source-frequency semantics are complete as a deferred design gate.
+  The gate documents the evidence and schema blockers for annual or physical
+  products and does not authorize the annual/physical prototype.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -459,5 +469,6 @@ Estimated order: 10.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
-6. Design physical/source-frequency semantics.
+6. Resolve the physical/source-frequency design-gate blockers if annual or
+   physical products are still desired.
 7. Implement an annual/physical prototype only if the design gate passes.

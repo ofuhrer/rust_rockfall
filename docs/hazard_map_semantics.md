@@ -105,6 +105,9 @@ intensity-exceedance products when they are conditioned on the supplied
 trajectory set, metadata filter, or sampling-weighted scenario set. Reserve
 intensity-frequency wording for future `physical_probability` or
 `annual_frequency` products with explicit frequency semantics.
+The current design gate for those future semantics is
+`docs/physical_source_frequency_design_gate.md`; its decision is deferred, so
+annual and physical labels remain unsupported for current products.
 
 ## Source-Zone And Block-Scenario Conditioning
 
@@ -191,6 +194,11 @@ annualized hazard frequency, exposure, vulnerability, risk, or operational
 approval. Any future `physical_probability` or `annual_frequency` mode requires
 new evidence-backed product semantics, schemas, fixtures, and executable
 checks before those labels can be used as current claims.
+- `tests/test_physical_source_frequency_design_gate.py` and
+  `scripts/validate_physical_source_frequency_design_gate.py` check the current
+  design-gate record. The selected record requires source-rate units, overlap
+  policy, uncertainty, calibration/validation separation, and rejection tests
+  before a future prototype can be authorized.
 
 ## Later Milestone Placeholders
 

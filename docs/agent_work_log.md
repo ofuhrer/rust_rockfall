@@ -2000,3 +2000,58 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Target 8 done at the opt-in
   library-contract level.
 - Next proposed milestone: Design physical/source-frequency semantics.
+
+### M033
+
+- Milestone id: M033.
+- Roadmap item: Target 9. Design physical source-frequency semantics.
+- Hypothesis/objective: Complete the source-frequency semantics target as a
+  conservative design gate, deciding whether annual or physical products are
+  authorized without adding runtime support or reinterpreting sampling weights.
+- Initial gap assessment: Targets 1-8 were complete, but the repository still
+  lacked a dedicated design-gate record defining required source-rate units,
+  block and release-cell denominators, overlap policy, uncertainty,
+  calibration/validation separation, and rejection tests for incomplete
+  frequency metadata.
+- Files changed:
+  `docs/physical_source_frequency_design_gate.md`,
+  `validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`,
+  `scripts/validate_physical_source_frequency_design_gate.py`,
+  `tests/test_physical_source_frequency_design_gate.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/hazard_map_semantics.md`,
+  `docs/probabilistic_scenario_model_design.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/README.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a documentation and YAML design gate that keeps
+  the annual/physical prototype deferred. The gate defines source event-rate
+  units, conditional block-scenario and release-cell denominators, conceptual
+  frequency propagation, required source-zone overlap rules, uncertainty
+  components, calibration/validation separation, and the future schema fields
+  needed before any prototype can proceed. Added a focused validator, unit
+  tests, and repository consistency checks that reject premature authorization,
+  missing units, missing overlap policy, missing uncertainty, and sampling
+  weights reused as physical probability.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_physical_source_frequency_design_gate.py validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_physical_source_frequency_design_gate`;
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, trajectory execution, hazard reducer,
+  annual frequency runtime support, physical probability runtime support,
+  risk/exposure semantics, generated products, or raw/processed swisstopo
+  geodata are changed or committed.
+- Decision: ACCEPT if final checks pass; Target 9 done as a deferred design
+  gate. Target 10 remains blocked until the gate blockers are resolved.
+- Next proposed milestone: Resolve source-frequency evidence, overlap,
+  uncertainty, and calibration/validation blockers before requesting an annual
+  or physical prototype.
