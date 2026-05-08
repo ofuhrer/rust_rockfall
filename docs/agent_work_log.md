@@ -3007,3 +3007,22 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Complete or explicitly classify manual GIS/QGIS
   visual QA for the executed target-scale package, while keeping the output
   research-diagnostic and non-operational.
+
+### M051
+
+- Milestone id: M051.
+- Roadmap item: Planning alignment — expand next-step targets after M049/M050.
+- Hypothesis/objective: Capture Targets 13–15 (manual GIS QA, obstacle-context
+  interpretation review, validation-runner provenance and debug output budget)
+  and refresh the executive summary and recommended sequence now that
+  target-scale evidence exists and ensemble increase remains no-go.
+- Files changed: `docs/next_development_targets.md`, `docs/agent_work_log.md`.
+- Implementation summary: Intro paragraph and recommended sequence now emphasize
+  interpretation/provenance blockers; added explicit Target 13–15 definitions
+  tied to existing pilot records and guardrails; CSCS/SLURM deferral wording
+  aligned with current evidence posture.
+- Checks run: `python3 scripts/check_repo_consistency.py` (or uv equivalent).
+- Reviewer notes: Docs-only; no simulator, validator behavior, or geodata changes.
+- Decision: ACCEPT after consistency check passes.
+- Next proposed milestone: Execute Target 13 (manual GIS/QGIS review record) or
+  record a concrete GUI/package blocker.
