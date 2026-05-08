@@ -14,6 +14,18 @@ SPEC.loader.exec_module(check_repo_consistency)
 
 
 class HazardClaimHygieneTests(unittest.TestCase):
+    def test_rejects_tracked_copy_suffix_docs(self) -> None:
+        tracked = [
+            "docs/next_development_targets.md",
+            "docs/next_development_targets 2.md",
+            "docs/archive/old copy.md",
+        ]
+
+        self.assertEqual(
+            check_repo_consistency.find_copy_suffix_doc_paths(tracked),
+            ["docs/next_development_targets 2.md", "docs/archive/old copy.md"],
+        )
+
     def test_rejects_bare_annual_current_product_claim(self) -> None:
         errors = check_repo_consistency.find_hazard_claim_hygiene_errors(
             "Current hazard layers report annual frequency for each cell.",

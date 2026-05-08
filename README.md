@@ -9,9 +9,10 @@ The development goal is an automated, reproducible workflow that can produce roc
 The current hazard-map products are diagnostic or sampling-weighted conditional
 layers, including conditional intensity-exceedance products over configured
 trajectory/scenario sets. The future probabilistic target is pixel-scale
-intensity-frequency information, or the closest defensible national hazard-map
-quantity once physical source-frequency semantics are mature. The implementation
-should support efficient single-socket execution, local parallelism,
+physical-probability or annual intensity-frequency information, or the closest
+defensible national hazard-map quantity once physical source-frequency
+semantics are mature. The implementation should support efficient single-socket
+execution, local parallelism,
 reproducible chunked ensembles, a path to CSCS/SLURM orchestration, and roughly
 10,000 trajectories per release zone where appropriate. The project is
 literature-based and transparent by design. It does not decompile or inspect

@@ -51,12 +51,12 @@ claim operational validation, or promote a default contact-model change.
 
 Estimated order: 1.
 
-## Target 2: Build A Dry-Runnable DEM/Terrain Sensitivity Fixture
+## Target 2: Extend DEM/Terrain Sensitivity Beyond The Dry-Run Fixture
 
-Objective: Turn `docs/dem_terrain_sensitivity_benchmark.md` into a small
-deterministic benchmark fixture comparing terrain resolution, smoothing,
-interpolation, nodata/cliff handling, vegetation/surface representation, and
-hazard-layer map differences.
+Objective: Use the existing dry-runnable
+`docs/dem_terrain_sensitivity_benchmark.md` fixture as the base for comparable
+trajectory and hazard-layer terrain-sensitivity evidence, then extend toward
+real-site terrain variants when inputs are available.
 
 Rationale: Terrain representation can dominate trajectory and hazard-map
 structure. This should be measured before calibration or physics selection and
@@ -76,10 +76,12 @@ Likely affected areas: `verification/synthetic/`, `validation/cases/`,
 `docs/benchmark_catalog.md`, terrain fixtures.
 
 Evidence needed: deterministic rerun parity, fixed-source/scenario invariants,
-map-difference metrics for reach/deposition/energy/jump/exceedance layers, and
-manifested terrain metadata for each variant.
+map-difference metrics for reach/deposition/energy/jump/exceedance layers,
+manifested terrain metadata for each variant, and a clear distinction between
+synthetic dry-run evidence and future real-site terrain sensitivity.
 
-Minimal acceptable deliverable: A CI-safe dry-run fixture and report template.
+Minimal acceptable deliverable: A CI-safe extension of the existing dry-run
+fixture into trajectory/hazard-layer comparison outputs and a report template.
 
 What not to do: Do not tune restitution or terrain classes to compensate for
 DEM changes; do not treat swisstopo terrain as validation evidence by itself.

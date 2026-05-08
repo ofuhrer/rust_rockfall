@@ -133,6 +133,7 @@ KNOWN_METRICS = {
 def main() -> int:
     errors: list[str] = []
     errors.extend(check_staged_generated_outputs())
+    errors.extend(check_tracked_copy_suffix_docs())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
     errors.extend(check_schema_docs())
@@ -189,6 +190,30 @@ def check_staged_generated_outputs() -> list[str]:
         if path.startswith("data/private/") or path.startswith("validation/private/"):
             errors.append(f"private local data or generated private case is tracked: {path}")
     return errors
+
+
+def check_tracked_copy_suffix_docs() -> list[str]:
+    tracked = subprocess.run(
+        ["git", "ls-files", "docs"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    ).stdout.splitlines()
+    return [
+        f"tracked duplicate/copy-suffix documentation file: {path}"
+        for path in find_copy_suffix_doc_paths(tracked)
+        if (ROOT / path).exists()
+    ]
+
+
+def find_copy_suffix_doc_paths(tracked_paths: list[str]) -> list[str]:
+    copy_suffix = re.compile(r"(?:^|/)[^/]+(?: copy| [0-9]+)\.md$")
+    return [
+        path
+        for path in tracked_paths
+        if copy_suffix.search(path)
+    ]
 
 
 def check_strict_case_schema_audit() -> list[str]:

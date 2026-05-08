@@ -303,7 +303,7 @@ evidence, not triggers for hidden tuning or lower thresholds.
 
 | Current capability | Valley-scale pilot need | State-of-practice comparison | Swiss-wide need | Gap |
 | --- | --- | --- | --- | --- |
-| Controlled pilot plan and prep script | Executed no-tuning real swissALTI3D pilot | Site projects with real DEM/context layers | reproducible public-geodata pipeline | Pilot not yet run |
+| Controlled pilot plan and prep script | Executed no-tuning local/private controlled swissALTI3D pilot | Site projects with real DEM/context layers | reproducible public-geodata pipeline | Public Tschamut/swissALTI3D benchmark exists; controlled private/local pilot not yet run |
 | Deterministic release-zone sidecar | defensible source-zone policy | source polygons/lines/areas plus expert context | national source masks | Derivation policy missing |
 | Hazard builder plus semantics/GIS checks | accepted GIS/QGIS review package | GIS-ready rasters and legends | tiled COG/GeoTIFF products | Tiny GeoTIFF checks exist; package-level QGIS QA missing |
 | Performance benchmark docs and DEM sensitivity fixture | pilot-scale throughput and terrain-representation gates | production-oriented ensemble execution | local parallel/chunk/reducer contracts | No local parallel runner/reducer |
@@ -320,7 +320,8 @@ evidence, not triggers for hidden tuning or lower thresholds.
 
 ### Validation And Calibration Gaps
 
-- no validation maturity hierarchy tying evidence to allowed claims;
+- validation maturity hierarchy exists, but evidence labels still need to be
+  applied consistently in new pilot reports;
 - Chant Sura contact labels remain proxy segment contacts;
 - Tschamut remains confounded by terrain/source/shape/vegetation/materials;
 - Mel de la Niva is workflow smoke/generalization scaffold, not timed
@@ -339,7 +340,8 @@ evidence, not triggers for hidden tuning or lower thresholds.
 
 ### GIS And Geodata Gaps
 
-- no executed real swisstopo pilot;
+- no executed controlled private/local real swisstopo pilot; public
+  Tschamut/swissALTI3D benchmark evidence exists and remains diagnostic;
 - lightweight GeoTIFF and parity tests exist, but verified COG/tiled products
   do not;
 - QGIS package spec exists, but share-safe QGIS visual QA/package acceptance
@@ -394,9 +396,9 @@ evidence, not triggers for hidden tuning or lower thresholds.
 4. Hazard semantics should stay conservative. The remaining work is not to add
    new probability modes, but to keep current checks tight and defer physical
    or annual labels until source-frequency evidence exists.
-5. DEM representation sensitivity is now recognized, but not yet measured. This
-   should precede calibration and should run even without private data using a
-   small deterministic fixture.
+5. DEM representation sensitivity now has a dry-runnable deterministic fixture.
+   Real-site trajectory and hazard-layer sensitivity evidence remains missing
+   and should precede calibration.
 6. Shape remains the largest physics gap, but active public shape runtime work
    is still premature.
 7. Performance matters now, but the next engineering step should be measured

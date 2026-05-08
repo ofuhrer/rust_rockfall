@@ -22,6 +22,9 @@ Core documents:
 - `onboarding.md`: generic local prerequisites, Rust/Python installation, git-hook setup, optional public benchmark data commands, and handoff checks.
 - `balfrin_skills.md`: Balfrin cluster guide covering SLURM partitions, hardware, filesystems, and Rust job submission recipes.
 - `roadmap_hazard_mapping.md`: long-term roadmap toward probabilistic Alpine hazard-map layers and the boundary between hazard and risk modelling.
+- `next_development_targets.md`: current prioritized development targets after the latest repository review.
+- `roadmap_recommendation_matrix.md`: current scoring matrix and prioritization rationale for near-term roadmap choices.
+- `repository_scientific_roadmap_review.md`: current scientific roadmap review and gap analysis used to update the target list.
 - `real_case_intensity_frequency_implementation_roadmap.md`: staged roadmap from current conditional intensity-exceedance pilot products to future physical-probability or annual intensity-frequency products.
 - `validation_maturity_framework.md`: conservative V0-V5 evidence and claim levels for verification, synthetic fixtures, field validation, site-scale hazard-pattern evidence, cross-site generalization, and operational reproducibility.
 - `probabilistic_hazard_mapping_development_roadmap.md`: staged development roadmap reframing the project around transparent, reproducible probabilistic hazard-map production for selected Swiss regions.
@@ -63,9 +66,6 @@ Core documents:
 - `chant_sura_contact_validation.md`: DEM-backed segmented Chant Sura trajectory/contact validation setup, metrics, and model-comparison results.
 - `chant_sura_contact_generalization.md`: held-out Chant Sura split and generalization test for `sphere_rotational_v1`.
 - `contact_model_decision.md`: decision record recommending `sphere_rotational_v1` for trajectory-validation experiments while preserving `translational_v0` as the default.
-- `post_ce3959d_next_step_decision.md`: post-`ce3959d` current-state review, operational-capability gap analysis, and next-step decision for Swiss hazard-mapping readiness.
-- `post_swiss_pilot_stack_next_step_decision.md`: decision record after the swissALTI3D-style terrain, release-zone, terrain-class, and hazard-exceedance pilot stack.
-- `v0_5_next_steps_review.md`: current-state review after `v0.5.0`, key scientific findings, prioritized roadmap, and recommended next actions.
 - `chant_sura_model_improvement_evaluation.md`: comparison of candidate model options against the Chant Sura trajectory subset.
 - `hazard_layers.md`: first post-processing workflow for diagnostic reach, deposition, energy, jump-height, and impact-density layers.
 - `pilot_gis_package.md`: diagnostic GIS/QGIS review-package contract, GeoTIFF/parity expectations, visual-QA gate, and current package manifest boundary.
@@ -89,7 +89,6 @@ Core documents:
 - `probabilistic_scenario_model_design.md`: scenario-level semantics for conditional source-zone hazard maps, source-frequency placeholders, block scenarios, probability modes, and normalization conventions.
 - `source_zone_block_scenario_policy_v1.md`: Phase 2 policy contract for predeclared real-site source-zone evidence, deterministic release sampling, and representative block scenarios.
 - `weighted_hazard_layer_review.md`: semantic review of the `v0.6.0` sampling-weighted hazard-layer prototype and recommended next engineering step.
-- `current_state_gap_analysis_next_directions.md`: strategic post-benchmark current-state review, gap analysis against the state of practice, and recommended next work packages.
 - `autonomous_development_program.md`: operator prompt, tracking artifacts, and Git/GitHub conventions for long-running autonomous development sessions.
 - `verification_plan.md`: analytic and synthetic verification strategy.
 - `validation_plan.md`: public-data validation strategy and calibration policy.
@@ -105,5 +104,12 @@ Core documents:
 - `scarring_single_impact_calibration.md`: first controlled single-impact scarring calibration workflow.
 - `scarring_real_data_calibration.md`: first real-data single-impact scarring calibration experiment using public Chant Sura / ESurf 2019 tables.
 - `tschamut_scarring_experiment.md`: controlled Tschamut baseline versus transferred impact-level `scarring_contact_v1` comparison.
+
+Historical decision records and superseded roadmap context:
+
+- `post_ce3959d_next_step_decision.md`: post-`ce3959d` current-state review, retained as historical context.
+- `post_swiss_pilot_stack_next_step_decision.md`: decision record after the swissALTI3D-style terrain, release-zone, terrain-class, and hazard-exceedance pilot stack.
+- `v0_5_next_steps_review.md`: current-state review after `v0.5.0`, retained as historical context.
+- `current_state_gap_analysis_next_directions.md`: older strategic post-benchmark gap analysis. Use current planning documents such as `next_development_targets.md`, `roadmap_recommendation_matrix.md`, `repository_scientific_roadmap_review.md`, and this index when priorities conflict.
 
 Version notes are tracked in `../CHANGELOG.md`.

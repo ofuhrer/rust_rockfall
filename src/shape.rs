@@ -334,6 +334,11 @@ pub(crate) struct ShapeContactV0ImpulseInput {
     gravity_mps2: f64,
 }
 
+// `shape_contact_v0` preparation and runtime-smoke plumbing is intentionally
+// compiled as crate-internal experimental code so future integrator wiring
+// keeps type-checking against the frozen diagnostic contract. Public
+// simulation/validation still rejects `shape_contact_v0`; tests are the only
+// current callers.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ShapeContactV0ContactInput {
