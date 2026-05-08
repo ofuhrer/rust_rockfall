@@ -130,6 +130,23 @@ Decision: deferred.
 
 Prototype authorization: false.
 
+Latest reassessment: deferred after inactive contract review. The executable
+gate record now enumerates the four blocker contracts and verifies their
+checked-in template statuses:
+
+- `source_frequency_evidence_v1`: `no_accepted_frequency_evidence`;
+- `block_release_probability_evidence_v1`:
+  `no_accepted_block_release_probability_evidence`;
+- `physical_frequency_reducer_preconditions_v1`:
+  `preconditions_not_satisfied`;
+- `annual_physical_validation_calibration_review_gate_v1`:
+  `review_not_passed`.
+
+The gate remains blocked because these records are present but not accepted or
+implemented. This reassessment is a claim-control check only; it does not add
+annual units, physical probabilities, return-period labels, operational hazard
+maps, or risk semantics.
+
 Blocking conditions:
 
 - no accepted source-frequency evidence contract exists;

@@ -25,6 +25,8 @@ class PhysicalSourceFrequencyDesignGateTests(unittest.TestCase):
 
         self.assertEqual(summary["decision"], "deferred")
         self.assertFalse(summary["annual_physical_prototype_authorized"])
+        self.assertEqual(summary["blocker_contract_count"], 4)
+        self.assertEqual(summary["blocking_contract_count"], 4)
 
     def test_rejects_authorized_prototype_in_current_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -72,6 +74,34 @@ class PhysicalSourceFrequencyDesignGateTests(unittest.TestCase):
             path = self.write_record(Path(tmp), record)
 
             with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "missing_rate_uncertainty"):
+                validator.validate_design_gate_record(path)
+
+    def test_rejects_missing_blocker_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["blocker_contracts"] = record["blocker_contracts"][:-1]
+            record["gate_reassessment"]["checked_contract_count"] = len(record["blocker_contracts"])
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "blocker_contracts must list"):
+                validator.validate_design_gate_record(path)
+
+    def test_rejects_blocker_status_that_does_not_match_template(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["blocker_contracts"][0]["observed_status"] = "accepted_for_design_review"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "observed_status must match"):
+                validator.validate_design_gate_record(path)
+
+    def test_rejects_nonblocking_inactive_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["blocker_contracts"][0]["prototype_blocker"] = False
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.PhysicalSourceFrequencyGateError, "prototype_blocker must be true"):
                 validator.validate_design_gate_record(path)
 
     def write_record(self, work: Path, record: dict) -> Path:

@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DECISIONS = {"deferred", "authorize_prototype"}
 REQUIRED_UNITS = {
     "source_event_rate": "events_per_source_zone_per_year",
@@ -59,6 +60,32 @@ REQUIRED_UNSUPPORTED_CLAIMS = {
     "physical_probability",
     "risk_map",
     "operational_hazard_map",
+}
+REQUIRED_BLOCKER_CONTRACTS = {
+    "source_frequency_evidence": {
+        "schema_version": "source_frequency_evidence_v1",
+        "record_path": "validation/templates/source_frequency_evidence_v1.yaml",
+        "current_blocking_status": "no_accepted_frequency_evidence",
+        "required_status_before_prototype": "accepted_for_design_review",
+    },
+    "block_release_probability_evidence": {
+        "schema_version": "block_release_probability_evidence_v1",
+        "record_path": "validation/templates/block_release_probability_evidence_v1.yaml",
+        "current_blocking_status": "no_accepted_block_release_probability_evidence",
+        "required_status_before_prototype": "accepted_for_design_review",
+    },
+    "physical_frequency_reducer_preconditions": {
+        "schema_version": "physical_frequency_reducer_preconditions_v1",
+        "record_path": "validation/templates/physical_frequency_reducer_preconditions_v1.yaml",
+        "current_blocking_status": "preconditions_not_satisfied",
+        "required_status_before_prototype": "accepted_for_design_review",
+    },
+    "annual_physical_validation_calibration_review_gate": {
+        "schema_version": "annual_physical_validation_calibration_review_gate_v1",
+        "record_path": "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml",
+        "current_blocking_status": "review_not_passed",
+        "required_status_before_prototype": "accepted_for_design_review",
+    },
 }
 MISLEADING_PATTERNS = [
     re.compile(r"\breturn[- ]?period\b", re.IGNORECASE),
@@ -128,6 +155,7 @@ def validate_design_gate_record(record_path: Path) -> dict[str, Any]:
         require_mapping(record.get("validation_calibration_separation"), "validation_calibration_separation"),
         "validation_calibration_separation",
     )
+    contract_summary = validate_gate_reassessment(record, decision, authorized)
     validate_schema_plan(require_mapping(record.get("required_schema_plan"), "required_schema_plan"))
     validate_rejection_tests(require_list(record.get("rejection_tests_required_before_prototype"), "rejection_tests_required_before_prototype"))
     validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
@@ -141,6 +169,8 @@ def validate_design_gate_record(record_path: Path) -> dict[str, Any]:
         "design_gate_id": record["design_gate_id"],
         "decision": decision,
         "annual_physical_prototype_authorized": authorized,
+        "blocker_contract_count": contract_summary["blocker_contract_count"],
+        "blocking_contract_count": contract_summary["blocking_contract_count"],
         "required_schema_field_count": len(record["required_schema_plan"]["required_fields"]),
         "rejection_test_count": len(record["rejection_tests_required_before_prototype"]),
     }
@@ -167,6 +197,97 @@ def validate_required_evidence(evidence: dict[str, Any]) -> None:
 def validate_status_requirements(section: dict[str, Any], field: str) -> None:
     require(section.get("status") == "required_before_prototype", f"{field}.status must be required_before_prototype")
     require(require_list(section.get("requirements") or section.get("required_components") or section.get("rules"), field), f"{field} must list requirements")
+
+
+def validate_gate_reassessment(record: dict[str, Any], decision: str, authorized: bool) -> dict[str, int]:
+    reassessment = require_mapping(record.get("gate_reassessment"), "gate_reassessment")
+    require_text(reassessment.get("reassessment_id"), "gate_reassessment.reassessment_id")
+    require(
+        reassessment.get("assessment_status") == "deferred_after_inactive_contract_review",
+        "gate_reassessment.assessment_status must be deferred_after_inactive_contract_review",
+    )
+    require(
+        reassessment.get("prototype_authorization_basis")
+        == "all_required_contracts_present_but_not_accepted_or_implemented",
+        "gate_reassessment.prototype_authorization_basis must record inactive blocker contracts",
+    )
+    contracts = require_list(record.get("blocker_contracts"), "blocker_contracts")
+    require(
+        reassessment.get("checked_contract_count") == len(contracts),
+        "gate_reassessment.checked_contract_count must match blocker_contracts length",
+    )
+    require(
+        len(contracts) == len(REQUIRED_BLOCKER_CONTRACTS),
+        f"blocker_contracts must list {len(REQUIRED_BLOCKER_CONTRACTS)} required contracts",
+    )
+
+    by_id: dict[str, dict[str, Any]] = {}
+    for contract in contracts:
+        mapping = require_mapping(contract, "blocker_contracts[]")
+        blocker_id = require_text(mapping.get("blocker_id"), "blocker_contracts[].blocker_id")
+        require(blocker_id not in by_id, f"duplicate blocker_contracts entry: {blocker_id}")
+        by_id[blocker_id] = mapping
+
+    missing = sorted(set(REQUIRED_BLOCKER_CONTRACTS) - set(by_id))
+    require(not missing, f"blocker_contracts missing: {missing}")
+
+    blocking_count = 0
+    for blocker_id, expected in REQUIRED_BLOCKER_CONTRACTS.items():
+        contract = by_id[blocker_id]
+        validate_blocker_contract_entry(blocker_id, contract, expected)
+        observed = contract["observed_status"]
+        required = contract["required_status_before_prototype"]
+        if observed != required:
+            blocking_count += 1
+            require(
+                contract.get("prototype_blocker") is True,
+                f"blocker_contracts.{blocker_id}.prototype_blocker must be true while status is not accepted",
+            )
+
+    if decision == "deferred":
+        require(blocking_count > 0, "deferred gate decision must list at least one blocking contract")
+        require(authorized is False, "deferred gate decision must keep prototype authorization false")
+    else:
+        require(blocking_count == 0, "prototype authorization requires all blocker contracts accepted")
+
+    return {
+        "blocker_contract_count": len(contracts),
+        "blocking_contract_count": blocking_count,
+    }
+
+
+def validate_blocker_contract_entry(blocker_id: str, contract: dict[str, Any], expected: dict[str, str]) -> None:
+    record_path = require_text(contract.get("record_path"), f"blocker_contracts.{blocker_id}.record_path")
+    require(
+        record_path == expected["record_path"],
+        f"blocker_contracts.{blocker_id}.record_path must be {expected['record_path']}",
+    )
+    require(
+        contract.get("required_schema_version") == expected["schema_version"],
+        f"blocker_contracts.{blocker_id}.required_schema_version must be {expected['schema_version']}",
+    )
+    require(
+        contract.get("required_status_before_prototype") == expected["required_status_before_prototype"],
+        f"blocker_contracts.{blocker_id}.required_status_before_prototype must be "
+        f"{expected['required_status_before_prototype']}",
+    )
+
+    referenced_record = read_yaml(REPO_ROOT / record_path)
+    require(
+        referenced_record.get("schema_version") == expected["schema_version"],
+        f"{record_path} schema_version must be {expected['schema_version']}",
+    )
+    observed_status = require_text(contract.get("observed_status"), f"blocker_contracts.{blocker_id}.observed_status")
+    actual_status = require_text(referenced_record.get("record_status"), f"{record_path}.record_status")
+    require(
+        observed_status == actual_status,
+        f"blocker_contracts.{blocker_id}.observed_status must match {record_path}.record_status",
+    )
+    if observed_status == expected["current_blocking_status"]:
+        require(
+            contract.get("prototype_blocker") is True,
+            f"blocker_contracts.{blocker_id}.prototype_blocker must be true for {observed_status}",
+        )
 
 
 def validate_schema_plan(plan: dict[str, Any]) -> None:

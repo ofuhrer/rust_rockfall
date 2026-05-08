@@ -60,6 +60,36 @@ validation_calibration_separation:
     - frequency_calibration_not_tuned_to_match_one_map_pattern
     - calibration_dataset_ids_separate_from_validation_dataset_ids
     - holdout_policy_required_before_current_claims
+gate_reassessment:
+  reassessment_id: physical_source_frequency_design_gate_reassessment_v1
+  assessment_status: deferred_after_inactive_contract_review
+  prototype_authorization_basis: all_required_contracts_present_but_not_accepted_or_implemented
+  checked_contract_count: 4
+blocker_contracts:
+  - blocker_id: source_frequency_evidence
+    record_path: validation/templates/source_frequency_evidence_v1.yaml
+    required_schema_version: source_frequency_evidence_v1
+    observed_status: no_accepted_frequency_evidence
+    required_status_before_prototype: accepted_for_design_review
+    prototype_blocker: true
+  - blocker_id: block_release_probability_evidence
+    record_path: validation/templates/block_release_probability_evidence_v1.yaml
+    required_schema_version: block_release_probability_evidence_v1
+    observed_status: no_accepted_block_release_probability_evidence
+    required_status_before_prototype: accepted_for_design_review
+    prototype_blocker: true
+  - blocker_id: physical_frequency_reducer_preconditions
+    record_path: validation/templates/physical_frequency_reducer_preconditions_v1.yaml
+    required_schema_version: physical_frequency_reducer_preconditions_v1
+    observed_status: preconditions_not_satisfied
+    required_status_before_prototype: accepted_for_design_review
+    prototype_blocker: true
+  - blocker_id: annual_physical_validation_calibration_review_gate
+    record_path: validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml
+    required_schema_version: annual_physical_validation_calibration_review_gate_v1
+    observed_status: review_not_passed
+    required_status_before_prototype: accepted_for_design_review
+    prototype_blocker: true
 required_schema_plan:
   status: deferred_schema_not_implemented
   required_fields:

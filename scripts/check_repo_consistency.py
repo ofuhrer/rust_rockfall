@@ -303,6 +303,12 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "missing_source_zone_overlap_policy",
         "missing_rate_uncertainty",
         "missing_calibration_validation_separation",
+        "gate_reassessment:",
+        "blocker_contracts:",
+        "validation/templates/source_frequency_evidence_v1.yaml",
+        "validation/templates/block_release_probability_evidence_v1.yaml",
+        "validation/templates/physical_frequency_reducer_preconditions_v1.yaml",
+        "validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml",
     ):
         if term not in record:
             errors.append(
@@ -314,6 +320,8 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "validate_design_gate_record",
         "REQUIRED_UNITS",
         "REQUIRED_REJECTION_TESTS",
+        "REQUIRED_BLOCKER_CONTRACTS",
+        "validate_gate_reassessment",
         "authorize_prototype is intentionally unsupported",
     ):
         if symbol not in validator:
@@ -325,6 +333,9 @@ def check_physical_source_frequency_design_gate() -> list[str]:
         "test_rejects_missing_source_rate_unit",
         "test_rejects_sampling_weight_reused_as_physical_probability",
         "test_rejects_missing_overlap_policy",
+        "test_rejects_missing_blocker_contract",
+        "test_rejects_blocker_status_that_does_not_match_template",
+        "test_rejects_nonblocking_inactive_contract",
     ):
         if test_name not in tests:
             errors.append(f"tests/test_physical_source_frequency_design_gate.py omits {test_name}")

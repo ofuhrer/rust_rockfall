@@ -476,6 +476,12 @@ Estimated order: 10.
   `scripts/validate_annual_physical_validation_calibration_review_gate.py`
   define and validate future review records while keeping the selected
   template at `review_not_passed`.
+- The physical/source-frequency design gate has been reassessed against all
+  four inactive contracts. The selected gate record now lists the contract
+  paths and checked statuses, and
+  `scripts/validate_physical_source_frequency_design_gate.py` verifies that
+  the gate remains deferred while those records are not accepted or
+  implemented.
 
 ## Deferred But Important Cross-Cutting Work
 
@@ -501,5 +507,6 @@ Estimated order: 10.
 6. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
-   and accepted validation/calibration review.
+   and accepted validation/calibration review. The current design gate has
+   been reassessed and remains deferred.
 7. Implement an annual/physical prototype only if the design gate passes.

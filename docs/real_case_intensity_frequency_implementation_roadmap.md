@@ -186,6 +186,10 @@ The inactive annual/physical validation-calibration review gate in
 review blocker by defining calibration, validation, holdout, maturity, and
 claim-boundary checks, but the selected template still records
 `review_not_passed`.
+The selected physical/source-frequency design-gate record now reassesses these
+four inactive contracts together and remains `deferred`: all contract templates
+are present and machine-checked, but they are not accepted or implemented and
+therefore do not authorize an annual or physical prototype.
 
 ## Phase 0: Roadmap And Claim Hygiene
 

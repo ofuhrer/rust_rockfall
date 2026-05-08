@@ -2305,3 +2305,56 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Reassess the physical/source-frequency design gate
   decision with all inactive contracts present; keep the annual/physical
   prototype deferred unless accepted evidence and implemented reducers exist.
+
+### M038
+
+- Milestone id: M038.
+- Roadmap item: Reassess the physical/source-frequency design gate with all
+  inactive blocker contracts present.
+- Hypothesis/objective: Make the selected design-gate record explicitly
+  machine-check the four inactive blocker contracts and keep Target 10 blocked
+  until accepted evidence, implemented reducers, uncertainty propagation, and
+  an accepted review record exist.
+- Initial gap assessment: The source-frequency, block/release probability,
+  reducer/uncertainty, and validation/calibration contracts existed, but the
+  main physical/source-frequency gate did not yet enumerate those records or
+  verify their checked-in statuses as the reason the annual/physical prototype
+  remains unauthorized.
+- Files changed:
+  `validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`,
+  `scripts/validate_physical_source_frequency_design_gate.py`,
+  `tests/test_physical_source_frequency_design_gate.py`,
+  `scripts/check_repo_consistency.py`,
+  `docs/physical_source_frequency_design_gate.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a `gate_reassessment` section and
+  `blocker_contracts` list to the selected design-gate record. The validator
+  now reads each referenced contract template, verifies schema and status
+  agreement, requires inactive contracts to remain prototype blockers, and
+  reports blocker counts. Focused tests cover missing blocker records,
+  mismatched observed statuses, and inactive contracts incorrectly marked
+  nonblocking.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_physical_source_frequency_design_gate.py validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_physical_source_frequency_design_gate`;
+  `git diff --check`;
+  `python3 scripts/check_repo_consistency.py` failed because system Python does
+  not support `from __future__ import annotations`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `cargo fmt --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No physics, defaults, generated outputs, raw/processed
+  swisstopo geodata, annual frequency runtime support, physical probability
+  runtime support, risk/exposure semantics, or operational claims are changed.
+- Decision: ACCEPT if final checks pass; the gate reassessment is complete and
+  explicitly deferred, with Target 10 still blocked.
+- Next proposed milestone: Resolve exactly one remaining blocker only if
+  accepted evidence or implemented reducer work is explicitly requested;
+  otherwise keep annual/physical prototype work deferred.
