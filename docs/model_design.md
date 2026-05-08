@@ -300,7 +300,12 @@ distributed schedulers, or heavy parallel frameworks. It does keep the core
 architecture ready for later scaling:
 
 - The single-trajectory kernel is deterministic for explicit inputs.
-- `simulate_fixed_step` performs no file I/O and does not use global state.
+- `try_simulate_fixed_step_with_events` and
+  `try_simulate_fixed_step_with_events_and_contact_parameters` perform no file
+  I/O, do not use global state, and propagate strict DEM nodata or
+  out-of-domain queries as structured integration errors. The older
+  `simulate_fixed_step*` wrappers are compatibility helpers for analytic tests
+  and older direct Rust callers.
 - `SimulationConfig::run` returns structured samples; CSV/JSON writing is handled by `io` and validation orchestration.
 - `SimulationConfig::run_with_terrain` and ensemble orchestration can reuse a previously constructed terrain object, avoiding repeated DEM file reads inside trajectory loops.
 - Terrain access is abstracted behind the `Terrain` trait and constructed from serializable `TerrainConfig`.

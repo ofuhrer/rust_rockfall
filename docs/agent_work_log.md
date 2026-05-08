@@ -1851,3 +1851,52 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT if final checks pass; Target 5 done as a selected-domain
   no-go feasibility gate.
 - Next proposed milestone: Design physical/source-frequency semantics.
+
+### M030
+
+- Milestone id: M030.
+- Roadmap item: Target 6. Complete fallible terrain/integrator API migration.
+- Hypothesis/objective: Complete the compatibility-preserving fallible runtime
+  guardrail so real DEM nodata or crop-edge failures propagate as structured
+  errors without changing physics, defaults, or public validation outputs.
+- Initial gap assessment: The fixed-step integrator used fallible top-level DEM
+  queries but still delegated contact response and contact-motion work to
+  helpers that used infallible terrain queries internally. The consistency
+  script also lacked a guardrail against reintroducing those calls in the
+  integrator.
+- Files changed:
+  `src/dynamics.rs`,
+  `src/integrator.rs`,
+  `tests/config_io_terrain.rs`,
+  `scripts/check_repo_consistency.py`,
+  `docs/architecture_boundaries.md`,
+  `docs/model_design.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/next_development_targets.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added fallible contact-response, contact-friction,
+  and rotational contact-motion helpers in `src/dynamics.rs`; switched the
+  fixed-step integrator to call those helpers and propagate `TerrainError`
+  through `IntegrationError`; retained infallible wrappers as compatibility
+  helpers with explicit panic messages. Added a strict DEM contact-response
+  guardrail test and repository consistency checks that reject new infallible
+  terrain/contact calls in `src/integrator.rs`.
+- Checks run:
+  `cargo fmt --check`;
+  `cargo test strict_dem_`;
+  `cargo clippy --all-targets --all-features -- -D warnings`;
+  `cargo test`;
+  `cargo run -- verify --all`;
+  `cargo run -- validate --all`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`;
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: No DEM interpolation numerics, contact physics, defaults,
+  validation baselines, generated products, annual frequency, physical
+  probability, risk/exposure semantics, or raw/processed swisstopo geodata are
+  changed or committed. Strict DEM terrain failures remain workflow/input
+  errors, not physical stopping states.
+- Decision: ACCEPT if final checks pass; Target 6 done at the guardrail level.
+- Next proposed milestone: Split one coherent validation or shape-contact
+  concern by module boundary.

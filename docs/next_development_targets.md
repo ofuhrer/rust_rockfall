@@ -245,9 +245,14 @@ Evidence needed: grep/test coverage showing new DEM-facing code uses
 terrain-error tests for strict DEM nodata/out-of-domain queries, and clear
 documentation of compatibility wrapper panic semantics.
 
-Minimal acceptable deliverable: a compatibility-preserving migration plan and
-guardrail tests that make misuse visible; a later versioned API change may
-deprecate or remove infallible wrappers.
+Minimal acceptable deliverable: complete. The runtime fixed-step integration
+path now uses fallible contact-motion helpers that propagate `TerrainError`
+through `IntegrationError` instead of relying on infallible DEM queries inside
+contact response, while legacy `simulate_fixed_step*`, `height`, and `normal`
+wrappers remain compatibility helpers. `tests/config_io_terrain.rs` covers
+strict DEM runtime and contact-response terrain errors, and
+`scripts/check_repo_consistency.py` rejects new infallible terrain/contact
+calls in `src/integrator.rs`.
 
 What not to do: Do not change DEM interpolation numerics, contact physics,
 defaults, validation baselines, or classify terrain failures as physical stops.
@@ -406,6 +411,10 @@ Estimated order: 10.
   gate records that larger Tschamut runs are not authorized until convergence
   diagnostics, output budgets, manual GIS/QGIS review, and forest/obstacle
   context review are resolved.
+- Fallible terrain/integrator API migration is complete at the guardrail
+  level. DEM-facing fixed-step runtime code propagates structured terrain
+  errors through the fallible integration path, with compatibility wrappers
+  retained for older analytic callers.
 - Local scaling/output-volume summary is complete at the manifest-summary
   level and is reconciled with the authoritative run-freeze. It records
   validation/hazard timings, row/file/byte counts, reducer metadata, memory
@@ -432,8 +441,7 @@ Estimated order: 10.
 4. Address conditional-curve/raster output-volume bottleneck.
 5. Increase ensemble size only if convergence and performance evidence justify
    it; current selected-domain decision is no-go.
-6. Complete the fallible terrain/integrator API migration.
-7. Split one coherent validation or shape-contact concern by module boundary.
-8. Add deterministic local parallel ensemble execution.
-9. Design physical/source-frequency semantics.
-10. Implement an annual/physical prototype only if the design gate passes.
+6. Split one coherent validation or shape-contact concern by module boundary.
+7. Add deterministic local parallel ensemble execution.
+8. Design physical/source-frequency semantics.
+9. Implement an annual/physical prototype only if the design gate passes.

@@ -1,4 +1,9 @@
-use crate::{geometry::SphereBlock, state::BodyState, terrain::Terrain, Vec3};
+use crate::{
+    geometry::SphereBlock,
+    state::BodyState,
+    terrain::{Terrain, TerrainError},
+    Vec3,
+};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -149,8 +154,27 @@ pub fn resolve_sphere_contact(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
-    resolve_sphere_contact_with_normal(
+    try_resolve_sphere_contact(
+        state,
+        terrain,
+        radius_m,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+    .expect("terrain query failed during sphere contact response")
+}
+
+pub fn try_resolve_sphere_contact(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    radius_m: f64,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> Result<ContactResponse, TerrainError> {
+    let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+    try_resolve_sphere_contact_with_normal(
         state,
         terrain,
         radius_m,
@@ -170,18 +194,39 @@ pub fn resolve_sphere_contact_with_normal(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
-    let signed_distance = terrain.signed_distance_sphere(state.position_m, radius_m);
+    try_resolve_sphere_contact_with_normal(
+        state,
+        terrain,
+        radius_m,
+        contact_normal,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+    .expect("terrain query failed during sphere contact response")
+}
+
+pub fn try_resolve_sphere_contact_with_normal(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    radius_m: f64,
+    contact_normal: Vec3,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> Result<ContactResponse, TerrainError> {
+    let signed_distance = terrain.try_signed_distance_sphere(state.position_m, radius_m)?;
     if signed_distance > 0.0 {
-        return ContactResponse {
+        return Ok(ContactResponse {
             impacted: false,
             sliding: false,
             rolling: false,
             contact_tangent_speed_mps: 0.0,
             rolling_residual_mps: 0.0,
-        };
+        });
     }
 
-    let projection_normal = terrain.normal(state.position_m.x, state.position_m.y);
+    let projection_normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
     state.position_m -= signed_distance * projection_normal;
     let normal = unit_or(contact_normal, projection_normal);
 
@@ -200,22 +245,22 @@ pub fn resolve_sphere_contact_with_normal(
             0.0
         };
         state.velocity_mps = post_normal_velocity + tangential_velocity * tangent_scale.max(0.0);
-        ContactResponse {
+        Ok(ContactResponse {
             impacted: true,
             sliding: state.velocity_mps.norm() > 0.0,
             rolling: false,
             contact_tangent_speed_mps: tangential_velocity.norm(),
             rolling_residual_mps: tangential_velocity.norm(),
-        }
+        })
     } else {
         state.velocity_mps -= normal_velocity;
-        ContactResponse {
+        Ok(ContactResponse {
             impacted: false,
             sliding: tangential_velocity.norm() > 0.0,
             rolling: false,
             contact_tangent_speed_mps: tangential_velocity.norm(),
             rolling_residual_mps: tangential_velocity.norm(),
-        }
+        })
     }
 }
 
@@ -227,8 +272,27 @@ pub fn resolve_rotational_sphere_contact(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
-    resolve_rotational_sphere_contact_with_normal(
+    try_resolve_rotational_sphere_contact(
+        state,
+        terrain,
+        block,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+    .expect("terrain query failed during rotational sphere contact response")
+}
+
+pub fn try_resolve_rotational_sphere_contact(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    block: SphereBlock,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> Result<ContactResponse, TerrainError> {
+    let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+    try_resolve_rotational_sphere_contact_with_normal(
         state,
         terrain,
         block,
@@ -248,18 +312,39 @@ pub fn resolve_rotational_sphere_contact_with_normal(
     tangential_restitution: f64,
     friction_coefficient: f64,
 ) -> ContactResponse {
-    let signed_distance = terrain.signed_distance_sphere(state.position_m, block.radius_m);
+    try_resolve_rotational_sphere_contact_with_normal(
+        state,
+        terrain,
+        block,
+        contact_normal,
+        normal_restitution,
+        tangential_restitution,
+        friction_coefficient,
+    )
+    .expect("terrain query failed during rotational sphere contact response")
+}
+
+pub fn try_resolve_rotational_sphere_contact_with_normal(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    block: SphereBlock,
+    contact_normal: Vec3,
+    normal_restitution: f64,
+    tangential_restitution: f64,
+    friction_coefficient: f64,
+) -> Result<ContactResponse, TerrainError> {
+    let signed_distance = terrain.try_signed_distance_sphere(state.position_m, block.radius_m)?;
     if signed_distance > 0.0 {
-        return ContactResponse {
+        return Ok(ContactResponse {
             impacted: false,
             sliding: false,
             rolling: false,
             contact_tangent_speed_mps: 0.0,
             rolling_residual_mps: 0.0,
-        };
+        });
     }
 
-    let projection_normal = terrain.normal(state.position_m.x, state.position_m.y);
+    let projection_normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
     state.position_m -= signed_distance * projection_normal;
     let normal = unit_or(contact_normal, projection_normal);
     let contact_offset = -block.radius_m * normal;
@@ -284,23 +369,23 @@ pub fn resolve_rotational_sphere_contact_with_normal(
         }
 
         let residual = rolling_residual(state, normal, block.radius_m);
-        ContactResponse {
+        Ok(ContactResponse {
             impacted: true,
             sliding: residual > ROLLING_RESIDUAL_TOLERANCE_MPS,
             rolling: residual <= ROLLING_RESIDUAL_TOLERANCE_MPS,
             contact_tangent_speed_mps: initial_tangent_speed,
             rolling_residual_mps: residual,
-        }
+        })
     } else {
         state.velocity_mps -= state.velocity_mps.dot(&normal) * normal;
         let residual = rolling_residual(state, normal, block.radius_m);
-        ContactResponse {
+        Ok(ContactResponse {
             impacted: false,
             sliding: residual > ROLLING_RESIDUAL_TOLERANCE_MPS,
             rolling: residual <= ROLLING_RESIDUAL_TOLERANCE_MPS && state.velocity_mps.norm() > 0.0,
             contact_tangent_speed_mps: initial_tangent_speed,
             rolling_residual_mps: residual,
-        }
+        })
     }
 }
 
@@ -312,7 +397,26 @@ pub fn apply_contact_friction(
     friction_coefficient: f64,
     stop_speed_mps: f64,
 ) -> bool {
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    try_apply_contact_friction(
+        state,
+        terrain,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        stop_speed_mps,
+    )
+    .expect("terrain query failed during contact friction")
+}
+
+pub fn try_apply_contact_friction(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    dt_s: f64,
+    gravity_mps2: f64,
+    friction_coefficient: f64,
+    stop_speed_mps: f64,
+) -> Result<bool, TerrainError> {
+    let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
     let gravity = gravity_vector(gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
@@ -321,7 +425,7 @@ pub fn apply_contact_friction(
     let friction_limit = friction_coefficient.max(0.0) * normal_acc.norm();
     if tangent_velocity.norm() <= stop_speed_mps && tangent_acc.norm() <= friction_limit {
         state.velocity_mps = Vec3::zeros();
-        return true;
+        return Ok(true);
     }
 
     tangent_velocity += tangent_acc * dt_s;
@@ -335,9 +439,9 @@ pub fn apply_contact_friction(
     state.velocity_mps = tangent_velocity;
     if state.velocity_mps.norm() <= stop_speed_mps && tangent_acc.norm() <= friction_limit {
         state.velocity_mps = Vec3::zeros();
-        true
+        Ok(true)
     } else {
-        false
+        Ok(false)
     }
 }
 
@@ -349,12 +453,31 @@ pub fn apply_contact_friction_after_ballistic_step(
     friction_coefficient: f64,
     stop_speed_mps: f64,
 ) -> bool {
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    try_apply_contact_friction_after_ballistic_step(
+        state,
+        terrain,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        stop_speed_mps,
+    )
+    .expect("terrain query failed during post-ballistic contact friction")
+}
+
+pub fn try_apply_contact_friction_after_ballistic_step(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    dt_s: f64,
+    gravity_mps2: f64,
+    friction_coefficient: f64,
+    stop_speed_mps: f64,
+) -> Result<bool, TerrainError> {
+    let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
     let gravity = gravity_vector(gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
     state.velocity_mps -= tangent_acc * dt_s;
-    apply_contact_friction(
+    try_apply_contact_friction(
         state,
         terrain,
         dt_s,
@@ -370,7 +493,17 @@ pub fn apply_rotational_contact_motion(
     block: SphereBlock,
     settings: RotationalContactSettings,
 ) -> ContactResponse {
-    let normal = terrain.normal(state.position_m.x, state.position_m.y);
+    try_apply_rotational_contact_motion(state, terrain, block, settings)
+        .expect("terrain query failed during rotational contact motion")
+}
+
+pub fn try_apply_rotational_contact_motion(
+    state: &mut BodyState,
+    terrain: &dyn Terrain,
+    block: SphereBlock,
+    settings: RotationalContactSettings,
+) -> Result<ContactResponse, TerrainError> {
+    let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
     let gravity = gravity_vector(settings.gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
@@ -402,38 +535,38 @@ pub fn apply_rotational_contact_motion(
         {
             state.velocity_mps = Vec3::zeros();
             state.angular_velocity_radps = Vec3::zeros();
-            return ContactResponse {
+            return Ok(ContactResponse {
                 impacted: false,
                 sliding: false,
                 rolling: false,
                 contact_tangent_speed_mps: residual_before,
                 rolling_residual_mps: 0.0,
-            };
+            });
         }
 
         state.velocity_mps = next_tangent_velocity;
         state.angular_velocity_radps = normal.cross(&state.velocity_mps) / block.radius_m;
         let residual = rolling_residual(state, normal, block.radius_m);
-        return ContactResponse {
+        return Ok(ContactResponse {
             impacted: false,
             sliding: false,
             rolling: true,
             contact_tangent_speed_mps: residual_before,
             rolling_residual_mps: residual,
-        };
+        });
     }
 
     if tangent_velocity.norm() <= settings.stop_speed_mps
         && tangent_acc.norm() <= static_friction_limit
     {
         state.velocity_mps = Vec3::zeros();
-        return ContactResponse {
+        return Ok(ContactResponse {
             impacted: false,
             sliding: false,
             rolling: false,
             contact_tangent_speed_mps: residual_before,
             rolling_residual_mps: 0.0,
-        };
+        });
     }
 
     state.velocity_mps += tangent_acc * settings.dt_s;
@@ -448,13 +581,13 @@ pub fn apply_rotational_contact_motion(
 
     state.velocity_mps -= state.velocity_mps.dot(&normal) * normal;
     let residual = rolling_residual(state, normal, block.radius_m);
-    ContactResponse {
+    Ok(ContactResponse {
         impacted: false,
         sliding: residual > ROLLING_RESIDUAL_TOLERANCE_MPS || state.velocity_mps.norm() > 0.0,
         rolling: residual <= ROLLING_RESIDUAL_TOLERANCE_MPS && state.velocity_mps.norm() > 0.0,
         contact_tangent_speed_mps: slip_speed,
         rolling_residual_mps: residual,
-    }
+    })
 }
 
 pub fn contact_point_tangent_velocity(state: &BodyState, normal: Vec3, radius_m: f64) -> Vec3 {

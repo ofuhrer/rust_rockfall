@@ -58,6 +58,10 @@ Panicking wrappers remain only for backward compatibility with older direct
 Rust callers and analytic tests. New code should not call them for real DEMs,
 validation cases, or pilot workflows.
 
+The current guardrail is enforced by focused strict-DEM tests plus
+`scripts/check_repo_consistency.py`, which rejects new infallible
+terrain/contact calls in `src/integrator.rs`.
+
 ## Scaling Boundary
 
 The single-trajectory kernel should remain deterministic, stateless, and free

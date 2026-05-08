@@ -148,6 +148,7 @@ def main() -> int:
     errors.extend(check_hazard_layer_metadata())
     errors.extend(check_swisstopo_geodata_metadata())
     errors.extend(check_hazard_claim_hygiene())
+    errors.extend(check_fallible_terrain_boundaries())
 
     if errors:
         for error in errors:
@@ -155,6 +156,45 @@ def main() -> int:
         return 1
     print("repository consistency checks passed")
     return 0
+
+
+def check_fallible_terrain_boundaries() -> list[str]:
+    errors = []
+    integrator = (ROOT / "src/integrator.rs").read_text()
+    forbidden_integrator_patterns = {
+        r"\.height\(": ".height(",
+        r"\.normal\(": ".normal(",
+        r"\.signed_distance_sphere\(": ".signed_distance_sphere(",
+        r"(?<!try_)resolve_sphere_contact_with_normal\(": "resolve_sphere_contact_with_normal(",
+        r"(?<!try_)resolve_rotational_sphere_contact_with_normal\(": "resolve_rotational_sphere_contact_with_normal(",
+        r"(?<!try_)apply_contact_friction_after_ballistic_step\(": "apply_contact_friction_after_ballistic_step(",
+        r"(?<!try_)apply_rotational_contact_motion\(": "apply_rotational_contact_motion(",
+    }
+    for pattern, label in forbidden_integrator_patterns.items():
+        if re.search(pattern, integrator):
+            errors.append(
+                f"src/integrator.rs should use fallible terrain/contact APIs, found {label!r}"
+            )
+
+    dynamics = (ROOT / "src/dynamics.rs").read_text()
+    required_dynamics_symbols = (
+        "try_resolve_sphere_contact_with_normal",
+        "try_resolve_rotational_sphere_contact_with_normal",
+        "try_apply_contact_friction_after_ballistic_step",
+        "try_apply_rotational_contact_motion",
+    )
+    for symbol in required_dynamics_symbols:
+        if symbol not in dynamics:
+            errors.append(f"src/dynamics.rs omits fallible contact helper {symbol}")
+
+    tests = (ROOT / "tests/config_io_terrain.rs").read_text()
+    for test_name in (
+        "strict_dem_terrain_query_errors_return_simulation_errors_instead_of_panicking",
+        "strict_dem_contact_response_propagates_terrain_errors_without_panicking",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/config_io_terrain.rs omits {test_name}")
+    return errors
 
 
 def check_staged_generated_outputs() -> list[str]:

@@ -1,5 +1,6 @@
 use approx::assert_abs_diff_eq;
 use rust_rockfall::{
+    dynamics::try_resolve_sphere_contact_with_normal,
     geodata::{ReleaseZoneMetadata, TerrainClassMap, TerrainClassMetadata, TerrainSourceMetadata},
     geometry::SphereBlock,
     io,
@@ -658,6 +659,30 @@ fn strict_dem_terrain_query_errors_return_simulation_errors_instead_of_panicking
     assert!(matches!(error, SimulationError::Integration(_)));
     assert!(error.to_string().contains("terrain query failed"));
     fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn strict_dem_contact_response_propagates_terrain_errors_without_panicking() {
+    let dem = DemGrid::from_ascii_grid_str(
+        "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 -9999\n0 2\n",
+    )
+    .unwrap();
+    let mut state = BodyState {
+        position_m: Vec3::new(0.5, 0.5, 0.25),
+        velocity_mps: Vec3::new(0.0, 0.0, -1.0),
+        angular_velocity_radps: Vec3::zeros(),
+    };
+    let result = try_resolve_sphere_contact_with_normal(
+        &mut state,
+        &dem,
+        0.5,
+        Vec3::new(0.0, 0.0, 1.0),
+        0.5,
+        0.5,
+        0.5,
+    );
+
+    assert!(matches!(result, Err(TerrainError::NoData { .. })));
 }
 
 #[test]

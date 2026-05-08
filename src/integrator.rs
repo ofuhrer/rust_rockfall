@@ -1,10 +1,10 @@
 use crate::{
     dynamics::{
-        apply_contact_friction_after_ballistic_step, apply_rotational_contact_motion,
         apply_scarring_energy_loss, ballistic_step, contact_point_tangent_velocity,
-        resolve_rotational_sphere_contact_with_normal, resolve_sphere_contact_with_normal,
-        rolling_residual, ContactModel, ContactParameterProvider, ContactParameters,
-        RotationalContactSettings, ScarringSettings,
+        rolling_residual, try_apply_contact_friction_after_ballistic_step,
+        try_apply_rotational_contact_motion, try_resolve_rotational_sphere_contact_with_normal,
+        try_resolve_sphere_contact_with_normal, ContactModel, ContactParameterProvider,
+        ContactParameters, RotationalContactSettings, ScarringSettings,
     },
     geometry::SphereBlock,
     state::{
@@ -182,7 +182,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         };
 
         let response = match settings.contact_model {
-            ContactModel::TranslationalV0 => resolve_sphere_contact_with_normal(
+            ContactModel::TranslationalV0 => try_resolve_sphere_contact_with_normal(
                 &mut state,
                 terrain,
                 block.radius_m,
@@ -190,8 +190,8 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
                 effective_contact.normal_restitution,
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
-            ),
-            ContactModel::SphereRotationalV1 => resolve_rotational_sphere_contact_with_normal(
+            )?,
+            ContactModel::SphereRotationalV1 => try_resolve_rotational_sphere_contact_with_normal(
                 &mut state,
                 terrain,
                 block,
@@ -199,7 +199,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
                 effective_contact.normal_restitution,
                 effective_contact.tangential_restitution,
                 effective_contact.friction_coefficient,
-            ),
+            )?,
             ContactModel::ShapeContactV0 => {
                 return Err(IntegrationError::UnsupportedContactModel(
                     "shape_contact_v0 is not wired into fixed-step integration",
@@ -237,14 +237,14 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         if signed_distance.abs() < 1.0e-7 && state.velocity_mps.dot(&normal) <= 1.0e-7 {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
-                    let stopped = apply_contact_friction_after_ballistic_step(
+                    let stopped = try_apply_contact_friction_after_ballistic_step(
                         &mut state,
                         terrain,
                         settings.dt_s,
                         settings.gravity_mps2,
                         local_parameters.friction_coefficient,
                         settings.stop_speed_mps,
-                    );
+                    )?;
                     if stopped {
                         ContactState::Stopped
                     } else {
@@ -252,7 +252,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
                     }
                 }
                 ContactModel::SphereRotationalV1 => {
-                    let contact_response = apply_rotational_contact_motion(
+                    let contact_response = try_apply_rotational_contact_motion(
                         &mut state,
                         terrain,
                         block,
@@ -264,7 +264,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
                                 .rolling_resistance_coefficient,
                             stop_speed_mps: settings.stop_speed_mps,
                         },
-                    );
+                    )?;
                     if !contact_response.sliding
                         && !contact_response.rolling
                         && state.velocity_mps.norm() <= settings.stop_speed_mps
