@@ -1,0 +1,56 @@
+name: Performance (PR baseline)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Benchmark and compare to main baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements-tools.txt
+
+      - name: Install Python tool requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-tools.txt
+
+      - name: Run standard synthetic benchmark
+        run: |
+          python scripts/run_performance_benchmark.py \
+            --profile standard \
+            --output-root validation/results/performance_ci_pr
+
+      - name: Compare against latest main baseline
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          PERFORMANCE_BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}"
+          python scripts/performance_ci_tracking.py compare-pr \
+            --summary-csv validation/results/performance_ci_pr/summary.csv \
+            --baseline-url "${PERFORMANCE_BASE_URL}/performance/latest.json" \
+            --sha "${GITHUB_SHA}" \
+            --output-json validation/results/performance_ci_pr/pr_compare.json \
+            --output-markdown validation/results/performance_ci_pr/pr_compare.md
+          cat validation/results/performance_ci_pr/pr_compare.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark comparison artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-pr-compare
+          path: |
+            validation/results/performance_ci_pr/summary.csv
+            validation/results/performance_ci_pr/pr_compare.json
+            validation/results/performance_ci_pr/pr_compare.md
