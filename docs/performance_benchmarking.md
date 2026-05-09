@@ -230,3 +230,17 @@ See `docs/performance_benchmark_synthetic_scale.md` for command variants and int
 - Treat output bytes and file count as first-class performance results.
 - Do not change physics to improve benchmark results.
 - Do not replace CSV/ASCII outputs until measurements show which data path is actually limiting the workflow.
+
+## CI Tracking
+
+Repository CI now uses the same `standard` synthetic profile for automated
+performance tracking:
+
+- PR workflow compares the current benchmark summary against the latest published
+  `main` baseline and reports component deltas in the workflow summary.
+- `main` workflow appends benchmark history, regenerates a multi-component trend
+  SVG, and publishes to GitHub Pages for README embedding.
+
+The CI tracking helper script is `scripts/performance_ci_tracking.py`.
+Implementation details and published artifacts are documented in
+`docs/performance_ci_tracking.md`.

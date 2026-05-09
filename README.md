@@ -74,6 +74,21 @@ cargo run -- validate --all
 
 The output CSV contains time, position, velocity, speed, energy diagnostics, and contact state for every trajectory sample.
 
+## Performance Tracking
+
+Performance of the end-to-end workflow is tracked in CI with the opt-in
+synthetic standard benchmark profile. Tracking includes both total workflow
+runtime and component timings (terrain loading, release generation, simulation,
+validation output writing, hazard accumulation, hazard output writing, and
+bounds discovery).
+
+- PRs run a benchmark comparison workflow and publish a baseline-vs-PR component
+  timing table in the workflow summary.
+- `main` runs publish a rolling trend chart to GitHub Pages:
+  https://ofuhrer.github.io/rust_rockfall/performance/
+
+![Main performance trend](https://ofuhrer.github.io/rust_rockfall/performance/main_performance.svg)
+
 DEM safety checklist for validation and pilot cases:
 
 - use strict `esri_ascii_grid` only when every possible trajectory query is

@@ -157,6 +157,8 @@ into `decision_log.md`; they do not override the current roadmaps.
 
 - `performance_benchmarking.md`: lightweight benchmark instrumentation and
   profiles.
+- `performance_ci_tracking.md`: CI benchmark baseline comparison and main-trend
+  visualization workflow.
 - `performance_benchmark_profile_reference.md`: current benchmark profile
   reference.
 - `performance_benchmark_results_initial.md`: initial timing and output-volume
