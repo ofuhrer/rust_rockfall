@@ -650,9 +650,18 @@ completion status, explicit retry/attempt counters, ownership/claim metadata,
 and local in-memory partial-state limitations. The execution plan persists
 planned/completed chunk state, schema version, owner identity, scheduler
 partition metadata, merge-group id, deterministic chunk partition ranges, and
-completion transitions. The chunked reducer is required to preserve serial output
-values for current conditional diagnostic layers; it does not introduce annual
-frequency, physical probability, or distributed execution semantics.
+completion transitions.
+
+Lifecycle provenance for chunk execution is cumulative and restart-safe for a
+stable chunk input signature: `attempt_count` and `execution_attempt` represent
+the chunk execution attempt number across retained plan state, and they increment
+only when work is performed for that chunk. Reused completed chunks should keep
+their prior attempt count in their state-derived manifest rebuild.
+
+`retry_count` counts failed attempts and increments when a run fails before a
+later successful attempt. The chunked reducer is required to preserve serial
+output values for current conditional diagnostic layers; it does not introduce
+annual frequency, physical probability, or distributed execution semantics.
 
 Completed chunks also write `<prefix>_<chunk_id>_state.json` with
 `reducer_chunk_state_v1`. These state artifacts are accumulator snapshots

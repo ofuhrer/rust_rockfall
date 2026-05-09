@@ -1937,6 +1937,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(len(failed_chunks), 1)
             failed_chunk_id = failed_chunks[0].get("chunk_id")
             self.assertEqual(failed_chunks[0].get("attempt_count"), 1)
+            self.assertEqual(failed_chunks[0].get("execution_attempt"), 1)
             self.assertEqual(failed_chunks[0].get("retry_count"), 1)
             self.assertIn("simulated transient chunk failure", failed_chunks[0].get("completion_reason") or "")
             self.assertFalse((chunked_dir / "chunks" / f'{failed_chunk_id}_state.json').exists())
@@ -1976,6 +1977,70 @@ class HazardLayerTests(unittest.TestCase):
                 ][0],
             )
             self.assertGreaterEqual(recovered_state["trajectory_count"], 0)
+
+    def test_chunk_execution_attempt_is_one_on_fresh_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+            ]
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            for record in execution_index.get("chunk_records", []):
+                self.assertEqual(record.get("attempt_count"), 1)
+                self.assertEqual(record.get("execution_attempt"), 1)
+
+    def test_chunk_execution_attempt_is_cumulative_on_retained_state_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+            ]
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            first_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            first_attempts = {
+                record.get("chunk_id"): int(record.get("execution_attempt") or 0)
+                for record in first_index.get("chunk_records", [])
+            }
+            self.assertTrue(first_attempts)
+
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            second_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            for record in second_index.get("chunk_records", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                self.assertEqual(record.get("attempt_count"), first_attempts[chunk_id])
+                self.assertEqual(record.get("execution_attempt"), first_attempts[chunk_id])
+
+            second_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                manifest_path = record.get("manifest_path")
+                self.assertIsNotNone(manifest_path)
+                manifest = json.loads((chunked_dir / manifest_path).read_text()) if isinstance(manifest_path, str) else {}
+                if manifest:
+                    self.assertEqual(manifest.get("attempt_count"), first_attempts[chunk_id])
+                    self.assertEqual(manifest.get("execution_attempt"), first_attempts[chunk_id])
 
     def test_chunked_reducer_reuses_partial_state_without_reexecution(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
