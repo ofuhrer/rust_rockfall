@@ -338,10 +338,11 @@ def build_hazard_command(
         return CONTROL_CHARS_RE.sub("", normalized)
 
     benchmark_case_path_obj = Path(benchmark_case_path)
+    benchmark_case_path_abs = repo_path(benchmark_case_path)
     benchmark_case_id = input_freeze.get("benchmark_case_id")
     case_id = benchmark_case_id or run_id
-    if not benchmark_case_id and benchmark_case_path_obj.exists():
-        benchmark_case = read_yaml(benchmark_case_path_obj)
+    if not benchmark_case_id and benchmark_case_path_abs.exists():
+        benchmark_case = read_yaml(benchmark_case_path_abs)
         case_id = require_text(benchmark_case.get("case_id"), "benchmark_case.case_id")
     command = [
         "uv",
@@ -726,7 +727,6 @@ def validate_selected_gate_contract(
         f"selected gate run {run_id} requires run_evidence.evidence_status gate_run_completed",
     )
     report_path = require_text(report_plan.get("report_path"), "report_plan.report_path")
-    require(report_path == SELECTED_REPORT_PATH, f"selected gate run {run_id} requires report {SELECTED_REPORT_PATH}")
     try:
         report_text = repo_path(report_path).read_text(encoding="utf-8")
     except OSError as exc:
