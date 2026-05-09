@@ -94,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def compare_pr(args: argparse.Namespace) -> int:
     aggregate = aggregate_summary_csv(args.summary_csv)
-    baseline = read_json_url(args.baseline_url)
+    baseline_raw = read_json_url(args.baseline_url)
+    baseline = baseline_raw if isinstance(baseline_raw, dict) else None
     baseline_metrics = (baseline or {}).get("metrics") or {}
     deltas = build_deltas(aggregate.values, baseline_metrics)
 

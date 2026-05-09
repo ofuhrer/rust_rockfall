@@ -43,6 +43,26 @@ class PerformanceCiTrackingTests(unittest.TestCase):
         self.assertIsNone(deltas["simulation_seconds"]["delta"])
         self.assertIsNone(deltas["simulation_seconds"]["percent"])
 
+    def test_compare_pr_treats_non_dict_baseline_as_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.csv"
+            self._write_summary(summary_path)
+            output_json = Path(tmp) / "pr_compare.json"
+            output_md = Path(tmp) / "pr_compare.md"
+            args = SimpleNamespace(
+                summary_csv=summary_path,
+                baseline_url="https://example.invalid/perf/latest.json",
+                sha="abc123",
+                output_json=output_json,
+                output_markdown=output_md,
+            )
+            # read_json_url returns None for unreachable URL; compare_pr must not raise
+            ret = perf_ci.compare_pr(args)
+            self.assertEqual(ret, 0)
+            import json as _json
+            result = _json.loads(output_json.read_text())
+            self.assertFalse(result["baseline_available"])
+
     def test_render_pr_markdown_includes_component_rows(self) -> None:
         report = {
             "sha": "abc123",
