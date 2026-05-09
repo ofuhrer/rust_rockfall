@@ -5,12 +5,6 @@ This is a research diagnostic performance note, not validation evidence,
 not an operational hazard-map claim, and not an annual or physical
 probability product.
 
-This review has been reconciled with
-`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`. The
-generated scaling JSON and all source manifests remain ignored local artifacts;
-the committed run-freeze records only paths, checksums, runtime, memory, file
-count, and byte-count evidence.
-
 ## Commands
 
 ```bash
@@ -23,18 +17,18 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py \
 
 | Stage | Wall seconds | Output write seconds | Rows read/written | Files | Bytes |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| validation | 4.066 | 2.340 | 81845 | 125 | 34531527 |
-| hazard | 15.586 | 11.433 | 81710 | 55 | 192297963 |
+| validation | 3.750 | 2.535 | 81845 | 125 | 34562779 |
+| hazard | 12.172 | 8.687 | 81710 | 58 | 192717542 |
 
 Local ignored output tree totals:
 
-- Files: `186`
-- Bytes: `226925754`
+- Files: `188`
+- Bytes: `267522045`
 
 External `/usr/bin/time` sidecars:
 
-- Validation: `recorded` (`4.23` s elapsed, `41572` KiB max RSS)
-- Hazard: `recorded` (`16.41` s elapsed, `390588` KiB max RSS)
+- Validation: `missing`
+- Hazard: `missing`
 
 ## Reducer Evidence
 
@@ -49,28 +43,11 @@ External `/usr/bin/time` sidecars:
 - Status: `no_default_change_recommended`
 - Primary bottleneck: `hazard_conditional_curve_output_volume`
 - Largest hazard output kind: `conditional_intensity_exceedance_curves`
-- Largest hazard output bytes: `117305412`
-- Next action: use or compare `--conditional-curve-export summary-only` before
-  increasing ensemble size; keep full curve-table export only for small debug
-  or review runs that require per-cell curve rows.
+- Largest hazard output bytes: `117670336`
+- Next action: optimize or gate conditional-curve table and raster output modes before increasing ensemble size.
 
 Do not add MPI, GPU, SLURM orchestration, annual frequency, physical
 probability, or ensemble-size increases from this evidence alone.
-
-## Output-Volume Control
-
-`scripts/build_hazard_layers.py` now supports:
-
-```bash
---conditional-curve-export summary-only
-```
-
-The default remains `full`, which writes the existing
-`*_conditional_intensity_exceedance_curves.csv` table. The `summary-only` mode
-keeps conditional exceedance rasters and metadata summaries but omits the large
-curve CSV table from the output manifest. This is the recommended pre-scale
-gate for Tschamut until a future task proves that full curve-table export is
-needed and affordable at larger ensemble sizes.
 
 ## Claim Boundary
 

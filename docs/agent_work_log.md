@@ -3162,16 +3162,18 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 - Milestone id: M054.
 - Roadmap item: Roadmap reassessment after validation refactor, CI alignment,
-  and target-scale interpretation blockers.
+  target-scale interpretation blockers, and balfrin pilot path.
 - Hypothesis/objective: Update the active roadmaps so they reflect the latest
   repository state: expanded validation submodules, improved CI Python tooling,
   multi-trajectory Parquet writer support, completed blocked/limiting Target
-  13/14 records, and Target 15 as the next actionable development step.
+  13/14 records, Target 15 as the next actionable development step, and the
+  balfrin readiness/reproduction sequence for the Tschamut hazard-map pilot.
 - Initial gap assessment: The roadmap matrix still ranked manual GIS/QGIS and
   forest/obstacle review above Target 15, even though those items are now
   explicitly blocked/limiting until local artifacts or tools are available.
-  The roadmaps also understated the validation split and did not mention the CI
-  and Parquet-output changes.
+  The roadmaps also understated the validation split, did not mention the CI
+  and Parquet-output changes, and did not yet separate the main hazard-map
+  outcome from secondary GIS/QGIS interoperability review.
 - Files changed:
   `docs/next_development_targets.md`,
   `docs/real_case_intensity_frequency_implementation_roadmap.md`,
@@ -3179,10 +3181,12 @@ Planning only; these milestones do not implement roadmap item content yet.
   `docs/agent_work_log.md`.
 - Implementation summary: Reprioritized Target 15, target-run provenance and
   debug output budget, as the highest-value implementable next step. Roadmaps
-  now treat manual GIS/QGIS and forest/obstacle review as scientifically
-  important but currently blocked by local artifacts/tools, and record the
-  expanded validation split, CI requirements alignment, and Parquet writer as
-  completed building blocks.
+  now treat manual GIS/QGIS as secondary interoperability QA rather than the
+  main pilot outcome, keep forest/obstacle review as a scientific
+  interpretation blocker, and add balfrin artifact/environment readiness plus
+  same-scale balfrin target-gate reproduction as the next pilot-specific steps.
+  They also record the expanded validation split, CI requirements alignment,
+  and Parquet writer as completed building blocks.
 - Checks run:
   `git diff --check`;
   `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
@@ -3192,4 +3196,5 @@ Planning only; these milestones do not implement roadmap item content yet.
   SLURM/MPI/GPU code, or operational claims are changed.
 - Decision: ACCEPT; documentation consistency checks pass.
 - Next proposed milestone: Implement Target 15 with an additive provenance and
-  output-budget guardrail for selected target-scale evidence.
+  output-budget guardrail for selected target-scale evidence, then add the
+  balfrin readiness record for `/users/olifu/work/rust_rockfall`.

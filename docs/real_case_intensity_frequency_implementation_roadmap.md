@@ -29,11 +29,15 @@ run-freeze record with regenerated local ignored outputs, conditional curves,
 automated GIS artifact checks, local performance evidence, executed
 target-scale conditional evidence, and a reassessed no-go ensemble-size gate.
 Milestone 1 is still not complete because target-scale convergence decisions
-are not yet accepted. In this checkout, the selected package visual-QA gate is
-`blocked` because QGIS and ignored target package artifacts are unavailable,
-forest/obstacle omission is classified `limiting` because public context layers
-have not been locally reviewed, and validation-runner provenance/output-volume
-questions remain open. It is not yet close to
+are not yet accepted, validation-runner provenance/output-volume questions
+remain open, and the target-scale workflow has not yet been reproduced in the
+intended balfrin environment. In this checkout, the selected package visual-QA
+gate is `blocked` because QGIS and ignored target package artifacts are
+unavailable, and forest/obstacle omission is classified `limiting` because
+public context layers have not been locally reviewed. GIS/QGIS review remains a
+secondary interoperability check; the main pilot outcome is a conditional
+hazard map with interpretable uncertainty, convergence, performance, and
+provenance evidence. It is not yet close to
 milestone 2 because source-zone occurrence frequency,
 block-population frequency, annualization, and validation semantics remain
 unsupported by `docs/hazard_map_semantics.md` and
@@ -98,18 +102,23 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. keep the target-scale manual GIS/QGIS visual QA decision explicit and visible
-   until a GUI/package review can be completed or a share-safe classification
-   is documented;
-2. locally review forest/obstacle context and decide whether omission remains
-   limiting, becomes acceptable for a diagnostic pilot, or invalidates
-   target-scale interpretation;
-3. clarify validation-runner parallel provenance for observed-release
+1. clarify validation-runner parallel provenance for observed-release
    ensembles if future gates require chunk metadata to cover every target
    trajectory;
-4. reduce or explicitly justify validation-side debug output volume before any
+2. reduce or explicitly justify validation-side debug output volume before any
    further selected-domain increase;
-5. defer physical/annual frequency semantics until source-frequency and
+3. add a balfrin artifact/environment readiness gate for
+   `/users/olifu/work/rust_rockfall`, including ignored input status, scratch
+   output location, and toolchain checks;
+4. reproduce the selected Tschamut conditional hazard-map target gate on
+   balfrin at the same scale, with unchanged inputs/defaults and share-safe
+   output-budget, convergence, checksum, and performance evidence;
+5. locally review forest/obstacle context and decide whether omission remains
+   limiting, becomes acceptable for a diagnostic pilot, or invalidates
+   target-scale interpretation;
+6. keep the target-scale manual GIS/QGIS visual QA decision explicit and
+   visible as a secondary interoperability check;
+7. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -165,8 +174,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `docs/tschamut_public_ensemble_feasibility.md` now review the executed but
   inconclusive target-scale evidence and record that larger Tschamut runs remain
   unauthorized until convergence interpretation, validation output volume,
-  manual GIS/QGIS visual QA, forest/obstacle context, and validation-runner
-  provenance scope are resolved.
+  forest/obstacle context, balfrin reproducibility, and validation-runner
+  provenance scope are resolved. Manual GIS/QGIS remains a secondary
+  interoperability check.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
   `docs/tschamut_public_scalable_conditional_execution.md`, and
@@ -525,11 +535,12 @@ table. Validation cases can opt into local threaded ensemble execution with
 `random.ensemble_workers`, and those runs record `local_parallel_ensemble_v1`
 chunk provenance in `run_manifest_v1`. The scalable conditional execution
 record now defines the selected Tschamut target-scale diagnostics and keeps
-scale-up unauthorized until convergence, output budget, manual GIS visual QA,
-and forest/obstacle context evidence are complete. Remaining gaps are executing
-the selected target-scale gate locally, recording convergence/output-budget
-evidence, and generalizing plan-side partial-reducer restart semantics from
-local reducer chunks to trajectory-generation and cluster orchestration.
+scale-up unauthorized until convergence, output budget, forest/obstacle
+context, balfrin reproducibility, and target-run provenance evidence are
+complete. Remaining gaps are clarifying target-run provenance/debug output,
+reproducing the selected target-scale gate on balfrin, and generalizing
+plan-side partial-reducer restart semantics from local reducer chunks to
+trajectory-generation and cluster orchestration.
 
 Implementation work:
 
@@ -598,8 +609,9 @@ the public geodata manifest, source/scenario policy, seed, thresholds, physics
 settings, explicit grid, output roots, and output budget, then records local
 ignored DEM-sensitivity, validation, hazard, GIS-package, scaling, runtime,
 memory, file-count, byte-count, and checksum evidence. Generated products
-remain outside git and absent in a clean checkout. Manual QGIS visual QA and
-target-scale convergence remain incomplete.
+remain outside git and absent in a clean checkout. Target-scale convergence,
+balfrin reproduction, and target-run provenance remain incomplete; manual QGIS
+visual QA is a blocked secondary interoperability check.
 
 Implementation work:
 
@@ -754,17 +766,20 @@ The order below supersedes the older phase-number order for near-term work.
 The selected-domain manifest, selected source/scenario policy, selected
 DEM-sensitivity gate, and selected conditional gate evidence are complete at
 the reconciled local ignored-artifact level. Manual GIS visual QA is explicitly
-`inconclusive`, forest/obstacle omission is explicitly `limiting`, and
+`blocked` as a secondary interoperability check, forest/obstacle omission is
+explicitly `limiting`, and
 conditional-curve table export now has an opt-in summary-only mode. Fallible
 DEM-facing runtime guardrails, deterministic local parallel ensemble execution,
 validation-runner ensemble provenance, scalable conditional execution
 diagnostics, and selected target-scale execution evidence are also implemented.
 Ensemble scale-up is still explicitly no-go for the selected domain until
-target-scale convergence interpretation, validation output volume, manual-GIS,
-obstacle-context, and validation-runner provenance preconditions are resolved.
-The current near-term bottleneck is interpretation and QA of the target
-evidence, not another contract or larger run. Annual or physical products remain
-a separate deferred semantic/evidence problem.
+target-scale convergence interpretation, validation output volume,
+forest/obstacle context, balfrin reproducibility, and validation-runner
+provenance preconditions are resolved. Manual GIS/QGIS remains a useful
+secondary interoperability check, but the current near-term bottleneck is
+interpreting and reproducing the conditional hazard-map evidence, not producing
+another GIS package. Annual or physical products remain a separate deferred
+semantic/evidence problem.
 
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
@@ -772,17 +787,19 @@ a separate deferred semantic/evidence problem.
 | 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected target-scale visual-QA record classifies the gate as `blocked`, with QGIS unavailable and ignored target package artifacts absent in this checkout. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe target-scale scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, records blocked local context-artifact review, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
-| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the selected pilot is reproducible and scientifically interpretable. | Complete as a reassessed selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` reviews the executed but inconclusive target evidence and records that increasing the Tschamut ensemble is not authorized until convergence interpretation, validation output volume, manual GIS/QGIS review, forest/obstacle context, and validation-runner provenance scope are resolved. |
+| 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the selected pilot is reproducible and scientifically interpretable. | Complete as a reassessed selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` reviews the executed but inconclusive target evidence and records that increasing the Tschamut ensemble is not authorized until convergence interpretation, validation output volume, forest/obstacle context, balfrin reproducibility, and validation-runner provenance scope are resolved. Manual GIS/QGIS remains a secondary interoperability check. |
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
 | 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Substantially complete for validation: metric math, metrics, probabilistic metadata, validation I/O, type re-exports, and runner logic now live in focused `src/validation/` submodules. Larger shape splits remain future work. |
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Complete at the library-contract level: `simulate_ensemble_parallel` is opt-in, preserves serial default behavior, records deterministic local chunk metadata, and focused tests prove serial/parallel and worker-count parity. |
-| 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, manual GIS QA, obstacle context, and validation-runner provenance scope remain unresolved. |
-| 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | Complete: the selected ensemble-feasibility record remains `no_go` with explicit target-evidence limitations and no authorization for a further diagnostic scale step. |
-| 11 | Complete target-scale manual GIS/QGIS visual QA | The target-scale package has automated QA, but visual alignment and interpretation are still unresolved. | A share-safe visual-QA record is `passed`, `failed`, or explicitly `blocked` for the target-scale package with CRS, nodata, source-zone overlay, label, and interpretation notes. |
-| 12 | Review target-scale forest/obstacle context | The selected Tschamut outputs remain hard to interpret while forest/obstacle omission is only scoped, not locally reviewed. | The obstacle-context record is updated to `acceptable_for_diagnostic_pilot`, `limiting`, or `invalidating_for_interpretation` based on locally reviewed public context layers and claim boundaries. |
-| 13 | Clarify target-run provenance and debug output budget | Further scaling should not proceed while auxiliary ensemble provenance can be confused with observed-release target provenance or while validation debug output volume is unjustified. This is the next actionable implementation target. | Target-run reports/manifests clearly separate observed-release outputs from auxiliary ensemble provenance and record a debug-output reduction, hard budget, or explicit audit justification. |
-| 14 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
-| 15 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
+| 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, obstacle context, balfrin reproducibility, and validation-runner provenance scope remain unresolved. |
+| 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve convergence, provenance, or obstacle-context blockers. | Complete: the selected ensemble-feasibility record remains `no_go` with explicit target-evidence limitations and no authorization for a further diagnostic scale step. |
+| 11 | Clarify target-run provenance and debug output budget | Further scaling should not proceed while auxiliary ensemble provenance can be confused with observed-release target provenance or while validation debug output volume is unjustified. This is the next actionable implementation target. | Target-run reports/manifests clearly separate observed-release outputs from auxiliary ensemble provenance and record a debug-output reduction, hard budget, or explicit audit justification. |
+| 12 | Prepare balfrin artifact/environment readiness gate | The selected pilot should next be reproduced in the intended HPC environment, but missing ignored artifacts and environment assumptions must be surfaced before running. | A share-safe balfrin readiness record for `/users/olifu/work/rust_rockfall` reports repository revision, toolchain, scratch/output paths, required ignored input status, and `ready_for_balfrin_target_gate` or a concrete blocker. |
+| 13 | Reproduce selected Tschamut conditional hazard-map gate on balfrin | The main pilot outcome is a conditional hazard map, so the current target-scale gate should be reproduced on balfrin before ensemble-size increases or scheduler orchestration. | A share-safe balfrin execution report records unchanged commands/inputs/defaults, output budgets, checksums, convergence summaries, performance evidence, and `passed`/`failed`/`inconclusive` reproducibility classification. |
+| 14 | Review target-scale forest/obstacle context | The selected Tschamut outputs remain hard to interpret while forest/obstacle omission is only scoped, not locally reviewed. | The obstacle-context record is updated to `acceptable_for_diagnostic_pilot`, `limiting`, or `invalidating_for_interpretation` based on locally reviewed public context layers and claim boundaries. |
+| 15 | Complete secondary target-scale manual GIS/QGIS visual QA | The target-scale package has automated QA, but visual alignment and interoperability remain unresolved. | A share-safe visual-QA record is `passed`, `failed`, or explicitly `blocked` for the target-scale package with CRS, nodata, source-zone overlay, label, and interpretation notes. This does not outrank hazard-map convergence/provenance evidence. |
+| 16 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
+| 17 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
 ## Earliest Useful Pilot
 
@@ -794,7 +811,7 @@ The earliest scientifically honest full-chain pilot should produce or record:
 - per-cell conditional kinetic-energy and jump-height exceedance curves;
 - reach, deposition, maximum energy, maximum jump-height, and selected
   threshold-exceedance GeoTIFFs;
-- a QGIS review bundle;
+- optional GIS/QGIS interoperability evidence;
 - convergence and performance diagnostics;
 - an explicit statement that outputs are conditional research diagnostics, not
   annual frequency, physical probability, risk, or operational hazard maps.
@@ -809,11 +826,13 @@ conditional execution diagnostics are available. The selected target-scale gate
 now has local ignored execution evidence with 1,000 observed-release
 trajectories, summary-only curves, output-budget/runtime/memory/checksum
 sidecars, and reducer worker parity. The result is still `inconclusive` because
-target-vs-gate convergence has not been accepted, manual GIS/QGIS visual QA is
-blocked, obstacle context remains limiting, and validation-runner
+target-vs-gate convergence has not been accepted, obstacle context remains
+limiting, balfrin reproduction has not been recorded, and validation-runner
 `ensemble_execution` provenance covers only the auxiliary single-release
-ensemble path. Ensemble increase remains no-go until those preconditions are
-satisfied. The pilot remains an inconclusive local diagnostic gate.
+ensemble path. Manual GIS/QGIS visual QA remains blocked as a secondary
+interoperability check. Ensemble increase remains no-go until the hazard-map
+evidence and provenance preconditions are satisfied. The pilot remains an
+inconclusive local diagnostic gate.
 
 ## Decision Gates
 
@@ -824,7 +843,9 @@ satisfied. The pilot remains an inconclusive local diagnostic gate.
 | Source-zone policy | Conditional pilot | Source geometry, release cells, and evidence level are documented before simulation. |
 | Scenario semantics | Conditional curves | Block/scenario ids, sampling weights, and denominators join across outputs. |
 | Terrain error semantics | Larger real-DEM batches | Nodata, out-of-domain, and unsupported-contact failures propagate as structured errors rather than panics. |
-| GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
+| GIS package QA | Secondary interoperability output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. This supports reviewability but is not the primary hazard-map success criterion. |
+| Balfrin readiness | Tschamut hazard-map reproduction | The balfrin checkout at `/users/olifu/work/rust_rockfall` has required ignored public inputs, processed artifacts, toolchain, scratch/output paths, and a ready/blocked record. |
+| Balfrin target-gate reproduction | Tschamut hazard-map reproduction | The selected conditional hazard-map target gate is rerun on balfrin at the same scale with unchanged inputs/defaults and share-safe convergence, output-budget, checksum, and performance evidence. |
 | Scalable conditional target gate | Selected ensemble-size decision | Complete as an `inconclusive` evidence gate: execution, output-budget, wall-time, memory, checksum, reducer, worker-parity, and ignored-artifact evidence exist, but convergence/GIS/obstacle/provenance blockers prevent scale-up authorization. |
 | Target-run provenance and debug output budget | Further selected-domain scaling | Observed-release target outputs are clearly separated from auxiliary ensemble provenance, and validation debug outputs have a documented reduction, hard budget, or audit justification. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. The local contracts and selected target-scale evidence exist; the next blocker is interpreting that evidence before any larger diagnostic run. |
@@ -841,6 +862,7 @@ satisfied. The pilot remains an inconclusive local diagnostic gate.
 - Public shape-contact runtime before shape-readiness validation passes.
 - Forest/barrier physics before pilot-domain scoping.
 - SLURM/CSCS orchestration before deterministic local parallelism, reducer
-  contracts, and selected target-scale evidence justify scheduler work.
-- COG/tiled production before local GeoTIFF/QGIS package acceptance and reducer
-  contracts.
+  contracts, balfrin target-gate reproduction, and selected target-scale
+  evidence justify scheduler work.
+- COG/tiled production before the conditional hazard-map evidence and output
+  contracts justify more GIS packaging.
