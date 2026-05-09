@@ -332,6 +332,9 @@ def build_hazard_command(
     hazard_output_dir: str,
     run_id: str,
 ) -> list[str]:
+    def normalized_path(value: Any) -> str:
+        return str(value).strip().replace("\\", "/")
+
     benchmark_case_path_obj = Path(benchmark_case_path)
     case_id = run_id
     if benchmark_case_path_obj.exists():
@@ -380,6 +383,7 @@ def build_hazard_command(
         str(sampling["worker_count"]),
         "--no-plots",
     ]
+    output_parent = benchmark_case_path_obj.parent
     default_outputs = {
         "diagnostics_json": f"{case_id}_metrics.json",
         "trajectory_csv": f"{case_id}_trajectory.csv",
@@ -389,7 +393,9 @@ def build_hazard_command(
     }
     for output_key, output_name in default_outputs.items():
         if not outputs.get(output_key):
-            outputs[output_key] = str(Path(benchmark_case_path).parent / output_name)
+            outputs[output_key] = normalized_path(output_parent / output_name)
+        else:
+            outputs[output_key] = normalized_path(outputs[output_key])
     optional_output_args = {
         "diagnostics_json": "--diagnostics",
         "trajectory_csv": "--trajectory",
