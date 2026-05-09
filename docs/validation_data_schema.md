@@ -654,6 +654,15 @@ completion transitions. The chunked reducer is required to preserve serial outpu
 values for current conditional diagnostic layers; it does not introduce annual
 frequency, physical probability, or distributed execution semantics.
 
+Completed chunks also write `<prefix>_<chunk_id>_state.json` with
+`reducer_chunk_state_v1`. These state artifacts are accumulator snapshots
+intended for replay/reuse/restart and include counts, grids, warnings, and
+deposition points, but not lifecycle provenance. Lifecycle fields such as
+`status`, `completion_state`, `row_count`, `rows_written`, `output_bytes`,
+`execution_attempt`, `merge_group_id`, `retry_count`, and `failure_reason` live
+in the corresponding chunk execution manifest and the execution-plan/index/
+merge-state artifacts.
+
 Validation and verification cases can also opt in to deterministic local
 parallel ensemble execution with:
 
