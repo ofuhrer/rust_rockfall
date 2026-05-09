@@ -1,6 +1,6 @@
 # Validation Plan
 
-Validation asks whether the current model is useful when compared with observations or published benchmarks. It does not target RAMMS::ROCKFALL equivalence and does not use proprietary datasets.
+Validation asks whether the current model is useful when compared with observations or published benchmarks. It does not target parity claims and does not use proprietary datasets.
 
 Claim levels for validation and pilot reports are defined in
 `docs/validation_maturity_framework.md`. Current validation evidence should be

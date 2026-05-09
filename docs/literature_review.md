@@ -1,6 +1,6 @@
 # Literature Review
 
-This project uses public scientific and grey literature to build an independent, transparent rockfall simulator. It does not copy proprietary source code, inspect binaries, or claim equivalence to RAMMS::ROCKFALL.
+This project uses public scientific and grey literature to build an independent, transparent rockfall simulator. It does not copy proprietary source code, inspect binaries, or claim equivalence to closed-source reference implementations.
 
 ## Local Background Material
 
@@ -27,8 +27,7 @@ This project uses public scientific and grey literature to build an independent,
 
 ## What Is Missing
 
-- A complete, public, implementation-level description of RAMMS::ROCKFALL internals.
+- A complete, public, implementation-level description of all relevant vendor implementations.
 - Public benchmark input/output files sufficient to verify a new simulator against the full RAMMS model.
 - Calibrated parameter sets for general terrain, soil, block shape, and vegetation outside specific experimental contexts.
 - A validated open dataset in this repository for DEM-scale rockfall benchmarks.
-

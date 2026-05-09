@@ -2,7 +2,7 @@
 
 Status: research prototype assessment for expert review.
 
-This report summarizes the current scientific and engineering maturity of the simulator and hazard-map workflow. It is intentionally conservative: the project is not operationally validated, does not claim equivalence with state-of-practice proprietary tools, and does not present current hazard layers as risk products.
+This report summarizes the current scientific and engineering maturity of the simulator and hazard-map workflow. It is written for fast-cycle review: the project is not operationally validated, does not claim parity with state-of-practice tools, and does not present current hazard layers as risk products.
 
 ## Current Capabilities
 
@@ -109,7 +109,7 @@ The project is not operationally ready. Operational use would require at least:
 
 ## What Should Not Be Claimed
 
-- Do not claim equivalence to RAMMS::ROCKFALL or any proprietary simulator.
+- Do not claim equivalence to closed-source reference implementations or any proprietary simulator.
 - Do not claim operational hazard-map validity.
 - Do not call current hazard layers risk maps.
 - Do not interpret sampling-weighted maps as annual probabilities.
