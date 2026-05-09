@@ -36,6 +36,12 @@ CHUNK_EXECUTION_PLAN_SCHEMA_VERSION = "execution_plan_v1"
 CHUNK_PARTIAL_STATE_SCHEMA_VERSION = "reducer_chunk_state_v1"
 CHUNK_EXECUTION_INDEX_SCHEMA_VERSION = "reducer_execution_index_v1"
 CHUNK_MERGE_STATE_SCHEMA_VERSION = "reducer_merge_state_v1"
+TRAJECTORY_CHUNK_MANIFEST_SCHEMA_VERSION = "trajectory_generation_chunk_manifest_v1"
+TRAJECTORY_EXECUTION_MANIFEST_SCHEMA_VERSION = "trajectory_execution_manifest_v1"
+TRAJECTORY_EXECUTION_PLAN_SCHEMA_VERSION = "trajectory_execution_plan_v1"
+TRAJECTORY_EXECUTION_INDEX_SCHEMA_VERSION = "trajectory_execution_index_v1"
+TRAJECTORY_MERGE_STATE_SCHEMA_VERSION = "trajectory_merge_state_v1"
+TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION = "trajectory_generation_state_v1"
 CHUNK_REDUCTION_MAX_ATTEMPTS = 3
 CHUNK_CLAIM_TTL_SECONDS = 60 * 60
 
@@ -317,6 +323,894 @@ class ReducerChunkResult:
     manifest: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class TrajectoryChunk:
+    chunk_id: str
+    index: int
+    trajectory_start: int
+    trajectory_end_exclusive: int
+    trajectory_paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class TrajectoryChunkResult:
+    chunk: TrajectoryChunk
+    trajectory_count: int
+    trajectory_sample_count: int
+    warnings: tuple[str, ...]
+    partial_state_path: Path | None
+    manifest: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class TrajectoryExecutionSummary:
+    mode: str
+    worker_count: int
+    chunk_count: int
+    plan_id: str | None
+    execution_plan_path: Path | None
+    execution_index_path: Path | None
+    merge_state_path: Path | None
+    executed_chunk_count: int
+    chunk_ids: tuple[str, ...]
+    rerun_count: int
+    failed_chunk_count: int
+    completed_chunk_count: int
+    merge_group_id: str | None
+
+
+def trajectory_chunk_manifest_path(chunk_dir: Path, chunk_id: str) -> Path:
+    return chunk_dir / f"{chunk_id}_manifest.json"
+
+
+def trajectory_chunk_state_path(chunk_id: str, chunk_dir: Path) -> Path:
+    return chunk_dir / f"{chunk_id}_state.json"
+
+
+def trajectory_execution_index_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_trajectory_execution_index_v1.json"
+
+
+def trajectory_merge_state_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_trajectory_merge_state_v1.json"
+
+
+def trajectory_execution_plan_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_trajectory_execution_plan_v1.json"
+
+
+def trajectory_chunk_signature(chunk: TrajectoryChunk) -> str:
+    payload = json.dumps(
+        {
+            "trajectory_start": chunk.trajectory_start,
+            "trajectory_end_exclusive": chunk.trajectory_end_exclusive,
+            "trajectory_files": [str(path) for path in chunk.trajectory_paths],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def trajectory_execution_signature(
+    chunk: TrajectoryChunk,
+    *,
+    trajectory_workers: int,
+    trajectory_rows_read_policy: str = "trajectory_csv_rows",
+) -> str:
+    artifact_fingerprints = []
+    for path in chunk.trajectory_paths:
+        artifact_fingerprints.append(
+            {
+                "path": str(path),
+                "size_bytes": path.stat().st_size if path.exists() else None,
+                "sha256": path_content_sha256(path),
+            }
+        )
+    payload = json.dumps(
+        {
+            "chunk_signature": trajectory_chunk_signature(chunk),
+            "policy": {
+                "trajectory_workers": trajectory_workers,
+                "chunk_id_policy": "stable_prefix_sorted_trajectory_chunk_index",
+                "trajectory_rows_read_policy": trajectory_rows_read_policy,
+            },
+            "chunk_artifacts": artifact_fingerprints,
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def build_trajectory_chunks(prefix: str, worker_count: int, trajectory_paths: list[Path]) -> list[TrajectoryChunk]:
+    if worker_count < 1:
+        raise SystemExit("--trajectory-workers must be at least 1")
+    partitions = contiguous_partitions(trajectory_paths, worker_count)
+    ranges = chunk_partition_ranges(len(trajectory_paths), worker_count)
+    chunk_id_prefix = stable_required_id(prefix, "prefix")
+    return [
+        TrajectoryChunk(
+            chunk_id=f"{chunk_id_prefix}__trajectory_chunk_{index:04d}",
+            index=index,
+            trajectory_start=trajectory_start,
+            trajectory_end_exclusive=trajectory_end_exclusive,
+            trajectory_paths=tuple(partitions[index]),
+        )
+        for index, (trajectory_start, trajectory_end_exclusive) in enumerate(ranges)
+    ]
+
+
+def trajectory_chunk_input_artifacts(chunk: TrajectoryChunk) -> list[dict[str, Any]]:
+    artifacts = [
+        input_artifact_collection(
+            [str(path) for path in chunk.trajectory_paths],
+            "trajectory_samples",
+            "csv_collection",
+        )
+    ]
+    return [artifact for artifact in artifacts if artifact["file_count"] > 0]
+
+
+def build_trajectory_execution_plan(
+    prefix: str,
+    chunks: list[TrajectoryChunk],
+    trajectory_workers: int,
+    output_dir: Path,
+    *,
+    owner_id: str | None = None,
+    scheduler_index: int = 0,
+    scheduler_count: int = 1,
+    max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
+    lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
+) -> dict[str, Any]:
+    chunk_records: list[dict[str, Any]] = []
+    chunk_owner = owner_id or stable_owner_id(prefix)
+    for chunk in chunks:
+        chunk_records.append(
+            {
+                "chunk_id": chunk.chunk_id,
+                "chunk_index": chunk.index,
+                "execution_signature": None,
+                "trajectory_file_index_start": chunk.trajectory_start,
+                "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
+                "execution_status": "planned",
+                "completion_status": "not_started",
+                "input_signature": trajectory_chunk_signature(chunk),
+                "attempt_count": 0,
+                "retry_count": 0,
+                "completion_reason": None,
+                "manifest_path": str(trajectory_chunk_manifest_path(output_dir / "trajectory_chunks", chunk.chunk_id)),
+                "partial_state_path": str(trajectory_chunk_state_path(chunk.chunk_id, output_dir / "trajectory_chunks")),
+                "partial_state_schema_version": TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION,
+                "ownership": chunk_ownership_state("unclaimed", None),
+                "input_artifacts": trajectory_chunk_input_artifacts(chunk),
+            }
+        )
+    plan_id_source = json.dumps(
+        {
+            "prefix": prefix,
+            "trajectory_workers": trajectory_workers,
+            "chunk_ids": [chunk.chunk_id for chunk in chunks],
+            "trajectory_ranges": [
+                {
+                    "trajectory_start": chunk.trajectory_start,
+                    "trajectory_end_exclusive": chunk.trajectory_end_exclusive,
+                }
+                for chunk in chunks
+            ],
+            "input_artifacts": [
+                artifact.get("sha256")
+                for chunk_record in chunk_records
+                for artifact in chunk_record.get("input_artifacts", [])
+                if isinstance(artifact, dict)
+            ],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    digest = hashlib.sha256(plan_id_source).hexdigest()[:24]
+    return {
+        "schema_version": TRAJECTORY_EXECUTION_PLAN_SCHEMA_VERSION,
+        "plan_id": f"{prefix}__trajectory_execution_plan__{digest}",
+        "plan_status": "planned",
+        "created_unix_s": int(datetime.now(timezone.utc).timestamp()),
+        "trajectory_workers": trajectory_workers,
+        "chunk_count": len(chunks),
+        "worker_count": trajectory_workers,
+        "merge_order": "sorted_chunk_id",
+        "merge_group_id": digest,
+        "chunk_id_policy": "stable_prefix_sorted_trajectory_chunk_index",
+        "owner_id": chunk_owner,
+        "scheduler_index": scheduler_index,
+        "scheduler_count": scheduler_count,
+        "max_chunk_attempts": max_chunk_attempts,
+        "claim_ttl_seconds": lease_seconds,
+        "chunk_manifests": chunk_records,
+        "output_manifest_path": str(trajectory_execution_plan_path(output_dir, prefix)),
+    }
+
+
+def build_trajectory_chunk_execution_manifest(
+    chunk: TrajectoryChunk,
+    trajectory_count: int,
+    trajectory_sample_count: int,
+    execution_plan_path: Path,
+    *,
+    plan_id: str | None,
+    attempt_count: int,
+    retry_count: int,
+    execution_status: str,
+    completion_status: str,
+    completion_reason: str | None,
+    orchestration_decision: str,
+    execution_signature: str | None,
+    output_bytes: int | None,
+    merge_group_id: str | None = None,
+    trajectory_accumulation_seconds: float,
+    partial_state_path: Path | None,
+    ownership: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    manifest = {
+        "schema_version": TRAJECTORY_CHUNK_MANIFEST_SCHEMA_VERSION,
+        "chunk_id": chunk.chunk_id,
+        "input_signature": trajectory_chunk_signature(chunk),
+        "execution_state_schema_version": TRAJECTORY_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "status": (
+            "completed" if completion_status == "completed" else "failed" if completion_status == "failed" else completion_status
+        ),
+        "completion_state": completion_status,
+        "execution_plan": {
+            "schema_version": TRAJECTORY_EXECUTION_PLAN_SCHEMA_VERSION,
+            "chunk_id": chunk.chunk_id,
+            "chunk_index": chunk.index,
+            "plan_id": plan_id,
+            "plan_path": str(execution_plan_path),
+            "plan_reference": None,
+        },
+        "execution_status": execution_status,
+        "completion_status": completion_status,
+        "completion_reason": completion_reason,
+        "failure_reason": completion_reason if completion_status == "failed" else None,
+        "execution_attempt": max(0, int(attempt_count)),
+        "scientific_status": "not_evaluated",
+        "merge_group_id": merge_group_id,
+        "retry_count": max(0, int(retry_count)),
+        "execution_signature": execution_signature,
+        "orchestration_decision": orchestration_decision,
+        "attempt_count": max(0, int(attempt_count)),
+        "worker_partition_index": chunk.index,
+        "ownership": ownership if isinstance(ownership, dict) else None,
+        "input_file_indices": {
+            "trajectory_file_index_start": chunk.trajectory_start,
+            "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
+        },
+        "input_file_counts": {
+            "trajectory_files": len(chunk.trajectory_paths),
+        },
+        "input_rows": {
+            "trajectory_sample_rows": trajectory_sample_count,
+        },
+        "row_count": trajectory_sample_count,
+        "rows_written": trajectory_count,
+        "trajectory_counts": {
+            "trajectory_count": trajectory_count,
+            "trajectory_sample_count": trajectory_sample_count,
+        },
+        "timings": {
+            "trajectory_accumulation_seconds": max(0.0, trajectory_accumulation_seconds),
+        },
+        "output_bytes": max(0, int(output_bytes or 0)),
+        "input_artifacts": trajectory_chunk_input_artifacts(chunk),
+        "limitations": [
+            "Local trajectory-generation replay metadata for deterministic local restart; no distributed scheduling is involved.",
+            "Research diagnostic; not operational hazard-map evidence.",
+        ],
+    }
+    if completion_status == "completed" and partial_state_path is not None:
+        manifest["partial_state_path"] = str(partial_state_path)
+        manifest["partial_state_schema_version"] = TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION
+    return manifest
+
+
+def serialize_trajectory_chunk_state(
+    chunk: TrajectoryChunk,
+    trajectory_count: int,
+    trajectory_sample_count: int,
+    trajectory_ids: tuple[str | None, ...],
+    execution_signature: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION,
+        "chunk_id": chunk.chunk_id,
+        "execution_signature": execution_signature,
+        "input_signature": trajectory_chunk_signature(chunk),
+        "execution_state_schema_version": TRAJECTORY_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "trajectory_count": trajectory_count,
+        "trajectory_sample_count": trajectory_sample_count,
+        "trajectory_ids": [trajectory_id for trajectory_id in trajectory_ids],
+        "trajectory_files": [str(path) for path in chunk.trajectory_paths],
+    }
+
+
+def load_trajectory_chunk_state(
+    path: Path,
+    chunk: TrajectoryChunk,
+    execution_signature: str | None,
+) -> tuple[int, int, list[str | None]]:
+    payload = read_json(path)
+    if not isinstance(payload, dict) or payload.get("schema_version") != TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION:
+        raise SystemExit(f"invalid trajectory state at {path}")
+    if payload.get("chunk_id") != chunk.chunk_id or payload.get("input_signature") != trajectory_chunk_signature(chunk):
+        raise SystemExit(f"trajectory state at {path} does not match chunk {chunk.chunk_id}")
+    if isinstance(execution_signature, str) and payload.get("execution_signature") != execution_signature:
+        raise SystemExit(f"trajectory state at {path} is stale for chunk {chunk.chunk_id}")
+    trajectory_count = payload.get("trajectory_count")
+    trajectory_sample_count = payload.get("trajectory_sample_count")
+    trajectory_ids = payload.get("trajectory_ids")
+    if not isinstance(trajectory_count, int) or trajectory_count < 0:
+        raise SystemExit(f"invalid trajectory state at {path}: trajectory_count")
+    if not isinstance(trajectory_sample_count, int) or trajectory_sample_count < 0:
+        raise SystemExit(f"invalid trajectory state at {path}: trajectory_sample_count")
+    if not isinstance(trajectory_ids, list):
+        raise SystemExit(f"invalid trajectory state at {path}: trajectory_ids")
+    return trajectory_count, trajectory_sample_count, [str(value) if value is not None else None for value in trajectory_ids]
+
+
+def run_trajectory_chunk(
+    chunk: TrajectoryChunk,
+    execution_plan_path: Path,
+    plan_id: str | None,
+    attempt_count: int,
+    retry_count: int,
+    orchestration_decision: str,
+    partial_state_path: Path,
+    execution_signature: str,
+    merge_group_id: str | None = None,
+) -> TrajectoryChunkResult:
+    warnings: list[str] = []
+    trajectory_started = time.perf_counter()
+    trajectory_count = 0
+    trajectory_sample_count = 0
+    trajectory_ids: list[str | None] = []
+    execution_status = "completed"
+    completion_status = "completed"
+    completion_reason = None
+    try:
+        for trajectory_path in chunk.trajectory_paths:
+            batch = read_trajectory_sample_batch(trajectory_path, warnings)
+            if batch is None:
+                continue
+            trajectory_sample_count += len(batch.samples)
+            trajectory_ids.append(batch.trajectory_id)
+            if batch.trajectory_id is not None:
+                trajectory_count += 1
+    except Exception as exc:  # noqa: BLE001 - local chunk-level execution failure is surfaced by manifest.
+        execution_status = "failed"
+        completion_status = "failed"
+        completion_reason = str(exc)
+        warnings.append(completion_reason)
+
+    trajectory_accumulation_seconds = time.perf_counter() - trajectory_started
+    manifest = build_trajectory_chunk_execution_manifest(
+        chunk,
+        trajectory_count,
+        trajectory_sample_count,
+        execution_plan_path,
+        plan_id=plan_id,
+        attempt_count=max(0, int(attempt_count)) + (0 if completion_status == "failed" else 0),
+        retry_count=max(0, int(retry_count)) + (1 if completion_status == "failed" else 0),
+        execution_status=execution_status,
+        completion_status=completion_status,
+        completion_reason=completion_reason,
+        orchestration_decision=orchestration_decision,
+        execution_signature=execution_signature,
+        output_bytes=0,
+        merge_group_id=merge_group_id,
+        trajectory_accumulation_seconds=trajectory_accumulation_seconds,
+        partial_state_path=partial_state_path if completion_status == "completed" else None,
+    )
+    if completion_status == "completed":
+        payload = serialize_trajectory_chunk_state(
+            chunk,
+            trajectory_count=trajectory_count,
+            trajectory_sample_count=trajectory_sample_count,
+            trajectory_ids=tuple(trajectory_ids),
+            execution_signature=execution_signature,
+        )
+        write_text(partial_state_path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        manifest["partial_state_path"] = str(partial_state_path)
+        manifest["partial_state_schema_version"] = TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION
+        manifest["output_bytes"] = partial_state_path.stat().st_size
+
+    return TrajectoryChunkResult(
+        chunk=chunk,
+        trajectory_count=trajectory_count,
+        trajectory_sample_count=trajectory_sample_count,
+        warnings=tuple(warnings),
+        partial_state_path=partial_state_path if completion_status == "completed" else None,
+        manifest=manifest,
+    )
+
+
+def build_trajectory_execution_index_manifest(
+    plan: dict[str, Any],
+    chunk_records: list[dict[str, Any]],
+    *,
+    completed_chunk_count: int,
+    failed_chunk_count: int,
+    rerun_count: int,
+    scheduled_chunk_count: int | None = None,
+) -> dict[str, Any]:
+    scheduled_count = scheduled_chunk_count if scheduled_chunk_count is not None else len(chunk_records)
+    return {
+        "schema_version": TRAJECTORY_EXECUTION_INDEX_SCHEMA_VERSION,
+        "plan_id": plan.get("plan_id"),
+        "plan_path": str(plan.get("output_manifest_path") or ""),
+        "plan_status": plan.get("plan_status"),
+        "owner_id": plan.get("owner_id"),
+        "scheduler_index": plan.get("scheduler_index"),
+        "scheduler_count": plan.get("scheduler_count"),
+        "merge_group_id": plan.get("merge_group_id"),
+        "chunk_count": len(chunk_records),
+        "scheduled_chunk_count": scheduled_count,
+        "completed_chunk_count": completed_chunk_count,
+        "failed_chunk_count": failed_chunk_count,
+        "rerun_count": rerun_count,
+        "merge_order": "sorted_chunk_id",
+        "chunk_records": [
+            {
+                "chunk_id": record.get("chunk_id"),
+                "chunk_manifest_path": record.get("manifest_path"),
+                "chunk_index": record.get("chunk_index"),
+                "status": record.get("status"),
+                "completion_state": record.get("completion_state"),
+                "execution_status": record.get("execution_status"),
+                "completion_status": record.get("completion_status"),
+                "orchestration_decision": record.get("orchestration_decision"),
+                "completion_reason": record.get("completion_reason"),
+                "failure_reason": record.get("failure_reason"),
+                "ownership": record.get("ownership"),
+                "timings": record.get("timings", {}),
+                "row_count": record.get("row_count"),
+                "rows_written": record.get("rows_written"),
+                "output_bytes": record.get("output_bytes"),
+                "execution_attempt": record.get("execution_attempt"),
+                "retry_count": record.get("retry_count"),
+                "attempt_count": record.get("attempt_count"),
+                "merge_group_id": record.get("merge_group_id"),
+                "execution_signature": record.get("execution_signature"),
+                "input_signature": record.get("input_signature"),
+                "input_file_counts": record.get("input_file_counts") if isinstance(record.get("input_file_counts"), dict) else None,
+                "input_file_indices": record.get("input_file_indices"),
+                "trajectory_counts": record.get("trajectory_counts"),
+            }
+            for record in chunk_records
+        ],
+    }
+
+
+def build_trajectory_merge_state_manifest(
+    plan: dict[str, Any],
+    chunk_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    complete_records = [record for record in chunk_records if record.get("completion_status") == "completed"]
+    return {
+        "schema_version": TRAJECTORY_MERGE_STATE_SCHEMA_VERSION,
+        "plan_id": plan.get("plan_id"),
+        "plan_path": str(plan.get("output_manifest_path") or ""),
+        "merge_group_id": plan.get("merge_group_id"),
+        "merge_status": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "status": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "completion_state": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "merge_order": "sorted_chunk_id",
+        "merge_index": [
+            {
+                "chunk_id": record.get("chunk_id"),
+                "chunk_manifest_path": record.get("manifest_path"),
+                "partial_state_path": record.get("partial_state_path"),
+                "partial_state_schema_version": record.get("partial_state_schema_version"),
+                "execution_signature": record.get("execution_signature"),
+                "input_signature": record.get("input_signature"),
+                "completion_status": record.get("completion_status"),
+                "completion_state": record.get("completion_state"),
+                "status": record.get("status"),
+                "trajectory_counts": record.get("trajectory_counts"),
+                "row_count": record.get("row_count"),
+                "rows_written": record.get("rows_written"),
+                "output_bytes": record.get("output_bytes"),
+            }
+            for record in chunk_records
+        ],
+    }
+
+
+def run_trajectory_generation(
+    output_dir: Path,
+    prefix: str,
+    trajectory_paths: list[Path],
+    worker_count: int,
+    *,
+    owner_id: str | None = None,
+    scheduler_index: int = 0,
+    scheduler_count: int = 1,
+    max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
+    lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
+) -> tuple[TrajectoryExecutionSummary, list[TrajectoryChunk]]:
+    if worker_count < 1:
+        raise SystemExit("--trajectory-workers must be at least 1")
+    if scheduler_count < 1:
+        raise SystemExit("--scheduler-count must be at least 1")
+    if scheduler_index < 0 or scheduler_index >= scheduler_count:
+        raise SystemExit("--scheduler-index must be in [0, --scheduler-count)")
+    if lease_seconds < 1:
+        raise SystemExit("--chunk-claim-ttl-seconds must be at least 1")
+    if max_chunk_attempts < 1:
+        raise SystemExit("--max-chunk-attempts must be at least 1")
+
+    chunks = build_trajectory_chunks(prefix, worker_count, trajectory_paths)
+    chunk_execution_signatures = {
+        chunk.chunk_id: trajectory_execution_signature(chunk, trajectory_workers=worker_count)
+        for chunk in chunks
+    }
+    chunk_dir = output_dir / "trajectory_chunks"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    execution_plan = trajectory_execution_plan_path(output_dir, prefix)
+    execution_index = trajectory_execution_index_path(output_dir, prefix)
+    merge_state_output_path = trajectory_merge_state_path(output_dir, prefix)
+    now_unix_s = int(datetime.now(timezone.utc).timestamp())
+
+    chunk_plan = build_trajectory_execution_plan(
+        prefix,
+        chunks,
+        worker_count,
+        output_dir,
+        owner_id=owner_id,
+        scheduler_index=scheduler_index,
+        scheduler_count=scheduler_count,
+        max_chunk_attempts=max_chunk_attempts,
+        lease_seconds=lease_seconds,
+    )
+    chunk_records_by_id = {
+        chunk_record.get("chunk_id"): chunk_record
+        for chunk_record in chunk_plan.get("chunk_manifests", [])
+        if isinstance(chunk_record, dict) and isinstance(chunk_record.get("chunk_id"), str)
+    }
+    run_owner_id = owner_id or str(chunk_plan.get("owner_id") or stable_owner_id(prefix))
+    scheduled_chunks = [
+        chunk for chunk in chunks if scheduler_count <= 1 or chunk.index % scheduler_count == scheduler_index
+    ]
+    scheduled_chunk_ids = {chunk.chunk_id for chunk in scheduled_chunks}
+    chunk_plan["scheduled_chunk_count"] = len(scheduled_chunks)
+    chunk_plan["scheduled_chunk_ids"] = sorted(scheduled_chunk_ids)
+    chunk_plan["input_file_count"] = {"trajectory_files": len(trajectory_paths)}
+
+    previous_plan = {}
+    if execution_plan.exists():
+        try:
+            previous_plan = read_json(execution_plan)
+        except (OSError, json.JSONDecodeError, ValueError):
+            previous_plan = {}
+
+    if (
+        isinstance(previous_plan, dict)
+        and previous_plan.get("schema_version") == TRAJECTORY_EXECUTION_PLAN_SCHEMA_VERSION
+        and previous_plan.get("chunk_count") == chunk_plan.get("chunk_count")
+        and sorted((record.get("chunk_id") for record in previous_plan.get("chunk_manifests", [])))
+        == sorted((record.get("chunk_id") for record in chunk_plan.get("chunk_manifests", [])))
+    ):
+        chunk_plan["previous_plan_id"] = previous_plan.get("plan_id")
+        previous_records_by_id = {
+            record.get("chunk_id"): record
+            for record in previous_plan.get("chunk_manifests", [])
+            if isinstance(record, dict) and isinstance(record.get("chunk_id"), str)
+        }
+        for chunk_id, chunk_record in chunk_records_by_id.items():
+            previous_record = previous_records_by_id.get(chunk_id)
+            if not isinstance(previous_record, dict):
+                continue
+            if previous_record.get("input_signature") != chunk_record.get("input_signature"):
+                continue
+            for field in (
+                "status",
+                "completion_state",
+                "attempt_count",
+                "retry_count",
+                "completion_status",
+                "execution_attempt",
+                "row_count",
+                "rows_written",
+                "output_bytes",
+                "failure_reason",
+                "merge_group_id",
+                "completion_reason",
+                "execution_status",
+                "manifest_path",
+                "timings",
+                "trajectory_counts",
+                "input_rows",
+                "input_file_indices",
+                "input_file_counts",
+                "ownership",
+                "partial_state_path",
+                "partial_state_schema_version",
+                "orchestration_decision",
+                "execution_signature",
+            ):
+                if field in previous_record:
+                    chunk_record[field] = previous_record[field]
+            if is_stale_claim(previous_record, now_unix_s):
+                mark_chunk_stale_release(chunk_record, now_unix_s)
+
+    def record_for_chunk(chunk_id: str) -> dict[str, Any]:
+        return chunk_records_by_id.get(chunk_id, {})
+
+    def build_no_execution_result(chunk: TrajectoryChunk, record: dict[str, Any], decision: str) -> TrajectoryChunkResult:
+        state_path = record.get("partial_state_path")
+        if not state_path:
+            raise SystemExit(f"trajectory chunk {chunk.chunk_id} has no partial state path in plan")
+        execution_signature = record.get("execution_signature")
+        if not isinstance(execution_signature, str):
+            raise SystemExit(f"trajectory chunk {chunk.chunk_id} missing execution_signature in plan")
+        trajectory_count, trajectory_sample_count, trajectory_ids = load_trajectory_chunk_state(
+            Path(state_path),
+            chunk,
+            execution_signature=execution_signature,
+        )
+        manifest = build_trajectory_chunk_execution_manifest(
+            chunk,
+            trajectory_count,
+            trajectory_sample_count,
+            execution_plan,
+            plan_id=chunk_plan.get("plan_id"),
+            attempt_count=max(0, int(record.get("attempt_count") or 0)),
+            retry_count=max(0, int(record.get("retry_count") or 0)),
+            execution_status="completed",
+            completion_status="completed",
+            completion_reason=None,
+            orchestration_decision=("reused_completed_state" if decision != "stale_claim_recovered" else decision),
+            execution_signature=execution_signature,
+            output_bytes=trajectory_chunk_state_path(chunk.chunk_id, chunk_dir).stat().st_size
+            if Path(trajectory_chunk_state_path(chunk.chunk_id, chunk_dir)).exists()
+            else 0,
+            merge_group_id=chunk_plan.get("merge_group_id"),
+            trajectory_accumulation_seconds=0.0,
+            partial_state_path=trajectory_chunk_state_path(chunk.chunk_id, chunk_dir),
+            ownership=record.get("ownership"),
+        )
+        manifest["trajectory_ids"] = trajectory_ids
+        return TrajectoryChunkResult(
+            chunk=chunk,
+            trajectory_count=trajectory_count,
+            trajectory_sample_count=trajectory_sample_count,
+            warnings=tuple(manifest.get("failure_reason") or []),
+            partial_state_path=trajectory_chunk_state_path(chunk.chunk_id, chunk_dir),
+            manifest=manifest,
+        )
+
+    scheduled_results: list[TrajectoryChunkResult] = []
+    scheduled_run_specs: list[tuple[TrajectoryChunk, int, int, str, str]] = []
+    failed_chunks: list[str] = []
+    ineligible_chunks: list[str] = []
+    run_retries = 0
+
+    for chunk in chunks:
+        record = record_for_chunk(chunk.chunk_id)
+        if not record:
+            continue
+        execution_signature = chunk_execution_signatures.get(chunk.chunk_id)
+        if chunk.chunk_id not in scheduled_chunk_ids:
+            record["execution_status"] = "not_scheduled"
+            record["orchestration_decision"] = "not_scheduled"
+            continue
+        if is_claim_active_for_other_owner(record, run_owner_id, now_unix_s):
+            release_chunk(
+                record,
+                run_owner_id,
+                now_unix_s,
+                completion_status="not_started",
+                execution_status="skipped",
+                reason="claimed_by_other_owner",
+                attempt_count=max(0, int(record.get("attempt_count") or 0)),
+                retry_count=max(0, int(record.get("retry_count") or 0)),
+            )
+            ineligible_chunks.append(chunk.chunk_id)
+            record["orchestration_decision"] = "skipped_by_other_owner"
+            continue
+
+        stale_claim_detected = is_stale_claim(record, now_unix_s)
+        if stale_claim_detected:
+            mark_chunk_stale_release(record, now_unix_s)
+            record["orchestration_decision"] = "stale_claim_recovered"
+
+        if trajectory_chunk_has_valid_reusable_state(chunk, record, execution_signature=execution_signature):
+            scheduled_results.append(
+                build_no_execution_result(
+                    chunk,
+                    record,
+                    decision=str(record.get("orchestration_decision") or "reused_completed_state"),
+                )
+            )
+            continue
+
+        if stale_claim_detected:
+            record["orchestration_decision"] = "executed"
+
+        if str(record.get("completion_status") or "not_started") == "completed":
+            record["completion_status"] = "not_started"
+            record["execution_status"] = "planned"
+            if stale_claim_detected:
+                record["orchestration_decision"] = "executed"
+
+        retry_count = max(0, int(record.get("retry_count") or 0))
+        attempt_count = max(0, int(record.get("attempt_count") or 0))
+        if execution_signature is None:
+            execution_signature = trajectory_execution_signature(chunk, trajectory_workers=worker_count)
+            record["execution_signature"] = execution_signature
+
+        if retry_count >= max_chunk_attempts:
+            release_chunk(
+                record,
+                run_owner_id,
+                now_unix_s,
+                completion_status="failed",
+                execution_status="failed",
+                reason="max_chunk_attempts_exceeded",
+                attempt_count=max(1, attempt_count),
+                retry_count=retry_count,
+            )
+            failed_chunks.append(chunk.chunk_id)
+            record["orchestration_decision"] = "max_attempts_exceeded"
+            continue
+
+        claim_chunk(record, run_owner_id, now_unix_s, lease_seconds)
+        record["orchestration_decision"] = str(record.get("orchestration_decision") or "executed")
+        scheduled_run_specs.append(
+            (
+                chunk,
+                attempt_count,
+                retry_count,
+                str(record.get("orchestration_decision") or "executed"),
+                execution_signature,
+            )
+        )
+
+    if scheduled_run_specs:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            run_results = list(
+                executor.map(
+                    lambda spec: run_trajectory_chunk(
+                        spec[0],
+                        execution_plan,
+                        plan_id=chunk_plan.get("plan_id"),
+                        attempt_count=spec[1],
+                        retry_count=spec[2],
+                        orchestration_decision=spec[3],
+                        partial_state_path=trajectory_chunk_state_path(spec[0].chunk_id, chunk_dir),
+                        execution_signature=spec[4],
+                        merge_group_id=chunk_plan.get("merge_group_id"),
+                    ),
+                    scheduled_run_specs,
+                )
+            )
+        scheduled_results.extend(run_results)
+        run_retries += len(run_results)
+
+    scheduled_results.sort(key=lambda result: result.chunk.chunk_id)
+    warnings: list[str] = []
+    trajectory_manifest_paths: list[Path] = []
+    total_trajectory_seconds = 0.0
+    for result in scheduled_results:
+        manifest = result.manifest
+        chunk_id = result.chunk.chunk_id
+        record = record_for_chunk(chunk_id)
+        completion_status = str(manifest.get("completion_status") or "unknown")
+        execution_status = str(manifest.get("execution_status") or "unknown")
+        warnings.extend(result.warnings)
+        if execution_status in {"completed", "failed"} and isinstance(manifest.get("timings"), dict):
+            total_trajectory_seconds += float(manifest["timings"].get("trajectory_accumulation_seconds", 0.0))
+        for key in (
+            "execution_status",
+            "completion_status",
+            "status",
+            "completion_state",
+            "completion_reason",
+            "failure_reason",
+            "execution_attempt",
+            "row_count",
+            "rows_written",
+            "output_bytes",
+            "merge_group_id",
+            "timings",
+            "attempt_count",
+            "retry_count",
+            "ownership",
+            "input_rows",
+            "trajectory_counts",
+            "input_file_counts",
+            "input_file_indices",
+            "orchestration_decision",
+            "execution_signature",
+            "input_signature",
+        ):
+            if key in manifest:
+                record[key] = manifest[key]
+        manifest_path = Path(str(record.get("manifest_path") or trajectory_chunk_manifest_path(chunk_dir, chunk_id)))
+        write_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        trajectory_manifest_paths.append(manifest_path)
+        record["manifest_path"] = str(manifest_path)
+        release_chunk(
+            record,
+            run_owner_id,
+            int(datetime.now(timezone.utc).timestamp()),
+            completion_status=completion_status,
+            execution_status=execution_status,
+            reason="completed" if completion_status == "completed" else ("failed" if completion_status == "failed" else str(manifest.get("completion_reason") or "not_completed")),
+            attempt_count=int(manifest.get("attempt_count") or 0),
+            retry_count=int(manifest.get("retry_count") or 0),
+        )
+
+    chunk_plan["completed_chunk_count"] = len(
+        [record for record in chunk_records_by_id.values() if record.get("completion_status") == "completed"]
+    )
+    chunk_plan["failed_chunk_count"] = len(
+        [record for record in chunk_records_by_id.values() if record.get("completion_status") == "failed"]
+    )
+    chunk_plan["chunk_ids_completed"] = [
+        record.get("chunk_id") for record in chunk_records_by_id.values() if record.get("completion_status") == "completed"
+    ]
+    chunk_plan["chunk_ids_failed"] = [
+        record.get("chunk_id") for record in chunk_records_by_id.values() if record.get("completion_status") == "failed"
+    ]
+    if ineligible_chunks:
+        chunk_plan["ineligible_chunk_ids"] = sorted(ineligible_chunks)
+    all_scheduled_completed = all(
+        str(record.get("completion_status") or "") == "completed" for record in chunk_records_by_id.values() if record.get("chunk_id") in scheduled_chunk_ids
+    )
+    chunk_plan["plan_status"] = "completed" if all_scheduled_completed else "running"
+    if any(str(record.get("completion_status") or "") == "failed" for record in chunk_records_by_id.values() if record.get("chunk_id") in scheduled_chunk_ids):
+        chunk_plan["plan_status"] = "failed"
+    if failed_chunks:
+        chunk_plan["plan_status"] = "failed"
+    chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
+
+    execution_index_manifest = build_trajectory_execution_index_manifest(
+        chunk_plan,
+        list(chunk_records_by_id.values()),
+        completed_chunk_count=chunk_plan["completed_chunk_count"],
+        failed_chunk_count=chunk_plan["failed_chunk_count"],
+        rerun_count=run_retries,
+        scheduled_chunk_count=len(scheduled_chunk_ids),
+    )
+    merge_state = build_trajectory_merge_state_manifest(chunk_plan, list(chunk_records_by_id.values()))
+    write_text(execution_index, json.dumps(execution_index_manifest, indent=2, sort_keys=True) + "\n")
+    write_text(merge_state_output_path, json.dumps(merge_state, indent=2, sort_keys=True) + "\n")
+    write_text(execution_plan, json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n")
+
+    if failed_chunks:
+        raise SystemExit(
+            "trajectory chunk execution failed for one or more trajectory chunks: "
+            + ", ".join(sorted(set(failed_chunks)))
+        )
+
+    summary = TrajectoryExecutionSummary(
+        mode="chunked_local_threads",
+        worker_count=worker_count,
+        chunk_count=len(chunks),
+        plan_id=chunk_plan.get("plan_id"),
+        execution_plan_path=execution_plan,
+        execution_index_path=execution_index,
+        merge_state_path=merge_state_output_path,
+        executed_chunk_count=len(scheduled_results),
+        chunk_ids=tuple(sorted(chunk.chunk_id for chunk in chunks)),
+        rerun_count=run_retries,
+        failed_chunk_count=len(
+            [record for record in chunk_records_by_id.values() if record.get("completion_status") == "failed"]
+        ),
+        completed_chunk_count=chunk_plan["completed_chunk_count"],
+        merge_group_id=chunk_plan.get("merge_group_id"),
+    )
+
+    return summary, chunks
+
+
 def chunk_manifest_path(output_dir: Path, chunk_id: str) -> Path:
     return output_dir / f"{chunk_id}_manifest.json"
 
@@ -576,6 +1470,36 @@ def chunk_has_valid_reusable_state(
     return (
         isinstance(state, dict)
         and state.get("schema_version") == CHUNK_PARTIAL_STATE_SCHEMA_VERSION
+        and state.get("chunk_id") == chunk.chunk_id
+        and state.get("execution_signature") == execution_signature
+        and state.get("input_signature") == expected_signature
+    )
+
+
+def trajectory_chunk_has_valid_reusable_state(
+    chunk: TrajectoryChunk,
+    record: dict[str, Any],
+    execution_signature: str,
+) -> bool:
+    if record.get("completion_status") != "completed":
+        return False
+    if not isinstance(record.get("input_signature"), str):
+        return False
+    if record.get("execution_signature") != execution_signature:
+        return False
+    expected_signature = record["input_signature"]
+    if expected_signature != trajectory_chunk_signature(chunk):
+        return False
+    state_path = Path(str(record.get("partial_state_path"))) if record.get("partial_state_path") else None
+    if state_path is None or not state_path.exists():
+        return False
+    try:
+        state = read_json(state_path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    return (
+        isinstance(state, dict)
+        and state.get("schema_version") == TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION
         and state.get("chunk_id") == chunk.chunk_id
         and state.get("execution_signature") == execution_signature
         and state.get("input_signature") == expected_signature
@@ -1533,6 +2457,15 @@ def main_with_args(argv: list[str] | None = None) -> int:
         help="manual GIS/QGIS visual QA note recorded in the pilot package manifest",
     )
     parser.add_argument(
+        "--trajectory-workers",
+        type=int,
+        default=1,
+        help=(
+            "opt-in deterministic local trajectory-generation chunk worker count; values above 1 "
+            "partition trajectory CSV files and record trajectory-generation execution/reuse metadata"
+        ),
+    )
+    parser.add_argument(
         "--reducer-workers",
         type=int,
         default=1,
@@ -1643,13 +2576,32 @@ def main_with_args(argv: list[str] | None = None) -> int:
     map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
 
     accumulation_started = time.perf_counter()
+    trajectory_execution = None
+    trajectory_chunk_manifests: list[Path] = []
+    if args.trajectory_workers > 1:
+        trajectory_execution, _trajectory_chunks = run_trajectory_generation(
+            output_dir=output_dir,
+            prefix=prefix,
+            trajectory_paths=trajectory_paths,
+            worker_count=args.trajectory_workers,
+            owner_id=args.chunk_owner_id,
+            scheduler_index=args.scheduler_index,
+            scheduler_count=args.scheduler_count,
+            max_chunk_attempts=args.max_chunk_attempts,
+            lease_seconds=args.chunk_claim_ttl_seconds,
+        )
+        trajectory_chunk_manifests = [
+            output_dir / "trajectory_chunks" / f"{chunk_id}_manifest.json"
+            for chunk_id in trajectory_execution.chunk_ids
+        ]
+
     (
-    accumulator,
-    reducer_warnings,
-    reducer_execution,
-    chunk_manifest_paths,
-    reducer_timings,
-) = run_reducer_accumulation(
+        accumulator,
+        reducer_warnings,
+        reducer_execution,
+        chunk_manifest_paths,
+        reducer_timings,
+    ) = run_reducer_accumulation(
         output_dir,
         prefix,
         grid,
@@ -1872,17 +2824,61 @@ def main_with_args(argv: list[str] | None = None) -> int:
                     output_file_metadata=output_file_metadata,
                 )
             )
-        manifest["performance"]["output_file_count"] = sum(
-            int(output["file_count"]) for output in manifest["outputs"]
+    if trajectory_execution is not None:
+        manifest["trajectory_execution"] = {
+            "plan_id": trajectory_execution.plan_id,
+            "execution_plan_path": str(trajectory_execution.execution_plan_path),
+            "execution_index_path": str(trajectory_execution.execution_index_path),
+            "merge_state_path": str(trajectory_execution.merge_state_path),
+            "mode": trajectory_execution.mode,
+            "worker_count": trajectory_execution.worker_count,
+            "chunk_count": trajectory_execution.chunk_count,
+            "completed_chunk_count": trajectory_execution.completed_chunk_count,
+            "failed_chunk_count": trajectory_execution.failed_chunk_count,
+            "executed_chunk_count": trajectory_execution.executed_chunk_count,
+            "rerun_count": trajectory_execution.rerun_count,
+            "merge_group_id": trajectory_execution.merge_group_id,
+            "chunk_ids": list(trajectory_execution.chunk_ids),
+        }
+        trajectory_plan_path = trajectory_execution.execution_plan_path
+        trajectory_index_path = trajectory_execution.execution_index_path
+        trajectory_merge_state_path = trajectory_execution.merge_state_path
+        assert trajectory_plan_path is not None
+        assert trajectory_index_path is not None
+        assert trajectory_merge_state_path is not None
+        manifest["outputs"].append(
+            output_manifest_entry(
+                trajectory_plan_path,
+                "trajectory_execution_plan",
+                "json",
+                output_file_metadata=output_file_metadata,
+            )
         )
-        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
-    update_conditional_execution_manifest(
-        manifest,
-        grid,
-        conditional_curve_export,
-        reducer_execution,
-        raster_export_config,
-    )
+        manifest["outputs"].append(
+            output_manifest_entry(
+                trajectory_index_path,
+                "trajectory_execution_index",
+                "json",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+        manifest["outputs"].append(
+            output_manifest_entry(
+                trajectory_merge_state_path,
+                "trajectory_merge_state",
+                "json",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+        for chunk_manifest_path in trajectory_chunk_manifests:
+            manifest["outputs"].append(
+                output_manifest_entry(
+                    chunk_manifest_path,
+                    "trajectory_chunk_manifest",
+                    "json",
+                    output_file_metadata=output_file_metadata,
+                )
+            )
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
         json_serialization_seconds += write_map_package_manifest(
@@ -1933,6 +2929,17 @@ def main_with_args(argv: list[str] | None = None) -> int:
         grid,
         conditional_curve_export,
         reducer_execution,
+        {
+            "mode": trajectory_execution.mode if trajectory_execution else "serial",
+            "worker_count": trajectory_execution.worker_count if trajectory_execution else 1,
+            "chunk_count": trajectory_execution.chunk_count if trajectory_execution else 0,
+            "chunk_ids": list(trajectory_execution.chunk_ids) if trajectory_execution else [],
+            "plan_id": trajectory_execution.plan_id if trajectory_execution else None,
+            "merge_group_id": trajectory_execution.merge_group_id if trajectory_execution else None,
+            "execution_plan_path": str(trajectory_execution.execution_plan_path) if trajectory_execution else None,
+            "execution_index_path": str(trajectory_execution.execution_index_path) if trajectory_execution else None,
+            "merge_state_path": str(trajectory_execution.merge_state_path) if trajectory_execution else None,
+        },
         raster_export_config,
     )
     manifest["performance"]["manifest_write_seconds"] = 0.0
@@ -5317,6 +6324,7 @@ def update_conditional_execution_manifest(
     grid: GridSpec,
     conditional_curve_export: ConditionalCurveExportConfig,
     reducer_execution: dict[str, Any] | None,
+    trajectory_execution: dict[str, Any] | None,
     raster_export_config: RasterExportConfig,
 ) -> None:
     curves = manifest.get("conditional_intensity_exceedance_curves") or {}
@@ -5341,6 +6349,29 @@ def update_conditional_execution_manifest(
             "merge_order": reducer_execution.get("merge_order"),
             "merge_order_independent": reducer_execution.get("merge_order_independent"),
             "chunk_ids": list(reducer_execution.get("chunk_ids") or []),
+            "trajectory_execution_plan_id": reducer_execution.get("trajectory_plan_id"),
+        }
+    if trajectory_execution is None:
+        trajectory = {
+            "mode": "serial",
+            "worker_count": 1,
+            "chunk_count": 1,
+            "chunk_manifest_count": 0,
+            "merge_order": "single_serial_accumulator",
+            "chunk_ids": [],
+        }
+    else:
+        trajectory = {
+            "mode": trajectory_execution.get("mode"),
+            "worker_count": trajectory_execution.get("worker_count"),
+            "chunk_count": trajectory_execution.get("chunk_count"),
+            "chunk_manifest_count": sum(
+                1 for output in outputs if output.get("kind") == "trajectory_chunk_manifest"
+            ),
+            "merge_order": "sorted_chunk_id",
+            "chunk_ids": list(trajectory_execution.get("chunk_ids") or []),
+            "plan_id": trajectory_execution.get("plan_id"),
+            "merge_group_id": trajectory_execution.get("merge_group_id"),
         }
     manifest["conditional_execution"] = {
         "schema_version": "conditional_hazard_execution_diagnostics_v1",
@@ -5367,6 +6398,7 @@ def update_conditional_execution_manifest(
             "geotiff": raster_export_config.geotiff,
         },
         "reducer": reducer,
+        "trajectory_generation": trajectory,
         "output_budget": {
             "output_file_count": int(performance.get("output_file_count", 0) or 0),
             "output_bytes": int(performance.get("output_bytes", 0) or 0),

@@ -764,6 +764,38 @@ deposition points, but not lifecycle provenance. Lifecycle fields such as
 in the corresponding chunk execution manifest and the execution-plan/index/
 merge-state artifacts.
 
+Trajectory-generation can also run with local deterministic chunking through
+`--trajectory-workers N` for `N > 1`. With chunking enabled, the hazard run
+writes trajectory-generation-specific artifacts:
+
+- `<prefix>_trajectory_execution_plan_v1.json` (`trajectory_execution_plan_v1`)
+- `<prefix>_trajectory_execution_index_v1.json`
+  (`trajectory_execution_index_v1`)
+- `<prefix>_trajectory_merge_state_v1.json`
+  (`trajectory_merge_state_v1`)
+- `trajectory_chunks/*_manifest.json` (`trajectory_generation_chunk_manifest_v1`)
+- `trajectory_chunks/*_state.json` (`trajectory_generation_state_v1`)
+
+`conditional_execution` adds a `trajectory_generation` branch describing worker
+count, chunk count, chunk ids, merge group, and artifact paths. `run` outputs
+include `trajectory_execution_plan`, `trajectory_execution_index`,
+`trajectory_merge_state`, and `trajectory_chunk_manifest` entries.
+
+Trajectory-generation chunk manifests record lifecycle fields for execution output
+provenance (for example `status`, `completion_state`, `rows_written`,
+`row_count`, `output_bytes`, `execution_attempt`, `retry_count`, and
+`orchestration_decision`) while partial state files remain accumulator-only.
+
+Replay is local and deterministic:
+
+- `input_signature` and `execution_signature` must match.
+- schema-valid partial state must be present.
+- stale-missing/invalid partial state causes re-execution instead of reuse.
+
+These semantics are restart and resume controls for single-process local
+execution only; they do not add distributed scheduling, SLURM/MPI orchestration,
+or cross-cluster claim coordination.
+
 Validation and verification cases can also opt in to deterministic local
 parallel ensemble execution with:
 

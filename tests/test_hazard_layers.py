@@ -1973,6 +1973,197 @@ class HazardLayerTests(unittest.TestCase):
 
             self.assertEqual(execution["reducer"]["chunk_ids"], sorted(execution["reducer"]["chunk_ids"]))
 
+    def test_trajectory_chunked_generation_records_artifacts_and_linkage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--reducer-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            manifest = json.loads((trajectory_dir / "hazard_fixture_ensemble_manifest.json").read_text())
+            execution = manifest["conditional_execution"]
+            trajectory_execution = execution["trajectory_generation"]
+            self.assertEqual(trajectory_execution["mode"], "chunked_local_threads")
+            self.assertEqual(trajectory_execution["worker_count"], 2)
+            self.assertEqual(trajectory_execution["chunk_count"], 2)
+            self.assertEqual(trajectory_execution["chunk_ids"], sorted(trajectory_execution["chunk_ids"]))
+            self.assertEqual(execution["reducer"]["mode"], "chunked_local_threads")
+            output_kinds = {output.get("kind") for output in manifest["outputs"]}
+            self.assertIn("trajectory_execution_plan", output_kinds)
+            self.assertIn("trajectory_execution_index", output_kinds)
+            self.assertIn("trajectory_merge_state", output_kinds)
+            self.assertIn("trajectory_chunk_manifest", output_kinds)
+
+            trajectory_plan = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_plan_v1.json").read_text()
+            )
+            trajectory_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_index_v1.json").read_text()
+            )
+            trajectory_merge_state = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_merge_state_v1.json").read_text()
+            )
+            self.assertEqual(trajectory_plan.get("schema_version"), "trajectory_execution_plan_v1")
+            self.assertEqual(trajectory_index.get("schema_version"), "trajectory_execution_index_v1")
+            self.assertEqual(trajectory_merge_state.get("schema_version"), "trajectory_merge_state_v1")
+            self.assertEqual(trajectory_plan.get("chunk_id_policy"), "stable_prefix_sorted_trajectory_chunk_index")
+            self.assertEqual(trajectory_plan.get("plan_status"), "completed")
+            self.assertEqual(trajectory_plan.get("chunk_count"), 2)
+            self.assertEqual(len(trajectory_plan.get("chunk_manifests") or []), 2)
+            self.assertEqual(len(trajectory_index.get("chunk_records") or []), 2)
+            self.assertEqual(len(trajectory_merge_state.get("merge_index") or []), 2)
+            self.assertEqual(trajectory_plan.get("plan_id"), trajectory_index.get("plan_id"))
+            self.assertEqual(trajectory_plan.get("plan_id"), trajectory_merge_state.get("plan_id"))
+
+            trajectory_chunk_manifests = sorted((trajectory_dir / "trajectory_chunks").glob("*_manifest.json"))
+            self.assertEqual(len(trajectory_chunk_manifests), 2)
+            for chunk_manifest_path in trajectory_chunk_manifests:
+                chunk_manifest = json.loads(chunk_manifest_path.read_text())
+                self.assertEqual(chunk_manifest.get("schema_version"), "trajectory_generation_chunk_manifest_v1")
+                self.assertEqual(chunk_manifest.get("status"), "completed")
+                self.assertEqual(chunk_manifest.get("completion_state"), "completed")
+                self.assertEqual(chunk_manifest.get("execution_plan", {}).get("schema_version"), "trajectory_execution_plan_v1")
+                self.assertIsNotNone(chunk_manifest.get("input_signature"))
+                self.assertIsNotNone(chunk_manifest.get("execution_signature"))
+                self.assertIsNotNone(chunk_manifest.get("output_bytes"))
+                chunk_id = str(chunk_manifest.get("chunk_id"))
+                chunk_state_path = trajectory_dir / "trajectory_chunks" / f"{chunk_id}_state.json"
+                self.assertTrue(chunk_state_path.exists())
+                chunk_state = json.loads(chunk_state_path.read_text())
+                self.assertEqual(chunk_state.get("schema_version"), hazard.TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION)
+                self.assertEqual(chunk_state.get("chunk_id"), chunk_id)
+                self.assertEqual(chunk_state.get("execution_signature"), chunk_manifest.get("execution_signature"))
+
+            reducer_execution = execution["reducer"]
+            reducer_plan = json.loads((trajectory_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            reducer_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text()
+            )
+            reducer_merge_state = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text()
+            )
+            self.assertEqual(reducer_execution["worker_count"], 2)
+            self.assertEqual(reducer_plan.get("chunk_count"), len(reducer_index.get("chunk_records") or []))
+            self.assertEqual(reducer_plan.get("schema_version"), "execution_plan_v1")
+            self.assertEqual(reducer_index.get("schema_version"), "reducer_execution_index_v1")
+            self.assertEqual(reducer_merge_state.get("schema_version"), "reducer_merge_state_v1")
+            trajectory_chunk_ids = {record.get("chunk_id") for record in trajectory_index.get("chunk_records") or []}
+            reducer_chunk_ids = {record.get("chunk_id") for record in reducer_index.get("chunk_records") or []}
+            self.assertTrue(trajectory_chunk_ids)
+            self.assertTrue(reducer_chunk_ids)
+
+    def test_trajectory_chunk_reuse_skips_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            trajectory_plan_path = trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_plan_v1.json"
+            first_plan = json.loads(trajectory_plan_path.read_text())
+            self.assertEqual(first_plan.get("plan_status"), "completed")
+            self.assertGreater(len(first_plan.get("chunk_manifests") or []), 0)
+
+            with patch("scripts.build_hazard_layers.run_trajectory_chunk") as run_trajectory_chunk:
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                    0,
+                )
+                run_trajectory_chunk.assert_not_called()
+
+            second_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_index_v1.json").read_text()
+            )
+            for record in second_index.get("chunk_records", []):
+                self.assertEqual(record.get("orchestration_decision"), "reused_completed_state")
+
+    def test_trajectory_chunk_missing_state_forces_reexecution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            first_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_index_v1.json").read_text()
+            )
+            first_records = first_index.get("chunk_records") or []
+            self.assertEqual(len(first_records), 2)
+            stale_chunk_id = str(first_records[0].get("chunk_id"))
+            trajectory_state_path = trajectory_dir / "trajectory_chunks" / f"{stale_chunk_id}_state.json"
+            trajectory_state_path.unlink()
+
+            original_run_trajectory_chunk = hazard.run_trajectory_chunk
+            rerun_chunks: list[str] = []
+
+            def spy_run_trajectory_chunk(*args: object, **kwargs: object) -> hazard.TrajectoryChunkResult:
+                chunk = args[0]
+                rerun_chunks.append(str(chunk.chunk_id))
+                return original_run_trajectory_chunk(*args, **kwargs)
+
+            with patch("scripts.build_hazard_layers.run_trajectory_chunk", side_effect=spy_run_trajectory_chunk):
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                    0,
+                )
+            second_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_index_v1.json").read_text()
+            )
+            second_records = second_index.get("chunk_records") or []
+            self.assertEqual(len(second_records), 2)
+            decision_by_chunk = {
+                str(record.get("chunk_id")): str(record.get("orchestration_decision"))
+                for record in second_records
+            }
+            self.assertEqual(decision_by_chunk[stale_chunk_id], "executed")
+            self.assertIn("reused_completed_state", decision_by_chunk.values())
+            self.assertEqual(sorted(rerun_chunks), sorted([stale_chunk_id]))
+            self.assertTrue(trajectory_state_path.exists())
+
     def test_chunk_execution_plan_is_deterministic_between_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
