@@ -256,12 +256,12 @@ def check_validation_module_boundaries() -> list[str]:
             )
 
     required_delegations = {
-        r"metrics_module::compute_deposition_cloud_metrics\(": "metrics delegation for deposition metrics",
-        r"metrics_module::compute_roughness_comparison_metrics\(": "metrics delegation for roughness comparison",
-        r"metrics_module::compute_scarring_comparison_metrics\(": "metrics delegation for scarring comparison",
-        r"metrics_module::evaluate_failures\(": "metrics delegation for failure evaluation",
-        r"probabilistic_module::load_probabilistic_metadata_context\(": "probabilistic metadata delegation",
-        r"validation_io_module::load_observations\(": "validation observation I/O delegation",
+        r"metrics::compute_deposition_cloud_metrics\(": "metrics delegation for deposition metrics",
+        r"metrics::compute_roughness_comparison_metrics\(": "metrics delegation for roughness comparison",
+        r"metrics::compute_scarring_comparison_metrics\(": "metrics delegation for scarring comparison",
+        r"metrics::evaluate_failures\(": "metrics delegation for failure evaluation",
+        r"probabilistic::load_probabilistic_metadata_context\(": "probabilistic metadata delegation",
+        r"validation_io::load_observations\(": "validation observation I/O delegation",
         r"runner::run_case_file\(": "runner delegation for run_case_file",
         r"runner::run_case\(": "runner delegation for run_case",
         r"runner::write_report\(": "runner delegation for write_report",

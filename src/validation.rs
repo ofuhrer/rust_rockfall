@@ -11,9 +11,6 @@ use metric_math::{
     centroid2, cloud_overlap_fraction, distance2, distance3, mean, nonempty_mean, percentile,
     stddev_axis_y, symmetric_mean_nearest_distance,
 };
-use metrics as metrics_module;
-use probabilistic as probabilistic_module;
-use validation_io as validation_io_module;
 
 use crate::{
     dynamics::{ContactModel, ContactParameterProvider, ScarringDepthSource, SoilInteractionModel},
@@ -1267,7 +1264,7 @@ fn load_probabilistic_metadata_context(
     case: &BenchmarkCase,
     release_zone: Option<&ReleaseZoneMetadata>,
 ) -> Result<Option<ProbabilisticMetadataContext>, ValidationError> {
-    probabilistic_module::load_probabilistic_metadata_context(case, release_zone)
+    probabilistic::load_probabilistic_metadata_context(case, release_zone)
 }
 
 fn terrain_manifest(
@@ -4092,7 +4089,7 @@ fn compute_deposition_cloud_metrics(
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
 ) {
-    metrics_module::compute_deposition_cloud_metrics(runs, observations, metrics, warnings)
+    metrics::compute_deposition_cloud_metrics(runs, observations, metrics, warnings)
 }
 
 fn compute_roughness_comparison_metrics(
@@ -4101,7 +4098,7 @@ fn compute_roughness_comparison_metrics(
     samples: &[TrajectorySample],
     metrics: &mut BTreeMap<String, f64>,
 ) -> Result<(), ValidationError> {
-    metrics_module::compute_roughness_comparison_metrics(case, config, samples, metrics)
+    metrics::compute_roughness_comparison_metrics(case, config, samples, metrics)
 }
 
 fn compute_scarring_comparison_metrics(
@@ -4110,7 +4107,7 @@ fn compute_scarring_comparison_metrics(
     samples: &[TrajectorySample],
     metrics: &mut BTreeMap<String, f64>,
 ) -> Result<(), ValidationError> {
-    metrics_module::compute_scarring_comparison_metrics(case, config, samples, metrics)
+    metrics::compute_scarring_comparison_metrics(case, config, samples, metrics)
 }
 
 fn evaluate_failures(
@@ -4118,7 +4115,7 @@ fn evaluate_failures(
     metrics: &BTreeMap<String, f64>,
     expected: &ExpectedConfig,
 ) -> Vec<String> {
-    metrics_module::evaluate_failures(last, metrics, expected)
+    metrics::evaluate_failures(last, metrics, expected)
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -4138,7 +4135,7 @@ fn load_observations(
     case: &BenchmarkCase,
     warnings: &mut Vec<String>,
 ) -> Result<ObservationLoad, ValidationError> {
-    validation_io_module::load_observations(case, warnings)
+    validation_io::load_observations(case, warnings)
 }
 
 fn skipped_report(case: &BenchmarkCase, warning: String) -> Result<CaseReport, ValidationError> {
