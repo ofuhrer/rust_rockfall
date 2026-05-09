@@ -101,6 +101,14 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.PilotRunError, "hazard_manifest_sha256"):
             validator.validate_pilot_run(manifest)
 
+    def test_completed_gate_rejects_invalid_optional_artifact_checksum(self) -> None:
+        for key in ("dem_sensitivity_summary_sha256", "scaling_summary_sha256"):
+            with self.subTest(key=key):
+                manifest = self.completed_gate_manifest()
+                manifest["run_evidence"]["artifact_checksums"][key] = "INVALIDHEX"
+                with self.assertRaisesRegex(validator.PilotRunError, key):
+                    validator.validate_pilot_run(manifest)
+
     def test_selected_tschamut_gate_contract_is_valid(self) -> None:
         manifest = self.selected_tschamut_gate_manifest()
 
