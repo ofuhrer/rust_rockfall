@@ -79,22 +79,24 @@ Artifact checksums recorded in the run-freeze:
 
 | Artifact | SHA-256 |
 | --- | --- |
-| Validation manifest | `f0981caae1da4d3cf5a93c9d1b0a1ae88ac28a9d067824b813e6455a9ec0bf50` |
-| Hazard manifest | `6a5cc5711406d01caf2e62585368c4acedf1fc3eaaf5dd815226e9dcaca4043e` |
-| Conditional curve table | `cb2d0c5636c3a177c825258acfa6aef2f215fd5ddd99e9cfea92d34256681541` |
-| Map-package manifest | `27a95fb037639ac961d6b8eaa1e2de383fb0ebfa91b116b5547a83f28e9f7621` |
-| Pilot GIS package manifest | `ab9bc43b1d4ae8a61724f3f951e1127064d1b841b1d74b391516016efd0b9f92` |
+| Validation manifest | `b41c5469fe0e3ef29216d05ecf7872509210c0d0a59f63b6230ea6dedce635f3` |
+| Hazard manifest | `5d62a9dd4bb8e4436c95125d6009796c7a67dd8bbcbdbff65f790dfe12c32893` |
+| Conditional curve table | `c6456f6af984e531c550e72df09240302cdbf5ac34d91741d975ed2da6be81a9` |
+| Map-package manifest | `15beba852cbb1d4430f7d4e23714cfd6a321e33e635f4521eb86cdd42ec5bd52` |
+| Pilot GIS package manifest | `52061a9a60bd4a5b082c5a68818d4add11b7098e6197f44e5aed2ae789d689c6` |
+| DEM sensitivity summary | `85c1ba97f012167ab29f2772b5893aa84fc21cc483bd7d5c7f3f12a155701fa6` |
+| Scaling summary | `87ebec392e5142ff5aae698e1f4e7b335dd9a7b56bab8f74e41efced302a7388` |
 
 Runtime and output-volume evidence:
 
-- validation manifest wall time: `4.066` s;
-- hazard manifest wall time: `15.586` s;
-- external `/usr/bin/time` elapsed seconds: validation `4.23`, hazard `16.41`;
-- external peak RSS: validation `41572` KiB, hazard `390588` KiB;
-- run-freeze peak memory record: `381.43` MiB;
-- ignored output tree total: 186 files, 226,925,754 bytes;
-- generated validation outputs: 125 files, 34,531,527 bytes;
-- generated hazard outputs: 55 files, 192,297,963 bytes;
+- validation manifest wall time: `4.508` s (from scaling summary);
+- hazard manifest wall time: `10.580` s (from scaling summary);
+- external `/usr/bin/time` elapsed seconds: validation `6.14`, hazard `11.70`;
+- external max RSS samples: validation `37093376`, hazard `429277184` (`max_rss_kb`);
+- run-freeze peak memory record: `409.22` MiB (derived from external hazard max RSS sample);
+- ignored output tree total: 191 files, 267,527,120 bytes;
+- generated validation outputs: 128 files, 34,578,541 bytes;
+- generated hazard outputs: 63 files, 232,948,579 bytes;
 - validation rows written/read by manifest summary: 81,845;
 - hazard input rows read: 81,710.
 

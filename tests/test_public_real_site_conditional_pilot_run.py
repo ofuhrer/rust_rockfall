@@ -16,6 +16,9 @@ SPEC.loader.exec_module(validator)
 
 
 class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
+    selected_run_path = ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+    selected_run_id = "tschamut_public_conditional_gate_v1"
+
     def load_template(self) -> dict:
         return validator.read_yaml(
             ROOT / "validation/templates/public_real_site_conditional_pilot_run_v1.yaml"
@@ -99,16 +102,12 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
             validator.validate_pilot_run(manifest)
 
     def test_selected_tschamut_gate_contract_is_valid(self) -> None:
-        manifest = validator.read_yaml(
-            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
-        )
+        manifest = self.selected_tschamut_gate_manifest()
 
         validator.validate_pilot_run(manifest)
 
     def test_selected_tschamut_completed_gate_builds_execution_command_plan(self) -> None:
-        manifest = validator.read_yaml(
-            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
-        )
+        manifest = self.selected_tschamut_gate_manifest()
 
         plan = validator.build_command_plan(manifest)
 
@@ -128,6 +127,128 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         self.assertIn("--pilot-gis-package", hazard_command)
         self.assertIn("--reducer-workers", hazard_command)
         self.assertIn("validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml", hazard_command)
+
+    def test_selected_tschamut_contract_keeps_gate_run_completed_inconclusive_state(self) -> None:
+        manifest = self.selected_tschamut_gate_manifest()
+
+        validator.validate_pilot_run(manifest)
+        self.assertEqual(manifest["run_status"], "gate_run_completed")
+        self.assertEqual(manifest["run_evidence"]["evidence_status"], "gate_run_completed")
+        self.assertEqual(manifest["report_plan"]["current_classification"], "inconclusive")
+        self.assertEqual(manifest["report_plan"]["report_path"], "docs/tschamut_public_conditional_pilot_gate_report.md")
+
+    def test_selected_tschamut_contract_requires_expected_evidence_paths_and_hashes(self) -> None:
+        manifest = self.selected_tschamut_gate_manifest()
+        evidence = manifest["run_evidence"]
+
+        self.assertEqual(evidence["validation_manifest_path"], "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json")
+        self.assertEqual(evidence["hazard_manifest_path"], "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json")
+        self.assertEqual(evidence["conditional_curve_table_path"], "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_conditional_intensity_exceedance_curves.csv")
+        self.assertEqual(evidence["map_package_manifest_path"], "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json")
+        self.assertEqual(evidence["pilot_gis_package_manifest_path"], "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json")
+        self.assertEqual(evidence["reducer_chunk_manifest_dir"], "hazard/results/tschamut_public_pilot/gate_v1/chunks")
+        self.assertEqual(evidence["dem_sensitivity_summary_path"], "validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1/dem_terrain_sensitivity_summary.json")
+        self.assertEqual(evidence["scaling_summary_path"], "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json")
+
+        checksums = evidence["artifact_checksums"]
+        for key in (
+            "validation_manifest_sha256",
+            "hazard_manifest_sha256",
+            "conditional_curve_table_sha256",
+            "map_package_manifest_sha256",
+            "pilot_gis_package_manifest_sha256",
+            "dem_sensitivity_summary_sha256",
+            "scaling_summary_sha256",
+        ):
+            self.assertRegex(checksums[key], validator.HEX_SHA256_RE)
+
+        for key in (
+            "validation_manifest_path",
+            "hazard_manifest_path",
+            "conditional_curve_table_path",
+            "map_package_manifest_path",
+            "pilot_gis_package_manifest_path",
+            "reducer_chunk_manifest_dir",
+            "dem_sensitivity_summary_path",
+            "scaling_summary_path",
+        ):
+            self.assertTrue(evidence[key].startswith(("validation/", "hazard/results/")))
+
+        for key in (
+            "validation_manifest_path",
+            "hazard_manifest_path",
+            "conditional_curve_table_path",
+            "map_package_manifest_path",
+            "pilot_gis_package_manifest_path",
+        ):
+            self.assertIn(self.selected_run_id, evidence[key], f"{key} should reference selected run id")
+
+    def test_selected_tschamut_contract_rejects_report_checksum_mismatch(self) -> None:
+        manifest = copy.deepcopy(self.selected_tschamut_gate_manifest())
+        manifest["run_evidence"]["artifact_checksums"]["hazard_manifest_sha256"] = "0" * 64
+
+        with self.assertRaisesRegex(
+            validator.PilotRunError,
+            "report checksum mismatch",
+        ):
+            validator.validate_pilot_run(manifest)
+
+    def test_selected_tschamut_contract_command_plan_is_exact_shape(self) -> None:
+        manifest = self.selected_tschamut_gate_manifest()
+        plan = validator.build_command_plan(manifest)
+        hazard_command = plan["commands"][-1]["command"]
+        self.assertEqual(hazard_command[0:4], ["uv", "run", "python", "scripts/build_hazard_layers.py"])
+
+        expected_pairs = [
+            ("--case", "validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml"),
+            ("--output-dir", "hazard/results/tschamut_public_pilot/gate_v1"),
+            ("--grid-xmin", "2696376.0"),
+            ("--grid-ymin", "1167384.0"),
+            ("--grid-ncols", "300"),
+            ("--grid-nrows", "304"),
+            ("--grid-cell-size", "2.0"),
+            ("--map-product-id", "tschamut_public_conditional_gate_v1"),
+            ("--source-zone-metadata-path", "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"),
+            ("--scenario-table-path", "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"),
+            ("--map-package-manifest-json", "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json"),
+            ("--pilot-gis-package-manifest-json", "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json"),
+            ("--reducer-workers", "2"),
+            ("--kinetic-energy-exceedance-j", "1000.0"),
+            ("--jump-height-exceedance-m", "1.0"),
+        ]
+        for flag, value in expected_pairs:
+            self.assertIn(flag, hazard_command)
+            idx = hazard_command.index(flag)
+            self.assertLess(idx + 1, len(hazard_command))
+            self.assertEqual(hazard_command[idx + 1], value)
+        self.assertEqual(hazard_command.count("--kinetic-energy-exceedance-j"), 2)
+        for threshold in ("1000.0", "10000.0"):
+            indices = [i for i, value in enumerate(hazard_command) if value == "--kinetic-energy-exceedance-j"]
+            self.assertTrue(any(hazard_command[i + 1] == threshold for i in indices))
+        self.assertEqual(hazard_command.count("--jump-height-exceedance-m"), 2)
+        for threshold in ("1.0", "2.0"):
+            indices = [i for i, value in enumerate(hazard_command) if value == "--jump-height-exceedance-m"]
+            self.assertTrue(any(hazard_command[i + 1] == threshold for i in indices))
+        self.assertEqual(hazard_command.count("--diagnostics"), 1)
+        self.assertEqual(hazard_command.count("--trajectory"), 1)
+        self.assertEqual(hazard_command.count("--ensemble-trajectories-dir"), 1)
+        self.assertEqual(hazard_command.count("--deposition"), 1)
+        self.assertEqual(hazard_command.count("--ensemble-impact-events-dir"), 1)
+        self.assertNotIn("--allow-missing-source-dem", hazard_command)
+        self.assertNotIn("--ensemble-impact-events-parquet", hazard_command)
+
+        for path in (
+            "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_metrics.json",
+            "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv",
+            "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectories",
+            "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_deposition.csv",
+            "validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_impacts",
+        ):
+            self.assertIn(path, hazard_command)
+        report_text = (ROOT / validator.read_yaml(self.selected_run_path)["report_plan"]["report_path"]).read_text(encoding="utf-8")
+        self.assertIn(f"Run id: `{self.selected_run_id}`", report_text)
+        self.assertIn("Current classification: `inconclusive`", report_text)
+        self.assertIn("research diagnostic", report_text.lower())
 
     def test_no_go_gate_requires_explicit_blocker(self) -> None:
         manifest = self.no_go_manifest()
@@ -312,6 +433,9 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
             }
         )
         return manifest
+
+    def selected_tschamut_gate_manifest(self) -> dict:
+        return validator.read_yaml(self.selected_run_path)
 
 
 if __name__ == "__main__":

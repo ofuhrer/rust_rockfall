@@ -45,6 +45,32 @@ REQUIRED_ARTIFACT_CHECKSUMS = (
     "map_package_manifest_sha256",
     "pilot_gis_package_manifest_sha256",
 )
+OPTIONAL_ARTIFACT_CHECKSUMS = (
+    "dem_sensitivity_summary_sha256",
+    "scaling_summary_sha256",
+)
+SELECTED_REPORT_ARTIFACT_CHECKSUMS = (
+    ("validation_manifest_sha256", "Validation manifest"),
+    ("hazard_manifest_sha256", "Hazard manifest"),
+    ("conditional_curve_table_sha256", "Conditional curve table"),
+    ("map_package_manifest_sha256", "Map-package manifest"),
+    ("pilot_gis_package_manifest_sha256", "Pilot GIS package manifest"),
+    ("dem_sensitivity_summary_sha256", "DEM sensitivity summary"),
+    ("scaling_summary_sha256", "Scaling summary"),
+)
+SELECTED_TARGET_RUN_ID = "tschamut_public_conditional_gate_v1"
+SELECTED_PILOT_ID = "tschamut_public_pilot"
+SELECTED_REPORT_PATH = "docs/tschamut_public_conditional_pilot_gate_report.md"
+SELECTED_REQUIRED_PATH_ROOTS = {
+    "validation_manifest_path": "validation/",
+    "hazard_manifest_path": "hazard/results/",
+    "conditional_curve_table_path": "hazard/results/",
+    "map_package_manifest_path": "hazard/results/",
+    "pilot_gis_package_manifest_path": "hazard/results/",
+    "reducer_chunk_manifest_dir": "hazard/results/",
+    "dem_sensitivity_summary_path": "validation/",
+    "scaling_summary_path": "hazard/results/",
+}
 HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 REQUIRED_UNSUPPORTED_CLAIMS = {
     "annual_frequency",
@@ -114,7 +140,7 @@ def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = No
         "schema_version must be public_real_site_conditional_pilot_run_v1",
     )
     pilot_id = require_text(manifest.get("pilot_id"), "pilot_id")
-    require_text(manifest.get("run_id"), "run_id")
+    run_id = require_text(manifest.get("run_id"), "run_id")
     run_status = require_text(manifest.get("run_status"), "run_status")
     require(run_status in SUPPORTED_RUN_STATUSES, f"run_status must be one of {sorted(SUPPORTED_RUN_STATUSES)}")
     require(
@@ -133,9 +159,19 @@ def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = No
     )
     validate_workflow_gates(require_mapping(manifest.get("workflow_gates"), "workflow_gates"), run_status)
     validate_output_budget(require_mapping(manifest.get("output_budget"), "output_budget"), run_status)
-    validate_run_evidence(require_mapping(manifest.get("run_evidence"), "run_evidence"), run_status)
-    validate_report_plan(require_mapping(manifest.get("report_plan"), "report_plan"), run_status)
+    run_evidence = require_mapping(manifest.get("run_evidence"), "run_evidence")
+    validate_run_evidence(run_evidence, run_status)
+    report_plan = require_mapping(manifest.get("report_plan"), "report_plan")
+    validate_report_plan(report_plan, run_status)
     validate_claim_boundary(require_mapping(manifest.get("claim_boundary"), "claim_boundary"))
+    validate_target_run_contract(
+        run_id=run_id,
+        pilot_id=pilot_id,
+        run_status=run_status,
+        input_freeze=require_mapping(manifest.get("input_freeze"), "input_freeze"),
+        run_evidence=run_evidence,
+        report_plan=report_plan,
+    )
     if run_status == "no_go":
         validate_no_go_blocker(require_mapping(manifest.get("no_go_blocker"), "no_go_blocker"))
 
@@ -624,6 +660,125 @@ def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
             HEX_SHA256_RE.fullmatch(checksum) is not None,
             f"run_evidence.artifact_checksums.{key} must be a lowercase SHA-256 hex digest",
         )
+    for key in OPTIONAL_ARTIFACT_CHECKSUMS:
+        if key not in checksums or checksums[key] is None:
+            continue
+        optional_checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
+        require(
+            HEX_SHA256_RE.fullmatch(optional_checksum) is not None,
+            f"run_evidence.artifact_checksums.{key} must be a lowercase SHA-256 hex digest",
+        )
+
+
+def validate_target_run_contract(
+    *,
+    run_id: str,
+    pilot_id: str,
+    run_status: str,
+    input_freeze: dict[str, Any],
+    run_evidence: dict[str, Any],
+    report_plan: dict[str, Any],
+) -> None:
+    if run_id != SELECTED_TARGET_RUN_ID:
+        return
+    require(
+        pilot_id == SELECTED_PILOT_ID,
+        f"selected target run {run_id} requires pilot_id {SELECTED_PILOT_ID}",
+    )
+    require(
+        run_status == "gate_run_completed",
+        f"selected target run {run_id} requires run_status gate_run_completed",
+    )
+    require(
+        report_plan.get("report_path") == SELECTED_REPORT_PATH,
+        f"selected target run {run_id} requires report {SELECTED_REPORT_PATH}",
+    )
+    require(
+        report_plan.get("current_classification") == "inconclusive",
+        f"selected target run {run_id} requires report_plan.current_classification inconclusive",
+    )
+    require(
+        run_evidence.get("evidence_status") == "gate_run_completed",
+        f"selected target run {run_id} requires run_evidence.evidence_status gate_run_completed",
+    )
+    report_path = require_text(report_plan.get("report_path"), "report_plan.report_path")
+    require(report_path == SELECTED_REPORT_PATH, f"selected target run {run_id} requires report {SELECTED_REPORT_PATH}")
+    try:
+        report_text = repo_path(report_path).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise PilotRunError(
+            f"selected target run {run_id} requires report {SELECTED_REPORT_PATH} to be readable: {exc}"
+        ) from exc
+    require(
+        f"Run id: `{run_id}`" in report_text,
+        f"selected target run {run_id} requires the selected report to reference the same run id",
+    )
+    require(
+        input_freeze.get("map_product_id") == run_id,
+        f"selected target run {run_id} requires map_product_id to match run_id",
+    )
+    checksums = require_mapping(run_evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
+    report_checksums = parse_report_artifact_checksums(report_text)
+    for key in OPTIONAL_ARTIFACT_CHECKSUMS:
+        require(
+            key in checksums and checksums[key] is not None,
+            f"selected target run {run_id} requires run_evidence.artifact_checksums.{key}",
+        )
+    for key, label in SELECTED_REPORT_ARTIFACT_CHECKSUMS:
+        selected_checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
+        report_checksum = report_checksums.get(normalize_report_artifact_label(label))
+        require(
+            report_checksum is not None,
+            f"selected target run {run_id} requires report checksum row for {label}",
+        )
+        require(
+            report_checksum == selected_checksum,
+            f"selected target run {run_id} report checksum mismatch for {label}: freeze {selected_checksum}, report {report_checksum}",
+        )
+
+    for key, root in SELECTED_REQUIRED_PATH_ROOTS.items():
+        require(
+            key in run_evidence,
+            f"selected target run {run_id} requires run_evidence.{key}",
+        )
+        value = require_text(run_evidence.get(key), f"run_evidence.{key}")
+        require(
+            value.startswith(root),
+            f"selected target run {run_id} requires run_evidence.{key} under {root}",
+        )
+    require(
+        run_evidence.get("convergence_diagnostics", {}).get("notes"),
+        f"selected target run {run_id} requires non-empty convergence diagnostics notes",
+    )
+
+    evidence_convergence = require_mapping(
+        run_evidence.get("convergence_diagnostics"),
+        "run_evidence.convergence_diagnostics",
+    )
+    notes = require_list(
+        evidence_convergence.get("notes"),
+        "run_evidence.convergence_diagnostics.notes",
+    )
+    require(
+        all(isinstance(note, str) and note.strip() for note in notes),
+        f"selected target run {run_id} convergence notes must all be non-empty strings",
+    )
+
+
+def normalize_report_artifact_label(label: str) -> str:
+    return " ".join(label.strip().lower().split())
+
+
+def parse_report_artifact_checksums(report_text: str) -> dict[str, str]:
+    artifact_checksums: dict[str, str] = {}
+    checksum_row = re.compile(r"^\|\s*(?P<artifact>[^|]+)\s*\|\s*`(?P<sha>[0-9a-f]{64})`\s*\|$")
+    for line in report_text.splitlines():
+        match = checksum_row.match(line.strip())
+        if match is None:
+            continue
+        artifact = normalize_report_artifact_label(match.group("artifact"))
+        artifact_checksums[artifact] = match.group("sha")
+    return artifact_checksums
 
 
 def validate_report_plan(report: dict[str, Any], run_status: str) -> None:

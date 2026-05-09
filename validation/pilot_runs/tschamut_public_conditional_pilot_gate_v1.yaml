@@ -98,10 +98,10 @@ run_evidence:
   reducer_chunk_manifest_dir: hazard/results/tschamut_public_pilot/gate_v1/chunks
   dem_sensitivity_summary_path: validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1/dem_terrain_sensitivity_summary.json
   scaling_summary_path: hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json
-  runtime_seconds: 20.64
-  memory_peak_mb: 381.43
-  output_file_count: 186
-  output_total_bytes: 226925754
+  runtime_seconds: 17.84
+  memory_peak_mb: 409.22
+  output_file_count: 191
+  output_total_bytes: 267527120
   trajectory_count: 60
   release_cell_count: 10
   convergence_diagnostics:
@@ -112,13 +112,13 @@ run_evidence:
       - manual QGIS visual QA has not been run
       - local scaling evidence identifies conditional-curve and raster output volume as the next bottleneck before increasing ensemble size
   artifact_checksums:
-    validation_manifest_sha256: f0981caae1da4d3cf5a93c9d1b0a1ae88ac28a9d067824b813e6455a9ec0bf50
-    hazard_manifest_sha256: 6a5cc5711406d01caf2e62585368c4acedf1fc3eaaf5dd815226e9dcaca4043e
-    conditional_curve_table_sha256: cb2d0c5636c3a177c825258acfa6aef2f215fd5ddd99e9cfea92d34256681541
-    map_package_manifest_sha256: 27a95fb037639ac961d6b8eaa1e2de383fb0ebfa91b116b5547a83f28e9f7621
-    pilot_gis_package_manifest_sha256: ab9bc43b1d4ae8a61724f3f951e1127064d1b841b1d74b391516016efd0b9f92
+    validation_manifest_sha256: b41c5469fe0e3ef29216d05ecf7872509210c0d0a59f63b6230ea6dedce635f3
+    hazard_manifest_sha256: 5d62a9dd4bb8e4436c95125d6009796c7a67dd8bbcbdbff65f790dfe12c32893
+    conditional_curve_table_sha256: c6456f6af984e531c550e72df09240302cdbf5ac34d91741d975ed2da6be81a9
+    map_package_manifest_sha256: 15beba852cbb1d4430f7d4e23714cfd6a321e33e635f4521eb86cdd42ec5bd52
+    pilot_gis_package_manifest_sha256: 52061a9a60bd4a5b082c5a68818d4add11b7098e6197f44e5aed2ae789d689c6
     dem_sensitivity_summary_sha256: 85c1ba97f012167ab29f2772b5893aa84fc21cc483bd7d5c7f3f12a155701fa6
-    scaling_summary_sha256: 48014766d5844ab7404be604168519518dc8d24f389cef8984a7ba36c13caefc
+    scaling_summary_sha256: 87ebec392e5142ff5aae698e1f4e7b335dd9a7b56bab8f74e41efced302a7388
 
 report_plan:
   report_path: docs/tschamut_public_conditional_pilot_gate_report.md
