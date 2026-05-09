@@ -13,15 +13,16 @@ sensitivity gate, conditional pilot report, GIS package review, scaling review,
 visual-QA review record, target-scale conditional evidence, and ensemble-size
 feasibility record have been reconciled against regenerated local ignored
 artifacts. The current critical gap is no longer missing execution contracts,
-missing target-scale execution evidence, or unclassified manual GIS/QGIS
-visual QA. The active blockers are interpretation and provenance: target-scale
-GIS/QGIS visual QA is explicitly `blocked` by missing ignored package artifacts
-and absent QGIS, forest/obstacle context is explicitly `limiting` with public
-context layers not reviewed in this checkout, convergence has not been
-accepted, validation-runner
-parallel provenance covers only an auxiliary ensemble path, and validation-side
-debug output volume remains too large for another selected-domain increase
-without reduction or explicit justification.
+missing target-scale execution evidence, unclassified manual GIS/QGIS visual
+QA, or unscoped forest/obstacle context. The remaining blockers are
+interpretation and provenance: target-scale GIS/QGIS visual QA is explicitly
+`blocked` by missing ignored package artifacts and absent QGIS,
+forest/obstacle context is explicitly `limiting` with public context layers not
+reviewed in this checkout, convergence has not been accepted,
+validation-runner parallel provenance covers only an auxiliary ensemble path,
+and validation-side debug output volume remains too large for another
+selected-domain increase without reduction or explicit justification. The next
+actionable development target is Target 15, not another larger run.
 
 ## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
 
@@ -214,10 +215,12 @@ worker-count-independent reduced outputs.
 Minimal acceptable deliverable: complete as a documented no-go feasibility
 gate. `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
 `docs/tschamut_public_ensemble_feasibility.md` record that ensemble increase is
-not authorized yet because target-scale convergence is not established, manual
-GIS/QGIS visual QA remains inconclusive, and forest/obstacle omission remains
-limiting. `scripts/validate_pilot_ensemble_feasibility.py` checks the decision,
-required preconditions, output-budget controls, and claim boundaries.
+not authorized yet because target-scale convergence is not accepted, manual
+GIS/QGIS visual QA is blocked, forest/obstacle omission remains limiting,
+validation-runner target provenance is incomplete, and validation-side debug
+output volume remains unresolved. `scripts/validate_pilot_ensemble_feasibility.py`
+checks the decision, required preconditions, output-budget controls, and claim
+boundaries.
 
 What not to do: Do not scale up before source-zone, DEM, small-gate, GIS, and
 performance interpretation are stable.
@@ -292,12 +295,13 @@ Evidence needed: behavior-preserving module splits with no output/schema
 changes, unchanged public validation and `shape_contact_v0` guard tests, and
 unchanged `cargo run -- validate --all` results.
 
-Minimal acceptable deliverable: complete for one narrow concern. The pure
-metric-math helpers used by validation metrics now live in
-`src/validation/metric_math.rs` with focused unit tests, while
-`src/validation.rs` keeps the metric orchestration, case loading, output
-writing, manifests, and public behavior unchanged. `scripts/check_repo_consistency.py`
-guards the module boundary.
+Minimal acceptable deliverable: complete for multiple narrow concerns. Pure
+metric-math helpers, metric evaluation, probabilistic metadata loading,
+validation I/O, public type re-exports, and the case runner now live in focused
+`src/validation/` submodules, while public behavior remains unchanged.
+`scripts/check_repo_consistency.py` guards the module boundary. Further
+validation and shape splits remain useful maintenance work, but they are no
+longer the highest-priority blocker for the selected Swiss pilot.
 
 What not to do: Do not use this as a vehicle for new physics, new schemas,
 baseline refreshes, or public `shape_contact_v0` execution.
@@ -633,7 +637,9 @@ reduction or an explicit audit justification.
 Expected value for Swiss hazard-map goal: High.
 
 Scientific risk: Medium if target-scale outputs are interpreted without clear
-trajectory provenance and output-budget constraints.
+trajectory provenance and output-budget constraints. This target is now the
+highest-value implementable task because Targets 13 and 14 are explicitly
+blocked/limiting pending local GIS/context artifacts.
 
 Engineering risk: Medium because this may touch validation runner manifests or
 output modes, but it should remain additive and opt-in.
@@ -650,6 +656,11 @@ budget, or require resumable chunk manifests before further scaling.
 Minimal acceptable deliverable: a report or manifest guardrail that prevents a
 future agent from mistaking auxiliary `ensemble_execution` provenance for full
 target-run provenance, plus a documented output-budget decision.
+
+Current status: active next target. Recent refactors improved validation module
+boundaries and CI coverage, but they did not resolve whether the target-scale
+observed-release outputs have adequate trajectory provenance or whether debug
+outputs are acceptable for another selected-domain increase.
 
 What not to do: Do not change default validation output behavior, refresh
 baselines, or hide diagnostic data needed for auditability without an explicit
@@ -689,10 +700,18 @@ Estimated order: 15.
   level. DEM-facing fixed-step runtime code propagates structured terrain
   errors through the fallible integration path, with compatibility wrappers
   retained for older analytic callers.
-- One validation-module concern has been split: pure metric-math helpers now
-  live in `src/validation/metric_math.rs`, with behavior-preserving unit tests
-  and a consistency guard. Larger validation and shape splits remain future
-  work.
+- Several validation-module concerns have been split: pure metric math, metric
+  evaluation, probabilistic metadata loading, validation I/O, public type
+  re-exports, and the case runner now live in focused `src/validation/`
+  submodules with behavior-preserving tests and consistency guards. Larger
+  validation and shape splits remain future work.
+- CI and onboarding checks now use the project tool requirements more
+  consistently: the GitHub Actions Python job installs `requirements-tools.txt`
+  and the workflow is split into lint, Rust tests, verify/validate, and Python
+  consistency jobs.
+- Multi-trajectory Parquet writing is available in `src/io.rs` as a building
+  block for large ensemble output contracts, with tests covering writer
+  behavior and read-back.
 - Deterministic local parallel ensemble execution is available as an opt-in
   library path. Serial execution remains the default, and no SLURM, MPI, GPU,
   distributed orchestration, validation-runner default change, or larger
@@ -792,14 +811,18 @@ Estimated order: 15.
    ensembles if the next gate requires `ensemble_execution` to cover all 1,000
    target trajectories rather than the auxiliary single-release ensemble path.
 2. Reduce or explicitly justify validation-side debug output volume before any
-   further selected-domain increase.
-3. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
+   further selected-domain increase. Prefer an additive output-policy record or
+   manifest field before changing defaults.
+3. Use the new Parquet trajectory writer only through an explicit output
+   contract if large ensemble debug output remains necessary; do not silently
+   replace existing CSV debug artifacts.
+4. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
    focused behavior-preserving change already touches that concern.
-4. Resolve the remaining physical/source-frequency design-gate blockers if
+5. Resolve the remaining physical/source-frequency design-gate blockers if
    annual or physical products are still desired: accepted evidence,
    implemented overlap-adjusted reducers, implemented uncertainty propagation,
    and accepted validation/calibration review. The current design gate has
    been reassessed and remains deferred.
-5. Implement an annual/physical prototype only if the design gate passes.
+6. Implement an annual/physical prototype only if the design gate passes.
    Until then, use the Target 10 preflight record as the executable no-go
    check rather than adding annual or physical runtime semantics.

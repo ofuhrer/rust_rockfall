@@ -27,7 +27,7 @@ The repository is close to milestone 1 at the tooling and selected-domain
 contract level, and the selected public Swiss pilot now has a reconciled
 run-freeze record with regenerated local ignored outputs, conditional curves,
 automated GIS artifact checks, local performance evidence, executed
-  target-scale conditional evidence, and a reassessed no-go ensemble-size gate.
+target-scale conditional evidence, and a reassessed no-go ensemble-size gate.
 Milestone 1 is still not complete because target-scale convergence decisions
 are not yet accepted. In this checkout, the selected package visual-QA gate is
 `blocked` because QGIS and ignored target package artifacts are unavailable,
@@ -38,6 +38,7 @@ milestone 2 because source-zone occurrence frequency,
 block-population frequency, annualization, and validation semantics remain
 unsupported by `docs/hazard_map_semantics.md` and
 `docs/probabilistic_scenario_model_design.md`.
+
 ## Current Baseline
 
 Already available:
@@ -85,10 +86,14 @@ Already available:
 - fallible DEM-facing fixed-step integration path that propagates terrain
   errors through `IntegrationError` while retaining infallible wrappers as
   compatibility helpers;
-- first validation-module concern split, with pure metric-math helpers moved to
-  a focused submodule and guarded by unit/consistency checks;
+- validation harness split across focused submodules for metric math, metric
+  evaluation, probabilistic metadata loading, validation I/O, public type
+  re-exports, and the case runner;
 - opt-in local threaded ensemble execution with deterministic chunk metadata
   and serial-vs-parallel equality tests;
+- split GitHub Actions CI jobs that install `requirements-tools.txt` for
+  Python checks;
+- multi-trajectory Parquet writer support for future large-output contracts;
 - strong verification and deterministic seed/order checks.
 
 Main remaining pieces, in priority order:
@@ -107,7 +112,6 @@ Main remaining pieces, in priority order:
 5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
-## Current Implementation Assessment
 ## Current Implementation Assessment
 
 The latest implementation work completed the first selected-domain pieces of
@@ -176,10 +180,11 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   as structured `SimulationError::Integration` failures, and consistency
   checks reject new infallible terrain/contact calls in the integrator. Legacy
   infallible terrain and integration wrappers remain compatibility helpers.
-- The first validation-module split is complete. Pure metric-math helpers used
-  by validation metrics now live in `src/validation/metric_math.rs`; focused
-  unit tests cover interpolation and cloud-metric edge cases, and consistency
-  checks keep those helpers out of the monolithic validation file.
+- The validation-module split has progressed beyond the first metric-math
+  extraction. Metric evaluation, probabilistic metadata loading, validation
+  I/O, public type re-exports, and the case runner now live in focused
+  `src/validation/` submodules. Focused tests and consistency checks preserve
+  behavior and keep the split from drifting back into one monolithic file.
 - Deterministic local parallel ensemble execution is complete at the library
   contract level. `simulate_ensemble_parallel` executes deterministic
   contiguous local-thread chunks, restores requested trajectory order after
@@ -187,6 +192,13 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   serial-vs-parallel and worker-count parity tests. Validation cases can opt in
   with `random.ensemble_workers`, which writes `ensemble_execution` provenance
   into `run_manifest_v1`; serial execution remains the default validation path.
+- CI/tooling alignment has improved. GitHub Actions now runs separate lint,
+  Rust test, verify/validate, and Python jobs, and the Python job installs
+  `requirements-tools.txt`. This closes a previous green-CI versus local-tooling
+  drift risk.
+- Multi-trajectory Parquet writing is available in `src/io.rs` and covered by
+  tests. It is a useful building block for future large ensemble output policy,
+  but it is not yet a selected-pilot output-mode decision.
 
 The physical/source-frequency semantics gate is now documented as a deferred
 decision in `docs/physical_source_frequency_design_gate.md`. Any annual or
@@ -757,18 +769,18 @@ a separate deferred semantic/evidence problem.
 | Priority | Item | Why this comes next | Done when |
 | --- | --- | --- | --- |
 | 1 | Reconcile and regenerate selected pilot gate evidence | The run-freeze, GIS review, scaling review, and conditional gate report needed one authoritative state. | Complete: the processed DEM and local ignored outputs were regenerated or verified locally; DEM sensitivity, conditional curves, hazard/map/package/scaling manifests, checksums, runtime/memory/output metrics, and GIS review references are reflected consistently in the run-freeze and reports with `inconclusive` non-operational classification. |
-| 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected visual-QA record classifies the gate as `inconclusive`, with automated CRS/datum/label checks passing and QGIS overlay/styling evidence blocked by the non-GUI environment. |
+| 2 | Run or classify manual QGIS visual QA for the selected package | Automated manifest/file QA is not enough for a GIS-facing pilot package. | Complete at the share-safe checklist level: the selected target-scale visual-QA record classifies the gate as `blocked`, with QGIS unavailable and ignored target package artifacts absent in this checkout. |
 | 3 | Scope forest/obstacle omission for Tschamut | Missing forest, roads, barriers, buildings, or nets could dominate interpretation and should not be absorbed into contact/material assumptions. | Complete at the share-safe target-scale scoping level: the selected obstacle scope record classifies omission as `limiting`, documents required public context layers, records blocked local context-artifact review, and confirms no obstacle physics or tuning change. |
 | 4 | Address conditional-curve/raster output-volume bottleneck | The local scaling review identifies output volume as the next performance blocker before larger ensembles. | Complete for the largest curve-table output: `--conditional-curve-export summary-only` skips the per-cell curve CSV table while preserving rasters, metadata summaries, and default full export for small debug/review runs. Raster-output optimization remains future work. |
 | 5 | Increase ensemble size toward the target count | Larger ensembles are useful only after the selected pilot is reproducible and scientifically interpretable. | Complete as a reassessed selected-domain no-go feasibility gate: `pilot_ensemble_feasibility_v1` reviews the executed but inconclusive target evidence and records that increasing the Tschamut ensemble is not authorized until convergence interpretation, validation output volume, manual GIS/QGIS review, forest/obstacle context, and validation-runner provenance scope are resolved. |
 | 6 | Complete fallible terrain/integrator API migration | Real DEM nodata or crop-edge errors must not abort long pilot batches as panics. | Complete at the guardrail level: DEM-facing fixed-step runtime code propagates terrain errors through fallible contact/integration helpers; remaining infallible wrappers are compatibility-only and documented. |
-| 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Complete for the first narrow concern: pure validation metric-math helpers are split into `src/validation/metric_math.rs` with behavior-preserving unit tests and consistency checks. Larger validation/shape splits remain future work. |
+| 7 | Split validation and experimental shape internals by concern | Large monolithic files slow review and blur the physics-library versus V&V-harness boundary. | Substantially complete for validation: metric math, metrics, probabilistic metadata, validation I/O, type re-exports, and runner logic now live in focused `src/validation/` submodules. Larger shape splits remain future work. |
 | 8 | Add deterministic local parallel ensemble execution | The 10,000-trajectory design target needs local parallelism before CSCS/SLURM orchestration. | Complete at the library-contract level: `simulate_ensemble_parallel` is opt-in, preserves serial default behavior, records deterministic local chunk metadata, and focused tests prove serial/parallel and worker-count parity. |
 | 9 | Execute or unblock the selected scalable conditional target-scale gate | The scalable conditional contract is ready, but selected-domain target-scale convergence and output-budget evidence had not been generated. | Complete as executed but inconclusive evidence: ignored inputs were regenerated, 1,000 observed-release trajectories and summary-only hazard layers were produced, output budget/runtime/memory/checksums were recorded, and 1-vs-2 worker reducer parity matched compared outputs. Scale-up remains unauthorized because convergence, manual GIS QA, obstacle context, and validation-runner provenance scope remain unresolved. |
 | 10 | Reassess selected ensemble-size gate | Technical execution evidence alone does not resolve manual GIS or obstacle-context blockers. | Complete: the selected ensemble-feasibility record remains `no_go` with explicit target-evidence limitations and no authorization for a further diagnostic scale step. |
 | 11 | Complete target-scale manual GIS/QGIS visual QA | The target-scale package has automated QA, but visual alignment and interpretation are still unresolved. | A share-safe visual-QA record is `passed`, `failed`, or explicitly `blocked` for the target-scale package with CRS, nodata, source-zone overlay, label, and interpretation notes. |
 | 12 | Review target-scale forest/obstacle context | The selected Tschamut outputs remain hard to interpret while forest/obstacle omission is only scoped, not locally reviewed. | The obstacle-context record is updated to `acceptable_for_diagnostic_pilot`, `limiting`, or `invalidating_for_interpretation` based on locally reviewed public context layers and claim boundaries. |
-| 13 | Clarify target-run provenance and debug output budget | Further scaling should not proceed while auxiliary ensemble provenance can be confused with observed-release target provenance or while validation debug output volume is unjustified. | Target-run reports/manifests clearly separate observed-release outputs from auxiliary ensemble provenance and record a debug-output reduction, hard budget, or explicit audit justification. |
+| 13 | Clarify target-run provenance and debug output budget | Further scaling should not proceed while auxiliary ensemble provenance can be confused with observed-release target provenance or while validation debug output volume is unjustified. This is the next actionable implementation target. | Target-run reports/manifests clearly separate observed-release outputs from auxiliary ensemble provenance and record a debug-output reduction, hard budget, or explicit audit justification. |
 | 14 | Design physical/source-frequency semantics | Annual products require source and block occurrence evidence, not just sampling weights. | Complete as a deferred design gate with inactive evidence/reducer/review/preflight contracts and synthetic design-review fixtures; real accepted evidence and runtime support remain absent. |
 | 15 | Implement an annual/physical intensity-frequency prototype | This should happen only after the design gate passes. | A small fixture proves annual or physical frequency sums with explicit units and complete provenance. |
 
@@ -814,6 +826,7 @@ satisfied. The pilot remains an inconclusive local diagnostic gate.
 | Terrain error semantics | Larger real-DEM batches | Nodata, out-of-domain, and unsupported-contact failures propagate as structured errors rather than panics. |
 | GIS package QA | Shareable pilot output | CRS, transform, nodata, value parity, source-zone overlays, and labels pass review. |
 | Scalable conditional target gate | Selected ensemble-size decision | Complete as an `inconclusive` evidence gate: execution, output-budget, wall-time, memory, checksum, reducer, worker-parity, and ignored-artifact evidence exist, but convergence/GIS/obstacle/provenance blockers prevent scale-up authorization. |
+| Target-run provenance and debug output budget | Further selected-domain scaling | Observed-release target outputs are clearly separated from auxiliary ensemble provenance, and validation debug outputs have a documented reduction, hard budget, or audit justification. |
 | Local scaling | Valley-scale ensemble | Serial/parallel/reducer parity and pilot-scale resource measurements are available. The local contracts and selected target-scale evidence exist; the next blocker is interpreting that evidence before any larger diagnostic run. |
 | Validation maturity | Public claims | Reports map evidence to maturity level and avoid unsupported validation claims. |
 | Frequency semantics | Annual curves | Source/block frequency inputs, units, uncertainty, overlap rules, schemas, fixtures, and rejection tests exist. The inactive source-frequency, block/release probability, reducer-precondition, and validation/calibration review contracts now exist; synthetic source-frequency, block/release, reducer-precondition, and validation/calibration design-review fixtures exercise accepted-record validation and are reassessed by the design gate, but real accepted evidence and implemented reducer support remain deferred. |

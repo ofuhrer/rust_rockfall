@@ -3157,3 +3157,39 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Implement Target 15, validation-runner provenance
   and debug output-budget tightening for the selected Tschamut target-scale
   evidence.
+
+### M054
+
+- Milestone id: M054.
+- Roadmap item: Roadmap reassessment after validation refactor, CI alignment,
+  and target-scale interpretation blockers.
+- Hypothesis/objective: Update the active roadmaps so they reflect the latest
+  repository state: expanded validation submodules, improved CI Python tooling,
+  multi-trajectory Parquet writer support, completed blocked/limiting Target
+  13/14 records, and Target 15 as the next actionable development step.
+- Initial gap assessment: The roadmap matrix still ranked manual GIS/QGIS and
+  forest/obstacle review above Target 15, even though those items are now
+  explicitly blocked/limiting until local artifacts or tools are available.
+  The roadmaps also understated the validation split and did not mention the CI
+  and Parquet-output changes.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reprioritized Target 15, target-run provenance and
+  debug output budget, as the highest-value implementable next step. Roadmaps
+  now treat manual GIS/QGIS and forest/obstacle review as scientifically
+  important but currently blocked by local artifacts/tools, and record the
+  expanded validation split, CI requirements alignment, and Parquet writer as
+  completed building blocks.
+- Checks run:
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+- Reviewer notes: Documentation-only roadmap update; no physics, defaults,
+  sampling weights, generated outputs, raw geodata, annual frequency support,
+  physical probability support, calibration, risk/exposure semantics,
+  SLURM/MPI/GPU code, or operational claims are changed.
+- Decision: ACCEPT; documentation consistency checks pass.
+- Next proposed milestone: Implement Target 15 with an additive provenance and
+  output-budget guardrail for selected target-scale evidence.
