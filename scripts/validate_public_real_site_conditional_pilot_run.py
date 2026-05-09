@@ -338,8 +338,9 @@ def build_hazard_command(
         return CONTROL_CHARS_RE.sub("", normalized)
 
     benchmark_case_path_obj = Path(benchmark_case_path)
-    case_id = run_id
-    if benchmark_case_path_obj.exists():
+    benchmark_case_id = input_freeze.get("benchmark_case_id")
+    case_id = benchmark_case_id or run_id
+    if not benchmark_case_id and benchmark_case_path_obj.exists():
         benchmark_case = read_yaml(benchmark_case_path_obj)
         case_id = require_text(benchmark_case.get("case_id"), "benchmark_case.case_id")
     command = [
