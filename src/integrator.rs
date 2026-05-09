@@ -1,10 +1,11 @@
 use crate::{
     dynamics::{
         apply_scarring_energy_loss, ballistic_step, contact_point_tangent_velocity,
-        rolling_residual, try_apply_contact_friction_after_ballistic_step,
-        try_apply_rotational_contact_motion, try_resolve_rotational_sphere_contact_with_normal,
-        try_resolve_sphere_contact_with_normal, ContactModel, ContactParameterProvider,
-        ContactParameters, RotationalContactSettings, ScarringSettings,
+        rolling_residual, try_apply_contact_friction_after_ballistic_step_with_normal,
+        try_apply_rotational_contact_motion_with_normal,
+        try_resolve_rotational_sphere_contact_with_normal, try_resolve_sphere_contact_with_normal,
+        ContactModel, ContactParameterProvider, ContactParameters, RotationalContactSettings,
+        ScarringSettings,
     },
     geometry::SphereBlock,
     state::{
@@ -121,8 +122,9 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
     }
     let mut state = initial;
     let mut time_s = 0.0;
-    let mut samples = Vec::new();
-    let mut impact_events = Vec::new();
+    let max_steps = (settings.max_time_s / settings.dt_s + 1.0e-12).floor() as usize;
+    let mut samples = Vec::with_capacity(max_steps + 1);
+    let mut impact_events = Vec::with_capacity(max_steps / 4 + 1);
     let mut cumulative_scarring_energy_loss_j = 0.0;
     let mut roughness_rng = settings
         .roughness
@@ -136,7 +138,6 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         ContactState::Airborne,
     ));
 
-    let max_steps = (settings.max_time_s / settings.dt_s + 1.0e-12).floor() as usize;
     for _ in 0..max_steps {
         ballistic_step(&mut state, settings.dt_s, settings.gravity_mps2);
         time_s += settings.dt_s;
@@ -154,11 +155,10 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
             })
             .unwrap_or(base_parameters);
 
-        let base_normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+        let (signed_distance_before_response, base_normal) =
+            try_signed_distance_and_normal(terrain, state.position_m, block.radius_m)?;
         let pre_contact_state = state;
         let incoming_velocity = state.velocity_mps;
-        let signed_distance_before_response =
-            terrain.try_signed_distance_sphere(state.position_m, block.radius_m)?;
         let incoming =
             signed_distance_before_response <= 0.0 && state.velocity_mps.dot(&base_normal) < 0.0;
         let effective_contact = if incoming {
@@ -231,15 +231,26 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
             ContactState::Airborne
         };
 
-        let signed_distance =
-            terrain.try_signed_distance_sphere(state.position_m, block.radius_m)?;
-        let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
-        if signed_distance.abs() < 1.0e-7 && state.velocity_mps.dot(&normal) <= 1.0e-7 {
+        let clearly_airborne_after_response = signed_distance_before_response > 1.0e-7
+            && !response.impacted
+            && !response.rolling
+            && !response.sliding;
+        let mut signed_distance = signed_distance_before_response;
+        let mut normal = base_normal;
+        if !clearly_airborne_after_response {
+            (signed_distance, normal) =
+                try_signed_distance_and_normal(terrain, state.position_m, block.radius_m)?;
+        }
+
+        if !clearly_airborne_after_response
+            && signed_distance.abs() < 1.0e-7
+            && state.velocity_mps.dot(&normal) <= 1.0e-7
+        {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
-                    let stopped = try_apply_contact_friction_after_ballistic_step(
+                    let stopped = try_apply_contact_friction_after_ballistic_step_with_normal(
                         &mut state,
-                        terrain,
+                        normal,
                         settings.dt_s,
                         settings.gravity_mps2,
                         local_parameters.friction_coefficient,
@@ -252,10 +263,10 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
                     }
                 }
                 ContactModel::SphereRotationalV1 => {
-                    let contact_response = try_apply_rotational_contact_motion(
+                    let contact_response = try_apply_rotational_contact_motion_with_normal(
                         &mut state,
-                        terrain,
                         block,
+                        normal,
                         RotationalContactSettings {
                             dt_s: settings.dt_s,
                             gravity_mps2: settings.gravity_mps2,
@@ -486,9 +497,101 @@ fn impact_angle_deg(incoming_velocity: crate::Vec3, normal: crate::Vec3) -> f64 
     cos_angle.acos().to_degrees()
 }
 
+fn try_signed_distance_and_normal(
+    terrain: &dyn Terrain,
+    center_m: crate::Vec3,
+    radius_m: f64,
+) -> Result<(f64, crate::Vec3), TerrainError> {
+    let ground = terrain.try_height(center_m.x, center_m.y)?;
+    let normal = terrain.try_normal(center_m.x, center_m.y)?;
+    let point_on_surface = crate::Vec3::new(center_m.x, center_m.y, ground);
+    Ok((
+        (center_m - point_on_surface).dot(&normal) - radius_m,
+        normal,
+    ))
+}
+
 fn unit_or(vector: crate::Vec3, fallback: crate::Vec3) -> crate::Vec3 {
     vector
         .try_normalize(crate::EPS)
         .or_else(|| fallback.try_normalize(crate::EPS))
         .unwrap_or_else(|| crate::Vec3::new(0.0, 0.0, 1.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::terrain::{Plane, Terrain};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct CountingPlaneTerrain {
+        plane: Plane,
+        height_calls: AtomicUsize,
+        normal_calls: AtomicUsize,
+    }
+
+    impl CountingPlaneTerrain {
+        fn horizontal(z0_m: f64) -> Self {
+            Self {
+                plane: Plane::horizontal(z0_m),
+                height_calls: AtomicUsize::new(0),
+                normal_calls: AtomicUsize::new(0),
+            }
+        }
+
+        fn height_calls(&self) -> usize {
+            self.height_calls.load(Ordering::Relaxed)
+        }
+
+        fn normal_calls(&self) -> usize {
+            self.normal_calls.load(Ordering::Relaxed)
+        }
+    }
+
+    impl Terrain for CountingPlaneTerrain {
+        fn height(&self, x_m: f64, y_m: f64) -> f64 {
+            self.height_calls.fetch_add(1, Ordering::Relaxed);
+            Terrain::height(&self.plane, x_m, y_m)
+        }
+
+        fn normal(&self, x_m: f64, y_m: f64) -> crate::Vec3 {
+            self.normal_calls.fetch_add(1, Ordering::Relaxed);
+            Terrain::normal(&self.plane, x_m, y_m)
+        }
+    }
+
+    #[test]
+    fn one_step_airborne_path_uses_cached_terrain_queries() {
+        let terrain = CountingPlaneTerrain::horizontal(0.0);
+        let settings = IntegratorSettings {
+            dt_s: 0.01,
+            max_time_s: 0.01,
+            gravity_mps2: 9.81,
+            normal_restitution: 0.6,
+            tangential_restitution: 0.4,
+            friction_coefficient: 0.5,
+            rolling_resistance_coefficient: 0.05,
+            stop_speed_mps: 1.0e-3,
+            contact_model: ContactModel::TranslationalV0,
+            scarring: ScarringSettings::default(),
+            roughness: ContactRoughness::default(),
+            roughness_seed: None,
+        };
+
+        let result = try_simulate_fixed_step_with_events_and_contact_parameters(
+            BodyState::new(
+                crate::Vec3::new(0.0, 0.0, 10.0),
+                crate::Vec3::new(0.0, 0.0, 0.0),
+            ),
+            SphereBlock::new(1.0, 10.0),
+            &terrain,
+            settings,
+            None,
+        )
+        .expect("integration should succeed");
+
+        assert_eq!(result.samples.len(), 2);
+        assert_eq!(terrain.height_calls(), 2);
+        assert_eq!(terrain.normal_calls(), 2);
+    }
 }
