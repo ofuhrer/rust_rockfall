@@ -417,6 +417,25 @@ pub fn try_apply_contact_friction(
     stop_speed_mps: f64,
 ) -> Result<bool, TerrainError> {
     let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+    try_apply_contact_friction_with_normal(
+        state,
+        normal,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        stop_speed_mps,
+    )
+}
+
+/// Query-optimized contact friction path for callers that already computed terrain normal.
+pub(crate) fn try_apply_contact_friction_with_normal(
+    state: &mut BodyState,
+    normal: Vec3,
+    dt_s: f64,
+    gravity_mps2: f64,
+    friction_coefficient: f64,
+    stop_speed_mps: f64,
+) -> Result<bool, TerrainError> {
     let gravity = gravity_vector(gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
@@ -473,13 +492,32 @@ pub fn try_apply_contact_friction_after_ballistic_step(
     stop_speed_mps: f64,
 ) -> Result<bool, TerrainError> {
     let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+    try_apply_contact_friction_after_ballistic_step_with_normal(
+        state,
+        normal,
+        dt_s,
+        gravity_mps2,
+        friction_coefficient,
+        stop_speed_mps,
+    )
+}
+
+/// Query-optimized post-ballistic contact friction path using a precomputed terrain normal.
+pub(crate) fn try_apply_contact_friction_after_ballistic_step_with_normal(
+    state: &mut BodyState,
+    normal: Vec3,
+    dt_s: f64,
+    gravity_mps2: f64,
+    friction_coefficient: f64,
+    stop_speed_mps: f64,
+) -> Result<bool, TerrainError> {
     let gravity = gravity_vector(gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
     state.velocity_mps -= tangent_acc * dt_s;
-    try_apply_contact_friction(
+    try_apply_contact_friction_with_normal(
         state,
-        terrain,
+        normal,
         dt_s,
         gravity_mps2,
         friction_coefficient,
@@ -504,6 +542,16 @@ pub fn try_apply_rotational_contact_motion(
     settings: RotationalContactSettings,
 ) -> Result<ContactResponse, TerrainError> {
     let normal = terrain.try_normal(state.position_m.x, state.position_m.y)?;
+    try_apply_rotational_contact_motion_with_normal(state, block, normal, settings)
+}
+
+/// Query-optimized rotational contact-motion path using a precomputed terrain normal.
+pub(crate) fn try_apply_rotational_contact_motion_with_normal(
+    state: &mut BodyState,
+    block: SphereBlock,
+    normal: Vec3,
+    settings: RotationalContactSettings,
+) -> Result<ContactResponse, TerrainError> {
     let gravity = gravity_vector(settings.gravity_mps2);
     let normal_acc = gravity.dot(&normal) * normal;
     let tangent_acc = gravity - normal_acc;
@@ -758,4 +806,53 @@ fn unit_or(vector: Vec3, fallback: Vec3) -> Vec3 {
         .try_normalize(EPS)
         .or_else(|| fallback.try_normalize(EPS))
         .unwrap_or_else(|| Vec3::new(0.0, 0.0, 1.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::terrain::{Plane, Terrain};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct CountingPlaneTerrain {
+        plane: Plane,
+        normal_calls: AtomicUsize,
+    }
+
+    impl CountingPlaneTerrain {
+        fn horizontal(z0_m: f64) -> Self {
+            Self {
+                plane: Plane::horizontal(z0_m),
+                normal_calls: AtomicUsize::new(0),
+            }
+        }
+
+        fn normal_calls(&self) -> usize {
+            self.normal_calls.load(Ordering::Relaxed)
+        }
+    }
+
+    impl Terrain for CountingPlaneTerrain {
+        fn height(&self, x_m: f64, y_m: f64) -> f64 {
+            self.plane.height(x_m, y_m)
+        }
+
+        fn normal(&self, x_m: f64, y_m: f64) -> Vec3 {
+            self.normal_calls.fetch_add(1, Ordering::Relaxed);
+            self.plane.normal(x_m, y_m)
+        }
+    }
+
+    #[test]
+    fn post_ballistic_contact_friction_queries_normal_once() {
+        let terrain = CountingPlaneTerrain::horizontal(0.0);
+        let mut state = BodyState::new(Vec3::new(0.0, 0.0, 1.0), Vec3::new(3.0, 0.0, 0.0));
+
+        let _stopped = try_apply_contact_friction_after_ballistic_step(
+            &mut state, &terrain, 0.1, 9.81, 0.6, 1.0e-3,
+        )
+        .expect("terrain query should succeed");
+
+        assert_eq!(terrain.normal_calls(), 1);
+    }
 }
