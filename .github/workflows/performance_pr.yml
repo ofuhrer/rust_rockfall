@@ -37,9 +37,11 @@ jobs:
 
       - name: Compare against latest main baseline
         run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          PERFORMANCE_BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}"
           python scripts/performance_ci_tracking.py compare-pr \
             --summary-csv validation/results/performance_ci_pr/summary.csv \
-            --baseline-url https://ofuhrer.github.io/rust_rockfall/performance/latest.json \
+            --baseline-url "${PERFORMANCE_BASE_URL}/performance/latest.json" \
             --sha "${GITHUB_SHA}" \
             --output-json validation/results/performance_ci_pr/pr_compare.json \
             --output-markdown validation/results/performance_ci_pr/pr_compare.md

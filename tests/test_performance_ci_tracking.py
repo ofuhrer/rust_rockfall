@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 
 import scripts.performance_ci_tracking as perf_ci
@@ -77,6 +78,24 @@ class PerformanceCiTrackingTests(unittest.TestCase):
         self.assertIn("latest: 2222222", svg)
         self.assertIn("Simulation", svg)
         self.assertIn("polyline", svg)
+
+    def test_record_main_rejects_non_positive_max_points(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.csv"
+            self._write_summary(summary_path)
+            args = SimpleNamespace(
+                summary_csv=summary_path,
+                history_url="https://example.invalid/perf/history.json",
+                commit_sha="abc",
+                commit_date="2026-05-09T00:00:00Z",
+                history_out=Path(tmp) / "history.json",
+                latest_out=Path(tmp) / "latest.json",
+                chart_out=Path(tmp) / "chart.svg",
+                index_out=Path(tmp) / "index.html",
+                max_points=0,
+            )
+            with self.assertRaisesRegex(ValueError, "max-points must be positive"):
+                perf_ci.record_main(args)
 
     def _write_summary(self, path: Path) -> None:
         fieldnames = [

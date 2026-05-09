@@ -120,6 +120,8 @@ def compare_pr(args: argparse.Namespace) -> int:
 
 
 def record_main(args: argparse.Namespace) -> int:
+    if args.max_points <= 0:
+        raise ValueError("--max-points must be positive")
     aggregate = aggregate_summary_csv(args.summary_csv)
     history_data = read_json_url(args.history_url)
     history_rows = history_data if isinstance(history_data, list) else []
@@ -138,7 +140,7 @@ def record_main(args: argparse.Namespace) -> int:
         "output_bytes": aggregate.output_bytes,
     }
     history_rows.append(entry)
-    history_rows = history_rows[-max(args.max_points, 1) :]
+    history_rows = history_rows[-args.max_points :]
 
     args.history_out.parent.mkdir(parents=True, exist_ok=True)
     args.history_out.write_text(json.dumps(history_rows, indent=2), encoding="utf-8")
@@ -342,8 +344,6 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
 def read_json_url(url: str) -> Any:
     try:
         with urllib.request.urlopen(url, timeout=15) as response:
-            if response.status >= 400:
-                return None
             content = response.read().decode("utf-8")
             return json.loads(content)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):

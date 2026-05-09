@@ -84,8 +84,9 @@ bounds discovery).
 
 - PRs run a benchmark comparison workflow and publish a baseline-vs-PR component
   timing table in the workflow summary.
-- `main` runs publish a rolling trend chart to GitHub Pages:
-  https://ofuhrer.github.io/rust_rockfall/performance/
+- `main` runs publish a rolling trend chart to GitHub Pages under:
+  `https://<OWNER>.github.io/<REPO>/performance/`
+  (for this repository: `https://ofuhrer.github.io/rust_rockfall/performance/`).
 
 ![Main performance trend](https://ofuhrer.github.io/rust_rockfall/performance/main_performance.svg)
 

@@ -49,13 +49,15 @@ jobs:
 
       - name: Build performance history and chart
         run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          PERFORMANCE_BASE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}"
           COMMIT_DATE="${{ github.event.head_commit.timestamp }}"
           if [ -z "$COMMIT_DATE" ]; then
             COMMIT_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           fi
           python scripts/performance_ci_tracking.py record-main \
             --summary-csv validation/results/performance_ci_main/summary.csv \
-            --history-url https://ofuhrer.github.io/rust_rockfall/performance/history.json \
+            --history-url "${PERFORMANCE_BASE_URL}/performance/history.json" \
             --commit-sha "${GITHUB_SHA}" \
             --commit-date "$COMMIT_DATE" \
             --history-out performance_site/performance/history.json \
