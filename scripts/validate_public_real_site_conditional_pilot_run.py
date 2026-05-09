@@ -72,6 +72,7 @@ SELECTED_REQUIRED_PATH_ROOTS = {
     "scaling_summary_path": "hazard/results/",
 }
 HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 REQUIRED_UNSUPPORTED_CLAIMS = {
     "annual_frequency",
     "return_period",
@@ -332,8 +333,9 @@ def build_hazard_command(
     hazard_output_dir: str,
     run_id: str,
 ) -> list[str]:
-    def normalized_path(value: Any) -> str:
-        return str(value).strip().replace("\\", "/")
+    def normalize_token(value: Any) -> str:
+        normalized = str(value).strip().replace("\\", "/")
+        return CONTROL_CHARS_RE.sub("", normalized)
 
     benchmark_case_path_obj = Path(benchmark_case_path)
     case_id = run_id
@@ -393,9 +395,9 @@ def build_hazard_command(
     }
     for output_key, output_name in default_outputs.items():
         if not outputs.get(output_key):
-            outputs[output_key] = normalized_path(output_parent / output_name)
+            outputs[output_key] = normalize_token(output_parent / output_name)
         else:
-            outputs[output_key] = normalized_path(outputs[output_key])
+            outputs[output_key] = normalize_token(outputs[output_key])
     optional_output_args = {
         "diagnostics_json": "--diagnostics",
         "trajectory_csv": "--trajectory",
@@ -406,14 +408,14 @@ def build_hazard_command(
     }
     for output_key, flag in optional_output_args.items():
         if outputs.get(output_key):
-            command.extend([flag, str(outputs[output_key])])
+            command.extend([flag, normalize_token(outputs[output_key])])
     for threshold in hazard_plan["kinetic_energy_exceedance_j"]:
         command.extend(["--kinetic-energy-exceedance-j", str(threshold)])
     for threshold in hazard_plan["jump_height_exceedance_m"]:
         command.extend(["--jump-height-exceedance-m", str(threshold)])
     for threshold in hazard_plan["velocity_exceedance_mps"]:
         command.extend(["--velocity-exceedance-mps", str(threshold)])
-    return command
+    return [normalize_token(part) for part in command]
 
 
 def command_entry(
