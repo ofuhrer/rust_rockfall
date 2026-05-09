@@ -525,6 +525,8 @@ def is_stale_claim(record: dict[str, Any], now_unix_s: int) -> bool:
     ownership = record.get("ownership")
     if not isinstance(ownership, dict):
         return False
+    if ownership.get("state") not in {"claimed", "stale"}:
+        return False
     claimed_at = ownership.get("claimed_at_unix_s")
     lease_expires = ownership.get("lease_expires_unix_s")
     if not isinstance(claimed_at, int) or not isinstance(lease_expires, int):
