@@ -3212,3 +3212,208 @@ fn read_first_csv_row(path: &Path) -> BTreeMap<String, String> {
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect()
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// SimulationConfig validation tests
+// ─────────────────────────────────────────────────────────────────────────
+
+fn minimal_valid_config() -> SimulationConfig {
+    SimulationConfig {
+        block: SphereBlock::new(0.5, 10.0),
+        initial_position_m: [0.0, 0.0, 1.0],
+        initial_velocity_mps: [0.0, 0.0, 0.0],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::Plane {
+            z0_m: 0.0,
+            slope_x: 0.0,
+            slope_y: 0.0,
+        },
+        dt_s: 0.01,
+        max_time_s: 1.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.5,
+        tangential_restitution: 0.8,
+        friction_coefficient: 0.3,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: ContactModel::TranslationalV0,
+        soil_interaction_model: SoilInteractionModel::None,
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: RoughnessModel::None,
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.1,
+        random_seed: None,
+        release_perturbation: ReleasePerturbation::default(),
+    }
+}
+
+#[test]
+fn simulation_config_validates_minimal_valid_case() {
+    let result = minimal_valid_config().run();
+    assert!(
+        result.is_ok(),
+        "minimal valid config must succeed, got {result:?}"
+    );
+}
+
+#[test]
+fn simulation_config_rejects_zero_block_radius() {
+    let mut cfg = minimal_valid_config();
+    cfg.block = SphereBlock::new(0.0, 10.0);
+    let err = cfg.run().unwrap_err();
+    assert!(
+        matches!(err, SimulationError::NonPositive(_)),
+        "expected NonPositive for zero radius, got {err:?}"
+    );
+}
+
+#[test]
+fn simulation_config_rejects_negative_block_mass() {
+    let mut cfg = minimal_valid_config();
+    cfg.block = SphereBlock::new(0.5, -1.0);
+    let err = cfg.run().unwrap_err();
+    assert!(matches!(err, SimulationError::NonPositive(_)));
+}
+
+#[test]
+fn simulation_config_rejects_restitution_greater_than_one() {
+    let mut cfg = minimal_valid_config();
+    cfg.normal_restitution = 1.5;
+    let err = cfg.run().unwrap_err();
+    assert!(
+        matches!(err, SimulationError::OutOfRange { .. }),
+        "expected OutOfRange for restitution > 1, got {err:?}"
+    );
+}
+
+#[test]
+fn simulation_config_rejects_zero_dt() {
+    let mut cfg = minimal_valid_config();
+    cfg.dt_s = 0.0;
+    let err = cfg.run().unwrap_err();
+    assert!(matches!(err, SimulationError::NonPositive(_)));
+}
+
+#[test]
+fn simulation_config_rejects_negative_gravity() {
+    let mut cfg = minimal_valid_config();
+    cfg.gravity_mps2 = -9.81;
+    let err = cfg.run().unwrap_err();
+    assert!(matches!(err, SimulationError::NonPositive(_)));
+}
+
+#[test]
+fn simulation_config_rejects_shape_contact_v0_model() {
+    let mut cfg = minimal_valid_config();
+    cfg.contact_model = ContactModel::ShapeContactV0;
+    let err = cfg.run().unwrap_err();
+    assert!(
+        matches!(err, SimulationError::UnsupportedContactModel(_)),
+        "expected UnsupportedContactModel, got {err:?}"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Trajectory Parquet writer round-trip test
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_count() {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+    use rust_rockfall::dynamics::ScarringSettings;
+    use rust_rockfall::stochastic::ContactRoughness;
+    use rust_rockfall::terrain::Plane;
+    use rust_rockfall::{
+        integrator::{simulate_fixed_step, IntegratorSettings},
+        write_trajectory_samples_parquet,
+    };
+
+    let block = SphereBlock::new(0.5, 10.0);
+    let terrain = Plane::horizontal(0.0);
+
+    let settings = IntegratorSettings {
+        dt_s: 0.05,
+        max_time_s: 1.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.5,
+        tangential_restitution: 1.0,
+        friction_coefficient: 0.2,
+        rolling_resistance_coefficient: 0.0,
+        stop_speed_mps: 0.1,
+        contact_model: ContactModel::TranslationalV0,
+        scarring: ScarringSettings::default(),
+        roughness: ContactRoughness::default(),
+        roughness_seed: None,
+    };
+
+    // Two distinct trajectories with different initial conditions.
+    let initial_a = BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(1.0, 0.0, -3.0));
+    let initial_b = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(2.0, 0.0, -4.0));
+    let samples_a = simulate_fixed_step(initial_a, block, &terrain, settings);
+    let samples_b = simulate_fixed_step(initial_b, block, &terrain, settings);
+    let expected_rows = samples_a.len() + samples_b.len();
+    assert!(
+        expected_rows >= 2,
+        "each trajectory must have at least one sample"
+    );
+
+    let path = temp_path("trajectory_samples_parquet_test.parquet");
+
+    write_trajectory_samples_parquet(
+        &path,
+        &[("trajectory_a", Some(1)), ("trajectory_b", None)],
+        &[&samples_a, &samples_b],
+    )
+    .expect("write_trajectory_samples_parquet should succeed");
+
+    // Read back the Parquet file and verify row count and trajectory IDs.
+    let file = std::fs::File::open(&path).unwrap();
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
+    let parquet_meta = builder.metadata().clone();
+    let total_row_groups: i64 = parquet_meta
+        .row_groups()
+        .iter()
+        .map(|rg| rg.num_rows())
+        .sum();
+    assert_eq!(
+        total_row_groups as usize, expected_rows,
+        "Parquet row count must match total samples written"
+    );
+
+    // Read batches and collect all trajectory_id values to verify both IDs are present.
+    let file2 = std::fs::File::open(&path).unwrap();
+    let reader = ParquetRecordBatchReaderBuilder::try_new(file2)
+        .unwrap()
+        .build()
+        .unwrap();
+    let mut seen_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for batch in reader {
+        let batch = batch.unwrap();
+        let id_col = batch
+            .column_by_name("trajectory_id")
+            .expect("trajectory_id column must exist");
+        let string_array = id_col
+            .as_any()
+            .downcast_ref::<arrow_array::StringArray>()
+            .expect("trajectory_id must be a StringArray");
+        use arrow_array::Array as _;
+        for i in 0..string_array.len() {
+            seen_ids.insert(string_array.value(i).to_string());
+        }
+    }
+    assert!(
+        seen_ids.contains("trajectory_a"),
+        "trajectory_a must be present in the Parquet file"
+    );
+    assert!(
+        seen_ids.contains("trajectory_b"),
+        "trajectory_b must be present in the Parquet file"
+    );
+
+    // Clean up.
+    std::fs::remove_file(&path).unwrap();
+}
