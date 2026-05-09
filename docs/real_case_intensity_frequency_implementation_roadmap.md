@@ -521,8 +521,9 @@ Do not:
 Objective: make valley-scale ensembles feasible on one workstation or node
 before SLURM orchestration.
 
-Current status: implemented at the local contract level, but not yet exercised
-for a selected target-scale run. The `--reducer-workers` path gives
+Current status: implemented at the local contract level and now reproducible on
+the selected target-scale run in checked-in policy. The `--reducer-workers` path
+gives
 deterministic local chunking and reducer manifests for current hazard products.
 `execution_plan_v1`, `reducer_execution_index_v1`, `reducer_merge_state_v1`,
 and per-chunk retry-aware `hazard_reducer_chunk_manifest_v1` sidecars are now
@@ -537,7 +538,9 @@ chunk provenance in `run_manifest_v1`. The scalable conditional execution
 record now defines the selected Tschamut target-scale diagnostics and keeps
 scale-up unauthorized until convergence, output budget, forest/obstacle
 context, balfrin reproducibility, and target-run provenance evidence are
-complete. Remaining gaps are clarifying target-run provenance/debug output,
+complete. Orchestration decisions now explicitly include executed, reused,
+stale-claim recovery, and cross-owner skip states for deterministic restart
+traces. Remaining gaps are clarifying target-run provenance/debug output,
 reproducing the selected target-scale gate on balfrin, and generalizing
 plan-side partial-reducer restart semantics from local reducer chunks to
 trajectory-generation and cluster orchestration.

@@ -2046,6 +2046,7 @@ def build_reducer_execution_index_manifest(
                 "completion_state": record.get("completion_state"),
                 "execution_status": record.get("execution_status"),
                 "completion_status": record.get("completion_status"),
+                "orchestration_decision": record.get("orchestration_decision"),
                 "completion_reason": record.get("completion_reason"),
                 "failure_reason": record.get("failure_reason"),
                 "ownership": record.get("ownership"),
@@ -2087,6 +2088,7 @@ def build_reducer_merge_state_manifest(
                 "completion_status": record.get("completion_status"),
                 "completion_state": record.get("completion_state"),
                 "status": record.get("status"),
+                "orchestration_decision": record.get("orchestration_decision"),
                 "row_count": record.get("row_count"),
                 "rows_written": record.get("rows_written"),
                 "output_bytes": record.get("output_bytes"),
@@ -2107,6 +2109,7 @@ def build_chunk_execution_manifest(
     execution_status: str,
     completion_status: str,
     completion_reason: str | None,
+    orchestration_decision: str,
     output_bytes: int | None,
     merge_group_id: str | None = None,
     deposition_accumulation_seconds: float,
@@ -2142,6 +2145,7 @@ def build_chunk_execution_manifest(
         "scientific_status": "not_evaluated",
         "merge_group_id": merge_group_id,
         "retry_count": max(0, int(retry_count)),
+        "orchestration_decision": orchestration_decision,
         "attempt_count": max(0, int(attempt_count)),
         "worker_partition_index": chunk.index,
         "ownership": ownership if isinstance(ownership, dict) else None,
@@ -2340,6 +2344,7 @@ def run_reducer_accumulation(
                 "ownership",
                 "partial_state_path",
                 "partial_state_schema_version",
+                "orchestration_decision",
             ):
                 if field in previous_record:
                     chunk_record[field] = previous_record[field]
@@ -2349,7 +2354,7 @@ def run_reducer_accumulation(
     def record_for_chunk(chunk_id: str) -> dict[str, Any]:
         return chunk_records_by_id.get(chunk_id, {})
 
-    def build_no_execution_result(chunk: ReducerChunk, record: dict[str, Any]) -> ReducerChunkResult:
+    def build_no_execution_result(chunk: ReducerChunk, record: dict[str, Any], decision: str) -> ReducerChunkResult:
         state_path = record.get("partial_state_path")
         if not state_path:
             raise SystemExit(f"chunk {chunk.chunk_id} has no partial state path in plan")
@@ -2374,6 +2379,7 @@ def run_reducer_accumulation(
             execution_status="completed",
             completion_status="completed",
             completion_reason=None,
+            orchestration_decision=("reused_completed_state" if decision != "stale_claim_recovered" else decision),
             output_bytes=chunk_partial_state_path(chunk.chunk_id, chunk_dir).stat().st_size
             if Path(chunk_partial_state_path(chunk.chunk_id, chunk_dir)).exists()
             else 0,
@@ -2393,7 +2399,7 @@ def run_reducer_accumulation(
         )
 
     scheduled_results: list[ReducerChunkResult] = []
-    scheduled_run_specs: list[tuple[ReducerChunk, int, int]] = []
+    scheduled_run_specs: list[tuple[ReducerChunk, int, int, str]] = []
     failed_chunks: list[str] = []
     ineligible_chunks: list[str] = []
     run_retries = 0
@@ -2409,6 +2415,7 @@ def run_reducer_accumulation(
             continue
         if chunk.chunk_id not in scheduled_chunk_ids:
             record["execution_status"] = "not_scheduled"
+            record["orchestration_decision"] = "not_scheduled"
             continue
 
         if is_claim_active_for_other_owner(record, run_owner_id, now_unix_s):
@@ -2423,18 +2430,27 @@ def run_reducer_accumulation(
                 retry_count=max(0, int(record.get("retry_count") or 0)),
             )
             ineligible_chunks.append(chunk.chunk_id)
+            record["orchestration_decision"] = "skipped_by_other_owner"
             continue
 
         if is_stale_claim(record, now_unix_s):
             mark_chunk_stale_release(record, now_unix_s)
+            record["orchestration_decision"] = "stale_claim_recovered"
 
         if chunk_has_valid_reusable_state(chunk, record):
-            scheduled_results.append(build_no_execution_result(chunk, record))
+            scheduled_results.append(
+                build_no_execution_result(
+                    chunk,
+                    record,
+                    decision=str(record.get("orchestration_decision") or "reused_completed_state"),
+                )
+            )
             continue
 
         if str(record.get("completion_status") or "not_started") == "completed":
             record["completion_status"] = "not_started"
             record["execution_status"] = "planned"
+            record["orchestration_decision"] = "completed_state_reset_for_rerun"
 
         retry_count = max(0, int(record.get("retry_count") or 0))
         attempt_count = max(0, int(record.get("attempt_count") or 0))
@@ -2450,14 +2466,16 @@ def run_reducer_accumulation(
                 retry_count=retry_count,
             )
             failed_chunks.append(chunk.chunk_id)
+            record["orchestration_decision"] = "max_attempts_exceeded"
             continue
 
         claim_chunk(record, run_owner_id, now_unix_s, lease_seconds)
-        scheduled_run_specs.append((chunk, attempt_count, retry_count))
+        record["orchestration_decision"] = str(record.get("orchestration_decision") or "executed")
+        scheduled_run_specs.append((chunk, attempt_count, retry_count, record["orchestration_decision"]))
 
     if scheduled_run_specs:
-        def run_spec(spec: tuple[ReducerChunk, int, int]) -> ReducerChunkResult:
-            chunk, attempt_count, retry_count = spec
+        def run_spec(spec: tuple[ReducerChunk, int, int, str]) -> ReducerChunkResult:
+            chunk, attempt_count, retry_count, orchestration_decision = spec
             return run_reducer_chunk(
                 chunk,
                 grid,
@@ -2467,6 +2485,7 @@ def run_reducer_accumulation(
                 probability,
                 attempt_count=attempt_count,
                 retry_count=retry_count,
+                orchestration_decision=orchestration_decision,
                 execution_plan_path=execution_plan,
                 plan_id=chunk_plan.get("plan_id"),
                 partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
@@ -2521,6 +2540,7 @@ def run_reducer_accumulation(
             "reducer_counts",
             "input_file_counts",
             "input_file_indices",
+            "orchestration_decision",
         ):
             if key in manifest:
                 record[key] = manifest[key]
@@ -2738,6 +2758,7 @@ def run_reducer_chunk(
     probability: HazardProbabilityState | None,
     attempt_count: int,
     retry_count: int,
+    orchestration_decision: str,
     execution_plan_path: Path,
     plan_id: str | None,
     partial_state_path: Path,
@@ -2788,6 +2809,7 @@ def run_reducer_chunk(
         execution_status=execution_status,
         completion_status=completion_status,
         completion_reason=completion_reason,
+        orchestration_decision=str(orchestration_decision or "executed"),
         output_bytes=0,
         merge_group_id=merge_group_id,
         deposition_accumulation_seconds=deposition_seconds,

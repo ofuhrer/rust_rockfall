@@ -2104,6 +2104,8 @@ class HazardLayerTests(unittest.TestCase):
                 "2",
             ]
             self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            first_plan = json.loads(execution_plan_path.read_text())
             first_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
             first_attempts = {
                 record.get("chunk_id"): int(record.get("execution_attempt") or 0)
@@ -2119,7 +2121,7 @@ class HazardLayerTests(unittest.TestCase):
                 self.assertEqual(record.get("attempt_count"), first_attempts[chunk_id])
                 self.assertEqual(record.get("execution_attempt"), first_attempts[chunk_id])
 
-            second_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            second_plan = json.loads(execution_plan_path.read_text())
             for record in second_plan.get("chunk_manifests", []):
                 chunk_id = record.get("chunk_id")
                 self.assertIsNotNone(chunk_id)
@@ -2129,6 +2131,89 @@ class HazardLayerTests(unittest.TestCase):
                 if manifest:
                     self.assertEqual(manifest.get("attempt_count"), first_attempts[chunk_id])
                     self.assertEqual(manifest.get("execution_attempt"), first_attempts[chunk_id])
+                    self.assertEqual(manifest.get("orchestration_decision"), "reused_completed_state")
+
+            first_decisions = {
+                record.get("chunk_id"): record.get("orchestration_decision")
+                for record in first_plan.get("chunk_manifests", [])
+            }
+            second_decisions = {
+                record.get("chunk_id"): record.get("orchestration_decision")
+                for record in second_plan.get("chunk_manifests", [])
+            }
+            for chunk_id, first_decision in first_decisions.items():
+                self.assertIn(chunk_id, second_decisions)
+                self.assertEqual(first_decision, "executed")
+                self.assertEqual(second_decisions[chunk_id], "reused_completed_state")
+            second_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            for record in second_index.get("chunk_records", []):
+                self.assertEqual(record.get("orchestration_decision"), "reused_completed_state")
+                self.assertGreaterEqual(int(record.get("execution_attempt") or 0), 1)
+
+    def test_chunked_reducer_recovers_stale_claim_before_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+            ]
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            first_plan = json.loads(execution_plan_path.read_text())
+            completed_records = [
+                record for record in first_plan.get("chunk_manifests", []) if record.get("completion_status") == "completed"
+            ]
+            self.assertTrue(completed_records)
+            target_record = completed_records[0]
+            target_chunk_id = target_record.get("chunk_id")
+            self.assertIsNotNone(target_chunk_id)
+            target_record["ownership"] = {
+                "state": "claimed",
+                "owner_id": "stale_recovery_owner",
+                "claimed_at_unix_s": 1,
+                "lease_expires_unix_s": 1,
+                "released_at_unix_s": None,
+                "release_reason": None,
+                "updated_unix_s": 1,
+            }
+            target_record["execution_status"] = "not_started"
+            target_record["completion_status"] = "not_started"
+            execution_plan_path.write_text(json.dumps(first_plan, indent=2, sort_keys=True) + "\n")
+
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        *common_args,
+                        "--chunk-owner-id",
+                        "recovery_engine",
+                        "--output-dir",
+                        str(chunked_dir),
+                    ]
+                ),
+                0,
+            )
+            second_plan = json.loads(execution_plan_path.read_text())
+            second_records = {
+                record.get("chunk_id"): record for record in second_plan.get("chunk_manifests", [])
+            }
+            self.assertIn(target_chunk_id, second_records)
+            second_record = second_records[target_chunk_id]
+            self.assertEqual(second_record.get("orchestration_decision"), "stale_claim_recovered")
+            self.assertEqual(second_record.get("completion_status"), "completed")
+            manifest_path = chunked_dir / "chunks" / f"{target_chunk_id}_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(manifest.get("orchestration_decision"), "stale_claim_recovered")
+            self.assertEqual(manifest.get("completion_status"), "completed")
+            self.assertGreater(int(second_record.get("attempt_count") or 0), 0)
 
     def test_chunked_reducer_reuses_partial_state_without_reexecution(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch

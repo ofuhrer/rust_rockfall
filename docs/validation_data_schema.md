@@ -660,6 +660,21 @@ planned/completed chunk state, schema version, owner identity, scheduler
 partition metadata, merge-group id, deterministic chunk partition ranges, and
 completion transitions.
 
+Chunk lifecycle outcomes are now explicit in `orchestration_decision` fields on
+the per-chunk manifest and execution-index artifacts:
+
+- `not_scheduled`: chunk partition does not belong to this scheduler index.
+- `skipped_by_other_owner`: active non-stale claim from another owner prevented
+  execution in this run.
+- `stale_claim_recovered`: stale claim metadata was detected and released before
+  local decision.
+- `reused_completed_state`: completed partial state was reused without re-running
+  trajectory/event inputs.
+- `completed_state_reset_for_rerun`: a previously completed chunk was explicitly
+  reset and rerun.
+- `executed`: chunk was (re)executed in this run.
+- `max_attempts_exceeded`: retries were exhausted and chunk remained failed.
+
 Lifecycle provenance for chunk execution is cumulative and restart-safe for a
 stable chunk input signature: `attempt_count` and `execution_attempt` represent
 the chunk execution attempt number across retained plan state, and they increment
