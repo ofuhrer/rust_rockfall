@@ -251,9 +251,9 @@ def check_validation_module_boundaries() -> list[str]:
         "cloud_overlap_fraction",
     ):
         if re.search(rf"\nfn {helper}\(", validation):
-                errors.append(
-                    f"validation metric helper {helper} should live in src/validation/metric_math.rs"
-                )
+            errors.append(
+                f"validation metric helper {helper} should live in src/validation/metric_math.rs"
+            )
 
     required_delegations = {
         "metrics_module::compute_deposition_cloud_metrics": "metrics delegation for deposition metrics",
