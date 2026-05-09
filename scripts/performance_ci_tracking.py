@@ -260,7 +260,7 @@ def render_index_html(latest: dict[str, Any]) -> str:
 
 def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
     width = 1080
-    height = 360
+    height = 460
     left = 68
     right = 20
     top = 28
@@ -321,10 +321,7 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
         latest = float(metric_points[-1][2])
         series.append((label, color, points, latest))
 
-    commit_tick_step = max(1, (n + 11) // 12)
-    commit_tick_indices = set(range(0, n, commit_tick_step))
-    commit_tick_indices.add(0)
-    commit_tick_indices.add(n - 1)
+    commit_tick_indices = set(range(n))
     commit_ticks: list[str] = []
     for index in sorted(commit_tick_indices):
         row = history_rows[index]
@@ -332,13 +329,13 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
         commit_label = short_sha(row)
         date_label = short_commit_date(row)
         commit_ticks.append(
-            f"<text x='{x:.2f}' y='{top + chart_h + 20:.2f}' text-anchor='end' font-size='10' fill='#57606a' "
-            f"transform='rotate(-45 {x:.2f} {top + chart_h + 20:.2f})'>{commit_label}</text>"
+            f"<text x='{x:.2f}' y='{top + chart_h + 16:.2f}' text-anchor='middle' font-size='7' fill='#57606a' "
+            f"transform='rotate(-90 {x:.2f} {top + chart_h + 16:.2f})'>{commit_label}</text>"
         )
         if date_label != "unknown":
             commit_ticks.append(
-                f"<text x='{x:.2f}' y='{top + chart_h + 32:.2f}' text-anchor='end' font-size='8' fill='#6e7781' "
-                f"transform='rotate(-45 {x:.2f} {top + chart_h + 32:.2f})'>{date_label}</text>"
+                f"<text x='{x:.2f}' y='{top + chart_h + 20:.2f}' text-anchor='middle' font-size='6' fill='#6e7781' "
+                f"transform='rotate(-90 {x:.2f} {top + chart_h + 20:.2f})'>{date_label}</text>"
             )
 
     grid = []
@@ -359,14 +356,11 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
     legend = []
     for index, (label, color, _, latest) in enumerate(series):
         lx = left + index * 190
-        ly = height - 20
+        ly = top + chart_h + 70
         legend.append(
             f"<rect x='{lx}' y='{ly - 10}' width='12' height='12' fill='{color}' />"
             f"<text x='{lx + 18}' y='{ly}' font-size='12' fill='#24292f'>{label}: {latest:.2f}s</text>"
         )
-
-    first_sha = short_sha(history_rows[0])
-    last_sha = short_sha(history_rows[-1])
 
     return "\n".join(
         [
@@ -382,8 +376,6 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
             "<text x='{x:.2f}' y='{y:.2f}' font-size='10' fill='#57606a' text-anchor='middle'>commit</text>".format(
                 x=left + chart_w / 2.0, y=top + chart_h + 52.0
             ),
-            f"<text x='{left}' y='{height - 34}' font-size='11' fill='#57606a'>oldest: {first_sha}</text>",
-            f"<text x='{left + chart_w - 90}' y='{height - 34}' font-size='11' fill='#57606a'>latest: {last_sha}</text>",
             *legend,
             "</svg>",
         ]
