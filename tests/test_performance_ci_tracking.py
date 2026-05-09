@@ -79,6 +79,10 @@ class PerformanceCiTrackingTests(unittest.TestCase):
         self.assertIn("Simulation", svg)
         self.assertIn("polyline", svg)
 
+    def test_read_json_url_returns_none_on_unreachable_url(self) -> None:
+        result = perf_ci.read_json_url("https://example.invalid/perf/history.json")
+        self.assertIsNone(result)
+
     def test_record_main_rejects_non_positive_max_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             summary_path = Path(tmp) / "summary.csv"

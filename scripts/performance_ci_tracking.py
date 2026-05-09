@@ -342,6 +342,8 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
 
 
 def read_json_url(url: str) -> Any:
+    # Callers must only pass trusted HTTPS URLs (e.g. the constructed GitHub
+    # Pages base URL derived from GITHUB_REPOSITORY_OWNER and repo name).
     try:
         with urllib.request.urlopen(url, timeout=15) as response:
             content = response.read().decode("utf-8")
