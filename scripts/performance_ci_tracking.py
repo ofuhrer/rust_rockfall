@@ -264,7 +264,7 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
     left = 68
     right = 20
     top = 28
-    bottom = 52
+    bottom = 72
     chart_w = width - left - right
     chart_h = height - top - bottom
 
@@ -290,14 +290,56 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
     def y_at(value: float) -> float:
         return top + chart_h * (1.0 - min(max(value / max_value, 0.0), 1.0))
 
+    def short_sha(entry: dict[str, Any]) -> str:
+        sha = str(entry.get("sha", ""))
+        return sha[:7] if sha else "unknown"
+
+    def short_commit_date(entry: dict[str, Any]) -> str:
+        commit_date = str(entry.get("commit_date", ""))
+        if len(commit_date) >= 10:
+            return commit_date[:10]
+        return commit_date or "unknown"
+
     series = []
+    point_markers: list[str] = []
     for metric, label, color in CHART_METRICS:
-        points = " ".join(
-            f"{x_at(index):.2f},{y_at(float((entry.get('metrics') or {}).get(metric) or 0.0)):.2f}"
-            for index, entry in enumerate(history_rows)
-        )
-        latest = float((history_rows[-1].get("metrics") or {}).get(metric) or 0.0)
+        metric_points: list[tuple[float, float, float, dict[str, Any]]] = []
+        for index, entry in enumerate(history_rows):
+            value = float((entry.get("metrics") or {}).get(metric) or 0.0)
+            x = x_at(index)
+            y = y_at(value)
+            metric_points.append((x, y, value, entry))
+            point_markers.append(
+                "<g>"
+                f"<circle cx='{x:.2f}' cy='{y:.2f}' r='2.8' fill='{color}' fill-opacity='0.2' stroke='{color}' stroke-width='1.2' />"
+                f"<circle cx='{x:.2f}' cy='{y:.2f}' r='1.3' fill='{color}' />"
+                f"<title>{short_sha(entry)} ({label}) · {short_commit_date(entry)} · {value:.2f}s</title>"
+                "</g>"
+            )
+
+        points = " ".join(f"{x:.2f},{y:.2f}" for x, y, _, _ in metric_points)
+        latest = float(metric_points[-1][2])
         series.append((label, color, points, latest))
+
+    commit_tick_step = max(1, (n + 11) // 12)
+    commit_tick_indices = set(range(0, n, commit_tick_step))
+    commit_tick_indices.add(0)
+    commit_tick_indices.add(n - 1)
+    commit_ticks: list[str] = []
+    for index in sorted(commit_tick_indices):
+        row = history_rows[index]
+        x = x_at(index)
+        commit_label = short_sha(row)
+        date_label = short_commit_date(row)
+        commit_ticks.append(
+            f"<text x='{x:.2f}' y='{top + chart_h + 20:.2f}' text-anchor='end' font-size='10' fill='#57606a' "
+            f"transform='rotate(-45 {x:.2f} {top + chart_h + 20:.2f})'>{commit_label}</text>"
+        )
+        if date_label != "unknown":
+            commit_ticks.append(
+                f"<text x='{x:.2f}' y='{top + chart_h + 32:.2f}' text-anchor='end' font-size='8' fill='#6e7781' "
+                f"transform='rotate(-45 {x:.2f} {top + chart_h + 32:.2f})'>{date_label}</text>"
+            )
 
     grid = []
     for i in range(6):
@@ -323,8 +365,8 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
             f"<text x='{lx + 18}' y='{ly}' font-size='12' fill='#24292f'>{label}: {latest:.2f}s</text>"
         )
 
-    first_sha = str(history_rows[0].get("sha", ""))[:7]
-    last_sha = str(history_rows[-1].get("sha", ""))[:7]
+    first_sha = short_sha(history_rows[0])
+    last_sha = short_sha(history_rows[-1])
 
     return "\n".join(
         [
@@ -335,6 +377,11 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
             f"<line x1='{left}' y1='{top + chart_h}' x2='{left + chart_w}' y2='{top + chart_h}' stroke='#8c959f' stroke-width='1.2' />",
             f"<line x1='{left}' y1='{top}' x2='{left}' y2='{top + chart_h}' stroke='#8c959f' stroke-width='1.2' />",
             *polylines,
+            *point_markers,
+            *commit_ticks,
+            "<text x='{x:.2f}' y='{y:.2f}' font-size='10' fill='#57606a' text-anchor='middle'>commit</text>".format(
+                x=left + chart_w / 2.0, y=top + chart_h + 52.0
+            ),
             f"<text x='{left}' y='{height - 34}' font-size='11' fill='#57606a'>oldest: {first_sha}</text>",
             f"<text x='{left + chart_w - 90}' y='{height - 34}' font-size='11' fill='#57606a'>latest: {last_sha}</text>",
             *legend,

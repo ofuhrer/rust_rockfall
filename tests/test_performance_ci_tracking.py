@@ -88,8 +88,36 @@ class PerformanceCiTrackingTests(unittest.TestCase):
 
     def test_build_history_svg_contains_series_and_commits(self) -> None:
         history = [
-            {"sha": "1111111", "metrics": {"total_wall_seconds": 10.0, "simulation_seconds": 4.0}},
-            {"sha": "2222222", "metrics": {"total_wall_seconds": 9.0, "simulation_seconds": 3.5}},
+            {
+                "sha": "1111111",
+                "commit_date": "2026-01-01T00:00:00Z",
+                "metrics": {
+                    "total_wall_seconds": 10.0,
+                    "terrain_load_seconds": 1.0,
+                    "release_generation_seconds": 1.0,
+                    "simulation_seconds": 4.0,
+                    "validation_output_write_seconds": 2.0,
+                    "hazard_total_seconds": 1.0,
+                    "hazard_accumulation_seconds": 1.5,
+                    "hazard_output_write_seconds": 0.8,
+                    "bounds_discovery_seconds": 0.2,
+                },
+            },
+            {
+                "sha": "2222222",
+                "commit_date": "2026-01-02T00:00:00Z",
+                "metrics": {
+                    "total_wall_seconds": 9.0,
+                    "terrain_load_seconds": 0.9,
+                    "release_generation_seconds": 1.1,
+                    "simulation_seconds": 3.5,
+                    "validation_output_write_seconds": 2.2,
+                    "hazard_total_seconds": 0.8,
+                    "hazard_accumulation_seconds": 1.0,
+                    "hazard_output_write_seconds": 0.7,
+                    "bounds_discovery_seconds": 0.15,
+                },
+            },
         ]
         svg = perf_ci.build_history_svg(history)
 
@@ -98,6 +126,9 @@ class PerformanceCiTrackingTests(unittest.TestCase):
         self.assertIn("latest: 2222222", svg)
         self.assertIn("Simulation", svg)
         self.assertIn("polyline", svg)
+        self.assertIn("<circle", svg)
+        self.assertIn("1111111", svg)
+        self.assertIn("2222222", svg)
 
     def test_read_json_url_returns_none_on_unreachable_url(self) -> None:
         result = perf_ci.read_json_url("https://example.invalid/perf/history.json")
