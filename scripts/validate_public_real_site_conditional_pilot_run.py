@@ -332,6 +332,11 @@ def build_hazard_command(
     hazard_output_dir: str,
     run_id: str,
 ) -> list[str]:
+    benchmark_case_path_obj = Path(benchmark_case_path)
+    case_id = run_id
+    if benchmark_case_path_obj.exists():
+        benchmark_case = read_yaml(benchmark_case_path_obj)
+        case_id = require_text(benchmark_case.get("case_id"), "benchmark_case.case_id")
     command = [
         "uv",
         "run",
@@ -377,11 +382,19 @@ def build_hazard_command(
     ]
     diagnostics_json = outputs.get("diagnostics_json")
     if not diagnostics_json:
-        benchmark_case_path_obj = Path(benchmark_case_path)
         diagnostics_json = str(
             benchmark_case_path_obj.parent / f"{benchmark_case_path_obj.stem}_metrics.json"
         )
         outputs["diagnostics_json"] = diagnostics_json
+    default_outputs = {
+        "trajectory_csv": f"{case_id}_trajectory.csv",
+        "ensemble_trajectories_dir": f"{case_id}_trajectories",
+        "ensemble_deposition_csv": f"{case_id}_deposition.csv",
+        "ensemble_impact_events_dir": f"{case_id}_impacts",
+    }
+    for output_key, output_name in default_outputs.items():
+        if not outputs.get(output_key):
+            outputs[output_key] = str(Path(benchmark_case_path).parent / output_name)
     optional_output_args = {
         "diagnostics_json": "--diagnostics",
         "trajectory_csv": "--trajectory",
