@@ -11,6 +11,8 @@ pub(super) fn nonempty_mean(values: &[f64]) -> Option<f64> {
 }
 
 pub(super) fn percentile(values: &[f64], p: f64) -> f64 {
+    // `values` must be sorted in ascending order before calling this function.
+    // Linear interpolation between adjacent ranks; clamps `p` to [0, 1].
     if values.is_empty() {
         return 0.0;
     }
@@ -61,6 +63,7 @@ fn mean_nearest_distance(from: &[(f64, f64)], to: &[(f64, f64)]) -> f64 {
 }
 
 pub(super) fn stddev_axis_y(points: &[(f64, f64)]) -> f64 {
+    // Returns the **population** standard deviation (divides by n, not n−1).
     if points.len() <= 1 {
         return 0.0;
     }

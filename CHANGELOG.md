@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Eliminated two redundant `terrain.try_normal` calls per integration step by
+  reusing the already-computed normal in the contact-state diagnostics block of
+  `try_simulate_fixed_step_with_events_and_contact_parameters`. This reduces
+  terrain normal queries from four to two per step, halving DEM bilinear
+  interpolation work in the hot loop.
+- Unified the `unit_or` helper across `dynamics`, `stochastic`, and `integrator`
+  modules: all three now use `try_normalize(EPS)` with a double fallback to
+  `Vec3(0,0,1)`. Previously `dynamics` and `stochastic` used a `norm > 0.0`
+  guard that would normalize near-zero vectors and amplify floating-point noise;
+  the integrator's safer implementation is now canonical.
+- Added inline documentation for `percentile` (requires sorted input),
+  `stddev_axis_y` (population std dev, not sample), and `DemGrid::xmax_m` /
+  `DemGrid::ymax_m` (return cell-center maxima, not footprint extents).
+- Added unit tests covering the `unit_or` zero-vector, dual-zero, and
+  non-zero-normalization cases.
+
 - Hardened runtime configuration, DEM parsing, hazard-layer input semantics,
   and reducer layer construction by rejecting unknown simulation JSON fields,
   rejecting panic-prone DEM grids, rejecting mixed `trajectory_id` trajectory
