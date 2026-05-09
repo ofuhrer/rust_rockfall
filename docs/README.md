@@ -68,6 +68,9 @@ into `decision_log.md`; they do not override the current roadmaps.
   workflow.
 - `tschamut_swissalti3d_controlled_pilot_plan.md`: historical controlled
   Tschamut/swissALTI3D pilot plan; use current roadmaps for priority decisions.
+- `balfrin_tschamut_pilot_runbook.md`: reusable balfrin Tschamut pilot
+  operating procedure for readiness, validation/hazard execution, reducer
+  provenance inspection, scaling summary regeneration, and artifact hygiene.
 
 ## Hazard And Probabilistic Semantics
 

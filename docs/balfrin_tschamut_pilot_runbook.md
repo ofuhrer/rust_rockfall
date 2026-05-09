@@ -1,0 +1,127 @@
+# Balfrin Tschamut Pilot Runbook
+
+This runbook is a reusable operational procedure for a local Tschamut conditional
+pilot on balfrin. It assumes the shared local workflow contract is already in
+place (`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` by
+default) and keeps the process read-only where possible.
+
+## 1) Scope and prerequisites
+
+- Scope: readiness verification, frozen command-plan execution, reducer provenance
+  inspection, and scaling-summary regeneration.
+- Out of scope: physics changes, annual/physical semantics, risk-map evidence,
+  claim-boundary transitions, and production deployment tasks.
+- Required tooling on the node:
+  - `git`, `python3`, `cargo`, and `uv`.
+  - Optional GIS review tooling: `qgis` (warn-only if missing).
+
+## 2) Bring the repo and manifest to a known state
+
+```bash
+cd /path/to/rust_rockfall
+git pull origin main
+```
+
+Run this from the balfrin checkout used for runs.
+
+Set a manifest variable for reuse:
+
+```bash
+RUN_MANIFEST="${RUN_MANIFEST:-validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml}"
+```
+
+## 3) Read-only readiness check
+
+Use the dedicated readiness gate before touching compute:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/check_balfrin_tschamut_readiness.py "$RUN_MANIFEST" --format both
+```
+
+Expected outcomes:
+
+- Exit status `0`: required blockers are clear.
+- Non-zero: missing required paths, missing write permission, or other hard blockers.
+- QGIS missing is reported as a warning, not a blocker.
+
+## 4) Validation gate
+
+1. Validate the run contract and print the deterministic command plan:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_public_real_site_conditional_pilot_run.py \
+  "$RUN_MANIFEST" --print-command-plan --format json
+```
+
+2. Execute only the contract actions you explicitly want (normally both the frozen
+   validation case and hazard build command from the printed plan):
+
+- `cargo run -- validate --case <benchmark_case_path>`
+- `uv run python scripts/build_hazard_layers.py ...`
+
+Use the exact arguments from the printed plan so they stay consistent with the
+locked manifest.
+
+3. Persist the generated pilot manifests and evidence in ignored paths under
+`validation/private/...` and `hazard/results/...` as configured by the manifest.
+
+## 5) Reducer provenance inspection
+
+After a hazard run, verify reducer provenance artifacts are coherent:
+
+```bash
+ls -1 hazard/results/tschamut_public_pilot/gate_v1/chunks/*_manifest.json \
+  hazard/results/tschamut_public_pilot/gate_v1/chunks/*_state.json
+```
+
+Check manifest fields that indicate execution provenance:
+
+- `status`
+- `completion_state`
+- `row_count`
+- `rows_written`
+- `output_bytes`
+- `execution_attempt`
+- `merge_group_id`
+
+Expected behavior from this runbook:
+
+- Manifest lifecycle provenance is populated and deterministic for completed chunks.
+- State files are allowed to be accumulator-only artifacts unless the implementation
+  semantics explicitly define lifecycle fields there.
+- Keep this comparison stable across reruns for equivalent inputs.
+
+## 6) Regenerate scaling summary
+
+Use the same run artifacts for current output-budget and bottleneck evidence:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_pilot_scaling.py \
+  --validation-manifest validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  --hazard-manifest hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  --gis-package-manifest hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json \
+  --validation-time-file validation/private/tschamut_public_pilot/gate_v1/validation_gate_time.txt \
+  --hazard-time-file hazard/results/tschamut_public_pilot/gate_v1/hazard_gate_time.txt \
+  --output-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_scaling_summary.json \
+  --output-md docs/tschamut_public_pilot_scaling_review.md
+```
+
+Then review:
+
+- staging and output-byte totals,
+- bottleneck classification,
+- merge order/merge-state coherence.
+
+## 7) Do not commit generated artifacts
+
+Do not commit ignored generated outputs from pilots, including:
+
+- `validation/private/tschamut_public_pilot/...`
+- `hazard/results/tschamut_public_pilot/...`
+- timing sidecars (`validation_gate_time.txt`, `hazard_gate_time.txt`)
+- generated scaling JSON/Markdown for local runs, unless the file is explicitly meant
+  to be a tracked evidence document.
+
+Commit only intentionally curated docs, tests, scripts, and schemas.
