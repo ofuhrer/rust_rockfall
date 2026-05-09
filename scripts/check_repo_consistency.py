@@ -256,18 +256,18 @@ def check_validation_module_boundaries() -> list[str]:
             )
 
     required_delegations = {
-        "metrics_module::compute_deposition_cloud_metrics": "metrics delegation for deposition metrics",
-        "metrics_module::compute_roughness_comparison_metrics": "metrics delegation for roughness comparison",
-        "metrics_module::compute_scarring_comparison_metrics": "metrics delegation for scarring comparison",
-        "metrics_module::evaluate_failures": "metrics delegation for failure evaluation",
-        "probabilistic_module::load_probabilistic_metadata_context": "probabilistic metadata delegation",
-        "validation_io_module::load_observations": "validation observation I/O delegation",
-        "runner::run_case_file": "runner delegation for run_case_file",
-        "runner::run_case(case)": "runner delegation for run_case",
-        "runner::write_report(path, report)": "runner delegation for write_report",
+        r"metrics_module::compute_deposition_cloud_metrics\(": "metrics delegation for deposition metrics",
+        r"metrics_module::compute_roughness_comparison_metrics\(": "metrics delegation for roughness comparison",
+        r"metrics_module::compute_scarring_comparison_metrics\(": "metrics delegation for scarring comparison",
+        r"metrics_module::evaluate_failures\(": "metrics delegation for failure evaluation",
+        r"probabilistic_module::load_probabilistic_metadata_context\(": "probabilistic metadata delegation",
+        r"validation_io_module::load_observations\(": "validation observation I/O delegation",
+        r"runner::run_case_file\(": "runner delegation for run_case_file",
+        r"runner::run_case\(": "runner delegation for run_case",
+        r"runner::write_report\(": "runner delegation for write_report",
     }
-    for snippet, label in required_delegations.items():
-        if snippet not in validation:
+    for pattern, label in required_delegations.items():
+        if not re.search(pattern, validation):
             errors.append(
                 f"src/validation.rs should keep {label} through dedicated submodules"
             )

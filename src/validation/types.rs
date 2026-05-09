@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 pub use super::{
     BenchmarkCase, BlockShapeConfig, CaseBlock, CaseParameters, CasePerturbation, CaseRandom,
     CaseRelease, CaseReport, CaseSimulation, CaseStatus, CaseTerrain, DepositionPoint,

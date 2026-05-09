@@ -4,11 +4,8 @@ mod metric_math;
 mod metrics;
 mod probabilistic;
 mod runner;
-mod types;
+pub mod types;
 mod validation_io;
-
-#[allow(unused_imports)]
-pub use types::*;
 
 use metric_math::{
     centroid2, cloud_overlap_fraction, distance2, distance3, mean, nonempty_mean, percentile,
