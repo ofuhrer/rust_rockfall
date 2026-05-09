@@ -3323,6 +3323,7 @@ fn simulation_config_rejects_shape_contact_v0_model() {
 
 #[test]
 fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_count() {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
     use rust_rockfall::dynamics::ScarringSettings;
     use rust_rockfall::stochastic::ContactRoughness;
     use rust_rockfall::terrain::Plane;
@@ -3354,7 +3355,11 @@ fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_coun
     let initial_b = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(2.0, 0.0, -4.0));
     let samples_a = simulate_fixed_step(initial_a, block, &terrain, settings);
     let samples_b = simulate_fixed_step(initial_b, block, &terrain, settings);
-    let total_rows = samples_a.len() + samples_b.len();
+    let expected_rows = samples_a.len() + samples_b.len();
+    assert!(
+        expected_rows >= 2,
+        "each trajectory must have at least one sample"
+    );
 
     let path = temp_path("trajectory_samples_parquet_test.parquet");
 
@@ -3365,12 +3370,49 @@ fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_coun
     )
     .expect("write_trajectory_samples_parquet should succeed");
 
-    // Verify the file exists and is non-empty.
-    let metadata = std::fs::metadata(&path).unwrap();
-    assert!(metadata.len() > 0, "parquet file must be non-empty");
+    // Read back the Parquet file and verify row count and trajectory IDs.
+    let file = std::fs::File::open(&path).unwrap();
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).unwrap();
+    let parquet_meta = builder.metadata().clone();
+    let total_row_groups: i64 = parquet_meta
+        .row_groups()
+        .iter()
+        .map(|rg| rg.num_rows())
+        .sum();
+    assert_eq!(
+        total_row_groups as usize, expected_rows,
+        "Parquet row count must match total samples written"
+    );
 
-    // Two distinct trajectories each with at least the initial sample.
-    assert!(total_rows >= 2);
+    // Read batches and collect all trajectory_id values to verify both IDs are present.
+    let file2 = std::fs::File::open(&path).unwrap();
+    let reader = ParquetRecordBatchReaderBuilder::try_new(file2)
+        .unwrap()
+        .build()
+        .unwrap();
+    let mut seen_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for batch in reader {
+        let batch = batch.unwrap();
+        let id_col = batch
+            .column_by_name("trajectory_id")
+            .expect("trajectory_id column must exist");
+        let string_array = id_col
+            .as_any()
+            .downcast_ref::<arrow_array::StringArray>()
+            .expect("trajectory_id must be a StringArray");
+        use arrow_array::Array as _;
+        for i in 0..string_array.len() {
+            seen_ids.insert(string_array.value(i).to_string());
+        }
+    }
+    assert!(
+        seen_ids.contains("trajectory_a"),
+        "trajectory_a must be present in the Parquet file"
+    );
+    assert!(
+        seen_ids.contains("trajectory_b"),
+        "trajectory_b must be present in the Parquet file"
+    );
 
     // Clean up.
     std::fs::remove_file(&path).unwrap();

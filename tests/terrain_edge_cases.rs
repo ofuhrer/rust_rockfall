@@ -41,17 +41,14 @@ fn dem_grid_rejects_value_count_mismatch() {
 
 #[test]
 fn dem_grid_rejects_non_finite_elevation_in_body() {
-    // Using a sentinel value distinct from NODATA to carry a NaN should fail
-    // because raw NaN in elevation values is rejected during parsing.
-    // We simulate this by parsing a grid with "nan" as a data value.
+    // Rust's str::parse::<f64>() accepts "nan" and produces f64::NAN.
+    // DemGrid::from_ascii_grid_str then explicitly checks !value.is_finite()
+    // and rejects the grid with InvalidGrid (src/terrain.rs:330-334).
     let text = "ncols 2\nnrows 2\nxllcorner 0.0\nyllcorner 0.0\ncellsize 1.0\nNODATA_value -9999\n1 2\n3 nan\n";
     let err = DemGrid::from_ascii_grid_str(text).unwrap_err();
-    // "nan" won't parse as f64 via parse::<f64>() on some platforms; it may
-    // succeed and produce a NaN on others. Either the Header parse error or
-    // the InvalidGrid non-finite check is acceptable.
     assert!(
-        matches!(err, TerrainError::Header(_) | TerrainError::InvalidGrid(_)),
-        "unexpected error variant: {err:?}"
+        matches!(err, TerrainError::InvalidGrid(_)),
+        "expected InvalidGrid for non-finite elevation value, got {err:?}"
     );
 }
 
