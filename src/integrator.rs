@@ -17,6 +17,11 @@ use crate::{
 };
 use thiserror::Error;
 
+/// Small tolerance to avoid dropping the last fixed step due to floating-point rounding.
+const STEP_COUNT_TOLERANCE: f64 = 1.0e-12;
+/// Contact distance tolerance used for near-surface branch handling and diagnostics.
+const CONTACT_DISTANCE_TOLERANCE_M: f64 = 1.0e-7;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegratorSettings {
     pub dt_s: f64,
@@ -122,8 +127,10 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
     }
     let mut state = initial;
     let mut time_s = 0.0;
-    let max_steps = (settings.max_time_s / settings.dt_s + 1.0e-12).floor() as usize;
+    let max_steps = (settings.max_time_s / settings.dt_s + STEP_COUNT_TOLERANCE).floor() as usize;
     let mut samples = Vec::with_capacity(max_steps + 1);
+    // Impact frequency is case dependent; reserving 25% of max steps avoids repeated reallocation
+    // in contact-heavy runs while keeping memory overhead modest.
     let mut impact_events = Vec::with_capacity(max_steps / 4 + 1);
     let mut cumulative_scarring_energy_loss_j = 0.0;
     let mut roughness_rng = settings
@@ -231,7 +238,10 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
             ContactState::Airborne
         };
 
-        let clearly_airborne_after_response = signed_distance_before_response > 1.0e-7
+        // Skip the second terrain query only when the body is clearly separated from terrain
+        // (>0.1 mm), and no contact response branch was triggered.
+        let clearly_airborne_after_response = signed_distance_before_response
+            > CONTACT_DISTANCE_TOLERANCE_M
             && !response.impacted
             && !response.rolling
             && !response.sliding;
@@ -243,8 +253,8 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         }
 
         if !clearly_airborne_after_response
-            && signed_distance.abs() < 1.0e-7
-            && state.velocity_mps.dot(&normal) <= 1.0e-7
+            && signed_distance.abs() < CONTACT_DISTANCE_TOLERANCE_M
+            && state.velocity_mps.dot(&normal) <= CONTACT_DISTANCE_TOLERANCE_M
         {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
@@ -295,12 +305,12 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
             };
         }
 
-        let contact_tangent_speed_mps = if signed_distance.abs() < 1.0e-7 {
+        let contact_tangent_speed_mps = if signed_distance.abs() < CONTACT_DISTANCE_TOLERANCE_M {
             contact_point_tangent_velocity(&state, normal, block.radius_m).norm()
         } else {
             response.contact_tangent_speed_mps
         };
-        let rolling_residual_mps = if signed_distance.abs() < 1.0e-7 {
+        let rolling_residual_mps = if signed_distance.abs() < CONTACT_DISTANCE_TOLERANCE_M {
             rolling_residual(&state, normal, block.radius_m)
         } else {
             response.rolling_residual_mps
@@ -497,6 +507,9 @@ fn impact_angle_deg(incoming_velocity: crate::Vec3, normal: crate::Vec3) -> f64 
     cos_angle.acos().to_degrees()
 }
 
+/// Computes signed distance and surface normal in one helper call to avoid redundant
+/// terrain queries in the fixed-step integrator loop. The signed distance matches
+/// [`Terrain::try_signed_distance_sphere`] for the same input state.
 fn try_signed_distance_and_normal(
     terrain: &dyn Terrain,
     center_m: crate::Vec3,

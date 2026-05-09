@@ -427,6 +427,7 @@ pub fn try_apply_contact_friction(
     )
 }
 
+/// Query-optimized contact friction path for callers that already computed terrain normal.
 pub(crate) fn try_apply_contact_friction_with_normal(
     state: &mut BodyState,
     normal: Vec3,
@@ -501,6 +502,7 @@ pub fn try_apply_contact_friction_after_ballistic_step(
     )
 }
 
+/// Query-optimized post-ballistic contact friction path using a precomputed terrain normal.
 pub(crate) fn try_apply_contact_friction_after_ballistic_step_with_normal(
     state: &mut BodyState,
     normal: Vec3,
@@ -543,6 +545,7 @@ pub fn try_apply_rotational_contact_motion(
     try_apply_rotational_contact_motion_with_normal(state, block, normal, settings)
 }
 
+/// Query-optimized rotational contact-motion path using a precomputed terrain normal.
 pub(crate) fn try_apply_rotational_contact_motion_with_normal(
     state: &mut BodyState,
     block: SphereBlock,
