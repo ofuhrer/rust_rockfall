@@ -23,6 +23,7 @@ pub use dynamics::{
     ScarringDiagnostics, ScarringSettings, SoilInteractionModel,
 };
 pub use geometry::SphereBlock;
+pub use io::write_trajectory_samples_parquet;
 pub use shape::{
     select_box_support_point, shape_contact_v0_energy_diagnostic, BlockShapeMetadata,
     BlockShapeType, MassPropertyModel, ShapeContactV0EnergyDiagnostic,

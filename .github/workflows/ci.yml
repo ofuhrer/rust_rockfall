@@ -9,41 +9,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust:
-    name: Rust checks
+  # ── fast lint gate ─────────────────────────────────────────────────────────
+  lint:
+    name: Lint (fmt + clippy)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
-      - name: Install Python
-        uses: actions/setup-python@v5
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # ── Rust unit + integration tests ──────────────────────────────────────────
+  test:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test
+        run: cargo test
+
+  # ── analytic verification + real-data validation cases ────────────────────
+  verify:
+    name: Verify + Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo run -- verify --all
+        run: cargo run --release -- verify --all
+
+      - name: cargo run -- validate --all
+        run: cargo run --release -- validate --all
+
+  # ── Python workflow tests + repository consistency ─────────────────────────
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: requirements-tools.txt
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
 
       - name: Install Python tool requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-tools.txt
 
-      - name: Run checks
-        run: |
-          python -m unittest discover -s tests -p 'test_*.py' \
-            && \
-          cargo fmt --check \
-            && cargo clippy --all-targets --all-features -- -D warnings \
-            && cargo test \
-            && cargo run -- verify --all \
-            && cargo run -- validate --all \
-            && python scripts/check_repo_consistency.py
+      - name: Python unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Repository consistency
+        run: python scripts/check_repo_consistency.py
