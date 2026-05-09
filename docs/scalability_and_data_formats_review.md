@@ -138,6 +138,27 @@ keeps threshold rasters and metadata summaries but skips the large curve table.
 Use that mode for pre-scale gate runs unless the review question specifically
 requires per-cell curve rows.
 
+Clean clean-main balfrin evidence (May 2026) confirms that `--grid-csv-export none`
+is an effective additional opt-in scaling mode in the same conditional gate_v1
+workflow:
+
+- baseline (`--grid-csv-export full`):
+  - output bytes `75,046,369`
+  - output-write seconds `5.331`
+  - wall time `0:11.57`
+  - largest hazard output kind: `csv_grid` (`59,518,059` bytes)
+- suppressed (`--grid-csv-export none`):
+  - output bytes `15,522,667`
+  - output-write seconds `2.745`
+  - wall time `0:06.54`
+  - largest hazard output kind: `geotiff` (`11,678,624` bytes)
+  - remaining bottleneck: GeoTIFF/ESRI ASCII raster path + non-serialization hazard
+    accumulation work
+
+This is conditional output only; annual/physical layers are not introduced and
+defaults are unchanged. The `grid-csv` suppression is an opt-in recommendation,
+not a default change yet.
+
 ## Data-Format Assessment
 
 ### Current Formats

@@ -114,7 +114,38 @@ Then review:
 - bottleneck classification,
 - merge order/merge-state coherence.
 
-## 7) Do not commit generated artifacts
+## 7) Clean balfrin CSV-grid suppression evidence (conditional-only)
+
+The clean `main` benchmark on balfrin was run with identical Tschamut gate_v1
+inputs, identical reducer worker count (`--reducer-workers 2`), and
+`--conditional-curve-export summary-only` for both modes:
+
+- `--grid-csv-export full`
+- `--grid-csv-export none`
+
+Recorded effect (full -> none):
+
+- `output_bytes`: `75,046,369` -> `15,522,667` (saves `59,523,702`, -79.3%)
+- `output_write_seconds`: `5.3310` -> `2.7450` (-48.5%)
+- wall time: `0:11.57` -> `0:06.54` (-43.5%)
+- CSV grid disappearance: `.csv` hazard-grid files present in `full`, absent in `none`
+
+Semantic status for this evidence:
+
+- Conditional diagnostic scope only; no annual/physical semantics.
+- No default semantic or numerical changes.
+- Defaults remain unchanged (`full` remains default behavior).
+- `--grid-csv-export none` is an explicit opt-in scaling mode.
+- GeoTIFF (`.tif`) and ESRI ASCII (`.asc`) hazard outputs remain in `none` mode.
+
+Recommended baseline setting for future balfrin-scale conditional pilots (until a
+defaults update is explicitly approved):
+
+```bash
+--conditional-curve-export summary-only --grid-csv-export none
+```
+
+## 8) Do not commit generated artifacts
 
 Do not commit ignored generated outputs from pilots, including:
 

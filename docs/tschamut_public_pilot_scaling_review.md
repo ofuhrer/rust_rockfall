@@ -56,3 +56,38 @@ sampling-weighted conditional diagnostics. The scaling summary does not
 introduce exposure, vulnerability, consequence, expected loss, return
 period, annual frequency, physical probability, or operational map
 semantics.
+
+## Balfrin CSV-grid suppression evidence (clean main, conditional-only)
+
+A clean balfrin `main` benchmark was executed on identical Tschamut
+gate_v1 inputs with:
+
+- `--conditional-curve-export summary-only`
+- `--reducer-workers 2`
+- `--grid-csv-export` set to `full` and `none`.
+
+| Mode | Output bytes | Output-write seconds | Wall time | Largest output kind |
+| --- | ---: | ---: | ---: | --- |
+| `full` | 75,046,369 | 5.3310 | 0:11.57 | `csv_grid` (59,518,059 bytes) |
+| `none` | 15,522,667 | 2.7450 | 0:06.54 | `geotiff` (11,678,624 bytes) |
+
+Change from `full` -> `none`:
+
+- `csv_grid` output removed (no `.csv` hazard-grid files in `none`)
+- output bytes: `-59,523,702` (-79.3%)
+- output-write seconds: `-2.5859` (-48.5%)
+- wall time: `-5.03s` (-43.5%)
+
+Remaining bottleneck in `none` mode:
+
+- geotiff + esri_ascii_grid write path, plus non-serialization hazard-stage cost.
+
+Operational scope for this evidence:
+
+- conditional hazard diagnostics only
+- no annual/physical semantics
+- no default or validator semantic change
+- `--grid-csv-export none` is an explicit opt-in scaling mode.
+
+Do not add MPI, GPU, SLURM orchestration, annual frequency, physical probability,
+or ensemble-size increases from this evidence alone.
