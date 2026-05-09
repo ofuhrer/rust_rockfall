@@ -408,6 +408,49 @@ def chunk_input_signature(chunk: ReducerChunk) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def chunk_execution_signature(
+    chunk: ReducerChunk,
+    *,
+    grid: GridSpec,
+    statistics: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+    raster_export_config: RasterExportConfig,
+    conditional_curve_export: ConditionalCurveExportConfig,
+) -> str:
+    probability_fingerprint = None
+    if probability is not None:
+        probability_fingerprint = {
+            **probability.config.as_dict(),
+            "total_input_weight": probability.total_input_weight,
+            "total_filtered_weight": probability.total_filtered_weight,
+        }
+    payload = json.dumps(
+        {
+            "chunk_signature": chunk_input_signature(chunk),
+            "grid": {
+                "xmin": grid.xmin,
+                "ymin": grid.ymin,
+                "xmax": grid.xmax,
+                "ymax": grid.ymax,
+                "ncols": grid.ncols,
+                "nrows": grid.nrows,
+                "cell_size": grid.cell_size,
+            },
+            "statistics": statistics.as_dict(),
+            "probability": probability_fingerprint,
+            "raster_exports": {
+                "grid_csv_export": raster_export_config.grid_csv_export,
+                "geotiff": raster_export_config.geotiff,
+            },
+            "conditional_curve_export": {
+                "mode": conditional_curve_export.mode,
+            },
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def is_stale_claim(record: dict[str, Any], now_unix_s: int) -> bool:
     ownership = record.get("ownership")
     if not isinstance(ownership, dict):
@@ -443,10 +486,13 @@ def is_claim_active_for_other_owner(
 def chunk_has_valid_reusable_state(
     chunk: ReducerChunk,
     record: dict[str, Any],
+    execution_signature: str,
 ) -> bool:
     if record.get("completion_status") != "completed":
         return False
     if not isinstance(record.get("input_signature"), str):
+        return False
+    if record.get("execution_signature") != execution_signature:
         return False
     expected_signature = record["input_signature"]
     if expected_signature != chunk_input_signature(chunk):
@@ -462,6 +508,7 @@ def chunk_has_valid_reusable_state(
         isinstance(state, dict)
         and state.get("schema_version") == CHUNK_PARTIAL_STATE_SCHEMA_VERSION
         and state.get("chunk_id") == chunk.chunk_id
+        and state.get("execution_signature") == execution_signature
         and state.get("input_signature") == expected_signature
     )
 
@@ -517,6 +564,7 @@ def build_chunk_execution_plan(
     scheduler_count: int = 1,
     max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
     lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
+    chunk_execution_signatures: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     chunk_records: list[dict[str, Any]] = []
     chunk_owner = owner_id or stable_owner_id(prefix)
@@ -526,6 +574,9 @@ def build_chunk_execution_plan(
             {
                 "chunk_id": chunk.chunk_id,
                 "chunk_index": chunk.index,
+                "execution_signature": (
+                    chunk_execution_signatures.get(chunk.chunk_id) if isinstance(chunk_execution_signatures, dict) else None
+                ),
                 "trajectory_file_index_start": chunk.trajectory_start,
                 "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
                 "impact_csv_file_index_start": chunk.impact_csv_start,
@@ -1515,12 +1566,12 @@ def main_with_args(argv: list[str] | None = None) -> int:
 
     accumulation_started = time.perf_counter()
     (
-        accumulator,
-        reducer_warnings,
-        reducer_execution,
-        chunk_manifest_paths,
-        reducer_timings,
-    ) = run_reducer_accumulation(
+    accumulator,
+    reducer_warnings,
+    reducer_execution,
+    chunk_manifest_paths,
+    reducer_timings,
+) = run_reducer_accumulation(
         output_dir,
         prefix,
         grid,
@@ -1528,6 +1579,8 @@ def main_with_args(argv: list[str] | None = None) -> int:
         block_radius_m,
         statistic_config,
         probability_state,
+        raster_export_config,
+        conditional_curve_export,
         trajectory_paths,
         deposition_path,
         impact_event_paths,
@@ -2058,6 +2111,7 @@ def build_reducer_execution_index_manifest(
                 "retry_count": record.get("retry_count"),
                 "attempt_count": record.get("attempt_count"),
                 "merge_group_id": record.get("merge_group_id"),
+                "execution_signature": record.get("execution_signature"),
                 "input_file_counts": record.get("input_file_counts") if isinstance(record.get("input_file_counts"), dict) else None,
             }
             for record in chunk_records
@@ -2085,6 +2139,7 @@ def build_reducer_merge_state_manifest(
                 "chunk_manifest_path": record.get("manifest_path"),
                 "partial_state_path": record.get("partial_state_path"),
                 "partial_state_schema_version": record.get("partial_state_schema_version"),
+                "execution_signature": record.get("execution_signature"),
                 "completion_status": record.get("completion_status"),
                 "completion_state": record.get("completion_state"),
                 "status": record.get("status"),
@@ -2110,6 +2165,7 @@ def build_chunk_execution_manifest(
     completion_status: str,
     completion_reason: str | None,
     orchestration_decision: str,
+    execution_signature: str | None,
     output_bytes: int | None,
     merge_group_id: str | None = None,
     deposition_accumulation_seconds: float,
@@ -2145,6 +2201,7 @@ def build_chunk_execution_manifest(
         "scientific_status": "not_evaluated",
         "merge_group_id": merge_group_id,
         "retry_count": max(0, int(retry_count)),
+        "execution_signature": execution_signature,
         "orchestration_decision": orchestration_decision,
         "attempt_count": max(0, int(attempt_count)),
         "worker_partition_index": chunk.index,
@@ -2214,6 +2271,8 @@ def run_reducer_accumulation(
     block_radius_m: float,
     statistics: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    raster_export_config: RasterExportConfig,
+    conditional_curve_export: ConditionalCurveExportConfig,
     trajectory_paths: list[Path],
     deposition_path: Path | None,
     impact_event_paths: list[Path],
@@ -2258,6 +2317,17 @@ def run_reducer_accumulation(
         impact_event_paths,
         impact_event_parquet_paths,
     )
+    chunk_execution_signatures = {
+        chunk.chunk_id: chunk_execution_signature(
+            chunk,
+            grid=grid,
+            statistics=statistics,
+            probability=probability,
+            raster_export_config=raster_export_config,
+            conditional_curve_export=conditional_curve_export,
+        )
+        for chunk in chunks
+    }
     chunk_dir = output_dir / "chunks"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     execution_plan = execution_plan_path(output_dir, prefix)
@@ -2269,6 +2339,7 @@ def run_reducer_accumulation(
         chunks,
         worker_count,
         output_dir,
+        chunk_execution_signatures=chunk_execution_signatures,
         owner_id=owner_id,
         scheduler_index=scheduler_index,
         scheduler_count=scheduler_count,
@@ -2358,6 +2429,9 @@ def run_reducer_accumulation(
         state_path = record.get("partial_state_path")
         if not state_path:
             raise SystemExit(f"chunk {chunk.chunk_id} has no partial state path in plan")
+        execution_signature = record.get("execution_signature")
+        if not isinstance(execution_signature, str):
+            raise SystemExit(f"chunk {chunk.chunk_id} missing execution_signature in plan")
         accumulator = load_chunk_accumulator_state(
             Path(state_path),
             chunk,
@@ -2366,6 +2440,7 @@ def run_reducer_accumulation(
             block_radius_m,
             statistics,
             probability,
+            execution_signature=execution_signature,
         )
         attempt_count = max(0, int(record.get("attempt_count") or 0))
         retry_count = max(0, int(record.get("retry_count") or 0))
@@ -2380,6 +2455,7 @@ def run_reducer_accumulation(
             completion_status="completed",
             completion_reason=None,
             orchestration_decision=("reused_completed_state" if decision != "stale_claim_recovered" else decision),
+            execution_signature=execution_signature,
             output_bytes=chunk_partial_state_path(chunk.chunk_id, chunk_dir).stat().st_size
             if Path(chunk_partial_state_path(chunk.chunk_id, chunk_dir)).exists()
             else 0,
@@ -2399,7 +2475,7 @@ def run_reducer_accumulation(
         )
 
     scheduled_results: list[ReducerChunkResult] = []
-    scheduled_run_specs: list[tuple[ReducerChunk, int, int, str]] = []
+    scheduled_run_specs: list[tuple[ReducerChunk, int, int, str, str]] = []
     failed_chunks: list[str] = []
     ineligible_chunks: list[str] = []
     run_retries = 0
@@ -2413,6 +2489,7 @@ def run_reducer_accumulation(
         record = record_for_chunk(chunk.chunk_id)
         if not record:
             continue
+        execution_signature = chunk_execution_signatures.get(chunk.chunk_id) if isinstance(chunk_execution_signatures, dict) else None
         if chunk.chunk_id not in scheduled_chunk_ids:
             record["execution_status"] = "not_scheduled"
             record["orchestration_decision"] = "not_scheduled"
@@ -2433,11 +2510,12 @@ def run_reducer_accumulation(
             record["orchestration_decision"] = "skipped_by_other_owner"
             continue
 
-        if is_stale_claim(record, now_unix_s):
+        stale_claim_detected = is_stale_claim(record, now_unix_s)
+        if stale_claim_detected:
             mark_chunk_stale_release(record, now_unix_s)
             record["orchestration_decision"] = "stale_claim_recovered"
 
-        if chunk_has_valid_reusable_state(chunk, record):
+        if chunk_has_valid_reusable_state(chunk, record, execution_signature=execution_signature):
             scheduled_results.append(
                 build_no_execution_result(
                     chunk,
@@ -2446,14 +2524,29 @@ def run_reducer_accumulation(
                 )
             )
             continue
+        if stale_claim_detected:
+            record["orchestration_decision"] = "executed"
 
         if str(record.get("completion_status") or "not_started") == "completed":
             record["completion_status"] = "not_started"
             record["execution_status"] = "planned"
-            record["orchestration_decision"] = "completed_state_reset_for_rerun"
+            if stale_claim_detected:
+                record["orchestration_decision"] = "executed"
+            else:
+                record["orchestration_decision"] = "completed_state_reset_for_rerun"
 
         retry_count = max(0, int(record.get("retry_count") or 0))
         attempt_count = max(0, int(record.get("attempt_count") or 0))
+        if execution_signature is None:
+            execution_signature = chunk_execution_signature(
+                chunk,
+                grid=grid,
+                statistics=statistics,
+                probability=probability,
+                raster_export_config=raster_export_config,
+                conditional_curve_export=conditional_curve_export,
+            )
+            record["execution_signature"] = execution_signature
         if retry_count >= max_chunk_attempts:
             release_chunk(
                 record,
@@ -2471,11 +2564,19 @@ def run_reducer_accumulation(
 
         claim_chunk(record, run_owner_id, now_unix_s, lease_seconds)
         record["orchestration_decision"] = str(record.get("orchestration_decision") or "executed")
-        scheduled_run_specs.append((chunk, attempt_count, retry_count, record["orchestration_decision"]))
+        scheduled_run_specs.append(
+            (
+                chunk,
+                attempt_count,
+                retry_count,
+                str(record.get("orchestration_decision") or "executed"),
+                execution_signature,
+            )
+        )
 
     if scheduled_run_specs:
-        def run_spec(spec: tuple[ReducerChunk, int, int, str]) -> ReducerChunkResult:
-            chunk, attempt_count, retry_count, orchestration_decision = spec
+        def run_spec(spec: tuple[ReducerChunk, int, int, str, str]) -> ReducerChunkResult:
+            chunk, attempt_count, retry_count, orchestration_decision, execution_signature = spec
             return run_reducer_chunk(
                 chunk,
                 grid,
@@ -2489,6 +2590,7 @@ def run_reducer_accumulation(
                 execution_plan_path=execution_plan,
                 plan_id=chunk_plan.get("plan_id"),
                 partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
+                execution_signature=execution_signature,
                 merge_group_id=chunk_plan.get("merge_group_id"),
             )
 
@@ -2762,6 +2864,7 @@ def run_reducer_chunk(
     execution_plan_path: Path,
     plan_id: str | None,
     partial_state_path: Path,
+    execution_signature: str,
     merge_group_id: str | None = None,
 ) -> ReducerChunkResult:
     warnings: list[str] = []
@@ -2810,6 +2913,7 @@ def run_reducer_chunk(
         completion_status=completion_status,
         completion_reason=completion_reason,
         orchestration_decision=str(orchestration_decision or "executed"),
+        execution_signature=execution_signature,
         output_bytes=0,
         merge_group_id=merge_group_id,
         deposition_accumulation_seconds=deposition_seconds,
@@ -2818,7 +2922,11 @@ def run_reducer_chunk(
         partial_state_path=partial_state_path if completion_status == "completed" else None,
     )
     if completion_status == "completed":
-        partial_state_payload = serialize_chunk_accumulator_state(accumulator, chunk)
+        partial_state_payload = serialize_chunk_accumulator_state(
+            accumulator,
+            chunk,
+            execution_signature=execution_signature,
+        )
         write_text(partial_state_path, json.dumps(partial_state_payload, indent=2, sort_keys=True) + "\n")
         manifest["partial_state_path"] = str(partial_state_path)
         manifest["partial_state_schema_version"] = CHUNK_PARTIAL_STATE_SCHEMA_VERSION
@@ -2889,10 +2997,15 @@ def deserialize_threshold_grids(raw: Any) -> dict[float, list[list[float]]]:
     return threshold_grids
 
 
-def serialize_chunk_accumulator_state(accumulator: "HazardAccumulator", chunk: ReducerChunk) -> dict[str, Any]:
+def serialize_chunk_accumulator_state(
+    accumulator: "HazardAccumulator",
+    chunk: ReducerChunk,
+    execution_signature: str,
+) -> dict[str, Any]:
     return {
         "schema_version": CHUNK_PARTIAL_STATE_SCHEMA_VERSION,
         "chunk_id": chunk.chunk_id,
+        "execution_signature": execution_signature,
         "input_signature": chunk_input_signature(chunk),
         "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
         "trajectory_count": accumulator.trajectory_count,
@@ -2947,12 +3060,15 @@ def load_chunk_accumulator_state(
     block_radius_m: float,
     statistics: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    execution_signature: str | None,
 ) -> HazardAccumulator:
     payload = read_json(path)
     if not isinstance(payload, dict) or payload.get("schema_version") != CHUNK_PARTIAL_STATE_SCHEMA_VERSION:
         raise SystemExit(f"invalid partial chunk state at {path}")
     if payload.get("chunk_id") != chunk.chunk_id or payload.get("input_signature") != chunk_input_signature(chunk):
         raise SystemExit(f"partial chunk state at {path} does not match chunk {chunk.chunk_id}")
+    if isinstance(execution_signature, str) and payload.get("execution_signature") != execution_signature:
+        raise SystemExit(f"partial chunk state at {path} is stale for chunk {chunk.chunk_id}")
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
     grids = payload.get("grids")
     if not isinstance(grids, dict):

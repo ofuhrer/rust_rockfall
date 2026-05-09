@@ -116,7 +116,14 @@ Needed work:
   debug CSV output is too file-heavy;
 - later CSCS/SLURM orchestration built on the same chunk and reducer contracts.
 
-Current status: architecture is deterministic and ready for local parallelism and later SLURM orchestration, but MPI, GPU, distributed execution, and production schedulers are deliberately absent.
+Current status: architecture is deterministic and ready for local parallelism and
+later SLURM orchestration, but MPI, GPU, distributed execution, and production
+schedulers are deliberately absent.
+
+Replay checks in reducer chunk reuse are now local-process deterministic: stale
+or completed chunks are reused only when signatures and state schema match; any
+schema/signature mismatch forces re-execution. Cross-node/job-array replay
+guarantees are still pending.
 
 ### 5. Hazard-Layer Generation
 

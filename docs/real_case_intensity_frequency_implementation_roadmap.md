@@ -540,10 +540,12 @@ scale-up unauthorized until convergence, output budget, forest/obstacle
 context, balfrin reproducibility, and target-run provenance evidence are
 complete. Orchestration decisions now explicitly include executed, reused,
 stale-claim recovery, and cross-owner skip states for deterministic restart
-traces. Remaining gaps are clarifying target-run provenance/debug output,
-reproducing the selected target-scale gate on balfrin, and generalizing
-plan-side partial-reducer restart semantics from local reducer chunks to
-trajectory-generation and cluster orchestration.
+traces. Replay integrity is strict: completed partial state is reused only when
+the input signature, execution signature, and state schema/signature checks all
+pass; otherwise the chunk is re-executed. Remaining gaps are clarifying
+target-run provenance/debug output, reproducing the selected target-scale gate on
+balfrin, and generalizing plan-side partial-reducer restart semantics from local
+reducer chunks to trajectory-generation and cluster orchestration.
 
 Implementation work:
 
@@ -557,7 +559,8 @@ Implementation work:
   in execution plans plus index/merge manifests before moving from local reducer
   validation to job-array orchestration;
 - defer SLURM/CSCS orchestration until local chunk/reducer contracts and
-  target-scale evidence are stable.
+  target-scale evidence are stable. Current execution remains local-process only:
+  distributed claim coordination and cross-node replay guarantees are pending.
 
 Current Phase 5 implementation starts this path in the hazard-layer reducer:
 `--reducer-workers N` partitions trajectory and impact input files into

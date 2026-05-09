@@ -681,6 +681,17 @@ the chunk execution attempt number across retained plan state, and they incremen
 only when work is performed for that chunk. Reused completed chunks should keep
 their prior attempt count in their state-derived manifest rebuild.
 
+Replay integrity is strict:
+
+- A completed chunk is reused only when all replay gates pass: matching
+  `input_signature`, matching `execution_signature`, present completion state,
+  and schema-compatible `reducer_chunk_state_v1` payload.
+- If a required partial-state file is missing, unreadable, schema-mismatched, or
+  signature-mismatched, the chunk is treated as non-reusable and re-executed.
+- `stale_claim_recovered` is reported only when the reusable-state replay gates
+  also pass; stale claims with invalid or missing replay inputs are forced to
+  re-execution.
+
 `retry_count` counts failed attempts and increments when a run fails before a
 later successful attempt. The chunked reducer is required to preserve serial
 output values for current conditional diagnostic layers; it does not introduce
