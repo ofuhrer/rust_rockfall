@@ -1697,7 +1697,15 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(first_chunk["schema_version"], "hazard_reducer_chunk_manifest_v1")
             self.assertEqual(first_chunk["completion_status"], "completed")
             self.assertEqual(first_chunk["execution_status"], "completed")
+            self.assertEqual(first_chunk["status"], "completed")
+            self.assertEqual(first_chunk["completion_state"], "completed")
             self.assertEqual(first_chunk["execution_state_schema_version"], "chunk_execution_manifest_v1")
+            self.assertIsNotNone(first_chunk["row_count"])
+            self.assertIsNotNone(first_chunk["rows_written"])
+            self.assertIsNotNone(first_chunk["execution_attempt"])
+            self.assertGreater(first_chunk["rows_written"], 0)
+            self.assertGreater(first_chunk["output_bytes"], 0)
+            self.assertIsNone(first_chunk["failure_reason"])
             self.assertIn("reach_counts", first_chunk["reducer_contract"])
             execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
             self.assertTrue(execution_plan_path.exists())
@@ -1707,6 +1715,28 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(execution_plan["chunk_count"], 3)
             self.assertEqual(execution_plan["chunk_id_policy"], "stable_prefix_sorted_chunk_index")
             self.assertTrue(all(record["completion_status"] == "completed" for record in execution_plan["chunk_manifests"]))
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            self.assertEqual(execution_index.get("schema_version"), "reducer_execution_index_v1")
+            self.assertEqual(len(execution_index.get("chunk_records") or []), 3)
+            for record in execution_index.get("chunk_records", []):
+                self.assertEqual(record.get("status"), record.get("completion_status"))
+                self.assertEqual(record.get("completion_state"), record.get("completion_status"))
+                self.assertGreaterEqual(int(record.get("output_bytes") or 0), 0)
+                self.assertGreaterEqual(int(record.get("execution_attempt") or 0), 1)
+                self.assertIsNotNone(record.get("row_count"))
+                self.assertIsNotNone(record.get("rows_written"))
+            merge_state = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text())
+            self.assertEqual(merge_state.get("schema_version"), "reducer_merge_state_v1")
+            self.assertEqual(merge_state.get("status"), "ready")
+            self.assertEqual(merge_state.get("completion_state"), "ready")
+            self.assertEqual(len(merge_state.get("merge_index") or []), 3)
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            chunk_ids = {record.get("chunk_id") for record in execution_index.get("chunk_records", [])}
+            for record in merge_state.get("merge_index", []):
+                self.assertIn(record.get("status"), {"completed", "failed", None})
+                self.assertIn(record.get("completion_state"), {"completed", "failed", None})
+                self.assertIn(record.get("chunk_id"), chunk_ids)
+
             execution = manifest["conditional_execution"]
             self.assertEqual(execution["reducer"]["mode"], "chunked_local_threads")
             self.assertEqual(execution["reducer"]["worker_count"], 3)
@@ -1803,6 +1833,19 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(len(completed_chunks), 1)
             self.assertIn("simulated chunk execution failure", failed_chunks[0].get("completion_reason") or "")
             self.assertEqual(failed_chunks[0].get("retry_count"), 1)
+            self.assertEqual(failed_chunks[0].get("status"), "failed")
+            self.assertEqual(failed_chunks[0].get("completion_state"), "failed")
+            self.assertEqual(failed_chunks[0].get("failure_reason"), failed_chunks[0].get("completion_reason"))
+            self.assertEqual(failed_chunks[0].get("output_bytes"), 0)
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            self.assertEqual(execution_index.get("schema_version"), "reducer_execution_index_v1")
+            failed_index_records = [
+                record for record in execution_index.get("chunk_records", []) if record.get("completion_status") == "failed"
+            ]
+            self.assertEqual(len(failed_index_records), 1)
+            self.assertEqual(failed_index_records[0].get("status"), "failed")
+            self.assertEqual(failed_index_records[0].get("completion_state"), "failed")
+            self.assertEqual(failed_index_records[0].get("failure_reason"), failed_index_records[0].get("completion_reason"))
 
     def test_chunked_reducer_retries_failed_chunks_on_restart(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
@@ -1852,8 +1895,21 @@ class HazardLayerTests(unittest.TestCase):
             recovered_failed = [record for record in recovered_plan.get("chunk_manifests", []) if record.get("chunk_id") == failed_chunk_id]
             self.assertEqual(len(recovered_failed), 1)
             self.assertEqual(recovered_failed[0].get("completion_status"), "completed")
+            self.assertEqual(recovered_failed[0].get("status"), "completed")
+            self.assertEqual(recovered_failed[0].get("completion_state"), "completed")
             self.assertEqual(recovered_failed[0].get("attempt_count"), 2)
             self.assertEqual(recovered_failed[0].get("retry_count"), 1)
+            recovered_execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            recovered_record = [
+                record
+                for record in recovered_execution_index.get("chunk_records", [])
+                if record.get("chunk_id") == failed_chunk_id
+            ]
+            self.assertEqual(len(recovered_record), 1)
+            self.assertEqual(recovered_record[0].get("execution_attempt"), 2)
+            self.assertEqual(recovered_record[0].get("completion_state"), "completed")
+            self.assertIsNone(recovered_record[0].get("failure_reason"))
+            self.assertGreater(int(recovered_record[0].get("row_count") or 0), 0)
 
     def test_chunked_reducer_reuses_partial_state_without_reexecution(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
@@ -1882,6 +1938,12 @@ class HazardLayerTests(unittest.TestCase):
                 hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]),
                 0,
             )
+            first_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            first_completed_records = [
+                record for record in first_index.get("chunk_records", []) if record.get("completion_status") == "completed"
+            ]
+            self.assertEqual(len(first_completed_records), 1)
+            first_completed_record = first_completed_records[0]
 
             read_calls: list[Path] = []
 
@@ -1906,6 +1968,36 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(execution_index.get("schema_version"), "reducer_execution_index_v1")
             self.assertEqual(execution_index.get("scheduled_chunk_count"), 1)
             self.assertEqual(execution_index.get("completed_chunk_count"), 1)
+            completed_records = [
+                record for record in execution_index.get("chunk_records", []) if record.get("completion_status") == "completed"
+            ]
+            self.assertEqual(len(completed_records), 1)
+            completed_record = completed_records[0]
+            self.assertEqual(completed_record.get("status"), "completed")
+            self.assertIsNone(completed_record.get("failure_reason"))
+            self.assertGreater(int(completed_record.get("rows_written") or 0), 0)
+            chunk_manifest_path = Path(completed_record.get("chunk_manifest_path") or "")
+            if not chunk_manifest_path:
+                candidate = next(
+                    (
+                        path
+                        for path in (chunked_dir / "chunks").glob(f'{completed_record.get("chunk_id", "")}_manifest.json')
+                    ),
+                    None,
+                )
+                self.assertIsNotNone(candidate)
+                chunk_manifest_path = candidate
+            else:
+                self.assertNotEqual(str(chunk_manifest_path), str(chunked_dir))
+            if not chunk_manifest_path.is_absolute():
+                chunk_manifest_path = chunked_dir / chunk_manifest_path
+            manifest_record_dict = json.loads(chunk_manifest_path.read_text())
+            self.assertEqual(manifest_record_dict.get("rows_written"), completed_record.get("rows_written"))
+            self.assertEqual(manifest_record_dict.get("row_count"), completed_record.get("row_count"))
+            self.assertGreater(int(completed_record.get("row_count") or 0), 0)
+            self.assertEqual(completed_record.get("row_count"), first_completed_record.get("row_count"))
+            self.assertEqual(completed_record.get("rows_written"), first_completed_record.get("rows_written"))
+            self.assertEqual(completed_record.get("output_bytes"), first_completed_record.get("output_bytes"))
 
     def test_chunked_reducer_cross_partition_scheduler_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

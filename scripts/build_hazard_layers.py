@@ -1906,14 +1906,23 @@ def build_reducer_execution_index_manifest(
         "chunk_records": [
             {
                 "chunk_id": record.get("chunk_id"),
+                "chunk_manifest_path": record.get("manifest_path"),
                 "chunk_index": record.get("chunk_index"),
+                "status": record.get("status"),
+                "completion_state": record.get("completion_state"),
                 "execution_status": record.get("execution_status"),
                 "completion_status": record.get("completion_status"),
                 "completion_reason": record.get("completion_reason"),
+                "failure_reason": record.get("failure_reason"),
                 "ownership": record.get("ownership"),
                 "timings": record.get("timings", {}),
+                "row_count": record.get("row_count"),
+                "rows_written": record.get("rows_written"),
+                "output_bytes": record.get("output_bytes"),
+                "execution_attempt": record.get("execution_attempt"),
                 "retry_count": record.get("retry_count"),
                 "attempt_count": record.get("attempt_count"),
+                "merge_group_id": record.get("merge_group_id"),
                 "input_file_counts": record.get("input_file_counts") if isinstance(record.get("input_file_counts"), dict) else None,
             }
             for record in chunk_records
@@ -1932,6 +1941,8 @@ def build_reducer_merge_state_manifest(
         "plan_path": str(plan.get("output_manifest_path") or ""),
         "merge_group_id": plan.get("merge_group_id"),
         "merge_status": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "status": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "completion_state": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
         "merge_order": "sorted_chunk_id",
         "merge_index": [
             {
@@ -1940,6 +1951,11 @@ def build_reducer_merge_state_manifest(
                 "partial_state_path": record.get("partial_state_path"),
                 "partial_state_schema_version": record.get("partial_state_schema_version"),
                 "completion_status": record.get("completion_status"),
+                "completion_state": record.get("completion_state"),
+                "status": record.get("status"),
+                "row_count": record.get("row_count"),
+                "rows_written": record.get("rows_written"),
+                "output_bytes": record.get("output_bytes"),
             }
             for record in chunk_records
         ],
@@ -1957,6 +1973,8 @@ def build_chunk_execution_manifest(
     execution_status: str,
     completion_status: str,
     completion_reason: str | None,
+    output_bytes: int | None,
+    merge_group_id: str | None = None,
     deposition_accumulation_seconds: float,
     trajectory_accumulation_seconds: float,
     impact_accumulation_seconds: float,
@@ -1968,6 +1986,12 @@ def build_chunk_execution_manifest(
         "schema_version": CHUNK_MANIFEST_SCHEMA_VERSION,
         "chunk_id": chunk.chunk_id,
         "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "status": (
+            "completed"
+            if completion_status == "completed"
+            else "failed" if completion_status == "failed" else completion_status
+        ),
+        "completion_state": completion_status,
         "execution_plan": {
             "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
             "chunk_id": chunk.chunk_id,
@@ -1979,7 +2003,10 @@ def build_chunk_execution_manifest(
         "execution_status": execution_status,
         "completion_status": completion_status,
         "completion_reason": completion_reason,
+        "failure_reason": completion_reason if completion_status == "failed" else None,
+        "execution_attempt": max(0, int(attempt_count)),
         "scientific_status": "not_evaluated",
+        "merge_group_id": merge_group_id,
         "retry_count": max(0, int(retry_count)),
         "attempt_count": max(0, int(attempt_count)),
         "worker_partition_index": chunk.index,
@@ -2004,6 +2031,18 @@ def build_chunk_execution_manifest(
             "impact_event_rows": stats.impact_event_count,
             "significant_impact_rows": stats.significant_impact_count,
         },
+        "row_count": (
+            stats.trajectory_sample_count
+            + stats.deposition_point_count
+            + stats.impact_event_count
+            + stats.significant_impact_count
+        ),
+        "rows_written": (
+            stats.trajectory_count
+            + stats.deposition_point_count
+            + stats.impact_event_count
+            + stats.significant_impact_count
+        ),
         "reducer_counts": {
             "trajectory_count": stats.trajectory_count,
             "deposition_point_count": stats.deposition_point_count,
@@ -2015,6 +2054,7 @@ def build_chunk_execution_manifest(
             "trajectory_accumulation_seconds": max(0.0, trajectory_accumulation_seconds),
             "impact_accumulation_seconds": max(0.0, impact_accumulation_seconds),
         },
+        "output_bytes": max(0, int(output_bytes or 0)),
         "input_artifacts": reducer_chunk_input_artifacts(chunk),
         "reducer_contract": reducer_contract_manifest(),
         "limitations": [
@@ -2144,9 +2184,17 @@ def run_reducer_accumulation(
             if previous_record.get("input_signature") != chunk_record.get("input_signature"):
                 continue
             for field in (
+                "status",
+                "completion_state",
                 "attempt_count",
                 "retry_count",
                 "completion_status",
+                "execution_attempt",
+                "row_count",
+                "rows_written",
+                "output_bytes",
+                "failure_reason",
+                "merge_group_id",
                 "completion_reason",
                 "execution_status",
                 "manifest_path",
@@ -2192,6 +2240,10 @@ def run_reducer_accumulation(
             execution_status="completed",
             completion_status="completed",
             completion_reason=None,
+            output_bytes=chunk_partial_state_path(chunk.chunk_id, chunk_dir).stat().st_size
+            if Path(chunk_partial_state_path(chunk.chunk_id, chunk_dir)).exists()
+            else 0,
+            merge_group_id=chunk_plan.get("merge_group_id"),
             deposition_accumulation_seconds=0.0,
             trajectory_accumulation_seconds=0.0,
             impact_accumulation_seconds=0.0,
@@ -2284,6 +2336,7 @@ def run_reducer_accumulation(
                 execution_plan_path=execution_plan,
                 plan_id=chunk_plan.get("plan_id"),
                 partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
+                merge_group_id=chunk_plan.get("merge_group_id"),
             )
 
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -2317,7 +2370,15 @@ def run_reducer_accumulation(
         for key in (
             "execution_status",
             "completion_status",
+            "status",
+            "completion_state",
             "completion_reason",
+            "failure_reason",
+            "execution_attempt",
+            "row_count",
+            "rows_written",
+            "output_bytes",
+            "merge_group_id",
             "timings",
             "attempt_count",
             "retry_count",
@@ -2546,6 +2607,7 @@ def run_reducer_chunk(
     execution_plan_path: Path,
     plan_id: str | None,
     partial_state_path: Path,
+    merge_group_id: str | None = None,
 ) -> ReducerChunkResult:
     warnings: list[str] = []
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
@@ -2575,14 +2637,13 @@ def run_reducer_chunk(
         for batch in read_impact_event_parquet_batches(list(chunk.impact_event_parquet_paths), warnings):
             accumulator.accumulate_impacts(batch)
         impact_seconds = time.perf_counter() - impact_started
-        stats = accumulator.stats()
         completion_status = "completed"
     except Exception as exc:  # noqa: BLE001 - chunk-level failure is surfaced by chunk manifest and rerun contract.
         execution_status = "failed"
         completion_status = "failed"
         completion_reason = str(exc)
         warnings.append(completion_reason)
-        stats = accumulator.stats()
+
     manifest = build_chunk_execution_manifest(
         chunk,
         accumulator,
@@ -2593,6 +2654,8 @@ def run_reducer_chunk(
         execution_status=execution_status,
         completion_status=completion_status,
         completion_reason=completion_reason,
+        output_bytes=0,
+        merge_group_id=merge_group_id,
         deposition_accumulation_seconds=deposition_seconds,
         trajectory_accumulation_seconds=trajectory_seconds,
         impact_accumulation_seconds=impact_seconds,
@@ -2602,6 +2665,8 @@ def run_reducer_chunk(
         partial_state_payload = serialize_chunk_accumulator_state(accumulator, chunk)
         write_text(partial_state_path, json.dumps(partial_state_payload, indent=2, sort_keys=True) + "\n")
         manifest["partial_state_path"] = str(partial_state_path)
+        manifest["partial_state_schema_version"] = CHUNK_PARTIAL_STATE_SCHEMA_VERSION
+        manifest["output_bytes"] = partial_state_path.stat().st_size
 
     return ReducerChunkResult(
         chunk=chunk,
