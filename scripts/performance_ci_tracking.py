@@ -313,7 +313,7 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
                 "<g>"
                 f"<circle cx='{x:.2f}' cy='{y:.2f}' r='2.8' fill='{color}' fill-opacity='0.2' stroke='{color}' stroke-width='1.2' />"
                 f"<circle cx='{x:.2f}' cy='{y:.2f}' r='1.3' fill='{color}' />"
-                f"<title>{short_sha(entry)} ({label}) · {short_commit_date(entry)} · {value:.2f}s</title>"
+                f"<title>{short_sha(entry)} ({label}) · {value:.2f}s</title>"
                 "</g>"
             )
 
@@ -327,16 +327,10 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
         row = history_rows[index]
         x = x_at(index)
         commit_label = short_sha(row)
-        date_label = short_commit_date(row)
         commit_ticks.append(
             f"<text x='{x:.2f}' y='{top + chart_h + 16:.2f}' text-anchor='middle' font-size='7' fill='#57606a' "
             f"transform='rotate(-90 {x:.2f} {top + chart_h + 16:.2f})'>{commit_label}</text>"
         )
-        if date_label != "unknown":
-            commit_ticks.append(
-                f"<text x='{x:.2f}' y='{top + chart_h + 20:.2f}' text-anchor='middle' font-size='6' fill='#6e7781' "
-                f"transform='rotate(-90 {x:.2f} {top + chart_h + 20:.2f})'>{date_label}</text>"
-            )
 
     grid = []
     for i in range(6):

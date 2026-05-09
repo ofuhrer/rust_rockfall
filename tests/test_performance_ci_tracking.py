@@ -123,6 +123,7 @@ class PerformanceCiTrackingTests(unittest.TestCase):
 
         self.assertIn("<svg", svg)
         self.assertIn("rust_rockfall main benchmark trend", svg)
+        self.assertIn("2222222", svg)
         self.assertIn("Simulation", svg)
         self.assertIn("polyline", svg)
         self.assertIn("<circle", svg)
