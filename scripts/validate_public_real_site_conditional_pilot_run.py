@@ -375,6 +375,13 @@ def build_hazard_command(
         str(sampling["worker_count"]),
         "--no-plots",
     ]
+    diagnostics_json = outputs.get("diagnostics_json")
+    if not diagnostics_json:
+        benchmark_case_path_obj = Path(benchmark_case_path)
+        diagnostics_json = str(
+            benchmark_case_path_obj.parent / f"{benchmark_case_path_obj.stem}_metrics.json"
+        )
+        outputs["diagnostics_json"] = diagnostics_json
     optional_output_args = {
         "diagnostics_json": "--diagnostics",
         "trajectory_csv": "--trajectory",
