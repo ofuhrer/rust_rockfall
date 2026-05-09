@@ -212,10 +212,35 @@ def check_validation_module_boundaries() -> list[str]:
     errors = []
     validation = (ROOT / "src/validation.rs").read_text()
     metric_math = ROOT / "src/validation/metric_math.rs"
+    metrics = ROOT / "src/validation/metrics.rs"
+    probabilistic = ROOT / "src/validation/probabilistic.rs"
+    validation_io = ROOT / "src/validation/validation_io.rs"
+    runner = ROOT / "src/validation/runner.rs"
+    types = ROOT / "src/validation/types.rs"
     if "mod metric_math;" not in validation:
         errors.append("src/validation.rs should declare the metric_math submodule")
+    for submodule in (
+        "mod metrics;",
+        "mod probabilistic;",
+        "mod validation_io;",
+        "mod runner;",
+        "mod types;",
+    ):
+        if submodule not in validation:
+            errors.append(f"src/validation.rs should declare the {submodule.split()[1][:-1]} submodule")
     if not metric_math.exists():
         errors.append("src/validation/metric_math.rs is missing")
+    if not metrics.exists():
+        errors.append("src/validation/metrics.rs is missing")
+    if not probabilistic.exists():
+        errors.append("src/validation/probabilistic.rs is missing")
+    if not validation_io.exists():
+        errors.append("src/validation/validation_io.rs is missing")
+    if not runner.exists():
+        errors.append("src/validation/runner.rs is missing")
+    if not types.exists():
+        errors.append("src/validation/types.rs is missing")
+    if errors:
         return errors
 
     for helper in (
@@ -228,6 +253,23 @@ def check_validation_module_boundaries() -> list[str]:
         if re.search(rf"\nfn {helper}\(", validation):
             errors.append(
                 f"validation metric helper {helper} should live in src/validation/metric_math.rs"
+            )
+
+    required_delegations = {
+        r"metrics::compute_deposition_cloud_metrics\(": "metrics delegation for deposition metrics",
+        r"metrics::compute_roughness_comparison_metrics\(": "metrics delegation for roughness comparison",
+        r"metrics::compute_scarring_comparison_metrics\(": "metrics delegation for scarring comparison",
+        r"metrics::evaluate_failures\(": "metrics delegation for failure evaluation",
+        r"probabilistic::load_probabilistic_metadata_context\(": "probabilistic metadata delegation",
+        r"validation_io::load_observations\(": "validation observation I/O delegation",
+        r"runner::run_case_file\(": "runner delegation for run_case_file",
+        r"runner::run_case\(": "runner delegation for run_case",
+        r"runner::write_report\(": "runner delegation for write_report",
+    }
+    for pattern, label in required_delegations.items():
+        if not re.search(pattern, validation):
+            errors.append(
+                f"src/validation.rs should keep {label} through dedicated submodules"
             )
     return errors
 
