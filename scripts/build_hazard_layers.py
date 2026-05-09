@@ -33,6 +33,10 @@ CHUNK_MANIFEST_SCHEMA_VERSION = "hazard_reducer_chunk_manifest_v1"
 CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION = "chunk_execution_manifest_v1"
 CHUNK_EXECUTION_PLAN_SCHEMA_VERSION = "execution_plan_v1"
 CHUNK_PARTIAL_STATE_SCHEMA_VERSION = "reducer_chunk_state_v1"
+CHUNK_EXECUTION_INDEX_SCHEMA_VERSION = "reducer_execution_index_v1"
+CHUNK_MERGE_STATE_SCHEMA_VERSION = "reducer_merge_state_v1"
+CHUNK_REDUCTION_MAX_ATTEMPTS = 3
+CHUNK_CLAIM_TTL_SECONDS = 60 * 60
 
 
 @dataclass(frozen=True)
@@ -316,8 +320,150 @@ def chunk_partial_state_path(chunk_id: str, output_dir: Path) -> Path:
     return output_dir / f"{chunk_id}_state.json"
 
 
-def execution_plan_path_from_prefix(output_dir: Path, prefix: str, explicit_plan_path: Path | None = None) -> Path:
-    return explicit_plan_path or execution_plan_path(output_dir, prefix)
+def execution_index_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_reducer_execution_index_v1.json"
+
+
+def merge_state_path(output_dir: Path, prefix: str) -> Path:
+    return output_dir / f"{prefix}_reducer_merge_state_v1.json"
+
+
+def chunk_ownership_state(state: str, owner_id: str | None = None) -> dict[str, Any]:
+    return {
+        "state": state,
+        "owner_id": owner_id,
+        "claimed_at_unix_s": None,
+        "lease_expires_unix_s": None,
+        "released_at_unix_s": None,
+        "release_reason": None,
+        "updated_unix_s": int(time.time()),
+    }
+
+
+def claim_chunk(record: dict[str, Any], owner_id: str | None, now_unix_s: int, lease_seconds: int) -> dict[str, Any]:
+    ownership = chunk_ownership_state("claimed", owner_id)
+    ownership["claimed_at_unix_s"] = now_unix_s
+    ownership["lease_expires_unix_s"] = now_unix_s + max(1, lease_seconds)
+    record["ownership"] = ownership
+    return ownership
+
+
+def release_chunk(
+    record: dict[str, Any],
+    owner_id: str | None,
+    now_unix_s: int,
+    *,
+    completion_status: str,
+    execution_status: str,
+    reason: str,
+    attempt_count: int,
+    retry_count: int,
+) -> None:
+    ownership = chunk_ownership_state("released", owner_id)
+    current_ownership = record.get("ownership") or {}
+    ownership["claimed_at_unix_s"] = int(current_ownership.get("claimed_at_unix_s") or now_unix_s)
+    ownership["lease_expires_unix_s"] = int(current_ownership.get("lease_expires_unix_s") or now_unix_s)
+    ownership["released_at_unix_s"] = now_unix_s
+    ownership["release_reason"] = reason
+    ownership["updated_unix_s"] = now_unix_s
+    record["ownership"] = ownership
+    record["attempt_count"] = attempt_count
+    record["retry_count"] = retry_count
+    record["execution_status"] = execution_status
+    record["completion_status"] = completion_status
+
+
+def mark_chunk_stale_release(record: dict[str, Any], now_unix_s: int) -> None:
+    current_ownership = record.get("ownership") or {}
+    ownership = chunk_ownership_state("stale", current_ownership.get("owner_id"))
+    ownership["claimed_at_unix_s"] = current_ownership.get("claimed_at_unix_s")
+    ownership["lease_expires_unix_s"] = current_ownership.get("lease_expires_unix_s")
+    ownership["released_at_unix_s"] = now_unix_s
+    ownership["release_reason"] = "stale_claim"
+    ownership["updated_unix_s"] = now_unix_s
+    record["ownership"] = ownership
+
+
+def chunk_input_signature(chunk: ReducerChunk) -> str:
+    payload = json.dumps(
+        {
+            "trajectory_start": chunk.trajectory_start,
+            "trajectory_end_exclusive": chunk.trajectory_end_exclusive,
+            "impact_csv_start": chunk.impact_csv_start,
+            "impact_csv_end_exclusive": chunk.impact_csv_end_exclusive,
+            "impact_parquet_start": chunk.impact_parquet_start,
+            "impact_parquet_end_exclusive": chunk.impact_parquet_end_exclusive,
+            "trajectory_files": [str(path) for path in chunk.trajectory_paths],
+            "impact_csv_files": [str(path) for path in chunk.impact_event_paths],
+            "impact_parquet_files": [str(path) for path in chunk.impact_event_parquet_paths],
+            "deposition_path": str(chunk.deposition_path) if chunk.deposition_path is not None else None,
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def is_stale_claim(record: dict[str, Any], now_unix_s: int) -> bool:
+    ownership = record.get("ownership")
+    if not isinstance(ownership, dict):
+        return False
+    claimed_at = ownership.get("claimed_at_unix_s")
+    lease_expires = ownership.get("lease_expires_unix_s")
+    if not isinstance(claimed_at, int) or not isinstance(lease_expires, int):
+        return False
+    if lease_expires < now_unix_s:
+        return True
+    return False
+
+
+def is_claim_active_for_other_owner(
+    record: dict[str, Any],
+    owner_id: str | None,
+    now_unix_s: int,
+) -> bool:
+    ownership = record.get("ownership")
+    if not isinstance(ownership, dict):
+        return False
+    owner = ownership.get("owner_id")
+    state = ownership.get("state")
+    if owner == owner_id:
+        return False
+    if state != "claimed":
+        return False
+    if is_stale_claim(record, now_unix_s):
+        return False
+    return True
+
+
+def chunk_has_valid_reusable_state(
+    chunk: ReducerChunk,
+    record: dict[str, Any],
+) -> bool:
+    if record.get("completion_status") != "completed":
+        return False
+    if not isinstance(record.get("input_signature"), str):
+        return False
+    expected_signature = record["input_signature"]
+    if expected_signature != chunk_input_signature(chunk):
+        return False
+    state_path = Path(str(record.get("partial_state_path"))) if record.get("partial_state_path") else None
+    if state_path is None or not state_path.exists():
+        return False
+    try:
+        state = read_json(state_path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    return (
+        isinstance(state, dict)
+        and state.get("schema_version") == CHUNK_PARTIAL_STATE_SCHEMA_VERSION
+        and state.get("chunk_id") == chunk.chunk_id
+        and state.get("input_signature") == expected_signature
+    )
+
+
+def stable_owner_id(prefix: str | None) -> str:
+    base = prefix or "reducer"
+    return f"{socket.gethostname()}:{os.getpid()}:{base}"
 
 
 def execution_plan_path(output_dir: Path, prefix: str) -> Path:
@@ -360,9 +506,17 @@ def build_chunk_execution_plan(
     chunks: list[ReducerChunk],
     reducer_workers: int,
     output_dir: Path,
+    *,
+    owner_id: str | None = None,
+    scheduler_index: int = 0,
+    scheduler_count: int = 1,
+    max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
+    lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
 ) -> dict[str, Any]:
     chunk_records: list[dict[str, Any]] = []
+    chunk_owner = owner_id or stable_owner_id(prefix)
     for chunk in chunks:
+        signature = chunk_input_signature(chunk)
         chunk_records.append(
             {
                 "chunk_id": chunk.chunk_id,
@@ -376,8 +530,14 @@ def build_chunk_execution_plan(
                 "deposition_file_count": 1 if chunk.deposition_path is not None else 0,
                 "execution_status": "planned",
                 "completion_status": "not_started",
+                "input_signature": signature,
+                "attempt_count": 0,
+                "retry_count": 0,
                 "completion_reason": None,
                 "manifest_path": str(chunk_manifest_path(output_dir / "chunks", chunk.chunk_id)),
+                "partial_state_path": str(chunk_partial_state_path(chunk.chunk_id, output_dir / "chunks")),
+                "partial_state_schema_version": CHUNK_PARTIAL_STATE_SCHEMA_VERSION,
+                "ownership": chunk_ownership_state("unclaimed", None),
                 "input_artifacts": [
                     file_fingerprint(path)
                     for path in (
@@ -426,6 +586,11 @@ def build_chunk_execution_plan(
         "merge_group_id": digest,
         "reducer_workers": reducer_workers,
         "chunk_count": len(chunks),
+        "owner_id": chunk_owner,
+        "scheduler_index": scheduler_index,
+        "scheduler_count": scheduler_count,
+        "max_chunk_attempts": max_chunk_attempts,
+        "claim_ttl_seconds": lease_seconds,
         "chunk_id_policy": "stable_prefix_sorted_chunk_index",
         "chunk_manifests": chunk_records,
         "output_manifest_path": str(execution_plan_path(output_dir, prefix)),
@@ -1236,6 +1401,39 @@ def main_with_args(argv: list[str] | None = None) -> int:
             "partition input files and merge partial reducers by chunk id"
         ),
     )
+    parser.add_argument(
+        "--scheduler-index",
+        type=int,
+        default=0,
+        help=(
+            "deterministic scheduler partition index for cross-process chunk execution; "
+            "defaults to 0 when scheduler-count is 1"
+        ),
+    )
+    parser.add_argument(
+        "--scheduler-count",
+        type=int,
+        default=1,
+        help="deterministic scheduler partition count for cross-process chunk execution",
+    )
+    parser.add_argument(
+        "--chunk-owner-id",
+        type=str,
+        default=None,
+        help="optional deterministic owner label for chunk claim/release tracking",
+    )
+    parser.add_argument(
+        "--chunk-claim-ttl-seconds",
+        type=int,
+        default=CHUNK_CLAIM_TTL_SECONDS,
+        help="claim time-to-live window in seconds before a chunk claim becomes stale",
+    )
+    parser.add_argument(
+        "--max-chunk-attempts",
+        type=int,
+        default=CHUNK_REDUCTION_MAX_ATTEMPTS,
+        help="deterministic maximum claim-aware retry attempts per chunk",
+    )
     parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
@@ -1324,6 +1522,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
         impact_event_paths,
         impact_event_parquet_paths,
         args.reducer_workers,
+        owner_id=args.chunk_owner_id,
+        scheduler_index=args.scheduler_index,
+        scheduler_count=args.scheduler_count,
+        max_chunk_attempts=args.max_chunk_attempts,
+        lease_seconds=args.chunk_claim_ttl_seconds,
     )
     input_warnings.extend(reducer_warnings)
     deposition_accumulation_seconds = reducer_timings.deposition_accumulation_seconds
@@ -1428,10 +1631,26 @@ def main_with_args(argv: list[str] | None = None) -> int:
     hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
     if reducer_execution is not None:
         manifest["reducer_execution"] = reducer_execution
+        reducer_index_path = execution_index_path(output_dir, prefix)
+        reducer_merge_state = merge_state_path(output_dir, prefix)
         manifest["outputs"].append(
             output_manifest_entry(
                 execution_plan_path(output_dir, prefix),
                 "reducer_execution_plan",
+                "json",
+            )
+        )
+        manifest["outputs"].append(
+            output_manifest_entry(
+                reducer_index_path,
+                "reducer_execution_index",
+                "json",
+            )
+        )
+        manifest["outputs"].append(
+            output_manifest_entry(
+                reducer_merge_state,
+                "reducer_merge_state",
                 "json",
             )
         )
@@ -1659,6 +1878,156 @@ def parse_pilot_gis_package(
     )
 
 
+def build_reducer_execution_index_manifest(
+    plan: dict[str, Any],
+    chunk_records: list[dict[str, Any]],
+    *,
+    completed_chunk_count: int,
+    failed_chunk_count: int,
+    rerun_count: int,
+    scheduled_chunk_count: int | None = None,
+) -> dict[str, Any]:
+    scheduled_count = scheduled_chunk_count if scheduled_chunk_count is not None else len(chunk_records)
+    return {
+        "schema_version": CHUNK_EXECUTION_INDEX_SCHEMA_VERSION,
+        "plan_id": plan.get("plan_id"),
+        "plan_path": str(plan.get("output_manifest_path") or ""),
+        "plan_status": plan.get("plan_status"),
+        "owner_id": plan.get("owner_id"),
+        "scheduler_index": plan.get("scheduler_index"),
+        "scheduler_count": plan.get("scheduler_count"),
+        "merge_group_id": plan.get("merge_group_id"),
+        "chunk_count": len(chunk_records),
+        "scheduled_chunk_count": scheduled_count,
+        "completed_chunk_count": completed_chunk_count,
+        "failed_chunk_count": failed_chunk_count,
+        "rerun_count": rerun_count,
+        "merge_order": "sorted_chunk_id",
+        "chunk_records": [
+            {
+                "chunk_id": record.get("chunk_id"),
+                "chunk_index": record.get("chunk_index"),
+                "execution_status": record.get("execution_status"),
+                "completion_status": record.get("completion_status"),
+                "completion_reason": record.get("completion_reason"),
+                "ownership": record.get("ownership"),
+                "timings": record.get("timings", {}),
+                "retry_count": record.get("retry_count"),
+                "attempt_count": record.get("attempt_count"),
+                "input_file_counts": record.get("input_file_counts") if isinstance(record.get("input_file_counts"), dict) else None,
+            }
+            for record in chunk_records
+        ],
+    }
+
+
+def build_reducer_merge_state_manifest(
+    plan: dict[str, Any],
+    chunk_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    complete_records = [record for record in chunk_records if record.get("completion_status") == "completed"]
+    return {
+        "schema_version": CHUNK_MERGE_STATE_SCHEMA_VERSION,
+        "plan_id": plan.get("plan_id"),
+        "plan_path": str(plan.get("output_manifest_path") or ""),
+        "merge_group_id": plan.get("merge_group_id"),
+        "merge_status": "ready" if len(complete_records) == len(chunk_records) else "incomplete",
+        "merge_order": "sorted_chunk_id",
+        "merge_index": [
+            {
+                "chunk_id": record.get("chunk_id"),
+                "chunk_manifest_path": record.get("manifest_path"),
+                "partial_state_path": record.get("partial_state_path"),
+                "partial_state_schema_version": record.get("partial_state_schema_version"),
+                "completion_status": record.get("completion_status"),
+            }
+            for record in chunk_records
+        ],
+    }
+
+
+def build_chunk_execution_manifest(
+    chunk: ReducerChunk,
+    accumulator: "HazardAccumulator",
+    execution_plan_path: Path,
+    *,
+    plan_id: str | None,
+    attempt_count: int,
+    retry_count: int,
+    execution_status: str,
+    completion_status: str,
+    completion_reason: str | None,
+    deposition_accumulation_seconds: float,
+    trajectory_accumulation_seconds: float,
+    impact_accumulation_seconds: float,
+    partial_state_path: Path | None,
+    ownership: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    stats = accumulator.stats()
+    manifest = {
+        "schema_version": CHUNK_MANIFEST_SCHEMA_VERSION,
+        "chunk_id": chunk.chunk_id,
+        "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "execution_plan": {
+            "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
+            "chunk_id": chunk.chunk_id,
+            "chunk_index": chunk.index,
+            "plan_id": plan_id,
+            "plan_path": str(execution_plan_path),
+            "plan_reference": None,
+        },
+        "execution_status": execution_status,
+        "completion_status": completion_status,
+        "completion_reason": completion_reason,
+        "scientific_status": "not_evaluated",
+        "retry_count": max(0, int(retry_count)),
+        "attempt_count": max(0, int(attempt_count)),
+        "worker_partition_index": chunk.index,
+        "ownership": ownership if isinstance(ownership, dict) else None,
+        "input_file_indices": {
+            "trajectory_file_index_start": chunk.trajectory_start,
+            "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
+            "impact_csv_file_index_start": chunk.impact_csv_start,
+            "impact_csv_file_index_end_exclusive": chunk.impact_csv_end_exclusive,
+            "impact_parquet_file_index_start": chunk.impact_parquet_start,
+            "impact_parquet_file_index_end_exclusive": chunk.impact_parquet_end_exclusive,
+        },
+        "input_file_counts": {
+            "trajectory_files": len(chunk.trajectory_paths),
+            "deposition_files": 1 if chunk.deposition_path is not None else 0,
+            "impact_csv_files": len(chunk.impact_event_paths),
+            "impact_parquet_tables": len(chunk.impact_event_parquet_paths),
+        },
+        "input_rows": {
+            "trajectory_sample_rows": stats.trajectory_sample_count,
+            "deposition_rows": stats.deposition_point_count,
+            "impact_event_rows": stats.impact_event_count,
+            "significant_impact_rows": stats.significant_impact_count,
+        },
+        "reducer_counts": {
+            "trajectory_count": stats.trajectory_count,
+            "deposition_point_count": stats.deposition_point_count,
+            "impact_event_count": stats.impact_event_count,
+            "significant_impact_count": stats.significant_impact_count,
+        },
+        "timings": {
+            "deposition_accumulation_seconds": max(0.0, deposition_accumulation_seconds),
+            "trajectory_accumulation_seconds": max(0.0, trajectory_accumulation_seconds),
+            "impact_accumulation_seconds": max(0.0, impact_accumulation_seconds),
+        },
+        "input_artifacts": reducer_chunk_input_artifacts(chunk),
+        "reducer_contract": reducer_contract_manifest(),
+        "limitations": [
+            "Local in-memory partial reducer state; no distributed scheduler is involved.",
+            "Research diagnostic; not operational hazard-map evidence.",
+        ],
+    }
+    if completion_status == "completed" and partial_state_path is not None:
+        manifest["partial_state_path"] = str(partial_state_path)
+        manifest["partial_state_schema_version"] = CHUNK_PARTIAL_STATE_SCHEMA_VERSION
+    return manifest
+
+
 def run_reducer_accumulation(
     output_dir: Path,
     prefix: str,
@@ -1672,6 +2041,12 @@ def run_reducer_accumulation(
     impact_event_paths: list[Path],
     impact_event_parquet_paths: list[Path],
     worker_count: int,
+    *,
+    owner_id: str | None = None,
+    scheduler_index: int = 0,
+    scheduler_count: int = 1,
+    max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
+    lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
 ) -> tuple[HazardAccumulator, list[str], dict[str, Any] | None, list[Path], HazardAccumulationTimings]:
     if worker_count < 1:
         raise SystemExit("--reducer-workers must be at least 1")
@@ -1688,6 +2063,15 @@ def run_reducer_accumulation(
             impact_event_parquet_paths,
         )
 
+    if scheduler_count < 1:
+        raise SystemExit("--scheduler-count must be at least 1")
+    if scheduler_index < 0 or scheduler_index >= scheduler_count:
+        raise SystemExit("--scheduler-index must be in [0, --scheduler-count)")
+    if lease_seconds < 1:
+        raise SystemExit("--chunk-claim-ttl-seconds must be at least 1")
+    if max_chunk_attempts < 1:
+        raise SystemExit("--max-chunk-attempts must be at least 1")
+
     chunks = build_reducer_chunks(
         prefix,
         worker_count,
@@ -1699,8 +2083,41 @@ def run_reducer_accumulation(
     chunk_dir = output_dir / "chunks"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     execution_plan = execution_plan_path(output_dir, prefix)
-    chunk_plan = build_chunk_execution_plan(prefix, chunks, worker_count, output_dir)
-    existing_chunk_retries: dict[str, int] = {}
+    execution_index = execution_index_path(output_dir, prefix)
+    merge_state_output_path = merge_state_path(output_dir, prefix)
+    now_unix_s = int(datetime.now(timezone.utc).timestamp())
+    chunk_plan = build_chunk_execution_plan(
+        prefix,
+        chunks,
+        worker_count,
+        output_dir,
+        owner_id=owner_id,
+        scheduler_index=scheduler_index,
+        scheduler_count=scheduler_count,
+        max_chunk_attempts=max_chunk_attempts,
+        lease_seconds=lease_seconds,
+    )
+    chunk_records_by_id = {
+        chunk_record.get("chunk_id"): chunk_record
+        for chunk_record in chunk_plan.get("chunk_manifests", [])
+        if isinstance(chunk_record, dict) and isinstance(chunk_record.get("chunk_id"), str)
+    }
+    run_owner_id = owner_id or str(chunk_plan.get("owner_id") or stable_owner_id(prefix))
+    scheduled_chunks = [
+        chunk
+        for chunk in chunks
+        if scheduler_count <= 1 or chunk.index % scheduler_count == scheduler_index
+    ]
+    scheduled_chunk_ids = {chunk.chunk_id for chunk in scheduled_chunks}
+    chunk_plan["scheduled_chunk_count"] = len(scheduled_chunks)
+    chunk_plan["scheduled_chunk_ids"] = sorted(scheduled_chunk_ids)
+    chunk_plan["input_file_count"] = {
+        "trajectory_files": len(trajectory_paths),
+        "impact_csv_files": len(impact_event_paths),
+        "impact_parquet_tables": len(impact_event_parquet_paths),
+        "deposition_files": 1 if deposition_path is not None else 0,
+    }
+
     previous_plan = {}
     if execution_plan.exists():
         try:
@@ -1714,116 +2131,314 @@ def run_reducer_accumulation(
         and sorted((record.get("chunk_id") for record in previous_plan.get("chunk_manifests", [])))
         == sorted((record.get("chunk_id") for record in chunk_plan.get("chunk_manifests", [])))
     ):
-        for record in previous_plan.get("chunk_manifests", []):
-            chunk_id = record.get("chunk_id")
-            retry_count = record.get("retry_count")
-            if isinstance(chunk_id, str) and isinstance(retry_count, int):
-                existing_chunk_retries[chunk_id] = max(0, retry_count)
-    chunk_plan["plan_status"] = "running"
-    chunk_plan["input_file_count"] = {
-        "trajectory_files": len(trajectory_paths),
-        "impact_csv_files": len(impact_event_paths),
-        "impact_parquet_tables": len(impact_event_parquet_paths),
-        "deposition_files": 1 if deposition_path is not None else 0,
-    }
-    write_text(
-        execution_plan,
-        json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
-    )
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        results = list(
-            executor.map(
-                lambda chunk: run_reducer_chunk(
-                    chunk,
-                    grid,
-                    terrain,
-                    block_radius_m,
-                    statistics,
-                    probability,
-                    existing_chunk_retries.get(chunk.chunk_id, 0),
-                    execution_plan,
-                    chunk_plan.get("plan_id"),
-                ),
-                chunks,
-            )
+        chunk_plan["previous_plan_id"] = previous_plan.get("plan_id")
+        previous_records_by_id = {
+            record.get("chunk_id"): record
+            for record in previous_plan.get("chunk_manifests", [])
+            if isinstance(record, dict) and isinstance(record.get("chunk_id"), str)
+        }
+        for chunk_id, chunk_record in chunk_records_by_id.items():
+            previous_record = previous_records_by_id.get(chunk_id)
+            if not isinstance(previous_record, dict):
+                continue
+            if previous_record.get("input_signature") != chunk_record.get("input_signature"):
+                continue
+            for field in (
+                "attempt_count",
+                "retry_count",
+                "completion_status",
+                "completion_reason",
+                "execution_status",
+                "manifest_path",
+                "timings",
+                "input_rows",
+                "input_file_indices",
+                "reducer_counts",
+                "input_file_counts",
+                "ownership",
+                "partial_state_path",
+                "partial_state_schema_version",
+            ):
+                if field in previous_record:
+                    chunk_record[field] = previous_record[field]
+            if is_stale_claim(previous_record, now_unix_s):
+                mark_chunk_stale_release(chunk_record, now_unix_s)
+
+    def record_for_chunk(chunk_id: str) -> dict[str, Any]:
+        return chunk_records_by_id.get(chunk_id, {})
+
+    def build_no_execution_result(chunk: ReducerChunk, record: dict[str, Any]) -> ReducerChunkResult:
+        state_path = record.get("partial_state_path")
+        if not state_path:
+            raise SystemExit(f"chunk {chunk.chunk_id} has no partial state path in plan")
+        accumulator = load_chunk_accumulator_state(
+            Path(state_path),
+            chunk,
+            grid,
+            terrain,
+            block_radius_m,
+            statistics,
+            probability,
         )
-    results.sort(key=lambda result: result.chunk.chunk_id)
+        attempt_count = max(0, int(record.get("attempt_count") or 0))
+        retry_count = max(0, int(record.get("retry_count") or 0))
+        manifest = build_chunk_execution_manifest(
+            chunk,
+            accumulator,
+            execution_plan,
+            plan_id=chunk_plan.get("plan_id"),
+            attempt_count=attempt_count,
+            retry_count=retry_count,
+            execution_status="completed",
+            completion_status="completed",
+            completion_reason=None,
+            deposition_accumulation_seconds=0.0,
+            trajectory_accumulation_seconds=0.0,
+            impact_accumulation_seconds=0.0,
+            partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
+            ownership=record.get("ownership"),
+        )
+        return ReducerChunkResult(
+            chunk=chunk,
+            accumulator=accumulator,
+            warnings=tuple(accumulator.warnings),
+            partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
+            manifest=manifest,
+        )
+
+    scheduled_results: list[ReducerChunkResult] = []
+    scheduled_run_specs: list[tuple[ReducerChunk, int, int]] = []
+    failed_chunks: list[str] = []
+    ineligible_chunks: list[str] = []
+    run_retries = 0
+    scheduled_chunk_records = [
+        chunk_records_by_id[chunk_id]
+        for chunk_id in scheduled_chunk_ids
+        if chunk_id in chunk_records_by_id
+    ]
+
+    for chunk in chunks:
+        record = record_for_chunk(chunk.chunk_id)
+        if not record:
+            continue
+        if chunk.chunk_id not in scheduled_chunk_ids:
+            record["execution_status"] = "not_scheduled"
+            continue
+
+        if is_claim_active_for_other_owner(record, run_owner_id, now_unix_s):
+            release_chunk(
+                record,
+                run_owner_id,
+                now_unix_s,
+                completion_status="not_started",
+                execution_status="skipped",
+                reason="claimed_by_other_owner",
+                attempt_count=max(0, int(record.get("attempt_count") or 0)),
+                retry_count=max(0, int(record.get("retry_count") or 0)),
+            )
+            ineligible_chunks.append(chunk.chunk_id)
+            continue
+
+        if is_stale_claim(record, now_unix_s):
+            mark_chunk_stale_release(record, now_unix_s)
+
+        if chunk_has_valid_reusable_state(chunk, record):
+            scheduled_results.append(build_no_execution_result(chunk, record))
+            continue
+
+        if str(record.get("completion_status") or "not_started") == "completed":
+            record["completion_status"] = "not_started"
+            record["execution_status"] = "planned"
+
+        retry_count = max(0, int(record.get("retry_count") or 0))
+        attempt_count = max(0, int(record.get("attempt_count") or 0))
+        if retry_count >= max_chunk_attempts:
+            release_chunk(
+                record,
+                run_owner_id,
+                now_unix_s,
+                completion_status="failed",
+                execution_status="failed",
+                reason="max_chunk_attempts_exceeded",
+                attempt_count=max(1, attempt_count),
+                retry_count=retry_count,
+            )
+            failed_chunks.append(chunk.chunk_id)
+            continue
+
+        claim_chunk(record, run_owner_id, now_unix_s, lease_seconds)
+        scheduled_run_specs.append((chunk, attempt_count, retry_count))
+
+    if scheduled_run_specs:
+        def run_spec(spec: tuple[ReducerChunk, int, int]) -> ReducerChunkResult:
+            chunk, attempt_count, retry_count = spec
+            return run_reducer_chunk(
+                chunk,
+                grid,
+                terrain,
+                block_radius_m,
+                statistics,
+                probability,
+                attempt_count=attempt_count,
+                retry_count=retry_count,
+                execution_plan_path=execution_plan,
+                plan_id=chunk_plan.get("plan_id"),
+                partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
+            )
+
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            run_results = list(executor.map(run_spec, scheduled_run_specs))
+        scheduled_results.extend(run_results)
+        run_retries += len(run_results)
+
+    scheduled_results.sort(key=lambda result: result.chunk.chunk_id)
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
     warnings: list[str] = []
     chunk_manifest_paths: list[Path] = []
-    completed_chunks = 0
-    failed_chunks: list[str] = []
     total_deposition_seconds = 0.0
     total_trajectory_seconds = 0.0
     total_impact_seconds = 0.0
-    for result in results:
+    for result in scheduled_results:
         manifest = result.manifest
-        chunk_status = str(manifest.get("completion_status") or "unknown")
-        if chunk_status == "completed":
+        chunk_id = result.chunk.chunk_id
+        record = record_for_chunk(chunk_id)
+        completion_status = str(manifest.get("completion_status") or "unknown")
+        execution_status = str(manifest.get("execution_status") or "unknown")
+        if completion_status == "completed":
             accumulator.merge(result.accumulator)
-            completed_chunks += 1
         else:
-            failed_chunks.append(result.chunk.chunk_id)
+            failed_chunks.append(chunk_id)
         warnings.extend(result.warnings)
-        total_deposition_seconds += float(manifest["timings"]["deposition_accumulation_seconds"])
-        total_trajectory_seconds += float(manifest["timings"]["trajectory_accumulation_seconds"])
-        total_impact_seconds += float(manifest["timings"]["impact_accumulation_seconds"])
-        manifest_path = chunk_dir / f"{result.chunk.chunk_id}_manifest.json"
+        if execution_status in {"completed", "failed"} and isinstance(manifest.get("timings"), dict):
+            total_deposition_seconds += float(manifest["timings"]["deposition_accumulation_seconds"])
+            total_trajectory_seconds += float(manifest["timings"]["trajectory_accumulation_seconds"])
+            total_impact_seconds += float(manifest["timings"]["impact_accumulation_seconds"])
+
+        for key in (
+            "execution_status",
+            "completion_status",
+            "completion_reason",
+            "timings",
+            "attempt_count",
+            "retry_count",
+            "ownership",
+            "input_rows",
+            "reducer_counts",
+            "input_file_counts",
+            "input_file_indices",
+        ):
+            if key in manifest:
+                record[key] = manifest[key]
+
+        manifest_path = Path(str(record.get("manifest_path") or chunk_manifest_path(chunk_dir, chunk_id)))
         write_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         chunk_manifest_paths.append(manifest_path)
-        for record in chunk_plan.get("chunk_manifests", []):
-            if record.get("chunk_id") == result.chunk.chunk_id:
-                record["execution_status"] = manifest.get("execution_status")
-                record["completion_status"] = manifest.get("completion_status")
-                record["completion_reason"] = manifest.get("completion_reason")
-                record["manifest_path"] = str(manifest_path)
-                record["timings"] = manifest.get("timings", {})
-                record["input_row_counts"] = manifest.get("input_rows", {})
-                record["reducer_counts"] = manifest.get("reducer_counts", {})
-                record["retry_count"] = manifest.get("retry_count")
-                break
+        record["manifest_path"] = str(manifest_path)
+        release_reason = (
+            "completed"
+            if completion_status == "completed"
+            else (
+                "failed"
+                if completion_status == "failed"
+                else str(manifest.get("completion_reason") or "not_completed")
+            )
+        )
+        release_chunk(
+            record,
+            run_owner_id,
+            int(datetime.now(timezone.utc).timestamp()),
+            completion_status=completion_status,
+            execution_status=execution_status,
+            reason=release_reason,
+            attempt_count=int(manifest.get("attempt_count") or 0),
+            retry_count=int(manifest.get("retry_count") or 0),
+        )
+
+    if scheduler_count == 1 and not all(
+        str(record.get("completion_status") or "") == "completed"
+        for record in scheduled_chunk_records
+    ):
+        failed_chunks.extend(chunk for chunk in ineligible_chunks if chunk not in failed_chunks)
+
+    chunk_plan["completed_chunk_count"] = len(
+        [record for record in chunk_records_by_id.values() if record.get("completion_status") == "completed"]
+    )
+    chunk_plan["failed_chunk_count"] = len(
+        [record for record in chunk_records_by_id.values() if record.get("completion_status") == "failed"]
+    )
+    chunk_plan["chunk_ids_completed"] = [
+        record.get("chunk_id")
+        for record in chunk_records_by_id.values()
+        if record.get("completion_status") == "completed"
+    ]
+    chunk_plan["chunk_ids_failed"] = [
+        record.get("chunk_id")
+        for record in chunk_records_by_id.values()
+        if record.get("completion_status") == "failed"
+    ]
+    if ineligible_chunks:
+        chunk_plan["ineligible_chunk_ids"] = sorted(ineligible_chunks)
+
+    all_scheduled_completed = all(
+        str(record.get("completion_status") or "") == "completed"
+        for record in scheduled_chunk_records
+    )
+    chunk_plan["plan_status"] = "completed" if all_scheduled_completed else "running"
+
+    if any(str(record.get("completion_status") or "") == "failed" for record in scheduled_chunk_records):
+        chunk_plan["plan_status"] = "failed"
+
     if failed_chunks:
         chunk_plan["plan_status"] = "failed"
-        chunk_plan["failed_chunk_ids"] = failed_chunks
-        chunk_plan["completed_chunk_count"] = completed_chunks
-        chunk_plan["failed_chunk_count"] = len(failed_chunks)
-        chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
-        write_text(
-            execution_plan,
-            json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
-        )
+
+    chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
+    execution_index_manifest = build_reducer_execution_index_manifest(
+        chunk_plan,
+        list(chunk_records_by_id.values()),
+        completed_chunk_count=chunk_plan["completed_chunk_count"],
+        failed_chunk_count=chunk_plan["failed_chunk_count"],
+        rerun_count=run_retries,
+        scheduled_chunk_count=len(scheduled_chunk_ids),
+    )
+    merge_state = build_reducer_merge_state_manifest(chunk_plan, list(chunk_records_by_id.values()))
+    write_text(execution_index, json.dumps(execution_index_manifest, indent=2, sort_keys=True) + "\n")
+    write_text(merge_state_output_path, json.dumps(merge_state, indent=2, sort_keys=True) + "\n")
+    write_text(execution_plan, json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n")
+
+    if failed_chunks:
         raise SystemExit(
             "chunk reducer execution failed for one or more chunks: "
-            + ", ".join(sorted(failed_chunks))
+            + ", ".join(sorted(set(failed_chunks)))
         )
 
     reducer_execution = {
         "schema_version": "deterministic_local_reducer_v1",
         "mode": "chunked_local_threads",
         "worker_count": worker_count,
-        "chunk_count": len(results),
+        "chunk_count": len(chunks),
         "plan_id": chunk_plan.get("plan_id"),
         "execution_plan_path": str(execution_plan),
+        "execution_index_path": str(execution_index),
+        "merge_state_path": str(merge_state_output_path),
         "merge_group_id": chunk_plan.get("merge_group_id"),
         "retry_policy": "deterministic_chunk_retry_count_by_manifest",
-        "failed_chunk_count": len(failed_chunks),
-        "completed_chunk_count": completed_chunks,
-        "chunk_ids": [result.chunk.chunk_id for result in results],
+        "rerun_count": run_retries,
+        "failed_chunk_count": len([id for id in failed_chunks if id in scheduled_chunk_ids]),
+        "completed_chunk_count": chunk_plan["completed_chunk_count"],
+        "scheduled_chunk_count": len(scheduled_chunk_ids),
+        "chunk_ids": sorted(result.chunk.chunk_id for result in scheduled_results),
+        "plan_status": chunk_plan.get("plan_status"),
+        "owner_id": chunk_plan.get("owner_id"),
+        "scheduler_index": scheduler_index,
+        "scheduler_count": scheduler_count,
+        "max_chunk_attempts": max_chunk_attempts,
         "merge_order": "sorted_chunk_id",
         "merge_order_independent": True,
-        "partial_state_storage": "in_memory",
+        "partial_state_storage": "chunk_state_json",
         "full_trajectory_output_default": False,
         "reducer_contract": reducer_contract_manifest(),
     }
-    chunk_plan["plan_status"] = "completed"
-    chunk_plan["completed_chunk_count"] = completed_chunks
-    chunk_plan["failed_chunk_count"] = len(failed_chunks)
-    chunk_plan["chunk_ids_completed"] = [result.chunk.chunk_id for result in results if result.manifest.get("completion_status") == "completed"]
-    chunk_plan["updated_unix_s"] = int(datetime.now(timezone.utc).timestamp())
-    write_text(
-        execution_plan,
-        json.dumps(chunk_plan, indent=2, sort_keys=True) + "\n",
-    )
+
     timings = HazardAccumulationTimings(
         bounds_discovery_seconds=0.0,
         deposition_accumulation_seconds=total_deposition_seconds,
@@ -1832,7 +2447,6 @@ def run_reducer_accumulation(
         normalization_seconds=0.0,
     )
     return accumulator, warnings, reducer_execution, chunk_manifest_paths, timings
-
 
 def run_serial_reducer_accumulation(
     grid: GridSpec,
@@ -1927,9 +2541,11 @@ def run_reducer_chunk(
     block_radius_m: float,
     statistics: HazardStatisticConfig,
     probability: HazardProbabilityState | None,
+    attempt_count: int,
     retry_count: int,
     execution_plan_path: Path,
     plan_id: str | None,
+    partial_state_path: Path,
 ) -> ReducerChunkResult:
     warnings: list[str] = []
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
@@ -1939,6 +2555,8 @@ def run_reducer_chunk(
     deposition_seconds = 0.0
     trajectory_seconds = 0.0
     impact_seconds = 0.0
+    prior_attempt_count = max(0, int(attempt_count))
+    prior_retry_count = max(0, int(retry_count))
     deposition_started = time.perf_counter()
     trajectory_started = time.perf_counter()
     impact_started = time.perf_counter()
@@ -1965,68 +2583,31 @@ def run_reducer_chunk(
         completion_reason = str(exc)
         warnings.append(completion_reason)
         stats = accumulator.stats()
-    manifest = {
-        "schema_version": CHUNK_MANIFEST_SCHEMA_VERSION,
-        "chunk_id": chunk.chunk_id,
-        "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
-        "execution_plan": {
-            "schema_version": CHUNK_EXECUTION_PLAN_SCHEMA_VERSION,
-            "chunk_id": chunk.chunk_id,
-            "chunk_index": chunk.index,
-            "plan_id": plan_id,
-            "plan_path": str(execution_plan_path),
-            "plan_reference": None,
-        },
-        "execution_status": execution_status,
-        "completion_status": completion_status,
-        "completion_reason": completion_reason,
-        "scientific_status": "not_evaluated",
-        "retry_count": max(0, retry_count) + (1 if completion_status == "failed" else 0),
-        "attempt_count": 1 + max(0, retry_count),
-        "worker_partition_index": chunk.index,
-        "input_file_indices": {
-            "trajectory_file_index_start": chunk.trajectory_start,
-            "trajectory_file_index_end_exclusive": chunk.trajectory_end_exclusive,
-            "impact_csv_file_index_start": chunk.impact_csv_start,
-            "impact_csv_file_index_end_exclusive": chunk.impact_csv_end_exclusive,
-            "impact_parquet_file_index_start": chunk.impact_parquet_start,
-            "impact_parquet_file_index_end_exclusive": chunk.impact_parquet_end_exclusive,
-        },
-        "input_file_counts": {
-            "trajectory_files": len(chunk.trajectory_paths),
-            "deposition_files": 1 if chunk.deposition_path is not None else 0,
-            "impact_csv_files": len(chunk.impact_event_paths),
-            "impact_parquet_tables": len(chunk.impact_event_parquet_paths),
-        },
-        "input_rows": {
-            "trajectory_sample_rows": stats.trajectory_sample_count,
-            "deposition_rows": stats.deposition_point_count,
-            "impact_event_rows": stats.impact_event_count,
-            "significant_impact_rows": stats.significant_impact_count,
-        },
-        "reducer_counts": {
-            "trajectory_count": stats.trajectory_count,
-            "deposition_point_count": stats.deposition_point_count,
-            "impact_event_count": stats.impact_event_count,
-            "significant_impact_count": stats.significant_impact_count,
-        },
-        "timings": {
-            "deposition_accumulation_seconds": max(0.0, deposition_seconds),
-            "trajectory_accumulation_seconds": max(0.0, trajectory_seconds),
-            "impact_accumulation_seconds": max(0.0, impact_seconds),
-        },
-        "input_artifacts": reducer_chunk_input_artifacts(chunk),
-        "reducer_contract": reducer_contract_manifest(),
-        "limitations": [
-            "Local in-memory partial reducer state; no distributed scheduler is involved.",
-            "Research diagnostic; not operational hazard-map evidence.",
-        ],
-    }
+    manifest = build_chunk_execution_manifest(
+        chunk,
+        accumulator,
+        execution_plan_path,
+        plan_id=plan_id,
+        attempt_count=prior_attempt_count + 1,
+        retry_count=prior_retry_count + (1 if completion_status == "failed" else 0),
+        execution_status=execution_status,
+        completion_status=completion_status,
+        completion_reason=completion_reason,
+        deposition_accumulation_seconds=deposition_seconds,
+        trajectory_accumulation_seconds=trajectory_seconds,
+        impact_accumulation_seconds=impact_seconds,
+        partial_state_path=partial_state_path if completion_status == "completed" else None,
+    )
+    if completion_status == "completed":
+        partial_state_payload = serialize_chunk_accumulator_state(accumulator, chunk)
+        write_text(partial_state_path, json.dumps(partial_state_payload, indent=2, sort_keys=True) + "\n")
+        manifest["partial_state_path"] = str(partial_state_path)
+
     return ReducerChunkResult(
         chunk=chunk,
         accumulator=accumulator,
         warnings=tuple(warnings),
-        partial_state_path=None,
+        partial_state_path=partial_state_path,
         manifest=manifest,
     )
 
@@ -2056,6 +2637,146 @@ def reducer_contract_manifest() -> dict[str, Any]:
         "significant_impact_counts": "cellwise significant-impact counts add across chunks",
         "merge_order": "deterministic after sorting chunk_id",
     }
+
+
+def serialize_grid(grid: list[list[float]]) -> list[list[float]]:
+    return [list(row) for row in grid]
+
+
+def deserialize_grid(raw: Any) -> list[list[float]]:
+    if not isinstance(raw, list):
+        raise ValueError("serialized grid must be a list of rows")
+    values: list[list[float]] = []
+    for row in raw:
+        if not isinstance(row, list):
+            raise ValueError("serialized grid row must be a list")
+        values.append([float(value) for value in row])
+    return values
+
+
+def serialize_threshold_grids(threshold_grids: dict[float, list[list[float]]]) -> dict[str, list[list[float]]]:
+    return {str(threshold): serialize_grid(grid) for threshold, grid in threshold_grids.items()}
+
+
+def deserialize_threshold_grids(raw: Any) -> dict[float, list[list[float]]]:
+    if not isinstance(raw, dict):
+        raise ValueError("serialized threshold grids must be a dict")
+    threshold_grids: dict[float, list[list[float]]] = {}
+    for threshold_text, rows in raw.items():
+        threshold = float(threshold_text)
+        threshold_grids[threshold] = deserialize_grid(rows)
+    return threshold_grids
+
+
+def serialize_chunk_accumulator_state(accumulator: "HazardAccumulator", chunk: ReducerChunk) -> dict[str, Any]:
+    return {
+        "schema_version": CHUNK_PARTIAL_STATE_SCHEMA_VERSION,
+        "chunk_id": chunk.chunk_id,
+        "input_signature": chunk_input_signature(chunk),
+        "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
+        "trajectory_count": accumulator.trajectory_count,
+        "trajectory_sample_count": accumulator.trajectory_sample_count,
+        "deposition_point_count": accumulator.deposition_point_count,
+        "impact_event_count": accumulator.impact_event_count,
+        "significant_impact_count": accumulator.significant_impact_count,
+        "warnings": list(accumulator.warnings),
+        "inputs": {
+            "trajectory_count": accumulator.trajectory_count,
+            "deposition_point_count": accumulator.deposition_point_count,
+            "impact_event_count": accumulator.impact_event_count,
+            "significant_impact_count": accumulator.significant_impact_count,
+        },
+        "grids": {
+            "reach": serialize_grid(accumulator.reach),
+            "max_ke": serialize_grid(accumulator.max_ke),
+            "max_jump": serialize_grid(accumulator.max_jump),
+            "kinetic_exceedance": serialize_threshold_grids(accumulator.kinetic_exceedance),
+            "weighted_kinetic_exceedance": serialize_threshold_grids(accumulator.weighted_kinetic_exceedance),
+            "jump_exceedance": serialize_threshold_grids(accumulator.jump_exceedance),
+            "weighted_jump_exceedance": serialize_threshold_grids(accumulator.weighted_jump_exceedance),
+            "velocity_exceedance": serialize_threshold_grids(accumulator.velocity_exceedance),
+            "weighted_velocity_exceedance": serialize_threshold_grids(accumulator.weighted_velocity_exceedance),
+            "deposition": serialize_grid(accumulator.deposition),
+            "weighted_deposition": serialize_grid(accumulator.weighted_deposition)
+            if accumulator.weighted_deposition is not None
+            else None,
+            "impact_density": serialize_grid(accumulator.impact_density),
+            "weighted_impact_density": serialize_grid(accumulator.weighted_impact_density)
+            if accumulator.weighted_impact_density is not None
+            else None,
+        },
+        "weighted_significant_impact_weight": accumulator.weighted_significant_impact_weight,
+        "deposition_points": [
+            {
+                "x_m": point.x_m,
+                "y_m": point.y_m,
+                "trajectory_id": point.trajectory_id,
+                "properties": dict(point.properties),
+            }
+            for point in accumulator.deposition_points
+        ],
+    }
+
+
+def load_chunk_accumulator_state(
+    path: Path,
+    chunk: ReducerChunk,
+    grid: GridSpec,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+    statistics: HazardStatisticConfig,
+    probability: HazardProbabilityState | None,
+) -> HazardAccumulator:
+    payload = read_json(path)
+    if not isinstance(payload, dict) or payload.get("schema_version") != CHUNK_PARTIAL_STATE_SCHEMA_VERSION:
+        raise SystemExit(f"invalid partial chunk state at {path}")
+    if payload.get("chunk_id") != chunk.chunk_id or payload.get("input_signature") != chunk_input_signature(chunk):
+        raise SystemExit(f"partial chunk state at {path} does not match chunk {chunk.chunk_id}")
+    accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    grids = payload.get("grids")
+    if not isinstance(grids, dict):
+        raise SystemExit(f"partial chunk state {path} missing grids")
+    accumulator.reach = deserialize_grid(grids.get("reach"))
+    accumulator.max_ke = deserialize_grid(grids.get("max_ke"))
+    accumulator.max_jump = deserialize_grid(grids.get("max_jump"))
+    accumulator.deposition = deserialize_grid(grids.get("deposition"))
+    accumulator.impact_density = deserialize_grid(grids.get("impact_density"))
+    accumulator.kinetic_exceedance = deserialize_threshold_grids(grids.get("kinetic_exceedance"))
+    accumulator.jump_exceedance = deserialize_threshold_grids(grids.get("jump_exceedance"))
+    accumulator.velocity_exceedance = deserialize_threshold_grids(grids.get("velocity_exceedance"))
+    accumulator.weighted_kinetic_exceedance = deserialize_threshold_grids(grids.get("weighted_kinetic_exceedance"))
+    accumulator.weighted_jump_exceedance = deserialize_threshold_grids(grids.get("weighted_jump_exceedance"))
+    accumulator.weighted_velocity_exceedance = deserialize_threshold_grids(grids.get("weighted_velocity_exceedance"))
+    weighted_deposition = grids.get("weighted_deposition")
+    weighted_impact_density = grids.get("weighted_impact_density")
+    if weighted_deposition is None:
+        accumulator.weighted_deposition = None
+    else:
+        accumulator.weighted_deposition = deserialize_grid(weighted_deposition)
+    if weighted_impact_density is None:
+        accumulator.weighted_impact_density = None
+    else:
+        accumulator.weighted_impact_density = deserialize_grid(weighted_impact_density)
+    accumulator.trajectory_count = int(payload.get("trajectory_count", 0))
+    accumulator.trajectory_sample_count = int(payload.get("trajectory_sample_count", 0))
+    accumulator.deposition_point_count = int(payload.get("deposition_point_count", 0))
+    accumulator.impact_event_count = int(payload.get("impact_event_count", 0))
+    accumulator.significant_impact_count = int(payload.get("significant_impact_count", 0))
+    accumulator.weighted_significant_impact_weight = float(payload.get("weighted_significant_impact_weight", 0.0))
+    points_raw = payload.get("deposition_points", [])
+    accumulator.deposition_points = [
+        DepositionPoint(
+            x_m=point.get("x_m"),
+            y_m=point.get("y_m"),
+            trajectory_id=point.get("trajectory_id"),
+            properties=dict(point.get("properties", {})),
+        )
+        for point in points_raw
+        if isinstance(point, dict)
+    ]
+    warnings_raw = payload.get("warnings", [])
+    accumulator.warnings = [str(item) for item in warnings_raw] if isinstance(warnings_raw, list) else []
+    return accumulator
 
 
 def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> HazardStatisticConfig:

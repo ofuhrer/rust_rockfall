@@ -132,15 +132,16 @@ Detailed sources: `scalability_and_data_formats_review.md`,
 
 ### Deterministic Chunk Execution Plans
 
-Decision: emit deterministic per-chunk reducer execution plans for local post-processing
-reducers so partial completion and failure states are recoverable without changing
-physics or defaults.
+Decision: implement deterministic per-chunk reducer execution contracts that support
+local restart/retry, ownership claims, and merge-sidecar bookkeeping so partial
+completion and failure states are recoverable without changing physics or defaults.
 
 Current status: active and implemented for hazard-layer runs using
-`--reducer-workers N` with `N > 1`; each run now writes `execution_plan_v1`
-and `chunk_execution_manifest_v1`/`hazard_reducer_chunk_manifest_v1`-style state
-with deterministic chunk ids, input index provenance, retry counters, and manifest
-artifact output accounting.
+`--reducer-workers N` with `N > 1`; each run now writes `execution_plan_v1`,
+`reducer_execution_index_v1`, `reducer_merge_state_v1`, and
+`chunk_execution_manifest_v1`/`hazard_reducer_chunk_manifest_v1`-style state
+with deterministic chunk ids, input index provenance, retry/attempt counters,
+scheduler ownership metadata, and manifest output accounting.
 
 Rationale: large Swiss-scale pre-pilots require stable partial-reducer provenance
 before introducing job arrays or scheduler-level restart logic.

@@ -640,16 +640,19 @@ Hazard-layer builds can opt in to local chunked reducer execution with
 `reducer_execution` section with schema version
 `deterministic_local_reducer_v1`, sorted chunk-id merge order, worker count,
 chunk ids, and reducer contract. `run` output now includes a manifest for each
-chunk (`hazard_reducer_chunk_manifest_v1`) and a per-run
-`<prefix>_execution_plan_v1.json` `execution_plan_v1` sidecar under the same
-output root. Chunk manifests include input artifact identities, deterministic
-input index ranges, row counts, reducer counts, timings, completion status,
-explicit retry count, and local in-memory partial-state limitations. The
-execution plan persists planned/completed chunk state, schema version, merge-group
-id, deterministic chunk partition ranges, and completion transitions. The chunked
-reducer is required to preserve serial output values for current conditional
-diagnostic layers; it does not introduce annual frequency, physical
-probability, or distributed execution semantics.
+chunk (`hazard_reducer_chunk_manifest_v1`), an
+`<prefix>_execution_plan_v1.json` `execution_plan_v1` sidecar, an
+`<prefix>_reducer_execution_index_v1.json` `reducer_execution_index_v1` sidecar,
+and an `<prefix>_reducer_merge_state_v1.json` `reducer_merge_state_v1` sidecar
+under the same output root. Chunk manifests include input artifact identities,
+deterministic input index ranges, row counts, reducer counts, timings,
+completion status, explicit retry/attempt counters, ownership/claim metadata,
+and local in-memory partial-state limitations. The execution plan persists
+planned/completed chunk state, schema version, owner identity, scheduler
+partition metadata, merge-group id, deterministic chunk partition ranges, and
+completion transitions. The chunked reducer is required to preserve serial output
+values for current conditional diagnostic layers; it does not introduce annual
+frequency, physical probability, or distributed execution semantics.
 
 Validation and verification cases can also opt in to deterministic local
 parallel ensemble execution with:
@@ -668,9 +671,9 @@ runner uses the existing local threaded ensemble kernel and writes
 deterministic contiguous chunk ids, trajectory index ranges, trajectory counts,
 and merge order `requested_trajectory_index`. Cases that omit
 `ensemble_workers` keep the previous serial ensemble path and do not write this
-section. This is local execution provenance only; it is not a resume model,
-SLURM/MPI orchestration, annual frequency, physical probability, or operational
-hazard-map semantics.
+section. This is local execution provenance only; it is not a cross-process
+orchestrator, SLURM/MPI scheduling model, annual frequency, physical
+probability, or operational hazard-map semantics.
 
 Phase 6 public real-site conditional pilots must be predeclared with
 `public_real_site_conditional_pilot_run_v1` before execution. The run-freeze

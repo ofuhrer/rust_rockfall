@@ -502,8 +502,9 @@ before SLURM orchestration.
 Current status: implemented at the local contract level, but not yet exercised
 for a selected target-scale run. The `--reducer-workers` path gives
 deterministic local chunking and reducer manifests for current hazard products.
-`execution_plan_v1` and per-chunk retry-aware `hazard_reducer_chunk_manifest_v1`
-sidecars are now emitted so partial chunk lifecycle and failure provenance is
+`execution_plan_v1`, `reducer_execution_index_v1`, `reducer_merge_state_v1`,
+and per-chunk retry-aware `hazard_reducer_chunk_manifest_v1` sidecars are now
+emitted so partial chunk lifecycle, ownership/claim, and failure provenance are
 recorded during reducer runs.
 `scripts/build_hazard_layers.py --conditional-curve-export summary-only`
 provides an opt-in no-default-change gate for larger pre-scale runs that need
@@ -526,8 +527,9 @@ Implementation work:
   the selected run before changing any gate decision;
 - keep full trajectory/event CSV output as explicit debug/audit mode, not the
   default for large hazard runs;
-- record deterministic per-chunk retry and completion transitions in execution plans
-  before moving from local reducer validation to job-array orchestration;
+- record deterministic per-chunk retry, ownership/claim, and completion transitions
+  in execution plans plus index/merge manifests before moving from local reducer
+  validation to job-array orchestration;
 - defer SLURM/CSCS orchestration until local chunk/reducer contracts and
   target-scale evidence are stable.
 
@@ -535,8 +537,10 @@ Current Phase 5 implementation starts this path in the hazard-layer reducer:
 `--reducer-workers N` partitions trajectory and impact input files into
 deterministic local chunks, accumulates in-memory partial reducer states in
 threads, merges chunks after sorting by chunk id, and writes
-`hazard_reducer_chunk_manifest_v1` plus `execution_plan_v1` sidecars that
-capture chunk statuses, index provenance, and deterministic retry-aware lifecycle.
+`hazard_reducer_chunk_manifest_v1`, `execution_plan_v1`,
+`reducer_execution_index_v1`, and `reducer_merge_state_v1` sidecars that capture
+chunk statuses, scheduler ownership metadata, index provenance, and deterministic
+retry-aware lifecycle.
 It covers current conditional
 diagnostic reducers for reach, threshold exceedance, maxima, deposition density,
 and significant-impact density. It does not add SLURM orchestration,

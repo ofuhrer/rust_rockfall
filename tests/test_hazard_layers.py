@@ -1804,6 +1804,151 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("simulated chunk execution failure", failed_chunks[0].get("completion_reason") or "")
             self.assertEqual(failed_chunks[0].get("retry_count"), 1)
 
+    def test_chunked_reducer_retries_failed_chunks_on_restart(self) -> None:
+        original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+        def fail_first_trajectory_once(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
+            if path.name == "trajectory_000000.csv":
+                raise RuntimeError("simulated transient chunk failure")
+            return original_read_trajectory_sample_batch(path, warnings)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+                "--chunk-owner-id",
+                "recovery_owner",
+            ]
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_first_trajectory_once):
+                with self.assertRaises(SystemExit):
+                    hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)])
+
+            execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
+            failed_plan = json.loads(execution_plan_path.read_text())
+            failed_chunks = [
+                record for record in failed_plan.get("chunk_manifests", []) if record.get("completion_status") == "failed"
+            ]
+            self.assertEqual(len(failed_chunks), 1)
+            failed_chunk_id = failed_chunks[0].get("chunk_id")
+            self.assertEqual(failed_chunks[0].get("attempt_count"), 1)
+            self.assertEqual(failed_chunks[0].get("retry_count"), 1)
+            self.assertIn("simulated transient chunk failure", failed_chunks[0].get("completion_reason") or "")
+
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]),
+                0,
+            )
+            recovered_plan = json.loads(execution_plan_path.read_text())
+            self.assertEqual(recovered_plan.get("plan_status"), "completed")
+            recovered_failed = [record for record in recovered_plan.get("chunk_manifests", []) if record.get("chunk_id") == failed_chunk_id]
+            self.assertEqual(len(recovered_failed), 1)
+            self.assertEqual(recovered_failed[0].get("completion_status"), "completed")
+            self.assertEqual(recovered_failed[0].get("attempt_count"), 2)
+            self.assertEqual(recovered_failed[0].get("retry_count"), 1)
+
+    def test_chunked_reducer_reuses_partial_state_without_reexecution(self) -> None:
+        original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+                "--scheduler-count",
+                "2",
+                "--scheduler-index",
+                "0",
+                "--chunk-owner-id",
+                "reuse_owner",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]),
+                0,
+            )
+
+            read_calls: list[Path] = []
+
+            def fail_if_rerun(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
+                read_calls.append(path)
+                raise AssertionError(
+                    f"trajectory reader should not run for reused chunk on resume: {path}"
+                )
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_if_rerun):
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]),
+                    0,
+                )
+            self.assertEqual(read_calls, [])
+            execution_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            chunk_records = execution_plan.get("chunk_manifests", [])
+            completed = [record for record in chunk_records if record.get("completion_status") == "completed"]
+            self.assertEqual(len(completed), 1)
+
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            self.assertEqual(execution_index.get("schema_version"), "reducer_execution_index_v1")
+            self.assertEqual(execution_index.get("scheduled_chunk_count"), 1)
+            self.assertEqual(execution_index.get("completed_chunk_count"), 1)
+
+    def test_chunked_reducer_cross_partition_scheduler_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+                "--scheduler-count",
+                "2",
+                "--chunk-owner-id",
+                "cross_partition_owner",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--scheduler-index", "0", "--output-dir", str(chunked_dir)]),
+                0,
+            )
+            partition_zero_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            self.assertEqual(partition_zero_plan.get("plan_status"), "completed")
+            partition_zero_completed = [
+                record for record in partition_zero_plan.get("chunk_manifests", []) if record.get("completion_status") == "completed"
+            ]
+            self.assertEqual(len(partition_zero_completed), 1)
+
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--scheduler-index", "1", "--output-dir", str(chunked_dir)]),
+                0,
+            )
+            final_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            self.assertEqual(final_plan.get("plan_status"), "completed")
+            self.assertEqual(final_plan.get("scheduled_chunk_count"), 1)
+            self.assertEqual(len([record for record in final_plan.get("chunk_manifests", []) if record.get("completion_status") == "completed"]), 2)
+            merge_state = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text())
+            self.assertEqual(merge_state.get("schema_version"), "reducer_merge_state_v1")
+            self.assertEqual(merge_state.get("merge_status"), "ready")
+
     def test_parquet_impact_events_match_csv_impact_density(self) -> None:
         try:
             import pyarrow  # noqa: F401  # type: ignore

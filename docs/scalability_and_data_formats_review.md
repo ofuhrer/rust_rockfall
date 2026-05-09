@@ -84,12 +84,12 @@ which makes small-to-medium ensemble layers scientifically more meaningful than
 representative-trajectory layers.
 
 Current note: the hazard builder also has an opt-in local threaded reducer with
-deterministic chunk manifests and serial/chunk parity tests. This is a
-post-processing reducer only. It is not a parallel trajectory runner, not a
-partially resumable execution workflow; the current `execution_plan_v1` and
-`chunk_execution_manifest_v1` sidecars allow deterministic chunk lifecycle and
-retry tracking within the post-processing reducer. It is still not a tiled/
-distributed raster reducer, and not SLURM orchestration.
+deterministic chunk manifests and serial/chunk parity tests. It is a
+post-processing reducer only and now tracks claim-aware lifecycle and restart state
+via `execution_plan_v1`, `reducer_execution_index_v1`, `reducer_merge_state_v1`,
+and `chunk_execution_manifest_v1` sidecars. It is not a parallel trajectory
+runner, not a tiled/distributed raster reducer, and not a full SLURM
+or cross-process orchestration engine.
 
 ### Outputs
 
@@ -121,8 +121,8 @@ not a production-scale data layout.
 | Repeated DEM loading | Current APIs can reuse terrain within local loops, but workflows rebuild by case/script boundary | Large DEMs will be expensive to parse repeatedly; ASCII DEM is not tiled or indexed | Large DEM tiles or many worker processes | Medium | Future after real terrain ingestion |
 | ESRI ASCII terrain format | DEM fixtures and hazard grids | No CRS, inefficient text format, no tiling/compression | Pilot geodata exchange and large rasters | High | Near-term for Swiss pilot outputs |
 | Lack of CRS/reference-grid metadata | Hazard outputs and some case metadata | Products cannot be safely aligned or exchanged as Swiss geodata | Any LV95/LN02 pilot product | High | Urgent before Swiss pilot |
-| Partial manifest coverage | Verification, validation, and hazard outputs can write `run_manifest_v1`; hazard reducer chunk manifests exist; opt-in validation ensembles record local trajectory chunk ids and index ranges; calibration and resumable trajectory chunk manifests are still absent | Hard to track partial completion, seed ranges across jobs, and resume state outside one local process | Multiple chunks/jobs/scenarios | High | Near-term |
-| No restart/resume model | Validation and hazard scripts | Failed large jobs require manual inspection and rerun; partial outputs lack a formal completion record | Long ensembles and job arrays | High | Near-term |
+| Partial manifest coverage | Verification, validation, and hazard outputs write `run_manifest_v1`; hazard reducer chunk manifests, execution-index, and merge-state sidecars now track retry-aware lifecycle and restart ownership state | Hard to track partial completion, seed ranges across jobs, and cross-process restart scheduling without a dispatcher | Multiple chunks/jobs/scenarios | High | Near-term |
+| No restart/resume model (cross-process) | Validation and hazard scripts | Large jobs still need manual inspector workflow when coordinating across nodes; local manifest contracts now preserve deterministic rerun semantics within each job partition | Long ensembles and job arrays | High | Near-term |
 | Serial default ensemble orchestration | `simulate_ensemble` remains the default; validation cases can opt in to `random.ensemble_workers` for local deterministic chunks | Deterministic but still local; no separate chunk jobs, resumable completion records, or distributed merge contracts | Many release zones or national domains | Medium to high | Future after manifest/chunk schema |
 | Python row-oriented processing | Hazard builder | Simple and flexible, but pure-Python loops and dict rows are slow for very large tables | Millions to billions of rows | Medium to high | Future after streaming design |
 | JSON diagnostics growth | Case reports and impact-event JSON | JSON is readable but inefficient for large nested records; impact-event JSON can become huge | Full event logs or many case reports | Medium | Future; keep JSON for summaries |
@@ -185,18 +185,20 @@ requires per-cell curve rows.
   trajectory/event directories.
 - Full ensemble storage is represented as one CSV per trajectory, not as a
   chunked dataset.
-- The hazard builder streams CSV rows into one complete in-memory raster, but
+- The hazard builder streams CSV rows into one complete in-memory raster, and it
   does not yet receive samples/events directly from the simulator or emit tiled
-  partial reducer states. The `execution_plan_v1` plus per-chunk manifests now
-  provide deterministic local resumability for completed/failed chunk states.
+  partial reducer states. `execution_plan_v1`, `reducer_execution_index_v1`, and
+  `reducer_merge_state_v1` plus per-chunk manifests now provide deterministic
+  local resumability for completed/failed chunk states with explicit claim and
+  retry provenance.
 - `run_manifest_v1` sidecars now describe run outputs, file sizes, row counts,
   config hashes, terrain source, warnings, and completion status. Hazard-layer
   reducer chunk manifests exist for the local post-processing reducer, and
   opt-in validation ensembles record local trajectory-execution chunk ids and
   trajectory index ranges. Resumable chunk manifests with independent job
   status, output checksums, CRS context, and restart semantics are partially
-  implemented for chunked reducer post-processing via `execution_plan_v1`; full
-  cross-process restart scheduling is still pending.
+  implemented for chunked reducer post-processing through these chunk-sidecar
+  contracts; full cross-process restart scheduling is still pending.
 - There is no deterministic tiled/distributed partial-reducer contract for
   merging hazard rasters from many jobs.
 - Debug/report artifacts and production artifacts are not yet separated by
