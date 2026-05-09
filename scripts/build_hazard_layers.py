@@ -424,6 +424,7 @@ def chunk_execution_signature(
     if probability is not None:
         probability_fingerprint = {
             **probability.config.as_dict(),
+            "metadata_content_sha256": path_content_sha256(probability.config.metadata_path),
             "total_input_weight": probability.total_input_weight,
             "total_filtered_weight": probability.total_filtered_weight,
         }
@@ -437,10 +438,16 @@ def chunk_execution_signature(
         map_package_policy["source_zone_id"] = map_package_state.source_zone_id
         map_package_policy["scenario_ids"] = list(map_package_state.scenario_ids)
         map_package_policy["source_zone_metadata_path"] = str(map_package_state.config.source_zone_metadata_path)
+        map_package_policy["source_zone_metadata_content_sha256"] = path_content_sha256(
+            map_package_state.config.source_zone_metadata_path
+        )
         map_package_policy["scenario_table_path"] = (
             str(map_package_state.config.scenario_table_path)
             if map_package_state.config.scenario_table_path is not None
             else None
+        )
+        map_package_policy["scenario_table_content_sha256"] = path_content_sha256(
+            map_package_state.config.scenario_table_path
         )
         map_package_policy["map_package_manifest_json"] = bool(map_package_state.config.map_package_manifest_json)
     else:
@@ -450,7 +457,9 @@ def chunk_execution_signature(
         map_package_policy["source_zone_id"] = None
         map_package_policy["scenario_ids"] = []
         map_package_policy["source_zone_metadata_path"] = None
+        map_package_policy["source_zone_metadata_content_sha256"] = None
         map_package_policy["scenario_table_path"] = None
+        map_package_policy["scenario_table_content_sha256"] = None
         map_package_policy["map_package_manifest_json"] = False
     payload = json.dumps(
         {
@@ -482,6 +491,14 @@ def chunk_execution_signature(
             "output_flags": {
                 "pilot_gis_package": pilot_gis_package is not None,
                 "pilot_gis_package_manifest_json": bool(pilot_gis_package and pilot_gis_package.package_manifest_json),
+                "pilot_gis_package_manifest_json_path": str(
+                    pilot_gis_package.package_manifest_json
+                )
+                if pilot_gis_package and pilot_gis_package.package_manifest_json
+                else None,
+                "pilot_gis_package_manifest_json_content_sha256": path_content_sha256(
+                    pilot_gis_package.package_manifest_json if pilot_gis_package else None
+                ),
                 "export_geotiff": raster_export_config.geotiff,
             },
             "source_scenario_policy": {
@@ -589,6 +606,15 @@ def file_fingerprint(path: Path) -> dict[str, Any]:
         "size_bytes": path.stat().st_size,
         "sha256": sha256_file(path),
     }
+
+
+def path_content_sha256(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    try:
+        return sha256_file(path)
+    except OSError:
+        return None
 
 
 def _chunk_id_range_start(index: int, total_chunks: int, total_items: int) -> int:

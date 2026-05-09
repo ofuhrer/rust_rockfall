@@ -64,6 +64,65 @@ class HazardLayerTests(unittest.TestCase):
         self.assertEqual(state.get("execution_state_schema_version"), hazard.CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION)
         return state
 
+    def _weighted_map_package_case(
+        self,
+        work: Path,
+        map_product_id: str,
+        metadata_path: Path | None = None,
+    ) -> tuple[Path, Path, Path, Path]:
+        metadata_rows = fixture_weight_rows()
+        for index, row in enumerate(metadata_rows):
+            row["source_zone_id"] = "zone_a"
+            row["scenario_id"] = "scenario_a" if index == 0 else "scenario_b"
+        metadata_path = metadata_path or (work / "weighted_metadata.csv")
+        write_metadata_csv(metadata_path, metadata_rows)
+        case_path = write_weighted_case(work / "weighted_case.yaml", metadata_path)
+        source_zone_metadata_path = work / "source_zone_metadata.yaml"
+        shutil.copy(
+            str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "source_zone_valid.yaml"),
+            source_zone_metadata_path,
+        )
+        scenario_table_path = work / "scenario_table.csv"
+        shutil.copy(
+            str(ROOT / "tests" / "fixtures" / "probabilistic_phase1" / "scenario_level2_weighted.csv"),
+            scenario_table_path,
+        )
+        map_package_manifest_json = work / f"{map_product_id}_map_package_manifest.json"
+        return case_path, source_zone_metadata_path, scenario_table_path, map_package_manifest_json
+
+    def _weighted_map_package_args(
+        self,
+        case_path: Path,
+        source_zone_metadata_path: Path,
+        scenario_table_path: Path,
+        map_package_manifest_json: Path,
+        output_dir: Path,
+    ) -> list[str]:
+        return [
+            "--case",
+            str(case_path),
+            "--output-dir",
+            str(output_dir),
+            "--cell-size",
+            "1.0",
+            "--no-plots",
+            "--reducer-workers",
+            "2",
+            "--map-product-id",
+            "phase1_zone_a_weighted",
+            "--probability-mode",
+            "sampling_weighted_conditional",
+            "--normalization-scope",
+            "conditioned_on_filter",
+            "--source-zone-metadata-path",
+            str(source_zone_metadata_path),
+            "--scenario-table-path",
+            str(scenario_table_path),
+            "--map-package-manifest-json",
+            str(map_package_manifest_json),
+            "--export-geotiff",
+        ]
+
     def assert_chunk_state_row_counts_align_with_manifest(self, state: dict[str, Any], manifest: dict[str, Any]) -> None:
         self.assertEqual(state.get("trajectory_count"), manifest.get("reducer_counts", {}).get("trajectory_count"))
         self.assertEqual(state.get("trajectory_sample_count"), manifest.get("input_rows", {}).get("trajectory_sample_rows"))
@@ -2426,6 +2485,289 @@ class HazardLayerTests(unittest.TestCase):
                     self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
                     self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
 
+    def test_chunked_reducer_replay_fingerprint_reuse(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            output_dir = chunked_dir
+            case_path, source_zone_metadata_path, scenario_table_path, package_manifest_json = self._weighted_map_package_case(
+                work,
+                map_product_id="phase1_zone_a_weighted",
+            )
+            common_args = self._weighted_map_package_args(
+                case_path,
+                source_zone_metadata_path,
+                scenario_table_path,
+                package_manifest_json,
+                output_dir,
+            )
+            self.assertEqual(hazard.main_with_args(common_args), 0)
+            execution_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): {
+                    "execution_signature": record.get("execution_signature"),
+                    "input_signature": record.get("input_signature"),
+                }
+                for record in execution_plan.get("chunk_manifests", [])
+            }
+            self.assertTrue(first_signatures)
+            for chunk_id, signatures in first_signatures.items():
+                self.assertIsNotNone(chunk_id)
+                self.assertIsNotNone(signatures["execution_signature"])
+                self.assertIsNotNone(signatures["input_signature"])
+
+            read_calls: list[Path] = []
+            original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+            def fail_on_trajectory_read(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+                read_calls.append(path)
+                return original_read_trajectory_sample_batch(path, warnings)
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_on_trajectory_read):
+                self.assertEqual(hazard.main_with_args(common_args), 0)
+            self.assertEqual(read_calls, [])
+
+            # no-ops without changing metadata/replay-relevant inputs
+            second_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            second_index = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_execution_index_v1.json").read_text())
+            merge_state = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_merge_state_v1.json").read_text())
+            second_merge_index = {
+                record.get("chunk_id"): record
+                for record in merge_state.get("merge_index", [])
+                if isinstance(record.get("chunk_id"), str)
+            }
+            second_index_by_chunk = {
+                record.get("chunk_id"): record
+                for record in second_index.get("chunk_records", [])
+            }
+
+            for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                first_signature = first_signatures.get(chunk_id)
+                self.assertIsNotNone(first_signature)
+                self.assertEqual(record.get("execution_signature"), first_signature["execution_signature"])
+                self.assertEqual(record.get("input_signature"), first_signature["input_signature"])
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                merge_record = second_merge_index.get(chunk_id)
+                index_record = second_index_by_chunk.get(chunk_id)
+                self.assertIsNotNone(index_record)
+                self.assertIsNotNone(merge_record)
+                self.assertEqual(index_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(index_record.get("input_signature"), record.get("input_signature"))
+                self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
+                self.assertNotEqual(index_record.get("orchestration_decision"), "executed")
+                self.assertNotEqual(merge_record.get("orchestration_decision"), "executed")
+                self.assertEqual(manifest.get("orchestration_decision"), index_record.get("orchestration_decision"))
+
+    def test_chunked_reducer_source_filter_change_forces_reexecution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            output_dir = chunked_dir
+            case_path, source_zone_metadata_path, scenario_table_path, package_manifest_json = self._weighted_map_package_case(
+                work,
+                map_product_id="phase1_zone_a_weighted",
+            )
+            common_args = self._weighted_map_package_args(
+                case_path,
+                source_zone_metadata_path,
+                scenario_table_path,
+                package_manifest_json,
+                output_dir,
+            )
+            case = yaml_load(case_path)
+            metadata_rows = []
+            metadata_path = Path(case["hazard_probability"]["metadata_path"])
+            with metadata_path.open(newline="") as file:
+                metadata_rows = [dict(row) for row in csv.DictReader(file)]
+            for row in metadata_rows:
+                row["scenario_id"] = "scenario_a"
+            write_csv_rows(metadata_path, metadata_rows)
+            self.assertEqual(hazard.main_with_args(common_args), 0)
+            first_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): record.get("execution_signature")
+                for record in first_plan.get("chunk_manifests", [])
+            }
+            self.assertTrue(first_signatures)
+
+            filtered_case = yaml_load(case_path)
+            filtered_case.setdefault("hazard_probability", {})
+            filtered_case["hazard_probability"]["filters"] = {
+                "source_zone_ids": ["zone_a"],
+                "scenario_ids": ["scenario_a"],
+                "block_mass_kg_min": None,
+                "block_mass_kg_max": None,
+            }
+            write_yaml(case_path, filtered_case)
+
+            read_calls: list[Path] = []
+            original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+                read_calls.append(path)
+                return original_read_trajectory_sample_batch(path, warnings)
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
+                self.assertEqual(hazard.main_with_args(common_args), 0)
+            self.assertTrue(read_calls)
+
+            second_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            second_signatures = {
+                record.get("chunk_id"): record.get("execution_signature")
+                for record in second_plan.get("chunk_manifests", [])
+            }
+            for chunk_id, first_signature in first_signatures.items():
+                self.assertIsNotNone(first_signature)
+                self.assertNotEqual(second_signatures.get(chunk_id), first_signature)
+
+    def test_chunked_reducer_source_zone_metadata_content_fingerprint_forces_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            output_dir = chunked_dir
+            case_path, source_zone_metadata_path, scenario_table_path, package_manifest_json = self._weighted_map_package_case(
+                work,
+                map_product_id="phase1_zone_a_weighted",
+            )
+            common_args = self._weighted_map_package_args(
+                case_path,
+                source_zone_metadata_path,
+                scenario_table_path,
+                package_manifest_json,
+                output_dir,
+            )
+            self.assertEqual(hazard.main_with_args(common_args), 0)
+            first_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): record.get("execution_signature")
+                for record in first_plan.get("chunk_manifests", [])
+            }
+
+            source_zone_metadata = yaml_load(source_zone_metadata_path)
+            provenance_notes = list(source_zone_metadata.get("provenance", {}).get("notes", []))
+            provenance_notes.append("fingerprint regression coverage: content changed")
+            source_zone_metadata.setdefault("provenance", {})
+            source_zone_metadata["provenance"]["notes"] = provenance_notes
+            write_yaml(source_zone_metadata_path, source_zone_metadata)
+
+            read_calls: list[Path] = []
+            original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+                read_calls.append(path)
+                return original_read_trajectory_sample_batch(path, warnings)
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
+                self.assertEqual(hazard.main_with_args(common_args), 0)
+            second_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            second_index = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_execution_index_v1.json").read_text())
+            merge_state = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_merge_state_v1.json").read_text())
+            second_merge_index = {
+                record.get("chunk_id"): record
+                for record in merge_state.get("merge_index", [])
+                if isinstance(record.get("chunk_id"), str)
+            }
+            second_index_by_chunk = {
+                record.get("chunk_id"): record
+                for record in second_index.get("chunk_records", [])
+            }
+            self.assertTrue(read_calls)
+            for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                self.assertNotEqual(record.get("execution_signature"), first_signatures.get(chunk_id))
+                self.assertIn(record.get("orchestration_decision"), {"executed", "completed_state_reset_for_rerun"})
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                index_record = second_index_by_chunk.get(chunk_id)
+                merge_record = second_merge_index.get(chunk_id)
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
+                self.assertEqual(index_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(index_record.get("input_signature"), record.get("input_signature"))
+                self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
+
+            execution_plan_signature_values = {record.get("execution_signature") for record in first_plan.get("chunk_manifests", [])}
+            second_signature_values = {record.get("execution_signature") for record in second_plan.get("chunk_manifests", [])}
+            self.assertNotEqual(execution_plan_signature_values, second_signature_values)
+
+    def test_chunked_reducer_scenario_table_content_fingerprint_forces_rerun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            output_dir = chunked_dir
+            case_path, source_zone_metadata_path, scenario_table_path, package_manifest_json = self._weighted_map_package_case(
+                work,
+                map_product_id="phase1_zone_a_weighted",
+            )
+            common_args = self._weighted_map_package_args(
+                case_path,
+                source_zone_metadata_path,
+                scenario_table_path,
+                package_manifest_json,
+                output_dir,
+            )
+            self.assertEqual(hazard.main_with_args(common_args), 0)
+            first_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): record.get("execution_signature")
+                for record in first_plan.get("chunk_manifests", [])
+            }
+
+            with scenario_table_path.open(newline="") as file:
+                rows = list(csv.DictReader(file))
+            rows[0]["sampling_weight"] = f"{float(rows[0]['sampling_weight']) + 0.01:.3f}"
+            write_csv_rows(scenario_table_path, rows)
+
+            read_calls: list[Path] = []
+            original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+                read_calls.append(path)
+                return original_read_trajectory_sample_batch(path, warnings)
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
+                self.assertEqual(hazard.main_with_args(common_args), 0)
+            second_plan = json.loads((chunked_dir / "hazard_fixture_weighted_execution_plan_v1.json").read_text())
+            second_index = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_execution_index_v1.json").read_text())
+            merge_state = json.loads((chunked_dir / "hazard_fixture_weighted_reducer_merge_state_v1.json").read_text())
+            second_merge_index = {
+                record.get("chunk_id"): record
+                for record in merge_state.get("merge_index", [])
+                if isinstance(record.get("chunk_id"), str)
+            }
+            second_index_by_chunk = {
+                record.get("chunk_id"): record
+                for record in second_index.get("chunk_records", [])
+            }
+            self.assertTrue(read_calls)
+            for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                self.assertNotEqual(record.get("execution_signature"), first_signatures.get(chunk_id))
+                self.assertIn(record.get("orchestration_decision"), {"executed", "completed_state_reset_for_rerun"})
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                index_record = second_index_by_chunk.get(chunk_id)
+                merge_record = second_merge_index.get(chunk_id)
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
+                self.assertEqual(index_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(index_record.get("input_signature"), record.get("input_signature"))
+                self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
+
+            execution_plan_signature_values = {record.get("execution_signature") for record in first_plan.get("chunk_manifests", [])}
+            second_signature_values = {record.get("execution_signature") for record in second_plan.get("chunk_manifests", [])}
+            self.assertNotEqual(execution_plan_signature_values, second_signature_values)
+
     def test_chunked_reducer_skips_chunks_claimed_by_other_owner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -2948,6 +3290,17 @@ def write_impact_parquet_fixture(path: Path, impact_dir: Path) -> None:
                 )
     table = pa.Table.from_pylist(rows)
     pq.write_table(table, path)
+
+
+def write_csv_rows(path: Path, rows: list[dict[str, str]]) -> None:
+    if not rows:
+        path.write_text("\n")
+        return
+    fieldnames = list(rows[0].keys())
+    with path.open("w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def write_weighted_case(

@@ -705,11 +705,16 @@ Execution signatures are deterministic SHA-256 digests over:
   `block_mass_kg_max`)
 - Map-package policy (`probability_mode`, `normalization_scope`,
   `map_product_id`, `source_zone_id`, `scenario_ids`,
-  `source_zone_metadata_path`, `scenario_table_path`,
+  `source_zone_metadata_path`, `source_zone_metadata_content_sha256`,
+  `scenario_table_path`, `scenario_table_content_sha256`,
   `map_package_manifest_json`)
-- Probability configuration and effective weights (`metadata_path`, filter values,
-  weights and normalization totals, and `normalization_convention`)
+- Probability configuration and effective weights (`metadata_path`, metadata content
+  fingerprint `metadata_content_sha256`, filter values, weights and normalization
+  totals, and `normalization_convention`)
 - Chunk signature plus planner/attempt-insensitive identifiers (`chunk_id`)
+- Output policy and manifest policy hashes:
+  `pilot_gis_package_manifest_json_path`,
+  `pilot_gis_package_manifest_json_content_sha256`
 
 `input_signature` is the per-chunk SHA-256 digest of the exact chunk input set
 and trajectory/event path list. It appears on:
@@ -726,6 +731,17 @@ gating:
 - scheduler ownership/partition metadata (`scheduler_count`, `scheduler_index`)
 - attempt counters and `attempt_count` accumulation history
 - wall-clock timing data (`started_unix_s`, `completion_status`, `timings`)
+
+For content-backed path fields, hashing is best-effort:
+
+- If a metadata/input path is missing/unreadable, its fingerprint is `null`.
+- Missing optional inputs remain optional; existing required-path validations
+  still fail as before when they are mandatory.
+
+For the generated map package manifest path (`map_package_manifest_json`),
+replay uses the effective output-policy settings and not the output-file-content
+hash. This path is rewritten by each run, so content hashing is intentionally
+avoided to preserve deterministic local reuse across clean restarts.
 
 These excluded fields are expected to be mutable across local retries and do not
 change reducer outputs.
