@@ -15,6 +15,7 @@ input_freeze:
   geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
   source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
   benchmark_case_path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+  benchmark_case_id: validation_tschamut_public_conditional_gate_v1
   terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
   source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
   scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv

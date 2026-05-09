@@ -33,6 +33,7 @@ When these files conflict, preserve the safety constraints first, then update th
 - For soil/scarring-model changes, update the Rust config types, benchmark YAML schema, validation parser, docs, verification cases, visualization/reporting notes, and consistency checks in the same change.
 - For dataset or validation-case changes, update `data/datasets.yaml`, preprocessing scripts, validation-ready schema/docs, and `docs/dataset_strategy.md` together so calibration, trajectory validation, deposition validation, and hazard mapping stay separated.
 - For Swiss operational geodata changes, keep validation datasets and operational input datasets separate, update `docs/swisstopo_data_strategy.md`, preserve CRS/vertical-datum/provenance metadata, and never commit large swisstopo raw tiles.
+- For pilot-run manifest changes, ensure every committed public pilot manifest (e.g. `public_real_site_conditional_pilot_run_v1` schema) is self-contained: any identifier, path prefix, or case-id that command-plan generation needs must be frozen directly in `input_freeze` (e.g. `benchmark_case_id`), not derived exclusively from an ignored private file. This ensures CI and developers without local private data get identical, reproducible results.
 - Keep seeded runs deterministic.
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.

@@ -11,6 +11,7 @@ input_freeze:
   geodata_manifest_path: data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml
   source_scenario_policy_path: validation/templates/public_real_site_source_scenario_policy_v1.yaml
   benchmark_case_path: null
+  benchmark_case_id: null
   terrain_metadata_path: null
   source_zone_metadata_path: null
   scenario_table_path: null
