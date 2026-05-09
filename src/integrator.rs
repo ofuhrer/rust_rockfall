@@ -21,6 +21,10 @@ use thiserror::Error;
 const STEP_COUNT_TOLERANCE: f64 = 1.0e-12;
 /// Contact distance tolerance used for near-surface branch handling and diagnostics.
 const CONTACT_DISTANCE_TOLERANCE_M: f64 = 1.0e-7;
+/// Contact normal-speed tolerance used for near-surface sticking/sliding branching.
+const CONTACT_NORMAL_SPEED_TOLERANCE_MPS: f64 = 1.0e-7;
+/// Separation threshold for skipping the second post-response terrain query in clearly-airborne states.
+const CLEARLY_AIRBORNE_DISTANCE_M: f64 = 1.0e-4;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegratorSettings {
@@ -241,7 +245,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         // Skip the second terrain query only when the body is clearly separated from terrain
         // (>0.1 mm), and no contact response branch was triggered.
         let clearly_airborne_after_response = signed_distance_before_response
-            > CONTACT_DISTANCE_TOLERANCE_M
+            > CLEARLY_AIRBORNE_DISTANCE_M
             && !response.impacted
             && !response.rolling
             && !response.sliding;
@@ -254,7 +258,7 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
 
         if !clearly_airborne_after_response
             && signed_distance.abs() < CONTACT_DISTANCE_TOLERANCE_M
-            && state.velocity_mps.dot(&normal) <= CONTACT_DISTANCE_TOLERANCE_M
+            && state.velocity_mps.dot(&normal) <= CONTACT_NORMAL_SPEED_TOLERANCE_MPS
         {
             contact_state = match settings.contact_model {
                 ContactModel::TranslationalV0 => {
