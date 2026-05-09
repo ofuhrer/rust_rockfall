@@ -18,6 +18,7 @@ import math
 import socket
 import struct
 import time
+from io import TextIOBase
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -1542,7 +1543,29 @@ def main_with_args(argv: list[str] | None = None) -> int:
     normalization_seconds = time.perf_counter() - normalization_started
     accumulation_seconds = time.perf_counter() - accumulation_started
 
+    output_file_metadata: dict[Path, dict[str, Any]] = {}
+    output_write_kind_seconds: dict[str, float] = {
+        "csv_grid": 0.0,
+        "esri_ascii_grid": 0.0,
+        "geotiff": 0.0,
+        "csv_table": 0.0,
+        "geojson": 0.0,
+        "json": 0.0,
+        "png": 0.0,
+        "html": 0.0,
+    }
+    output_write_kind_bytes: dict[str, int] = {
+        "csv_grid": 0,
+        "esri_ascii_grid": 0,
+        "geotiff": 0,
+        "csv_table": 0,
+        "geojson": 0,
+        "json": 0,
+        "png": 0,
+        "html": 0,
+    }
     core_write_started = time.perf_counter()
+    json_serialization_seconds = 0.0
     conditional_curve_rows = build_conditional_intensity_exceedance_curves(
         grid,
         layers,
@@ -1565,7 +1588,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         conditional_curve_export,
         conditional_curve_rows,
     )
-    write_core_hazard_outputs(
+    core_output_json_serialization_seconds = write_core_hazard_outputs(
         output_dir,
         prefix,
         grid,
@@ -1576,7 +1599,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
         raster_export_config,
         conditional_curve_export,
         conditional_curve_rows,
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
     )
+    json_serialization_seconds += core_output_json_serialization_seconds
     manifest_metadata = dict(metadata)
     manifest_metadata["_trajectory_paths"] = [str(path) for path in trajectory_paths]
     manifest_metadata["_deposition_path"] = str(deposition_path) if deposition_path else None
@@ -1589,8 +1616,26 @@ def main_with_args(argv: list[str] | None = None) -> int:
     plots_enabled = not args.no_plots
     if plots_enabled:
         plot_started = time.perf_counter()
-        plot_paths = render_png_layers(output_dir, prefix, grid, layers)
-        write_html_report(output_dir / "index.html", case, metadata, layers, plot_paths, prefix)
+        plot_paths = render_png_layers(
+            output_dir,
+            prefix,
+            grid,
+            layers,
+            output_file_metadata,
+            output_write_kind_seconds,
+            output_write_kind_bytes,
+        )
+        write_html_report(
+            output_dir / "index.html",
+            case,
+            metadata,
+            layers,
+            plot_paths,
+            prefix,
+            output_file_metadata,
+            output_write_kind_seconds,
+            output_write_kind_bytes,
+        )
         plot_render_seconds = time.perf_counter() - plot_started
     manifest = build_hazard_manifest(
         case,
@@ -1627,6 +1672,24 @@ def main_with_args(argv: list[str] | None = None) -> int:
             impact_accumulation_seconds=impact_accumulation_seconds,
             normalization_seconds=normalization_seconds,
         ),
+        output_file_metadata=output_file_metadata,
+    )
+    manifest["performance"]["output_write_kind_seconds"] = {
+        kind: seconds
+        for kind, seconds in output_write_kind_seconds.items()
+        if seconds > 0.0 or output_write_kind_bytes.get(kind, 0) > 0
+    }
+    manifest["performance"]["output_write_kind_bytes"] = {
+        kind: bytes_count
+        for kind, bytes_count in output_write_kind_bytes.items()
+        if bytes_count > 0 or kind == "json"
+    }
+    manifest["performance"]["json_serialization_seconds"] = json_serialization_seconds
+    manifest["performance"]["output_file_count"] = sum(
+        int(output["file_count"]) for output in manifest["outputs"]
+    )
+    manifest["performance"]["output_bytes"] = sum(
+        int(output["total_bytes"]) for output in manifest["outputs"]
     )
     hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
     if reducer_execution is not None:
@@ -1638,6 +1701,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
                 execution_plan_path(output_dir, prefix),
                 "reducer_execution_plan",
                 "json",
+                output_file_metadata=output_file_metadata,
             )
         )
         manifest["outputs"].append(
@@ -1645,6 +1709,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
                 reducer_index_path,
                 "reducer_execution_index",
                 "json",
+                output_file_metadata=output_file_metadata,
             )
         )
         manifest["outputs"].append(
@@ -1652,42 +1717,81 @@ def main_with_args(argv: list[str] | None = None) -> int:
                 reducer_merge_state,
                 "reducer_merge_state",
                 "json",
+                output_file_metadata=output_file_metadata,
             )
         )
         for chunk_manifest_path in chunk_manifest_paths:
-            manifest["outputs"].append(output_manifest_entry(chunk_manifest_path, "reducer_chunk_manifest", "json"))
+            manifest["outputs"].append(
+                output_manifest_entry(
+                    chunk_manifest_path,
+                    "reducer_chunk_manifest",
+                    "json",
+                    output_file_metadata=output_file_metadata,
+                )
+            )
         manifest["performance"]["output_file_count"] = sum(
             int(output["file_count"]) for output in manifest["outputs"]
         )
         manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
     update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
-    write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
-        write_map_package_manifest(
+        json_serialization_seconds += write_map_package_manifest(
             package_path,
             map_package_state,
             hazard_manifest_path,
             manifest["layer_semantics"],
             geotiff_raster_outputs(manifest["outputs"]),
+            output_file_metadata,
+            output_write_kind_seconds,
+            output_write_kind_bytes,
         )
-        manifest["outputs"].append(output_manifest_entry(package_path, "map_package_manifest", "json"))
-        manifest["performance"]["output_file_count"] = sum(
-            int(output["file_count"]) for output in manifest["outputs"]
+        manifest["performance"]["json_serialization_seconds"] = json_serialization_seconds
+        manifest["outputs"].append(
+            output_manifest_entry(
+                package_path,
+                "map_package_manifest",
+                "json",
+                output_file_metadata=output_file_metadata,
+            )
         )
-        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
-        update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
-        write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     if pilot_gis_package_config is not None:
         package_path = pilot_gis_package_output_path(pilot_gis_package_config, output_dir, prefix)
-        write_pilot_gis_package_manifest(package_path, pilot_gis_package_config, hazard_manifest_path, manifest)
-        manifest["outputs"].append(output_manifest_entry(package_path, "pilot_gis_package_manifest", "json"))
-        manifest["performance"]["output_file_count"] = sum(
-            int(output["file_count"]) for output in manifest["outputs"]
+        json_serialization_seconds += write_pilot_gis_package_manifest(
+            package_path,
+            pilot_gis_package_config,
+            hazard_manifest_path,
+            manifest,
+            output_file_metadata,
+            output_write_kind_seconds,
+            output_write_kind_bytes,
         )
-        manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
-        update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
-        write_text(hazard_manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        manifest["performance"]["json_serialization_seconds"] = json_serialization_seconds
+        manifest["outputs"].append(
+            output_manifest_entry(
+                package_path,
+                "pilot_gis_package_manifest",
+                "json",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+    manifest["performance"]["output_file_count"] = sum(
+        int(output["file_count"]) for output in manifest["outputs"]
+    )
+    manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
+    update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
+    manifest["performance"]["manifest_write_seconds"] = 0.0
+    manifest_start = time.perf_counter()
+    write_file_text(
+        hazard_manifest_path,
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    manifest["performance"]["manifest_write_seconds"] = time.perf_counter() - manifest_start
 
     print(f"wrote hazard layers to {output_dir}")
     return 0
@@ -3815,24 +3919,118 @@ class AsciiDemTerrain(TerrainSampler):
         return (1 - tx) * (1 - ty) * z00 + tx * (1 - ty) * z10 + (1 - tx) * ty * z01 + tx * ty * z11
 
 
-def write_layers(output_dir: Path, prefix: str, grid: GridSpec, layers: list[RasterLayer]) -> None:
+class _OutputByteTracker:
+    def __init__(self, wrapped: TextIOBase, digest: hashlib._Hash) -> None:
+        self._wrapped = wrapped
+        self._digest = digest
+        self.bytes_written = 0
+
+    def write(self, text: str) -> int:
+        if text:
+            encoded = text.encode("utf-8")
+            self._digest.update(encoded)
+            self.bytes_written += len(encoded)
+        return self._wrapped.write(text)
+
+    def flush(self) -> None:
+        self._wrapped.flush()
+
+
+def _register_written_output(
+    path: Path,
+    kind: str,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+    *,
+    elapsed_seconds: float,
+    total_bytes: int,
+    sha256_hex: str | None,
+) -> None:
+    output_write_kind_seconds[kind] = output_write_kind_seconds.get(kind, 0.0) + elapsed_seconds
+    output_write_kind_bytes[kind] = output_write_kind_bytes.get(kind, 0) + total_bytes
+    output_file_metadata[path] = {
+        "total_bytes": total_bytes,
+        "sha256": sha256_hex,
+    }
+
+
+def _safe_sha256_hex(data: bytes) -> str:
+    digest = hashlib.sha256()
+    digest.update(data)
+    return digest.hexdigest()
+
+
+def write_layers(
+    output_dir: Path,
+    prefix: str,
+    grid: GridSpec,
+    layers: list[RasterLayer],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> None:
     for layer in layers:
-        write_grid_csv(output_dir / f"{prefix}_{layer.key}.csv", grid, layer)
-        write_ascii_grid(output_dir / f"{prefix}_{layer.key}.asc", grid, layer)
+        write_grid_csv(
+            output_dir / f"{prefix}_{layer.key}.csv",
+            grid,
+            layer,
+            output_file_metadata=output_file_metadata,
+            output_write_kind_seconds=output_write_kind_seconds,
+            output_write_kind_bytes=output_write_kind_bytes,
+        )
+        write_ascii_grid(
+            output_dir / f"{prefix}_{layer.key}.asc",
+            grid,
+            layer,
+            output_file_metadata=output_file_metadata,
+            output_write_kind_seconds=output_write_kind_seconds,
+            output_write_kind_bytes=output_write_kind_bytes,
+        )
 
 
-def write_grid_csv(path: Path, grid: GridSpec, layer: RasterLayer) -> None:
+def write_grid_csv(
+    path: Path,
+    grid: GridSpec,
+    layer: RasterLayer,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> None:
+    started = time.perf_counter()
+    digest = hashlib.sha256()
     with path.open("w", newline="") as file:
-        writer = csv.writer(file)
+        tracked_file = _OutputByteTracker(file, digest)
+        writer = csv.writer(tracked_file)
         writer.writerow(["row", "col", "x_center_m", "y_center_m", layer.key])
         for row in range(grid.nrows):
             for col in range(grid.ncols):
                 x, y = grid.center(row, col)
                 value = layer.values[row][col]
                 writer.writerow([row, col, f"{x:.6f}", f"{y:.6f}", f"{value:.12g}"])
+        tracked_file.flush()
+    _register_written_output(
+        path,
+        "csv_grid",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=time.perf_counter() - started,
+        total_bytes=tracked_file.bytes_written,
+        sha256_hex=digest.hexdigest(),
+    )
 
 
-def write_ascii_grid(path: Path, grid: GridSpec, layer: RasterLayer) -> None:
+def write_ascii_grid(
+    path: Path,
+    grid: GridSpec,
+    layer: RasterLayer,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> None:
+    started = time.perf_counter()
+    digest = hashlib.sha256()
     lines = [
         f"ncols {grid.ncols}",
         f"nrows {grid.nrows}",
@@ -3841,9 +4039,23 @@ def write_ascii_grid(path: Path, grid: GridSpec, layer: RasterLayer) -> None:
         f"cellsize {grid.cell_size:.12g}",
         f"NODATA_value {NODATA:.12g}",
     ]
-    for row in layer.values:
-        lines.append(" ".join(f"{ascii_value(value):.12g}" for value in row))
-    write_text(path, "\n".join(lines) + "\n")
+    with path.open("w", newline="") as file:
+        tracked_file = _OutputByteTracker(file, digest)
+        for line in lines:
+            tracked_file.write(line + "\n")
+        for row in layer.values:
+            tracked_file.write(" ".join(f"{ascii_value(value):.12g}" for value in row) + "\n")
+        tracked_file.flush()
+    _register_written_output(
+        path,
+        "esri_ascii_grid",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=time.perf_counter() - started,
+        total_bytes=tracked_file.bytes_written,
+        sha256_hex=digest.hexdigest(),
+    )
 
 
 def ascii_value(value: float) -> float:
@@ -3857,6 +4069,9 @@ def write_geotiff_layers(
     layers: list[RasterLayer],
     case: dict[str, Any],
     export_config: RasterExportConfig,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
 ) -> None:
     if not export_config.geotiff:
         return
@@ -3868,6 +4083,9 @@ def write_geotiff_layers(
             layer,
             spatial_reference,
             export_config,
+            output_file_metadata=output_file_metadata,
+            output_write_kind_seconds=output_write_kind_seconds,
+            output_write_kind_bytes=output_write_kind_bytes,
         )
 
 
@@ -3877,8 +4095,12 @@ def write_geotiff_grid(
     layer: RasterLayer,
     spatial_reference: dict[str, Any],
     export_config: RasterExportConfig,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
 ) -> None:
     _ = export_config
+    started = time.perf_counter()
     path.parent.mkdir(parents=True, exist_ok=True)
     pixels = [float(ascii_value(value)) for row in layer.values for value in row]
     pixel_bytes = b"".join(struct.pack("<d", value) for value in pixels)
@@ -3905,6 +4127,18 @@ def write_geotiff_grid(
         entries.append((34735, 3, len(geokeys), struct.pack("<" + "H" * len(geokeys), *geokeys)))
     ifd_bytes = build_tiff_ifd(entries, ifd_offset)
     path.write_bytes(b"II" + struct.pack("<HI", 42, ifd_offset) + pixel_bytes + ifd_bytes)
+    _register_written_output(
+        path,
+        "geotiff",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=time.perf_counter() - started,
+        total_bytes=path.stat().st_size if path.exists() else len(
+            b"II" + struct.pack("<HI", 42, ifd_offset) + pixel_bytes + ifd_bytes
+        ),
+        sha256_hex=_safe_sha256_hex(b"II" + struct.pack("<HI", 42, ifd_offset) + pixel_bytes + ifd_bytes),
+    )
 
 
 def build_tiff_ifd(entries: list[tuple[int, int, int, bytes]], ifd_offset: int) -> bytes:
@@ -3969,7 +4203,13 @@ def geotiff_affine_transform(grid: GridSpec) -> list[float]:
     return [grid.cell_size, 0.0, grid.xmin, 0.0, -grid.cell_size, grid.ymax]
 
 
-def write_deposition_geojson(path: Path, depositions: list[DepositionPoint]) -> None:
+def write_deposition_geojson(
+    path: Path,
+    depositions: list[DepositionPoint],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> float:
     features = []
     for point in depositions:
         x = point.x_m
@@ -3983,7 +4223,21 @@ def write_deposition_geojson(path: Path, depositions: list[DepositionPoint]) -> 
                 "properties": point.properties,
             }
         )
-    write_text(path, json.dumps({"type": "FeatureCollection", "features": features}, indent=2) + "\n")
+    serialization_started = time.perf_counter()
+    text = json.dumps({"type": "FeatureCollection", "features": features}, indent=2, sort_keys=True) + "\n"
+    serialization_seconds = time.perf_counter() - serialization_started
+    write_file_text(
+        path,
+        text,
+        "geojson",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    return serialization_seconds
+
+
 
 
 def build_conditional_intensity_exceedance_curves(
@@ -4078,7 +4332,11 @@ def parse_exceedance_layer_key(layer_key: str) -> tuple[str, float, str, bool] |
 def write_conditional_intensity_exceedance_curves(
     path: Path,
     rows: list[ConditionalCurveRow],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
 ) -> None:
+    started = time.perf_counter()
     with path.open("w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(
@@ -4122,6 +4380,16 @@ def write_conditional_intensity_exceedance_curves(
                     str(row.annualized).lower(),
                 ]
             )
+    _register_written_output(
+        path,
+        "csv_table",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=time.perf_counter() - started,
+        total_bytes=path.stat().st_size,
+        sha256_hex=sha256_file(path),
+    )
 
 
 def summarize_conditional_curve_rows(
@@ -4321,16 +4589,59 @@ def write_core_hazard_outputs(
     raster_exports: RasterExportConfig,
     conditional_curve_export: ConditionalCurveExportConfig,
     conditional_curve_rows: list[ConditionalCurveRow],
-) -> None:
-    write_layers(output_dir, prefix, grid, layers)
-    write_geotiff_layers(output_dir, prefix, grid, layers, case, raster_exports)
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> float:
+    write_layers(
+        output_dir,
+        prefix,
+        grid,
+        layers,
+        output_file_metadata=output_file_metadata,
+        output_write_kind_seconds=output_write_kind_seconds,
+        output_write_kind_bytes=output_write_kind_bytes,
+    )
+    write_geotiff_layers(
+        output_dir,
+        prefix,
+        grid,
+        layers,
+        case,
+        raster_exports,
+        output_file_metadata=output_file_metadata,
+        output_write_kind_seconds=output_write_kind_seconds,
+        output_write_kind_bytes=output_write_kind_bytes,
+    )
+    json_serialization_seconds = 0.0
     if conditional_curve_rows and conditional_curve_export.write_table:
         write_conditional_intensity_exceedance_curves(
             output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
             conditional_curve_rows,
+            output_file_metadata=output_file_metadata,
+            output_write_kind_seconds=output_write_kind_seconds,
+            output_write_kind_bytes=output_write_kind_bytes,
         )
-    write_deposition_geojson(output_dir / f"{prefix}_deposition_points.geojson", deposition_points)
-    write_text(output_dir / f"{prefix}_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    json_serialization_seconds += write_deposition_geojson(
+        output_dir / f"{prefix}_deposition_points.geojson",
+        deposition_points,
+        output_file_metadata=output_file_metadata,
+        output_write_kind_seconds=output_write_kind_seconds,
+        output_write_kind_bytes=output_write_kind_bytes,
+    )
+    serialization_started = time.perf_counter()
+    text = json.dumps(metadata, indent=2, sort_keys=True) + "\n"
+    json_serialization_seconds += time.perf_counter() - serialization_started
+    write_file_text(
+        output_dir / f"{prefix}_metadata.json",
+        text,
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    return json_serialization_seconds
 
 
 def map_package_output_path(
@@ -4355,7 +4666,10 @@ def write_map_package_manifest(
     hazard_manifest_path: Path,
     layer_semantics: list[dict[str, Any]],
     raster_outputs: list[dict[str, Any]],
-) -> None:
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> float:
     limitations = list(map_package.config.limitations) or [
         "Research diagnostic; not operational hazard validation.",
         "No annual frequency model is implemented in Phase 1.",
@@ -4390,7 +4704,19 @@ def write_map_package_manifest(
         "limitations": limitations,
         "operational_status": "research_diagnostic",
     }
-    write_text(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    serialization_started = time.perf_counter()
+    text = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    serialization_seconds = time.perf_counter() - serialization_started
+    write_file_text(
+        path,
+        text,
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    return serialization_seconds
 
 
 def write_pilot_gis_package_manifest(
@@ -4398,7 +4724,10 @@ def write_pilot_gis_package_manifest(
     package: PilotGisPackageConfig,
     hazard_manifest_path: Path,
     hazard_manifest: dict[str, Any],
-) -> None:
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> float:
     outputs = hazard_manifest.get("outputs", [])
     geotiff_outputs = geotiff_raster_outputs(outputs)
     parity_outputs = [
@@ -4478,7 +4807,19 @@ def write_pilot_gis_package_manifest(
             "Exposure, vulnerability, consequences, expected loss, and risk modelling are out of scope.",
         ],
     }
-    write_text(path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    serialization_started = time.perf_counter()
+    text = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    serialization_seconds = time.perf_counter() - serialization_started
+    write_file_text(
+        path,
+        text,
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    return serialization_seconds
 
 
 def compact_output_manifest_entry(output: dict[str, Any]) -> dict[str, Any]:
@@ -4517,13 +4858,36 @@ def build_hazard_manifest(
     input_file_counts: dict[str, int],
     bounds_stats: BoundsDiscoveryStats,
     timings: HazardAccumulationTimings,
+    output_file_metadata: dict[Path, dict[str, Any]],
 ) -> dict[str, Any]:
     outputs: list[dict[str, Any]] = []
     for layer in layers:
-        outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.csv", "hazard_layer", "csv_grid"))
-        outputs.append(output_manifest_entry(output_dir / f"{prefix}_{layer.key}.asc", "hazard_layer", "esri_ascii_grid"))
+        outputs.append(
+            output_manifest_entry(
+                output_dir / f"{prefix}_{layer.key}.csv",
+                "hazard_layer",
+                "csv_grid",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+        outputs.append(
+            output_manifest_entry(
+                output_dir / f"{prefix}_{layer.key}.asc",
+                "hazard_layer",
+                "esri_ascii_grid",
+                output_file_metadata=output_file_metadata,
+            )
+        )
         if raster_exports.geotiff:
-            outputs.append(geotiff_output_manifest_entry(output_dir / f"{prefix}_{layer.key}.tif", layer, grid, case))
+            outputs.append(
+                geotiff_output_manifest_entry(
+                    output_dir / f"{prefix}_{layer.key}.tif",
+                    layer,
+                    grid,
+                    case,
+                    output_file_metadata=output_file_metadata,
+                )
+            )
     curves = metadata.get("conditional_intensity_exceedance_curves") or {}
     if curves.get("enabled") and conditional_curve_export.write_table:
         outputs.append(
@@ -4531,14 +4895,43 @@ def build_hazard_manifest(
                 output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
                 "conditional_intensity_exceedance_curves",
                 "csv_table",
+                output_file_metadata=output_file_metadata,
             )
         )
-    outputs.append(output_manifest_entry(output_dir / f"{prefix}_deposition_points.geojson", "deposition_points", "geojson"))
-    outputs.append(output_manifest_entry(output_dir / f"{prefix}_metadata.json", "hazard_metadata", "json"))
+    outputs.append(
+        output_manifest_entry(
+            output_dir / f"{prefix}_deposition_points.geojson",
+            "deposition_points",
+            "geojson",
+            output_file_metadata=output_file_metadata,
+        )
+    )
+    outputs.append(
+        output_manifest_entry(
+            output_dir / f"{prefix}_metadata.json",
+            "hazard_metadata",
+            "json",
+            output_file_metadata=output_file_metadata,
+        )
+    )
     if plots_enabled:
-        outputs.append(output_manifest_entry(output_dir / "index.html", "hazard_report", "html"))
+        outputs.append(
+            output_manifest_entry(
+                output_dir / "index.html",
+                "hazard_report",
+                "html",
+                output_file_metadata=output_file_metadata,
+            )
+        )
     for layer_key, filename in sorted(plot_paths.items()):
-        outputs.append(output_manifest_entry(output_dir / filename, f"{layer_key}_plot", "png"))
+        outputs.append(
+            output_manifest_entry(
+                output_dir / filename,
+                f"{layer_key}_plot",
+                "png",
+                output_file_metadata=output_file_metadata,
+            )
+        )
 
     terrain = case.get("terrain") or {}
     random = case.get("random") or {}
@@ -4780,21 +5173,41 @@ def hazard_terrain_manifest(case: dict[str, Any], warnings: list[str]) -> dict[s
     return manifest
 
 
-def output_manifest_entry(path: Path, kind: str, format_name: str) -> dict[str, Any]:
+def output_manifest_entry(
+    path: Path,
+    kind: str,
+    format_name: str,
+    *,
+    output_file_metadata: dict[Path, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    metadata = output_file_metadata.get(path) if output_file_metadata else None
+    total_bytes = metadata.get("total_bytes") if metadata is not None else None
+    sha256 = metadata.get("sha256") if metadata is not None else None
+    if total_bytes is None:
+        total_bytes = path.stat().st_size if path.exists() else 0
+    if sha256 is None and path.exists() and path.is_file():
+        sha256 = sha256_file(path)
     return {
         "kind": kind,
         "format": format_name,
         "path": str(path),
         "file_count": 1,
-        "total_bytes": path.stat().st_size if path.exists() else 0,
-        "sha256": sha256_file(path) if path.exists() and path.is_file() else None,
+        "total_bytes": total_bytes,
+        "sha256": sha256,
         "row_count": None,
         "skipped_empty_files": None,
     }
 
 
-def geotiff_output_manifest_entry(path: Path, layer: RasterLayer, grid: GridSpec, case: dict[str, Any]) -> dict[str, Any]:
-    entry = output_manifest_entry(path, "hazard_layer", "geotiff")
+def geotiff_output_manifest_entry(
+    path: Path,
+    layer: RasterLayer,
+    grid: GridSpec,
+    case: dict[str, Any],
+    *,
+    output_file_metadata: dict[Path, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    entry = output_manifest_entry(path, "hazard_layer", "geotiff", output_file_metadata=output_file_metadata)
     spatial_reference = geotiff_spatial_reference(case, grid)
     entry.update(
         {
@@ -5001,7 +5414,15 @@ def validate_layers(layers: list[RasterLayer]) -> list[str]:
     return warnings
 
 
-def render_png_layers(output_dir: Path, prefix: str, grid: GridSpec, layers: list[RasterLayer]) -> dict[str, str]:
+def render_png_layers(
+    output_dir: Path,
+    prefix: str,
+    grid: GridSpec,
+    layers: list[RasterLayer],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> dict[str, str]:
     try:
         import matplotlib
 
@@ -5013,6 +5434,7 @@ def render_png_layers(output_dir: Path, prefix: str, grid: GridSpec, layers: lis
     plot_paths: dict[str, str] = {}
     extent = [grid.xmin, grid.xmax, grid.ymin, grid.ymax]
     for layer in layers:
+        started = time.perf_counter()
         fig, ax = plt.subplots(figsize=(8.0, 6.5), constrained_layout=True)
         data = [[math.nan if value == NODATA else value for value in row] for row in layer.values]
         image = ax.imshow(data, extent=extent, origin="upper", interpolation="nearest")
@@ -5024,6 +5446,16 @@ def render_png_layers(output_dir: Path, prefix: str, grid: GridSpec, layers: lis
         path = output_dir / f"{prefix}_{layer.key}.png"
         fig.savefig(path, dpi=150)
         plt.close(fig)
+        _register_written_output(
+            path,
+            "png",
+            output_file_metadata,
+            output_write_kind_seconds,
+            output_write_kind_bytes,
+            elapsed_seconds=time.perf_counter() - started,
+            total_bytes=path.stat().st_size,
+            sha256_hex=sha256_file(path),
+        )
         plot_paths[layer.key] = path.name
     return plot_paths
 
@@ -5035,6 +5467,9 @@ def write_html_report(
     layers: list[RasterLayer],
     plot_paths: dict[str, str],
     prefix: str,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
 ) -> None:
     title = str(case.get("title") or metadata.get("case_id") or "Hazard Layers")
     rows = []
@@ -5126,7 +5561,41 @@ def write_html_report(
 </body>
 </html>
 """
-    write_text(path, content)
+    write_file_text(
+        path,
+        content,
+        "html",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+
+
+def write_file_text(
+    path: Path,
+    text: str,
+    kind: str,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+    *,
+    elapsed_seconds: float,
+) -> None:
+    started = time.perf_counter()
+    data = text.encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    _register_written_output(
+        path,
+        kind,
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=elapsed_seconds + (time.perf_counter() - started),
+        total_bytes=len(data),
+        sha256_hex=_safe_sha256_hex(data),
+    )
 
 
 def write_text(path: Path, text: str) -> None:

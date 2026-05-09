@@ -299,6 +299,12 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(manifest["performance"]["bounds_input_rows_scanned"], 10)
             self.assertGreater(manifest["performance"]["hazard_input_rows_per_second"], 0.0)
             self.assertGreater(manifest["performance"]["output_file_count"], 0)
+            self.assertIsInstance(manifest["performance"]["output_write_kind_seconds"], dict)
+            self.assertIsInstance(manifest["performance"]["output_write_kind_bytes"], dict)
+            self.assertIn("json", manifest["performance"]["output_write_kind_bytes"])
+            self.assertGreaterEqual(manifest["performance"]["json_serialization_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["manifest_write_seconds"], 0.0)
+            self.assertGreaterEqual(manifest["performance"]["output_write_kind_seconds"].get("json", 0.0), 0.0)
             hazard_outputs = [output for output in manifest["outputs"] if output["kind"] == "hazard_layer"]
             self.assertTrue(hazard_outputs)
             self.assertRegex(hazard_outputs[0]["sha256"], r"^[0-9a-f]{64}$")
@@ -587,6 +593,9 @@ class HazardLayerTests(unittest.TestCase):
             self.assertTrue(manifest["performance"]["plots_enabled"])
             self.assertGreaterEqual(manifest["performance"]["plot_render_seconds"], 0.0)
             self.assertGreaterEqual(manifest["performance"]["core_output_write_seconds"], 0.0)
+            if matplotlib_available():
+                self.assertIn("png", manifest["performance"]["output_write_kind_seconds"])
+            self.assertIn("html", manifest["performance"]["output_write_kind_seconds"])
             self.assertTrue(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
 
     def test_exceedance_layers_are_additive_and_manifested(self) -> None:

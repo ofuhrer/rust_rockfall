@@ -730,13 +730,20 @@ bytes, SHA-256 checksum, compression, and row-group count when available.
 Current manifests also include an optional `performance` object with lightweight
 wall-clock and output-volume diagnostics: `total_wall_seconds`,
 `terrain_load_seconds`, `release_generation_seconds`, `simulation_seconds`,
-`output_write_seconds`, optional `hazard_layer_seconds`, `trajectory_count`,
-`impact_event_count`, `output_file_count`, and `output_bytes`. Hazard-layer
+`output_write_seconds`, optional `hazard_layer_seconds`,
+`trajectory_count`, `impact_event_count`, `output_file_count`, `output_bytes`,
+`output_write_kind_seconds`, `output_write_kind_bytes`,
+`json_serialization_seconds`, and `manifest_write_seconds`. Hazard-layer
 manifests additionally split post-processing into `accumulation_seconds`,
 `core_output_write_seconds`, `plot_render_seconds`, and `plots_enabled`.
-`hazard_layer_seconds` is retained as a backward-compatible alias for
-`accumulation_seconds`; `output_write_seconds` is the sum of core output writing
-and optional plot/report rendering. These values are diagnostic metadata, not
+`output_write_kind_seconds` maps kind->I/O wall-clock seconds and
+`output_write_kind_bytes` maps kind->total bytes written by kind (with stable keys
+including `csv_grid`, `esri_ascii_grid`, `geotiff`, `csv_table`, `geojson`,
+`json`, `png`, and `html`). `json_serialization_seconds` captures JSON table/manifests
+serialization cost separate from write I/O; `manifest_write_seconds` captures manifest
+serialization+write time. `hazard_layer_seconds` is retained as a backward-compatible
+alias for `accumulation_seconds`; `output_write_seconds` is the sum of core output
+writing and optional plot/report rendering. These values are diagnostic metadata, not
 validation thresholds. Older manifests without this section remain valid.
 
 When `outputs.ensemble_trajectories_dir` or
