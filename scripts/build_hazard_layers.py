@@ -253,19 +253,23 @@ class RasterExportConfig:
     geotiff: bool = False
     cog: bool = False
     compression: str = "none"
+    grid_csv_export: str = "full"
 
     @property
     def enabled(self) -> bool:
         return self.geotiff
 
     def as_metadata(self) -> dict[str, Any]:
-        formats = ["csv_grid", "esri_ascii_grid"]
+        formats = ["esri_ascii_grid"]
+        if self.grid_csv_export == "full":
+            formats.insert(0, "csv_grid")
         if self.geotiff:
             formats.append("geotiff")
         return {
             "geotiff": self.geotiff,
             "cog": self.cog,
             "compression": self.compression if self.geotiff else None,
+            "grid_csv_export": self.grid_csv_export,
             "formats": formats,
         }
 
@@ -1370,6 +1374,12 @@ def main_with_args(argv: list[str] | None = None) -> int:
         help="opt-in GIS GeoTIFF export for each hazard raster layer",
     )
     parser.add_argument(
+        "--grid-csv-export",
+        choices=["full", "none"],
+        default=None,
+        help="control hazard CSV-grid output volume; full writes csv_grid files, none suppresses them",
+    )
+    parser.add_argument(
         "--export-cog",
         action="store_true",
         help="reserved for future Cloud-Optimized GeoTIFF export; currently fails rather than writing non-COG TIFFs",
@@ -1733,7 +1743,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
             int(output["file_count"]) for output in manifest["outputs"]
         )
         manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
-    update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
+    update_conditional_execution_manifest(
+        manifest,
+        grid,
+        conditional_curve_export,
+        reducer_execution,
+        raster_export_config,
+    )
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
         json_serialization_seconds += write_map_package_manifest(
@@ -1779,7 +1795,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
         int(output["file_count"]) for output in manifest["outputs"]
     )
     manifest["performance"]["output_bytes"] = sum(int(output["total_bytes"]) for output in manifest["outputs"])
-    update_conditional_execution_manifest(manifest, grid, conditional_curve_export, reducer_execution)
+    update_conditional_execution_manifest(
+        manifest,
+        grid,
+        conditional_curve_export,
+        reducer_execution,
+        raster_export_config,
+    )
     manifest["performance"]["manifest_write_seconds"] = 0.0
     manifest_start = time.perf_counter()
     write_file_text(
@@ -1920,7 +1942,15 @@ def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -
             "Phase 2A GeoTIFF export uses an uncompressed stdlib writer; compressed/COG export is deferred"
         )
     compression = "none"
-    return RasterExportConfig(geotiff=geotiff, cog=False, compression=compression)
+    grid_csv_export = str(args.grid_csv_export or raw.get("grid_csv_export") or "full")
+    if grid_csv_export not in {"full", "none"}:
+        raise SystemExit("hazard_exports.grid_csv_export must be full or none")
+    return RasterExportConfig(
+        geotiff=geotiff,
+        cog=False,
+        compression=compression,
+        grid_csv_export=grid_csv_export,
+    )
 
 
 def parse_conditional_curve_export(
@@ -3966,19 +3996,21 @@ def write_layers(
     prefix: str,
     grid: GridSpec,
     layers: list[RasterLayer],
+    raster_export_config: RasterExportConfig,
     output_file_metadata: dict[Path, dict[str, Any]],
     output_write_kind_seconds: dict[str, float],
     output_write_kind_bytes: dict[str, int],
 ) -> None:
     for layer in layers:
-        write_grid_csv(
-            output_dir / f"{prefix}_{layer.key}.csv",
-            grid,
-            layer,
-            output_file_metadata=output_file_metadata,
-            output_write_kind_seconds=output_write_kind_seconds,
-            output_write_kind_bytes=output_write_kind_bytes,
-        )
+        if raster_export_config.grid_csv_export == "full":
+            write_grid_csv(
+                output_dir / f"{prefix}_{layer.key}.csv",
+                grid,
+                layer,
+                output_file_metadata=output_file_metadata,
+                output_write_kind_seconds=output_write_kind_seconds,
+                output_write_kind_bytes=output_write_kind_bytes,
+            )
         write_ascii_grid(
             output_dir / f"{prefix}_{layer.key}.asc",
             grid,
@@ -4598,6 +4630,7 @@ def write_core_hazard_outputs(
         prefix,
         grid,
         layers,
+        raster_exports,
         output_file_metadata=output_file_metadata,
         output_write_kind_seconds=output_write_kind_seconds,
         output_write_kind_bytes=output_write_kind_bytes,
@@ -4862,14 +4895,15 @@ def build_hazard_manifest(
 ) -> dict[str, Any]:
     outputs: list[dict[str, Any]] = []
     for layer in layers:
-        outputs.append(
-            output_manifest_entry(
-                output_dir / f"{prefix}_{layer.key}.csv",
-                "hazard_layer",
-                "csv_grid",
-                output_file_metadata=output_file_metadata,
+        if raster_exports.grid_csv_export == "full":
+            outputs.append(
+                output_manifest_entry(
+                    output_dir / f"{prefix}_{layer.key}.csv",
+                    "hazard_layer",
+                    "csv_grid",
+                    output_file_metadata=output_file_metadata,
+                )
             )
-        )
         outputs.append(
             output_manifest_entry(
                 output_dir / f"{prefix}_{layer.key}.asc",
@@ -5054,6 +5088,7 @@ def update_conditional_execution_manifest(
     grid: GridSpec,
     conditional_curve_export: ConditionalCurveExportConfig,
     reducer_execution: dict[str, Any] | None,
+    raster_export_config: RasterExportConfig,
 ) -> None:
     curves = manifest.get("conditional_intensity_exceedance_curves") or {}
     performance = manifest.get("performance") or {}
@@ -5096,6 +5131,11 @@ def update_conditional_execution_manifest(
             "table_suppressed_for_output_budget": bool(
                 curves.get("enabled") and not conditional_curve_export.write_table
             ),
+        },
+        "raster_exports": {
+            "grid_csv_export": raster_export_config.grid_csv_export,
+            "grid_csv_written": raster_export_config.grid_csv_export == "full",
+            "geotiff": raster_export_config.geotiff,
         },
         "reducer": reducer,
         "output_budget": {

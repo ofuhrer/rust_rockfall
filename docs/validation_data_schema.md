@@ -604,12 +604,20 @@ existing CSV/ASCII outputs:
 hazard_exports:
   geotiff: true
   cog: false
+  grid_csv_export: none
 ```
 
 `geotiff: true` writes one float64 GeoTIFF per generated hazard raster. The
 hazard manifest records `format: geotiff`, SHA-256 checksum, affine transform,
 nodata value, grid dimensions, extent, EPSG/vertical datum when available from
 `terrain.metadata_path`, and probability semantics with `annualized: false`.
+`grid_csv_export: none` suppresses csv_grid files while preserving
+`esri_ascii_grid` and GeoTIFF output.
+`grid_csv_export` defaults to `full`, and default CLI usage remains unchanged.
+
+CSV-grid outputs are currently intended as compatibility/debug tables for small
+scale workflows; the scalable path should prefer `grid_csv_export: none` when
+CSV grids are not operationally required.
 `cog: true` is schema-reserved but rejected by the Phase 2A hazard builder until
 a verified COG writer is added. Existing cases that omit `hazard_exports`
 continue to write only CSV/ASCII/GeoJSON/JSON outputs.

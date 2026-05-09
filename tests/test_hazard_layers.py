@@ -403,6 +403,85 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(terrain["extent"]["xmin"], 2600000.0)
             self.assertEqual(manifest["warnings"], [])
 
+    def test_default_grid_csv_export_is_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case_path = work / "terrain_metadata_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertEqual(manifest["raster_exports"]["grid_csv_export"], "full")
+            self.assertTrue(any(output["format"] == "csv_grid" for output in manifest["outputs"]))
+
+    def test_grid_csv_export_none_omits_grid_csv_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case["conditional_curve_export"] = {"mode": "summary-only"}
+            case_path = work / "terrain_metadata_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--no-plots",
+                        "--export-geotiff",
+                        "--grid-csv-export",
+                        "none",
+                    ]
+                ),
+                0,
+            )
+
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            self.assertEqual(manifest["raster_exports"]["grid_csv_export"], "none")
+            self.assertFalse(any(output["format"] == "csv_grid" for output in manifest["outputs"]))
+            self.assertTrue(any(output["format"] == "esri_ascii_grid" for output in manifest["outputs"]))
+            self.assertTrue(any(output["format"] == "geotiff" for output in manifest["outputs"]))
+            self.assertEqual(manifest["conditional_execution"]["raster_exports"]["grid_csv_export"], "none")
+            self.assertFalse(manifest["conditional_execution"]["raster_exports"]["grid_csv_written"])
+            self.assertFalse((output_dir / "hazard_fixture_plane_reach_probability.csv").exists())
+            self.assertTrue((output_dir / "hazard_fixture_plane_reach_probability.asc").exists())
+            self.assertTrue((output_dir / "hazard_fixture_plane_reach_probability.tif").exists())
+
     def test_geotiff_export_preserves_values_grid_and_crs_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
