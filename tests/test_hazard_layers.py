@@ -123,6 +123,34 @@ class HazardLayerTests(unittest.TestCase):
             "--export-geotiff",
         ]
 
+    def _pilot_gis_case(
+        self,
+        work: Path,
+        *,
+        output_dir: Path,
+        manifest_path: Path | None = None,
+    ) -> tuple[Path, Path]:
+        case = yaml_load(FIXTURE / "ensemble_case.yaml")
+        case["terrain"] = {
+            "type": "ascii_dem_clamped",
+            "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+            "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+        }
+        package_manifest_json = output_dir / "hazard_fixture_ensemble_pilot_gis_package_manifest.json"
+        case["pilot_gis_package"] = {
+            "enabled": True,
+            "visual_qa_status": "inconclusive",
+            "visual_qa_note": "pilot-gis replay policy regression fixture",
+            "package_manifest_json": str(
+                manifest_path
+                if manifest_path is not None
+                else package_manifest_json
+            ),
+        }
+        case_path = work / "pilot_gis_case.yaml"
+        write_yaml(case_path, case)
+        return case_path, package_manifest_json
+
     def assert_chunk_state_row_counts_align_with_manifest(self, state: dict[str, Any], manifest: dict[str, Any]) -> None:
         self.assertEqual(state.get("trajectory_count"), manifest.get("reducer_counts", {}).get("trajectory_count"))
         self.assertEqual(state.get("trajectory_sample_count"), manifest.get("input_rows", {}).get("trajectory_sample_rows"))
@@ -2563,6 +2591,87 @@ class HazardLayerTests(unittest.TestCase):
                 self.assertNotEqual(index_record.get("orchestration_decision"), "executed")
                 self.assertNotEqual(merge_record.get("orchestration_decision"), "executed")
                 self.assertEqual(manifest.get("orchestration_decision"), index_record.get("orchestration_decision"))
+
+    def test_chunked_reducer_pilot_gis_manifest_rewrite_does_not_forfeit_reuse(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            chunked_dir = work / "chunked"
+            output_dir = chunked_dir
+            case_path, pilot_gis_manifest_path = self._pilot_gis_case(work=work, output_dir=output_dir)
+            common_args = [
+                "--case",
+                str(case_path),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--output-dir",
+                str(output_dir),
+                "--cell-size",
+                "10.0",
+                "--no-plots",
+                "--reducer-workers",
+                "2",
+                "--export-geotiff",
+            ]
+
+            self.assertEqual(hazard.main_with_args(common_args), 0)
+            first_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): {
+                    "execution_signature": record.get("execution_signature"),
+                    "input_signature": record.get("input_signature"),
+                }
+                for record in first_plan.get("chunk_manifests", [])
+            }
+            self.assertTrue(first_signatures)
+
+            pilot_package = json.loads(pilot_gis_manifest_path.read_text())
+            pilot_package["visual_qa"]["note"] = "non-semantic replay policy regression edit"
+            pilot_package["pilot_gis_replay_probe"] = "manifest_rewrite_without_reexecution"
+            pilot_gis_manifest_path.write_text(json.dumps(pilot_package, indent=2, sort_keys=True) + "\n")
+
+            read_calls: list[Path] = []
+            original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
+
+            def fail_if_rerun(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+                read_calls.append(path)
+                return original_read_trajectory_sample_batch(path, warnings)
+
+            with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_if_rerun):
+                self.assertEqual(hazard.main_with_args(common_args), 0)
+            self.assertEqual(read_calls, [])
+
+            second_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            second_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            second_merge = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text())
+            second_merge_index = {
+                record.get("chunk_id"): record
+                for record in second_merge.get("merge_index", [])
+                if isinstance(record.get("chunk_id"), str)
+            }
+            second_index_by_chunk = {
+                record.get("chunk_id"): record
+                for record in second_index.get("chunk_records", [])
+            }
+            for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                first_signature = first_signatures.get(chunk_id)
+                self.assertIsNotNone(first_signature)
+                self.assertEqual(record.get("execution_signature"), first_signature["execution_signature"])
+                self.assertEqual(record.get("input_signature"), first_signature["input_signature"])
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
+                self.assertNotEqual(record.get("orchestration_decision"), "executed")
+                index_record = second_index_by_chunk.get(chunk_id)
+                if index_record is not None:
+                    self.assertEqual(index_record.get("execution_signature"), first_signature["execution_signature"])
+                    self.assertEqual(index_record.get("orchestration_decision"), record.get("orchestration_decision"))
+                merge_record = second_merge_index.get(chunk_id)
+                if merge_record is not None:
+                    self.assertEqual(merge_record.get("execution_signature"), first_signature["execution_signature"])
+                    self.assertEqual(merge_record.get("orchestration_decision"), record.get("orchestration_decision"))
 
     def test_chunked_reducer_source_filter_change_forces_reexecution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

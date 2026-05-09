@@ -496,9 +496,6 @@ def chunk_execution_signature(
                 )
                 if pilot_gis_package and pilot_gis_package.package_manifest_json
                 else None,
-                "pilot_gis_package_manifest_json_content_sha256": path_content_sha256(
-                    pilot_gis_package.package_manifest_json if pilot_gis_package else None
-                ),
                 "export_geotiff": raster_export_config.geotiff,
             },
             "source_scenario_policy": {

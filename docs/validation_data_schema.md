@@ -713,8 +713,7 @@ Execution signatures are deterministic SHA-256 digests over:
   totals, and `normalization_convention`)
 - Chunk signature plus planner/attempt-insensitive identifiers (`chunk_id`)
 - Output policy and manifest policy hashes:
-  `pilot_gis_package_manifest_json_path`,
-  `pilot_gis_package_manifest_json_content_sha256`
+  `pilot_gis_package_manifest_json_path`
 
 `input_signature` is the per-chunk SHA-256 digest of the exact chunk input set
 and trajectory/event path list. It appears on:
@@ -742,6 +741,11 @@ For the generated map package manifest path (`map_package_manifest_json`),
 replay uses the effective output-policy settings and not the output-file-content
 hash. This path is rewritten by each run, so content hashing is intentionally
 avoided to preserve deterministic local reuse across clean restarts.
+
+For the pilot GIS package manifest path (`pilot_gis_package_manifest_json`),
+replay also uses output-policy settings only (`pilot_gis_package_manifest_json_path`
+and `pilot_gis_package`), but not output-file content hash. Pilot GIS package
+manifests are generated review outputs and are rewritten by each run.
 
 These excluded fields are expected to be mutable across local retries and do not
 change reducer outputs.
