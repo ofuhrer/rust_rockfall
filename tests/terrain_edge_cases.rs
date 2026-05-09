@@ -7,7 +7,8 @@ use rust_rockfall::terrain::{ClampedDemGrid, DemGrid, Terrain, TerrainError};
 
 #[test]
 fn dem_grid_rejects_ncols_below_two() {
-    let text = "ncols 1\nnrows 3\nxllcorner 0.0\nyllcorner 0.0\ncellsize 1.0\nNODATA_value -9999\n1 2 3 4 5 6\n";
+    // 1 column, 3 rows → 3 values. This isolates the ncols validation.
+    let text = "ncols 1\nnrows 3\nxllcorner 0.0\nyllcorner 0.0\ncellsize 1.0\nNODATA_value -9999\n1\n2\n3\n";
     let err = DemGrid::from_ascii_grid_str(text).unwrap_err();
     assert!(
         matches!(err, TerrainError::InvalidGrid(_)),

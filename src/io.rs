@@ -87,7 +87,9 @@ pub fn write_trajectory_samples_parquet(
     assert_eq!(
         trajectory_ids_and_seeds.len(),
         all_samples.len(),
-        "trajectory_ids_and_seeds and all_samples must have the same length"
+        "trajectory_ids_and_seeds length ({}) must equal all_samples length ({})",
+        trajectory_ids_and_seeds.len(),
+        all_samples.len(),
     );
     let path = path.as_ref();
     if let Some(parent) = path.parent() {

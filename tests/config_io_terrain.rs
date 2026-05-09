@@ -3333,28 +3333,29 @@ fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_coun
 
     let block = SphereBlock::new(0.5, 10.0);
     let terrain = Plane::horizontal(0.0);
-    let initial = BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(1.0, 0.0, -3.0));
-    let samples_a = simulate_fixed_step(
-        initial,
-        block,
-        &terrain,
-        IntegratorSettings {
-            dt_s: 0.05,
-            max_time_s: 1.0,
-            gravity_mps2: 9.81,
-            normal_restitution: 0.5,
-            tangential_restitution: 1.0,
-            friction_coefficient: 0.2,
-            rolling_resistance_coefficient: 0.0,
-            stop_speed_mps: 0.1,
-            contact_model: ContactModel::TranslationalV0,
-            scarring: ScarringSettings::default(),
-            roughness: ContactRoughness::default(),
-            roughness_seed: None,
-        },
-    );
 
-    let samples_b = samples_a.clone();
+    let settings = IntegratorSettings {
+        dt_s: 0.05,
+        max_time_s: 1.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.5,
+        tangential_restitution: 1.0,
+        friction_coefficient: 0.2,
+        rolling_resistance_coefficient: 0.0,
+        stop_speed_mps: 0.1,
+        contact_model: ContactModel::TranslationalV0,
+        scarring: ScarringSettings::default(),
+        roughness: ContactRoughness::default(),
+        roughness_seed: None,
+    };
+
+    // Two distinct trajectories with different initial conditions.
+    let initial_a = BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(1.0, 0.0, -3.0));
+    let initial_b = BodyState::new(Vec3::new(0.0, 0.0, 3.0), Vec3::new(2.0, 0.0, -4.0));
+    let samples_a = simulate_fixed_step(initial_a, block, &terrain, settings);
+    let samples_b = simulate_fixed_step(initial_b, block, &terrain, settings);
+    let total_rows = samples_a.len() + samples_b.len();
+
     let path = temp_path("trajectory_samples_parquet_test.parquet");
 
     write_trajectory_samples_parquet(
@@ -3367,6 +3368,9 @@ fn write_trajectory_samples_parquet_produces_readable_file_with_correct_row_coun
     // Verify the file exists and is non-empty.
     let metadata = std::fs::metadata(&path).unwrap();
     assert!(metadata.len() > 0, "parquet file must be non-empty");
+
+    // Two distinct trajectories each with at least the initial sample.
+    assert!(total_rows >= 2);
 
     // Clean up.
     std::fs::remove_file(&path).unwrap();
