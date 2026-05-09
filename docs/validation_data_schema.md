@@ -692,6 +692,44 @@ Replay integrity is strict:
   also pass; stale claims with invalid or missing replay inputs are forced to
   re-execution.
 
+Execution signatures are deterministic SHA-256 digests over:
+
+- Grid geometry (`xmin`, `xmax`, `ymin`, `ymax`, `ncols`, `nrows`, `cell_size`)
+- Per-chunk input signature
+- Reducer policy (`reducer_workers`, `chunk_id_policy`) and output policy flags
+  (`grid_csv_export`, `geotiff`, `cog`, `conditional_curve_export.mode`,
+  `pilot_gis_package`, `export_geotiff`, `pilot_gis_package_manifest_json`)
+- Threshold policy (`kinetic_energy_exceedance_j`, `jump_height_exceedance_m`,
+  `velocity_exceedance_mps`, `probability_standard_error`)
+- Source/scenario policy (`source_zone_ids`, `scenario_ids`, `block_mass_kg_min`,
+  `block_mass_kg_max`)
+- Map-package policy (`probability_mode`, `normalization_scope`,
+  `map_product_id`, `source_zone_id`, `scenario_ids`,
+  `source_zone_metadata_path`, `scenario_table_path`,
+  `map_package_manifest_json`)
+- Probability configuration and effective weights (`metadata_path`, filter values,
+  weights and normalization totals, and `normalization_convention`)
+- Chunk signature plus planner/attempt-insensitive identifiers (`chunk_id`)
+
+`input_signature` is the per-chunk SHA-256 digest of the exact chunk input set
+and trajectory/event path list. It appears on:
+
+- `<prefix>_execution_plan_v1.json`
+- `<prefix>_reducer_execution_index_v1.json`
+- `<prefix>_reducer_merge_state_v1.json`
+- `<chunk_id>_manifest.json`
+
+For local restart clarity, some run metadata is intentionally excluded from replay
+gating:
+
+- `chunk_owner_id`, `owner_id`, `ownership` state and lease timestamps
+- scheduler ownership/partition metadata (`scheduler_count`, `scheduler_index`)
+- attempt counters and `attempt_count` accumulation history
+- wall-clock timing data (`started_unix_s`, `completion_status`, `timings`)
+
+These excluded fields are expected to be mutable across local retries and do not
+change reducer outputs.
+
 `retry_count` counts failed attempts and increments when a run fails before a
 later successful attempt. The chunked reducer is required to preserve serial
 output values for current conditional diagnostic layers; it does not introduce

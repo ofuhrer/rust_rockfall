@@ -2358,6 +2358,14 @@ class HazardLayerTests(unittest.TestCase):
                 "2",
             ]
             self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(chunked_dir)]), 0)
+            execution_plan = json.loads((chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json").read_text())
+            first_signatures = {
+                record.get("chunk_id"): {
+                    "execution_signature": record.get("execution_signature"),
+                    "input_signature": record.get("input_signature"),
+                }
+                for record in execution_plan.get("chunk_manifests", [])
+            }
 
             execution_plan_path = chunked_dir / "hazard_fixture_ensemble_execution_plan_v1.json"
             self.assertEqual(
@@ -2373,18 +2381,50 @@ class HazardLayerTests(unittest.TestCase):
                 0,
             )
             second_plan = json.loads(execution_plan_path.read_text())
+            second_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            second_merge_path = chunked_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json"
+            second_merge = json.loads(second_merge_path.read_text()) if second_merge_path.exists() else None
+            second_merge_index = {
+                record.get("chunk_id"): record
+                for record in (second_merge.get("merge_index", []) if second_merge is not None else ())
+                if isinstance(record.get("chunk_id"), str)
+            }
             for record in second_plan.get("chunk_manifests", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                self.assertEqual(record.get("input_signature"), first_signatures[chunk_id]["input_signature"])
+                self.assertNotEqual(record.get("execution_signature"), first_signatures[chunk_id]["execution_signature"])
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
                 self.assertIn(
                     record.get("orchestration_decision"),
                     {"executed", "completed_state_reset_for_rerun"},
                 )
-            second_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+                merge_record = second_merge_index.get(chunk_id)
+                if merge_record is not None:
+                    self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                    self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
             for record in second_index.get("chunk_records", []):
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                first_signatures_record = first_signatures[chunk_id]
+                self.assertEqual(record.get("input_signature"), first_signatures_record["input_signature"])
+                self.assertNotEqual(record.get("execution_signature"), first_signatures_record["execution_signature"])
+                manifest_path = chunked_dir / "chunks" / f"{chunk_id}_manifest.json"
+                manifest = json.loads(manifest_path.read_text())
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
                 self.assertIn(
                     record.get("orchestration_decision"),
                     {"executed", "completed_state_reset_for_rerun"},
                 )
                 self.assertIsNotNone(record.get("execution_signature"))
+                merge_record = second_merge_index.get(chunk_id)
+                if merge_record is not None:
+                    self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                    self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
 
     def test_chunked_reducer_skips_chunks_claimed_by_other_owner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2443,8 +2483,13 @@ class HazardLayerTests(unittest.TestCase):
                 for record in second_index.get("chunk_records", [])
                 if record.get("chunk_id") == target_chunk_id
             )
+            manifest = json.loads((chunked_dir / "chunks" / f"{target_chunk_id}_manifest.json").read_text())
             self.assertEqual(plan_record.get("orchestration_decision"), "skipped_by_other_owner")
             self.assertEqual(index_record.get("orchestration_decision"), "skipped_by_other_owner")
+            self.assertEqual(plan_record.get("execution_signature"), index_record.get("execution_signature"))
+            self.assertEqual(plan_record.get("execution_signature"), manifest.get("execution_signature"))
+            self.assertEqual(plan_record.get("input_signature"), index_record.get("input_signature"))
+            self.assertEqual(plan_record.get("input_signature"), manifest.get("input_signature"))
 
     def test_chunked_reducer_max_attempts_exceeded(self) -> None:
         def fail_all_trajectory_paths(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
@@ -2485,6 +2530,36 @@ class HazardLayerTests(unittest.TestCase):
             self.assertTrue(
                 all(record.get("orchestration_decision") == "max_attempts_exceeded" for record in max_attempts_records)
             )
+            execution_index = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_execution_index_v1.json").read_text())
+            execution_merge = json.loads((chunked_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text())
+            merge_index_by_chunk = {
+                record.get("chunk_id"): record
+                for record in execution_merge.get("merge_index", [])
+                if isinstance(record.get("chunk_id"), str)
+            }
+            max_attempts_index_records = [
+                record
+                for record in execution_index.get("chunk_records", [])
+                if record.get("orchestration_decision") == "max_attempts_exceeded"
+            ]
+            self.assertEqual(len(max_attempts_index_records), len(execution_plan.get("chunk_manifests", [])))
+            for record in max_attempts_index_records:
+                chunk_id = record.get("chunk_id")
+                self.assertIsNotNone(chunk_id)
+                manifest = json.loads((chunked_dir / "chunks" / f"{chunk_id}_manifest.json").read_text())
+                self.assertEqual(record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(record.get("input_signature"), manifest.get("input_signature"))
+                if manifest.get("orchestration_decision") == "max_attempts_exceeded":
+                    self.assertEqual(record.get("orchestration_decision"), "max_attempts_exceeded")
+                else:
+                    self.assertEqual(manifest.get("orchestration_decision"), "executed")
+                self.assertEqual(int(record.get("output_bytes") or 0), 0)
+                merge_record = merge_index_by_chunk.get(record.get("chunk_id"))
+                if merge_record is not None:
+                    self.assertEqual(merge_record.get("execution_signature"), record.get("execution_signature"))
+                    self.assertEqual(merge_record.get("input_signature"), record.get("input_signature"))
+                    self.assertEqual(merge_record.get("orchestration_decision"), record.get("orchestration_decision"))
+                self.assertIsNotNone(record.get("completion_state"))
 
     def test_chunked_reducer_mixed_orchestration_and_artifact_agreement(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2559,12 +2634,20 @@ class HazardLayerTests(unittest.TestCase):
                 manifest = json.loads((chunked_dir / "chunks" / f"{chunk_id}_manifest.json").read_text())
                 index_record = index_by_chunk[chunk_id]
                 merge_record = merge_index[chunk_id]
+                self.assertIsNotNone(plan_record.get("execution_signature"))
+                self.assertIsNotNone(plan_record.get("input_signature"))
                 self.assertEqual(index_record.get("status"), manifest.get("status"))
                 self.assertEqual(index_record.get("completion_state"), manifest.get("completion_state"))
                 self.assertEqual(index_record.get("orchestration_decision"), manifest.get("orchestration_decision"))
                 self.assertEqual(merge_record.get("status"), manifest.get("status"))
                 self.assertEqual(merge_record.get("completion_state"), manifest.get("completion_state"))
                 self.assertEqual(merge_record.get("orchestration_decision"), manifest.get("orchestration_decision"))
+                self.assertEqual(plan_record.get("execution_signature"), index_record.get("execution_signature"))
+                self.assertEqual(plan_record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(plan_record.get("input_signature"), index_record.get("input_signature"))
+                self.assertEqual(plan_record.get("input_signature"), manifest.get("input_signature"))
+                self.assertEqual(index_record.get("execution_signature"), manifest.get("execution_signature"))
+                self.assertEqual(index_record.get("input_signature"), manifest.get("input_signature"))
 
     def test_chunked_reducer_reuses_partial_state_without_reexecution(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch

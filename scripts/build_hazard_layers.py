@@ -416,6 +416,9 @@ def chunk_execution_signature(
     probability: HazardProbabilityState | None,
     raster_export_config: RasterExportConfig,
     conditional_curve_export: ConditionalCurveExportConfig,
+    map_package_state: HazardMapPackageState | None,
+    pilot_gis_package: PilotGisPackageConfig | None,
+    reducer_workers: int,
 ) -> str:
     probability_fingerprint = None
     if probability is not None:
@@ -424,6 +427,31 @@ def chunk_execution_signature(
             "total_input_weight": probability.total_input_weight,
             "total_filtered_weight": probability.total_filtered_weight,
         }
+    map_package_policy = {
+        "enabled": map_package_state is not None,
+    }
+    if map_package_state is not None:
+        map_package_policy["probability_mode"] = map_package_state.config.probability_mode
+        map_package_policy["normalization_scope"] = map_package_state.config.normalization_scope
+        map_package_policy["map_product_id"] = map_package_state.config.map_product_id
+        map_package_policy["source_zone_id"] = map_package_state.source_zone_id
+        map_package_policy["scenario_ids"] = list(map_package_state.scenario_ids)
+        map_package_policy["source_zone_metadata_path"] = str(map_package_state.config.source_zone_metadata_path)
+        map_package_policy["scenario_table_path"] = (
+            str(map_package_state.config.scenario_table_path)
+            if map_package_state.config.scenario_table_path is not None
+            else None
+        )
+        map_package_policy["map_package_manifest_json"] = bool(map_package_state.config.map_package_manifest_json)
+    else:
+        map_package_policy["probability_mode"] = "unweighted_diagnostic"
+        map_package_policy["normalization_scope"] = "supplied_trajectory_count"
+        map_package_policy["map_product_id"] = None
+        map_package_policy["source_zone_id"] = None
+        map_package_policy["scenario_ids"] = []
+        map_package_policy["source_zone_metadata_path"] = None
+        map_package_policy["scenario_table_path"] = None
+        map_package_policy["map_package_manifest_json"] = False
     payload = json.dumps(
         {
             "chunk_signature": chunk_input_signature(chunk),
@@ -436,14 +464,39 @@ def chunk_execution_signature(
                 "nrows": grid.nrows,
                 "cell_size": grid.cell_size,
             },
+            "policy": {
+                "reducer_workers": reducer_workers,
+                "chunk_id_policy": "stable_prefix_sorted_chunk_index",
+            },
             "statistics": statistics.as_dict(),
             "probability": probability_fingerprint,
             "raster_exports": {
                 "grid_csv_export": raster_export_config.grid_csv_export,
                 "geotiff": raster_export_config.geotiff,
+                "cog": raster_export_config.cog,
             },
             "conditional_curve_export": {
                 "mode": conditional_curve_export.mode,
+            },
+            "map_package": map_package_policy,
+            "output_flags": {
+                "pilot_gis_package": pilot_gis_package is not None,
+                "pilot_gis_package_manifest_json": bool(pilot_gis_package and pilot_gis_package.package_manifest_json),
+                "export_geotiff": raster_export_config.geotiff,
+            },
+            "source_scenario_policy": {
+                "source_zone_ids": list(
+                    probability.config.filters.source_zone_ids if probability is not None else ()
+                ),
+                "scenario_ids": list(
+                    probability.config.filters.scenario_ids if probability is not None else ()
+                ),
+                "block_mass_kg_min": (
+                    probability.config.filters.block_mass_kg_min if probability is not None else None
+                ),
+                "block_mass_kg_max": (
+                    probability.config.filters.block_mass_kg_max if probability is not None else None
+                ),
             },
         },
         sort_keys=True,
@@ -1581,6 +1634,8 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
         raster_export_config,
         conditional_curve_export,
+        map_package_state,
+        pilot_gis_package_config,
         trajectory_paths,
         deposition_path,
         impact_event_paths,
@@ -2112,6 +2167,7 @@ def build_reducer_execution_index_manifest(
                 "attempt_count": record.get("attempt_count"),
                 "merge_group_id": record.get("merge_group_id"),
                 "execution_signature": record.get("execution_signature"),
+                "input_signature": record.get("input_signature"),
                 "input_file_counts": record.get("input_file_counts") if isinstance(record.get("input_file_counts"), dict) else None,
             }
             for record in chunk_records
@@ -2140,6 +2196,7 @@ def build_reducer_merge_state_manifest(
                 "partial_state_path": record.get("partial_state_path"),
                 "partial_state_schema_version": record.get("partial_state_schema_version"),
                 "execution_signature": record.get("execution_signature"),
+                "input_signature": record.get("input_signature"),
                 "completion_status": record.get("completion_status"),
                 "completion_state": record.get("completion_state"),
                 "status": record.get("status"),
@@ -2178,6 +2235,7 @@ def build_chunk_execution_manifest(
     manifest = {
         "schema_version": CHUNK_MANIFEST_SCHEMA_VERSION,
         "chunk_id": chunk.chunk_id,
+        "input_signature": chunk_input_signature(chunk),
         "execution_state_schema_version": CHUNK_EXECUTION_MANIFEST_SCHEMA_VERSION,
         "status": (
             "completed"
@@ -2273,6 +2331,8 @@ def run_reducer_accumulation(
     probability: HazardProbabilityState | None,
     raster_export_config: RasterExportConfig,
     conditional_curve_export: ConditionalCurveExportConfig,
+    map_package_state: HazardMapPackageState | None,
+    pilot_gis_package_config: PilotGisPackageConfig | None,
     trajectory_paths: list[Path],
     deposition_path: Path | None,
     impact_event_paths: list[Path],
@@ -2325,6 +2385,9 @@ def run_reducer_accumulation(
             probability=probability,
             raster_export_config=raster_export_config,
             conditional_curve_export=conditional_curve_export,
+            map_package_state=map_package_state,
+            pilot_gis_package=pilot_gis_package_config,
+            reducer_workers=worker_count,
         )
         for chunk in chunks
     }
@@ -2545,6 +2608,9 @@ def run_reducer_accumulation(
                 probability=probability,
                 raster_export_config=raster_export_config,
                 conditional_curve_export=conditional_curve_export,
+                map_package_state=map_package_state,
+                pilot_gis_package=pilot_gis_package_config,
+                reducer_workers=worker_count,
             )
             record["execution_signature"] = execution_signature
         if retry_count >= max_chunk_attempts:
