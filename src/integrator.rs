@@ -285,21 +285,12 @@ pub fn try_simulate_fixed_step_with_events_and_contact_parameters(
         }
 
         let contact_tangent_speed_mps = if signed_distance.abs() < 1.0e-7 {
-            contact_point_tangent_velocity(
-                &state,
-                terrain.try_normal(state.position_m.x, state.position_m.y)?,
-                block.radius_m,
-            )
-            .norm()
+            contact_point_tangent_velocity(&state, normal, block.radius_m).norm()
         } else {
             response.contact_tangent_speed_mps
         };
         let rolling_residual_mps = if signed_distance.abs() < 1.0e-7 {
-            rolling_residual(
-                &state,
-                terrain.try_normal(state.position_m.x, state.position_m.y)?,
-                block.radius_m,
-            )
+            rolling_residual(&state, normal, block.radius_m)
         } else {
             response.rolling_residual_mps
         };

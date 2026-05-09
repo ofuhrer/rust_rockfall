@@ -1,4 +1,4 @@
-use crate::{state::BodyState, Vec3};
+use crate::{state::BodyState, Vec3, EPS};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
@@ -209,12 +209,10 @@ fn perturb_normal(base_normal: Vec3, angle_a: f64, angle_b: f64) -> Vec3 {
 }
 
 fn unit_or(vector: Vec3, fallback: Vec3) -> Vec3 {
-    let norm = vector.norm();
-    if norm > 0.0 {
-        vector / norm
-    } else {
-        fallback
-    }
+    vector
+        .try_normalize(EPS)
+        .or_else(|| fallback.try_normalize(EPS))
+        .unwrap_or_else(|| Vec3::new(0.0, 0.0, 1.0))
 }
 
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
@@ -226,4 +224,34 @@ fn fnv1a_update(mut hash: u64, bytes: &[u8]) -> u64 {
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `unit_or` must return the fallback (not amplify noise) for near-zero vectors,
+    /// and must return `Vec3(0,0,1)` when both vector and fallback are near-zero.
+    #[test]
+    fn unit_or_uses_fallback_for_near_zero_vector() {
+        let tiny = Vec3::new(0.0, 0.0, 0.0);
+        let fallback = Vec3::new(0.0, 0.0, 1.0);
+        let result = unit_or(tiny, fallback);
+        assert!((result - fallback).norm() < 1.0e-12);
+    }
+
+    #[test]
+    fn unit_or_returns_default_when_both_near_zero() {
+        let tiny = Vec3::new(0.0, 0.0, 0.0);
+        let result = unit_or(tiny, tiny);
+        assert!((result - Vec3::new(0.0, 0.0, 1.0)).norm() < 1.0e-12);
+    }
+
+    #[test]
+    fn unit_or_normalizes_non_zero_vector() {
+        let v = Vec3::new(3.0, 4.0, 0.0);
+        let result = unit_or(v, Vec3::new(0.0, 0.0, 1.0));
+        assert!((result.norm() - 1.0).abs() < 1.0e-12);
+        assert!((result - Vec3::new(0.6, 0.8, 0.0)).norm() < 1.0e-12);
+    }
 }

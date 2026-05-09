@@ -2,7 +2,7 @@ use crate::{
     geometry::SphereBlock,
     state::BodyState,
     terrain::{Terrain, TerrainError},
-    Vec3,
+    Vec3, EPS,
 };
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
@@ -754,10 +754,8 @@ fn clamp_vector_norm(vector: Vec3, max_norm: f64) -> Vec3 {
 }
 
 fn unit_or(vector: Vec3, fallback: Vec3) -> Vec3 {
-    let norm = vector.norm();
-    if norm > 0.0 {
-        vector / norm
-    } else {
-        fallback
-    }
+    vector
+        .try_normalize(EPS)
+        .or_else(|| fallback.try_normalize(EPS))
+        .unwrap_or_else(|| Vec3::new(0.0, 0.0, 1.0))
 }

@@ -394,10 +394,18 @@ impl DemGrid {
         self.yllcorner_m + (self.nrows as f64 - 0.5) * self.cellsize_m
     }
 
+    /// Maximum x cell-center coordinate (same as [`Self::xmax_center_m`]).
+    ///
+    /// Returns the center of the rightmost column, **not** the outer footprint
+    /// edge. Use [`Self::footprint_xmax_m`] for the full-extent boundary.
     pub fn xmax_m(&self) -> f64 {
         self.xmax_center_m()
     }
 
+    /// Maximum y cell-center coordinate (same as [`Self::ymax_center_m`]).
+    ///
+    /// Returns the center of the topmost row, **not** the outer footprint edge.
+    /// Use [`Self::footprint_ymax_m`] for the full-extent boundary.
     pub fn ymax_m(&self) -> f64 {
         self.ymax_center_m()
     }
