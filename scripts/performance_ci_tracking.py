@@ -9,6 +9,7 @@ import datetime as dt
 import json
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -343,14 +344,19 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
 
 
 def read_json_url(url: str) -> Any:
-    # Callers must only pass trusted HTTPS URLs (e.g. the constructed GitHub
-    # Pages base URL derived from GITHUB_REPOSITORY_OWNER and repo name).
+    _assert_https_url(url)
     try:
         with urllib.request.urlopen(url, timeout=15) as response:
             content = response.read().decode("utf-8")
             return json.loads(content)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         return None
+
+
+def _assert_https_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"performance tracking URLs must be HTTPS URLs: {url}")
 
 
 def build_deltas(current: dict[str, float], baseline: dict[str, Any]) -> dict[str, dict[str, float | None]]:

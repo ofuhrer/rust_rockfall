@@ -103,6 +103,12 @@ class PerformanceCiTrackingTests(unittest.TestCase):
         result = perf_ci.read_json_url("https://example.invalid/perf/history.json")
         self.assertIsNone(result)
 
+    def test_read_json_url_rejects_non_https_url(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError, "performance tracking URLs must be HTTPS URLs"
+        ):
+            perf_ci.read_json_url("http://example.com/perf/history.json")
+
     def test_record_main_rejects_non_positive_max_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             summary_path = Path(tmp) / "summary.csv"
