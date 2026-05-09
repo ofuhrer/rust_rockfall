@@ -1,7 +1,6 @@
 //! Independent, literature-based research core for simple 3D rockfall simulation.
 //!
-//! This crate does not contain RAMMS::ROCKFALL code and does not attempt to
-//! reproduce proprietary implementations. The current model is a deliberately
+//! This crate does not reuse proprietary implementation internals. The current model is a deliberately
 //! small spherical-block simulator intended for analytic validation and future
 //! extension. New physics features are opt-in and versioned.
 

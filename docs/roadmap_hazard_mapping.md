@@ -15,7 +15,7 @@ efficient single-socket execution, local parallelism, reproducible chunking, a
 later CSCS/SLURM path, and roughly 10,000 trajectories per release zone where
 appropriate.
 
-The goal is not to reproduce RAMMS::ROCKFALL internals, clone proprietary workflows, or claim equivalence with any operational tool. RAMMS and related literature are used as scientific context for understanding state-of-the-art modelling concepts, not as implementation targets.
+The roadmap does not aim to clone proprietary workflows or claim equivalence with operational products. Public references are used as a fast feedback source for modeling choices, not as implementation targets.
 
 ## Current Position
 

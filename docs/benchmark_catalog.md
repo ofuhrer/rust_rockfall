@@ -1,6 +1,6 @@
 # Benchmark Catalog
 
-This catalog lists the current `v0.6.1` verification and validation cases. These cases verify the independent simulator’s implemented equations and diagnostics; they do not claim agreement with RAMMS::ROCKFALL or operational hazard validity.
+This catalog lists the current `v0.6.1` verification and validation cases. These cases verify the simulator’s implemented equations and diagnostics; they do not claim parity with vendor workflows or operational hazard validity.
 
 ## Level 0: Analytic Unit Tests
 

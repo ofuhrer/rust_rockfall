@@ -208,7 +208,7 @@ The stop criterion terminates motion when tangential speed is below the configur
 
 ## Soil Interaction And Scarring
 
-The default soil interaction model is `none`. The opt-in `scarring_contact_v1` model adds a deliberately small compactable-soil energy-loss layer at incoming impacts only. It is not a replacement for `contact_model`, and it does not attempt to reproduce RAMMS::ROCKFALL or Lu et al. 2019 in full.
+The default soil interaction model is `none`. The opt-in `scarring_contact_v1` model adds a deliberately small compactable-soil energy-loss layer at incoming impacts only. It is not a replacement for `contact_model`, and it does not aim to mirror closed-source implementations or Lu et al. 2019 in full.
 
 For an incoming impact, the model estimates normal impact speed:
 
@@ -216,7 +216,7 @@ For an incoming impact, the model estimates normal impact speed:
 v_n^- = max(0, -v^- . n)
 ```
 
-If `scarring_max_depth_m` is supplied, that nonnegative value is used as the scar depth and capped at one sphere radius. Otherwise the first implementation uses a Lu/RAMMS-style empirical scaling with mass, normal impact speed, and soil strength:
+If `scarring_max_depth_m` is supplied, that nonnegative value is used as the scar depth and capped at one sphere radius. Otherwise the first implementation uses a Lu-style empirical scaling with mass, normal impact speed, and soil strength:
 
 ```text
 d = 0.16 m^(1/4) ME^(-0.4) |v_n^-|^(0.8)

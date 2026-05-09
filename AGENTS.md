@@ -40,9 +40,9 @@ When these files conflict, preserve the safety constraints first, then update th
 
 ## Hard Boundaries
 
-- Do not reverse-engineer binaries or proprietary tools.
+- Do not replicate proprietary implementation internals without explicit permission.
 - Do not copy protected implementation details.
-- Do not claim equivalence with RAMMS::ROCKFALL or any proprietary model.
+- Do not claim equivalence with closed-source reference implementations or any proprietary model.
 - Do not introduce undocumented physics or hidden parameter choices.
 - Do not present this project as validated for operational hazard assessment.
 - Do not describe hazard-map layers as risk maps unless exposure and vulnerability data are explicitly included.

@@ -1,14 +1,14 @@
 # RAMMS Gap Analysis
 
-Status: strategic comparison against publicly documented RAMMS::ROCKFALL
+Status: strategic comparison against a publicly documented commercial rockfall reference workflow
 capabilities, accessed 2026-05-06. This document does not implement code, tune
 parameters, optimize performance, claim operational validity, or claim
-equivalence with RAMMS::ROCKFALL.
+equivalence with this reference workflow.
 
 ## Scope And Evidence Rules
 
 This analysis uses RAMMS only as a public state-of-practice reference for Swiss
-rockfall modelling. It does not reverse engineer proprietary code, binaries, or
+rockfall modelling. It does not recreate proprietary code, binaries, or
 private workflows.
 
 Evidence labels:
@@ -22,11 +22,11 @@ Evidence labels:
 
 Main RAMMS public sources:
 
-- RAMMS::Rockfall official page:
+- RAMMS official page:
   <https://ramms.ch/ramms-rockfall/>
 - RAMMS non-smooth mechanics overview:
   <https://ramms.ch/ramms-rockfall/non-smooth-mechanics-framework/>
-- RAMMS::Rockfall User Manual:
+- RAMMS User Manual:
   <https://ramms.ch/wp-content/uploads/RAMMS_ROCK2_Manual.pdf>
 - RAMMS FAQ / workflow learning resources:
   <https://ramms.ch/faq/>
@@ -95,7 +95,7 @@ Recent scientific findings:
 | Terrain/materials | Optional terrain class lookup, not calibrated | Documented terrain/soil categories with material parameters and scarring | Scientific/calibration gap | High |
 | Scarring | Opt-in simplified translational energy loss | Documented hybrid rigid-body plus scarring mechanisms for soft soils | Scientific gap | Medium-high |
 | Forest | No forest interaction | Documented forest polygons, densities, DBH distributions | Operational/scientific gap | Medium |
-| Barriers/obstacles | Not implemented | Public docs include obstacle/impact-analysis workflows; the public dam-interaction page explicitly notes a specific dam-interaction model is not yet implemented in RAMMS::Rockfall | Operational/product gap with caveat | Medium |
+| Barriers/obstacles | Not implemented | Public docs include obstacle/impact-analysis workflows; the public dam-interaction page explicitly notes a specific dam-interaction model is not yet implemented in RAMMS documentation | Operational/product gap with caveat | Medium |
 | Fragmentation | Not implemented | Manual states rocks are considered indestructible in the described model | Intentionally out of scope for parity | Low |
 | Validation maturity | Chant Sura, Tschamut, scarring experiments, transparent public reports | Public RAMMS tied to SLF/WSL experimental campaigns and application testing | Validation gap | High |
 | Hazard layers | CSV/ASCII/GeoJSON/PNG/HTML diagnostics and conditional weighted prototype | Documented statistic mode with reach probability and cell statistics for velocity, energy, jump height, rotational velocity, scar metrics | Product/statistics gap | Medium-high |
@@ -174,8 +174,8 @@ hazard-map credibility.
 workflows using tree density and DBH distributions, and result-analysis tools
 for trajectory impacts on polygon/shapefile regions. The RAMMS website also
 documents research pages for dam/shed interactions, but one public dam page
-states that the described dam-interaction model is not yet implemented in
-RAMMS::Rockfall. The manual section reviewed here states rocks are
+states that the described dam-interaction model is not yet implemented in RAMMS
+documentation. The manual section reviewed here states rocks are
 indestructible for the described model, so fragmentation is not a RAMMS parity
 target from that public evidence.
 
@@ -186,7 +186,7 @@ physics exists.
 is not the immediate next scientific gap because current Tschamut/Chant Sura
 failure modes already arise without these features. Protection-measure modelling
 should be treated as a later product layer unless a specific public source
-documents an implemented RAMMS::Rockfall feature and an equivalent open
+documents an implemented RAMMS feature and an equivalent open
 requirement.
 
 ### Probabilistic Treatment
@@ -488,7 +488,7 @@ Explicitly deferred:
 
 ## Bottom Line
 
-RAMMS::ROCKFALL is publicly documented as a mature, shape-aware, rigid-body,
+RAMMS documentation is publicly documented as a mature, shape-aware, rigid-body,
 terrain-material and GIS-oriented rockfall tool. The local project is much
 younger and scientifically weaker in active physics and operational workflow,
 especially for shape/contact and calibrated terrain interaction.
