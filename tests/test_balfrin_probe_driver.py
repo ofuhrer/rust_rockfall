@@ -56,35 +56,43 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             manifest = Path(tmpdir) / "manifest.yaml"
             self._write_manifest(manifest)
 
-            script = submit_driver._build_sbatch_script(
-                run_root=run_root,
-                probe_manifest=manifest,
-                partition="postproc",
-                time_budget="00:30:00",
-                nodes=1,
-                ntasks=1,
-                cpus_per_task=16,
-            )
+        script = submit_driver._build_sbatch_script(
+            run_root=run_root,
+            probe_manifest=manifest,
+            partition="postproc",
+            time_budget="00:30:00",
+            nodes=1,
+            ntasks=1,
+            cpus_per_task=16,
+        )
 
-            self.assertIn("#SBATCH --partition=postproc", script)
-            self.assertIn("#SBATCH --time=00:30:00", script)
-            self.assertIn("#SBATCH --nodes=1", script)
-            self.assertIn("#SBATCH --ntasks=1", script)
-            self.assertIn("#SBATCH --cpus-per-task=16", script)
-            self.assertIn(
-                "#SBATCH --output=/scratch/rust_rockfall/probes/scale-test/001/logs/slurm-%j.out",
-                script,
-            )
-            self.assertIn(
-                "#SBATCH --error=/scratch/rust_rockfall/probes/scale-test/001/logs/slurm-%j.err",
-                script,
-            )
-            self.assertIn('export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRATCH/.cache/uv}"', script)
-            self.assertIn('export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRATCH/rust_rockfall/target}"', script)
-            self.assertIn('export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"', script)
-            self.assertNotIn("--account", script)
-            self.assertNotIn("s83opr", script)
-            self.assertNotIn("gpu", script.lower())
+        lines = script.splitlines()
+        first_sbatch_idx = next(i for i, line in enumerate(lines) if line.startswith("#SBATCH"))
+        setu_index = lines.index("set -euo pipefail")
+        self.assertEqual(lines[0], "#!/usr/bin/env bash")
+        self.assertLess(first_sbatch_idx, setu_index)
+        self.assertIn("export RUN_ROOT", script)
+        self.assertIn("export REPO_ROOT", script)
+        self.assertIn("python3 - <<'PY'", script)
+        self.assertIn("#SBATCH --partition=postproc", script)
+        self.assertIn("#SBATCH --time=00:30:00", script)
+        self.assertIn("#SBATCH --nodes=1", script)
+        self.assertIn("#SBATCH --ntasks=1", script)
+        self.assertIn("#SBATCH --cpus-per-task=16", script)
+        self.assertIn(
+            "#SBATCH --output=/scratch/rust_rockfall/probes/scale-test/001/logs/slurm-%j.out",
+            script,
+        )
+        self.assertIn(
+            "#SBATCH --error=/scratch/rust_rockfall/probes/scale-test/001/logs/slurm-%j.err",
+            script,
+        )
+        self.assertIn('export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRATCH/.cache/uv}"', script)
+        self.assertIn('export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRATCH/rust_rockfall/target}"', script)
+        self.assertIn('export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"', script)
+        self.assertNotIn("--account", script)
+        self.assertNotIn("s83opr", script)
+        self.assertNotIn("gpu", script.lower())
 
     def test_dry_run_output_is_deterministic(self) -> None:
         fake_plan = ({"run_id": "probe_fixed", "commands": []}, "probe_fixed")
