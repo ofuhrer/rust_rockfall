@@ -92,6 +92,28 @@ Operational scope for this evidence:
 Do not add MPI, GPU, SLURM orchestration, annual frequency, physical probability,
 or ensemble-size increases from this evidence alone.
 
+## Local chunk-count scaling smoke (not balfrin evidence)
+
+Location: `/Users/fuhrer/Desktop/rust_rockfall` (laptop/local checkout), not
+`/users/olifu/work/rust_rockfall`.
+
+Chunk-count runs (same fixed workload, same outputs policy):
+
+| Trajectory/Reducer Workers | Trajectory Chunks | Reducer Chunks | Wall time (s) | Output write seconds | Output bytes | Output files |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `2/2` | 2 | 2 | `21.20` | `6.0881` | `15,582,152` | `46` |
+| `4/4` | 4 | 4 | `27.61` | `9.5276` | `15,617,393` | `50` |
+| `8/8` | 8 | 8 | `32.08` | `8.3838` | `15,687,566` | `58` |
+
+Finding:
+
+- Small Tschamut gate_v1 workload: increasing chunk count from 2 to 4/8 added chunk
+  management overhead and did not improve runtime.
+- Current locally recommended small-gate mode remains:
+  `--trajectory-workers 2 --reducer-workers 2 --conditional-curve-export summary-only --grid-csv-export none`.
+- Confirmed clean balfrin-scale chunk-count evidence still requires runs from
+  `/users/olifu/work/rust_rockfall`.
+
 ## Repeat-run drift classification (same inputs, same command plan)
 
 - Repeat run completed with stable command plan, `trajectory_workers=2`,
