@@ -70,6 +70,34 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
         self.assertIn("validation/results/probabilistic_phase1_smoke_trajectories", hazard_command)
         self.assertIn("hazard/results/public_real_site_pilot_template", hazard_command)
 
+    def test_predeclared_run_without_scalable_controls_keeps_default_command(self) -> None:
+        manifest = self.predeclared_manifest()
+        plan = validator.build_command_plan(manifest)
+        hazard_command = plan["commands"][-1]["command"]
+
+        self.assertNotIn("--conditional-curve-export", hazard_command)
+        self.assertNotIn("--grid-csv-export", hazard_command)
+        self.assertNotIn("--trajectory-workers", hazard_command)
+
+    def test_predeclared_run_with_scalable_controls_emits_flags(self) -> None:
+        manifest = self.predeclared_manifest()
+        manifest["hazard_output_plan"].update(
+            {
+                "conditional_curve_export": "summary-only",
+                "grid_csv_export": "none",
+                "trajectory_workers": 3,
+            }
+        )
+        plan = validator.build_command_plan(manifest)
+        hazard_command = plan["commands"][-1]["command"]
+
+        conditional_index = hazard_command.index("--conditional-curve-export")
+        grid_csv_index = hazard_command.index("--grid-csv-export")
+        trajectory_worker_index = hazard_command.index("--trajectory-workers")
+        self.assertEqual(hazard_command[conditional_index + 1], "summary-only")
+        self.assertEqual(hazard_command[grid_csv_index + 1], "none")
+        self.assertEqual(hazard_command[trajectory_worker_index + 1], "3")
+
     def test_rejects_missing_claim_boundary(self) -> None:
         manifest = copy.deepcopy(self.load_template())
         manifest["claim_boundary"]["unsupported_current_claims"].remove("risk_map")

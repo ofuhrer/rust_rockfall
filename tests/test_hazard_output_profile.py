@@ -15,6 +15,17 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(checker)
 
 
+VALIDATOR_PATH = ROOT / "scripts" / "validate_public_real_site_conditional_pilot_run.py"
+VALIDATOR_SPEC = importlib.util.spec_from_file_location(
+    "validate_public_real_site_conditional_pilot_run",
+    VALIDATOR_PATH,
+)
+assert VALIDATOR_SPEC is not None
+validator = importlib.util.module_from_spec(VALIDATOR_SPEC)
+assert VALIDATOR_SPEC.loader is not None
+VALIDATOR_SPEC.loader.exec_module(validator)
+
+
 class HazardOutputProfileTests(unittest.TestCase):
     def test_classify_full_debug_command(self) -> None:
         result = checker.classify_profile(
@@ -122,6 +133,26 @@ class HazardOutputProfileTests(unittest.TestCase):
         self.assertEqual(result["profile"], "full_debug")
         self.assertIn("--no-plots", result["matched_controls"])
         self.assertIn("controls", result)
+
+    def test_classify_generated_command_plan_from_manifest_with_scalable_controls(self) -> None:
+        manifest = validator.read_yaml(
+            ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+        )
+        manifest["hazard_output_plan"].update(
+            {
+                "conditional_curve_export": "summary-only",
+                "grid_csv_export": "none",
+                "trajectory_workers": 2,
+            }
+        )
+        plan = validator.build_command_plan(manifest)
+        hazard_command = plan["commands"][-1]["command"]
+        result = checker.classify_profile(command=hazard_command)
+
+        self.assertEqual(result["profile"], "provenance_audit")
+        self.assertIn("--conditional-curve-export summary-only", result["matched_controls"])
+        self.assertIn("--grid-csv-export none", result["matched_controls"])
+        self.assertIn("trajectory/reducer provenance lineage", result["matched_controls"])
 
     def test_classify_minimal_scalable_no_provenance_markers(self) -> None:
         result = checker.classify_profile(

@@ -41,6 +41,10 @@ sampling_plan:
 hazard_output_plan:
   probability_mode: sampling_weighted_conditional
   normalization_scope: conditioned_on_filter
+  # Optional scalable execution/control overrides; leave null/omit for defaults.
+  conditional_curve_export: null
+  grid_csv_export: null
+  trajectory_workers: null
   kinetic_energy_exceedance_j: []
   jump_height_exceedance_m: []
   velocity_exceedance_mps: []

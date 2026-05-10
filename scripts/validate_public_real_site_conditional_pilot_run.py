@@ -73,6 +73,8 @@ SELECTED_REQUIRED_PATH_ROOTS = {
 }
 HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
+SUPPORTED_CONDITIONAL_CURVE_EXPORT_MODES = {"full", "summary-only"}
+SUPPORTED_GRID_CSV_EXPORT_MODES = {"full", "none"}
 REQUIRED_UNSUPPORTED_CLAIMS = {
     "annual_frequency",
     "return_period",
@@ -387,6 +389,15 @@ def build_hazard_command(
         str(sampling["worker_count"]),
         "--no-plots",
     ]
+    conditional_curve_export = hazard_plan.get("conditional_curve_export")
+    if conditional_curve_export is not None:
+        command.extend(["--conditional-curve-export", str(conditional_curve_export)])
+    grid_csv_export = hazard_plan.get("grid_csv_export")
+    if grid_csv_export is not None:
+        command.extend(["--grid-csv-export", str(grid_csv_export)])
+    trajectory_workers = hazard_plan.get("trajectory_workers")
+    if trajectory_workers is not None:
+        command.extend(["--trajectory-workers", str(trajectory_workers)])
     output_parent = benchmark_case_path_obj.parent
     default_outputs = {
         "diagnostics_json": f"{case_id}_metrics.json",
@@ -538,6 +549,22 @@ def validate_hazard_output_plan(plan: dict[str, Any], pilot_id: str, run_status:
     require(plan.get("pilot_gis_package_required") is True, "pilot GIS package must be required")
     require(plan.get("explicit_grid_required") is True, "explicit grid must be required")
     require(plan.get("generated_outputs_committed") is False, "generated_outputs_committed must be false")
+    conditional_curve_export = plan.get("conditional_curve_export")
+    if conditional_curve_export is not None:
+        require(
+            conditional_curve_export in SUPPORTED_CONDITIONAL_CURVE_EXPORT_MODES,
+            "hazard_output_plan.conditional_curve_export must be full or summary-only",
+        )
+    grid_csv_export = plan.get("grid_csv_export")
+    if grid_csv_export is not None:
+        require(
+            grid_csv_export in SUPPORTED_GRID_CSV_EXPORT_MODES,
+            "hazard_output_plan.grid_csv_export must be full or none",
+        )
+    if run_status != "template_not_run":
+        trajectory_workers = plan.get("trajectory_workers")
+        if trajectory_workers is not None:
+            require_int(trajectory_workers, "hazard_output_plan.trajectory_workers", minimum=1)
     for key in ("kinetic_energy_exceedance_j", "jump_height_exceedance_m", "velocity_exceedance_mps"):
         values = require_list(plan.get(key), f"hazard_output_plan.{key}")
         for value in values:
