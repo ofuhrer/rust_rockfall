@@ -171,6 +171,46 @@ manifests.
 Do not treat non-numerical manifest byte drift as a reproducibility failure on its
 own in this local smoke-test context.
 
+## 10) Balfrin clean 2x2 vs 4x4 chunk-count smoke (Tschamut conditional gate)
+
+A clean balfrin comparison on `/users/olifu/work/rust_rockfall` (commit `23fade0`)
+used commit-synchronized conditional-only inputs with:
+
+- `--trajectory-workers 2 --reducer-workers 2`
+- `--trajectory-workers 4 --reducer-workers 4`
+- `--conditional-curve-export summary-only`
+- `--grid-csv-export none`
+- `--no-plots`
+
+Orchestrated path for each run before execution:
+
+- remove only: `hazard/results/tschamut_public_pilot/gate_v1/chunks`
+- remove only: `hazard/results/tschamut_public_pilot/gate_v1/trajectory_chunks`
+
+Observed clean evidence (sidecars captured with `/usr/bin/time`):
+
+- `2x2`: wall time `9.05s`, `total_wall_seconds 8.2485`,
+  `output_write_seconds 2.8636`, `output_bytes 15,579,398`, `output_file_count 46`
+- `4x4`: wall time `9.77s`, `total_wall_seconds 9.2953`,
+  `output_write_seconds 3.1814`, `output_bytes 15,614,702`, `output_file_count 50`
+
+Observed orchestration behavior:
+
+- chunk IDs are deterministic (`...__chunk_0000..`),
+- trajectory and reducer lineage references remain coherent,
+- both runs were fresh and show `executed` chunk decisions,
+- no stale/mixed/orphaned orchestration anomalies were reported by the manifests,
+- output format set (`esri_ascii_grid` + `geotiff`) remained stable.
+
+Interpretation for this small gate workload:
+
+- `4x4` was slower and wrote more output files than `2x2`.
+- Recommend continuing with `--trajectory-workers 2 --reducer-workers 2` for this
+  small Tschamut gate conditional workflow.
+
+This is conditional-only scaling evidence on balfrin; it does not imply operational
+readiness, larger-gate extrapolation, or annual/physical-semantic behavior.
+
 ## 8) Do not commit generated artifacts
 
 Do not commit ignored generated outputs from pilots, including:

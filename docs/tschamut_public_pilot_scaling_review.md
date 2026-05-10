@@ -114,6 +114,42 @@ Finding:
 - Confirmed clean balfrin-scale chunk-count evidence still requires runs from
   `/users/olifu/work/rust_rockfall`.
 
+## Clean balfrin chunk-count scaling smoke (2×2 vs 4×4, commit `23fade0`)
+
+Clean evidence from `/users/olifu/work/rust_rockfall` (clean `main`, same
+conditional-only command family as this review) compared:
+
+- `2×2`: `--trajectory-workers 2 --reducer-workers 2`
+- `4×4`: `--trajectory-workers 4 --reducer-workers 4`
+
+with `--conditional-curve-export summary-only`, `--grid-csv-export none`, `--no-plots`.
+
+| Trajectory/Reducer Workers | Trajectory Chunks | Reducer Chunks | Wall time (s) | `total_wall_seconds` | `output_write_seconds` | `output_bytes` | `output_file_count` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `2×2` | 2 | 2 | `9.05` | `8.2485` | `2.8636` | `15,579,398` | `46` |
+| `4×4` | 4 | 4 | `9.77` | `9.2953` | `3.1814` | `15,614,702` | `50` |
+
+Orchestration check summary from the two runs:
+
+- chunk IDs were deterministic,
+- trajectory/reducer lineage references were coherent,
+- all chunks were `executed` in these fresh clean runs,
+- no stale/mixed/orphaned decision anomalies were reported.
+
+Interpretation:
+
+- for the current small Tschamut gate_v1 conditional workload, `4×4` was slower than
+  `2×2`;
+- recommended current small-gate mode remains:
+  `--trajectory-workers 2 --reducer-workers 2` (with the same output policy).
+
+Evidence scope:
+
+- conditional-only scaling evidence only,
+- no annual/physical semantics,
+- no operational hazard-map readiness claim,
+- this is not a generic scalability law for larger Swiss-scale runs.
+
 ## Repeat-run drift classification (same inputs, same command plan)
 
 - Repeat run completed with stable command plan, `trajectory_workers=2`,
