@@ -209,7 +209,8 @@ import time
 from pathlib import Path
 
 run_root = Path(os.environ["RUN_ROOT"])
-repo_root = Path(str(os.environ.get("REPO_ROOT", "")).strip().strip("\"'"))
+quote_chars = chr(34) + chr(39)
+repo_root = Path(str(os.environ.get("REPO_ROOT", "")).strip().strip(quote_chars))
 command_plan_path = Path(os.environ["COMMAND_PLAN_PATH"])
 
 plan = json.loads(command_plan_path.read_text(encoding="utf-8"))
@@ -228,7 +229,7 @@ for entry in commands:
 
     args = [str(token) for token in command]
     name = str(entry.get("name", ""))
-    cwd = str(entry.get("cwd", str(repo_root))).strip().strip("\"'")
+    cwd = str(entry.get("cwd", str(repo_root))).strip().strip(quote_chars)
     env = os.environ.copy()
     for key, value in (entry.get("env") or {}).items():
         env[str(key)] = str(value)
