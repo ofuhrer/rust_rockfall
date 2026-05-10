@@ -46,7 +46,7 @@ Highest-value cleanup areas, in order:
 - `cargo run -- validate --all` — passed.
 - `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` — passed.
 - `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` — passed.
-- `python3 -m unittest discover -s tests -p 'test_*.py'` — exit code `0`; a direct follow-up summary extraction from that rerun showed `Ran 280 tests in 1.988s`.
+- `python3 -m unittest discover -s tests -p 'test_*.py'` — exit code `0`; direct output confirmed `Ran 280 tests in 1.988s`.
 - Repository-wide `rg` audits for:
   - `unwrap\(|expect\(|panic!|todo!|unimplemented!|FIXME|TODO|HACK|deprecated|legacy`
   - `NODATA|nodata|NaN|inf|clamp|default|fallback|seed|random|probability|weight|annual|risk`
@@ -54,7 +54,7 @@ Highest-value cleanup areas, in order:
 
 ### Commands skipped
 
-- `python3 -m pytest` — skipped as not applicable. No `pyproject.toml`, `pytest.ini`, or pytest-based suite was present, and `rg "pytest"` only found a documentation mention in `docs/autonomous_development_program.md:182`.
+- `python3 -m pytest` — skipped as not applicable. No `pyproject.toml`, `pytest.ini`, or pytest-based suite was present, and `rg "pytest"` only found a docs-only mention rather than runnable pytest targets.
 
 ## 3. Critical Findings
 
@@ -253,7 +253,7 @@ Acceptable for pure CLI boundaries, but the repository already imports these scr
 
 **Evidence**
 
-- `src/validation.rs:71` — `SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT` is not self-explanatory.
+- `src/validation.rs:71` — `SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_EDGE_LIMIT` is not self-explanatory; a name such as `SIGNIFICANT_IMPACT_TERRAIN_CLASS_SEQUENCE_HEAD_TAIL_LIMIT` would better describe the bounded head/tail sampling behavior.
 - `src/validation.rs` still uses `BenchmarkCase` for verification, validation, and benchmarking.
 
 **Risk**
@@ -307,7 +307,7 @@ This is a strength, not a problem: technical debt is mostly structural, not buri
    - legacy infallible terrain methods (`src/terrain.rs:6-31`, `543-551`)
    - legacy probability labels (`src/validation.rs:915`, `4023+`; `src/validation/runner.rs:266-273`)
    - legacy stop-state CSV compatibility tests (`tests/config_io_terrain.rs:2373+`)
-3. Those paths are documented and still covered by tests, so they are not dead code, but they do expand the correctness surface and should keep a clear deprecation/containment strategy.
+3. Those paths are documented and still covered by tests, so they are not dead code. The terrain-method entry above is intentionally the same code path discussed in Critical 2: it is both an active compatibility path and a current panic-risk surface, which is why it should be contained more tightly rather than simply deleted.
 
 ## 8. Error-Handling And Runtime-Safety Audit
 
