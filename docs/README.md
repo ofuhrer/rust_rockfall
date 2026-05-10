@@ -175,6 +175,9 @@ into `decision_log.md`; they do not override the current roadmaps.
   bottleneck observations.
 - `hazard_workflow_scale_review.md`: hazard-layer stress-test and Swiss-scale
   requirements.
+- `hazard_output_profile_contract.md`: profile-level output contracts for
+  conditional hazard runs (`full_debug`, `scalable_conditional`,
+  `provenance_audit`).
 
 ## Background And Older Model Work
 
