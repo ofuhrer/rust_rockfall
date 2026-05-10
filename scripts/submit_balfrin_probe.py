@@ -209,7 +209,7 @@ import time
 from pathlib import Path
 
 run_root = Path(os.environ["RUN_ROOT"])
-repo_root = Path(os.environ["REPO_ROOT"])
+repo_root = Path(str(os.environ.get("REPO_ROOT", "")).strip().strip("\"'"))
 command_plan_path = Path(os.environ["COMMAND_PLAN_PATH"])
 
 plan = json.loads(command_plan_path.read_text(encoding="utf-8"))
@@ -228,7 +228,7 @@ for entry in commands:
 
     args = [str(token) for token in command]
     name = str(entry.get("name", ""))
-    cwd = str(entry.get("cwd", str(repo_root)))
+    cwd = str(entry.get("cwd", str(repo_root))).strip().strip("\"'")
     env = os.environ.copy()
     for key, value in (entry.get("env") or {}).items():
         env[str(key)] = str(value)
@@ -286,9 +286,9 @@ def _build_sbatch_script(
         "",
         "set -euo pipefail",
         "",
-        f"RUN_ROOT={shlex.quote(run_root.as_posix())}",
-        f'REPO_ROOT={shlex.quote(ROOT.as_posix())}',
-        f'PROBE_MANIFEST={shlex.quote(probe_manifest.as_posix())}',
+        f"RUN_ROOT={run_root.as_posix()}",
+        f"REPO_ROOT={ROOT.as_posix()}",
+        f"PROBE_MANIFEST={probe_manifest.as_posix()}",
         'COMMAND_PLAN_PATH="${RUN_ROOT}/command_plan.json"',
         'SUMMARY_PATH="${RUN_ROOT}/balfrin_probe_summary.json"',
         'FULL_TIME_PATH="${RUN_ROOT}/balfrin_probe_full_time.txt"',
@@ -318,24 +318,25 @@ def _build_sbatch_script(
         '  echo "SLURM_JOB_NAME=${SLURM_JOB_NAME:-balfrin-probe}"',
         '  echo "SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK:-1}"',
         '  echo "run_root=${RUN_ROOT}"',
-        f'  echo "probe_manifest={probe_manifest.as_posix()}"',
+        '  echo "probe_manifest=${PROBE_MANIFEST}"',
         '  echo "command_plan_path=${COMMAND_PLAN_PATH}"',
         '  echo "repo_root=${REPO_ROOT}"',
         '  if command -v git >/dev/null 2>&1; then',
-        '    echo "git_hash=$(git -C \\"${REPO_ROOT}\\" rev-parse HEAD)"',
+        '    git_hash="$(git -C "$REPO_ROOT" rev-parse HEAD)"',
+        '    echo "git_hash=${git_hash}"',
         '  else',
         '    echo "git_hash=unknown"',
         '  fi',
         '} > "${RUN_CONTEXT_PATH}"',
         "",
         "cd \"${REPO_ROOT}\"",
-        f'UV_CACHE_DIR="$UV_CACHE_DIR" python3 scripts/validate_public_real_site_conditional_pilot_run.py "{probe_manifest.as_posix()}" --print-command-plan --format json > "${{COMMAND_PLAN_PATH}}"',
+        f'UV_CACHE_DIR="$UV_CACHE_DIR" python3 "${{REPO_ROOT}}/scripts/validate_public_real_site_conditional_pilot_run.py" "${{PROBE_MANIFEST}}" --print-command-plan --format json > "${{COMMAND_PLAN_PATH}}"',
         "",
         "python3 - <<'PY'",
         _build_python_executor().strip("\n"),
         "PY",
         "",
-        f'python3 "{ROOT.as_posix()}/scripts/collect_balfrin_probe_metrics.py" --run-root "${{RUN_ROOT}}" --probe-manifest "{probe_manifest.as_posix()}" --output-json "${{SUMMARY_PATH}}"',
+        f'python3 "${{REPO_ROOT}}/scripts/collect_balfrin_probe_metrics.py" --run-root "${{RUN_ROOT}}" --probe-manifest "${{PROBE_MANIFEST}}" --output-json "${{SUMMARY_PATH}}"',
         'echo "summary_path=${SUMMARY_PATH}"',
         'echo "full_time_path=${FULL_TIME_PATH}"',
         'echo "hazard_time_path=${HAZARD_TIME_PATH}"',

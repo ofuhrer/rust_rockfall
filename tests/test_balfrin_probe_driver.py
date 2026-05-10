@@ -93,6 +93,8 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertNotIn("--account", script)
         self.assertNotIn("s83opr", script)
         self.assertNotIn("gpu", script.lower())
+        self.assertNotIn(f'"{submit_driver.ROOT.as_posix()}"', script)
+        self.assertIn('git_hash="$(git -C "$REPO_ROOT" rev-parse HEAD)"', script)
 
     def test_dry_run_output_is_deterministic(self) -> None:
         fake_plan = ({"run_id": "probe_fixed", "commands": []}, "probe_fixed")
