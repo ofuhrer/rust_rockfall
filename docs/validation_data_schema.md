@@ -647,7 +647,11 @@ Hazard-layer builds can opt in to local chunked reducer execution with
 `--reducer-workers N` for `N > 1`. The hazard `run_manifest_v1` then records a
 `reducer_execution` section with schema version
 `deterministic_local_reducer_v1`, sorted chunk-id merge order, worker count,
-chunk ids, and reducer contract. `run` output now includes a manifest for each
+chunk ids, reducer contract, and optional trajectory plan linkage. If
+`--trajectory-workers > 1`, `reducer_execution` includes
+`trajectory_execution_plan_id` referencing the corresponding
+`trajectory_execution_plan_v1` `plan_id`.
+`run` output now includes a manifest for each
 chunk (`hazard_reducer_chunk_manifest_v1`), an
 `<prefix>_execution_plan_v1.json` `execution_plan_v1` sidecar, an
 `<prefix>_reducer_execution_index_v1.json` `reducer_execution_index_v1` sidecar,

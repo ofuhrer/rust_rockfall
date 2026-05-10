@@ -2618,6 +2618,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         impact_event_paths,
         impact_event_parquet_paths,
         args.reducer_workers,
+        trajectory_plan_id=trajectory_execution.plan_id if trajectory_execution is not None else None,
         owner_id=args.chunk_owner_id,
         scheduler_index=args.scheduler_index,
         scheduler_count=args.scheduler_count,
@@ -3370,6 +3371,7 @@ def run_reducer_accumulation(
     impact_event_paths: list[Path],
     impact_event_parquet_paths: list[Path],
     worker_count: int,
+    trajectory_plan_id: str | None = None,
     *,
     owner_id: str | None = None,
     scheduler_index: int = 0,
@@ -3828,6 +3830,7 @@ def run_reducer_accumulation(
 
     reducer_execution = {
         "schema_version": "deterministic_local_reducer_v1",
+        "trajectory_plan_id": trajectory_plan_id,
         "mode": "chunked_local_threads",
         "worker_count": worker_count,
         "chunk_count": len(chunks),

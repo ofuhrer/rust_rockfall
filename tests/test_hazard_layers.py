@@ -161,6 +161,38 @@ class HazardLayerTests(unittest.TestCase):
             manifest.get("input_rows", {}).get("significant_impact_rows"),
         )
 
+    def _manifest_core_output_signatures(self, manifest: dict[str, Any]) -> list[tuple[str, str, str | None, int, int]]:
+        excluded_kinds = {
+            "trajectory_execution_plan",
+            "trajectory_execution_index",
+            "trajectory_merge_state",
+            "trajectory_chunk_manifest",
+            "reducer_execution_plan",
+            "reducer_execution_index",
+            "reducer_merge_state",
+            "reducer_chunk_manifest",
+            "trajectory_generation_plan",
+        }
+        signatures: list[tuple[str, str, str | None, int, int]] = []
+        for output in manifest.get("outputs", []):
+            kind = output.get("kind")
+            if kind in excluded_kinds:
+                continue
+            path = output.get("path")
+            self.assertIsNotNone(path)
+            if path is None:
+                continue
+            signatures.append(
+                (
+                    str(kind),
+                    str(Path(path).name),
+                    output.get("format"),
+                    int(output.get("file_count") or 0),
+                    int(output.get("total_bytes") or 0),
+                )
+            )
+        return signatures
+
     def test_trajectory_csv_batch_reader_preserves_samples_and_id(self) -> None:
         warnings: list[str] = []
         batch = hazard.read_trajectory_sample_batch(FIXTURE / "trajectory_a.csv", warnings)
@@ -1973,6 +2005,70 @@ class HazardLayerTests(unittest.TestCase):
 
             self.assertEqual(execution["reducer"]["chunk_ids"], sorted(execution["reducer"]["chunk_ids"]))
 
+    def test_default_and_chunked_trajectory_generation_match_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            serial_dir = work / "serial"
+            chunked_dir = work / "chunked"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+
+            self.assertEqual(hazard.main_with_args([*common_args, "--output-dir", str(serial_dir)]), 0)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        *common_args,
+                        "--output-dir",
+                        str(chunked_dir),
+                        "--trajectory-workers",
+                        "2",
+                    ]
+                ),
+                0,
+            )
+
+            serial_manifest = json.loads((serial_dir / "hazard_fixture_ensemble_manifest.json").read_text())
+            trajectory_manifest = json.loads((chunked_dir / "hazard_fixture_ensemble_manifest.json").read_text())
+            serial_outputs = serial_manifest["outputs"]
+            trajectory_outputs = trajectory_manifest["outputs"]
+            self.assertGreater(len(serial_outputs), 0)
+            self.assertGreater(len(trajectory_outputs), 0)
+
+            serial_execution = serial_manifest["conditional_execution"]
+            chunked_execution = trajectory_manifest["conditional_execution"]
+            self.assertEqual(serial_execution["trajectory_generation"]["mode"], "serial")
+            self.assertEqual(chunked_execution["trajectory_generation"]["mode"], "chunked_local_threads")
+            self.assertNotEqual(
+                serial_execution["trajectory_generation"]["mode"],
+                chunked_execution["trajectory_generation"]["mode"],
+            )
+            self.assertEqual(
+                self._manifest_core_output_signatures(serial_manifest),
+                self._manifest_core_output_signatures(trajectory_manifest),
+            )
+
+            for layer in (
+                "reach_probability",
+                "kinetic_energy_exceedance_10j",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "deposition_density",
+                "significant_impact_density",
+            ):
+                self.assertEqual(
+                    read_layer(serial_dir / f"hazard_fixture_ensemble_{layer}.csv", layer),
+                    read_layer(chunked_dir / f"hazard_fixture_ensemble_{layer}.csv", layer),
+                )
+
     def test_trajectory_chunked_generation_records_artifacts_and_linkage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -2057,6 +2153,10 @@ class HazardLayerTests(unittest.TestCase):
             )
             reducer_merge_state = json.loads(
                 (trajectory_dir / "hazard_fixture_ensemble_reducer_merge_state_v1.json").read_text()
+            )
+            self.assertEqual(
+                reducer_execution.get("trajectory_execution_plan_id"),
+                trajectory_plan.get("plan_id"),
             )
             self.assertEqual(reducer_execution["worker_count"], 2)
             self.assertEqual(reducer_plan.get("chunk_count"), len(reducer_index.get("chunk_records") or []))
@@ -2163,6 +2263,223 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("reused_completed_state", decision_by_chunk.values())
             self.assertEqual(sorted(rerun_chunks), sorted([stale_chunk_id]))
             self.assertTrue(trajectory_state_path.exists())
+
+    def test_trajectory_chunk_stale_claim_with_valid_state_recovered(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            plan_path = trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_plan_v1.json"
+            first_plan = json.loads(plan_path.read_text())
+            first_records = first_plan.get("chunk_manifests") or []
+            self.assertEqual(len(first_records), 2)
+            stale_chunk_id = str(first_records[0].get("chunk_id"))
+            stale_record = next(record for record in first_records if str(record.get("chunk_id")) == stale_chunk_id)
+            stale_record["ownership"] = {
+                "state": "claimed",
+                "owner_id": "stale_owner",
+                "claimed_at_unix_s": 1,
+                "lease_expires_unix_s": 1,
+                "released_at_unix_s": None,
+                "release_reason": None,
+                "updated_unix_s": 1,
+            }
+            plan_path.write_text(json.dumps(first_plan, indent=2, sort_keys=True) + "\n")
+
+            run_calls: list[str] = []
+            original_run_trajectory_chunk = hazard.run_trajectory_chunk
+
+            def spy_run_trajectory_chunk(*args: object, **kwargs: object) -> hazard.TrajectoryChunkResult:
+                chunk = args[0]
+                run_calls.append(str(chunk.chunk_id))
+                return original_run_trajectory_chunk(*args, **kwargs)
+
+            with patch("scripts.build_hazard_layers.run_trajectory_chunk", side_effect=spy_run_trajectory_chunk):
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                    0,
+                )
+            second_plan = json.loads(plan_path.read_text())
+            second_records = second_plan.get("chunk_manifests") or []
+            decision_by_chunk = {
+                str(record.get("chunk_id")): str(record.get("orchestration_decision"))
+                for record in second_records
+            }
+            self.assertEqual(decision_by_chunk[stale_chunk_id], "stale_claim_recovered")
+            self.assertNotIn("executed", decision_by_chunk.values())
+            self.assertEqual(run_calls, [])
+            self.assertEqual(
+                json.loads(
+                    (trajectory_dir / "trajectory_chunks" / f"{stale_chunk_id}_manifest.json").read_text()
+                ).get("orchestration_decision"),
+                "stale_claim_recovered",
+            )
+
+    def test_trajectory_chunk_stale_claim_with_missing_partial_state_forces_reexecution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            plan_path = trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_plan_v1.json"
+            first_plan = json.loads(plan_path.read_text())
+            first_records = first_plan.get("chunk_manifests") or []
+            self.assertEqual(len(first_records), 2)
+            stale_chunk_id = str(first_records[0].get("chunk_id"))
+            stale_record = next(record for record in first_records if str(record.get("chunk_id")) == stale_chunk_id)
+            stale_record["ownership"] = {
+                "state": "claimed",
+                "owner_id": "stale_owner",
+                "claimed_at_unix_s": 1,
+                "lease_expires_unix_s": 1,
+                "released_at_unix_s": None,
+                "release_reason": None,
+                "updated_unix_s": 1,
+            }
+            trajectory_state_path = trajectory_dir / "trajectory_chunks" / f"{stale_chunk_id}_state.json"
+            trajectory_state_path.unlink()
+            plan_path.write_text(json.dumps(first_plan, indent=2, sort_keys=True) + "\n")
+
+            run_calls: list[str] = []
+            original_run_trajectory_chunk = hazard.run_trajectory_chunk
+
+            def spy_run_trajectory_chunk(*args: object, **kwargs: object) -> hazard.TrajectoryChunkResult:
+                chunk = args[0]
+                run_calls.append(str(chunk.chunk_id))
+                return original_run_trajectory_chunk(*args, **kwargs)
+
+            with patch("scripts.build_hazard_layers.run_trajectory_chunk", side_effect=spy_run_trajectory_chunk):
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                    0,
+                )
+            second_plan = json.loads(plan_path.read_text())
+            second_records = second_plan.get("chunk_manifests") or []
+            decision_by_chunk = {
+                str(record.get("chunk_id")): str(record.get("orchestration_decision"))
+                for record in second_records
+            }
+            self.assertEqual(decision_by_chunk[stale_chunk_id], "executed")
+            self.assertEqual(sorted(run_calls), sorted([stale_chunk_id]))
+            self.assertTrue(trajectory_state_path.exists())
+
+    def test_trajectory_chunk_mixed_stale_and_rerun_orchestration(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectory_dir = work / "trajectory"
+            common_args = [
+                "--case",
+                str(FIXTURE / "ensemble_case.yaml"),
+                "--diagnostics",
+                str(FIXTURE / "diagnostics.json"),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--trajectory-workers",
+                "2",
+                "--kinetic-energy-exceedance-j",
+                "10",
+            ]
+            self.assertEqual(
+                hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                0,
+            )
+            plan_path = trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_plan_v1.json"
+            first_plan = json.loads(plan_path.read_text())
+            first_records = first_plan.get("chunk_manifests") or []
+            self.assertGreaterEqual(len(first_records), 2)
+
+            stale_record = first_records[0]
+            execute_record = first_records[1]
+            stale_record["ownership"] = {
+                "state": "claimed",
+                "owner_id": "stale_owner",
+                "claimed_at_unix_s": 1,
+                "lease_expires_unix_s": 1,
+                "released_at_unix_s": None,
+                "release_reason": None,
+                "updated_unix_s": 1,
+            }
+            execute_record["completion_status"] = "failed"
+            execute_record["execution_status"] = "failed"
+            execute_record["retry_count"] = 0
+            execute_record["attempt_count"] = 1
+            execute_record["status"] = "failed"
+            execute_record["completion_state"] = "failed"
+            execute_record["execution_attempt"] = 1
+            execute_record["row_count"] = 1
+            execute_record["rows_written"] = 1
+            execute_record["output_bytes"] = 1
+            plan_path.write_text(json.dumps(first_plan, indent=2, sort_keys=True) + "\n")
+
+            run_calls: list[str] = []
+            original_run_trajectory_chunk = hazard.run_trajectory_chunk
+
+            def spy_run_trajectory_chunk(*args: object, **kwargs: object) -> hazard.TrajectoryChunkResult:
+                chunk = args[0]
+                run_calls.append(str(chunk.chunk_id))
+                return original_run_trajectory_chunk(*args, **kwargs)
+
+            with patch("scripts.build_hazard_layers.run_trajectory_chunk", side_effect=spy_run_trajectory_chunk):
+                self.assertEqual(
+                    hazard.main_with_args([*common_args, "--output-dir", str(trajectory_dir)]),
+                    0,
+                )
+            second_plan = json.loads(plan_path.read_text())
+            second_index = json.loads(
+                (trajectory_dir / "hazard_fixture_ensemble_trajectory_execution_index_v1.json").read_text()
+            )
+            second_records = second_plan.get("chunk_manifests") or []
+            second_index_records = second_index.get("chunk_records") or []
+            decision_by_chunk = {
+                str(record.get("chunk_id")): str(record.get("orchestration_decision"))
+                for record in second_records
+            }
+            second_index_decisions = {
+                str(record.get("chunk_id")): str(record.get("orchestration_decision"))
+                for record in second_index_records
+            }
+            self.assertEqual(decision_by_chunk, second_index_decisions)
+            stale_chunk_id = str(stale_record.get("chunk_id"))
+            execute_chunk_id = str(execute_record.get("chunk_id"))
+            self.assertEqual(decision_by_chunk[stale_chunk_id], "stale_claim_recovered")
+            self.assertEqual(decision_by_chunk[execute_chunk_id], "executed")
+            self.assertIn("executed", decision_by_chunk.values())
+            self.assertIn("stale_claim_recovered", decision_by_chunk.values())
+            self.assertIn(execute_chunk_id, run_calls)
+            self.assertNotIn(stale_chunk_id, run_calls)
+            self.assertNotIn("skipped_by_other_owner", decision_by_chunk.values())
 
     def test_chunk_execution_plan_is_deterministic_between_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
