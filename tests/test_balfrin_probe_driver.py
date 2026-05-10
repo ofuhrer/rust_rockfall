@@ -146,8 +146,9 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                                 "python3",
                                 "build_hazard_layers.py",
                                 "--output-dir",
-                                str(output_root),
+                                "hazard_output",
                             ],
+                            "cwd": str(run_root),
                         }
                     ]
                 },
@@ -204,7 +205,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
 
             summary = collect_driver.collect_run_metrics(run_root)
 
-        self.assertEqual(summary["output_root"], str(output_root))
+        self.assertEqual(summary["output_root"], str(output_root.resolve()))
         self.assertEqual(summary["output_bytes"], 4321)
         self.assertEqual(summary["output_file_count"], 7)
         self.assertEqual(summary["output_write_seconds"], 3.21)

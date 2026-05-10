@@ -57,7 +57,11 @@ def _load_json(path: Path | None) -> dict[str, Any] | None:
     return payload
 
 
-def _command_output_dir(command_plan: dict[str, Any]) -> Path | None:
+def _command_output_dir(
+    command_plan: dict[str, Any],
+    *,
+    run_root: Path,
+) -> Path | None:
     commands = command_plan.get("commands")
     if not isinstance(commands, list):
         return None
@@ -69,10 +73,16 @@ def _command_output_dir(command_plan: dict[str, Any]) -> Path | None:
         command = entry.get("command")
         if not isinstance(command, list):
             continue
+        cwd = Path(str(entry.get("cwd", str(run_root)))).expanduser()
+        if not cwd.is_absolute():
+            cwd = (run_root / cwd).resolve()
         tokens = [str(token) for token in command]
         for idx, token in enumerate(tokens):
             if token == "--output-dir" and idx + 1 < len(tokens):
-                return Path(tokens[idx + 1]).expanduser()
+                output_dir = Path(tokens[idx + 1]).expanduser()
+                if not output_dir.is_absolute():
+                    return (cwd / output_dir).resolve()
+                return output_dir
     return None
 
 
@@ -132,7 +142,7 @@ def collect_run_metrics(
     command_plan = _load_json(run_root / "command_plan.json") or {}
     command_plan_probe_manifest = command_plan.get("input")
     command_plan_path = run_root / "command_plan.json"
-    output_root = _command_output_dir(command_plan) or (run_root / "output")
+    output_root = _command_output_dir(command_plan, run_root=run_root) or (run_root / "output")
 
     output_manifest = _find_hazard_manifest(output_root)
     manifest = _load_json(output_manifest) if output_manifest else None
