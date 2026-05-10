@@ -199,6 +199,41 @@ python3 scripts/build_hazard_layers.py \
   signatures in chunk-sidecar contracts. Current manifests and signatures already
   represent local replay safety for compatible restart semantics.
 
+## Checker usage
+
+Use the read-only profile checker to verify command intent for hazard profiles.
+
+- From an explicit command:
+
+```bash
+python3 scripts/check_hazard_output_profile.py \
+  -- python3 scripts/build_hazard_layers.py \
+  --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml \
+  --output-dir hazard/results/tschamut_public_pilot/gate_v1 \
+  --conditional-curve-export summary-only \
+  --grid-csv-export none \
+  --no-plots \
+  --reducer-workers 2
+```
+
+- From a command-plan JSON:
+
+```bash
+python3 scripts/check_hazard_output_profile.py \
+  --command-plan validation/results/command_plans/tschamut_public_conditional_gate.json \
+  --format json
+```
+
+Output fields:
+
+- `profile`: one of `full_debug`, `scalable_conditional`, `provenance_audit`,
+  `custom_or_mixed`.
+- `matched_controls`: profile controls detected from the command.
+- `missing_controls`: required controls that are absent for the detected profile.
+- `missing_scalable_controls`: direct required controls for `scalable_conditional`.
+- `unsupported_or_ambiguous_controls`: unsupported values or mixed profile signals.
+- `recommendations`: optional profile-improvement suggestions.
+
 ## Future implementation note (not implemented yet)
 
 Optional flag to simplify user intent:
