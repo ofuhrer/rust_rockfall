@@ -72,6 +72,42 @@ Output bytes are currently decomposed into:
 - Scaling is best used to compare scenario alternatives, not to predict wall-clock
   execution time from first principles.
 
+### Balfrin calibration cross-check
+
+For comparison against measured clean balfrin small-gate evidence, use the same
+workload geometry and 2×2 chunking:
+
+- `--release-zone-count 10`
+- `--ensemble-size 1`
+- `--trajectory-count 6`
+- `--grid-rows 304`
+- `--grid-cols 300`
+- `--trajectory-workers 2`
+- `--reducer-workers 2`
+- `--trajectory-chunks 2`
+- `--reducer-chunks 2`
+- `--threshold-count 2`
+
+That setting should be interpreted as the probe-equivalent of the clean balfrin
+`--trajectory-workers 2 --reducer-workers 2` conditional 2×2 reference.
+
+Observed estimate class behavior at this configuration:
+
+- `scalable_conditional`:
+  - `estimated_output_bytes`: close to `15,579,398`
+  - `estimated_output_file_count`: `46`
+  - dominant classes: geotiff/ascii raster + sidecar + conditional curve.
+- `provenance_audit`:
+  - `estimated_output_file_count`: `50` (4 extra provenance manifests)
+  - bytes increase primarily in `provenance_artifacts`.
+
+Important:
+
+- `--profile` and chunk settings are synthetic parameters in the probe and must
+  be matched explicitly.
+- A prior one-zone setup (`release-zone-count 1`) is useful for sensitivity but is
+  not an apples-to-apples reference to the balfrin 2×2 benchmark.
+
 ## CLI
 
 ```bash

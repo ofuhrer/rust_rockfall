@@ -20,8 +20,6 @@ ANCHOR = {
     "grid_cols": 300,
     "trajectory_chunks": 2,
     "reducer_chunks": 2,
-    "output_bytes_full_profile": 75_046_369,
-    "output_file_count_full_profile": 0,  # not used for direct file-count calibration
     "output_bytes_scalable_profile": 15_579_398,
     "output_file_count_scalable_profile": 46,
 }
@@ -146,8 +144,9 @@ def _resolve_export_geotiff(profile: str, export_geotiff: bool, no_export_geotif
         return False
     if export_geotiff:
         return True
-    # Profile defaults: scalable/provenance profiles are typically benchmarked with raster parity.
-    return profile in {"scalable_conditional", "provenance_audit"}
+    # Profile defaults: all output profiles are raster-capable by default.
+    # Use --no-export-geotiff to model raster-minimal scenarios explicitly.
+    return profile in {"full_debug", "scalable_conditional", "provenance_audit"}
 
 
 def _infer_chunks(total_units: int, workers: int, explicit_chunks: int | None) -> int:
@@ -200,11 +199,6 @@ def estimate(inputs: EstimateInputs) -> Estimate:
     cell_scale = _safe_div(grid_cells, REFERENCE_GRID_CELLS)
     trajectory_scale = _safe_div(total_trajectories, REFERENCE_TOTAL_TRAJECTORIES)
     threshold_scale = max(1.0, 1.0 + 0.05 * max(0, inputs.threshold_count - REFERENCE_THRESHOLD_COUNT))
-    chunk_scale = _safe_div(
-        trajectory_chunks + reducer_chunks,
-        REFERENCE_TOTAL_CHUNKS,
-    )
-
     include_csv = inputs.profile == "full_debug"
     include_full_curves = inputs.profile == "full_debug"
     include_audit_artifacts = inputs.profile == "provenance_audit"
@@ -230,7 +224,8 @@ def estimate(inputs: EstimateInputs) -> Estimate:
         * (0.7 + 0.3 * min(2.0, trajectory_scale))
         * (0.9 + 0.1 * threshold_scale)
     )
-    chunk_bytes = int((trajectory_chunks + reducer_chunks) * CHUNK_MANAGEMENT_BYTES * chunk_scale)
+    # Approximate chunk metadata scales with chunk cardinality, not quadratic cardinality.
+    chunk_bytes = int((trajectory_chunks + reducer_chunks) * CHUNK_MANAGEMENT_BYTES)
     trajectory_meta_bytes = total_trajectories * TRAJECTORY_TRAILING_BYTES
 
     provenance_bytes = PROVENANCE_AUDIT_BYTES if include_audit_artifacts else 0

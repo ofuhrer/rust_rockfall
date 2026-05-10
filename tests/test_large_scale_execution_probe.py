@@ -120,6 +120,42 @@ class EstimateLargeScaleExecutionProbeTests(unittest.TestCase):
         )
         self.assertEqual(first, second)
 
+    def test_balfrin_small_gate_reference_approximation(self) -> None:
+        scalable_reference = estimator.estimate(
+            self._make_input(
+                release_zone_count=10,
+                trajectory_count=6,
+                trajectory_workers=2,
+                reducer_workers=2,
+                trajectory_chunks=2,
+                reducer_chunks=2,
+                threshold_count=2,
+                profile="scalable_conditional",
+                export_geotiff=True,
+            )
+        )
+
+        provenance_reference = estimator.estimate(
+            self._make_input(
+                release_zone_count=10,
+                trajectory_count=6,
+                trajectory_workers=2,
+                reducer_workers=2,
+                trajectory_chunks=2,
+                reducer_chunks=2,
+                threshold_count=2,
+                profile="provenance_audit",
+                export_geotiff=True,
+            )
+        )
+
+        # Balfrin small-gate clean evidence is 15,579,398 bytes and 46 files
+        # for 2x2 scalable output controls.
+        self.assertEqual(scalable_reference.total_output_file_count, 46)
+        self.assertEqual(provenance_reference.total_output_file_count, 50)
+        self.assertLess(abs(scalable_reference.output_bytes - 15_579_398), 100_000)
+        self.assertGreater(provenance_reference.output_bytes, scalable_reference.output_bytes)
+
 
 if __name__ == "__main__":
     unittest.main()
