@@ -109,6 +109,64 @@ By design it captures two timing sidecars:
 
 After execution, it runs `collect_balfrin_probe_metrics.py` to produce a summary JSON.
 
+## Clean-fresh SLURM baseline evidence (420×450 grid)
+
+A fresh baseline on balfrin used the tracked 420×450 grid probe manifest:
+
+`validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_pilot_run.yaml`
+
+Commit provenance:
+
+- `Fix SLURM probe heredoc quote stripping` (`61ab9c6`)
+
+Submitted run:
+
+- `job_id=4289703`
+- `run_root=/scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/fresh_baseline_ee8c4eb`
+- `partition=postproc`
+- `--cpus-per-task=16`, `--time=00:30:00`
+
+Observed summary:
+
+- `balfrin_probe_full_time.txt`: `23.446129538002424`
+- `balfrin_hazard_stage_time.txt`: `15.635101707070135`
+- `total_wall_seconds`: `14.95406103390269`
+- `output_bytes`: `32,124,738`
+- `output_file_count`: `46`
+- `output_write_seconds`: `5.986803226056509`
+- `trajectory_decision_counts`: `executed: 2`
+- `reducer_decision_counts`: `executed: 2`
+- trajectory plan id:
+  `validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__trajectory_execution_plan__75b0ef839657fa96a9fed7d6`
+- reducer plan id:
+  `validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__execution_plan__b26a5e3da0a3cf72f6e550d3`
+
+Command-plan controls validated for this run:
+
+- `--conditional-curve-export summary-only`
+- `--grid-csv-export none`
+- `--trajectory-workers 2`
+- `--reducer-workers 2`
+- `--export-geotiff`
+- `--no-plots`
+- `--pilot-gis-package` enabled
+
+Log/audit findings:
+
+- no repo-path quoting warning
+- no fatal git warning
+- no `--account`
+- no operational / GPU partition usage
+- job completed cleanly with exit `0:0`
+
+Important run-history note:
+
+- The earlier first submitted job `4289616` completed successfully but reused previously
+  persisted chunk state.
+- Fresh baseline semantics therefore used a second run (`4289703`) after removing
+  pre-existing `chunks/` and `trajectory_chunks/` for the same output root so the run
+  executed `executed` chunks end-to-end.
+
 ## Metrics summary fields
 
 `balfrin_probe_summary.json` includes (at minimum):

@@ -7,7 +7,19 @@ hazard model from this document.
 
 Use this to keep probe planning aligned to measured balfrin evidence.
 
-Tracked 20-release-cell evidence was executed on clean balfrin (`/users/olifu/work/rust_rockfall`, commit `d16d245`) before this planning step.
+Tracked 20-release-cell evidence was executed on clean balfrin (`/users/olifu/work/rust_rockfall`) before this planning step.
+
+Relevant clean SLURM baseline anchor:
+
+- commit `61ab9c6` (`Fix SLURM probe heredoc quote stripping`)
+- probe run: `4289703`
+- run root: `/scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/fresh_baseline_ee8c4eb`
+- chunk outcome: `executed` (fresh baseline, no stale state)
+- first baseline metrics reference:
+  - `total_wall_seconds=14.95406103390269`
+  - `output_bytes=32,124,738`
+  - `output_file_count=46`
+  - `output_write_seconds=5.986803226056509`
 
 Current anchor for follow-up probes is:
 
@@ -31,7 +43,8 @@ Executed probe benchmark metrics:
   - Repeat behavior: `executed` → `reused_completed_state` for both trajectory and reducer chunks.
 - `20 release cells × 12 trajectories (420×450)`:
   - First run: `total_wall_seconds=15.839314937009476`, `output_bytes=32,124,792`, `output_file_count=46`, `output_write_seconds=6.502529560937546`
-  - Status: no repeat/reuse run yet.
+  - clean fresh baseline run: `4289703`, controls: summary-only + grid-csv-export none + 2×2 workers.
+  - repeat/reuse status: not yet run.
 
 Repeat behavior classification:
 
@@ -169,8 +182,10 @@ Primary probe:
   2×2 workers).
 - **20 release cells × 12 trajectories per cell (420×450)** was executed with
   tracked probe `validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/`.
-- The immediate frontier remains one-dimension variation with 2×2 workers; next recommended run is a
-  repeat/reuse pass of 420×450 to close repeatability for the larger-raster scaling point.
+- The immediate frontier remains one-dimension variation with 2×2 workers; the next recommended balfrin run is a
+  repeat/reuse pass of the clean fresh baseline run `4289703` (run root
+  `/scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/fresh_baseline_ee8c4eb`) to close repeatability
+  for the larger-raster scaling point before further growth.
 
 Fallback probe (smaller and quicker):
 
