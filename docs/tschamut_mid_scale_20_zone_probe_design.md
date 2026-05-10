@@ -1,4 +1,4 @@
-# Tschamut Mid-Scale 20-Zone Probe Input Design
+# Tschamut Mid-Scale 20-Release-Cell Probe Input Design
 
 Status: planning design only. This task does not create probe inputs yet.
 
@@ -32,7 +32,7 @@ Current small-gate constants in these files:
 - gate policy is `sampling_weighted_conditional` with `conditioned_on_filter`
 - output grid geometry is `304 x 300`
 
-## 2) Smallest safe design for a 20-zone probe
+## 2) Smallest safe design for a 20-release-cell probe
 
 For this repository’s current schema, a single source-zone metadata file expresses one polygon and one `release_count` knob. The existing command and validation paths already support a deterministic-grid pilot at fixed grid/physics; therefore the smallest safe probe extension is:
 
@@ -43,12 +43,12 @@ This yields the target probe scale of:
 
 - `20` release cells × `6` trajectories per release cell = `120` observed conditional trajectories.
 
-Because the schema does not currently represent multiple independent source-zone records in one metadata file, this is implemented as “release-cell count doubling” rather than adding a new ID-set.
+Because the schema does not currently represent multiple independent source-zone records in one metadata file, this is implemented as “20 release cells” (not 20 independent source zones) and “release-cell count doubling” rather than adding a new ID-set.
 
 ### Proposed input-side edits (to be generated later)
 
 1. **Private probe case file** (private copy first):
-   - `validation/private/tschamut_public_pilot/mid_scale_20_zone_probe/tschamut_public_mid_scale_20_zone_conditional_gate_case.yaml`
+- `validation/private/tschamut_public_pilot/mid_scale_20_release_cell_probe/tschamut_public_mid_scale_20_release_cell_conditional_gate_case.yaml`
    - copy from `validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml`.
    - update:
      - `case_id` and all `outputs` paths (trajectory CSVs, metadata CSV, manifests, trajectories, impacts, etc.).
@@ -58,18 +58,18 @@ Because the schema does not currently represent multiple independent source-zone
      - `hazard_map_package.map_package_manifest_json` to a probe-local name.
 
 2. **Probe source-zone metadata** (private copy):
-   - `validation/private/tschamut_public_pilot/mid_scale_20_zone_probe/tschamut_public_source_zone_metadata_mid_scale_20_zone_v1.yaml`
+- `validation/private/tschamut_public_pilot/mid_scale_20_release_cell_probe/tschamut_public_source_zone_metadata_mid_scale_20_release_cell_v1.yaml`
    - start from `tschamut_public_source_zone_metadata_v1.yaml` and set:
      - `release_sampling_policy.release_count: 20`
    - keep geometry, CRS, mode, seed, and dataset/license provenance.
 
 3. **Probe scenario table** (private copy):
-   - `validation/private/tschamut_public_pilot/mid_scale_20_zone_probe/tschamut_public_scenario_table_mid_scale_20_zone_v1.csv`
+- `validation/private/tschamut_public_pilot/mid_scale_20_release_cell_probe/tschamut_public_scenario_table_mid_scale_20_release_cell_v1.csv`
    - preserve scenario rows and sampling parameters.
    - preserve `source_zone_id` unless you also choose a renamed probe source-zone id.
 
 4. **Private probe pilot manifest** (for balfrin execution later):
-   - `validation/private/tschamut_public_pilot/mid_scale_20_zone_probe/tschamut_public_conditional_mid_scale_20_zone_pilot_run.yaml`
+- `validation/private/tschamut_public_pilot/mid_scale_20_release_cell_probe/tschamut_public_conditional_mid_scale_20_release_cell_pilot_run.yaml`
    - copy from `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` and override:
      - `run_id`
      - `run_status = gate_run_completed` (or `template_not_run` during dry planning)
@@ -131,8 +131,21 @@ For the first run only, generate these minimal files locally in private output p
 
 These artifacts are runtime outputs and must remain untracked.
 
-## 7) Open risk and next follow-up
+## 7) Source-scenario policy consistency options
 
-- Current source-scenario policy still documents `requested_release_cell_count: 10`; for probe semantics this is acceptable because the policy contract is currently advisory for the command-planning stage and not the hazard execution contract.
-- If stricter policy-historical consistency is required, create a probe-local copy of the source-scenario policy with `requested_release_cell_count: 20` and matching synthetic `release_cells` list.
-- This should be deferred until the minimal path has been executed successfully, per the request to keep this task planning-only.
+The design has two viable paths:
+
+1. Minimal path (default planning path): keep the existing policy (`requested_release_cell_count: 10`) and treat it as a planning-side template.
+   - This is valid for command generation and execution because the policy validator does not currently gate the hazard execution contract on this field.
+   - It is useful as a fast check path but introduces documentation mismatch: one policy artifact says 10 requested cells while runtime inputs request 20.
+
+2. Stricter path (recommended before balfrin execution): create a probe-local copy of `validation/policies/tschamut_public_source_scenario_policy_v1.yaml` with:
+   - `requested_release_cell_count: 20`
+   - matching synthetic `release_cells` list for 20 cells if policy is used for explicit provenance checks.
+   - set the private probe manifest input-freeze policy reference to this probe-local policy copy.
+
+Recommendation:
+
+- Prefer the stricter path before balfrin execution to avoid ambiguity between planning documentation and execution inputs, and to preserve policy/runtime consistency when sharing probe results.
+
+- Do not modify the tracked policy file for this probe; use a private/local policy copy and keep it uncommitted unless the team later formalizes a tracked shared 20-release-cell policy.
