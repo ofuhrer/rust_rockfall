@@ -46,9 +46,9 @@ Highest-value cleanup areas, in order:
 - `cargo run -- validate --all` — passed.
 - `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` — passed.
 - `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest discover -s tests -p 'test_*.py'` — passed.
-- `python3 -m unittest discover -s tests -p 'test_*.py'` — exit code `0`; extracted summary showed `Ran 280 tests in 1.988s`.
+- `python3 -m unittest discover -s tests -p 'test_*.py'` — exit code `0`; a direct follow-up summary extraction from that rerun showed `Ran 280 tests in 1.988s`.
 - Repository-wide `rg` audits for:
-  - `unwrap(|expect(|panic!|todo!|unimplemented!|FIXME|TODO|HACK|deprecated|legacy`
+  - `unwrap\(|expect\(|panic!|todo!|unimplemented!|FIXME|TODO|HACK|deprecated|legacy`
   - `NODATA|nodata|NaN|inf|clamp|default|fallback|seed|random|probability|weight|annual|risk`
   - `TODO|FIXME|HACK`
 
