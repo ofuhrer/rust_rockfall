@@ -1507,6 +1507,11 @@ def trajectory_chunk_has_valid_reusable_state(
 
 
 def reuse_manifest_warnings(failure_reason: Any) -> tuple[str, ...]:
+    """Normalize a manifest failure reason into a warning tuple.
+
+    Returns a one-item tuple for a non-empty failure-reason string and an empty
+    tuple otherwise.
+    """
     if isinstance(failure_reason, str):
         reason = failure_reason.strip()
         if reason:
@@ -4751,7 +4756,7 @@ def iter_numeric_csv(
         reader = csv.DictReader(file)
         for row in reader:
             parsed: dict[str, float | str] = {}
-            row_has_nonfinite_coordinate = False
+            has_nonfinite_coordinate = False
             for key, value in row.items():
                 if value is None or value == "":
                     continue
@@ -4761,10 +4766,10 @@ def iter_numeric_csv(
                     parsed_value = value
                 if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
                     if key in {"x_m", "y_m"}:
-                        row_has_nonfinite_coordinate = True
+                        has_nonfinite_coordinate = True
                     continue
                 parsed[key] = parsed_value
-            if row_has_nonfinite_coordinate:
+            if has_nonfinite_coordinate:
                 dropped += 1
                 continue
             yield parsed

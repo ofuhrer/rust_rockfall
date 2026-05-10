@@ -224,7 +224,7 @@ class HazardLayerTests(unittest.TestCase):
         self.assertIsNone(batch.samples[0].speed_mps)
         self.assertEqual(warnings, [])
 
-    def test_trajectory_csv_batch_reader_keeps_rows_with_nonfinite_non_coordinate_fields(self) -> None:
+    def test_csv_reader_keeps_rows_with_nonfinite_kinetic_energy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "nonfinite_non_coordinate.csv"
             path.write_text(
