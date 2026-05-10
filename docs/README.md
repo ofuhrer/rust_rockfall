@@ -178,6 +178,8 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `hazard_output_profile_contract.md`: profile-level output contracts for
   conditional hazard runs (`full_debug`, `scalable_conditional`,
   `provenance_audit`).
+- `large_scale_execution_probe.md`: projection-only large-scale conditional
+  execution estimator and planning assumptions.
 
 ## Background And Older Model Work
 
