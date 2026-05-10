@@ -152,7 +152,7 @@ Dry-run example:
 
 ```bash
 python3 scripts/submit_balfrin_probe.py \
-  validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_v1.yaml \
+  validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_pilot_run.yaml \
   --dry-run
 ```
 
@@ -160,7 +160,7 @@ Generate-only example:
 
 ```bash
 python3 scripts/submit_balfrin_probe.py \
-  validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_v1.yaml \
+  validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_pilot_run.yaml \
   --generate-only
 ```
 
