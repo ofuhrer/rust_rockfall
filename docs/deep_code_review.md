@@ -23,18 +23,18 @@ Highest-value cleanup areas, in order:
 
 ### Directories and files inspected
 
-- `/home/runner/work/rust_rockfall/rust_rockfall/src`
-- `/home/runner/work/rust_rockfall/rust_rockfall/tests`
-- `/home/runner/work/rust_rockfall/rust_rockfall/scripts`
-- `/home/runner/work/rust_rockfall/rust_rockfall/examples`
-- `/home/runner/work/rust_rockfall/rust_rockfall/verification`
-- `/home/runner/work/rust_rockfall/rust_rockfall/validation`
-- `/home/runner/work/rust_rockfall/rust_rockfall/calibration`
-- `/home/runner/work/rust_rockfall/rust_rockfall/hazard`
-- `/home/runner/work/rust_rockfall/rust_rockfall/.github/workflows`
-- `/home/runner/work/rust_rockfall/rust_rockfall/Cargo.toml`
-- `/home/runner/work/rust_rockfall/rust_rockfall/.python-version`
-- `/home/runner/work/rust_rockfall/rust_rockfall/requirements-tools.txt`
+- `src`
+- `tests`
+- `scripts`
+- `examples`
+- `verification`
+- `validation`
+- `calibration`
+- `hazard`
+- `.github/workflows`
+- `Cargo.toml`
+- `.python-version`
+- `requirements-tools.txt`
 
 ### Commands run
 
@@ -169,7 +169,7 @@ The tests exercise “script as file” rather than a stable Python module bound
 - `scripts/run_tschamut_calibration.py:182`, `364`, `387` access `rows[0]` for “best” candidates.
 - `scripts/calibrate_scarring_impact.py:92`, `329`, `370`, `387` do the same.
 - `scripts/calibrate_scarring_impact.py:160-177` suppresses both stdout and stderr from `cargo run`, which makes failures harder to diagnose.
-- No direct tests were found for `run_tschamut_calibration.py` or `calibrate_scarring_impact.py` under `/home/runner/work/rust_rockfall/rust_rockfall/tests`.
+- No direct tests were found for `run_tschamut_calibration.py` or `calibrate_scarring_impact.py` under `tests`.
 
 **Why this matters**
 
