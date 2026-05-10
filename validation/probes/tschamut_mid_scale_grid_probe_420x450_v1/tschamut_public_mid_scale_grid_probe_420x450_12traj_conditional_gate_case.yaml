@@ -1,0 +1,111 @@
+case_id: validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1
+title: Tschamut public scalable conditional gate (20 release cells)
+description: >
+  Deterministic local ignored conditional gate run for the selected Tschamut
+  public pilot. No tuning or parameter changes are made.
+level: 4
+terrain:
+  type: ascii_dem_clamped
+  path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+  metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+block:
+  mass: 69.0
+  radius: 0.176667
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  contact_model: translational_v0
+  roughness_model: stochastic_contact_v1
+  roughness_std_normal: 0.08
+  roughness_std_tangent: 0.06
+  roughness_std_angle: 0.08
+simulation:
+  dt: 0.02
+  t_max: 18.0
+  max_steps: 900
+  stop_velocity: 0.1
+random:
+  seed: 34014
+  ensemble_size: 12
+  ensemble_workers: 2
+hazard_layers:
+  statistics:
+    kinetic_energy_exceedance_j:
+    - 1000.0
+    - 10000.0
+    jump_height_exceedance_m:
+    - 1.0
+    - 2.0
+    velocity_exceedance_mps: []
+validation_scope:
+  type: public-real-site-conditional-gate
+  note: Research diagnostic only; no tuning, annualization, physical-probability,
+    return-period, risk, or operational claim.
+observations:
+  release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
+  deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+expected:
+  metrics:
+  - validation_release_count
+  - validation_simulated_trajectory_count
+  - observed_mean_runout_m
+  - simulated_mean_runout_m
+  - runout_distance_error_m
+  - deposition_centroid_error_m
+  - deposition_cloud_mean_nearest_error_m
+  - lateral_spread_error_m
+  - deposition_cloud_overlap_fraction
+  tolerances: {}
+outputs:
+  diagnostics_json: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_metrics.json
+  manifest_json: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_manifest.json
+  trajectory_csv: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_trajectory.csv
+  trajectory_metadata_csv: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_trajectory_metadata.csv
+  ensemble_trajectories_dir: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_trajectories
+  ensemble_deposition_csv: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_deposition.csv
+  ensemble_impact_events_dir: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_impacts
+references:
+  dataset: tschamut2014
+  literature:
+  - Volkwein, A., Gerber, W. (2018). Repetitive trajectory testing in Tschamut 2014.
+    EnviDat. https://doi.org/10.16904/envidat.34.
+  - Volkwein et al. (2018). Repetitive Rockfall Trajectory Testing. Geosciences 8(3),
+    88. https://doi.org/10.3390/geosciences8030088.
+  - swisstopo swissALTI3D public terrain data, LV95/LN02, 2 m COG tile.
+  notes:
+  - Uses scan_surface_fit_v1 coordinate preprocessing by default; bbox_align_v1 and
+    overview_offset_v1 remain fallback/comparison modes.
+  - No restitution, friction, roughness, scarring, or contact-model parameters are
+    tuned to these results.
+schema_version: benchmark_case_v1
+probabilistic_metadata:
+  source_zone_metadata_path: validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_source_zone_metadata_mid_scale_grid_probe_420x450_12traj_v1.yaml
+  scenario_table_path: validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_scenario_table_mid_scale_grid_probe_420x450_12traj_v1.csv
+  map_product_id: tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  scenario_id: tschamut_public_block_medium
+hazard_probability:
+  probability_model: sampling_weighted
+  metadata_path: validation/private/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_trajectory_metadata.csv
+  weight_column: sampling_weight
+  normalization_convention: conditioned_on_filter
+  filters:
+    source_zone_ids:
+    - tschamut_public_lps_release_bbox
+    scenario_ids:
+    - tschamut_public_block_medium
+    block_mass_kg_min: null
+    block_mass_kg_max: null
+hazard_map_package:
+  map_product_id: tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  map_package_manifest_json: hazard/results/tschamut_public_pilot/mid_scale_grid_probe_420x450_12traj_probe/tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1_map_package_manifest.json
+  source_zone_metadata_path: validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_source_zone_metadata_mid_scale_grid_probe_420x450_12traj_v1.yaml
+  scenario_table_path: validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_scenario_table_mid_scale_grid_probe_420x450_12traj_v1.csv
+  limitations:
+  - Research diagnostic only; not an operational hazard product.
+  - No physical or annual probability model is included.
