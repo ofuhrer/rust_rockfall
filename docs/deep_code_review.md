@@ -54,7 +54,7 @@ Highest-value cleanup areas, in order:
 
 ### Commands skipped
 
-- `python3 -m pytest` — skipped as not applicable. No `pyproject.toml`, `pytest.ini`, or pytest-based suite was present, and `rg "pytest"` only found a docs-only mention rather than runnable pytest targets.
+- `python3 -m pytest` — skipped as not applicable. No `pyproject.toml`, `pytest.ini`, or pytest-based suite was present, and `rg "pytest"` only found a documentation-only mention rather than runnable pytest targets.
 
 ## 3. Critical Findings
 
@@ -372,7 +372,7 @@ This area looks better than average:
 
 ### Hypothesis to watch
 
-I did not find a confirmed raster orientation bug. Current tests around DEM origin and clamped-normal behavior are a good sign. The bigger risk here is failure semantics and memory profile, not obviously incorrect indexing math.
+I did not find a confirmed raster orientation bug. Current tests around DEM origin and clamped-normal behavior are a good sign. Re-evaluate this if future changes touch `GridSpec.cell` / `GridSpec.center`, GeoTIFF export, or auto-discovered hazard bounds; those are the places where a row/column flip or cell-center/corner mismatch would most likely surface.
 
 ## 11. Hazard/Probability Code Audit
 
