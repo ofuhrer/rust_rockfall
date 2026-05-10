@@ -292,8 +292,8 @@ cargo fmt --check \
   && cargo test \
   && cargo run -- verify --all \
   && cargo run -- validate --all \
-  && python3 -m unittest discover -s tests -p 'test_*.py' \
-  && python3 scripts/check_repo_consistency.py
+  && .venv/bin/python -m unittest discover -s tests -p 'test_*.py' \
+  && .venv/bin/python scripts/check_repo_consistency.py
 ```
 
 CI remains the source of truth; the hooks are a local guardrail.

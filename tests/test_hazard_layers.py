@@ -224,6 +224,29 @@ class HazardLayerTests(unittest.TestCase):
         self.assertIsNone(batch.samples[0].speed_mps)
         self.assertEqual(warnings, [])
 
+    def test_csv_reader_keeps_rows_with_nonfinite_kinetic_energy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nonfinite_non_coordinate.csv"
+            path.write_text(
+                "time_s,x_m,y_m,z_m,kinetic_j,speed_mps\n"
+                "0.0,1.0,2.0,3.0,inf,1.0\n"
+                "1.0,2.0,3.0,4.0,2.0,1.5\n"
+            )
+            warnings: list[str] = []
+            batch = hazard.read_trajectory_sample_batch(path, warnings)
+
+        self.assertIsNotNone(batch)
+        assert batch is not None
+        self.assertEqual(len(batch.samples), 2)
+        self.assertIsNone(batch.samples[0].kinetic_j)
+        self.assertAlmostEqual(batch.samples[0].speed_mps or 0.0, 1.0)
+        self.assertEqual(warnings, [])
+
+    def test_reuse_manifest_warnings_keeps_whole_string(self) -> None:
+        self.assertEqual(hazard.reuse_manifest_warnings("chunk failed"), ("chunk failed",))
+        self.assertEqual(hazard.reuse_manifest_warnings(""), ())
+        self.assertEqual(hazard.reuse_manifest_warnings(None), ())
+
     def test_empty_trajectory_batch_preserves_legacy_counting_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "empty_trajectory.csv"

@@ -980,7 +980,7 @@ def run_trajectory_generation(
             chunk=chunk,
             trajectory_count=trajectory_count,
             trajectory_sample_count=trajectory_sample_count,
-            warnings=tuple(manifest.get("failure_reason") or []),
+            warnings=reuse_manifest_warnings(manifest.get("failure_reason")),
             partial_state_path=trajectory_chunk_state_path(chunk.chunk_id, chunk_dir),
             manifest=manifest,
         )
@@ -1504,6 +1504,19 @@ def trajectory_chunk_has_valid_reusable_state(
         and state.get("execution_signature") == execution_signature
         and state.get("input_signature") == expected_signature
     )
+
+
+def reuse_manifest_warnings(failure_reason: Any) -> tuple[str, ...]:
+    """Normalize a manifest failure reason into a warning tuple.
+
+    Returns a one-item tuple for a non-empty failure-reason string and an empty
+    tuple otherwise.
+    """
+    if isinstance(failure_reason, str):
+        reason = failure_reason.strip()
+        if reason:
+            return (reason,)
+    return ()
 
 
 def stable_owner_id(prefix: str | None) -> str:
@@ -4743,7 +4756,7 @@ def iter_numeric_csv(
         reader = csv.DictReader(file)
         for row in reader:
             parsed: dict[str, float | str] = {}
-            row_bad = False
+            has_nonfinite_coordinate = False
             for key, value in row.items():
                 if value is None or value == "":
                     continue
@@ -4752,10 +4765,11 @@ def iter_numeric_csv(
                 except ValueError:
                     parsed_value = value
                 if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
-                    row_bad = True
+                    if key in {"x_m", "y_m"}:
+                        has_nonfinite_coordinate = True
                     continue
                 parsed[key] = parsed_value
-            if row_bad and ("x_m" in row or "y_m" in row):
+            if has_nonfinite_coordinate:
                 dropped += 1
                 continue
             yield parsed
