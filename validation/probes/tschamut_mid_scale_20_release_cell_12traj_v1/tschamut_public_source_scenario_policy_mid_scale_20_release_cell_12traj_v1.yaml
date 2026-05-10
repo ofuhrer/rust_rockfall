@@ -1,0 +1,161 @@
+# Domain-specific source-zone/block-scenario policy for the selected public
+# Tschamut pilot. This is a tracked mid-scale 20 release-cell probe variant for
+# planning and command-plan generation.
+schema_version: source_zone_block_scenario_policy_v1
+policy_id: tschamut_public_source_scenario_policy_mid_scale_20_release_cell_12traj_v1
+pilot_id: tschamut_public_pilot
+policy_status: ready_for_conditional_pilot
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+source_zone_policy:
+  source_zone_id: tschamut_public_lps_release_bbox
+  evidence_level: level1_manual_real_site_interpretation
+  geometry_status: predeclared_public_lps_release_bbox
+  allowed_geometry_type: polygon
+  coordinate_reference_system:
+    epsg: 2056
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  geometry:
+    type: polygon
+    coordinates:
+      - [2696622.482, 1167728.092]
+      - [2696640.895, 1167728.092]
+      - [2696640.895, 1167745.852]
+      - [2696622.482, 1167745.852]
+  derivation_inputs:
+    required:
+      - swisstopo_swissalti3d
+      - envidat_tschamut2014_lps_release_rows
+    optional_context:
+      - swisstopo_swissimage
+      - swisstopo_swisstlm3d
+      - swisstopo_geocover
+  derivation_criteria:
+    status: predeclared_manual_public_release_bbox
+    slope_threshold_degrees: null
+    geology_or_material_filter: null
+    inventory_or_expert_review: null
+    manual_interpretation_notes: >
+      Bounding polygon around the first public Tschamut 2014 LPS release rows
+      transformed to LV95 with the predeclared scan_surface_fit_v1
+      registration from scripts/prepare_tschamut_public_benchmark.py. This is
+      a Level 1 manual real-site interpretation for workflow development and
+      GIS/source-zone QA only.
+  release_sampling:
+    mode: deterministic_grid
+    seed_policy: fixed_integer_recorded_before_simulation
+    seed: 34014
+    release_cell_id_policy: stable_source_zone_prefixed_ids
+    release_cell_id_prefix: tschamut_public_release_cell
+    requested_release_cell_count: 20
+    sampling_weight_semantics: conditional_sampling_only
+    physical_release_probability_supported: false
+    annual_source_frequency_supported: false
+    release_cells:
+      - release_cell_id: tschamut_public_release_cell_000
+        center_lv95_m: [2696627.08525, 1167729.868]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_001
+        center_lv95_m: [2696636.29175, 1167729.868]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_002
+        center_lv95_m: [2696627.08525, 1167733.42]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_003
+        center_lv95_m: [2696636.29175, 1167733.42]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_004
+        center_lv95_m: [2696627.08525, 1167736.972]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_005
+        center_lv95_m: [2696636.29175, 1167736.972]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_006
+        center_lv95_m: [2696627.08525, 1167740.524]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_007
+        center_lv95_m: [2696636.29175, 1167740.524]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_008
+        center_lv95_m: [2696627.08525, 1167744.076]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_009
+        center_lv95_m: [2696636.29175, 1167744.076]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_010
+        center_lv95_m: [2696627.18625, 1167729.969]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_011
+        center_lv95_m: [2696636.39275, 1167729.969]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_012
+        center_lv95_m: [2696627.18625, 1167733.521]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_013
+        center_lv95_m: [2696636.39275, 1167733.521]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_014
+        center_lv95_m: [2696627.18625, 1167737.073]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_015
+        center_lv95_m: [2696636.39275, 1167737.073]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_016
+        center_lv95_m: [2696627.18625, 1167740.625]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_017
+        center_lv95_m: [2696636.39275, 1167740.625]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_018
+        center_lv95_m: [2696627.18625, 1167744.177]
+        sampling_weight: 1.0
+      - release_cell_id: tschamut_public_release_cell_019
+        center_lv95_m: [2696636.39275, 1167744.177]
+        sampling_weight: 1.0
+
+block_scenario_policy:
+  block_population_status: representative_scenarios_not_physical_population
+  active_shape_physics_supported: false
+  sampling_weight_semantics: conditional_sampling_only
+  scenarios:
+    - block_scenario_id: tschamut_public_block_small
+      block_size_class: tschamut_selected_rows_small
+      block_shape_class: sphere
+      block_radius_m: 0.16
+      block_mass_kg: 40.0
+      sampling_weight: 3.0
+      derivation_basis: selected public Tschamut rows with block_id 4 in the default ten-run package
+    - block_scenario_id: tschamut_public_block_medium
+      block_size_class: tschamut_selected_rows_medium
+      block_shape_class: sphere
+      block_radius_m: 0.176667
+      block_mass_kg: 69.0
+      sampling_weight: 5.0
+      derivation_basis: selected public Tschamut rows with block_id 1 in the default ten-run package
+    - block_scenario_id: tschamut_public_block_large
+      block_size_class: tschamut_selected_rows_large
+      block_shape_class: sphere
+      block_radius_m: 0.198333
+      block_mass_kg: 79.0
+      sampling_weight: 2.0
+      derivation_basis: selected public Tschamut rows with block_id 2 in the default ten-run package
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - source-zone choices are input assumptions, not validation evidence by themselves
+    - release-cell and block-scenario sampling weights are conditional sampling weights, not physical probabilities
+    - this policy supports a research diagnostic conditional pilot only, not an operational source-zone approval

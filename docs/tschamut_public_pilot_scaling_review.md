@@ -216,3 +216,50 @@ Recommendation:
 - 20-release-cell probe passed.
 - replay/reuse behavior is stable.
 - next balfrin scaling step should vary one dimension only, preferably trajectory count per release cell or grid size (not chunk count).
+
+## 20-release-cell × 12 trajectories balfrin probe evidence (tracked probe, commit `d16d245`)
+
+Tracked probe definition:
+
+- `validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/`
+- same output profile as 20×6:
+  - `--trajectory-workers 2`
+  - `--reducer-workers 2`
+  - `--conditional-curve-export summary-only`
+  - `--grid-csv-export none`
+  - `--export-geotiff`
+  - `--no-plots`
+
+Profile check:
+
+- `python3 scripts/check_hazard_output_profile.py --command-plan /tmp/..._12traj.json`
+  → `Detected profile: provenance_audit`
+
+Validation checks run:
+
+- command plan generation succeeded from tracked probe manifest and policy.
+- command plan command controls include all intended flags above.
+
+Observed execution summary:
+
+| Run | `wall_seconds` | `total_wall_seconds` | `output_bytes` | `output_file_count` | `output_write_seconds` | `trajectory_count` | `trajectory chunks` | `reducer chunks` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| First run | `12.279972` | `11.125986575032584` | `15,691,724` | `46` | `3.267310244962573` | `121` | `executed` | `executed` |
+| Repeat run | `13.748173`* | `5.14157305995` | `15,692,692` | `46` | `2.883542826` | `121` | `reused_completed_state` | `reused_completed_state` |
+
+* `wall_seconds` from sidecar is full command-sequence timing and is noisy; prefer
+`total_wall_seconds` for model comparability.
+
+Scaling interpretation vs 20×6:
+
+- output_bytes changed only slightly (`+89,227`) while trajectory count doubled (60→121), indicating existing output gating still dominates outputs.
+- first-run wall time increased materially with trajectories doubled.
+- repeat wall time dropped due reuse (`executed` → `reused_completed_state`), confirming deterministic local resumability.
+- this pattern implies the near-term bottleneck is trajectory/reducer processing overhead, not output volume, at this workload slice.
+
+Stability classification:
+
+- probe reused completed trajectory and reducer chunks in repeat.
+- plan IDs remained stable.
+- no stale, orphan, or missing-state anomalies were observed.
+- output numeric payloads remained stable in prior 20×12 probes; provenance/protocol drift remains acceptable under the same rule used for previous balfrin repeat checks.

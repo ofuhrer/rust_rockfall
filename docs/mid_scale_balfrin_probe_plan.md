@@ -149,8 +149,12 @@ Exact probe command dimensions later:
 Primary probe:
 
 - **More release zones to 20** was already executed successfully (committed evidence section above).
-- **Next**: more release zones with larger scenario load remains a candidate, but after stable replay the preferred next step is to vary one dimension while holding `--trajectory-workers 2 --reducer-workers 2`.
-- primary next follow-up: increase trajectory count per release cell while holding release-cell and grid constant.
+- **Next executed probe**: **20 release cells × 12 trajectories per cell** (tracked at
+  `validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/`) was executed with
+  the same control profile (`summary-only`, `grid-csv-export=none`, GeoTIFF, no-plots,
+  2×2 workers).
+- After this run, the immediate frontier remains one-dimension variation while keeping
+  2×2 workers, with next candidate probes in trajectory count or grid-size only.
 
 Fallback probe (smaller and quicker):
 

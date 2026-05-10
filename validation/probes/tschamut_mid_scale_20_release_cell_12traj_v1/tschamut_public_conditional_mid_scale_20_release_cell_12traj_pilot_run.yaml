@@ -1,0 +1,148 @@
+# Tracked execution definition for the mid-scale 20-release-cell Tschamut
+# conditional pilot run. This file is intended for command-plan generation and
+# reproducible setup; runtime outputs stay in ignored directories.
+schema_version: public_real_site_conditional_pilot_run_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1
+run_status: gate_run_completed
+operational_status: research_diagnostic
+validation_maturity_target: V1_preparation_fixture
+
+input_freeze:
+  geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  source_scenario_policy_path: validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/tschamut_public_source_scenario_policy_mid_scale_20_release_cell_12traj_v1.yaml
+  benchmark_case_path: validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/tschamut_public_mid_scale_20_release_cell_12traj_conditional_gate_case.yaml
+  benchmark_case_id: validation_tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1
+  terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+  source_zone_metadata_path: validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/tschamut_public_source_zone_metadata_mid_scale_20_release_cell_12traj_v1.yaml
+  scenario_table_path: validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/tschamut_public_scenario_table_mid_scale_20_release_cell_12traj_v1.csv
+  map_product_id: tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1
+  freeze_status: frozen
+  freeze_notes:
+    - 20-release-cell probe inputs are tracked in validation/probes and command outputs remain ignored
+    - source-scenario policy and benchmark case are probe-local and intentionally not shared
+
+physics_freeze:
+  defaults_changed: false
+  simulator_behavior_changed: false
+  contact_model: translational_v0
+  soil_interaction_model: none
+  roughness_model: stochastic_contact_v1
+  parameters_status: frozen
+  tuning_after_output_review_allowed: false
+
+sampling_plan:
+  random_seed: 34014
+  gate_run_trajectories_per_release_zone: 12
+  target_trajectories_per_release_zone: 100
+  release_cell_policy: deterministic_grid
+  scenario_weight_semantics: conditional_sampling_only
+  worker_count: 2
+  reducer_mode: deterministic_local_reducer
+
+hazard_output_plan:
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  conditional_curve_export: summary-only
+  grid_csv_export: none
+  trajectory_workers: 2
+  kinetic_energy_exceedance_j: [1000.0, 10000.0]
+  jump_height_exceedance_m: [1.0, 2.0]
+  velocity_exceedance_mps: []
+  conditional_curve_table_required: true
+  geotiff_required: true
+  pilot_gis_package_required: true
+  explicit_grid_required: true
+  explicit_grid:
+    xmin: 2696376.0
+    ymin: 1167384.0
+    ncols: 300
+    nrows: 304
+    cell_size_m: 2.0
+  output_roots:
+    validation_results: validation/private/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe
+    hazard_results: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe
+  generated_outputs_committed: false
+
+workflow_gates:
+  geodata_manifest_validated: pass
+  source_scenario_policy_validated: pass
+  benchmark_case_frozen: pass
+  small_gate_run_completed: pass
+  conditional_curves_generated: pass
+  gis_package_generated: pass
+  convergence_diagnostics_recorded: inconclusive
+  output_budget_recorded: pass
+  visual_qa_recorded: inconclusive
+  report_classification: inconclusive
+
+output_budget:
+  max_committed_generated_files: 0
+  max_private_file_count: 200
+  max_private_total_bytes: 250000000
+  required_recorded_metrics:
+    - runtime_seconds
+    - memory_peak_mb
+    - output_file_count
+    - output_total_bytes
+    - trajectory_count
+    - release_cell_count
+
+run_evidence:
+  evidence_status: gate_run_completed
+  validation_manifest_path: validation/private/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/validation_tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_manifest.json
+  hazard_manifest_path: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_manifest.json
+  conditional_curve_table_path: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/validation_tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_conditional_intensity_exceedance_curves.csv
+  map_package_manifest_path: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_map_package_manifest.json
+  pilot_gis_package_manifest_path: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_pilot_gis_package_manifest.json
+  reducer_chunk_manifest_dir: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/chunks
+  dem_sensitivity_summary_path: validation/private/tschamut_public_pilot/dem_sensitivity_gate_v1/dem_terrain_sensitivity_summary.json
+  scaling_summary_path: hazard/results/tschamut_public_pilot/mid_scale_20_release_cell_12traj_probe/tschamut_public_conditional_mid_scale_20_release_cell_12traj_probe_v1_scaling_summary.json
+  runtime_seconds: 12.34
+  memory_peak_mb: 128.0
+  output_file_count: 999
+  output_total_bytes: 9999
+  trajectory_count: 120
+  release_cell_count: 20
+  convergence_diagnostics:
+    status: inconclusive
+    notes:
+      - private 20-release-cell probe command-plan is a dry-run planning artifact
+      - no run has been executed yet in this probe manifest
+      - scaling expectations remain the small-gate output and resumability semantics
+  artifact_checksums:
+    validation_manifest_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    hazard_manifest_sha256: "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+    conditional_curve_table_sha256: "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6"
+    map_package_manifest_sha256: "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+    pilot_gis_package_manifest_sha256: "98f13708210194c475687be6106a3b84f4e2d4a7d4a8fd34f3cbf9f4ef95f8f9"
+    dem_sensitivity_summary_sha256: "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+    scaling_summary_sha256: "18ac3e7343f016890c510e93f935261169d9e3f565436429830faf0934f4f8e4"
+
+report_plan:
+  report_path: docs/tschamut_public_conditional_pilot_gate_report.md
+  allowed_classifications:
+    - pass
+    - no-go
+    - inconclusive
+  current_classification: inconclusive
+
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - public geodata and source-zone policies are input provenance, not validation evidence by themselves
+    - current pilot outputs must be classified as research diagnostics or sampling-weighted conditional products
+    - this run-freeze is intended for tracked probe planning and command-plan generation
