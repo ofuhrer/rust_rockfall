@@ -71,6 +71,9 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `balfrin_tschamut_pilot_runbook.md`: reusable balfrin Tschamut pilot
   operating procedure for readiness, validation/hazard execution, reducer
   provenance inspection, scaling summary regeneration, and artifact hygiene.
+- `balfrin_probe_slurm_driver.md`: SLURM-first balfrin probe driver design for
+  dry-run generation, deterministic run roots, submit/collect modes, and output
+  metadata capture.
 
 ## Hazard And Probabilistic Semantics
 
