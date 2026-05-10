@@ -5,7 +5,11 @@ hazard model from this document.
 
 ## Current calibrated anchor
 
-Use this to keep probe planning aligned to measured balfrin evidence:
+Use this to keep probe planning aligned to measured balfrin evidence.
+
+Tracked 20-release-cell evidence was executed on clean balfrin (`/users/olifu/work/rust_rockfall`, commit `d16d245`) before this planning step.
+
+Current anchor for follow-up probes is:
 
 - `release-zone-count = 10`
 - `ensemble-size = 1`
@@ -18,6 +22,19 @@ Use this to keep probe planning aligned to measured balfrin evidence:
 - `threshold-count = 2`
 - `profile = scalable_conditional`
 - `export geotiff = true`
+
+Executed probe benchmark metrics:
+
+- First run: `wall_seconds=7.743111`, `total_wall_seconds=6.88505400205031`, `output_bytes=15,602,497`, `output_file_count=46`, `output_write_seconds=2.7461103320820257`
+- Repeat run: `wall_seconds=4.770220`, `total_wall_seconds=4.339605016983114`, `output_bytes=15,602,620`, `output_file_count=46`, `output_write_seconds=2.796586749027483`
+- Second repeat (drift audit): `wall_seconds=4.721994`, `total_wall_seconds=4.296635876991786`, `output_bytes=15,602,596`, `output_file_count=46`, `output_write_seconds=2.7926949579268694`
+
+Repeat behavior classification:
+
+- first→repeat: chunk outcomes moved from `executed` to `reused_completed_state` (valid replay path),
+- second-repeat drift audit: `GeoTIFF 16/16`, `ESRI_ASCII 16/16`, `GeoJSON 1/1` unchanged,
+- plan ids stable, chunk decisions stable, no stale/orphan anomalies,
+- manifest/index/plan JSON drift was limited to expected provenance/metadata artifacts.
 
 Estimated reference point from estimator:
 
@@ -131,15 +148,18 @@ Exact probe command dimensions later:
 
 Primary probe:
 
-- **More release zones to 20** (candidate 1).
-- Reasoning: directly tests the trajectory/replay growth assumption and scales one
-  workload dimension with only moderate expected output increase.
+- **More release zones to 20** was already executed successfully (committed evidence section above).
+- **Next**: more release zones with larger scenario load remains a candidate, but after stable replay the preferred next step is to vary one dimension while holding `--trajectory-workers 2 --reducer-workers 2`.
+- primary next follow-up: increase trajectory count per release cell while holding release-cell and grid constant.
 
 Fallback probe (smaller and quicker):
 
-- **More trajectories per zone to 12** (candidate 2).
-- Reasoning: equivalent trajectory-volume pressure with smaller change to non-raster
-  footprint assumptions.
+- **Grid-size or trajectory-count expansion** (candidate 2+).  
+  This run should first target the smaller of:
+  - `trajectory_count` increase with modest payload delta, or
+  - grid size increase with isolated raster-growth effect.
+- Reasoning: with reusable-chunks stability confirmed, vary one workload dimension
+  at a time to isolate scaling behavior.
 
 ## Success criteria for each balfrin follow-up run
 
@@ -169,3 +189,10 @@ Non-goals:
 - These are still conditional-only scaling probes; not Swiss-scale operational evidence.
 - If future balfrin runs show deviations, tighten the estimator’s per-dimension growth terms
   before using it to set larger frontier benchmarks.
+
+## Evidence boundaries for this plan
+
+- conditional-only evidence only;
+- no annual/physical semantics;
+- not operational readout evidence;
+- not Swiss-scale extrapolation.

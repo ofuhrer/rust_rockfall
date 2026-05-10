@@ -165,3 +165,54 @@ Evidence scope:
   manifest byte identity is not required; numerical hazard/product hashes should be
   stable; orchestration decisions should be coherent; snapshot first/repeat
   manifests before rerun when provenance diffing is required.
+
+## 20-release-cell balfrin probe evidence (tracked probe, commit `d16d245`)
+
+Tracked probe executed on clean balfrin checkout (`/users/olifu/work/rust_rockfall`) under:
+
+- `validation/probes/tschamut_mid_scale_20_release_cell_v1/`
+- `--trajectory-workers 2`
+- `--reducer-workers 2`
+- `--conditional-curve-export summary-only`
+- `--grid-csv-export none`
+- `--export-geotiff`
+- `--no-plots`
+
+Run evidence:
+
+| Run | `wall_seconds` | `total_wall_seconds` | `output_bytes` | `output_file_count` | `output_write_seconds` | Chunk outcome |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| First run | `7.743111` | `6.88505400205031` | `15,602,497` | `46` | `2.7461103320820257` | `executed` |
+| Repeat run | `4.770220` | `4.339605016983114` | `15,602,620` | `46` | `2.796586749027483` | `reused_completed_state` |
+| Second repeat (drift audit) | `4.721994` | `4.296635876991786` | `15,602,596` | `46` | `2.7926949579268694` | `reused_completed_state` |
+
+Drift classification for first-vs-second-repeat:
+
+- Geospatial/diagnostic products stable:
+  - GeoTIFF `16/16` unchanged
+  - ESRI ASCII `16/16` unchanged
+  - GeoJSON `1/1` unchanged
+- `json manifests/indexes/plans` changed (`10/16` JSON artifacts), expected from
+  provenance and timing metadata updates.
+- `plan_id` values remained stable.
+- chunk decisions stayed coherent and stable (`reused_completed_state`, no stale/orphan/missing-state anomalies).
+- state/provenance reuse remained valid; no decision-order anomalies.
+
+Interpretation:
+
+- Numerical outputs were stable; byte-level output-budget differences were small and confined to provenance/metadata layers.
+- This supports a valid conditional-only repeatability rule for this probe scale:
+  manifest bytes need not be byte-identical, but numerical hazard products should remain stable.
+
+Limitations:
+
+- conditional-only evidence only
+- no annual/physical semantics
+- not operational evidence
+- not Swiss-scale extrapolation
+
+Recommendation:
+
+- 20-release-cell probe passed.
+- replay/reuse behavior is stable.
+- next balfrin scaling step should vary one dimension only, preferably trajectory count per release cell or grid size (not chunk count).
