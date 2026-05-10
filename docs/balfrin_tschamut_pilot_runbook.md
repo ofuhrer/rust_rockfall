@@ -145,6 +145,32 @@ defaults update is explicitly approved):
 --conditional-curve-export summary-only --grid-csv-export none
 ```
 
+## 9) Repeat-run reproducibility rule (trajectory/reducer smoke)
+
+Use a second identical command against the same frozen command-plan inputs as a
+smoke check; this confirms deterministic reuse without requiring byte-identical
+manifests.
+
+- Confirm wall time improved (for example: `9.25s` -> `4.61s`) and chunk decisions
+  show expected reuse (`reused_completed_state`) after a valid prior run.
+- Confirm numerical outputs remain stable by hash/equality checks for:
+  - GeoTIFF layers,
+  - ESRI ASCII grids,
+  - GeoJSON,
+  - hazard CSV and conditional diagnostics.
+- Treat small manifest/provenance metadata churn as expected for repeat runs:
+  manifest/index/chunk/provenance JSON and pilot-GIS/metadata sidecars may change
+  while numerical outputs remain stable.
+- Required repeat-run acceptance:
+  - Orchestration decisions are coherent and stable for the same inputs,
+  - numerical artifact hashes are stable,
+  - no required numerical output regression.
+- Optional diffing workflow: copy first-run manifests before rerun if you need exact
+  provenance-byte auditing.
+
+Do not treat non-numerical manifest byte drift as a reproducibility failure on its
+own in this local smoke-test context.
+
 ## 8) Do not commit generated artifacts
 
 Do not commit ignored generated outputs from pilots, including:
