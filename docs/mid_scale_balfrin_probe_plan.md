@@ -11,9 +11,9 @@ Tracked 20-release-cell evidence was executed on clean balfrin (`/users/olifu/wo
 
 Current anchor for follow-up probes is:
 
-- `release-zone-count = 10`
+- `release-zone-count = 20`
 - `ensemble-size = 1`
-- `trajectory-count-per-zone = 6`
+- `trajectory-count-per-zone = 12`
 - `trajectory-workers = 2`
 - `reducer-workers = 2`
 - `trajectory-chunks = 2`
@@ -25,16 +25,20 @@ Current anchor for follow-up probes is:
 
 Executed probe benchmark metrics:
 
-- First run: `wall_seconds=7.743111`, `total_wall_seconds=6.88505400205031`, `output_bytes=15,602,497`, `output_file_count=46`, `output_write_seconds=2.7461103320820257`
-- Repeat run: `wall_seconds=4.770220`, `total_wall_seconds=4.339605016983114`, `output_bytes=15,602,620`, `output_file_count=46`, `output_write_seconds=2.796586749027483`
-- Second repeat (drift audit): `wall_seconds=4.721994`, `total_wall_seconds=4.296635876991786`, `output_bytes=15,602,596`, `output_file_count=46`, `output_write_seconds=2.7926949579268694`
+- `20 release cells × 12 trajectories (304×300)`:
+  - First run: `wall_seconds=12.279972`, `total_wall_seconds=11.125986575032584`, `output_bytes=15,691,724`, `output_file_count=46`, `output_write_seconds=3.267310244962573`
+  - Repeat run: `wall_seconds=13.748173`, `total_wall_seconds=5.14157305995`, `output_bytes=15,692,692`, `output_file_count=46`, `output_write_seconds=2.883542826`
+  - Repeat behavior: `executed` → `reused_completed_state` for both trajectory and reducer chunks.
+- `20 release cells × 12 trajectories (420×450)`:
+  - First run: `total_wall_seconds=15.839314937009476`, `output_bytes=32,124,792`, `output_file_count=46`, `output_write_seconds=6.502529560937546`
+  - Status: no repeat/reuse run yet.
 
 Repeat behavior classification:
 
-- first→repeat: chunk outcomes moved from `executed` to `reused_completed_state` (valid replay path),
-- second-repeat drift audit: `GeoTIFF 16/16`, `ESRI_ASCII 16/16`, `GeoJSON 1/1` unchanged,
-- plan ids stable, chunk decisions stable, no stale/orphan anomalies,
-- manifest/index/plan JSON drift was limited to expected provenance/metadata artifacts.
+- first→repeat: chunk outcomes moved from `executed` to `reused_completed_state` (valid replay path) for the 304×300 probe,
+- drift audit (20×12): `GeoTIFF 16/16`, `ESRI_ASCII 16/16`, `GeoJSON 1/1` unchanged,
+- no stale/orphan anomalies for executed probes,
+- manifest/index/plan JSON drift limited to expected provenance/metadata artifacts.
 
 Estimated reference point from estimator:
 
@@ -105,7 +109,7 @@ Exact probe command dimensions later:
 - Vary grid only: `420 x 450` (from `304 x 300`)
 - other params same as baseline
 
-Estimated behavior:
+Estimated behavior (pre-run model):
 
 - output bytes: `32,162,638`
 - file count: `46`
@@ -115,6 +119,17 @@ Estimated behavior:
   - raster scaling with cell count
   - conditional curve contribution relative to raster growth
   - output-class transition risk as grid resolution increases
+
+Measured balfrin result:
+
+- `total_wall_seconds=15.839314937009476`
+- `output_bytes=32,124,792`
+- `output_file_count=46`
+- `output_write_seconds=6.502529560937546`
+- `output_write_kind_seconds`: `esri_ascii_grid 0.7421`, `geotiff 0.6311`, `json 0.00116`, `geojson 0.00166`
+- `output_write_kind_bytes`: `esri_ascii_grid 7,583,879`, `geotiff 24,197,024`, `json 20,452`, `geojson 53,926`
+- chunk outcomes: all `executed` (initial pass)
+- repeat/reuse status: not yet run
 
 Exact probe command dimensions later:
 
@@ -148,13 +163,14 @@ Exact probe command dimensions later:
 
 Primary probe:
 
-- **More release zones to 20** was already executed successfully (committed evidence section above).
-- **Next executed probe**: **20 release cells × 12 trajectories per cell** (tracked at
-  `validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/`) was executed with
+- **20 release cells × 12 trajectories per cell (304×300)** was executed with
+  tracked probe `validation/probes/tschamut_mid_scale_20_release_cell_12traj_v1/` and
   the same control profile (`summary-only`, `grid-csv-export=none`, GeoTIFF, no-plots,
   2×2 workers).
-- After this run, the immediate frontier remains one-dimension variation while keeping
-  2×2 workers, with next candidate probes in trajectory count or grid-size only.
+- **20 release cells × 12 trajectories per cell (420×450)** was executed with
+  tracked probe `validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/`.
+- The immediate frontier remains one-dimension variation with 2×2 workers; next recommended run is a
+  repeat/reuse pass of 420×450 to close repeatability for the larger-raster scaling point.
 
 Fallback probe (smaller and quicker):
 

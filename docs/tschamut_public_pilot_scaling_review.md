@@ -263,3 +263,69 @@ Stability classification:
 - plan IDs remained stable.
 - no stale, orphan, or missing-state anomalies were observed.
 - output numeric payloads remained stable in prior 20×12 probes; provenance/protocol drift remains acceptable under the same rule used for previous balfrin repeat checks.
+
+## 420×450 grid-size balfrin probe evidence (tracked probe)
+
+Tracked grid-size probe definition:
+
+- `validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/`
+- base workload:
+  - `release-zone-count = 20`
+  - `trajectories per release cell = 12`
+  - grid `420 x 450` (from `304 x 300`)
+  - `trajectory-workers = 2`
+  - `reducer-workers = 2`
+- output controls:
+  - `--conditional-curve-export summary-only`
+  - `--grid-csv-export none`
+  - `--trajectory-workers 2`
+  - `--reducer-workers 2`
+  - `--export-geotiff`
+  - `--no-plots`
+
+Observed first-run summary:
+
+| Metric | Value |
+| --- | ---: |
+| command-sequence wall time (`/usr/bin/time` real) | `34.60s` |
+| `total_wall_seconds` | `15.839314937009476` |
+| `output_bytes` | `32,124,792` |
+| `output_file_count` | `46` |
+| `output_write_seconds` | `6.502529560937546` |
+| `trajectory chunks` | `2` |
+| `reducer chunks` | `2` |
+
+Output-kind split for this probe:
+
+| Output kind | Seconds | Bytes |
+| --- | ---: | ---: |
+| `esri_ascii_grid` | `0.7421` | `7,583,879` |
+| `geotiff` | `0.6311` | `24,197,024` |
+| `json` | `0.00116` | `20,452` |
+| `geojson` | `0.00166` | `53,926` |
+
+Plan/index/merge IDs were coherent; no stale/orphan/missing-state anomalies were observed.
+
+Comparison vs 20×12 baseline (304×300, same profile/workers):
+
+| Metric | 20×12 baseline (`304×300`) | 420×450 run | Ratio / delta |
+| --- | ---: | ---: | --- |
+| grid cell count | `91,200` | `189,000` | `~2.07×` |
+| `total_wall_seconds` | `11.125986575032584` | `15.839314937009476` | `+42.3%` |
+| `output_bytes` | `15,691,724` | `32,124,792` | `+105.0%` |
+| `output_file_count` | `46` | `46` | `0%` |
+| `output_write_seconds` | `3.267310244962573` | `6.502529560937546` | `+99.0%` |
+
+Interpretation:
+
+- raster-domain outputs scale approximately with cell count; raster file counts stayed constant while raster bytes and serialization time rose near proportionally.
+- with this controlled grid-size increase, raster output write/serialization became the clearer dominant pressure.
+
+Scope note:
+
+- no repeat/reuse validation was executed for this 420×450 probe yet.
+
+Recommended next step:
+
+- run one repeat/reuse check for 420×450 to confirm the same provenance/manifest drift rule applies at this grid scale.
+- otherwise continue one-dimension variation and/or raster I/O strategy tests (e.g., COG/GeoTIFF trade-off exploration).

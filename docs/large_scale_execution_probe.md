@@ -101,6 +101,15 @@ Observed estimate class behavior at this configuration:
   - `estimated_output_file_count`: `50` (4 extra provenance manifests)
   - bytes increase primarily in `provenance_artifacts`.
 
+Measured balfrin calibration points available (same command policy, now including
+grid scaling):
+
+- `420 × 450` grid with 20 release cells and 12 trajectories:
+  - `output_bytes`: `32,124,792`
+  - `output_file_count`: `46`
+  - `grid-cell delta`: `~2.07×`
+  - interpretation: raster bytes and write time increased approximately in proportion to cell count, while file count remained constant, supporting the probe’s raster-dominant scaling model.
+
 Important:
 
 - `--profile` and chunk settings are synthetic parameters in the probe and must
