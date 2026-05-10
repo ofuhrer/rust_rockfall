@@ -1,0 +1,36 @@
+{
+  "schema_version": "public_real_site_conditional_pilot_command_plan_v1",
+  "commands": [
+    {
+      "name": "validate_source_scenario_policy",
+      "command": [
+        "python",
+        "scripts/validate_source_scenario_policy.py",
+        "validation/templates/public_real_site_conditional_pilot_source_scenario_policy_v1.yaml"
+      ]
+    },
+    {
+      "name": "build_conditional_hazard_layers",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/build_hazard_layers.py",
+        "--case",
+        "validation/private/fixtures/commands.yaml",
+        "--output-dir",
+        "hazard/results/fixture",
+        "--conditional-curve-export",
+        "full",
+        "--grid-csv-export",
+        "full",
+        "--pilot-gis-package",
+        "--no-plots",
+        "--map-package-manifest-json",
+        "hazard/results/fixture/map_package_manifest.json",
+        "--pilot-gis-package-manifest-json",
+        "hazard/results/fixture/pilot_gis_package_manifest.json"
+      ]
+    }
+  ]
+}

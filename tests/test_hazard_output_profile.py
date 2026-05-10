@@ -113,6 +113,41 @@ class HazardOutputProfileTests(unittest.TestCase):
         self.assertEqual(result["input"]["source"], "command-plan")
         self.assertEqual(result["input"]["command"], payload["commands"][1]["command"])
 
+    def test_classify_tschamut_committed_plan_full_debug(self) -> None:
+        command_plan_path = ROOT / "tests" / "fixtures" / "hazard_output_profile" / "command_plan_full_debug.json"
+        payload = json.loads(command_plan_path.read_text(encoding="utf-8"))
+
+        result = checker.classify_profile(command_plan=command_plan_path)
+
+        self.assertEqual(result["profile"], "full_debug")
+        self.assertIn("--no-plots", result["matched_controls"])
+        self.assertIn("controls", result)
+
+    def test_classify_minimal_scalable_no_provenance_markers(self) -> None:
+        result = checker.classify_profile(
+            command=[
+                "uv",
+                "run",
+                "python",
+                "scripts/build_hazard_layers.py",
+                "--case",
+                "validation/private/fixtures/commands.yaml",
+                "--output-dir",
+                "hazard/results/fixture",
+                "--conditional-curve-export",
+                "summary-only",
+                "--grid-csv-export",
+                "none",
+                "--no-plots",
+                "--export-geotiff",
+            ]
+        )
+
+        self.assertEqual(result["profile"], "scalable_conditional")
+        self.assertIn("--conditional-curve-export summary-only", result["matched_controls"])
+        self.assertIn("--grid-csv-export none", result["matched_controls"])
+        self.assertNotIn("trajectory/reducer provenance lineage", result["matched_controls"])
+
 
 if __name__ == "__main__":
     unittest.main()

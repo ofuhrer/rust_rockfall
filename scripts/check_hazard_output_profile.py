@@ -32,7 +32,9 @@ KNOWN_STRING_FLAGS = {
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Classify build_hazard_layers output profile intent from command inputs."
+        description=(
+            "Classify build_hazard_layers output profile intent from command inputs."
+        )
     )
     parser.add_argument(
         "--command-plan",
@@ -302,6 +304,7 @@ def classify_profile(command_plan: Path | None = None, command: list[str] | None
 def _format_report(result: dict[str, Any]) -> str:
     lines = [
         f"Detected profile: {result['profile']}",
+        "Profile interpretation: classification only (informational, not a pass/fail gate).",
         "Matched controls:",
     ]
     if result["matched_controls"]:

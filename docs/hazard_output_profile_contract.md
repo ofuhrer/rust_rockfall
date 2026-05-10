@@ -143,6 +143,29 @@ Recommended balfrin setting:
   - `--grid-csv-export none` (if not doing full forensics),
   - no visual plots.
 
+## Profile classification clarified (Tschamut gate)
+
+The same underlying Tschamut gate workload can be represented under multiple profiles:
+
+- Committed command plan in `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
+  currently classifies as `full_debug` because it uses:
+  - `--conditional-curve-export full`
+  - `--grid-csv-export full`
+  - `--no-plots`
+- A balfrin-audited command that adds scalability controls **and** audit metadata
+  (for example `--pilot-gis-package` and manifest-sidecar inputs) classifies as
+  `provenance_audit`.
+- A minimal scalable command with:
+  - `--conditional-curve-export summary-only`
+  - `--grid-csv-export none`
+  - `--no-plots`
+  and without additional provenance/package controls classifies as `scalable_conditional`.
+
+Interpretation rule:
+- `provenance_audit` is not a failure; it is a stronger output contract.
+- It is compatible with scalable runtime behavior and is used when deterministic
+  replay/audit artifacts are needed in the same run.
+
 ## Recommended default mapping (current)
 
 - Keep existing default behavior (compatible with historical expectations):
