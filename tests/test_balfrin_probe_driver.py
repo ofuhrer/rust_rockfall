@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import importlib.util
 import io
 import json
@@ -237,6 +238,31 @@ class BalfrinProbeDriverTests(unittest.TestCase):
 
         parsed = json.loads(content)
         self.assertEqual(parsed["run_id"], "local-plan")
+
+    def test_collect_mode_works_without_python_module_path(self) -> None:
+        @dataclass
+        class _Collector:
+            payload: dict
+
+            def collect_run_metrics(self, *_args: object, **_kwargs: object) -> dict:
+                return self.payload
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_root = Path(tmpdir) / "run"
+            run_root.mkdir()
+            payload = {"output_root": str(run_root)}
+            collector = _Collector(payload)
+
+            with patch.object(
+                submit_driver,
+                "_load_collect_script",
+                return_value=collector,
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    submit_driver.main(["--collect", "--run-root", str(run_root)])
+
+        self.assertEqual(json.loads(out.getvalue()), payload)
 
 
 if __name__ == "__main__":

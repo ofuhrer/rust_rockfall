@@ -151,6 +151,19 @@ def _load_plan_validator() -> Any:
     return module
 
 
+def _load_collect_script() -> Any:
+    collector_path = ROOT / "scripts" / "collect_balfrin_probe_metrics.py"
+    spec = importlib.util.spec_from_file_location(
+        "collect_balfrin_probe_metrics",
+        collector_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load probe metrics collector module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
 def _read_command_plan(probe_manifest: Path) -> tuple[dict[str, Any], str]:
     module = _load_plan_validator()
     manifest = module.read_yaml(probe_manifest)
@@ -356,11 +369,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
     if args.collect:
-        from scripts.collect_balfrin_probe_metrics import collect_run_metrics
-
+        collector = _load_collect_script()
         run_root = args.run_root
         assert run_root is not None
-        summary = collect_run_metrics(run_root.resolve())
+        summary = collector.collect_run_metrics(run_root.resolve())
         print(json.dumps(summary, indent=2))
         return 0
 
