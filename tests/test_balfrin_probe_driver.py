@@ -144,8 +144,10 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             run_root = Path(tmpdir) / "run"
             output_root = run_root / "hazard_output"
             command_plan_path = run_root / "command_plan.json"
+            logs_root = run_root / "logs"
             (output_root / "trajectory_chunks").mkdir(parents=True, exist_ok=True)
             (output_root / "chunks").mkdir(parents=True, exist_ok=True)
+            logs_root.mkdir(parents=True, exist_ok=True)
 
             _make_json_file(
                 command_plan_path,
@@ -213,8 +215,33 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 output_root / "probe_trajectory_execution_plan_v1.json",
                 {"plan_id": "trajectory_plan_file_a"},
             )
+            (logs_root / "slurm-123.out").write_text(
+                "\n".join(
+                    [
+                        "starting job",
+                        "warning: terrain metadata missing",
+                        "ERROR: job failed to open output file",
+                        "all done",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (logs_root / "nested").mkdir(parents=True, exist_ok=True)
+            (logs_root / "nested" / "worker.log").write_text(
+                "\n".join(
+                    [
+                        "warn: retrying chunk write",
+                        "traceback: example stack",
+                        "informational line",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             summary = collect_driver.collect_run_metrics(run_root)
+            missing_log_summary = collect_driver.collect_run_metrics(run_root / "missing")
 
         self.assertEqual(summary["output_root"], str(output_root.resolve()))
         self.assertEqual(summary["output_bytes"], 4321)
@@ -229,6 +256,46 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         )
         self.assertEqual(summary["reducer_decision_counts"], {"executed": 1})
         self.assertEqual(summary["output_write_kind_seconds"]["geotiff"], 0.4)
+        self.assertEqual(
+            summary["log_audit"],
+            {
+                "logs_root": str(logs_root.resolve()),
+                "file_count": 2,
+                "matched_line_count": 4,
+                "warning_like_line_count": 2,
+                "error_like_line_count": 2,
+                "affected_log_paths": [
+                    str((logs_root / "nested" / "worker.log").resolve()),
+                    str((logs_root / "slurm-123.out").resolve()),
+                ],
+                "files": [
+                    {
+                        "path": str((logs_root / "nested" / "worker.log").resolve()),
+                        "matched_line_count": 2,
+                        "warning_like_line_count": 1,
+                        "error_like_line_count": 1,
+                    },
+                    {
+                        "path": str((logs_root / "slurm-123.out").resolve()),
+                        "matched_line_count": 2,
+                        "warning_like_line_count": 1,
+                        "error_like_line_count": 1,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(
+            missing_log_summary["log_audit"],
+            {
+                "logs_root": str((run_root / "missing" / "logs").resolve()),
+                "file_count": 0,
+                "matched_line_count": 0,
+                "warning_like_line_count": 0,
+                "error_like_line_count": 0,
+                "affected_log_paths": [],
+                "files": [],
+            },
+        )
 
     def test_local_command_plan_mode_prints_plan(self) -> None:
         fake_plan = {"run_status": "target_run_completed", "run_id": "local-plan", "commands": []}

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +123,72 @@ def _count_decision_manifests(directory: Path) -> dict[str, int]:
     return counts
 
 
+_LOG_AUDIT_PATTERN = re.compile(
+    r"\b(?:warn\w*|error\w*|fatal\w*|exception\w*|traceback\w*)\b",
+    re.IGNORECASE,
+)
+
+
+def _log_audit_summary(logs_root: Path) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "logs_root": str(logs_root),
+        "file_count": 0,
+        "matched_line_count": 0,
+        "warning_like_line_count": 0,
+        "error_like_line_count": 0,
+        "affected_log_paths": [],
+        "files": [],
+    }
+    if not logs_root.exists():
+        return summary
+
+    file_summaries: list[dict[str, Any]] = []
+    affected_paths: list[str] = []
+    matched_line_count = 0
+    warning_like_line_count = 0
+    error_like_line_count = 0
+
+    for path in sorted(candidate for candidate in logs_root.rglob("*") if candidate.is_file()):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        path_matched_line_count = 0
+        path_warning_like_line_count = 0
+        path_error_like_line_count = 0
+        for line in text.splitlines():
+            if not _LOG_AUDIT_PATTERN.search(line):
+                continue
+            path_matched_line_count += 1
+            line_lower = line.lower()
+            if "warn" in line_lower:
+                path_warning_like_line_count += 1
+            if "error" in line_lower or "fatal" in line_lower or "exception" in line_lower or "traceback" in line_lower:
+                path_error_like_line_count += 1
+        if path_matched_line_count == 0:
+            continue
+        affected_paths.append(str(path))
+        file_summaries.append(
+            {
+                "path": str(path),
+                "matched_line_count": path_matched_line_count,
+                "warning_like_line_count": path_warning_like_line_count,
+                "error_like_line_count": path_error_like_line_count,
+            }
+        )
+        matched_line_count += path_matched_line_count
+        warning_like_line_count += path_warning_like_line_count
+        error_like_line_count += path_error_like_line_count
+
+    summary["file_count"] = len(file_summaries)
+    summary["matched_line_count"] = matched_line_count
+    summary["warning_like_line_count"] = warning_like_line_count
+    summary["error_like_line_count"] = error_like_line_count
+    summary["affected_log_paths"] = affected_paths
+    summary["files"] = file_summaries
+    return summary
+
+
 def _find_optional_plan_id(path_candidates: list[Path], key: str) -> str | None:
     for path in path_candidates:
         payload = _load_json(path)
@@ -211,6 +278,7 @@ def collect_run_metrics(
         "reducer_plan_id": reducer_plan_id,
         "trajectory_decision_counts": _count_decision_manifests(output_root / "trajectory_chunks"),
         "reducer_decision_counts": _count_decision_manifests(output_root / "chunks"),
+        "log_audit": _log_audit_summary(run_root / "logs"),
     }
     return result
 
