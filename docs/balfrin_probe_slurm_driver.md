@@ -159,6 +159,21 @@ Log/audit findings:
 - no operational / GPU partition usage
 - job completed cleanly with exit `0:0`
 
+Collector log-audit summary:
+
+- `collect_balfrin_probe_metrics.py` also records a `log_audit` block for `run_root/logs/` with:
+  - `file_count`
+  - `matched_line_count`
+  - `warning_like_line_count`
+  - `error_like_line_count`
+  - `affected_log_paths`
+  - per-file matched line counts
+- Review this summary together with the job exit status, command-plan controls, and decision counts.
+- Use the affected paths to inspect the exact `slurm-<jobid>.out` and `slurm-<jobid>.err` files before deciding whether a warning-like or error-like match is expected environment chatter or a real probe issue.
+- For conditional probe evidence, treat this as a log-audit smoke check only.
+- It does not prove numerical correctness, output completeness, reproducibility, or operational readiness.
+- It also does not prove the absence of all failures, because it only scans the log tree with keyword matching.
+
 Important run-history note:
 
 - The earlier first submitted job `4289616` completed successfully but reused previously
@@ -178,6 +193,7 @@ Important run-history note:
 - output write seconds and per-kind timing/bytes if available
 - trajectory and reducer plan IDs where available
 - trajectory/reducer orchestration decision counts
+- `log_audit` summary for `run_root/logs/`
 
 ## Partition choice guidance
 
