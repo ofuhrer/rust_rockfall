@@ -194,6 +194,13 @@ Measured reduced profile size:
 - compared with the full target output: `2005` files, `571368823` bytes
 - checker classification: `rebuildable_reduced_output`
 
+The canonical command-plan path now exposes both the derivation command and
+the scratch hazard-rebuild proof command through
+`scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
+under the `tschamut_same_scale::rebuildable_reduced_output` group. That keeps
+the reduced-output workflow reproducible without implying that
+`summary_only` itself is rebuildable.
+
 Hazard-rebuild proof:
 
 - command:

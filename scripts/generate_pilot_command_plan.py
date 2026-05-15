@@ -38,6 +38,8 @@ READINESS = _load_module("pilot_command_plan_same_scale_readiness", "check_same_
 PORTABILITY = _load_module("pilot_command_plan_second_site_portability", "check_second_site_public_geodata_preflight.py")
 CASE_GENERATION = _load_module("pilot_command_plan_case_generation", "generate_tschamut_same_scale_cases.py")
 CONTRACT = _load_module("pilot_command_plan_contract_audit", "audit_multisite_source_scenario_contract.py")
+OUTPUT_PROFILE = _load_module("pilot_command_plan_output_profile", "check_hazard_rebuild_output_profile.py")
+REDUCED_PROFILE = _load_module("pilot_command_plan_reduced_profile", "derive_hazard_rebuild_reduced_profile.py")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,10 +75,11 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
     readiness_report = READINESS.build_readiness_report()
     second_site_report = PORTABILITY.build_report(site_config, site_id=None)
     contract_report = CONTRACT.build_report(site_config)
+    output_profile_report = OUTPUT_PROFILE.build_report(list(OUTPUT_PROFILE.DEFAULT_PROFILE_SPECS))
 
     site_plans: dict[str, dict[str, Any]] = {}
     if site in {"all", "tschamut_same_scale"}:
-        site_plans["tschamut_same_scale"] = build_tschamut_site_plan(readiness_report)
+        site_plans["tschamut_same_scale"] = build_tschamut_site_plan(readiness_report, output_profile_report)
     if site in {"all", "chant_sura_fluelapass"}:
         site_plans["chant_sura_fluelapass"] = build_second_site_plan(second_site_report, contract_report, site_config)
 
@@ -104,6 +107,10 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "command_plan_status": "ready",
         "tschamut_readiness_status": readiness_report["readiness_status"],
+        "tschamut_hazard_rebuild_output_profile_status": output_profile_report["hazard_rebuild_output_profile_status"],
+        "tschamut_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
+            "target_rebuildable_reduced"
+        ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
         "supported_sites_or_modes": ["all", "tschamut_same_scale", "chant_sura_fluelapass"],
         "read_only": True,
@@ -122,8 +129,12 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
     return report
 
 
-def build_tschamut_site_plan(readiness_report: dict[str, Any]) -> dict[str, Any]:
+def build_tschamut_site_plan(
+    readiness_report: dict[str, Any],
+    output_profile_report: dict[str, Any],
+) -> dict[str, Any]:
     ignored_output_paths = readiness_ignored_output_paths()
+    ignored_output_paths.append(rel(REDUCED_PROFILE.DEFAULT_OUTPUT_ROOT))
     commands: list[dict[str, Any]] = []
 
     commands.append(
@@ -200,6 +211,7 @@ def build_tschamut_site_plan(readiness_report: dict[str, Any]) -> dict[str, Any]
             ],
         )
     )
+    commands.extend(build_rebuildable_reduced_output_commands())
     commands.extend(
         [
             command_entry(
@@ -453,7 +465,130 @@ def build_tschamut_site_plan(readiness_report: dict[str, Any]) -> dict[str, Any]
         "commands": commands,
         "ignored_output_paths": ignored_output_paths,
         "readiness_status": readiness_report["readiness_status"],
+        "hazard_rebuild_output_profile_status": output_profile_report["hazard_rebuild_output_profile_status"],
+        "rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
+            "target_rebuildable_reduced"
+        ),
     }
+
+
+def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
+    reduced_root = REDUCED_PROFILE.DEFAULT_OUTPUT_ROOT
+    reduced_manifest = REDUCED_PROFILE.DEFAULT_OUTPUT_MANIFEST
+    reduced_case = REDUCED_PROFILE.DEFAULT_SOURCE_MANIFEST.parent / "tschamut_public_target_gate_case.yaml"
+    scratch_hazard_root = Path("/tmp/tb049_reduced_hazard")
+    scratch_map_manifest = scratch_hazard_root / "tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_map_package_manifest.json"
+    scratch_pilot_manifest = scratch_hazard_root / "tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_pilot_gis_package_manifest.json"
+
+    derivation_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "derive_hazard_rebuild_reduced_profile.py"),
+            "--format",
+            "json",
+        ]
+    )
+    rebuild_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "build_hazard_layers.py"),
+            "--case",
+            rel(reduced_case),
+            "--trajectory",
+            rel(reduced_root / "validation_tschamut_public_target_gate_v1_trajectory.csv"),
+            "--deposition",
+            rel(reduced_root / "validation_tschamut_public_target_gate_v1_deposition.csv"),
+            "--impact-events",
+            rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+            "--diagnostics",
+            rel(reduced_root / "validation_tschamut_public_target_gate_v1_metrics.json"),
+            "--output-dir",
+            rel(scratch_hazard_root),
+            "--grid-xmin",
+            "2696376.0",
+            "--grid-ymin",
+            "1167384.0",
+            "--grid-ncols",
+            "300",
+            "--grid-nrows",
+            "304",
+            "--grid-cell-size",
+            "2.0",
+            "--map-product-id",
+            "tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced",
+            "--map-package-manifest-json",
+            rel(scratch_map_manifest),
+            "--export-geotiff",
+            "--pilot-gis-package",
+            "--pilot-gis-package-manifest-json",
+            rel(scratch_pilot_manifest),
+            "--pilot-gis-qa-status",
+            "not-run",
+            "--pilot-gis-qa-note",
+            "Reduced rebuildable profile proof; manual GIS/QGIS QA not run.",
+            "--trajectory-workers",
+            "2",
+            "--reducer-workers",
+            "2",
+            "--no-plots",
+            "--conditional-curve-export",
+            "summary-only",
+            "--grid-csv-export",
+            "none",
+        ]
+    )
+
+    return [
+        command_entry(
+            site="tschamut_same_scale",
+            group="rebuildable_reduced_output",
+            command_id="tschamut_reduced_profile_derivation",
+            description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts.",
+            command=derivation_command,
+            expected_inputs=[
+                rel(REDUCED_PROFILE.DEFAULT_SOURCE_ROOT),
+                rel(REDUCED_PROFILE.DEFAULT_SOURCE_MANIFEST),
+            ],
+            expected_outputs=[
+                rel(reduced_manifest),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_trajectory.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_deposition.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory_metadata.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_metrics.json"),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=[rel(reduced_root)],
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="rebuildable_reduced_output",
+            command_id="tschamut_reduced_profile_hazard_rebuild",
+            description="Rebuild hazard layers from the derived reduced-output root into a scratch proof directory only.",
+            command=rebuild_command,
+            expected_inputs=[
+                rel(reduced_case),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_trajectory.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_deposition.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_metrics.json"),
+            ],
+            expected_outputs=[
+                rel(scratch_hazard_root),
+                rel(scratch_map_manifest),
+                rel(scratch_pilot_manifest),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=False,
+        ),
+    ]
 
 
 def build_second_site_plan(
@@ -788,6 +923,7 @@ GROUP_DESCRIPTIONS = {
     "hazard_builds": "Build hazard-layer outputs and package manifests.",
     "convergence_comparisons": "Compare gate and target hazard manifests cell-wise.",
     "output_profile_checks": "Summarize bounded validation-output pressure.",
+    "rebuildable_reduced_output": "Derive and proof the hazard-rebuild-compatible reduced target profile.",
     "context_inspection": "Inspect staged public context layers.",
     "hazard_context_overlap": "Measure hazard/context proximity on the staged envelope.",
     "uncertainty_summary": "Compose the same-scale uncertainty envelope summary.",
@@ -805,6 +941,7 @@ def ordered_group_ids(site: str) -> list[str]:
             "hazard_builds",
             "convergence_comparisons",
             "output_profile_checks",
+            "rebuildable_reduced_output",
             "context_inspection",
             "hazard_context_overlap",
             "uncertainty_summary",

@@ -41,6 +41,7 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "hazard_builds",
                 "convergence_comparisons",
                 "output_profile_checks",
+                "rebuildable_reduced_output",
                 "context_inspection",
                 "hazard_context_overlap",
                 "uncertainty_summary",
@@ -55,6 +56,7 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "tschamut_same_scale::hazard_builds",
                 "tschamut_same_scale::convergence_comparisons",
                 "tschamut_same_scale::output_profile_checks",
+                "tschamut_same_scale::rebuildable_reduced_output",
                 "tschamut_same_scale::context_inspection",
                 "tschamut_same_scale::hazard_context_overlap",
                 "tschamut_same_scale::uncertainty_summary",
@@ -63,7 +65,15 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_case_generation", report["command_ids"])
         self.assertIn("tschamut_target_hazard_build", report["command_ids"])
         self.assertIn("tschamut_output_profile_summary", report["command_ids"])
+        self.assertIn("tschamut_reduced_profile_derivation", report["command_ids"])
+        self.assertIn("tschamut_reduced_profile_hazard_rebuild", report["command_ids"])
+        self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "measured")
+        self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
+        self.assertIn(
+            "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
+            report["ignored_output_paths"],
+        )
         self.assertEqual(report["blocked_template_commands"], [])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
@@ -106,6 +116,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(len(report["command_group_keys"]), len(set(report["command_group_keys"])))
         self.assertIn("tschamut_same_scale::readiness_checks", report["command_group_keys"])
         self.assertIn("chant_sura_fluelapass::readiness_checks", report["command_group_keys"])
+        self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
 
     def test_text_output_smoke(self) -> None:
         buffer = io.StringIO()
@@ -117,6 +128,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("command_plan_status: ready", output)
         self.assertIn("blocked_template_commands:", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
+        self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
 
 
 if __name__ == "__main__":

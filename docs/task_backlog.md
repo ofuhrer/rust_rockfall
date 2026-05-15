@@ -157,7 +157,7 @@ Underrepresented high-value work:
 - turning spatial same-scale uncertainty into reusable masks/surfaces that show
   where closure-limiting uncertainty concentrates, not just scalar layer
   summaries;
-- making the rebuildable reduced-output proof a canonical workflow command
+- using the rebuildable reduced-output proof as a canonical workflow command
   before any larger validation-output run is attempted;
 - turning the package-level COG proof into the normal same-scale export path
   once doing so is worth changing the standard package roots;
@@ -167,11 +167,9 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-049 canonicalizes the rebuildable reduced-output workflow because output
-   volume remains the measured scaling bottleneck.
-2. TB-050 promotes the COG conversion proof toward a reusable export path after
+1. TB-050 promotes the COG conversion proof toward a reusable export path after
    the core scientific/output blockers have executable support.
-3. TB-051 assembles the measured conditional diagnostic interpretation after
+2. TB-051 assembles the measured conditional diagnostic interpretation after
    the output-profile and GIS export paths have a canonical workflow surface.
 
 ## Backlog Protocol
@@ -214,38 +212,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-049: Canonicalize Rebuildable Reduced-Output Commands
-
-Goal: make the `rebuildable_reduced_output` proof a reusable command-plan path
-instead of a one-off derivation command.
-
-Inspect first:
-
-- `scripts/derive_hazard_rebuild_reduced_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Expected work:
-
-- add canonical command-plan entries for deriving and hazard-rebuilding the
-  reduced profile from the current target artifacts;
-- keep the generated reduced root ignored and reproducible;
-- ensure the checker still reports `target_summary_only` as
-  `summary_only_not_rebuildable` and `target_rebuildable_reduced` as
-  `rebuildable_reduced_output`;
-- document the command path as a scaling mitigation, not a scientific
-  acceptance step.
-
-Definition of done:
-
-- `scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
-  exposes the reduced-output derivation/rebuild commands;
-- focused tests cover command IDs and profile classifications;
-- no large generated validation or hazard outputs are committed.
 
 ### TB-050: Promote COG Conversion Toward A Standard Export Path
 

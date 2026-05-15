@@ -5591,3 +5591,40 @@ Planning only; these milestones do not implement roadmap item content yet.
   `data/processed/swisstopo/placeholder_second_site_v1`,
   `validation/private/placeholder_second_site_v1`, and
   `hazard/results/placeholder_second_site_v1` before committing.
+
+### TB-049 Canonical Reduced-Output Command Plan
+
+- Milestone id: TB-049.
+- Roadmap item: canonicalize the rebuildable reduced-output workflow in the
+  portable command plan.
+- Hypothesis/objective: the existing `rebuildable_reduced_output` proof can be
+  made reproducible through a standard same-scale command-plan group without
+  changing physics, thresholds, or validation semantics.
+- Files intended to change: `scripts/generate_pilot_command_plan.py`,
+  `tests/test_pilot_command_plan.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: added a `tschamut_same_scale::rebuildable_reduced_output`
+  command group with a derivation command and a scratch-only hazard-rebuild
+  proof command, and threaded the measured rebuildability status into the
+  command-plan JSON. Updated the bounded-output docs to point at the canonical
+  command-plan path and removed TB-049 from the active backlog.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/derive_hazard_rebuild_reduced_profile.py scripts/check_hazard_rebuild_output_profile.py scripts/generate_pilot_command_plan.py tests/test_hazard_rebuild_output_profile.py tests/test_hazard_rebuild_reduced_profile.py tests/test_pilot_command_plan.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_hazard_rebuild_reduced_profile tests.test_pilot_command_plan`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/derive_hazard_rebuild_reduced_profile.py --format json`
+  reported `rebuildable_reduced_output`.
+  `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`
+  reported `target_summary_only=summary_only_not_rebuildable` and
+  `target_rebuildable_reduced=rebuildable_reduced_output`.
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
+  reported the new `rebuildable_reduced_output` command group and canonical
+  scratch proof command.
+- Reviewer notes: the reduced profile remains a scaling mitigation only; the
+  current `summary_only` profile is still not rebuildable.
+- Decision: completed.
+- Next proposed milestone: TB-050.

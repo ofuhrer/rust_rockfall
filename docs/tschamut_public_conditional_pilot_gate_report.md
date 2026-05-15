@@ -419,6 +419,11 @@ profiles are `hazard_rebuild_ready`, and the minimum reduced contract retains
 trajectory, deposition, impact-event, and diagnostics families while leaving
 trajectory metadata and stop-state as optional overhead.
 
+The canonical command-plan path now includes a
+`tschamut_same_scale::rebuildable_reduced_output` group that derives the
+ignored reduced root and exposes the scratch-only hazard-rebuild proof command
+without reclassifying `summary_only` as rebuildable.
+
 A concrete reduced-root proof now exists under
 `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`
 with `validation_output_mode: rebuildable_reduced_output`. It keeps the
