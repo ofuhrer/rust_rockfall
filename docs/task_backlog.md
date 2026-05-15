@@ -133,6 +133,19 @@ objective are:
    evidence mature. The validation/calibration gap assessment reports
    `physical_credibility_status=not_established`, `calibration_status=missing`,
    and `validation_status=partial`.
+10. The fully automated "user supplies an AOI and receives an
+    intensity-frequency hazard map" workflow is still a future product shape,
+    not the current user workflow. The missing pieces are AOI-to-swisstopo tile
+    discovery and download/cache management; generic terrain and context
+    preprocessing; heuristic release-zone identification; pragmatic release
+    and block-scenario plan generation; automatic ensemble-size/convergence
+    control; native rebuildable reduced output; default COG-ready GIS export;
+    a site-level orchestrator that chains those steps; and, most importantly,
+    physical frequency semantics from source occurrence rates, block-population
+    frequencies, uncertainty propagation, and validation/calibration evidence.
+    The near-term achievable product remains an automated conditional
+    diagnostic hazard-map workflow; true intensity-frequency curves remain
+    deferred until the physical-probability layer exists.
 
 ## Backlog Quality Assessment
 

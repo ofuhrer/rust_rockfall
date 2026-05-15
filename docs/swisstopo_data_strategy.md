@@ -153,6 +153,39 @@ The script performs the same lightweight CRS, extent, resolution, nodata, and
 provenance checks before any validation command is run. Details are in
 `docs/tschamut_swissalti3d_pilot.md`.
 
+## Region-To-Map Automation Gap
+
+The desired long-term user workflow is region-driven: a user supplies an AOI,
+and the system discovers/downloads the required public geodata, prepares
+terrain and context inputs, identifies candidate release zones, generates a
+release/scenario plan, runs a sufficient ensemble, and exports map products.
+That is not yet the implemented workflow.
+
+The largest missing automation pieces are:
+
+- AOI-to-swisstopo product and tile discovery, including download/cache,
+  checksum, product-version, retry, and resume handling;
+- generic terrain/context preprocessing for swissALTI3D, SWISSIMAGE,
+  swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D;
+- heuristic release-zone identification from slope, terrain quality, optional
+  geology/material context, and exclusion/context masks;
+- pragmatic release/scenario plan generation with release-cell ids, block-size
+  or block-mass assumptions, sampling weights, seed policy, and trajectory
+  counts;
+- automatic ensemble sufficiency criteria based on spatial convergence and
+  uncertainty stability rather than a fixed production-scale run;
+- native rebuildable reduced output and COG-ready GIS export as default
+  workflow surfaces;
+- a site-level orchestrator that chains preparation, validation, hazard
+  building, uncertainty checks, GIS export, and reporting.
+
+Those steps would still produce conditional diagnostic maps until a separate
+physical-probability layer exists. True grid-cell intensity-frequency curves
+require source occurrence rates, block-population or block-size frequency
+semantics, uncertainty propagation, and validation/calibration evidence. Those
+frequency semantics remain deliberately outside the current automated
+conditional diagnostic workflow.
+
 ## First Swiss Pilot Workflow
 
 1. Select one small Alpine slope or valley domain with a clearly bounded source

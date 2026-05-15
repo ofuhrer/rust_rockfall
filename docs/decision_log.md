@@ -82,6 +82,32 @@ Detailed sources: `../README.md`, `../AGENTS.md`, `roadmap_hazard_mapping.md`,
 `task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### Region-To-Intensity-Frequency Automation Boundary
+
+Decision: distinguish the near-term automated conditional diagnostic workflow
+from the larger future product where a user supplies only a geographic region
+and receives calibrated grid-cell intensity-frequency curves.
+
+Current status: active. The current repository can support reproducible
+Tschamut same-scale conditional diagnostics and metadata-level second-site
+portability work. It should not be described as a fully automated Swiss-wide
+intensity-frequency generator.
+
+Rationale: a region-only workflow still lacks AOI-to-swisstopo tile discovery
+and download/cache management, generic terrain/context preprocessing,
+heuristic release-zone identification, release/scenario plan generation,
+automatic ensemble sufficiency criteria, native rebuildable reduced output,
+default COG-ready GIS export, and a site-level orchestrator. Even if those
+workflow pieces are implemented, intensity-frequency curves require a physical
+probability layer: source occurrence rates, block-population or block-size
+frequency semantics, uncertainty propagation, and validation/calibration
+evidence. Until that layer exists, the responsible automated target is a
+conditional diagnostic hazard-map workflow with explicit interpretation limits.
+
+Detailed sources: `task_backlog.md`, `swisstopo_data_strategy.md`,
+`public_real_site_geodata_preparation.md`,
+`tschamut_public_conditional_pilot_gate_report.md`.
+
 ### External Review Roadmap Pressure
 
 Decision: accept the external review findings as roadmap pressure, not as
