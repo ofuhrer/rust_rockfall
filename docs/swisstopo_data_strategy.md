@@ -207,6 +207,12 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The candidate source-zone / scenario policy fixture at
+`validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
+is a synthetic contract record, not physical evidence. It helps separate the
+portable policy shape from the site-specific public context that remains
+deferred.
+
 The tiny staging helper
 `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py` copies the
 synthetic core fixture set from

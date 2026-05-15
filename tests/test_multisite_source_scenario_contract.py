@@ -23,12 +23,23 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["scale_up_authorized"], False)
         self.assertEqual(report["operational_claims_allowed"], False)
+        self.assertEqual(report["synthetic_contract_fixture_status"]["chant_sura_candidate_manifest"], "synthetic_contract_fixture")
+        self.assertEqual(report["synthetic_contract_fixture_status"]["chant_sura_source_scenario_policy"], "synthetic_contract_fixture")
+        self.assertEqual(report["synthetic_contract_fixture_status"]["physical_validation_evidence"], "not_claimed")
+
+        matrix = report["semantic_portability_matrix"]
+        self.assertEqual(matrix["tschamut"]["site_name"], "Tschamut")
+        self.assertEqual(matrix["tschamut"]["fixture_status"], "frozen_reference_records")
+        self.assertEqual(matrix["chant_sura"]["site_name"], "Chant Sura / Flüelapass")
+        self.assertEqual(matrix["chant_sura"]["fixture_status"], "synthetic_contract_fixture")
+        self.assertEqual(matrix["chant_sura"]["deferred_public_context_status"], "deferred_public_context_inputs")
 
         self.assertIn("source_zone_id_pattern", report["field_classifications"]["portable_required"])
         self.assertIn("source_zone_geometry", report["field_classifications"]["portable_required"])
         self.assertIn("terrain_crop_path", report["missing_second_site_fields"])
         self.assertIn("source_zone_metadata_path", report["missing_second_site_fields"])
         self.assertIn("scenario_table_path", report["missing_second_site_fields"])
+        self.assertIn("source_scenario_policy_path", report["field_classifications"]["site_specific_required"])
         self.assertIn("terrain_crop", report["required_path_patterns_or_manifest_keys"])
         self.assertIn("terrain.asc", report["required_path_patterns_or_manifest_keys"]["terrain_crop"])
 
@@ -54,6 +65,8 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "candidate_site_name",
             "fields_audited",
             "field_classifications",
+            "semantic_portability_matrix",
+            "synthetic_contract_fixture_status",
             "tschamut_available_fields",
             "second_site_available_fields",
             "missing_second_site_fields",
@@ -71,6 +84,21 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "operational_claims_allowed",
         }
         self.assertTrue(expected_keys.issubset(report.keys()))
+
+    def test_semantic_matrix_tracks_site_specific_and_deferred_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate_config = self._write_candidate_config(Path(tmp))
+            report = audit.build_report(candidate_config)
+
+        rows = {row["field"]: row for row in report["semantic_portability_matrix"]["rows"]}
+        self.assertEqual(rows["source_zone_id_pattern"]["classification"], "portable_required")
+        self.assertEqual(rows["source_zone_id_pattern"]["chant_sura"]["status"], "synthetic_contract_fixture")
+        self.assertEqual(rows["source_zone_id"]["classification"], "tschamut_specific_heuristic")
+        self.assertEqual(rows["source_zone_id"]["chant_sura"]["status"], "tschamut_heuristic_only")
+        self.assertEqual(rows["source_scenario_policy_path"]["chant_sura"]["status"], "synthetic_contract_fixture")
+        self.assertEqual(rows["swissimage_context"]["chant_sura"]["status"], "deferred_public_context")
+        self.assertEqual(rows["validation_or_field_evidence_boundary"]["classification"], "out_of_scope_for_current_phase")
+        self.assertEqual(rows["annual_frequency_probability_boundary"]["chant_sura"]["status"], "out_of_scope")
 
     def _write_candidate_config(self, root: Path) -> Path:
         candidate = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))

@@ -31,6 +31,28 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-047 Portable Source-Scenario Semantics Audit
+
+- Milestone id: TB-047.
+- Roadmap item: Harden portable source-zone and scenario semantics for the
+  concrete Chant Sura / Flüelapass candidate.
+- Hypothesis/objective: The Tschamut source-zone / scenario contract can be
+  separated into reusable semantics, Tschamut-specific heuristics, and
+  synthetic Chant Sura contract fixtures without running a second-site
+  ensemble.
+- Files intended to change: `scripts/audit_multisite_source_scenario_contract.py`,
+  `tests/test_multisite_source_scenario_contract.py`, `docs/task_backlog.md`,
+  `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`,
+  `docs/agent_work_log.md`, `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
+- Implementation summary: Added a machine-readable semantic portability
+  matrix, explicit contract-fixture labels for the Chant Sura policy, and
+  doc/backlog updates that keep the candidate at deferred public-context
+  readiness.
+- Checks run: pending
+- Reviewer notes: No second-site ensemble or hazard build was run.
+- Decision: completed
+- Next proposed milestone: TB-048
+
 ### Backlog Reprioritization After External Assessment
 
 - Milestone id: backlog reprioritization after external assessment.
