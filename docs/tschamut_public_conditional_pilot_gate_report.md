@@ -409,6 +409,12 @@ profiles are `hazard_rebuild_ready`, and the minimum reduced contract retains
 trajectory, deposition, impact-event, and diagnostics families while leaving
 trajectory metadata and stop-state as optional overhead.
 
+The COG blocker is also now shown to be technically fixable on a scratch
+sample: `scripts/prototype_cog_conversion.py` converts one same-scale GeoTIFF
+to `/tmp`, and the GIS/COG audit can distinguish that converted sample as
+`cog_conversion_sample_ready` while the committed same-scale package roots
+remain `gis_package_ready_cog_blocked` until regenerated.
+
 ## Artifact Readiness Preflight
 
 Before rerunning convergence, output-profile, context, or uncertainty

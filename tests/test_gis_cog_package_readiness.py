@@ -25,6 +25,7 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         self.assertEqual(report["scientific_acceptance_status"], "inconclusive")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
+        self.assertEqual(report["converted_sample_status"], "not_provided")
 
         artifact = report["artifacts"][0]
         self.assertEqual(artifact["raster_layer_count"], 2)
@@ -75,6 +76,23 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         self.assertEqual(report["readiness_status"], "metadata_only")
         artifact = report["artifacts"][0]
         self.assertFalse(artifact["cog_readiness_indicators"]["gdalinfo_available"])
+
+    def test_converted_sample_can_be_recognized_as_cog_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "gate_v1"
+            self._write_manifests(root, artifact_id="validation_tschamut_public_conditional_gate_v1")
+            sample_path = Path(tmp) / "tschamut_cog_sample.tif"
+            sample_path.write_text("placeholder", encoding="utf-8")
+            report = audit.build_gis_cog_readiness_report(
+                artifact_roots=[root],
+                converted_sample_path=sample_path,
+                raster_metadata_provider=self._fake_cog_metadata,
+            )
+
+        self.assertEqual(report["gis_cog_readiness_status"], "gis_package_ready")
+        self.assertEqual(report["converted_sample_status"], "cog_conversion_sample_ready")
+        self.assertEqual(report["converted_sample"]["status"], "cog_conversion_sample_ready")
+        self.assertTrue(report["converted_sample"]["metadata"]["sample_raster_cog_layout"])
 
     def _write_manifests(self, root: Path, *, artifact_id: str) -> None:
         root.mkdir(parents=True, exist_ok=True)
@@ -202,6 +220,7 @@ class GisCogPackageReadinessTest(unittest.TestCase):
 
     def _fake_cog_metadata(self, path: Path):
         return {
+            "status": "ok",
             "driver": "GTiff",
             "size": [300, 304],
             "epsg": 2056,

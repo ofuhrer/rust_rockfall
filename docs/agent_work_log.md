@@ -5166,6 +5166,44 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Boundaries preserved: no physics changes, no parameter tuning, no scale-up
   authorization, no operational claims, and no large committed raster outputs.
 
+### TB-038 Bounded COG Conversion Proof Of Concept
+
+- Milestone id: TB-038.
+- Roadmap item: Bounded COG conversion proof of concept.
+- Hypothesis/objective: A single same-scale GeoTIFF can be converted to a
+  COG-ready scratch output with GDAL, and the GIS/COG audit can distinguish
+  that converted sample from the still-blocked committed package roots.
+- Files changed:
+  `scripts/prototype_cog_conversion.py`,
+  `scripts/audit_gis_cog_package_readiness.py`,
+  `tests/test_cog_conversion_prototype.py`,
+  `tests/test_gis_cog_package_readiness.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a bounded COG conversion prototype that uses
+  `gdal_translate -of COG -co BLOCKSIZE=256 -co COMPRESS=ZSTD` on a single
+  same-scale raster and verifies the scratch output with `gdalinfo`. The
+  prototype produced a tiled COG with overviews under `/tmp`, while the
+  existing same-scale packages remain `gis_package_ready_cog_blocked`. The GIS
+  audit now distinguishes the committed package state from a converted sample
+  state via `converted_sample_status`.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/prototype_cog_conversion.py tests/test_cog_conversion_prototype.py scripts/audit_gis_cog_package_readiness.py tests/test_gis_cog_package_readiness.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_cog_conversion_prototype tests.test_gis_cog_package_readiness`,
+  `PYENV_VERSION=system uv run python scripts/prototype_cog_conversion.py --help`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json --converted-sample /tmp/tschamut_cog_poc.tif`,
+  `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: The scratch COG sample lives only in `/tmp` and does not
+  modify committed hazard outputs.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-039.
+
 ### TB-036 Hazard-Rebuild-Compatible Reduced Output Profile
 
 - Milestone id: TB-036.

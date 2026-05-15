@@ -232,3 +232,11 @@ pilot-GIS manifests and GeoTIFF layer outputs, but the audited rasters are not
 yet cloud-optimized: the manifests mark `cloud_optimized: false`, the sampled
 GeoTIFFs are strip-organized with no overviews, and the GIS/COG audit therefore
 remains package-complete but COG-blocked rather than scientifically accepted.
+
+A bounded proof-of-concept conversion path now exists in
+`scripts/prototype_cog_conversion.py`. On a single same-scale GeoTIFF it writes
+only to `/tmp`, converts with `gdal_translate -of COG -co BLOCKSIZE=256 -co
+COMPRESS=ZSTD`, and verifies a tiled COG layout with overviews via
+`gdalinfo`. The committed same-scale outputs remain unchanged and should still
+audit as `gis_package_ready_cog_blocked` until regenerated with a COG-ready
+layout.

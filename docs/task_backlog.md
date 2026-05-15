@@ -184,42 +184,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-038: Add A Bounded COG Conversion Proof Of Concept
-
-Goal: convert the measured GIS blocker from "strip-organized GeoTIFFs with no
-overviews" into a tested conversion path, without committing generated COGs.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `tests/test_gis_cog_package_readiness.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `hazard/results/tschamut_public_pilot/*/*_map_package_manifest.json`
-- `hazard/results/tschamut_public_pilot/*/*_pilot_gis_package_manifest.json`
-
-Expected work:
-
-- add a small COG conversion dry-run or fixture-backed converter around
-  `gdal_translate` / `gdaladdo` / `gdalinfo`;
-- if an existing same-scale raster is used, write generated COGs only under
-  `/tmp` or another ignored scratch path;
-- update the GIS/COG audit to recognize the converted layout.
-
-Definition of done:
-
-- a focused test proves the converted sample is tiled and has overviews;
-- the helper reports the exact conversion command/options needed for real
-  packages;
-- current committed artifacts remain unchanged and still report
-  `gis_package_ready_cog_blocked` until regenerated.
-
-Boundaries:
-
-- no generated large rasters committed;
-- no scientific acceptance, scale-up, or QGIS manual QA claim unless actually
-  performed.
-
 ### TB-039: Stage A Concrete Chant Sura Public-Geodata Acquisition Manifest
 
 Goal: move the Chant Sura / Flüelapass candidate from a blocked metadata

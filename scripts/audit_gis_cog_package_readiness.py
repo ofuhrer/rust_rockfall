@@ -14,6 +14,7 @@ import json
 import re
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 from typing import Any, Callable
 
@@ -77,11 +78,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument(
+        "--converted-sample",
+        type=Path,
+        default=None,
+        help="optional scratch COG sample to verify alongside the package audit",
+    )
     args = parser.parse_args(argv)
 
     try:
         report = build_gis_cog_readiness_report(
             artifact_roots=args.artifact_roots,
+            converted_sample_path=args.converted_sample,
             raster_metadata_provider=inspect_raster_metadata,
         )
     except GisCogReadinessError as exc:
@@ -102,11 +110,13 @@ def main(argv: list[str] | None = None) -> int:
 def build_gis_cog_readiness_report(
     artifact_roots: list[Path] | None = None,
     *,
+    converted_sample_path: Path | None = None,
     raster_metadata_provider: Callable[[Path], dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     roots = [Path(root) for root in (artifact_roots or DEFAULT_ARTIFACT_ROOTS)]
     provider = raster_metadata_provider or inspect_raster_metadata
     artifacts = [audit_artifact_root(root, provider) for root in roots]
+    converted_sample = audit_converted_sample(converted_sample_path, provider)
 
     missing_any = any(
         artifact["manifest_completeness"]["map_package_manifest_missing_fields"]
@@ -130,6 +140,9 @@ def build_gis_cog_readiness_report(
         "schema_version": SCHEMA_VERSION,
         "gis_cog_readiness_status": gis_status,
         "readiness_status": gis_status,
+        "converted_sample_status": converted_sample["status"],
+        "converted_sample_path": converted_sample["path"],
+        "converted_sample": converted_sample,
         "artifacts_audited": len(artifacts),
         "artifact_roots": [str(artifact["artifact_root"]) for artifact in artifacts],
         "hazard_manifest_paths": {artifact["artifact_id"]: artifact["hazard_manifest_path"] for artifact in artifacts},
@@ -154,6 +167,94 @@ def build_gis_cog_readiness_report(
         "artifacts": artifacts,
     }
     return report
+
+
+def audit_converted_sample(
+    sample_path: Path | None,
+    raster_metadata_provider: Callable[[Path], dict[str, Any] | None],
+) -> dict[str, Any]:
+    if sample_path is None:
+        return {
+            "status": "not_provided",
+            "path": None,
+            "exists": False,
+            "metadata": None,
+            "blockers": [],
+        }
+    sample_path = Path(sample_path)
+    if not sample_path.exists():
+        return {
+            "status": "blocked_missing_inputs",
+            "path": str(sample_path),
+            "exists": False,
+            "metadata": None,
+            "blockers": [f"missing_input:{sample_path}"],
+        }
+    metadata = raster_metadata_provider(sample_path)
+    if metadata is None:
+        return {
+            "status": "missing_gdal",
+            "path": str(sample_path),
+            "exists": True,
+            "metadata": None,
+            "blockers": ["gdalinfo_unavailable_or_failed"],
+        }
+    if metadata.get("status") == "verification_failed":
+        return {
+            "status": "verification_failed",
+            "path": str(sample_path),
+            "exists": True,
+            "metadata": metadata,
+            "blockers": [metadata.get("error") or "verification_failed"],
+        }
+    if metadata.get("status") != "ok":
+        return {
+            "status": metadata.get("status") or "unknown",
+            "path": str(sample_path),
+            "exists": True,
+            "metadata": metadata,
+            "blockers": [metadata.get("error") or "unknown"],
+        }
+    sample_raster_cog_layout = metadata.get("sample_raster_cog_layout")
+    if sample_raster_cog_layout is None:
+        sample_raster_cog_layout = metadata.get("image_structure", {}).get("LAYOUT") == "COG"
+    sample_raster_tiled = metadata.get("sample_raster_tiled")
+    if sample_raster_tiled is None:
+        sample_raster_tiled = bool(
+            metadata.get("block_size")
+            and isinstance(metadata.get("size"), list)
+            and len(metadata["size"]) == 2
+            and metadata["block_size"][0] < metadata["size"][0]
+            and metadata["block_size"][1] < metadata["size"][1]
+        )
+    sample_raster_overviews = metadata.get("sample_raster_overviews")
+    if sample_raster_overviews is None:
+        sample_raster_overviews = metadata.get("overview_count", 0) > 0
+    enriched_metadata = {
+        **metadata,
+        "sample_raster_cog_layout": bool(sample_raster_cog_layout),
+        "sample_raster_tiled": bool(sample_raster_tiled),
+        "sample_raster_overviews": bool(sample_raster_overviews),
+    }
+    if sample_raster_cog_layout and sample_raster_tiled and sample_raster_overviews:
+        status = "cog_conversion_sample_ready"
+        blockers: list[str] = []
+    else:
+        status = "verification_failed"
+        blockers = []
+        if not sample_raster_tiled:
+            blockers.append("sample_raster_not_tiled")
+        if not sample_raster_overviews:
+            blockers.append("sample_raster_no_overviews")
+        if not sample_raster_cog_layout:
+            blockers.append("sample_raster_not_cog_layout")
+    return {
+        "status": status,
+        "path": str(sample_path),
+        "exists": True,
+        "metadata": enriched_metadata,
+        "blockers": blockers,
+    }
 
 
 def audit_artifact_root(
@@ -294,26 +395,30 @@ def summarize_cog_readiness(
     sample_raster_compressed = bool(sample_raster_layout.get("COMPRESSION"))
     sample_raster_cog_layout = sample_raster_layout.get("LAYOUT") == "COG"
 
+    sample_status = sample_metadata.get("status") if sample_metadata else None
     return {
         "manifest_cloud_optimized": cloud_optimized == [True],
         "manifest_geotiff_declared": geotiff_required and geotiff_declared == ["geotiff"],
         "sample_raster_exists": sample_raster_exists,
-        "sample_raster_driver": sample_raster_driver,
-        "sample_raster_epsg": sample_raster_epsg,
-        "sample_raster_tiled": tiled,
-        "sample_raster_overviews": overviews_present,
-        "sample_raster_compressed": sample_raster_compressed,
-        "sample_raster_cog_layout": sample_raster_cog_layout,
+        "sample_raster_driver": sample_metadata.get("driver") if sample_metadata else None,
+        "sample_raster_epsg": sample_metadata.get("epsg") if sample_metadata else None,
+        "sample_raster_tiled": tiled if sample_status == "ok" else False,
+        "sample_raster_overviews": overviews_present if sample_status == "ok" else False,
+        "sample_raster_compressed": sample_raster_compressed if sample_status == "ok" else False,
+        "sample_raster_cog_layout": sample_raster_cog_layout if sample_status == "ok" else False,
         "sample_raster_block_size": sample_metadata.get("block_size") if sample_metadata else None,
         "sample_raster_geo_transform": sample_metadata.get("geo_transform") if sample_metadata else None,
         "visual_qa_status": pilot_manifest.get("visual_qa", {}).get("status"),
-        "gdalinfo_available": sample_metadata is not None,
+        "gdalinfo_available": sample_status == "ok",
+        "sample_raster_status": sample_status or "unknown",
     }
 
 
 def inspect_raster_metadata(path: Path) -> dict[str, Any] | None:
     if path is None or not path.exists():
-        return None
+        return {"status": "missing_inputs"}
+    if shutil.which("gdalinfo") is None:
+        return {"status": "missing_gdal", "error": "gdalinfo_not_available"}
     try:
         completed = subprocess.run(
             ["gdalinfo", "-json", str(path)],
@@ -321,14 +426,15 @@ def inspect_raster_metadata(path: Path) -> dict[str, Any] | None:
             text=True,
             check=True,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        return None
+    except subprocess.CalledProcessError as exc:
+        return {"status": "verification_failed", "error": (exc.stderr or exc.stdout or str(exc)).strip()}
     data = json.loads(completed.stdout)
     band = data.get("bands", [{}])[0]
     metadata = data.get("metadata", {})
     image_structure = metadata.get("IMAGE_STRUCTURE", {})
     wkt = data.get("coordinateSystem", {}).get("wkt", "")
     return {
+        "status": "ok",
         "driver": data.get("driverShortName"),
         "size": data.get("size"),
         "epsg": extract_epsg(wkt),
@@ -410,6 +516,7 @@ def artifact_id_from_map_manifest(map_manifest: dict[str, Any], pilot_manifest: 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"GIS/COG readiness: {report['gis_cog_readiness_status']}",
+        f"Converted sample: {report['converted_sample_status']}",
         f"Artifacts audited: {report['artifacts_audited']}",
         f"QGIS manual QA: {report['qgis_manual_qa_status']}",
         f"Scientific acceptance: {report['scientific_acceptance_status']}",
@@ -426,6 +533,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  geotiff presence: {artifact['geotiff_presence']}")
         lines.append(f"  cog indicators: {artifact['cog_readiness_indicators']}")
         lines.append(f"  blockers: {artifact['blockers']}")
+    if report.get("converted_sample"):
+        lines.append("")
+        lines.append(f"converted sample path: {report['converted_sample'].get('path')}")
+        lines.append(f"converted sample blockers: {report['converted_sample'].get('blockers')}")
     return "\n".join(lines) + "\n"
 
 

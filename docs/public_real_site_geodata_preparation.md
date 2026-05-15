@@ -167,6 +167,18 @@ present, but the audited GeoTIFF layout is still strip-organized with no
 overviews, so COG readiness remains blocked even though the package metadata
 itself is complete.
 
+A bounded proof-of-concept conversion path is now available through
+`scripts/prototype_cog_conversion.py`. It converts one existing same-scale
+GeoTIFF to a scratch output path under `/tmp`, verifies the result with
+`gdalinfo`, and confirms the sample is tiled, has overviews, and reports a COG
+layout. This proves the blocker is technically fixable without changing the
+committed same-scale outputs, which still report `gis_package_ready_cog_blocked`
+until they are regenerated.
+
+The GIS/COG audit now also accepts an explicit converted-sample path and will
+report `cog_conversion_sample_ready` for the scratch proof while keeping the
+current committed packages marked as COG-blocked.
+
 ## Second-Site Portability Preflight
 
 `scripts/check_second_site_public_geodata_preflight.py` is a metadata-only
