@@ -3545,3 +3545,38 @@ Planning only; these milestones do not implement roadmap item content yet.
   changes, and no annual/physical/risk/operational claim language were added.
 - Decision: ACCEPT.
 - Next proposed milestone: DT-07.
+
+### M063
+
+- Milestone id: M063.
+- Roadmap item: DT-07. Real-site DEM/input conditioning QA gate.
+- Hypothesis/objective: Record the fail-closed real-site DEM/input
+  conditioning QA gate, machine-readable evidence record, validator, and tests
+  without changing DEM behavior, physics, or tuning.
+- Files intended to change:
+  `docs/real_site_dem_input_conditioning_qa_gate.md`,
+  `validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml`,
+  `scripts/validate_dem_input_conditioning_qa.py`,
+  `tests/test_dem_input_conditioning_qa.py`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
+  `docs/decision_log.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added the DT-07 real-site DEM/input conditioning QA
+  gate doc, record, validator, and tests; updated the authoritative targets
+  and supporting roadmap docs so DT-07 is complete and DT-08 is now the next
+  active target.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_dem_input_conditioning_qa.py validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_dem_input_conditioning_qa` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_conditional_convergence_protocol tests.test_stochastic_sampling_audit` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: No physics changes, no DEM behavior changes, no tuning, and
+  no annual/physical/risk/operational claim language were added.
+- Decision: ACCEPT.
+- Next proposed milestone: DT-08.

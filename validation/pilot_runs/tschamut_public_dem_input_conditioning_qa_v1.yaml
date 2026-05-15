@@ -1,0 +1,118 @@
+schema_version: dem_input_conditioning_qa_v1
+record_id: tschamut_public_dem_input_conditioning_qa_v1
+pilot_id: tschamut_public_pilot
+roadmap_item: DT-07
+assessed_domain:
+  name: Tschamut 2014 public release/deposition corridor
+  selected_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  selected_pilot_classification: inconclusive
+input_freeze:
+  geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+  source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+current_classification: blocked_pending_local_evidence
+qa_status: diagnostic_incomplete
+stochastic_or_physics_change_claimed: false
+dem_behavior_change_claimed: false
+tuning_claimed: false
+operational_or_annual_claimed: false
+raw_input_evidence:
+  status: documented_public_manifest_only
+  source_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  source_tile_id: "2696-1167"
+  source_dataset_id: swisstopo_swissalti3d
+  source_url: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif
+  raw_source_path: data/raw/swisstopo/swissalti3d_2019_2696-1167_2_2056_5728.tif
+  raw_sha256: e1fe4119d3fec60f1f6fcb3f15698af23c96c92a2a0b9d8f34c89b109a88becf
+  product_version: "2019"
+  product_date: "2019"
+  freshness_status: documented_but_not_locally_reverified
+  notes:
+    - Raw public inputs are documented in the selected geodata manifest.
+    - The current checkout does not re-download or re-verify the raw tile.
+atomic_ingest_and_checksum:
+  status: documented_but_not_locally_reexecuted
+  producer_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
+  processed_dem_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+  processed_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+  processed_sha256: 36f3156bbc57a01536784807a09db214a46911b4df95c04af8182e420973ea8f
+  preprocessing_status: documented_public_preparation
+  checksum_state: manifest_recorded
+  notes:
+    - The manifest records the expected processed checksum and preparation command.
+    - The current checkout does not require new downloader behavior.
+crs_and_registration_evidence:
+  status: documented
+  coordinate_reference_system:
+    epsg: 2056
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  registration_transform_status: documented_aligned_crop
+  crop_extent_lv95_m:
+    xmin: 2696376.0
+    ymin: 1167384.0
+    xmax: 2696976.0
+    ymax: 1167992.0
+  alignment_notes:
+    - The selected manifest records the expected LV95/LN02 crop extent.
+    - Registration must remain explicit so the pilot cannot silently absorb a transformed footprint.
+nodata_policy:
+  status: documented
+  nodata_value: -9999.0
+  propagation_rule: preserve_nodata_as_boundary_condition
+  boundary_cell_rule: clamped_only_when_explicitly_documented
+  notes:
+    - Nodata is not an invisible default.
+    - Boundary handling must stay explicit in interpretation.
+terrain_sanity_checks:
+  status: documented_but_not_locally_rerun
+  checks:
+    - slope_artifact_screen
+    - sink_screen
+    - spike_screen
+    - crop_edge_discontinuity_screen
+    - interpolation_artifact_screen
+  notes:
+    - The selected gate records the need to review preprocessing artifacts before larger execution.
+    - This record does not claim a new terrain-conditioning result.
+boundary_and_terrain_error_semantics:
+  status: documented
+  strict_dem_behavior: fail_closed_on_domain_exit
+  clamped_dem_behavior: documented_boundary_convention_not_physical_continuation
+  terrain_error_interpretation: explicit_input_or_domain_failure
+  notes:
+    - Strict and clamped behaviors remain separate interpretation contracts.
+    - Terrain errors must stay visible in pilot interpretation.
+referenced_records:
+  - validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml
+  - validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  - data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  - validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+  - docs/public_real_site_geodata_preparation.md
+  - docs/swiss_terrain_ingestion_pilot.md
+  - docs/dem_terrain_sensitivity_benchmark.md
+required_blockers:
+  - raw_inputs_not_locally_reverified
+  - processed_artifacts_not_locally_reexecuted
+  - registration_and_transform_not_locally_rechecked
+  - nodata_and_boundary_checks_not_revalidated
+  - slope_sink_spike_screens_not_reexecuted
+  - strict_vs_clamped_behavior_requires_explicit_interpretation
+limitations:
+  - Raw and processed artifacts are documented in the manifest, but not locally re-executed in this checkout.
+  - Registration and terrain sanity checks remain recorded as required future evidence.
+  - The gate remains blocked pending local evidence.
+claim_boundary:
+  physics_changes_claimed: false
+  dem_behavior_changes_claimed: false
+  tuning_claimed: false
+  annual_or_physical_probability_claimed: false
+  risk_exposure_or_operational_claimed: false
+  return_period_claimed: false
+  validated_hazard_map_claimed: false
+notes:
+  - This record is intentionally conservative and does not authorize scale-up.
+  - It defines the QA gate before larger pilot interpretation, not after it.

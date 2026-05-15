@@ -162,9 +162,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
   and keeps the completed DT-04 Balfrin reproduction classified as
   `inconclusive` without authorizing scale-up. The DT-06 stochastic audit is
-  complete. Remaining external review risks are now carried forward as DT-07
-  DEM/input QA, DT-08 output-budget/reducer, DT-09 distributed execution, and
-  DT-10 forest/obstacle context gates.
+  complete and the DT-07 DEM/input QA gate is complete. Remaining external
+  review risks are now carried forward as DT-08 output-budget/reducer, DT-09
+  distributed execution, and DT-10 forest/obstacle context gates.
 - Priority 5 is complete at the selected checklist level.
   `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
@@ -197,7 +197,7 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
 - Conditional convergence acceptance is documented and machine-checkable for
   the current selected gate. It keeps the DT-04 selected gate at
   `inconclusive` while preserving the no-annual/no-physical/no-risk boundary;
-  additional external-review risks are assigned to DT-06, DT-07, and DT-08.
+  additional external-review risks are assigned to DT-08, DT-09, and DT-10.
 - Ensemble-size increase has a reassessed selected-domain no-go feasibility gate.
   `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
   `docs/tschamut_public_ensemble_feasibility.md` now review the executed but
@@ -206,9 +206,8 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   forest/obstacle context, balfrin reproducibility, and validation-runner
   provenance scope are resolved. Manual GIS/QGIS remains a secondary
   interoperability check.
-- The next active work is DT-07 DEM/input conditioning QA, followed by DT-08
-  output-budget/reducer gates. Forest/obstacle context remains important and is
-  now DT-10.
+- The next active work is DT-08 output-budget/reducer gates. Forest/obstacle
+  context remains important and is now DT-10.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
   `docs/tschamut_public_scalable_conditional_execution.md`, and

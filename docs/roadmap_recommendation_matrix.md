@@ -56,11 +56,12 @@ hazard-map gate has now been reproduced on balfrin and remains
 `inconclusive`, not accepted. DT-05 now records the conservative conditional
 convergence protocol and classifies the DT-04 Balfrin evidence as
 `inconclusive`. External review risks that exceed that protocol are carried
-forward as DT-07 DEM/input conditioning QA, DT-08 output-budget/reducer
-gates, and DT-09 distributed execution before any ensemble-size gate is
-relaxed or annual/physical semantics are attempted. The DT-06 stochastic audit
-is complete, and GIS/QGIS work is treated as secondary interoperability QA
-rather than the main pilot outcome.
+forward as DT-08 output-budget/reducer gates, DT-09 distributed execution,
+and DT-10 forest/obstacle context before any ensemble-size gate is relaxed or
+annual/physical semantics are attempted. The DT-06 stochastic audit is
+complete, the DT-07 DEM/input conditioning gate is complete, and GIS/QGIS
+work is treated as secondary interoperability QA rather than the main pilot
+outcome.
 
 ## External Review Synthesis
 
@@ -84,8 +85,8 @@ Balfrin execution architecture. They reprioritize the next gates as follows:
 | DT-03 (complete) | Close current SLURM probe repeat/log-audit loop | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 1 | 19 |
 | DT-04 (complete) | Reproduce selected Tschamut conditional hazard-map gate on balfrin | 4 | 5 | 5 | 4 | 5 | 5 | 4 | 4 | 2 | 18 |
 | DT-05 (complete) | Conditional hazard-map convergence and acceptance protocol | 5 | 5 | 5 | 5 | 5 | 5 | 3 | 3 | 2 | 22 |
-| DT-06 | Stochastic sampling and RNG stream audit | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 3 | 3 | 20 |
-| DT-07 | Real-site DEM/input conditioning QA gate | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 2 | 20 |
+| DT-06 (complete) | Stochastic sampling and RNG stream audit | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 3 | 3 | 20 |
+| DT-07 (complete) | Real-site DEM/input conditioning QA gate | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 2 | 20 |
 | DT-08 | Output budget and reducer scaling gate | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 1 | 19 |
 | DT-09 | Balfrin distributed execution design only if needed | 3 | 5 | 5 | 3 | 5 | 5 | 4 | 3 | 2 | 17 |
 | DT-10 | Forest/obstacle context review with local public context layers present | 4 | 5 | 4 | 3 | 4 | 5 | 2 | 4 | 2 | 17 |
@@ -114,9 +115,9 @@ forest/obstacle context remains limiting because local context layers are
 absent, and manual GIS/QGIS visual QA is still secondary interoperability
 evidence rather than the main hazard-map acceptance gate. The DT-05 protocol
 codifies that classification and keeps scale-up unauthorized. The DT-06
-stochastic audit is complete, and the remaining acceptance concerns are now
-assigned to DT-07, DT-08, and DT-09 before the evidence can be treated as
-accepted.
+stochastic audit is complete, the DT-07 DEM/input conditioning gate is
+complete, and the remaining acceptance concerns are now assigned to DT-08,
+DT-09, and DT-10 before the evidence can be treated as accepted.
 
 Balfrin readiness has moved from scaffolding to recorded readiness for the
 current gate. The readiness checker, runbook, output-profile contract,
@@ -172,17 +173,17 @@ the validation debug-output budget blocker visible.
 
 ### Best Near-Term Scientific Work Package
 
-Complete DT-07 DEM/input QA next, then DT-08 output-budget/reducer gates.
-DT-05 remains the current classification reference for DT-04, but the external
-review risks must be resolved before the pilot is accepted.
+DT-07 DEM/input QA is complete; complete DT-08 output-budget/reducer gates
+next. DT-05 remains the current classification reference for DT-04, but the
+external review risks must be resolved before the pilot is accepted.
 
 ### Best Near-Term Engineering Work Package
 
-Document the DT-07 DEM/input QA gate and DT-08 output-budget/reducer gate
-before adding distributed execution. Use the SLURM-first single-job probe
-driver until those gates show a concrete need for arrays or cross-process
-reducers. Use the multi-trajectory Parquet writer only behind an explicit
-selected-pilot output policy decision.
+Document the DT-08 output-budget/reducer gate before adding distributed
+execution. Use the SLURM-first single-job probe driver until those gates show
+a concrete need for arrays or cross-process reducers. Use the
+multi-trajectory Parquet writer only behind an explicit selected-pilot output
+policy decision.
 
 ## What Should Be Paused Or Deferred
 
@@ -222,9 +223,9 @@ Pause or defer:
 ## Final Recommendation
 
 Do not start annual or physical probability work yet. The highest-value
-implementable next move is DT-07 DEM/input QA, followed by DT-08
-output-budget/reducer gates. Manual GIS/QGIS remains useful but secondary;
-forest/obstacle review remains scientifically important but should not outrank
-acceptance, DEM/input, and output-budget gates.
+implementable next move is DT-08 output-budget/reducer gates. Manual GIS/QGIS
+remains useful but secondary; forest/obstacle review remains scientifically
+important but should not outrank acceptance, DEM/input, and output-budget
+gates.
 Larger diagnostic execution remains blocked by the reassessed no-go
 ensemble-size gate.

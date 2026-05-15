@@ -164,6 +164,7 @@ def main() -> int:
     errors.extend(check_scalable_conditional_target_gate())
     errors.extend(check_conditional_hazard_convergence_protocol())
     errors.extend(check_stochastic_sampling_audit())
+    errors.extend(check_dem_input_conditioning_qa())
     errors.extend(check_balfrin_tschamut_readiness_record())
     errors.extend(check_balfrin_slurm_probe_repeatability())
     errors.extend(check_balfrin_target_gate_reproduction())
@@ -1298,7 +1299,7 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         "Status: complete; classification `inconclusive`.",
         "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol",
         "Status: complete for the current selected target gate; classification",
-        "DT-07 is now the next active target",
+        "DT-08 is now the next active target",
     ):
         if term not in targets:
             errors.append(f"docs/next_development_targets.md omits {term!r}")
@@ -1476,6 +1477,98 @@ def check_stochastic_sampling_audit() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_stochastic_sampling_audit.py omits {test_name}")
+    return errors
+
+
+def check_dem_input_conditioning_qa() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/real_site_dem_input_conditioning_qa_gate.md",
+        ROOT / "validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml",
+        ROOT / "scripts/validate_dem_input_conditioning_qa.py",
+        ROOT / "tests/test_dem_input_conditioning_qa.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"dem input conditioning QA path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/real_site_dem_input_conditioning_qa_gate.md").read_text()
+    record = (ROOT / "validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_dem_input_conditioning_qa.py").read_text()
+    tests = (ROOT / "tests/test_dem_input_conditioning_qa.py").read_text()
+
+    for term in (
+        "fail-closed QA gate",
+        "raw public inputs",
+        "atomic ingest",
+        "CRS/registration",
+        "nodata",
+        "strict versus clamped DEM interpretation",
+        "domain-exit / terrain-error interpretation",
+        "no-tuning/no-operational/no-annual boundary",
+    ):
+        if term not in doc:
+            errors.append(f"docs/real_site_dem_input_conditioning_qa_gate.md omits {term!r}")
+
+    for term in (
+        "schema_version: dem_input_conditioning_qa_v1",
+        "roadmap_item: DT-07",
+        "pilot_id: tschamut_public_pilot",
+        "current_classification: blocked_pending_local_evidence",
+        "qa_status: diagnostic_incomplete",
+        "raw_input_evidence:",
+        "atomic_ingest_and_checksum:",
+        "crs_and_registration_evidence:",
+        "nodata_policy:",
+        "terrain_sanity_checks:",
+        "boundary_and_terrain_error_semantics:",
+        "claim_boundary:",
+        "stochastic_or_physics_change_claimed: false",
+        "dem_behavior_change_claimed: false",
+        "tuning_claimed: false",
+        "operational_or_annual_claimed: false",
+        "physics_changes_claimed: false",
+        "dem_behavior_changes_claimed: false",
+        "annual_or_physical_probability_claimed: false",
+        "risk_exposure_or_operational_claimed: false",
+        "validated_hazard_map_claimed: false",
+        "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml",
+        "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+        "docs/public_real_site_geodata_preparation.md",
+        "docs/swiss_terrain_ingestion_pilot.md",
+        "docs/dem_terrain_sensitivity_benchmark.md",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_dem_input_conditioning_qa",
+        "ALLOWED_CLASSIFICATIONS",
+        "REQUIRED_REFERENCES",
+        "REQUIRED_BLOCKERS",
+        "PROHIBITED_PATTERNS",
+        "validate_claim_boundary",
+        "scan_text_for_prohibited_claims",
+        "DEM/input QA record is valid",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_dem_input_conditioning_qa.py omits {symbol!r}")
+
+    for test_name in (
+        "test_current_record_is_valid",
+        "test_rejects_missing_raw_input_evidence",
+        "test_rejects_missing_crs_registration_evidence",
+        "test_rejects_passed_while_blockers_remain",
+        "test_rejects_dem_behavior_or_physics_claims",
+        "test_rejects_annual_physical_risk_operational_claims",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_dem_input_conditioning_qa.py omits {test_name}")
     return errors
 
 
@@ -1698,6 +1791,12 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/next_development_targets.md must mark DT-06 complete")
     if "### DT-07: Define Real-Site DEM/Input Conditioning QA Gate" not in targets_text:
         errors.append("docs/next_development_targets.md must include the DT-07 heading")
+    if "Status: complete; classification `blocked_pending_local_evidence`." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-07 complete")
+    if "### DT-08: Define Output Budget And Reducer Scaling Gate" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-08 heading")
+    if "Status: next active target." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-08 as next active target")
     return errors
 
 

@@ -45,9 +45,11 @@ context remains limiting, validation debug-output volume still needs reduction
 or explicit justification before a larger run, and the completed balfrin
 target-gate reproduction is not yet a convergence pass. DT-05 now records the
 conditional convergence protocol and keeps the DT-04 evidence
-`inconclusive`; external review risks are carried forward as DT-07 through
+`inconclusive`; external review risks are carried forward as DT-08 through
 DT-10 before the pilot can be accepted. The DT-06 stochastic sampling and RNG
-stream audit package is complete, and DT-07 is now the next active target.
+stream audit package is complete, DT-07 is complete, and DT-08 is now the next
+active target.
+DT-08 is now the next active target.
 Target-run provenance is now explicitly classified: the
 1,000-trajectory observed-release target run is separated from the auxiliary
 single-release `ensemble_execution` sidecar.
@@ -195,6 +197,8 @@ conditional layers as physical probabilities.
 
 ### DT-07: Define Real-Site DEM/Input Conditioning QA Gate
 
+Status: complete; classification `blocked_pending_local_evidence`.
+
 Objective: require a fail-closed QA gate for raw public inputs, DEM
 conditioning, CRS/registration, nodata, slope artifacts, and DEM boundary
 semantics before larger Tschamut or Swiss-wide pilot runs are trusted.
@@ -203,16 +207,19 @@ Why this comes before more scale: external review identified ingestion,
 registration, nodata, DEM artifacts, and boundary/clamping behavior as failure
 points that can create plausible but spatially wrong hazard maps.
 
-Done when: the QA gate documents atomic ingest/checksum expectations, producer
-commands for intermediate artifacts, CRS and registration evidence,
-nodata/sink/spike/slope sanity checks, strict vs clamped DEM behavior, domain
-exit interpretation, and conditions that force a pilot result to remain
-`blocked` or `diagnostic`.
+Done: `docs/real_site_dem_input_conditioning_qa_gate.md` defines the QA gate
+scope, evidence categories, nodata policy, strict versus clamped DEM
+interpretation, terrain-error handling, and conservative classification
+states. `validation/pilot_runs/tschamut_public_dem_input_conditioning_qa_v1.yaml`
+records the selected Tschamut pilot assessment, and the focused
+validator/test pair enforces the claim boundary and blocked status.
 
 Do not: patch DEM defects through contact-parameter tuning or treat clamped
 edge behavior as physical terrain continuation.
 
 ### DT-08: Define Output Budget And Reducer Scaling Gate
+
+Status: next active target.
 
 Objective: convert output file count, byte count, inode use, dense-grid
 accumulator behavior, reducer restart files, and summary-only output policy

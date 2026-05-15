@@ -104,6 +104,9 @@ fragments have been consolidated into `decision_log.md`; they do not override
 - `stochastic_sampling_rng_stream_audit.md`: DT-06 audit of current stochastic
   sampling semantics, RNG stream labels, known limitations, and current
   no-behavior-change boundary.
+- `real_site_dem_input_conditioning_qa_gate.md`: DT-07 fail-closed QA gate for
+  raw public inputs, DEM conditioning, CRS/registration, nodata, artifact, and
+  boundary semantics.
 - `probabilistic_scenario_model_design.md`: scenario-level probability modes,
   source-zone placeholders, and normalization conventions.
 - `physical_source_frequency_design_gate.md`: design-gate decision for future
