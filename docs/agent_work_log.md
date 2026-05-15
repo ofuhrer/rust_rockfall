@@ -179,6 +179,34 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-014.
 
+### M075
+
+- Milestone id: M075.
+- Roadmap item: post TB-013 backlog reprioritization refinement.
+- Hypothesis/objective: The active queue should put target-vs-gate spatial
+  convergence first, corridor-level context relevance second, and
+  uncertainty-envelope synthesis third now that the real public context cache
+  is staged locally.
+- Files changed:
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Recast TB-015 from a generic uncertainty-envelope
+  follow-up into a concrete corridor-level swissTLM3D relevance measurement
+  task; moved the uncertainty-envelope synthesis into TB-016; and updated the
+  durable decision so the priority order matches the backlog.
+- Checks run:
+  `git diff --check`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: The cache is staged, so the remaining uncertainty is
+  corridor-level interpretation, not acquisition.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-014.
+
 ### TB-008
 
 - Milestone id: TB-008

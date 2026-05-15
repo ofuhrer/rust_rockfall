@@ -170,16 +170,18 @@ Detailed sources: `docs/balfrin_probe_slurm_driver.md`,
 
 Decision: after the same-scale gate regeneration, bounded-output measurement,
 and staged public-context evidence became available, prioritize measured
-target-vs-gate spatial convergence and reusable uncertainty-envelope synthesis
-before further context acquisition work.
+target-vs-gate spatial convergence first, corridor-level context relevance
+second, and reusable uncertainty-envelope synthesis after those measurements.
 
 Current status: active.
 
 Rationale: the primary remaining scientific uncertainty is whether the actual
 target and gate hazard cells remain spatially stable on the refreshed
 same-scale artifacts. The context cache is no longer absent; it is a limiting
-interpretation input. The next highest-value work is measured comparison and
-reusable uncertainty synthesis, not more status reclassification.
+interpretation input that now needs corridor-level quantification for roads,
+barriers, and water. The next highest-value work is measured comparison,
+context relevance measurement, and then reusable uncertainty synthesis, not
+more status reclassification.
 
 Detailed sources: `task_backlog.md`,
 `tschamut_public_conditional_pilot_gate_report.md`,

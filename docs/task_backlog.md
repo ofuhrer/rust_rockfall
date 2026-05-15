@@ -68,10 +68,11 @@ objective are:
    opt-in `summary_only` probe was `4` files / `81425` bytes. The blocker is
    now measured rather than speculative.
 3. Forest and obstacle context is no longer an absent-cache problem; it is a
-   limiting interpretation problem. The inspector now has real local public
+   corridor-relevance problem. The inspector now has real local public
    context evidence for swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D,
-   and swissTLM3D-derived categories, but the question is how much that
-   limiting context should affect same-scale interpretation.
+   and a staged swissTLM3D archive, but roads, barriers, and water still need
+   corridor-level quantification before the same-scale interpretation is more
+   than conditional.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -105,15 +106,11 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- cell-wise target-vs-gate convergence on the refreshed same-scale hazard
+- target-vs-gate spatial convergence on the refreshed same-scale hazard
   outputs;
-- same-scale uncertainty envelopes that combine convergence, output budget,
-  context, and execution-sufficiency evidence;
-- measured validation-debug output reduction on target-scale or repeated
-  same-scale pilot paths;
-- runtime and restartability profiling that decides whether single-job Balfrin
-  execution remains sufficient after the current scientific blockers are
-  reduced;
+- corridor-level context relevance from the staged swissTLM3D archive;
+- a reusable same-scale uncertainty envelope that composes the measured
+  convergence, output budget, context, and execution-sufficiency evidence;
 - reusable comparison tooling for future selected-pilot artifact refreshes;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
   output profile choices.
@@ -177,7 +174,46 @@ Definition of done:
   possible;
 - checks pass.
 
-### TB-015: Build A Reusable Same-Scale Uncertainty Envelope Report
+### TB-015: Measure Corridor-Level Context Relevance From The Staged SwissTLM3D Archive
+
+Capability gap reduced: the repository now has staged public context evidence,
+but the remaining roads, barriers, and water interpretation is still only
+limitatively classified at the corridor level.
+
+Goal: use the staged swissTLM3D archive and the existing context inspector to
+measure corridor-level relevance for roads, water/channels,
+barriers/protection structures, and any other relevant public features on the
+selected Tschamut extent, or produce an exact missing-input checklist if the
+staged archive is absent.
+
+Inspect first:
+
+- `docs/tschamut_public_obstacle_context_scope.md`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `scripts/inspect_tschamut_public_context_layers.py`;
+- `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/metadata.json`,
+  if present locally;
+- `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`.
+
+Required work:
+
+1. Prefer corridor-level measurement over another status-only summary.
+2. Do not infer obstacle absence from archive presence.
+3. If the archive is present, extract or query only the minimum fields needed
+   to classify roads, barriers, and water relevance for the selected corridor.
+4. Record explicit spatial-relevance indicators and their interpretation
+   boundary.
+5. Preserve conditional, non-operational semantics.
+
+Definition of done:
+
+- measured corridor relevance or exact missing inputs are recorded;
+- final classification and blockers are explicit;
+- uncertainty reduced and remaining blockers are stated quantitatively where
+  possible;
+- checks pass.
+
+### TB-016: Build A Reusable Same-Scale Uncertainty Envelope Report
 
 Capability gap reduced: the repository now measures convergence, output
 budget, context, and execution sufficiency separately, but there is no single
