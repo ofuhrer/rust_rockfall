@@ -1867,7 +1867,6 @@ def check_roadmap_target_authority() -> list[str]:
         "Project Objective",
         "Capability Gap Analysis",
         "Backlog Quality Assessment",
-        "TB-003: Implement A Bounded Validation Output Profile For Pilot Runs",
         "TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut",
         "decision_log.md",
         "agent_work_log.md",

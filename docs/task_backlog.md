@@ -121,39 +121,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-003: Implement A Bounded Validation Output Profile For Pilot Runs
-
-Capability gap reduced: validation-output volume blocks larger selected-domain
-execution.
-
-Goal: add or exercise a concrete validation-output profile that bounds
-debug/output volume for selected pilot runs while preserving enough provenance
-for scientific review.
-
-Inspect first:
-
-- `docs/output_budget_reducer_scaling_gate.md`;
-- `docs/tschamut_public_pilot_scaling_review.md`;
-- `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`;
-- validation output-writing code and existing output-profile controls.
-
-Required work:
-
-1. Measure or derive the current validation output file/byte/inode pressure.
-2. Implement or dry-run a bounded output profile only if it can be done without
-   changing defaults silently.
-3. Keep generated outputs ignored.
-4. Do not authorize scale-up unless output limits are explicitly accepted.
-
-Definition of done:
-
-- executable code, script, or command path demonstrates the bounded output
-  profile or proves why it is still blocked;
-- measured file/byte/inode evidence is recorded;
-- public defaults and validation baselines are unchanged;
-- focused tests/checks pass.
-
 ### TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut
 
 Capability gap reduced: forest and obstacle context is unresolved.

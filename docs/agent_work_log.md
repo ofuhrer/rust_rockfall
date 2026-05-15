@@ -3844,3 +3844,35 @@ Planning only; these milestones do not implement roadmap item content yet.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
   `scripts/git-hooks/pre-commit` passed.
+
+### TB-003
+
+- Milestone id: TB-003
+- Roadmap item: Implement A Bounded Validation Output Profile For Pilot Runs.
+- Hypothesis/objective: A record-driven summary generator can measure the
+  selected pilot's bounded output profile, current validation-output pressure,
+  and retained output-budget blockers without changing physics, defaults,
+  thresholds, release assumptions, validation cases, or baselines.
+- Files intended to change:
+  `scripts/summarize_bounded_validation_output_profile.py`,
+  `tests/test_bounded_validation_output_profile.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/task_backlog.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a record-driven bounded-output summary
+  generator that reads the current pilot pressure record, the Balfrin
+  bounded-profile record, the output-budget reducer gate, the convergence
+  protocol, and the ensemble-feasibility record. The report now records the
+  bounded profile controls, measured file and byte counts, inode/file-family
+  pressure, explicit missing-output blockers, uncertainty reduced, and
+  unresolved blockers. Removed TB-003 from the active backlog and aligned the
+  repo-consistency check with the updated backlog.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/summarize_bounded_validation_output_profile.py tests/test_bounded_validation_output_profile.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_bounded_validation_output_profile` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py --markdown-output docs/tschamut_public_bounded_validation_output_profile.md --json-output /tmp/tschamut_bounded_validation_output_profile.json` passed.
+- Reviewer notes: The bounded profile is measured, but the pilot remains inconclusive because convergence is not accepted, validation debug output is still retained, and local ignored outputs are absent in this checkout.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-004.
