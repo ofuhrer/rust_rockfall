@@ -127,48 +127,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-005: Add Cell-Wise Hazard-Map Convergence Diagnostics
-
-Capability gap reduced: conditional-pilot convergence evidence is still
-manifest-level and cannot detect spatial redistribution.
-
-Goal: extend the reusable convergence tooling so it can compare actual hazard
-layer grids or raster-like fixture data cell by cell, not only manifest-level
-layer summaries. The diagnostic should quantify whether conditional
-intensity-exceedance patterns are spatially stable enough to support the
-Tschamut pilot interpretation.
-
-Inspect first:
-
-- `scripts/compare_hazard_map_convergence.py`;
-- `tests/test_hazard_map_convergence.py`;
-- `tests/fixtures/hazard/convergence/`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/hazard_map_semantics.md`;
-- available ignored `hazard/results/` outputs if present.
-
-Required work:
-
-1. Add a deterministic tiny fixture path that exercises cell-wise comparison
-   without private outputs.
-2. Report per-layer metrics such as `Linf`, `L1`, RMSE, nonzero-cell overlap or
-   Jaccard, threshold-exceedance disagreement, and missing-cell counts where
-   the source data support them.
-3. Keep units separate by layer; do not blend probability, count, energy, and
-   jump-height deltas into one scientifically ambiguous aggregate.
-4. Preserve the existing `blocked_missing_inputs` behavior for absent ignored
-   pilot outputs.
-5. Do not tune thresholds, change hazard semantics, rerun public benchmarks, or
-   alter baselines.
-
-Definition of done:
-
-- the command produces concrete cell-wise metrics on a tiny fixture or actual
-  selected-pilot outputs;
-- tests cover identical, shifted/redistributed, and missing-input cases;
-- metrics are suitable input to the conditional acceptance summary;
-- focused tests and consistency checks pass.
-
 ### TB-006: Reduce Or Justify Validation Debug Output For Pilot Runs
 
 Capability gap reduced: validation-output volume remains the measured scale-up

@@ -3941,3 +3941,39 @@ Planning only; these milestones do not implement roadmap item content yet.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
   `scripts/git-hooks/pre-commit` passed.
+
+### TB-005
+
+- Milestone id: TB-005
+- Roadmap item: Add Cell-Wise Hazard-Map Convergence Diagnostics.
+- Hypothesis/objective: The reusable convergence diagnostic can compare tiny
+  raster-like hazard fixtures cell by cell, while preserving the manifest-level
+  comparison path and explicit blocked-missing-input behavior.
+- Files intended to change:
+  `scripts/compare_hazard_map_convergence.py`,
+  `tests/test_hazard_map_convergence.py`,
+  `tests/fixtures/hazard/convergence/cellwise/reference_manifest.json`,
+  `tests/fixtures/hazard/convergence/cellwise/shifted_manifest.json`,
+  `tests/fixtures/hazard/convergence/cellwise/shape_mismatch_manifest.json`,
+  `tests/fixtures/hazard/convergence/cellwise/reference/*.asc`,
+  `tests/fixtures/hazard/convergence/cellwise/shifted/*.asc`,
+  `tests/fixtures/hazard/convergence/cellwise/shape_mismatch/*.asc`,
+  `docs/conditional_hazard_convergence_acceptance_protocol.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Extended the hazard-map convergence diagnostic so
+  it can parse tiny ESRI ASCII grid fixtures, compare cell-wise values per
+  layer, and report stable JSON metrics for `linf_abs_diff`, `l1_abs_diff`,
+  `rmse`, nonzero overlap/Jaccard, threshold-exceedance disagreement, and
+  nodata mismatch counts. The diagnostic still preserves manifest-level
+  comparisons and returns explicit `blocked_missing_inputs` or
+  `blocked_invalid_inputs` statuses for missing or shape-mismatched cellwise
+  artifacts. Removed TB-005 from the active backlog and noted the new
+  cell-wise capability in the convergence protocol.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/compare_hazard_map_convergence.py tests/test_hazard_map_convergence.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_map_convergence` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py tests/fixtures/hazard/convergence/cellwise/reference_manifest.json tests/fixtures/hazard/convergence/cellwise/shifted_manifest.json --format json` passed.
+- Reviewer notes: The new diagnostic is cell-wise only when cellwise fixtures or emitted grids are present; manifest-only comparisons still behave as before.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-006.

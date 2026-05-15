@@ -110,3 +110,10 @@ reports layer-summary deltas, conditional-curve row-count differences, and
 output checksum parity, and it returns `blocked_missing_inputs` when the local
 ignored outputs are absent so downstream acceptance summaries can distinguish
 missing evidence from a zero-difference comparison.
+
+The same diagnostic now also accepts tiny cell-wise raster fixtures or emitted
+grid files and reports per-layer `linf_abs_diff`, `l1_abs_diff`, `rmse`,
+nonzero overlap/Jaccard, threshold-exceedance disagreement, and nodata
+mismatch counts. This remains convergence evidence only, not operational
+validation, and pilot acceptance still depends on running or feeding the
+relevant selected-pilot outputs.

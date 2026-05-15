@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import importlib.util
 import tempfile
 import unittest
@@ -110,6 +111,98 @@ class HazardMapConvergenceTests(unittest.TestCase):
                 "shared_layer_count",
             ],
         )
+
+    def test_cellwise_identical_inputs_report_zero_differences_by_layer(self) -> None:
+        reference = FIXTURE / "cellwise" / "reference_manifest.json"
+        result = diagnostic.compare_hazard_map_convergence([reference, reference])
+
+        comparison = result["comparisons"][0]
+        cellwise = comparison["cellwise_metrics"]
+        self.assertEqual(
+            sorted(cellwise.keys()),
+            [
+                "compare_only_layer_count",
+                "layer_comparisons",
+                "layer_count",
+                "overall_metrics",
+                "reference_only_layer_count",
+                "shared_layer_count",
+            ],
+        )
+        self.assertEqual(cellwise["layer_count"], 4)
+        self.assertEqual(cellwise["shared_layer_count"], 4)
+        self.assertEqual(cellwise["overall_metrics"]["cellwise_linf_abs_diff_max"], 0.0)
+        self.assertEqual(cellwise["overall_metrics"]["cellwise_l1_abs_diff_sum"], 0.0)
+        self.assertEqual(cellwise["overall_metrics"]["cellwise_rmse_max"], 0.0)
+        self.assertEqual(cellwise["overall_metrics"]["cellwise_nodata_mismatch_count"], 0)
+        reach = next(layer for layer in cellwise["layer_comparisons"] if layer["layer_key"] == "reach_probability")
+        self.assertEqual(
+            sorted(reach.keys()),
+            [
+                "grid_shape",
+                "layer_key",
+                "missing_cell_metrics",
+                "nonzero_metrics",
+                "threshold_exceedance_disagreement",
+                "value_metrics",
+            ],
+        )
+        self.assertEqual(reach["value_metrics"]["linf_abs_diff"], 0.0)
+        self.assertEqual(reach["value_metrics"]["l1_abs_diff"], 0.0)
+        self.assertEqual(reach["value_metrics"]["rmse"], 0.0)
+        self.assertEqual(reach["nonzero_metrics"]["nonzero_jaccard"], 1.0)
+        self.assertEqual(reach["threshold_exceedance_disagreement"][0]["disagreement_cell_count"], 0)
+
+    def test_cellwise_shifted_grids_are_detected_even_when_summaries_match(self) -> None:
+        reference = FIXTURE / "cellwise" / "reference_manifest.json"
+        candidate = FIXTURE / "cellwise" / "shifted_manifest.json"
+        result = diagnostic.compare_hazard_map_convergence([reference, candidate])
+
+        comparison = result["comparisons"][0]
+        summary_reach = next(layer for layer in comparison["layer_comparisons"] if layer["layer_key"] == "reach_probability")
+        cellwise_reach = next(
+            layer for layer in comparison["cellwise_metrics"]["layer_comparisons"] if layer["layer_key"] == "reach_probability"
+        )
+        self.assertEqual(summary_reach["max_abs_diff"], 0.0)
+        self.assertGreater(cellwise_reach["value_metrics"]["linf_abs_diff"], 0.0)
+        self.assertGreater(cellwise_reach["value_metrics"]["l1_abs_diff"], 0.0)
+        self.assertEqual(cellwise_reach["nonzero_metrics"]["nonzero_jaccard"], 0.0)
+        self.assertEqual(cellwise_reach["threshold_exceedance_disagreement"][0]["disagreement_cell_count"], 4)
+        jump = next(layer for layer in comparison["cellwise_metrics"]["layer_comparisons"] if layer["layer_key"] == "max_jump_height")
+        self.assertEqual(jump["missing_cell_metrics"]["nodata_mismatch_count"], 1)
+        self.assertEqual(comparison["cellwise_metrics"]["overall_metrics"]["cellwise_nodata_mismatch_count"], 1)
+
+    def test_cellwise_shape_mismatches_fail_clearly(self) -> None:
+        reference = FIXTURE / "cellwise" / "reference_manifest.json"
+        candidate = FIXTURE / "cellwise" / "shape_mismatch_manifest.json"
+        result = diagnostic.compare_hazard_map_convergence([reference, candidate])
+
+        self.assertEqual(result["status"], diagnostic.BLOCKED_INVALID_INPUTS)
+        self.assertEqual(
+            result["invalid_inputs"][0]["requested_path"],
+            str((FIXTURE / "cellwise" / "shape_mismatch" / "reach_probability.asc").resolve()),
+        )
+        self.assertIn("shape mismatch", result["invalid_inputs"][0]["reason"])
+
+    def test_missing_cellwise_grid_files_are_reported_as_blocked_missing_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            reference = json.loads((FIXTURE / "cellwise" / "reference_manifest.json").read_text())
+            missing_manifest = work / "missing_cellwise_manifest.json"
+            reference["cellwise_layers"][0]["grid_path"] = "cellwise/reference/missing_reach_probability.asc"
+            missing_manifest.write_text(json.dumps(reference), encoding="utf-8")
+
+            result = diagnostic.compare_hazard_map_convergence(
+                [FIXTURE / "cellwise" / "reference_manifest.json", missing_manifest]
+            )
+
+        self.assertEqual(result["status"], diagnostic.BLOCKED_MISSING_INPUTS)
+        self.assertEqual(result["invalid_inputs"], [])
+        self.assertEqual(
+            result["missing_inputs"][0]["requested_path"],
+            str((work / "cellwise/reference/missing_reach_probability.asc").resolve()),
+        )
+        self.assertIn("cellwise grid file does not exist", result["missing_inputs"][0]["reason"])
 
 
 if __name__ == "__main__":
