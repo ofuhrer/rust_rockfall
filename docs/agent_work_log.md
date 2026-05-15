@@ -3917,3 +3917,27 @@ Planning only; these milestones do not implement roadmap item content yet.
   interpretation of absent obstacles.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-005.
+
+### M071
+
+- Milestone id: M071.
+- Roadmap item: post TB-001 through TB-004 backlog reassessment.
+- Hypothesis/objective: Incorporate the review finding that the repository's
+  strongest next gains are spatial convergence diagnostics and validation
+  output reduction, not more status classification or premature distributed
+  execution design.
+- Files intended to change:
+  `AGENTS.md`,
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reordered the active backlog around cell-wise
+  hazard-map convergence diagnostics, validation-debug output reduction,
+  context-cache inspection, and only then Balfrin single-job sufficiency.
+  Added guidance to prefer cell-wise/data-level diagnostics when the scientific
+  question is spatial stability.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `scripts/git-hooks/pre-commit` passed.

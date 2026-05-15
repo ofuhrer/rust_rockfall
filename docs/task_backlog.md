@@ -56,23 +56,28 @@ The most important gaps between the current repository and the project
 objective are:
 
 1. Conditional pilot evidence is still inconclusive. The 1,000-trajectory
-   Balfrin target-gate reproduction exists, but convergence and output-budget
-   evidence have not been converted into an accepted conditional-pilot
-   scientific result.
-2. Validation-output volume remains a practical blocker. Larger selected-domain
-   runs are not credible until debug/validation outputs are bounded or
-   justified by a measured output profile.
-3. Forest and obstacle context is unresolved. Public context products are
-   identified, but local evidence is missing; without it, the Tschamut map can
-   remain visually plausible but physically hard to interpret.
+   Balfrin target-gate reproduction exists and the reusable convergence CLI can
+   compare manifest summaries, but there is not yet cell-wise spatial
+   convergence evidence for conditional hazard layers.
+2. Validation-output volume remains a practical blocker. The bounded-profile
+   summary split hazard-side and validation-side output pressure, but it did
+   not reduce validation debug artifacts; larger selected-domain runs are not
+   credible until that output is reduced or justified by measured evidence.
+3. Forest and obstacle context is unresolved. A reusable inspection command now
+   exists, but the current checkout still lacks the processed local public
+   context cache; without reviewed context layers, the Tschamut map remains
+   hard to interpret physically.
 4. Scaling direction is underdetermined. Single-job Balfrin execution may be
    enough for the next conditional pilot step, or it may need distributed
-   execution; this should be decided from measured wall-time, memory, output,
-   and restartability evidence.
-5. Source-zone and block-scenario evidence is still pragmatic and
+   execution; this should be decided after spatial convergence and
+   validation-output blockers are better measured.
+5. Evidence tooling is becoming useful but remains ad hoc. Current summary
+   scripts are valuable guardrails, but more one-off record readers would add
+   process weight unless they generate new measurements or reusable analysis.
+6. Source-zone and block-scenario evidence is still pragmatic and
    inventory-conditioned. This is acceptable for the first pilot only if the
    interpretation explicitly stays conditional and non-operational.
-6. Physical/annual frequency semantics are absent. This is not a near-term
+7. Physical/annual frequency semantics are absent. This is not a near-term
    implementation gap unless the conditional pilot first reaches accepted
    diagnostic status.
 
@@ -96,12 +101,13 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- reusable convergence/statistics tooling for comparing hazard rasters and
+- cell-wise convergence/statistics tooling for comparing hazard rasters and
   conditional exceedance summaries across runs;
-- measured validation-output profile reduction;
-- obstacle/context evidence acquisition and overlap analysis;
+- measured validation-debug output reduction, not just output-pressure
+  summaries;
+- obstacle/context evidence acquisition and spatial overlap analysis;
 - resource and runtime profiling that decides whether single-job Balfrin
-  execution is enough;
+  execution is enough after the current scientific blockers are reduced;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
   output profile choices.
 
@@ -121,13 +127,132 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-005: Measure Whether Single-Job Balfrin Execution Is Still Enough
+### TB-005: Add Cell-Wise Hazard-Map Convergence Diagnostics
+
+Capability gap reduced: conditional-pilot convergence evidence is still
+manifest-level and cannot detect spatial redistribution.
+
+Goal: extend the reusable convergence tooling so it can compare actual hazard
+layer grids or raster-like fixture data cell by cell, not only manifest-level
+layer summaries. The diagnostic should quantify whether conditional
+intensity-exceedance patterns are spatially stable enough to support the
+Tschamut pilot interpretation.
+
+Inspect first:
+
+- `scripts/compare_hazard_map_convergence.py`;
+- `tests/test_hazard_map_convergence.py`;
+- `tests/fixtures/hazard/convergence/`;
+- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
+- `docs/hazard_map_semantics.md`;
+- available ignored `hazard/results/` outputs if present.
+
+Required work:
+
+1. Add a deterministic tiny fixture path that exercises cell-wise comparison
+   without private outputs.
+2. Report per-layer metrics such as `Linf`, `L1`, RMSE, nonzero-cell overlap or
+   Jaccard, threshold-exceedance disagreement, and missing-cell counts where
+   the source data support them.
+3. Keep units separate by layer; do not blend probability, count, energy, and
+   jump-height deltas into one scientifically ambiguous aggregate.
+4. Preserve the existing `blocked_missing_inputs` behavior for absent ignored
+   pilot outputs.
+5. Do not tune thresholds, change hazard semantics, rerun public benchmarks, or
+   alter baselines.
+
+Definition of done:
+
+- the command produces concrete cell-wise metrics on a tiny fixture or actual
+  selected-pilot outputs;
+- tests cover identical, shifted/redistributed, and missing-input cases;
+- metrics are suitable input to the conditional acceptance summary;
+- focused tests and consistency checks pass.
+
+### TB-006: Reduce Or Justify Validation Debug Output For Pilot Runs
+
+Capability gap reduced: validation-output volume remains the measured scale-up
+blocker.
+
+Goal: implement or exercise a concrete validation debug-output reduction path,
+or prove with a measured experiment why the retained validation artifacts are
+still necessary. This should move beyond summarizing the existing 2,005-file /
+571 MB validation-output pressure.
+
+Inspect first:
+
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `scripts/summarize_bounded_validation_output_profile.py`;
+- `tests/test_bounded_validation_output_profile.py`;
+- validation output-writing code;
+- `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`;
+- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
+
+Required work:
+
+1. Fix any semantic mismatch where a `no_go` feasibility decision is reported
+   as only `inconclusive` in the bounded-output summary.
+2. Add or exercise an opt-in selected-pilot validation output profile that
+   suppresses or samples nonessential debug artifacts without changing public
+   defaults or baselines.
+3. Measure before/after file count, byte count, inode/file-family pressure, and
+   retained provenance.
+4. If reduction is not feasible in one focused task, emit an executable
+   measurement that identifies the exact output classes causing the pressure.
+5. Do not authorize scale-up from this task alone.
+
+Definition of done:
+
+- a focused command or test demonstrates reduced validation output or a precise
+  class-by-class reason it remains blocked;
+- no public validation defaults or baselines change silently;
+- no generated large outputs are committed;
+- checks pass.
+
+### TB-007: Acquire And Inspect Tschamut Public Context Cache
+
+Capability gap reduced: forest and obstacle context is blocked by missing
+local public-context evidence.
+
+Goal: use the existing context-layer inspection command to acquire, stage, or
+verify the processed public context cache for Tschamut, then classify forest,
+building, transport, barrier, channel, and visual context using actual local
+evidence where available.
+
+Inspect first:
+
+- `scripts/inspect_tschamut_public_context_layers.py`;
+- `docs/tschamut_public_obstacle_context_scope.md`;
+- `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`;
+- `docs/swisstopo_data_strategy.md`;
+- `docs/public_real_site_geodata_preparation.md`.
+
+Required work:
+
+1. Do not infer obstacle absence from missing data.
+2. Keep raw geodata out of git.
+3. If public products are locally available, record path patterns, checksums,
+   CRS/provenance, and spatial relevance to the selected Tschamut extent.
+4. If products are unavailable, produce the exact cache/acquisition commands
+   needed next and keep the classification blocked.
+5. Do not implement obstacle physics or tune terrain/contact/stopping
+   parameters.
+
+Definition of done:
+
+- the inspection result is based on actual local context evidence or an exact
+  executable acquisition path;
+- interpretation is classified conservatively;
+- no operational or obstacle-performance claim is added;
+- focused checks pass.
+
+### TB-008: Measure Whether Single-Job Balfrin Execution Is Still Enough
 
 Capability gap reduced: scaling direction is underdetermined.
 
 Goal: use existing Balfrin and reducer evidence, or one small non-public probe
-if needed, to decide whether DT-09 distributed execution design is currently
-needed or should remain deferred.
+if needed, to decide whether distributed execution design is currently needed
+or should remain deferred.
 
 Inspect first:
 
@@ -142,7 +267,9 @@ Required work:
 1. Do not add SLURM arrays, MPI, GPU, or distributed reducers.
 2. Summarize measured wall time, memory, output size, restartability, and
    reducer-state evidence.
-3. Classify distributed execution as `defer`, `design_needed`, or
+3. Account for TB-005/TB-006 results before treating distributed execution as
+   the next bottleneck.
+4. Classify distributed execution as `defer`, `design_needed`, or
    `blocked_pending_evidence`.
 
 Definition of done:
@@ -163,5 +290,7 @@ These are intentionally not current worker tasks:
 - production COG or QGIS packaging work beyond secondary QA;
 - manual GIS/QGIS visual QA unless the local package artifacts and QGIS are
   actually available and the main acceptance evidence is not blocked elsewhere;
-- distributed SLURM orchestration unless TB-005 or later evidence shows a
+- distributed SLURM orchestration unless TB-008 or later evidence shows a
   measured need.
+- shared typed evidence-reader refactors unless at least one more executable
+  diagnostic exposes duplicated parsing as the implementation bottleneck.

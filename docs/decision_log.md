@@ -278,6 +278,26 @@ Detailed sources: `model_benchmark_execution_report.md`,
 `model_overall_assessment_report.md`, `expert_review_briefing.md`,
 `benchmark_catalog.md`.
 
+### Post TB-001 Through TB-004 Backlog Direction
+
+Decision: prioritize cell-wise hazard-map convergence diagnostics and measured
+validation-output reduction before distributed Balfrin execution design.
+
+Current status: active backlog direction.
+
+Rationale: TB-001 through TB-004 improved auditability, reusable comparison
+tooling, output-pressure measurement, and public-context inspection, but the
+selected Tschamut pilot remains inconclusive. The strongest remaining
+scientific uncertainty is spatial hazard-map stability; the strongest measured
+execution blocker is validation debug-output volume. A distributed SLURM design
+would be premature until those blockers are reduced or shown to be secondary.
+
+Detailed sources: `docs/task_backlog.md`,
+`docs/tschamut_public_conditional_pilot_acceptance_summary.md`,
+`docs/conditional_hazard_convergence_acceptance_protocol.md`,
+`docs/tschamut_public_bounded_validation_output_profile.md`,
+`docs/tschamut_public_obstacle_context_scope.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had
