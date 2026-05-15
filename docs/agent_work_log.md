@@ -5690,3 +5690,16 @@ Planning only; these milestones do not implement roadmap item content yet.
   existing helper evidence, but it remains read-only and reproducible.
 - Decision: completed.
 - Next proposed milestone: backlog refill needed.
+
+### Post-TB-051 Backlog Refill
+
+- Roadmap item: refill the executable backlog with six concrete follow-up
+  tasks after the canonical diagnostic interpretation.
+- Implementation summary: updated `docs/task_backlog.md` with six prioritized
+  tasks, TB-052 through TB-057, covering support/nodata uncertainty
+  decomposition, closure-gap deltas, standard rebuildable reduced output,
+  Chant Sura public-context acquisition boundaries, COG-ready export, and
+  physical-credibility data requirements.
+- Boundaries preserved: no scientific classification, operational claim,
+  scale-up authorization, distributed-execution decision, calibration workflow,
+  or new simulation was introduced.
