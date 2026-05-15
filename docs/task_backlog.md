@@ -58,19 +58,20 @@ objective are:
 1. Conditional pilot evidence is still inconclusive. The 1,000-trajectory
    Balfrin target-gate reproduction exists and the convergence CLI can compare
    manifest summaries, cell-wise fixture grids, and normal hazard-output
-   manifests when raster files exist. The same-scale local gate has now been
-   regenerated under ignored paths and passes a cell-wise self-check, but
-   target-vs-gate spatial convergence still needs the matching target artifacts
-   or a fresh same-scale comparison run.
+   manifests when raster files exist. Same-scale local gate artifacts and real
+   public context evidence now exist, but target-vs-gate spatial convergence on
+   the refreshed same-scale outputs still needs to be measured against the
+   current target artifacts.
 2. Validation-output volume remains a practical blocker for target-scale
-   growth, but the local same-scale gate now has measured before/after
-   evidence: full debug validation output was `125` files / `34545900` bytes,
-   while the opt-in `summary_only` probe was `4` files / `81425` bytes.
-3. Forest and obstacle context is limiting and partly unresolved. The
-   inspection command now has real local public context evidence for
-   swissSURFACE3D Raster, SWISSIMAGE, and swissBUILDINGS3D, with surface-height
-   relevance indicators. swissTLM3D road, channel, and barrier categories
-   remain unresolved pending a targeted crop or feature-service extraction.
+   growth, but the same-scale gate now has measured before/after evidence:
+   full debug validation output was `125` files / `34545900` bytes, while the
+   opt-in `summary_only` probe was `4` files / `81425` bytes. The blocker is
+   now measured rather than speculative.
+3. Forest and obstacle context is no longer an absent-cache problem; it is a
+   limiting interpretation problem. The inspector now has real local public
+   context evidence for swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D,
+   and swissTLM3D-derived categories, but the question is how much that
+   limiting context should affect same-scale interpretation.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -104,16 +105,16 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- cell-wise convergence/statistics tooling for comparing hazard rasters and
-  conditional exceedance summaries across actual selected-pilot outputs;
-- target-vs-gate or split-half convergence using the refreshed same-scale
-  hazard-output contract;
+- cell-wise target-vs-gate convergence on the refreshed same-scale hazard
+  outputs;
+- same-scale uncertainty envelopes that combine convergence, output budget,
+  context, and execution-sufficiency evidence;
 - measured validation-debug output reduction on target-scale or repeated
   same-scale pilot paths;
-- targeted swisTLM3D extraction for roads, channels, and barrier/protection
-  context;
-- resource and runtime profiling that decides whether single-job Balfrin
-  execution is enough after the current scientific blockers are reduced;
+- runtime and restartability profiling that decides whether single-job Balfrin
+  execution remains sufficient after the current scientific blockers are
+  reduced;
+- reusable comparison tooling for future selected-pilot artifact refreshes;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
   output profile choices.
 
@@ -133,26 +134,27 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-014: Apply Current Diagnostics To A Same-Scale Conditional Pilot Review
+### TB-014: Measure Target-Vs-Gate Spatial Convergence On Refreshed Same-Scale Artifacts
 
-Capability gap reduced: the repo has separate diagnostics, but no integrated
-same-scale review that uses cell-wise convergence, validation-output, context,
-and single-job evidence together.
+Capability gap reduced: the repo now has cell-wise convergence diagnostics,
+same-scale gate regeneration, bounded validation-output profiling, and real
+local context evidence, but the actual target-vs-gate spatial stability still
+needs a measured comparison on the refreshed same-scale artifacts.
 
-Goal: run or generate a single reproducible same-scale pilot review that
-combines the outputs of TB-009 through TB-011 with existing acceptance records
-and states whether the Tschamut conditional pilot is still `no_go`,
-`inconclusive`, or accepted as a non-operational diagnostic.
+Goal: run the cell-wise convergence diagnostic on the refreshed same-scale
+target and gate hazard artifacts, or produce an exact missing-input checklist
+if one side is absent, and record whether the selected Tschamut outputs remain
+spatially stable enough for non-operational interpretation.
 
 Inspect first:
 
-- `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
-- `scripts/summarize_conditional_pilot_acceptance.py`;
-- `docs/balfrin_single_job_execution_sufficiency.md`;
-- refreshed ignored outputs documented in
-  `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- local context evidence documented in
-  `docs/tschamut_public_obstacle_context_scope.md`.
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `docs/tschamut_public_obstacle_context_scope.md`;
+- `scripts/compare_hazard_map_convergence.py`;
+- the refreshed same-scale target and gate manifests under ignored paths, if
+  present locally.
 
 Required work:
 
@@ -161,18 +163,57 @@ Required work:
 2. Do not run larger ensembles or change thresholds.
 3. Preserve conditional, non-operational semantics.
 4. Make missing diagnostic inputs explicit rather than silently passing.
-5. Treat the current same-scale cell-wise self-check as plumbing evidence only;
-   do not convert it into target-vs-gate convergence acceptance.
+5. Keep per-layer units separate and report cell-wise metrics only where the
+   underlying raster paths are present.
 6. Include the measured `summary_only` validation-output reduction and the
-   limiting/unresolved context classification in the review.
+   current context classification in the interpretation.
 
 Definition of done:
 
-- the review consumes actual diagnostic outputs or reports exact missing
-  inputs;
+- the target-vs-gate comparison consumes actual diagnostic outputs or reports
+  exact missing inputs;
 - final classification and blockers are explicit;
 - uncertainty reduced and remaining blockers are stated quantitatively where
   possible;
+- checks pass.
+
+### TB-015: Build A Reusable Same-Scale Uncertainty Envelope Report
+
+Capability gap reduced: the repository now measures convergence, output
+budget, context, and execution sufficiency separately, but there is no single
+reusable report that summarizes the remaining same-scale uncertainty in one
+place for future pilot reviews.
+
+Goal: compose the existing convergence, bounded-output, context, and
+single-job sufficiency diagnostics into a compact uncertainty-envelope report
+for the selected Tschamut pilot, without changing physics, thresholds, or
+release assumptions.
+
+Inspect first:
+
+- `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `docs/balfrin_single_job_execution_sufficiency.md`;
+- `docs/tschamut_public_obstacle_context_scope.md`;
+- `scripts/summarize_conditional_pilot_acceptance.py`;
+- `scripts/summarize_bounded_validation_output_profile.py`;
+- `scripts/inspect_tschamut_public_context_layers.py`.
+
+Required work:
+
+1. Reuse existing executable diagnostics instead of adding another status-only
+   reader.
+2. Quantify what uncertainty remains in convergence, output budget, context,
+   and execution sufficiency.
+3. Emit stable machine-readable fields and a concise markdown summary.
+4. Make missing inputs explicit and preserve the non-operational claim
+   boundary.
+
+Definition of done:
+
+- a reusable uncertainty-envelope report exists and is backed by measured
+  inputs or exact missing-input paths;
+- the report improves interpretability without authorizing scale-up;
 - checks pass.
 
 ## Deferred Backlog

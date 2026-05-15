@@ -21,9 +21,10 @@ Forest and obstacle omission is no longer only a missing-cache problem in this
 checkout. Public context assets were staged under ignored paths for
 swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D, and swissTLM3D. The
 local inspection now reports `reviewed_local_context` and classifies the
-context as `limiting`: relevant surface-height, building/structure, and visual
-context exists, while roads, channels, and barrier/protection context remain
-`unresolved` pending a targeted swisTLM3D crop or feature-service extraction.
+context as `limiting` across the reviewed categories: relevant
+surface-height, building/structure, road/transport, barrier/protection,
+hydrography, and visual context exists, but it remains interpretation
+evidence rather than obstacle physics.
 
 The target run still uses bare-earth swissALTI3D terrain and no obstacle
 physics. The current conditional outputs may be useful workflow diagnostics,
@@ -36,9 +37,9 @@ channels, barriers, or protection structures are irrelevant in the corridor.
 | --- | --- | --- | --- |
 | Forest/canopy | swissSURFACE3D Raster | Real tile staged locally | Limiting: sampled surface-minus-bare-earth context is present and not represented by bare-earth simulation. |
 | Buildings/structures | swissBUILDINGS3D and swissTLM3D constructed features | swissBUILDINGS3D regional asset staged locally | Limiting: structure context is present but not clipped to feature counts or represented by physics. |
-| Roads/transport | swissTLM3D roads, tracks, rail, paths | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction. |
-| Barriers/protection | swissTLM3D constructed features plus local protection-work inventory where available | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction and local inventory review. |
-| Water/channels | swissTLM3D hydrography and terrain review | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction. |
+| Roads/transport | swissTLM3D roads, tracks, rail, paths | Real archive staged locally | Limiting: transport-context evidence is present and should not be treated as obstacle absence. |
+| Barriers/protection | swissTLM3D constructed features plus local protection-work inventory where available | Real archive staged locally | Limiting: barrier/protection context is present but still not obstacle physics. |
+| Water/channels | swissTLM3D hydrography and terrain review | Real archive staged locally | Limiting: hydrographic context is present and still separate from physics. |
 | Visual QA | SWISSIMAGE | Real tile staged locally | Limiting: visual context is available, but it is not acceptance evidence by itself. |
 
 ## Executable Check
@@ -71,7 +72,7 @@ In the current local checkout this returns `status: limiting`,
 `context_review_status: reviewed_local_context`, and
 `spatial_relevance_status: reviewed_local_context`. The script exits nonzero
 for any non-`acceptable` classification, so the limiting result should be read
-as a conservative blocker, not as a tool failure.
+as a conservative interpretation boundary, not as a tool failure.
 
 The JSON report also separates `classification`, `context_review_status`,
 `spatial_relevance_status`, `blocked_reason`, `selected_extent_or_corridor`,
@@ -79,8 +80,8 @@ The JSON report also separates `classification`, `context_review_status`,
 `local_cache_paths`, `checksums`, `crs_or_spatial_reference`,
 `spatial_relevance_indicators`, and `interpretation_impact`, while keeping
 `operational_claims_allowed` false.
-That makes local context evidence explicit without turning unresolved
-swisTLM3D categories into an obstacle-absence claim. The staged swissTLM3D
+That makes local context evidence explicit without turning the staged
+swisTLM3D archive into an obstacle-absence claim. The staged swissTLM3D
 archive under `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/`
 is intentionally kept separate from any clipped corridor product. The
 metadata-only fixture under
@@ -110,16 +111,16 @@ Measured local context indicators:
 - swisTLM3D source archive size from HEAD metadata: `3136564656` bytes;
   archive SHA-256:
   `e8ae3fdab1e0496ad780fcda4b58d04cc645808da94367b8ebaf51dad4bf6f0a`;
-  the road, water, and barrier categories therefore remain unresolved pending
-  a targeted crop or feature-service extraction.
+  the archive is staged locally and treated as limiting context evidence in the
+  current inspection.
 
 ## Interpretation Boundary
 
 Allowed current interpretation:
 
 - the selected target-scale gate omits forest and obstacle effects;
-- omission is a limiting and partly unresolved context limitation for spatial
-  interpretation;
+- omission is a limiting context limitation for spatial interpretation, not a
+  missing-cache problem;
 - future review should use SWISSIMAGE, swissTLM3D, swissSURFACE3D or
   swissSURFACE3D Raster, and swissBUILDINGS3D where relevant;
 - current outputs remain conditional diagnostics over the supplied DEM,
@@ -137,15 +138,9 @@ Unsupported current interpretation:
 ## Required Before Interpretation
 
 Before interpreting Tschamut target-scale spatial patterns as more than an
-inconclusive local diagnostic gate, finish the unresolved public context
-review for the selected extent:
-
-1. Extract or query swissTLM3D roads, tracks, hydrography, and constructed
-   features for the selected corridor from the staged archive.
-2. Clip or inspect swissBUILDINGS3D features against the selected corridor
-   instead of treating the regional asset as only presence evidence.
-3. Decide whether the staged surface-height and visual context should remain
-   limiting or can be accepted under a documented interpretation rule.
+inconclusive local diagnostic gate, decide whether the current limiting
+context evidence should remain a blocker or be accepted under a documented
+interpretation rule.
 
 The next context review should update the scope record to
 `blocked_pending_local_evidence`, `acceptable`, `limiting`, or `invalidating`

@@ -166,6 +166,27 @@ Detailed sources: `docs/balfrin_probe_slurm_driver.md`,
 `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`,
 `docs/balfrin_single_job_execution_sufficiency.md`.
 
+### Post-TB-013 Backlog Reprioritization
+
+Decision: after the same-scale gate regeneration, bounded-output measurement,
+and staged public-context evidence became available, prioritize measured
+target-vs-gate spatial convergence and reusable uncertainty-envelope synthesis
+before further context acquisition work.
+
+Current status: active.
+
+Rationale: the primary remaining scientific uncertainty is whether the actual
+target and gate hazard cells remain spatially stable on the refreshed
+same-scale artifacts. The context cache is no longer absent; it is a limiting
+interpretation input. The next highest-value work is measured comparison and
+reusable uncertainty synthesis, not more status reclassification.
+
+Detailed sources: `task_backlog.md`,
+`tschamut_public_conditional_pilot_gate_report.md`,
+`tschamut_public_bounded_validation_output_profile.md`,
+`tschamut_public_obstacle_context_scope.md`,
+`balfrin_single_job_execution_sufficiency.md`.
+
 ### Contact Model Default
 
 Decision: keep `translational_v0` as the default contact model. Treat

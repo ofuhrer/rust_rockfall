@@ -145,6 +145,40 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: COMPLETED_WITH_LIMITATIONS.
 - Next proposed milestone: TB-014.
 
+### M074
+
+- Milestone id: M074.
+- Roadmap item: post TB-013 capability-gap reassessment and backlog
+  reprioritization.
+- Hypothesis/objective: The backlog can be re-centered on measured
+  target-vs-gate convergence and uncertainty synthesis now that same-scale
+  artifacts, output-budget evidence, and staged public context evidence exist.
+- Files intended to change:
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Rewrote the active backlog to treat real public
+  context as a limiting interpretation input rather than a missing-cache
+  blocker, moved target-vs-gate spatial convergence to the top active task,
+  and added a reusable same-scale uncertainty-envelope follow-up. The live
+  inspector confirmed the staged real context root is present and classified
+  `limiting`, while the ignored same-scale gate artifacts and bounded-output
+  evidence remain available for comparison.
+- Checks run:
+  `sed -n '1,220p' docs/task_backlog.md`
+  inspected the active queue before editing.
+  `sed -n '120,220p' docs/decision_log.md`
+  inspected the existing active-decision block before adding the reprioritization note.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python - <<'PY' ... inspect_context_layers(...) ... PY`
+  confirmed the real Tschamut context root is present and classified
+  `limiting`.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/gate_v1 hazard/results/tschamut_public_pilot/gate_v1`
+  confirmed the same-scale ignored gate artifacts are present locally.
+- Reviewer notes: The dominant remaining work is now measurement and reusable
+  uncertainty synthesis, not context-cache acquisition.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-014.
+
 ### TB-008
 
 - Milestone id: TB-008
