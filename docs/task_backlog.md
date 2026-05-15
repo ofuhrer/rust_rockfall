@@ -182,45 +182,6 @@ Definition of done:
 - target artifact readiness is measured with the artifact audit and documented;
 - checks pass.
 
-### TB-016: Build A Reusable Same-Scale Uncertainty Envelope Report
-
-Capability gap reduced: the repository now measures convergence, output
-budget, context, and execution sufficiency separately, but there is no single
-reusable report that summarizes the remaining same-scale uncertainty in one
-place for future pilot reviews.
-
-Goal: compose the existing convergence, bounded-output, context, and
-single-job sufficiency diagnostics into a compact uncertainty-envelope report
-for the selected Tschamut pilot, without changing physics, thresholds, or
-release assumptions.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `docs/balfrin_single_job_execution_sufficiency.md`;
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `scripts/summarize_conditional_pilot_acceptance.py`;
-- `scripts/summarize_bounded_validation_output_profile.py`;
-- `scripts/inspect_tschamut_public_context_layers.py`.
-
-Required work:
-
-1. Reuse existing executable diagnostics instead of adding another status-only
-   reader.
-2. Quantify what uncertainty remains in convergence, output budget, context,
-   and execution sufficiency.
-3. Emit stable machine-readable fields and a concise markdown summary.
-4. Make missing inputs explicit and preserve the non-operational claim
-   boundary.
-
-Definition of done:
-
-- a reusable uncertainty-envelope report exists and is backed by measured
-  inputs or exact missing-input paths;
-- the report improves interpretability without authorizing scale-up;
-- checks pass.
-
 ### TB-019: Run Target-Vs-Gate Cell-Wise Spatial Convergence On Restored Artifacts
 
 Capability gap reduced: once target-side artifacts exist, the main scientific

@@ -4478,3 +4478,21 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The archive is now measured at corridor level and should no longer be treated as a missing-cache problem.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-017.
+
+### TB-016
+
+- Milestone id: TB-016.
+- Roadmap item: Build A Reusable Same-Scale Uncertainty Envelope Report.
+- Implementation summary: Added `scripts/summarize_same_scale_uncertainty_envelope.py` plus focused tests and a committed markdown report at `docs/tschamut_public_same_scale_uncertainty_envelope.md`. The envelope composes the acceptance summary, the bounded-output profile, the Balfrin single-job sufficiency record, the reviewed local context evidence, and the target-side convergence readiness state. It now surfaces the measured validation-output reduction (`125` files / `34545900` bytes baseline to `4` files / `81425` bytes summary_only), the corridor-level swissTLM3D relevance evidence from TB-015, the single-job defer decision, and the explicit blocked target-artifact state from TB-017 (`blocked_missing_target_artifacts` / `blocked_missing_inputs`).
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/summarize_same_scale_uncertainty_envelope.py tests/test_same_scale_uncertainty_envelope.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_same_scale_uncertainty_envelope`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_same_scale_uncertainty_envelope.py --format json`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_same_scale_uncertainty_envelope.py --markdown-output docs/tschamut_public_same_scale_uncertainty_envelope.md`
+  passed.
+- Reviewer notes: The envelope is intentionally non-operational; scale-up remains unauthorized and the target-vs-gate convergence remains pending due to missing target-side artifacts.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-019.
