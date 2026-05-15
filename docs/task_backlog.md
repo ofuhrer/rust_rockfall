@@ -61,8 +61,8 @@ objective are:
    manifests when raster files exist. Same-scale local gate artifacts and real
    public context evidence now exist, but target-vs-gate spatial convergence on
    the refreshed same-scale outputs is still blocked until the target-side
-   same-scale hazard manifest and grid files are restored or regenerated in the
-   current checkout.
+   same-scale input bundle, validation manifest, hazard manifest, and grid
+   files are restored or regenerated in the current checkout.
 2. Validation-output volume remains a practical blocker for target-scale
    growth, but the same-scale gate now has measured before/after evidence:
    full debug validation output was `125` files / `34545900` bytes, while the
@@ -81,10 +81,14 @@ objective are:
 5. Evidence tooling is becoming useful but remains ad hoc. Current summary
    scripts are valuable guardrails, but more one-off record readers would add
    process weight unless they generate new measurements or reusable analysis.
-6. Source-zone and block-scenario evidence is still pragmatic and
+6. Local ignored-artifact readiness is now a workflow bottleneck. Several tasks
+   have found exact missing paths after long audits; the repo needs a reusable
+   preflight once the current target-side restoration blocker is resolved or
+   repeated.
+7. Source-zone and block-scenario evidence is still pragmatic and
    inventory-conditioned. This is acceptable for the first pilot only if the
    interpretation explicitly stays conditional and non-operational.
-7. Physical/annual frequency semantics are absent. This is not a near-term
+8. Physical/annual frequency semantics are absent. This is not a near-term
    implementation gap unless the conditional pilot first reaches accepted
    diagnostic status.
 
@@ -108,12 +112,15 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- target-vs-gate spatial convergence on the refreshed same-scale hazard
-  outputs;
-- corridor-level context relevance from the staged swissTLM3D archive;
+- restoring or regenerating the target-side same-scale input and hazard
+  artifact chain;
+- target-vs-gate spatial convergence on restored same-scale hazard outputs;
+- target-side `summary_only` validation-output measurement;
+- overlap between limiting corridor context and high-relevance hazard cells;
 - a reusable same-scale uncertainty envelope that composes the measured
   convergence, output budget, context, and execution-sufficiency evidence;
-- reusable comparison tooling for future selected-pilot artifact refreshes;
+- reusable readiness/preflight tooling for future selected-pilot artifact
+  refreshes;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
   output profile choices.
 
@@ -133,15 +140,16 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-017: Restore The Same-Scale Target Hazard Manifest For Comparison
+### TB-018: Regenerate Target-Side Same-Scale Tschamut Inputs And Hazard Artifacts
 
-Capability gap reduced: the convergence diagnostic is ready, but the target
-side of the refreshed same-scale hazard comparison is still missing in this
-checkout.
+Capability gap reduced: TB-017 recorded the target-side comparison as
+`blocked_missing_inputs`; the next concrete blocker is to restore the missing
+processed input bundle, target private case, target validation manifest, target
+hazard manifest, and referenced grids under ignored paths.
 
-Goal: restore or regenerate the target-side same-scale hazard manifest and its
-referenced raster/grid files under the ignored local paths so TB-014 can be
-rerun as a real target-vs-gate spatial comparison.
+Goal: regenerate or stage the target-side same-scale Tschamut input and output
+artifact chain without changing physics, thresholds, release assumptions, or
+ensemble size, so a real target-vs-gate spatial comparison can run.
 
 Inspect first:
 
@@ -150,23 +158,28 @@ Inspect first:
 - `docs/tschamut_public_scalable_conditional_target_gate.md`;
 - `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`;
 - `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`;
+- `scripts/validate_public_real_site_conditional_pilot_run.py`;
+- `scripts/build_hazard_layers.py`;
 - the ignored target-side paths listed in those records, if present locally.
 
 Required work:
 
-1. Restore or regenerate the target-side same-scale manifest and raster/grid
-   files, or produce an exact missing-input checklist if the case inputs are
-   unavailable.
-2. Do not change physics, thresholds, release assumptions, or ensemble size.
-3. Keep the outputs ignored and uncommitted.
-4. Preserve the target-vs-gate comparison contract so TB-014 can consume the
-   refreshed artifacts directly.
+1. Restore or regenerate the missing processed input metadata, scenario table,
+   source-zone metadata, target private case, target validation manifest, target
+   hazard manifest, map-package manifest, and referenced hazard grids.
+2. Use the recorded command plan and current output contracts.
+3. Do not change physics, thresholds, release assumptions, sampling weights, or
+   ensemble size.
+4. Keep raw/generated/private outputs ignored and uncommitted.
+5. Preserve the target-vs-gate comparison contract so the convergence
+   diagnostic can consume the refreshed artifacts directly.
 
 Definition of done:
 
-- the target-side manifest and referenced grids are present locally, or the
-  exact missing inputs and regeneration command are recorded;
-- TB-014 can be rerun without further ambiguity;
+- the target private case, validation manifest, hazard manifest, and referenced
+  grids are present locally, or the exact missing inputs and regeneration
+  commands are updated with no ambiguity;
+- target artifact readiness is measured with the artifact audit and documented;
 - checks pass.
 
 ### TB-016: Build A Reusable Same-Scale Uncertainty Envelope Report
@@ -206,6 +219,133 @@ Definition of done:
 - a reusable uncertainty-envelope report exists and is backed by measured
   inputs or exact missing-input paths;
 - the report improves interpretability without authorizing scale-up;
+- checks pass.
+
+### TB-019: Run Target-Vs-Gate Cell-Wise Spatial Convergence On Restored Artifacts
+
+Capability gap reduced: once target-side artifacts exist, the main scientific
+question is whether same-scale gate and target hazard layers are spatially
+stable under the current conditional workflow.
+
+Goal: run `scripts/compare_hazard_map_convergence.py` on the restored gate and
+target hazard manifests and record per-layer cell-wise convergence metrics with
+non-operational interpretation boundaries.
+
+Inspect first:
+
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
+- `scripts/compare_hazard_map_convergence.py`;
+- restored ignored gate and target hazard manifests.
+
+Required work:
+
+1. Require both manifests and referenced grids; return explicit
+   `blocked_missing_inputs` if either side is absent.
+2. Keep per-layer units separate and avoid aggregate mixed-unit claims.
+3. Record strongest disagreement layers, threshold disagreement counts, RMSE,
+   L1/Linf differences, nonzero Jaccard, and nodata mismatches where available.
+4. Preserve scale-up authorization as false and operational claims as false.
+
+Definition of done:
+
+- target-vs-gate cell-wise metrics are measured or exact missing inputs are
+  recorded;
+- the final interpretation is conservative and non-operational;
+- checks pass.
+
+### TB-020: Measure Target-Side Summary-Only Validation Output Profile
+
+Capability gap reduced: `summary_only` validation output has been measured on
+the same-scale gate path, but target-side output pressure remains unmeasured.
+
+Goal: run or audit the target-side validation path with the opt-in
+`outputs.validation_output_mode: summary_only` profile and compare file/byte
+counts against the target full-debug or recorded target output profile.
+
+Inspect first:
+
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `scripts/summarize_bounded_validation_output_profile.py`;
+- target-side validation manifests under ignored paths, if present locally.
+
+Required work:
+
+1. Do not change public defaults or baselines.
+2. Preserve required metrics, manifests, checksums, and provenance.
+3. Report baseline and reduced file counts, bytes, omitted output classes, and
+   retained provenance for the target-side path.
+4. If target artifacts remain absent, record exact missing inputs and commands.
+
+Definition of done:
+
+- target-side validation-output reduction is measured or explicitly blocked;
+- scale-up remains unauthorized;
+- checks pass.
+
+### TB-021: Measure Hazard-Context Overlap For Limiting Corridor Features
+
+Capability gap reduced: TB-015 measured roads, barriers, and water as limiting
+context, but the repo has not quantified whether those limiting features
+overlap or neighbor the highest-relevance hazard cells.
+
+Goal: combine existing hazard rasters and the measured swissTLM3D corridor
+feature summaries to quantify overlap or proximity between high-relevance
+conditional hazard cells and roads, barriers/protection features, and water.
+
+Inspect first:
+
+- `docs/tschamut_public_obstacle_context_scope.md`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `scripts/inspect_tschamut_public_context_layers.py`;
+- available ignored hazard rasters/manifests.
+
+Required work:
+
+1. Use existing hazard outputs and staged context evidence; do not implement
+   obstacle physics.
+2. Compute simple, documented overlap/proximity indicators only where artifact
+   paths are available.
+3. Keep the result as interpretation evidence, not operational acceptance.
+4. If hazard or context artifacts are missing, record exact missing inputs.
+
+Definition of done:
+
+- hazard/context overlap is measured or explicitly blocked;
+- limiting interpretation is updated with quantitative evidence;
+- checks pass.
+
+### TB-022: Add Same-Scale Artifact Readiness Preflight
+
+Capability gap reduced: repeated worker tasks have spent substantial effort
+discovering the same missing gate/target/context paths. A reusable preflight
+should make the local readiness state explicit before long-running diagnostics.
+
+Goal: add a lightweight command that checks same-scale gate, target, context,
+and output-profile artifact readiness and emits exact missing paths and
+regeneration commands.
+
+Inspect first:
+
+- `scripts/audit_local_artifacts.py`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `docs/task_backlog.md`;
+- existing validation and hazard command-plan generators.
+
+Required work:
+
+1. Reuse existing audit and command-plan logic where possible.
+2. Keep the preflight lightweight and read-only.
+3. Emit machine-readable JSON and concise human-readable output.
+4. Avoid turning this into a new governance gate; it must directly reduce
+   repeated missing-artifact discovery work.
+
+Definition of done:
+
+- a reusable readiness command reports gate/target/context readiness and exact
+  missing regeneration steps;
+- focused tests cover ready and missing-artifact fixtures;
 - checks pass.
 
 ## Deferred Backlog
