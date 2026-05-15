@@ -53,6 +53,15 @@ Validation cases:
 
 The held-out fixture contains 15 reconstructed flight segments, 765 trajectory samples, and 9 segment-boundary contact/rebound proxies. Segment boundaries are still proxy events inferred from local time resets, not direct instrumented impact measurements.
 
+### Holdout Evidence Manifest
+
+The split is also recorded in a durable manifest for downstream evidence-gap work:
+
+- `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`
+- `scripts/summarize_chant_sura_holdout_evidence.py`
+
+This manifest keeps diagnostic/model-selection evidence separate from independent holdout-validation evidence and does not add calibration, physical-probability, or operational claims.
+
 ## Results
 
 Model-selection extended subset:

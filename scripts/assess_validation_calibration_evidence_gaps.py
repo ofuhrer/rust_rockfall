@@ -272,7 +272,9 @@ def source_documents() -> list[str]:
         "validation/cases/chant_sura_contact_heldout.yaml",
         "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml",
         "validation/data/processed/chant_sura_2020/metadata_contact_split.json",
+        "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json",
         "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+        "scripts/summarize_chant_sura_holdout_evidence.py",
     ]
 
 
@@ -583,6 +585,7 @@ def site_reference_evidence(
                 "validation/cases/chant_sura_contact_heldout.yaml",
                 "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml",
                 "validation/data/processed/chant_sura_2020/metadata_contact_split.json",
+                "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json",
                 "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
             ],
             "what_it_supports": "contact/trajectory benchmarking and portability template work",

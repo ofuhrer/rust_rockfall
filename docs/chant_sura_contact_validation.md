@@ -97,6 +97,15 @@ The held-out fixture uses disjoint source trajectories:
 
 It includes 15 reconstructed flight segments, 765 trajectory samples, and 9 segment-boundary contact/rebound proxies. The split is persisted in `metadata_contact_split.json`; no held-out trajectory ID overlaps the model-selection subset.
 
+### Holdout Evidence Manifest
+
+The held-out boundary is also captured in a read-only machine-readable manifest:
+
+- `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`
+- `scripts/summarize_chant_sura_holdout_evidence.py`
+
+That manifest separates diagnostic/model-selection evidence from independent holdout-validation evidence. It remains explicit that the evidence is contact / trajectory validation only, not calibration, not physical probability, and not operational use.
+
 ## Metrics
 
 The case reports existing trajectory metrics:

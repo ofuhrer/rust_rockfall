@@ -1,0 +1,165 @@
+{
+  "annual_frequency_claims_allowed": false,
+  "calibration_status": "not_calibration",
+  "candidate_dataset_id": "chant_sura_2020",
+  "candidate_site_id": "chant_sura_2020",
+  "candidate_site_name": "Chant Sura",
+  "evidence_role_summary": [
+    {
+      "classification": "partial",
+      "role": "diagnostic_selection_evidence",
+      "summary": "model-selection and internal-only model-comparison evidence remain diagnostic and proxy-limited"
+    },
+    {
+      "classification": "present",
+      "role": "independent_holdout_validation_evidence",
+      "summary": "the held-out split is deterministic, disjoint, and documented for contact/trajectory validation"
+    },
+    {
+      "classification": "missing",
+      "role": "calibration_evidence",
+      "summary": "no calibration dataset or parameter-fitting record is introduced by this manifest"
+    },
+    {
+      "classification": "out_of_scope",
+      "role": "physical_probability_evidence",
+      "summary": "this is contact/trajectory validation only, not a physical probability dataset"
+    },
+    {
+      "classification": "out_of_scope",
+      "role": "operational_evidence",
+      "summary": "this is not operational hazard evidence"
+    }
+  ],
+  "fixture_boundaries": {
+    "heldout_case_path": "validation/cases/chant_sura_contact_heldout.yaml",
+    "heldout_rotational_case_path": "validation/cases/chant_sura_contact_heldout_rotational.yaml",
+    "model_selection_case_path": "validation/cases/chant_sura_contact.yaml",
+    "model_selection_internal_path": "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml",
+    "proxy_boundary_note": "segment boundaries are contact/rebound proxies, not direct impact sensors",
+    "split_is_deterministic": true,
+    "split_metadata_sufficiency": "sufficient_for_current_holdout_boundary",
+    "split_overlap_trajectory_ids": [],
+    "split_overlaps_detected": false,
+    "terrain_paths": [
+      "validation/data/processed/chant_sura_2020/terrain_rf16_contact_heldout.asc",
+      "validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc"
+    ]
+  },
+  "holdout_evidence_status": "separated_holdout_validation_evidence",
+  "holdout_validation_evidence": {
+    "limitations": [
+      "held-out contact evidence does not validate Tschamut hazard maps",
+      "held-out contact evidence does not establish annual or physical probability",
+      "it is contact / trajectory evidence, not full Swiss-wide hazard-map validation"
+    ],
+    "metrics_summary": {
+      "contact_events": 9.0,
+      "contact_proxies": "Held-out model-comparison fixture only. Uses 15 reconstructed flight segments and 9 segment-boundary contact/rebound proxies from six public Chant Sura trajectories not used in the model-selection contact subset.",
+      "trajectory_count": 15.0,
+      "trajectory_samples": 765.0
+    },
+    "role": "independent_holdout_validation",
+    "selection_boundary_notes": [
+      "held-out trajectories are disjoint from the model-selection subset",
+      "segment boundaries remain contact/rebound proxies inferred from local time resets",
+      "the split metadata is deterministic and explicit"
+    ],
+    "source_case": "validation/cases/chant_sura_contact_heldout.yaml",
+    "source_rotational_case": "validation/cases/chant_sura_contact_heldout_rotational.yaml",
+    "status": "present",
+    "trajectory_ids": [
+      "RF16W200r2",
+      "RF18W200r4",
+      "RF20e200r2",
+      "RF20e200r5",
+      "RF16W800r2",
+      "RF18W800r1"
+    ]
+  },
+  "limitations": [
+    "held-out contact evidence does not validate Tschamut hazard maps",
+    "held-out contact evidence does not establish annual or physical probability",
+    "it is contact / trajectory evidence, not full Swiss-wide hazard-map validation",
+    "the current split is deterministic and compact, not statistically powered",
+    "segment boundaries are proxy events inferred from local time resets",
+    "no calibration or parameter tuning is introduced by this manifest"
+  ],
+  "manifest_path": "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json",
+  "model_selection_evidence": {
+    "limitations": [
+      "model-selection evidence is diagnostic and not independent holdout validation",
+      "shape mapping remains proxy-only and unresolved"
+    ],
+    "role": "diagnostic/model-selection",
+    "selection_summaries": [
+      "model-selection subset is used to compare candidate contact-model options before the held-out evaluation",
+      "the internal model-selection fixture is explicitly internal-only and proxy-only for EOTA shape assignment"
+    ],
+    "source_case": "validation/cases/chant_sura_contact.yaml",
+    "source_internal_selection": "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml",
+    "status": "partial",
+    "trajectory_ids": [
+      "RF16W200r1",
+      "RF16W200r3",
+      "RF18W200r1",
+      "RF18W800r6",
+      "RF20e200r1"
+    ]
+  },
+  "operational_claims_allowed": false,
+  "overlap_check": {
+    "interpretation": "no shared trajectory IDs between model-selection and held-out subsets",
+    "shared_trajectory_ids": [],
+    "status": "no_overlap_detected"
+  },
+  "physical_probability_claims_allowed": false,
+  "recommended_next_evidence_step": "Use this manifest as the holdout boundary reference for contact/trajectory generalization; if broader validation is needed, stage a separate independent benchmark rather than reusing these fixtures.",
+  "risk_exposure_vulnerability_claims_allowed": false,
+  "scale_up_authorized": false,
+  "schema_version": "chant_sura_holdout_evidence_v1",
+  "split_metadata": {
+    "calibration_policy": "No calibration data or parameter tuning are used in this split.",
+    "dataset_id": "chant_sura_2020",
+    "doi": "https://doi.org/10.16904/envidat.174",
+    "held_out_evaluation_subset": {
+      "cases": [
+        "validation/cases/chant_sura_contact_heldout.yaml",
+        "validation/cases/chant_sura_contact_heldout_rotational.yaml"
+      ],
+      "role": "Internal disjoint trajectory-level holdout for the contact-model recommendation; it is not an external independent validation dataset.",
+      "trajectory_ids": [
+        "RF16W200r2",
+        "RF18W200r4",
+        "RF20e200r2",
+        "RF20e200r5",
+        "RF16W800r2",
+        "RF18W800r1"
+      ]
+    },
+    "model_selection_subset": {
+      "cases": [
+        "validation/cases/chant_sura_contact.yaml",
+        "validation/cases/chant_sura_contact_rotational.yaml",
+        "validation/cases/chant_sura_contact_extended.yaml",
+        "validation/cases/chant_sura_contact_extended_rotational.yaml"
+      ],
+      "role": "Used to compare candidate contact-model options before the internal disjoint holdout evaluation.",
+      "trajectory_ids": [
+        "RF16W200r1",
+        "RF16W200r3",
+        "RF18W200r1",
+        "RF18W800r6",
+        "RF20e200r1"
+      ]
+    },
+    "overlap": [],
+    "selection_constraints": [
+      "No trajectory ID overlap between model-selection and held-out subsets.",
+      "Held-out trajectories include W200 and W800 mass classes where available inside the RF16 DEM crop.",
+      "All included segments have at least 90% of samples inside the RF16 DEM crop.",
+      "Segment boundaries remain contact/rebound proxies, not direct instrumented impacts."
+    ],
+    "split_method": "Deterministic trajectory-level split constrained to trajectories with early local-time-reset segments inside the checked-in RF16 DEM crop."
+  }
+}

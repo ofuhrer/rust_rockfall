@@ -163,14 +163,12 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-041 addresses the active validation/holdout evidence gap without changing
-   model behavior.
-2. TB-042 resolves the dominant output-profile blocker before any larger run is
+1. TB-042 resolves the dominant output-profile blocker before any larger run is
    considered.
-3. TB-043 turns measured spatial uncertainty into closure evidence rather than
+2. TB-043 turns measured spatial uncertainty into closure evidence rather than
    another standalone summary.
-4. TB-044 converts the proven COG path into an ignored package-level result.
-5. TB-045 advances Swiss-wide portability only after the diagnostic evidence
+3. TB-044 converts the proven COG path into an ignored package-level result.
+4. TB-045 advances Swiss-wide portability only after the diagnostic evidence
    and output/product blockers are better controlled.
 
 ## Backlog Protocol
@@ -208,43 +206,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-041: Stage a Holdout Validation Evidence Manifest For Chant Sura
-
-Goal: turn the existing Chant Sura held-out contact metadata into a durable
-holdout-validation evidence manifest that clearly separates diagnostic
-selection evidence from independent validation evidence.
-
-Inspect first:
-
-- `validation/cases/chant_sura_contact_heldout.yaml`
-- `validation/data/processed/chant_sura_2020/metadata_contact_split.json`
-- `validation/internal/shape_contact_v0_chant_sura_model_selection.yaml`
-- `docs/chant_sura_contact_validation.md`
-- `docs/chant_sura_contact_generalization.md`
-- `docs/shape_contact_v0_chant_sura_model_selection.md`
-
-Expected work:
-
-- produce a small read-only manifest or summary that records the held-out split,
-  the fixture boundaries, and the evidence role of the Chant Sura held-out
-  contact subset;
-- identify which fields are diagnostic selection evidence versus independent
-  validation evidence;
-- keep the manifest explicit that it is not calibration, not physical
-  probability, and not operational use.
-
-Definition of done:
-
-- the report makes the holdout boundary explicit for Chant Sura;
-- diagnostic selection evidence and holdout validation evidence are separated
-  in a durable, read-only artifact;
-- current non-operational boundaries remain explicit.
-
-Boundaries:
-
-- no calibration, parameter fitting, physics changes, annual-frequency claims,
-  risk, exposure, vulnerability, or operational use.
 
 ### TB-042: Implement A Hazard-Rebuild-Compatible Reduced Output Profile
 

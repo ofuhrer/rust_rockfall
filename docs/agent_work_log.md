@@ -5342,3 +5342,23 @@ Planning only; these milestones do not implement roadmap item content yet.
   Chant Sura input staging. Defer distributed execution, operational semantics,
   annual-frequency modelling, risk/exposure/vulnerability, large ensembles, and
   helper consolidation.
+
+- TB-041 Chant Sura holdout evidence manifest.
+- Files changed:
+  `scripts/summarize_chant_sura_holdout_evidence.py`,
+  `tests/test_chant_sura_holdout_evidence.py`,
+  `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`,
+  `docs/chant_sura_contact_validation.md`,
+  `docs/chant_sura_contact_generalization.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: staged a durable read-only Chant Sura holdout
+  manifest that separates diagnostic/model-selection evidence from
+  independent holdout-validation evidence, keeps calibration and physical
+  probability out of scope, and makes the no-overlap boundary machine-readable
+  for downstream evidence-gap checks.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_chant_sura_holdout_evidence.py tests/test_chant_sura_holdout_evidence.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_holdout_evidence`,
+  `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format text`.
