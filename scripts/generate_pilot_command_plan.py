@@ -468,6 +468,27 @@ def build_second_site_plan(
         command_entry(
             site="chant_sura_fluelapass",
             group="readiness_checks",
+            command_id="second_site_acquisition_manifest_review",
+            description="Review the committed Chant Sura / Flüelapass public-geodata acquisition manifest and staging contract.",
+            command=command_string(
+                [
+                    "cat",
+                    rel(ROOT / "tests" / "fixtures" / "second_site_public_geodata_preflight" / "chant_sura_fluelapass_public_geodata_acquisition.yaml"),
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
+            ],
+            expected_outputs=["YAML public-geodata acquisition manifest review"],
+            blocked_reason=""
+            if (ROOT / "tests" / "fixtures" / "second_site_public_geodata_preflight" / "chant_sura_fluelapass_public_geodata_acquisition.yaml").exists()
+            else blocked_reason,
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
+            group="readiness_checks",
             command_id="second_site_portability_preflight",
             description="Check the staged second-site public-geodata portability requirements.",
             command=command_string(

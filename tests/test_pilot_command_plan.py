@@ -64,6 +64,7 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "second_site_portability",
             ],
         )
+        self.assertIn("second_site_acquisition_manifest_review", report["command_ids"])
         self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
         self.assertIn("hazard/results/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
         self.assertEqual(
@@ -79,6 +80,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
         self.assertFalse(contract_plan["read_only"])
+        self.assertIn(
+            "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            contract_plan["commands"][0]["expected_inputs"],
+        )
 
     def test_text_output_smoke(self) -> None:
         buffer = io.StringIO()

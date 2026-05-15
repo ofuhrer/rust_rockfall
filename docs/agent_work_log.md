@@ -5099,6 +5099,33 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`,
   `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format text`.
 
+- TB-039 Chant Sura public-geodata acquisition manifest. Files changed:
+  `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`,
+  `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`,
+  `scripts/check_second_site_public_geodata_preflight.py`,
+  `scripts/generate_pilot_command_plan.py`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `tests/test_pilot_command_plan.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the second-site portability preflight, the multisite
+  source/scenario contract audit, and the portable command plan for Chant Sura /
+  Flüelapass.
+- Classification: `blocked_missing_inputs` with `acquisition_manifest_status=ready`.
+- Manifest status: the committed acquisition manifest now names the expected
+  swissALTI3D terrain crop, SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+  swissSURFACE3D Raster, swissBUILDINGS3D, source-zone, scenario, optional
+  barrier inventory, and ignored output roots. The second-site preflight still
+  reports missing terrain/context/source/scenario staging paths, so the site
+  remains metadata-only.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py scripts/generate_pilot_command_plan.py tests/test_pilot_command_plan.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_pilot_command_plan`,
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`,
+  `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`.
+
 - Backlog refill after TB-031 through TB-034.
 - Files changed: `docs/task_backlog.md`.
 - Evidence streams consumed: the multi-seed same-scale uncertainty envelope,

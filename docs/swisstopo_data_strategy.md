@@ -201,6 +201,12 @@ already contains Chant Sura dataset metadata and benchmark fixtures, but the
 example remains blocked until terrain, source-zone, scenario, and context
 products are staged at the candidate roots.
 
+The candidate also now has a committed public-geodata acquisition manifest at
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`.
+That file keeps the second site metadata-only while spelling out the expected
+terrain crop, context layers, source-zone/scenario records, and ignored output
+roots that must exist before any second-site run is attempted.
+
 The source-zone / scenario contract audit helper
 `scripts/audit_multisite_source_scenario_contract.py` now distinguishes the
 portable contract shape from the Tschamut-specific heuristics that were used

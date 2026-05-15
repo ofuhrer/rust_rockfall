@@ -206,6 +206,13 @@ already carries Chant Sura benchmark metadata and fixtures, but it still
 remains metadata-only and blocked until public terrain, source-zone, scenario,
 and context inputs are actually staged.
 
+The candidate now also has a committed acquisition/staging manifest at
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`.
+That manifest names the expected swissALTI3D terrain crop, SWISSIMAGE,
+swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
+zone, scenario, and ignored output roots, while keeping the candidate blocked
+until the actual staged inputs exist locally.
+
 The portable source-zone / scenario contract audit lives at
 `scripts/audit_multisite_source_scenario_contract.py`. It compares the frozen
 Tschamut source-zone and block-scenario records against the staged Chant Sura /

@@ -48,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_report(site_config: Path | None, site_id: str | None = None) -> dict[str, Any]:
     config = load_site_config(site_config) if site_config is not None and site_config.exists() else {}
+    config_base = site_config.parent if site_config is not None else ROOT
     candidate_site_id = text_value(config.get("candidate_site_id")) or site_id or DEFAULT_CANDIDATE_SITE_ID
     candidate_site_id = candidate_site_id.strip()
     candidate_site_name = text_value(config.get("candidate_site_name")) or "unspecified"
@@ -58,6 +59,16 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         if isinstance(config.get("source_zone_scenario_contract"), dict)
         else {}
     )
+    default_acquisition_manifest = (
+        (site_config.parent if site_config is not None else ROOT / "tests/fixtures/second_site_public_geodata_preflight")
+        / "chant_sura_fluelapass_public_geodata_acquisition.yaml"
+    )
+    acquisition_manifest_path = resolve_repo_path(
+        config.get("acquisition_manifest_path"),
+        default_acquisition_manifest,
+        base=config_base,
+    )
+    acquisition_manifest = load_site_config(acquisition_manifest_path) if acquisition_manifest_path.exists() else {}
 
     paths = build_paths(candidate_site_id, config)
     requirements = build_requirements(candidate_site_id, site_extent, paths)
@@ -83,6 +94,22 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "terrain_manifest_status": terrain_manifest_status,
         "source_zone_manifest_status": source_zone_manifest_status,
         "scenario_manifest_status": scenario_manifest_status,
+        "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
+        "acquisition_manifest_path": str(acquisition_manifest_path),
+        "acquisition_manifest_category_count": len(acquisition_manifest.get("expected_products") or []),
+        "acquisition_manifest_expected_ignored_roots": acquisition_manifest.get("expected_ignored_output_roots") or [],
+        "acquisition_manifest_command_template_count": len(acquisition_manifest.get("command_templates") or []),
+        "acquisition_manifest_product_summaries": [
+            {
+                "category": entry.get("category"),
+                "product": entry.get("product"),
+                "status": entry.get("status"),
+                "required": entry.get("required"),
+                "expected_staged_path": entry.get("expected_staged_path"),
+            }
+            for entry in acquisition_manifest.get("expected_products") or []
+            if isinstance(entry, dict)
+        ],
         "source_zone_scenario_contract": source_zone_scenario_contract,
         "reusable_workflow_components": reusable_workflow_components(),
         "site_specific_required_inputs": [req for req in requirements if req["required"]],
@@ -100,6 +127,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
             source_zone_scenario_contract,
             missing_required,
             candidate_selection_rationale,
+            acquisition_manifest_path,
         ),
         "blocked_reason": build_blocked_reason(candidate_site_id, site_extent, missing_required, site_config),
         "assumptions_not_yet_generalized": assumptions_not_yet_generalized(candidate_site_id),
@@ -120,14 +148,14 @@ def text_value(value: Any) -> str:
     return str(value).strip() if value not in (None, "") else ""
 
 
-def resolve_repo_path(value: Any, default: Path | None = None) -> Path:
+def resolve_repo_path(value: Any, default: Path | None = None, *, base: Path | None = None) -> Path:
     text = text_value(value)
     if not text:
         if default is None:
             raise ValueError("missing path value and no default provided")
         return default
     path = Path(text)
-    return path if path.is_absolute() else ROOT / path
+    return path if path.is_absolute() else (base or ROOT) / path
 
 
 def manifest_status(*paths: Path) -> str:
@@ -440,8 +468,10 @@ def build_checklist(
     source_zone_scenario_contract: dict[str, Any],
     missing_required: list[dict[str, Any]],
     candidate_selection_rationale: str,
+    acquisition_manifest_path: Path,
 ) -> list[str]:
     checklist = [
+        f"Review acquisition manifest at {acquisition_manifest_path}.",
         f"PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/{candidate_site_id}_manifest.yaml",
         "PYENV_VERSION=system uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/templates/public_real_site_conditional_pilot_run_v1.yaml",
         f"PYENV_VERSION=system uv run python scripts/prepare_<site_id>_public_benchmark.py --output-root data/processed/swisstopo/{candidate_site_id} --padding-m <buffer> --force",
@@ -513,6 +543,7 @@ def assumptions_not_yet_generalized(candidate_site_id: str) -> list[str]:
         "Terrain crop selection, source-zone geometry, and block-scenario tables are site-specific even when file formats are shared.",
         "The Tschamut source-zone / scenario policy record is a reusable template, not a second-site contract.",
         "Public context availability is site-specific; SWISSIMAGE, swissTLM3D, swissSURFACE3D, and swissBUILDINGS3D must be staged or verified locally.",
+        "The Chant Sura acquisition manifest is a metadata-only staging contract, not a substitute for staged public geodata.",
         "Optional barrier / protection inventories may exist only for some sites and must not be assumed.",
         "Validation or field-observation evidence is not portable without an explicit site-specific source record.",
         "A site-specific output-root naming convention still needs to be frozen before any second-site ensemble.",
@@ -532,11 +563,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"terrain_manifest_status: {report['terrain_manifest_status']}",
         f"source_zone_manifest_status: {report['source_zone_manifest_status']}",
         f"scenario_manifest_status: {report['scenario_manifest_status']}",
+        f"acquisition_manifest_status: {report['acquisition_manifest_status']}",
+        f"acquisition_manifest_path: {report['acquisition_manifest_path']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
         "",
-        "required_public_geodata_products:",
+        "acquisition_manifest_product_summaries:",
     ]
+    lines.extend(_render_entries(report["acquisition_manifest_product_summaries"]))
+    lines.append("")
+    lines.append("required_public_geodata_products:")
     lines.extend(_render_entries(report["required_public_geodata_products"]))
     lines.append("")
     lines.append("required_metadata_records:")
@@ -568,9 +604,14 @@ def render_text_report(report: dict[str, Any]) -> str:
 def _render_entries(entries: list[dict[str, Any]]) -> list[str]:
     lines: list[str] = []
     for entry in entries:
-        lines.append(
-            f"- {entry['category']}: {entry['status']} ({entry['path_or_pattern']})"
-        )
+        if "path_or_pattern" in entry:
+            lines.append(
+                f"- {entry['category']}: {entry['status']} ({entry['path_or_pattern']})"
+            )
+        else:
+            lines.append(
+                f"- {entry.get('category')}: {entry.get('status')} ({entry.get('expected_staged_path')})"
+            )
     if not lines:
         lines.append("- none")
     return lines

@@ -1,0 +1,139 @@
+schema_version: second_site_public_geodata_acquisition_v1
+candidate_site_id: chant_sura_fluelapass_portability_example_v1
+candidate_site_name: Chant Sura / Flüelapass portability example
+selection_rationale: >-
+  Chant Sura is the concrete second-site candidate already represented in the
+  repository's benchmark metadata. This acquisition manifest turns that
+  metadata-only candidate into an explicit public-geodata staging contract for
+  terrain, context, and site-specific source/scenario inputs.
+crs: EPSG:2056
+vertical_datum: LN02
+site_extent:
+  xmin: 2793000.0
+  ymin: 1180200.0
+  xmax: 2793800.0
+  ymax: 1180800.0
+expected_processed_input_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+expected_processed_context_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context
+expected_validation_private_root: validation/private/chant_sura_fluelapass_portability_example_v1
+expected_hazard_results_root: hazard/results/chant_sura_fluelapass_portability_example_v1
+expected_products:
+  - category: terrain_crop
+    product: swissALTI3D
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Site-specific crop and metadata are required before any second-site port.
+  - category: terrain_metadata
+    product: swissALTI3D terrain metadata
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+    source_reference: docs/public_real_site_geodata_preparation.md
+    notes: CRS, LN02, checksum, and crop provenance are staged here.
+  - category: swissimage_context
+    product: SWISSIMAGE
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Orthophoto context is needed for visual QA and corridor review.
+  - category: swisstlm3d_context
+    product: swissTLM3D
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Roads, waterways, barriers, and other transport/context features stage here.
+  - category: swisstlm3d_metadata
+    product: swissTLM3D metadata
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json
+    source_reference: docs/public_real_site_geodata_preparation.md
+    notes: Metadata keeps the archive contract auditable without downloading raw data.
+  - category: swisssurface3d_context
+    product: swissSURFACE3D
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Optional for some workflows but named explicitly for second-site staging.
+  - category: swisssurface3d_raster_context
+    product: swissSURFACE3D Raster
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Useful for canopy or surface-height QA when available.
+  - category: swissbuildings3d_context
+    product: swissBUILDINGS3D
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Building context stays blocked until the site-specific public product is staged.
+  - category: barrier_inventory
+    product: optional barrier / protection inventory
+    status: optional
+    required: false
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers
+    source_reference: docs/public_real_site_geodata_preparation.md
+    notes: Optional unless a future second-site policy explicitly references barriers or nets.
+  - category: source_zone_metadata
+    product: release / source-zone metadata
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml
+    source_reference: scripts/audit_multisite_source_scenario_contract.py
+    notes: Site-specific source-zone metadata is required for second-site porting.
+  - category: scenario_table
+    product: block / scenario table
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv
+    source_reference: scripts/audit_multisite_source_scenario_contract.py
+    notes: Scenario definitions remain site-specific.
+  - category: source_scenario_policy
+    product: source-scenario policy record
+    status: missing
+    required: true
+    expected_staged_path: validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+    source_reference: docs/public_real_site_geodata_preparation.md
+    notes: The policy structure is reusable, but the content is site-specific.
+  - category: release_observation_evidence
+    product: release/deposition or field-observation evidence
+    status: optional
+    required: false
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations
+    source_reference: docs/public_real_site_geodata_preparation.md
+    notes: Optional if a site-specific QA source exists.
+expected_ignored_output_roots:
+  - validation/private/chant_sura_fluelapass_portability_example_v1
+  - hazard/results/chant_sura_fluelapass_portability_example_v1
+command_templates:
+  - id: stage_terrain_crop
+    command: PYENV_VERSION=system uv run python scripts/prepare_<site_id>_public_benchmark.py --output-root data/processed/swisstopo/<site_id> --padding-m <buffer> --force
+    expected_outputs:
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+  - id: stage_context_bundle
+    command: mkdir -p data/processed/swisstopo/<site_id>/context/{swissimage,swisstlm3d,swisssurface3d,swisssurface3d_raster,swissbuildings3d,barriers}
+    expected_outputs:
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+  - id: stage_source_and_scenario_records
+    command: mkdir -p data/processed/swisstopo/<site_id>/input && cp <source_zone_metadata> <scenario_table> <policy> data/processed/swisstopo/<site_id>/input/
+    expected_outputs:
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml
+      - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv
+      - validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+  - id: preflight_and_plan_review
+    command: PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json && PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json
+    expected_outputs:
+      - JSON portability preflight
+      - JSON portable command plan

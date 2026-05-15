@@ -6,6 +6,7 @@ candidate_selection_rationale: >-
   repository benchmark metadata and validation fixtures. The site is real, but
   the public-geodata manifest remains metadata-only until terrain, source-zone,
   scenario, and context inputs are staged under the candidate roots.
+acquisition_manifest_path: chant_sura_fluelapass_public_geodata_acquisition.yaml
 site_extent:
   crs: EPSG:2056
   xmin: 2793000.0

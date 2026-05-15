@@ -184,43 +184,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-039: Stage A Concrete Chant Sura Public-Geodata Acquisition Manifest
-
-Goal: move the Chant Sura / Flüelapass candidate from a blocked metadata
-fixture toward exact public-geodata staging requirements.
-
-Inspect first:
-
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `data/datasets.yaml`
-
-Expected work:
-
-- add or update a small committed manifest that names the exact expected
-  terrain, source-zone, scenario, and context inputs for the candidate site;
-- include acquisition/staging commands or placeholders that are specific enough
-  for a future worker to execute once data access is available;
-- keep the second-site preflight metadata-only and blocked until the artifacts
-  actually exist.
-
-Definition of done:
-
-- the candidate preflight reports concrete missing paths and product categories
-  rather than generic template gaps;
-- no raw or large geodata is downloaded or committed;
-- no second-site ensemble or hazard build is run.
-
-Boundaries:
-
-- no Tschamut evidence is reused as Chant Sura validation evidence;
-- no source-frequency, annual probability, risk, exposure, or operational
-  claims.
-
 ### TB-040: Assess Validation And Calibration Evidence Gaps For Physical Credibility
 
 Goal: identify the field, reference, or benchmark evidence required to move

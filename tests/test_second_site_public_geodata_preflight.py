@@ -36,6 +36,10 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
+        self.assertEqual(report["acquisition_manifest_status"], "ready")
+        self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
+        self.assertGreaterEqual(report["acquisition_manifest_category_count"], 10)
+        self.assertIn("Review acquisition manifest at", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
         self.assertEqual(report["missing_input_categories"], [])
@@ -56,6 +60,12 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             set(report.keys()),
             {
                 "acquisition_or_staging_checklist",
+                "acquisition_manifest_category_count",
+                "acquisition_manifest_command_template_count",
+                "acquisition_manifest_expected_ignored_roots",
+                "acquisition_manifest_path",
+                "acquisition_manifest_product_summaries",
+                "acquisition_manifest_status",
                 "assumptions_not_yet_generalized",
                 "blocked_reason",
                 "candidate_site_id",
@@ -90,6 +100,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
         self.assertIn("Chant Sura is the clearest concrete Swiss candidate", report["candidate_selection_rationale"])
+        self.assertEqual(report["acquisition_manifest_status"], "ready")
+        self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
+        self.assertGreater(report["acquisition_manifest_command_template_count"], 0)
         self.assertEqual(report["terrain_manifest_status"], "blocked_missing_inputs")
         self.assertEqual(report["source_zone_manifest_status"], "blocked_missing_inputs")
         self.assertEqual(report["scenario_manifest_status"], "blocked_missing_inputs")
@@ -128,6 +141,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         text = preflight.render_text_report(report)
         self.assertIn("portability_preflight_status: blocked_missing_inputs", text)
         self.assertIn("validate_public_real_site_conditional_pilot_run.py", text)
+        self.assertIn("acquisition_manifest_status:", text)
         self.assertIn("missing_input_categories:", text)
         self.assertIn("second_site_manifest_status: staged_placeholder_manifest", text)
 
