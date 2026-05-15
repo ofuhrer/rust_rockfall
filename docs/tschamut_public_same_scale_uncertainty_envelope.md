@@ -11,6 +11,9 @@
 ## Convergence
 - Artifact readiness: `ready`
 - Measured per-layer convergence metrics are available.
+- The strongest disagreement layers are `max_kinetic_energy`,
+  `max_jump_height`, and the velocity exceedance layers; the cell-wise
+  comparison is `ok` but remains conservative rather than accepted.
 
 ## Validation Output
 - Status: `blocker_retained`
@@ -49,6 +52,9 @@
   within 20 m for roads, barriers, and water; a three-layer probe was runtime
   limited, and the corridor interpretation still does not reach accepted
   obstacle interaction evidence
+- the target-vs-gate disagreement is dominated by sampled-output differences
+  on the shared grid, with identical CRS/grid geometry but different ensemble
+  size and jump-height statistic coverage in the restored case metadata
 - distributed execution remains deferred on measured evidence
 
 ## Target-Artifact Readiness

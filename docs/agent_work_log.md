@@ -55,6 +55,44 @@ Planning only; these milestones do not implement roadmap item content yet.
   passed.
   `scripts/git-hooks/pre-commit`
   passed.
+
+### TB-024
+
+- Milestone id: TB-024.
+- Roadmap item: Diagnose Target-Vs-Gate Spatial Disagreement Drivers.
+- Implementation summary: Reused the existing convergence diagnostic to
+  separate the same-scale disagreement drivers without rerunning larger
+  ensembles. The target and gate manifolds share the same grid geometry,
+  scenario table, source-zone metadata, and cellwise layer keys, but the
+  comparison remains `ok` and conservative because the shared sampled outputs
+  still diverge numerically. The dominant disagreement is `max_kinetic_energy`
+  with identical nonzero support but very large magnitude difference; the next
+  strongest driver is `max_jump_height`, which combines magnitude, support,
+  and nodata differences; the velocity exceedance layers show smaller but
+  measurable footprint shifts.
+- Evidence streams consumed: the readiness preflight, the restored gate and
+  target manifests, the gate and target case YAMLs, the scenario table, the
+  source-zone metadata, and the JSON output from
+  `scripts/compare_hazard_map_convergence.py`.
+- Classification: `inconclusive` convergence with `scale_up_authorized`
+  remaining false and `operational_claims_allowed` remaining false.
+- Uncertainty reduced: the disagreement is not coming from grid geometry or
+  scenario/source mismatch alone; it is concentrated in shared-output numeric
+  divergence plus a smaller nodata/support effect in the maximum layers.
+- Remaining uncertainty: the repo still needs a bounded next measurement to
+  test whether the differences shrink under a controlled sampling-sensitivity
+  probe.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  passed.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
 - Reviewer notes: This is execution guidance only; it does not change
   simulator physics, thresholds, baselines, release assumptions, or claim
   boundaries.

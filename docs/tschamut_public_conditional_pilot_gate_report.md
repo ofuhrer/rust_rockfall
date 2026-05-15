@@ -167,6 +167,58 @@ Interpretation boundary:
 - `scale_up_authorized` stays `false`;
 - `operational_claims_allowed` stays `false`.
 
+## Disagreement Drivers
+
+The target-vs-gate comparison is `ok` and shares `22` cell-wise layers, but
+the disagreement is dominated by sampled-output differences rather than by
+grid or corridor metadata.
+
+Measured alignment:
+
+- grid geometry matches exactly (`300 x 304`, `2.0 m`, EPSG `2056`);
+- scenario table and source-zone metadata paths match;
+- probability mode and normalization scope match;
+- all shared cell-wise layer keys match;
+- threshold disagreement count is `0`;
+- nodata mismatch count is `90` overall;
+- case IDs differ by design.
+
+Case metadata differences visible in the restored inputs:
+
+- `random.ensemble_size`: gate `6`, target `100`;
+- `hazard_layers.statistics.jump_height_exceedance_m`: gate uses `0.5 m` and
+  `2.0 m`, target uses `0.5 m`, `1.0 m`, and `2.0 m`;
+- map product ids differ by design;
+- output checksum comparison reports `8` matches, `36` mismatches, and `18`
+  missing shared outputs.
+
+Strongest disagreement layers:
+
+- `max_kinetic_energy`: `linf_abs_diff 3028.22579673`, `l1_abs_diff
+  190718.90391041967`, `rmse 983.451160251898`, `nonzero_jaccard 1.0`,
+  `nodata_mismatch_count 45`;
+- `max_jump_height`: `linf_abs_diff 1.42875571255`, `l1_abs_diff
+  30.019475562139338`, `rmse 0.21594778911463908`, `nonzero_jaccard
+  0.7598039215686274`, `nodata_mismatch_count 45`;
+- `velocity_exceedance_5mps`: `linf_abs_diff 0.155778647582`, `l1_abs_diff
+  5.312621804416979`, `nonzero_jaccard 0.8279569892473119`;
+- `weighted_velocity_exceedance_5mps`: `linf_abs_diff 0.13545454545400004`,
+  `l1_abs_diff 4.92878787878956`, `nonzero_jaccard 0.8279569892473119`;
+- `velocity_exceedance_10mps`: `linf_abs_diff 0.12553020749800003`,
+  `l1_abs_diff 4.4495832036858225`, `nonzero_jaccard 0.7389162561576355`.
+
+Interpretation:
+
+- the dominant driver is numeric divergence in the shared same-scale sampled
+  outputs, not CRS or grid misalignment;
+- `max_kinetic_energy` is dominated by magnitude difference with identical
+  nonzero support;
+- `max_jump_height` combines magnitude difference with support and nodata
+  differences;
+- the exceedance layers show smaller but still measurable footprint shifts;
+- same-source and same-scenario metadata reduce the likelihood that the
+  disagreement is coming from geometry or source-zone mismatch alone.
+
 ## Same-Scale Convergence Check
 
 The restored same-scale target-side artifacts are now present and the

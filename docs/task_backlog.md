@@ -163,41 +163,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-024: Diagnose Target-Vs-Gate Spatial Disagreement Drivers
-
-Capability gap reduced: target-vs-gate convergence is now measured and
-inconclusive, but the repo has not separated which differences come from
-sample count, scenario composition, layer semantics, threshold choices, or
-spatial displacement.
-
-Goal: analyze the existing gate and target manifests, case metadata, scenario
-tables, layer metrics, and comparison output to explain the dominant
-target-vs-gate disagreement drivers without rerunning larger ensembles.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `scripts/compare_hazard_map_convergence.py`;
-- restored gate and target case/manifests under ignored paths;
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`.
-
-Required work:
-
-1. Use existing artifacts and metadata; do not change thresholds or rerun
-   larger ensembles.
-2. Produce a compact per-layer diagnosis of the strongest disagreements.
-3. Distinguish spatial displacement from magnitude-only differences where the
-   current rasters allow it.
-4. Recommend the next measurement needed to reduce uncertainty, not a status
-   reclassification.
-
-Definition of done:
-
-- disagreement drivers are summarized with measured evidence;
-- the result informs the next sampling or scenario-sensitivity task;
-- checks pass.
-
 ### TB-025: Run A Bounded Same-Scale Sampling Sensitivity Probe
 
 Capability gap reduced: same-scale convergence remains inconclusive, and the
