@@ -1297,7 +1297,6 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
 
     for term in (
         "Status: authoritative executable task backlog.",
-        "TB-001: Produce Measured Conditional Pilot Acceptance Summary",
         "Balfrin target-gate reproduction",
         "The selected Tschamut target-scale evidence remains `inconclusive`.",
         "selected-domain runs remain blocked",
@@ -1868,7 +1867,6 @@ def check_roadmap_target_authority() -> list[str]:
         "Project Objective",
         "Capability Gap Analysis",
         "Backlog Quality Assessment",
-        "TB-001: Produce Measured Conditional Pilot Acceptance Summary",
         "TB-002: Build Reusable Hazard-Map Convergence Diagnostics",
         "TB-003: Implement A Bounded Validation Output Profile For Pilot Runs",
         "TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut",

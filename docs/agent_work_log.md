@@ -31,6 +31,36 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-001
+
+- Milestone id: TB-001
+- Roadmap item: Produce Measured Conditional Pilot Acceptance Summary.
+- Hypothesis/objective: A reproducible summary generator can derive the
+  selected Tschamut conditional pilot classification from existing Balfrin,
+  convergence, target-gate, and output-budget evidence without changing
+  physics, defaults, thresholds, or baselines.
+- Files intended to change:
+  `scripts/summarize_conditional_pilot_acceptance.py`,
+  `tests/test_conditional_pilot_acceptance_summary.py`,
+  `docs/tschamut_public_conditional_pilot_acceptance_summary.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a summary generator that imports the existing
+  DT-04/DT-05/DT-08 validators, reads the selected evidence records, derives a
+  conservative final classification, and renders a committed markdown report
+  that records the reduced uncertainty and remaining blockers. Removed TB-001
+  from the backlog.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_conditional_pilot_acceptance_summary.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests/test_balfrin_target_gate_reproduction.py tests/test_output_budget_reducer_gate.py tests/test_public_real_site_conditional_pilot_run.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_conditional_pilot_acceptance.py --markdown-output docs/tschamut_public_conditional_pilot_acceptance_summary.md` passed.
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: The summary remains conservative: the selected pilot is still inconclusive and scale-up remains unauthorized.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-002.
+
 ### M001
 
 - Milestone id: M001

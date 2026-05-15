@@ -121,43 +121,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-001: Produce Measured Conditional Pilot Acceptance Summary
-
-Capability gap reduced: conditional pilot evidence is still inconclusive.
-
-Goal: run or extend an executable analysis that reads the current Balfrin
-target-gate, convergence, and output-budget records and produces a measured
-acceptance summary for the selected Tschamut conditional pilot. The result must
-state whether the pilot remains `inconclusive`, is `no_go`, or can be treated
-as an accepted conditional diagnostic pilot.
-
-Inspect first:
-
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/output_budget_reducer_scaling_gate.md`;
-- `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`;
-- `docs/tschamut_public_scalable_conditional_target_gate.md`.
-
-Required work:
-
-1. Prefer an executable script or report generator over manual reclassification.
-2. Use only existing evidence unless the task explicitly runs a small
-   non-public diagnostic analysis.
-3. Keep all physics, defaults, thresholds, release assumptions, and baselines
-   unchanged.
-4. Do not run larger ensembles or public benchmarks.
-5. Preserve no annual/physical/risk/operational claims.
-
-Definition of done:
-
-- a generated or reproducible summary records the measured convergence,
-  output-budget, and blocker state;
-- classification and scale-up authorization are explicit;
-- the work explains what uncertainty was reduced and what remains unresolved;
-- focused tests/checks and `scripts/check_repo_consistency.py` pass.
-
 ### TB-002: Build Reusable Hazard-Map Convergence Diagnostics
 
 Capability gap reduced: conditional-pilot acceptance lacks quantitative
