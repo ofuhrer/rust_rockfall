@@ -88,9 +88,8 @@ objective are:
    but more one-off record readers would add process weight unless they remove
    a real execution or interpretation blocker.
 6. Local ignored-artifact readiness remains fragile. Several tasks found exact
-   missing paths after long audits; TB-022 is in flight to add a reusable
-   preflight so future workers can check readiness before expensive
-   diagnostics.
+   missing paths after long audits; a reusable preflight now exists so future
+   workers can check readiness before expensive diagnostics.
 7. The current same-scale hazard-context overlap measurement is too narrow for
    interpretation. The top positive cell in each of three layers had zero
    20 m proximity hits, but that does not quantify overlap across broader
@@ -132,8 +131,6 @@ Underrepresented high-value work:
   pilots do not depend on hand-restored private case files;
 - GIS-ready output usability checks that remain secondary to scientific
   acceptance but make generated products inspectable when artifacts exist;
-- reusable readiness/preflight tooling for future selected-pilot artifact
-  refreshes;
 - portability preflights for applying the workflow to a second Swiss
   public-geodata site.
 
@@ -152,38 +149,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-022: Add Same-Scale Artifact Readiness Preflight
-
-Capability gap reduced: repeated worker tasks have spent substantial effort
-discovering the same missing gate/target/context paths. A reusable preflight
-should make the local readiness state explicit before long-running diagnostics.
-
-Goal: add a lightweight command that checks same-scale gate, target, context,
-and output-profile artifact readiness and emits exact missing paths and
-regeneration commands.
-
-Inspect first:
-
-- `scripts/audit_local_artifacts.py`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/task_backlog.md`;
-- existing validation and hazard command-plan generators.
-
-Required work:
-
-1. Reuse existing audit and command-plan logic where possible.
-2. Keep the preflight lightweight and read-only.
-3. Emit machine-readable JSON and concise human-readable output.
-4. Avoid turning this into a new governance gate; it must directly reduce
-   repeated missing-artifact discovery work.
-
-Definition of done:
-
-- a reusable readiness command reports gate/target/context readiness and exact
-  missing regeneration steps;
-- focused tests cover ready and missing-artifact fixtures;
-- checks pass.
 
 ### TB-023: Broaden Hazard-Context Overlap Envelope Beyond Top Cells
 

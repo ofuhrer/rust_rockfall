@@ -230,6 +230,23 @@ Supporting same-scale evidence remains reusable:
 - swissTLM3D corridor relevance: roads, barriers, and water are measured as `limiting`;
 - Balfrin single-job execution sufficiency: next-step single-job execution is sufficient, distributed execution remains deferred.
 
+## Artifact Readiness Preflight
+
+Before rerunning convergence, output-profile, context, or uncertainty
+diagnostics, use the readiness helper to see which same-scale artifacts are
+present and which exact paths still need regeneration:
+
+```bash
+PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json
+```
+
+The helper is read-only. It checks gate validation, gate hazard, target
+validation, target hazard, target `summary_only` validation, staged public
+context, swissTLM3D metadata, hazard/context overlap inputs, and
+same-scale uncertainty-envelope inputs. It reports exact missing paths plus
+the known regeneration commands, but it does not authorize scale-up or alter
+the convergence interpretation.
+
 ## Executable Checks
 
 The run-freeze validator accepts the completed local gate record and can print

@@ -4630,3 +4630,20 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The corridor context remains limiting, but the top-cell overlap envelope did not produce a proximity hit for the measured categories. That is useful boundary evidence, not acceptance.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-022.
+
+### TB-022
+
+- Milestone id: TB-022.
+- Roadmap item: Add Same-Scale Artifact Readiness Preflight.
+- Implementation summary: Added `scripts/check_same_scale_artifact_readiness.py` and focused tests. The new read-only preflight checks gate validation, gate hazard, target validation, target hazard, target `summary_only` validation, staged public context, swissTLM3D metadata, hazard/context overlap inputs, and same-scale uncertainty-envelope inputs. It reports exact missing paths plus known regeneration commands before expensive same-scale diagnostics.
+- Evidence streams consumed: `scripts/audit_local_artifacts.py`, `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`, `docs/tschamut_public_bounded_validation_output_profile.md`, `docs/tschamut_public_obstacle_context_scope.md`, `scripts/validate_public_real_site_conditional_pilot_run.py`, `scripts/build_hazard_layers.py`, `scripts/compare_hazard_map_convergence.py`, `scripts/inspect_tschamut_public_context_layers.py`, `scripts/measure_hazard_context_overlap.py`, and the local same-scale gate/target/context manifests.
+- Classification: `ready` for the local checkout; `scale_up_authorized` remains false and `operational_claims_allowed` remains false.
+- Uncertainty reduced: future workers can check exact artifact readiness and regeneration paths before running convergence, output-profile, context, or overlap diagnostics.
+- Remaining uncertainty: the same-scale target-vs-gate interpretation remains inconclusive; the preflight only removes repeated discovery overhead.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/check_same_scale_artifact_readiness.py tests/test_same_scale_artifact_readiness.py`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_artifact_readiness`
+  passed.
