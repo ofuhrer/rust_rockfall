@@ -11,10 +11,11 @@ GIS-ready outputs, and performance that can grow from efficient single-socket
 runs toward CSCS/SLURM workflows. Risk modelling, exposure/vulnerability
 analysis, and operational warning systems are out of scope.
 
-Use this index by authority level. Governing documents and current roadmaps are
-the starting point for new work. Evidence reports describe what was observed at
-the time they were written. Historical decision fragments have been consolidated
-into `decision_log.md`; they do not override the current roadmaps.
+Use this index by authority level. Governing documents and the authoritative
+current target list are the starting point for new work. Evidence reports
+describe what was observed at the time they were written. Historical decision
+fragments have been consolidated into `decision_log.md`; they do not override
+`next_development_targets.md`.
 
 ## Governing Documents
 
@@ -37,13 +38,17 @@ into `decision_log.md`; they do not override the current roadmaps.
 
 ## Current Roadmaps
 
-- `next_development_targets.md`: current prioritized development targets.
-- `roadmap_recommendation_matrix.md`: scoring matrix behind target ordering.
+- `next_development_targets.md`: authoritative current development targets.
+  If a prompt says "Target 1" or "the next target", use this file and its
+  `DT-xx` identifiers.
+- `roadmap_recommendation_matrix.md`: supporting scoring appendix behind target
+  ordering; not authoritative for current target selection.
 - `roadmap_hazard_mapping.md`: long-term hazard-map roadmap and hazard/risk
   boundary.
 - `real_case_intensity_frequency_implementation_roadmap.md`: staged path from
   conditional intensity-exceedance products to later physical/annual
-  intensity-frequency semantics.
+  intensity-frequency semantics; not authoritative for current target
+  selection.
 - `scalability_and_data_formats_review.md`: large-ensemble, output-format, and
   scaling roadmap.
 - `implementation_plan.md`: broad phased implementation plan.
@@ -71,9 +76,20 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `balfrin_tschamut_pilot_runbook.md`: reusable balfrin Tschamut pilot
   operating procedure for readiness, validation/hazard execution, reducer
   provenance inspection, scaling summary regeneration, and artifact hygiene.
+- `balfrin_tschamut_readiness.md`: read-only readiness checker for the balfrin
+  Tschamut conditional pilot checkout and ignored input artifacts; the selected
+  DT-02 readiness record is
+  `validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml`.
 - `balfrin_probe_slurm_driver.md`: SLURM-first balfrin probe driver design for
   dry-run generation, deterministic run roots, submit/collect modes, and output
-  metadata capture.
+  metadata capture; DT-03 repeatability evidence is recorded in
+  `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`.
+- `tschamut_public_scalable_conditional_target_gate.md`: selected Tschamut
+  target-gate evidence record, including the DT-04 balfrin reproduction summary
+  and validator for
+  `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
+- `mid_scale_balfrin_probe_plan.md`: current mid-scale balfrin probe evidence
+  and next one-dimension-at-a-time probe priorities.
 
 ## Hazard And Probabilistic Semantics
 
@@ -82,6 +98,9 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `hazard_map_semantics.md`: allowed/disallowed hazard-map language,
   conditional versus physical/annual probability, denominators, and
   normalization rules.
+- `conditional_hazard_convergence_acceptance_protocol.md`: DT-05 acceptance
+  protocol for conditional hazard-map evidence and the current DT-04 Balfrin
+  assessment.
 - `probabilistic_scenario_model_design.md`: scenario-level probability modes,
   source-zone placeholders, and normalization conventions.
 - `physical_source_frequency_design_gate.md`: design-gate decision for future
@@ -100,8 +119,8 @@ into `decision_log.md`; they do not override the current roadmaps.
 - `annual_physical_validation_calibration_review_gate.md`: inactive
   validation/calibration review-gate schema, validator, and template for
   closing one design-gate blocker without enabling annual or physical products.
-- `annual_physical_prototype_preflight.md`: inactive Target 10 preflight
-  schema, validator, and template that keeps the annual/physical prototype
+- `annual_physical_prototype_preflight.md`: inactive annual/physical prototype
+  preflight schema, validator, and template that keeps the prototype
   blocked while the design gate remains deferred.
 - `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
   probabilistic scenario/source-zone propagation.

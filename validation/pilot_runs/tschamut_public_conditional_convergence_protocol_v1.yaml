@@ -1,0 +1,150 @@
+schema_version: conditional_hazard_convergence_protocol_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_conditional_convergence_protocol_v1
+roadmap_item: DT-05
+protocol_status: applied_to_dt04_evidence
+scope:
+  product_scope: conditional_hazard_map_only
+  gis_qgis_qa_role: secondary
+  no_tuning: true
+  annual_or_physical_probability_supported: false
+  return_period_supported: false
+  risk_exposure_or_vulnerability_supported: false
+  operational_validity_supported: false
+  allowed_current_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  prohibited_claims:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk_map
+    - exposure
+    - vulnerability
+    - operational_hazard_map
+required_evidence_categories:
+  - target_run_provenance
+  - input_freeze
+  - trajectory_and_release_counts
+  - deterministic_seed_order_chunk_metadata
+  - reducer_parity_or_repeatability
+  - output_profile
+  - output_budget
+  - checksum_provenance
+  - log_audit
+  - convergence_indicators
+  - known_interpretation_blockers
+required_gates:
+  target_run_provenance: pass
+  input_freeze: pass
+  trajectory_and_release_counts: pass
+  deterministic_seed_order_chunk_metadata: pass
+  reducer_parity_or_repeatability: pass
+  output_profile: pass
+  output_budget: blocker_retained
+  checksum_provenance: pass
+  log_audit: pass_clean
+  convergence_indicators: inconclusive
+  known_interpretation_blockers: present
+assessment:
+  current_classification: inconclusive
+  scale_up_authorized: false
+  assessed_records:
+    dt04_balfrin_reproduction_record: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+    dt04_target_gate_record: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  blocking_reasons:
+    - target_vs_small_gate_convergence_not_accepted
+    - manual_gis_visual_qa_secondary_only
+    - forest_obstacle_context_limiting
+    - validation_debug_output_budget_retained
+  evidence:
+    target_run_provenance:
+      status: pass
+      host: balfrin.cscs.ch
+      commit: 61ab9c6542ba1d2274139940777ff0238f1983cf
+      job_id: "4318941"
+      release_cell_count: 10
+      trajectories_per_release_cell: 100
+      simulated_trajectory_count: 1000
+      validation_release_count: 10
+      validation_simulated_trajectory_count: 1000
+    input_freeze:
+      status: pass
+      geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+      terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+      source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+      scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+      source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+      release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
+      deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+    trajectory_and_release_counts:
+      status: pass
+      release_cell_count: 10
+      trajectories_per_release_cell: 100
+      simulated_trajectory_count: 1000
+    deterministic_seed_order_chunk_metadata:
+      status: pass
+      random_seed: 34014
+      trajectory_merge_order: requested_trajectory_index
+      reducer_merge_order: sorted_chunk_id
+      chunk_count: 2
+      reducer_workers: 2
+    reducer_parity_or_repeatability:
+      status: pass
+      compared_workers: [1, 2]
+      compared_outputs:
+        deposition_points: true
+        hazard_layer: true
+      all_compared_outputs_match: true
+    output_profile:
+      status: pass
+      profile: scalable_conditional
+      conditional_curve_export: summary-only
+      grid_csv_export: none
+      export_geotiff: true
+      no_plots: true
+      pilot_gis_package: true
+    output_budget:
+      status: blocker_retained
+      validation_output_file_count: 2004
+      validation_output_bytes: 571131205
+      hazard_output_file_count: 54
+      hazard_output_bytes: 75423367
+      validation_debug_output_budget_blocker: true
+    checksum_provenance:
+      status: pass
+      validation_manifest_sha256: 73b5db351727522264c10e48f24a646150122903d2296457c08eb34814819fc0
+      hazard_manifest_sha256: 2d743fbd28fc4af2d65dfcc00cf3801aad9805126b87362a32de8b5f767fbc8b
+      map_package_manifest_sha256: 21a9d3c85d06f50bed75a5962a34309749568f977c6206dec57e79c58bf8bc3b
+      pilot_gis_package_manifest_sha256: 5cc6a64076640efadd81e9dd98a061696d499c1d440160cde949020a3c3671b2
+      scaling_summary_sha256: f10c4421ae1288965f3fb4df1724d27d875db3d9522d3b8850611d4a9ac9cd1e
+    log_audit:
+      status: pass_clean
+      classification: pass_clean
+      warning_like_line_count: 0
+      error_like_line_count: 0
+    convergence_indicators:
+      status: inconclusive
+      target_vs_small_gate_convergence_accepted: false
+      manual_gis_visual_qa_status: not_run
+      forest_obstacle_context_status: limiting
+      validation_debug_output_volume_status: blocker_retained
+    known_interpretation_blockers:
+      status: present
+      blockers:
+        - target_vs_small_gate_convergence_not_accepted
+        - manual_gis_visual_qa_secondary_only
+        - forest_obstacle_context_limiting
+        - validation_debug_output_budget_retained
+classification_rationale: >
+  The DT-04 Balfrin reproduction contains the required target-run provenance,
+  frozen inputs, deterministic ordering metadata, reducer parity, output
+  profile, checksum provenance, and clean log audit, but the evidence remains
+  inconclusive because convergence has not been accepted and the current
+  interpretation blockers are still present. The protocol therefore keeps
+  scale-up authorization false.
+notes: >
+  This record is intentionally conservative. It does not authorize scale-up,
+  annual semantics, physical probability semantics, return periods, risk,
+  exposure, vulnerability, or operational use.

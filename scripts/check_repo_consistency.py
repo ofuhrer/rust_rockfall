@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 
@@ -134,6 +135,8 @@ def main() -> int:
     errors: list[str] = []
     errors.extend(check_staged_generated_outputs())
     errors.extend(check_tracked_copy_suffix_docs())
+    errors.extend(check_python_tool_dependency_metadata())
+    errors.extend(check_roadmap_target_authority())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
     errors.extend(check_schema_docs())
@@ -159,6 +162,10 @@ def main() -> int:
     errors.extend(check_annual_physical_prototype_preflight())
     errors.extend(check_scalable_conditional_execution())
     errors.extend(check_scalable_conditional_target_gate())
+    errors.extend(check_conditional_hazard_convergence_protocol())
+    errors.extend(check_balfrin_tschamut_readiness_record())
+    errors.extend(check_balfrin_slurm_probe_repeatability())
+    errors.extend(check_balfrin_target_gate_reproduction())
     errors.extend(check_pilot_obstacle_scope_contract())
 
     if errors:
@@ -997,6 +1004,9 @@ def check_scalable_conditional_target_gate() -> list[str]:
         "1,000 simulated trajectories",
         "conditional_hazard_execution_diagnostics_v1",
         "hazard_reducer_chunk_manifest_v1",
+        "DT-01 Provenance And Output-Profile Closure",
+        "custom_or_mixed_legacy_summary_only",
+        "validation-side debug output budget",
         "1-worker vs 2-worker",
         "not change physics",
     ):
@@ -1012,6 +1022,13 @@ def check_scalable_conditional_target_gate() -> list[str]:
         "target_scale_executed: true",
         "convergence_diagnostics_status: inconclusive",
         "output_budget_status: recorded",
+        "target_run_provenance_policy:",
+        "output_profile_policy:",
+        "policy_status: closed_for_current_gate",
+        "may_be_interpreted_as_full_observed_release_target_provenance: false",
+        "profile: custom_or_mixed_legacy_summary_only",
+        "profile: scalable_conditional",
+        "reduce_or_justify_validation_debug_output_volume",
         "all_compared_outputs_match: true",
         "physical_probability: false",
     ):
@@ -1025,6 +1042,8 @@ def check_scalable_conditional_target_gate() -> list[str]:
         "validate_target_gate_record",
         "REQUIRED_MISSING_ROLES",
         "REQUIRED_INCONCLUSIVE_REMAINING_STEPS",
+        "validate_target_run_provenance_policy",
+        "validate_output_profile_policy",
         "validate_execution_evidence",
         "conditional_curve_export_mode must be summary-only",
         "executed or inconclusive records must start target execution",
@@ -1039,9 +1058,336 @@ def check_scalable_conditional_target_gate() -> list[str]:
         "test_rejects_inconclusive_record_that_did_not_start_execution",
         "test_rejects_missing_required_path_role",
         "test_rejects_unrecorded_output_budget_after_execution",
+        "test_rejects_auxiliary_ensemble_as_full_target_provenance",
+        "test_rejects_missing_selected_followup_output_profile",
+        "test_rejects_scale_increase_without_debug_output_budget_policy",
     ):
         if test_name not in tests:
             errors.append(f"tests/test_scalable_conditional_target_gate.py omits {test_name}")
+    return errors
+
+
+def check_balfrin_tschamut_readiness_record() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/balfrin_tschamut_readiness.md",
+        ROOT / "validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml",
+        ROOT / "scripts/validate_balfrin_tschamut_readiness_record.py",
+        ROOT / "tests/test_balfrin_tschamut_readiness_record.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"balfrin readiness record path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/balfrin_tschamut_readiness.md").read_text()
+    record = (ROOT / "validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_balfrin_tschamut_readiness_record.py").read_text()
+    tests = (ROOT / "tests/test_balfrin_tschamut_readiness_record.py").read_text()
+
+    for term in (
+        "readiness record",
+        "ready_for_balfrin_target_gate",
+        "does not run simulation commands",
+        "does not assess annual-frequency semantics",
+    ):
+        if term not in doc:
+            errors.append(f"docs/balfrin_tschamut_readiness.md omits {term!r}")
+
+    for term in (
+        "schema_version: balfrin_tschamut_readiness_record_v1",
+        "roadmap_item: DT-02",
+        "readiness_status: ready_for_balfrin_target_gate",
+        "repo_root: /users/olifu/work/rust_rockfall",
+        "raw_json_committed: false",
+        "missing_required_count: 0",
+        "processed_public_dem",
+        "generated_outputs_committed: false",
+        "raw_geodata_committed: false",
+        "annualized: false",
+        "operational_hazard_map: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_balfrin_readiness_record",
+        "READY_STATUS",
+        "REQUIRED_INPUT_ROLES",
+        "REQUIRED_PROCESSED_ROLES",
+        "REQUIRED_COMMANDS",
+        "ready records must have zero blocking checks",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_balfrin_tschamut_readiness_record.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_balfrin_readiness_record_is_valid",
+        "test_rejects_ready_record_with_missing_required_input",
+        "test_rejects_record_without_processed_dem_artifact",
+        "test_rejects_missing_command_plan_precondition",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_balfrin_tschamut_readiness_record.py omits {test_name}")
+    return errors
+
+
+def check_balfrin_slurm_probe_repeatability() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml",
+        ROOT / "scripts/validate_balfrin_slurm_probe_repeatability.py",
+        ROOT / "tests/test_balfrin_slurm_probe_repeatability.py",
+        ROOT / "docs/tschamut_public_pilot_scaling_review.md",
+        ROOT / "docs/balfrin_probe_slurm_driver.md",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"balfrin SLURM probe repeatability path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    record = (ROOT / "validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_balfrin_slurm_probe_repeatability.py").read_text()
+    tests = (ROOT / "tests/test_balfrin_slurm_probe_repeatability.py").read_text()
+    scaling_doc = (ROOT / "docs/tschamut_public_pilot_scaling_review.md").read_text()
+    driver_doc = (ROOT / "docs/balfrin_probe_slurm_driver.md").read_text()
+
+    for term in (
+        "schema_version: balfrin_slurm_probe_repeatability_v1",
+        "roadmap_item: DT-03",
+        "classification: pass_with_scope_limits",
+        "driver_decision: ready_for_same_scale_selected_gate_reproduction",
+        "job_id: \"4318872\"",
+        "job_id: \"4318896\"",
+        "pass_hash_stable",
+        "changed_artifact_count: 0",
+        "slurm_arrays",
+        "operational_hazard_map: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_probe_repeatability_record",
+        "REQUIRED_CONTROLS",
+        "REQUIRED_NOT_AUTHORIZED",
+        "pass_hash_stable",
+        "repeat trajectory plan ids must be stable",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_balfrin_slurm_probe_repeatability.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_slurm_probe_repeatability_record_is_valid",
+        "test_rejects_repeat_without_reused_trajectory_chunks",
+        "test_rejects_plan_id_drift_between_repeat_runs",
+        "test_rejects_changed_numeric_artifacts",
+        "test_rejects_scale_up_authorization",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_balfrin_slurm_probe_repeatability.py omits {test_name}")
+
+    for term in (
+        "DT-03 repeat/reuse closure",
+        "4318872",
+        "4318896",
+        "33/33 numeric hazard artifacts",
+        "ready_for_same_scale_selected_gate_reproduction",
+    ):
+        if term not in scaling_doc:
+            errors.append(f"docs/tschamut_public_pilot_scaling_review.md omits {term!r}")
+
+    for term in (
+        "DT-03 repeat/reuse closure",
+        "pass_with_scope_limits",
+        "single-job SLURM driver",
+        "same-scale selected-gate reproduction",
+    ):
+        if term not in driver_doc:
+            errors.append(f"docs/balfrin_probe_slurm_driver.md omits {term!r}")
+    return errors
+
+
+def check_balfrin_target_gate_reproduction() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+        ROOT / "scripts/validate_balfrin_target_gate_reproduction.py",
+        ROOT / "tests/test_balfrin_target_gate_reproduction.py",
+        ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md",
+        ROOT / "docs/next_development_targets.md",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"balfrin target-gate reproduction path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    record = (ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_balfrin_target_gate_reproduction.py").read_text()
+    tests = (ROOT / "tests/test_balfrin_target_gate_reproduction.py").read_text()
+    target_doc = (ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md").read_text()
+    targets = (ROOT / "docs/next_development_targets.md").read_text()
+
+    for term in (
+        "schema_version: balfrin_target_gate_reproduction_v1",
+        "roadmap_item: DT-04",
+        "execution_status: completed",
+        "reproducibility_classification: inconclusive",
+        "job_id: \"4318941\"",
+        "validation_simulated_trajectory_count: 1000.0",
+        "conditional_curve_export: summary-only",
+        "conditional_curve_csv_written: false",
+        "grid_csv_export: none",
+        "grid_csv_written: false",
+        "pass_clean",
+        "operational_hazard_map: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_target_gate_reproduction_record",
+        "REQUIRED_CHECKSUMS",
+        "current DT-04 record must remain inconclusive",
+        "conditional_curve_export must be summary-only",
+        "simulated_trajectory_count must be 1000",
+        "log audit warning count must be zero",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_balfrin_target_gate_reproduction.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_balfrin_target_gate_reproduction_record_is_valid",
+        "test_rejects_non_target_trajectory_count",
+        "test_rejects_full_conditional_curve_csv",
+        "test_rejects_missing_checksum",
+        "test_rejects_dirty_log_audit",
+        "test_rejects_scale_up_classification",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_balfrin_target_gate_reproduction.py omits {test_name}")
+
+    for term in (
+        "DT-04 Balfrin Reproduction",
+        "4318941",
+        "1000",
+        "inconclusive",
+        "summary-only",
+        "not operational validation",
+        "DT-05 Convergence Acceptance Assessment",
+        "conditional_convergence_protocol_v1",
+    ):
+        if term not in target_doc:
+            errors.append(f"docs/tschamut_public_scalable_conditional_target_gate.md omits {term!r}")
+
+    for term in (
+        "### DT-04: Reproduce Selected Tschamut Conditional Hazard-Map Gate On Balfrin",
+        "Status: complete; classification `inconclusive`.",
+        "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol",
+        "Status: complete for the current selected target gate; classification",
+        "DT-06 is now the next active target",
+    ):
+        if term not in targets:
+            errors.append(f"docs/next_development_targets.md omits {term!r}")
+    return errors
+
+
+def check_conditional_hazard_convergence_protocol() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/conditional_hazard_convergence_acceptance_protocol.md",
+        ROOT / "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml",
+        ROOT / "scripts/validate_conditional_convergence_protocol.py",
+        ROOT / "tests/test_conditional_convergence_protocol.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(
+                f"conditional hazard convergence protocol path is missing: {path.relative_to(ROOT)}"
+            )
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/conditional_hazard_convergence_acceptance_protocol.md").read_text()
+    record = (
+        ROOT / "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml"
+    ).read_text()
+    validator = (ROOT / "scripts/validate_conditional_convergence_protocol.py").read_text()
+    tests = (ROOT / "tests/test_conditional_convergence_protocol.py").read_text()
+
+    for term in (
+        "conditional hazard-map products only",
+        "pass",
+        "inconclusive",
+        "no_go",
+        "no annual/physical frequency",
+        "no return periods",
+        "secondary interoperability evidence",
+        "current DT-04 Balfrin evidence is assessed as `inconclusive`",
+    ):
+        if term not in doc:
+            errors.append(f"docs/conditional_hazard_convergence_acceptance_protocol.md omits {term!r}")
+
+    for term in (
+        "schema_version: conditional_hazard_convergence_protocol_v1",
+        "roadmap_item: DT-05",
+        "protocol_status: applied_to_dt04_evidence",
+        "current_classification: inconclusive",
+        "scale_up_authorized: false",
+        "dt04_balfrin_reproduction_record: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+        "dt04_target_gate_record: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+        "target_run_provenance:",
+        "input_freeze:",
+        "trajectory_and_release_counts:",
+        "deterministic_seed_order_chunk_metadata:",
+        "reducer_parity_or_repeatability:",
+        "output_profile:",
+        "output_budget:",
+        "checksum_provenance:",
+        "log_audit:",
+        "convergence_indicators:",
+        "known_interpretation_blockers:",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_protocol_record",
+        "REQUIRED_EVIDENCE_CATEGORIES",
+        "PROHIBITED_CLAIM_PATTERNS",
+        "current_classification is invalid",
+        "scale_up_authorized must be boolean",
+        "pass records require every gate to pass",
+        "conditional convergence protocol record is valid",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_conditional_convergence_protocol.py omits {symbol!r}")
+
+    for test_name in (
+        "test_selected_protocol_record_is_valid",
+        "test_rejects_missing_dt04_evidence",
+        "test_rejects_missing_convergence_evidence",
+        "test_rejects_operational_annual_and_risk_claims",
+        "test_rejects_scale_up_authorization_without_passed_gates",
+        "test_rejects_unsupported_classification_values",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_conditional_convergence_protocol.py omits {test_name}")
     return errors
 
 
@@ -1180,6 +1526,85 @@ def find_copy_suffix_doc_paths(tracked_paths: list[str]) -> list[str]:
         for path in tracked_paths
         if copy_suffix.search(path)
     ]
+
+
+def check_python_tool_dependency_metadata() -> list[str]:
+    errors: list[str] = []
+    pyproject_path = ROOT / "pyproject.toml"
+    requirements_path = ROOT / "requirements-tools.txt"
+    if not pyproject_path.exists():
+        return ["missing pyproject.toml for uv-run Python tool dependencies"]
+    if not requirements_path.exists():
+        return ["missing requirements-tools.txt for CI Python tool dependencies"]
+
+    pyproject = tomllib.loads(pyproject_path.read_text())
+    dependencies = pyproject.get("project", {}).get("dependencies", [])
+    if not isinstance(dependencies, list):
+        errors.append("pyproject.toml project.dependencies must be a list")
+        dependencies = []
+    pyproject_packages = {_requirement_name(str(value)) for value in dependencies}
+    requirement_packages = {
+        _requirement_name(line)
+        for line in requirements_path.read_text().splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    }
+    if pyproject_packages != requirement_packages:
+        errors.append(
+            "pyproject.toml dependencies must match requirements-tools.txt "
+            f"(pyproject={sorted(pyproject_packages)}, requirements={sorted(requirement_packages)})"
+        )
+    if pyproject.get("tool", {}).get("uv", {}).get("package") is not False:
+        errors.append("pyproject.toml should set tool.uv.package = false for repository tools")
+    return errors
+
+
+def _requirement_name(requirement: str) -> str:
+    name = re.split(r"[<>=!~;\\[]", requirement.strip(), maxsplit=1)[0].strip()
+    return name.lower().replace("_", "-")
+
+
+def check_roadmap_target_authority() -> list[str]:
+    errors: list[str] = []
+    authority = ROOT / "docs/next_development_targets.md"
+    matrix = ROOT / "docs/roadmap_recommendation_matrix.md"
+    long_term = ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md"
+
+    expected_marker = "Status: authoritative current development targets."
+    if expected_marker not in authority.read_text():
+        errors.append(
+            "docs/next_development_targets.md must contain the authoritative current development targets marker"
+        )
+
+    support_marker = "not authoritative for current target selection"
+    for path in (matrix, long_term):
+        if support_marker not in path.read_text():
+            errors.append(
+                f"{path.relative_to(ROOT)} must state it is not authoritative for current target selection"
+            )
+
+    docs_to_scan = [
+        path
+        for path in sorted((ROOT / "docs").glob("*.md"))
+        if path.name
+        in {
+            "next_development_targets.md",
+            "roadmap_recommendation_matrix.md",
+            "real_case_intensity_frequency_implementation_roadmap.md",
+        }
+    ]
+    for path in docs_to_scan:
+        for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+            if re.match(r"^## Target \d+:", line):
+                errors.append(
+                    f"{path.relative_to(ROOT)}:{line_number} uses active-looking '## Target N:' heading; use DT-xx in next_development_targets.md"
+                )
+
+    targets_text = authority.read_text()
+    if "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-05 heading")
+    if "Status: complete for the current selected target gate; classification" not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-05 complete")
+    return errors
 
 
 def check_strict_case_schema_audit() -> list[str]:
@@ -1831,6 +2256,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "hazard/README.md",
         ROOT / "docs/hazard_layers.md",
         ROOT / "docs/hazard_map_semantics.md",
+        ROOT / "docs/conditional_hazard_convergence_acceptance_protocol.md",
         ROOT / "docs/roadmap_hazard_mapping.md",
         ROOT / "docs/validation_plan.md",
         ROOT / "docs/dataset_strategy.md",

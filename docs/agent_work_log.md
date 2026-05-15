@@ -2821,6 +2821,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `docs/next_development_targets.md`,
   `docs/real_case_intensity_frequency_implementation_roadmap.md`,
   `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
   `docs/agent_work_log.md`.
 - Implementation summary: Reprioritized near-term work around executing or
   explicitly blocking the selected Tschamut scalable conditional target-scale
@@ -3198,3 +3199,290 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: Implement Target 15 with an additive provenance and
   output-budget guardrail for selected target-scale evidence, then add the
   balfrin readiness record for `/users/olifu/work/rust_rockfall`.
+
+### M055
+
+- Milestone id: M055.
+- Roadmap item: Roadmap reassessment after balfrin readiness/probe progress.
+- Hypothesis/objective: Update the prioritized target list so it reflects the
+  current state: hazard output profiles, balfrin readiness checker, SLURM-first
+  probe driver, probe metrics/log-audit collection, tracked 20-release-cell and
+  420x450 probes, and clean 420x450 SLURM baseline evidence.
+- Initial gap assessment: The roadmaps still treated balfrin readiness and
+  reproduction mostly as future concepts. They did not distinguish completed
+  balfrin probe scaffolding from remaining selected-gate work, and they did not
+  prioritize closing the current probe repeat/log-audit loop before selected
+  target-gate reproduction.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reprioritized the near-term list around the Swiss
+  public-data hazard-map goal. The next tasks are now: close target-run
+  provenance/output-profile policy, record balfrin readiness for
+  `/users/olifu/work/rust_rockfall`, close the current SLURM probe
+  repeat/log-audit loop, reproduce the selected Tschamut conditional hazard-map
+  gate on balfrin at the same scale, and define a conditional hazard-map
+  convergence acceptance protocol. GIS/QGIS remains secondary interoperability
+  QA, and annual/physical semantics remain deferred.
+- Checks run:
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`
+  failed because the transient uv environment lacked PyYAML;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+- Reviewer notes: Documentation-only roadmap update; no physics, defaults,
+  sampling weights, raw geodata, generated outputs, annual frequency support,
+  physical probability support, calibration, risk/exposure semantics, or
+  operational claims are changed.
+- Decision: ACCEPT if documentation consistency checks pass.
+- Next proposed milestone: Implement the target-run provenance/output-profile
+  policy closure, then record balfrin readiness.
+
+### M056
+
+- Milestone id: M056.
+- Roadmap item: Roadmap/target documentation authority consolidation.
+- Hypothesis/objective: Remove competing "Target 1" meanings so agents use one
+  current implementation target source.
+- Initial gap assessment: `docs/next_development_targets.md` still exposed
+  completed historical items as `Target N` headings while
+  `docs/roadmap_recommendation_matrix.md` used independent rank numbers for
+  active work. This caused agents to ask which "Target 1" was intended.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
+  `README.md`,
+  `AGENTS.md`,
+  `docs/decision_log.md`,
+  `scripts/check_repo_consistency.py`,
+  `tests/test_repo_consistency_claim_hygiene.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Made `docs/next_development_targets.md` the single
+  authoritative current target list with `DT-xx` identifiers, moved historical
+  gates into a concise completed/blocked summary, demoted the matrix and
+  long-term roadmap to supporting context, and added a consistency guard
+  against reintroducing active-looking `## Target N` headings.
+- Checks run:
+  `rg -n "^## Target [0-9]+|authoritative current development targets|not authoritative for current target selection" docs`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_repo_consistency_claim_hygiene`;
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`.
+
+### M058
+
+- Milestone id: M058.
+- Roadmap item: Python tool-environment reliability.
+- Hypothesis/objective: Stop repeated PyYAML import failures when agents run
+  repository scripts with plain `uv run python ...`.
+- Initial gap assessment: `requirements-tools.txt` listed PyYAML and other
+  tool packages, but the repository had no `pyproject.toml`, so `uv run python`
+  did not know which dependencies to sync unless the caller remembered
+  `--with PyYAML` or created `.venv` manually.
+- Files changed:
+  `pyproject.toml`,
+  `uv.lock`,
+  `docs/onboarding.md`,
+  `AGENTS.md`,
+  `scripts/check_repo_consistency.py`,
+  `tests/test_repo_consistency_claim_hygiene.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a repository Python tool project with
+  dependencies matching `requirements-tools.txt`, disabled package installation
+  for the Rust repository, committed the uv lockfile, updated onboarding/agent
+  guidance, and added a consistency check that keeps `pyproject.toml` and
+  `requirements-tools.txt` aligned.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -c "import yaml, numpy, PIL, pyproj, pyarrow, scipy; print('tool deps ok')"`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_scalable_conditional_target_gate tests.test_pilot_ensemble_feasibility`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_repo_consistency_claim_hygiene tests.test_scalable_conditional_target_gate tests.test_pilot_ensemble_feasibility`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+### M059
+
+- Milestone id: M059.
+- Roadmap item: DT-02. Balfrin artifact and environment readiness record.
+- Hypothesis/objective: Record a share-safe ready/blocked result for
+  `/users/olifu/work/rust_rockfall` before any selected Tschamut conditional
+  hazard-map reproduction on balfrin.
+- Initial gap assessment: The read-only readiness checker and runbook existed,
+  but the repository did not yet contain a selected readiness record with
+  toolchain, ignored-input, processed-artifact, writable-output, and claim-boundary
+  status.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml`,
+  `scripts/validate_balfrin_tschamut_readiness_record.py`,
+  `tests/test_balfrin_tschamut_readiness_record.py`,
+  `docs/balfrin_tschamut_readiness.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Ran the balfrin readiness checker on
+  `/users/olifu/work/rust_rockfall` and recorded
+  `ready_for_balfrin_target_gate` with zero blocking checks. Added a validator
+  and tests so the readiness record keeps the raw/geodata/generated-output and
+  annual/physical/risk claim boundaries explicit.
+- Checks run:
+  `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_balfrin_tschamut_readiness_record.py validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_tschamut_readiness_record tests.test_balfrin_tschamut_readiness`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+### M061
+
+- Milestone id: M061.
+- Roadmap item: DT-04. Balfrin selected Tschamut target-gate reproduction.
+- Hypothesis/objective: Reproduce the selected 1,000-trajectory conditional
+  hazard-map target gate in the intended balfrin environment without changing
+  physics, defaults, release assumptions, thresholds, sampling weights, or
+  output semantics.
+- Initial gap assessment: DT-02 and DT-03 showed balfrin readiness and
+  single-job SLURM repeatability, but the selected target gate itself still
+  lacked share-safe balfrin execution evidence.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`,
+  `scripts/validate_balfrin_target_gate_reproduction.py`,
+  `tests/test_balfrin_target_gate_reproduction.py`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Ran balfrin SLURM job `4318941` from commit
+  `61ab9c6542ba1d2274139940777ff0238f1983cf`. The selected target gate
+  completed with 10 observed release cells, 100 trajectories per release cell,
+  summary-only conditional curves, grid CSV suppression, GeoTIFF export,
+  deterministic two-worker chunk/reducer metadata, checksums, performance
+  evidence, and a clean log audit. The reproduction is classified
+  `inconclusive`, not `passed`, because convergence acceptance,
+  forest/obstacle context, and secondary manual GIS/QGIS QA remain unresolved.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_balfrin_target_gate_reproduction.py validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_target_gate_reproduction`.
+
+### M060
+
+- Milestone id: M060.
+- Roadmap item: DT-03. Balfrin SLURM probe repeatability and log-audit loop.
+- Hypothesis/objective: Decide whether the existing single-job SLURM probe
+  driver is stable enough for same-scale selected-gate reproduction on balfrin.
+- Initial gap assessment: Fresh 420x450 baseline evidence existed, but the
+  repeat/reuse check, numeric-artifact stability check, reviewed log-audit
+  result, and selected-gate driver decision were not recorded as a machine-checked
+  gate.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`,
+  `scripts/validate_balfrin_slurm_probe_repeatability.py`,
+  `tests/test_balfrin_slurm_probe_repeatability.py`,
+  `docs/tschamut_public_pilot_scaling_review.md`,
+  `docs/balfrin_probe_slurm_driver.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Ran two 420x450 repeat jobs on balfrin. Both reused
+  completed trajectory and reducer chunks, retained stable plan IDs, completed
+  with clean log audits, and the second repeat preserved all `33/33` compared
+  numeric hazard artifacts byte-for-byte. The driver is classified as
+  `ready_for_same_scale_selected_gate_reproduction` with no scale-up,
+  distributed-execution, annual/physical, or operational claims.
+- Checks run:
+  `ssh ... UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/submit_balfrin_probe.py ... --submit ...`;
+  `sacct -j 4318872 --format=JobID,State,ExitCode,Elapsed -P`;
+  `sacct -j 4318896 --format=JobID,State,ExitCode,Elapsed -P`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_balfrin_slurm_probe_repeatability.py validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_slurm_probe_repeatability tests.test_balfrin_probe_driver`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
+
+### M061
+
+- Milestone id: M061.
+- Roadmap item: DT-05. Conditional hazard-map convergence acceptance
+  protocol.
+- Hypothesis/objective: Turn the completed DT-04 Balfrin reproduction into a
+  machine-checkable conditional convergence assessment without tuning,
+  annual/physical semantics, or operational claims.
+- Files intended to change:
+  `docs/conditional_hazard_convergence_acceptance_protocol.md`,
+  `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`,
+  `scripts/validate_conditional_convergence_protocol.py`,
+  `tests/test_conditional_convergence_protocol.py`,
+  `docs/README.md`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a conservative conditional hazard-map
+  convergence protocol, a machine-readable DT-05 assessment record, a focused
+  validator, and direct unit tests. The protocol keeps GIS/QGIS QA secondary,
+  classifies the current DT-04 Balfrin evidence as `inconclusive`, and keeps
+  scale-up authorization false.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_conditional_convergence_protocol.py validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_conditional_convergence_protocol` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_target_gate_reproduction tests.test_scalable_conditional_target_gate` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: Current DT-04 evidence remains inconclusive under the
+  protocol; no annual/physical/risk/operational claim language was added.
+- Decision: ACCEPT.
+- Next proposed milestone: DT-06.
+
+### M057
+
+- Milestone id: M057.
+- Roadmap item: DT-01. Target-run provenance and selected output-profile
+  policy closure.
+- Hypothesis/objective: Close the current target-run provenance ambiguity
+  without rerunning benchmarks or changing model behavior.
+- Initial gap assessment: The selected target-scale gate recorded 1,000
+  observed-release trajectories, but its `ensemble_execution` provenance
+  represented only an auxiliary single-release path. The selected output
+  profile was also not explicitly linked to the output-profile contract.
+- Files changed:
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `scripts/validate_scalable_conditional_target_gate.py`,
+  `tests/test_scalable_conditional_target_gate.py`,
+  `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
+  `scripts/validate_pilot_ensemble_feasibility.py`,
+  `tests/test_pilot_ensemble_feasibility.py`,
+  `docs/tschamut_public_scalable_conditional_target_gate.md`,
+  `docs/tschamut_public_ensemble_feasibility.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added machine-checked
+  `target_run_provenance_policy` and `output_profile_policy` sections to the
+  selected target-gate record. They separate observed-release target outputs
+  from auxiliary ensemble provenance, classify the current gate as legacy/custom
+  summary-only, select `scalable_conditional` for follow-up runs unless
+  `provenance_audit` is needed, and retain the validation debug-output budget
+  blocker. The ensemble-size no-go record now treats provenance as classified
+  and keeps convergence, GIS, obstacle/context, and debug-output budget as the
+  remaining blockers.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json` failed because the transient uv environment lacked PyYAML;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json` failed because the transient uv environment lacked PyYAML;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_scalable_conditional_target_gate tests.test_pilot_ensemble_feasibility` failed because the transient uv environment lacked PyYAML;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/validate_pilot_ensemble_feasibility.py validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml --format json`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_scalable_conditional_target_gate tests.test_pilot_ensemble_feasibility tests.test_repo_consistency_claim_hygiene`;
+  `rg -n "^## Target [0-9]+|authoritative current development targets|not authoritative for current target selection" docs`;
+  `git diff --check`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`.

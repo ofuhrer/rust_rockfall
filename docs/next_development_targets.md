@@ -1,949 +1,346 @@
 # Next Development Targets
 
-Status: prioritized development directions after the selected Tschamut public
-pilot manifest, source/scenario policy, reconciled DEM-sensitivity and
-conditional gate evidence, automated GIS package review record, local scaling
-review, executed target-scale conditional evidence, and reassessed no-go
-ensemble-size gate. These are planning recommendations only and do not change
-simulator behavior.
+Status: authoritative current development targets.
+
+This file is the single source of truth for current implementation priority.
+When an agent or user refers to "Target 1" or "the next target", interpret that
+as `DT-01` in this file, not as a historical target number in an older roadmap,
+matrix, work log, or decision record. Supporting roadmap documents may explain
+why these targets are ordered this way, but they do not define current target
+selection.
+
+These targets are planning recommendations only. They do not change simulator
+physics, defaults, validation cases, sampling weights, public benchmark status,
+annual/physical probability semantics, or operational claims.
+
+## Current State
 
 The repository now has substantial scaffolding and selected-domain contracts
-for the Swiss hazard-map workflow. The selected Tschamut run-freeze, DEM
-sensitivity gate, conditional pilot report, GIS package review, scaling review,
-visual-QA review record, target-scale conditional evidence, and ensemble-size
-feasibility record have been reconciled against regenerated local ignored
-artifacts. The current critical gap is no longer missing execution contracts,
-missing target-scale execution evidence, unclassified manual GIS/QGIS visual
-QA, or unscoped forest/obstacle context. The remaining blockers are hazard-map
-interpretation and provenance: convergence has not been accepted,
-validation-runner parallel provenance covers only an auxiliary ensemble path,
-validation-side debug output volume remains too large for another
-selected-domain increase without reduction or explicit justification, and the
-target-scale workflow has not yet been reproduced in the intended balfrin
-environment. Manual GIS/QGIS visual QA is useful as an interoperability and
-spatial-sanity check, but it is not the primary pilot outcome. The pilot should
-be judged first by whether it can produce interpretable, reproducible
-grid-cell conditional hazard maps with transparent uncertainty, convergence,
-performance, and provenance evidence. The next actionable development target is
-Target 15, followed by balfrin readiness and reproduction, not another larger
-run.
-
-## Target 1: Reconcile And Regenerate Selected Pilot Gate Evidence
-
-Objective: Bring the selected Tschamut run-freeze, DEM-sensitivity evidence,
-conditional pilot report, GIS package review, and scaling review into one
-authoritative, locally reproducible state.
-
-Rationale: The project could not honestly claim a completed conditional pilot
-while the checked-in run-freeze said `no-go` and the GIS/scaling reviews
-referenced ignored artifacts that are absent in a clean checkout. This was
-resolved before ensemble scaling or source-frequency design.
-
-Expected value for Swiss hazard-map goal: Very high.
-
-Scientific risk: Medium. Reconciliation must not tune parameters or reinterpret
-missing data as model behavior.
-
-Engineering risk: Medium. Local ignored outputs, checksums, reports, and
-manifest paths must agree.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`,
-`docs/tschamut_public_pilot_gis_package_review.md`,
-`docs/tschamut_public_pilot_scaling_review.md`,
-`scripts/validate_public_real_site_conditional_pilot_run.py`,
-`scripts/run_dem_terrain_sensitivity.py`, `scripts/validate_pilot_gis_package.py`,
-ignored `data/processed/`, `validation/private/`, and `hazard/results/` paths.
-
-Evidence needed: regenerated or verified processed DEM and metadata, DEM
-sensitivity report, conditional curve table, hazard/map/GIS/scaling manifests,
-artifact checksums, runtime and output-budget metrics, and a
-pass/no-go/inconclusive classification that is consistent across reports.
-
-Minimal acceptable deliverable: complete. The selected run-freeze
-`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` now
-records `gate_run_completed` with an `inconclusive` report classification. It
-references regenerated ignored DEM-sensitivity, validation, hazard, GIS
-package, reducer, scaling, runtime, memory, file-count, byte-count, and
-checksum evidence, while the reports consistently state that generated
-artifacts remain ignored and non-operational.
-
-What not to do: Do not tune physics, change defaults, commit raw geodata,
-commit large generated outputs, or claim operational/annual/physical/risk
-validity.
-
-Estimated order: 1.
-
-## Target 2: Run Manual QGIS Visual QA For The Selected Package
-
-Objective: Complete the human GIS review step for the selected pilot package
-after the package artifacts are regenerated or verified.
-
-Rationale: Automated manifest/file QA can verify inventory and checksums, but
-it cannot confirm visual alignment, nodata styling, source-zone overlay
-interpretation, or map-label clarity in QGIS.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Low to medium. Visual QA can reveal spatial metadata errors
-that would mislead interpretation.
-
-Engineering risk: Low to medium.
-
-Likely affected areas: `docs/tschamut_public_pilot_gis_package_review.md`,
-`docs/pilot_gis_package.md`,
-`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`, local ignored
-package outputs.
-
-Evidence needed: QGIS review notes for CRS alignment, DEM/hillshade or terrain
-context alignment, nodata styling, source-zone overlay, layer labels, and
-conditional-product language.
-
-Minimal acceptable deliverable: complete at the share-safe checklist level. The
-selected visual-QA record
-`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` first classified
-the small package as `inconclusive` in a non-GUI environment. The current
-selected record now targets the executed target-scale package and classifies
-visual QA as `blocked` because QGIS and ignored target package artifacts are
-unavailable in this checkout. The validator
-`scripts/validate_pilot_gis_visual_qa.py --require-existing-package` checks the
-record against the ignored local package when artifacts exist.
+for the Swiss public-data hazard-map workflow:
+
+- selected Tschamut public conditional pilot manifests and source/scenario
+  policy;
+- reconciled DEM-sensitivity, conditional gate, GIS package, scaling, runtime,
+  memory, file-count, byte-count, and checksum evidence in ignored local
+  artifacts;
+- summary-only conditional intensity-exceedance curve export;
+- fallible DEM-facing runtime guardrails;
+- deterministic local parallel ensemble execution and reducer parity tests;
+- target-scale conditional evidence with 1,000 observed-release trajectories;
+- reassessed `no_go` ensemble-size gate;
+- blocked secondary QGIS/visual-QA record;
+- limiting forest/obstacle context record;
+- balfrin readiness checker, pilot runbook, output-profile contract,
+  SLURM-first probe driver, probe metrics/log-audit collection, and clean
+  420x450 SLURM baseline evidence;
+- conditional hazard-map convergence acceptance protocol applied to the
+  completed DT-04 Balfrin reproduction, with the current classification still
+  `inconclusive`;
+- completed balfrin same-scale reproduction of the selected conditional
+  hazard-map target gate.
+
+The pilot is still not complete. The selected target-scale gate remains
+`inconclusive` because convergence has not been accepted, forest/obstacle
+context remains limiting, validation debug-output volume still needs reduction
+or explicit justification before a larger run, and the completed balfrin
+target-gate reproduction is not yet a convergence pass. DT-05 is now complete
+for the current selected gate. DT-06 is now the next active target; DT-07 and
+later remain subsequent interpretation work. Target-run provenance is now
+explicitly classified: the
+1,000-trajectory observed-release target run is separated from the auxiliary
+single-release `ensemble_execution` sidecar.
+
+## Active Development Targets
+
+### DT-01: Close Target-Run Provenance And Selected Output-Profile Policy
+
+Status: complete for the current selected target gate.
+
+Objective: prevent future agents from confusing auxiliary `ensemble_execution`
+provenance with full observed-release target-run provenance, and tie selected
+runs to the documented output profiles.
+
+Why this comes first: further selected-domain scaling should not proceed while
+the target-scale report can be interpreted as having complete validation-runner
+parallel provenance when that provenance currently applies only to an auxiliary
+single-release ensemble path. The output-profile contract exists, but selected
+target reports still need a clear policy link.
+
+Done: `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`
+now has `target_run_provenance_policy` and `output_profile_policy` sections.
+They separate the 1,000 observed-release target run from the auxiliary
+single-release `local_parallel_ensemble_v1` sidecar, classify the current run
+as `custom_or_mixed_legacy_summary_only`, select `scalable_conditional` for
+future follow-up runs unless `provenance_audit` is explicitly needed, and keep
+the validation debug-output budget blocker visible.
+
+Do not: increase ensemble size, change debug-output defaults silently, rewrite
+hazard semantics, or present this as a convergence pass.
+
+### DT-02: Record Balfrin Artifact And Environment Readiness
+
+Status: complete for the current balfrin readiness gate.
+
+Objective: create a share-safe readiness record for
+`/users/olifu/work/rust_rockfall` on `balfrin.cscs.ch`.
+
+Why this comes next: the readiness checker and runbook exist, but the intended
+execution checkout still needs an auditable ready/blocked result before the
+selected target-scale gate is rerun there.
+
+Done: `validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml`
+records the `/users/olifu/work/rust_rockfall` checkout on balfrin at commit
+`61ab9c6542ba1d2274139940777ff0238f1983cf`, Rust/Python toolchain status,
+writable validation and hazard output roots, required ignored input status,
+processed DEM artifact status, command-plan preconditions, and
+`ready_for_balfrin_target_gate` with zero blocking checks.
+
+Do not: commit raw/public geodata tiles, regenerate baselines, or run the
+selected target-scale gate as part of this readiness record unless explicitly
+requested.
+
+### DT-03: Close Current SLURM Probe Repeatability And Log-Audit Loop
+
+Status: complete for the current 420x450 SLURM probe.
+
+Objective: classify the current 420x450 SLURM probe evidence before using the
+driver for selected-gate reproduction.
+
+Why this comes next: the SLURM-first driver and clean 420x450 baseline are
+useful only if repeat/reuse behavior, numerical artifact stability, and
+warning/error-like log summaries are reviewed.
+
+Done: `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`
+records the fresh baseline, two repeat/reuse SLURM jobs, clean log audits,
+stable trajectory/reducer plan IDs, and a before/after hash check showing
+`33/33` numeric hazard artifacts unchanged. The single-job driver is classified
+as `ready_for_same_scale_selected_gate_reproduction` with scope limits.
+
+Do not: add SLURM arrays, distributed reducers, MPI, GPU execution, or new
+scheduler orchestration before the single-job probe loop is classified.
 
-What not to do: Do not create a production QGZ, GeoPackage, COG, risk map, or
-operational map product in this step.
+### DT-04: Reproduce Selected Tschamut Conditional Hazard-Map Gate On Balfrin
 
-Estimated order: 2.
+Status: complete; classification `inconclusive`.
 
-## Target 3: Scope Forest And Obstacle Omission For Tschamut
+Objective: rerun the existing selected Tschamut conditional hazard-map target
+gate on balfrin at the same scale with unchanged inputs/defaults.
 
-Objective: Determine whether forest, buildings, roads, barriers, nets, or
-other obstacles are first-order boundary conditions for the selected Tschamut
-pilot corridor.
+Why this comes next: the main pilot outcome is a reproducible conditional
+hazard map, not a GIS package. The current target-scale evidence is local and
+ignored; the intended CSCS environment needs its own share-safe reproduction
+record.
 
-Rationale: A no-forest/no-obstacle conditional pilot may be acceptable,
-limiting, or invalidating depending on the corridor. This should be explicit
-before terrain/material, contact, or calibration conclusions are drawn.
+Done: `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`
+records the selected 1,000-trajectory Tschamut conditional hazard-map target
+gate on balfrin at commit `61ab9c6542ba1d2274139940777ff0238f1983cf`, with
+unchanged physics/defaults, summary-only conditional curves, grid CSV
+suppression, GeoTIFF export, deterministic chunk metadata, checksums,
+performance evidence, and a clean log audit. The result is classified
+`inconclusive`, not `passed`, because convergence acceptance, forest/obstacle
+context, and secondary manual GIS/QGIS QA remain unresolved.
 
-Expected value for Swiss hazard-map goal: High.
+Do not: increase ensemble size, tune parameters, change release assumptions,
+change output thresholds, or claim operational validity.
 
-Scientific risk: Medium if omission is silently absorbed into model parameters.
+### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol
 
-Engineering risk: Low for scoping.
+Status: complete for the current selected target gate; classification
+`inconclusive`.
 
-Likely affected areas: `docs/swisstopo_data_strategy.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`,
-`docs/tschamut_public_obstacle_context_scope.md`,
-`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`, future pilot
-report notes.
+Objective: predeclare how conditional hazard rasters, target-gate summaries,
+and pilot evidence are classified as `pass`, `inconclusive`, or `no_go`.
 
-Evidence needed: share-safe inventory of available public context layers and a
-classification of obstacle omission as acceptable, limiting, or invalidating
-for the selected gate.
+Why this comes next: the selected target-scale gate remains inconclusive
+because technical completion is not enough. The acceptance gate must remain
+conservative, cover conditional hazard-map evidence only, and keep annual,
+physical, risk, exposure, vulnerability, and operational claims out of scope.
 
-Minimal acceptable deliverable: complete at the share-safe scoping level. The
-selected scope record
-`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml` now targets the
-executed target-scale gate and classifies forest and obstacle omission as
-`limiting` because public SWISSIMAGE, swissTLM3D,
-swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context layers are
-documented but not locally reviewed for the selected corridor. The validator
-`scripts/validate_pilot_obstacle_scope.py` checks the six required context
-categories, target-scale blocked/reviewed context status, future context
-actions, and claim boundaries. No obstacle physics is implemented.
+Done: `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
+records the conservative DT-05 protocol, the required evidence categories, and
+the current DT-04 Balfrin assessment. The protocol classifies that evidence as
+`inconclusive`, keeps scale-up authorization false, and preserves the
+no-annual/no-physical/no-risk boundary.
 
-What not to do: Do not tune restitution, terrain classes, or stopping behavior
-to mimic omitted forest or barriers.
+Do not: use the protocol to justify physical source frequency, return periods,
+risk products, regulatory acceptance, or a larger ensemble-size run.
 
-Estimated order: 3.
+### DT-06: Audit Stochastic Sampling And RNG Stream Semantics
 
-## Target 4: Address Conditional-Curve/Raster Output-Volume Bottleneck
+Objective: turn stochastic validity concerns into an auditable contract before
+the selected pilot is used as accepted hazard-map evidence.
 
-Objective: Reduce or gate the selected pilot's conditional-curve and raster
-output volume before increasing ensemble size.
+Why this comes before execution scaling: the pilot can run and still be
+statistically weak if deterministic stream derivation, stochastic variable
+families, release perturbations, roughness draws, scenario weights, or weighted
+uncertainty semantics are not auditable.
 
-Rationale: The local scaling review identifies hazard conditional-curve output
-volume as the next bottleneck. Larger ensembles should not proceed until the
-output contract is manageable and still reviewable.
+Done when: a documentation-and-test-ready audit plan records RNG stream labels,
+seed derivation requirements, stochastic variable families, distribution
+contracts, truncation/support policies, weighted estimator requirements, and
+future collision/independence tests. This target defines the audit and tests to
+add; it does not change RNG behavior by itself.
 
-Expected value for Swiss hazard-map goal: High.
+Do not: change stochastic defaults, tune distributions, or reinterpret current
+conditional layers as physical probabilities.
 
-Scientific risk: Low if numerical semantics and manifests remain unchanged.
+### DT-07: Define Real-Site DEM/Input Conditioning QA Gate
 
-Engineering risk: Medium.
+Objective: require a fail-closed QA gate for raw public inputs, DEM
+conditioning, CRS/registration, nodata, slope artifacts, and DEM boundary
+semantics before larger Tschamut or Swiss-wide pilot runs are trusted.
 
-Likely affected areas: `scripts/build_hazard_layers.py`,
-`scripts/summarize_pilot_scaling.py`, `docs/performance_benchmarking.md`,
-`docs/scalability_and_data_formats_review.md`, hazard-layer tests, and pilot
-run-freeze output budgets.
+Why this comes before more scale: external review identified ingestion,
+registration, nodata, DEM artifacts, and boundary/clamping behavior as failure
+points that can create plausible but spatially wrong hazard maps.
 
-Evidence needed: output-mode comparison, manifest-visible output budgets,
-checks that selected summaries remain deterministic, and a no-default-change or
-explicit opt-in recommendation before ensemble scaling.
+Done when: the QA gate documents atomic ingest/checksum expectations, producer
+commands for intermediate artifacts, CRS and registration evidence,
+nodata/sink/spike/slope sanity checks, strict vs clamped DEM behavior, domain
+exit interpretation, and conditions that force a pilot result to remain
+`blocked` or `diagnostic`.
 
-Minimal acceptable deliverable: complete for the curve-table bottleneck.
-`scripts/build_hazard_layers.py --conditional-curve-export summary-only`
-provides an opt-in no-default-change mode that keeps conditional exceedance
-rasters and metadata summaries but skips the large per-cell curve CSV table.
-Focused tests verify the full default path remains available and the
-summary-only path omits the table from the output manifest.
+Do not: patch DEM defects through contact-parameter tuning or treat clamped
+edge behavior as physical terrain continuation.
 
-What not to do: Do not remove existing debug outputs, change current hazard
-semantics, add distributed orchestration, or hide denominators/provenance.
+### DT-08: Define Output Budget And Reducer Scaling Gate
 
-Estimated order: 4.
+Objective: convert output file count, byte count, inode use, dense-grid
+accumulator behavior, reducer restart files, and summary-only output policy
+into explicit pass/fail gates before any ensemble-size increase.
 
-## Target 5: Increase Ensemble Size Toward The Target Count
+Why this comes before more trajectories: the DT-04 run completed, but output
+volume and dense-grid reduction remain plausible bottlenecks. Scaling should be
+authorized only after budgets and reducer behavior are enforced rather than
+described after the fact.
 
-Objective: Increase trajectory count only after the small pilot gate and local
-scaling evidence are reproducible and interpretable.
+Done when: the selected pilot has explicit byte/file/inode budgets, summary-only
+export requirements, reducer state-size limits, dense-vs-sparse risk
+classification, and no-go rules for budget overruns.
 
-Rationale: The target of roughly 10,000 trajectories per release zone is useful
-only if convergence diagnostics and output handling can show what additional
-samples change.
+Do not: increase ensemble size, add full curve/grid CSV outputs at scale, or
+replace acceptance criteria with ad hoc output cleanup.
 
-Expected value for Swiss hazard-map goal: High.
+### DT-09: Design Balfrin Distributed Execution Only If Needed
 
-Scientific risk: Medium. Larger samples can make uncertain source-zone or
-block assumptions look falsely precise.
+Objective: define restartable cross-process trajectory/hazard chunks, SLURM
+arrays, work balancing, and reducer dependencies only if DT-05 through DT-08
+show the current single-job driver is the limiting blocker.
 
-Engineering risk: Medium to high.
+Why this is later: scheduler complexity should follow measured bottlenecks and
+accepted scientific/output gates, not precede them.
 
-Likely affected areas: pilot run-freeze files, performance docs, validation
-runner/output modes, hazard reducers, and convergence summaries.
+Done when: a design or prototype proves deterministic chunk ids, immutable
+content-addressed run identity, restart behavior, checksums, reducer merge
+semantics, failure classification, and Balfrin quota/I/O preflight without
+changing model results.
 
-Evidence needed: convergence diagnostics for conditional curves and supporting
-layers, trajectory-count sensitivity, output budget compliance, and
-worker-count-independent reduced outputs.
+Do not: add SLURM arrays, distributed reducers, MPI, GPU execution, or
+production orchestration while scientific acceptance and output gates are still
+undefined.
 
-Minimal acceptable deliverable: complete as a documented no-go feasibility
-gate. `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
-`docs/tschamut_public_ensemble_feasibility.md` record that ensemble increase is
-not authorized yet because target-scale convergence is not accepted, manual
-GIS/QGIS visual QA is blocked as a secondary interoperability check,
-forest/obstacle omission remains limiting,
-validation-runner target provenance is incomplete, and validation-side debug
-output volume remains unresolved. `scripts/validate_pilot_ensemble_feasibility.py`
-checks the decision, required preconditions, output-budget controls, and claim
-boundaries.
+### DT-10: Review Target-Scale Forest And Obstacle Context
 
-What not to do: Do not scale up before source-zone, DEM, small-gate,
-hazard-map convergence, provenance, and performance interpretation are stable.
+Objective: decide whether omitted forest, buildings, roads, barriers, nets, or
+other obstacles are acceptable, limiting, or invalidating for interpreting the
+selected Tschamut outputs.
 
-Estimated order: 5.
+Why this remains important: the context-layer inventory exists, but local
+public context layers have not been reviewed for the selected corridor.
+Obstacle omission can invalidate interpretation even if convergence and
+execution gates pass.
 
-## Target 6: Complete Fallible Terrain/Integrator API Migration
+Done when: the obstacle-context record is updated with locally reviewed public
+context layers and a share-safe interpretation classification.
 
-Objective: remove remaining production footguns around infallible terrain and
-integration entry points before larger real-site or parallel runs.
+Do not: tune restitution, terrain classes, stopping behavior, or contact
+parameters to absorb omitted obstacles.
 
-Rationale: Real DEMs can contain nodata, crop-edge gaps, and out-of-domain
-queries. The normal validation path now uses structured terrain errors, but the
-legacy `height`/`normal` terrain methods and `simulate_fixed_step*` wrappers can
-still panic if downstream code uses them with DEM terrain. This is the largest
-near-term robustness gap for batch execution semantics.
+### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA
 
-Expected value for Swiss hazard-map goal: High.
+Objective: review target-scale package alignment and labels in QGIS when local
+package artifacts and QGIS are available.
 
-Scientific risk: Low if behavior is preserved and errors are only made more
-explicit.
+Why this is secondary: visual GIS QA supports interoperability and spatial
+sanity, but the main pilot outcome is the reproducible conditional hazard map
+and its convergence/provenance evidence.
 
-Engineering risk: Medium because public Rust callers may still use the
-compatibility wrappers.
+Done when: a share-safe visual-QA record is `passed`, `failed`, or explicitly
+`blocked` for CRS alignment, nodata styling, source-zone overlay, layer labels,
+and interpretation notes.
 
-Likely affected areas: `src/terrain.rs`, `src/integrator.rs`,
-`src/simulation.rs`, direct Rust tests, `docs/architecture_boundaries.md`, and
-`docs/model_design.md`.
+Do not: treat QGIS packaging as a substitute for convergence, stochastic
+validity, DEM/input QA, output-budget gates, forest/obstacle context, or
+balfrin reproduction.
 
-Evidence needed: grep/test coverage showing new DEM-facing code uses
-`try_height`/`try_normal` and `try_simulate_fixed_step*`, structured
-terrain-error tests for strict DEM nodata/out-of-domain queries, and clear
-documentation of compatibility wrapper panic semantics.
+### DT-12: Continue Focused Module Splits When They Support Roadmap Work
 
-Minimal acceptable deliverable: complete. The runtime fixed-step integration
-path now uses fallible contact-motion helpers that propagate `TerrainError`
-through `IntegrationError` instead of relying on infallible DEM queries inside
-contact response, while legacy `simulate_fixed_step*`, `height`, and `normal`
-wrappers remain compatibility helpers. `tests/config_io_terrain.rs` covers
-strict DEM runtime and contact-response terrain errors, and
-`scripts/check_repo_consistency.py` rejects new infallible terrain/contact
-calls in `src/integrator.rs`.
+Objective: keep reducing maintenance risk in large validation and experimental
+shape-contact areas when a focused behavior-preserving split directly supports
+active pilot or provenance work.
 
-What not to do: Do not change DEM interpolation numerics, contact physics,
-defaults, validation baselines, or classify terrain failures as physical stops.
+Why this is supporting work: validation has already been split into several
+submodules. Further cleanup should reduce real review risk, not distract from
+the pilot evidence chain.
 
-Estimated order: 6.
+Done when: a narrow module split keeps behavior unchanged, preserves tests, and
+removes a concrete maintenance or review blocker.
 
-## Target 7: Split Validation And Experimental Shape Internals By Concern
+Do not: refactor broadly without a behavior-preserving test boundary.
 
-Objective: reduce maintenance and review risk in `src/validation.rs` and
-`src/shape.rs` without changing behavior.
+### DT-13: Revisit Physical/Annual Intensity-Frequency Only After Evidence Gates
 
-Rationale: Both files have grown into multi-thousand-line modules that mix
-library logic, V&V harnesses, exporters, manifests, diagnostics, and internal
-experimental scaffolds. This slows review, increases compile/check time, and
-blurs the boundary between reusable trajectory code and validation tooling.
+Objective: keep annual frequency, physical probability, return-period, and risk
+products deferred until the source-frequency design gate has accepted evidence
+and runtime preconditions.
 
-Expected value for Swiss hazard-map goal: Medium to high. It improves
-contributor velocity and makes later pilot, schema, and output work safer.
+Why this is deferred: the current products are conditional
+intensity-exceedance diagnostics. Physical or annual products require source
+and block occurrence evidence, overlap-adjusted reducers, uncertainty
+propagation, and accepted validation/calibration review.
 
-Scientific risk: Low if the split is mechanical and tests prove behavior is
-unchanged.
+Done when: the inactive design-gate records are accepted with real evidence and
+a separate implementation plan authorizes a small physical/annual prototype.
 
-Engineering risk: Medium because these files touch many tests and workflows.
+Do not: implement annual or physical runtime semantics while the design gate
+remains deferred.
 
-Likely affected areas: `src/validation.rs`, new validation submodules,
-`src/shape.rs`, potential shape submodules, tests, and
-`docs/architecture_boundaries.md`.
+## Completed Or Blocked Historical Gates
 
-Evidence needed: behavior-preserving module splits with no output/schema
-changes, unchanged public validation and `shape_contact_v0` guard tests, and
-unchanged `cargo run -- validate --all` results.
+These items are retained as history so agents understand why the active targets
+start at DT-01. They are no longer current target numbers.
 
-Minimal acceptable deliverable: complete for multiple narrow concerns. Pure
-metric-math helpers, metric evaluation, probabilistic metadata loading,
-validation I/O, public type re-exports, and the case runner now live in focused
-`src/validation/` submodules, while public behavior remains unchanged.
-`scripts/check_repo_consistency.py` guards the module boundary. Further
-validation and shape splits remain useful maintenance work, but they are no
-longer the highest-priority blocker for the selected Swiss pilot.
-
-What not to do: Do not use this as a vehicle for new physics, new schemas,
-baseline refreshes, or public `shape_contact_v0` execution.
-
-Estimated order: 7.
-
-## Target 8: Add Deterministic Local Parallel Ensemble Driver
-
-Objective: introduce local parallel trajectory execution with deterministic
-ordering, chunk/reducer metadata, and identical reduced outputs.
-
-Rationale: Sequential ensemble execution is a scaling bottleneck relative to
-the 10,000-trajectory-per-release-zone design target. Parallelism should start
-locally and deterministically before CSCS/SLURM orchestration.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Medium. Parallel execution must not change seeds, trajectory
-ids, reducers, convergence diagnostics, or output interpretation.
-
-Engineering risk: Medium to high.
-
-Likely affected areas: `src/simulation.rs`, validation runner/output modes,
-chunk manifests, hazard reducers, performance docs, and HPC-readiness tests.
-
-Evidence needed: order-independent ensemble tests, serial-versus-parallel
-bitwise or tolerance-controlled output comparisons, deterministic chunk
-manifests, row-count/checksum provenance, and pilot-scale timing evidence.
-
-Minimal acceptable deliverable: complete. `simulate_ensemble_parallel` and
-`simulate_ensemble_parallel_with_contact_parameters` provide an opt-in local
-threaded ensemble path with serial default preserved. The returned
-`LocalParallelEnsembleExecution` records `local_parallel_ensemble_v1`
-provenance, requested/effective worker counts, deterministic contiguous chunks,
-and merge order `requested_trajectory_index`. Focused HPC-readiness tests prove
-serial-vs-parallel equality, worker-count-independent reduced outputs, and
-zero-worker rejection. Validation cases can now opt in through
-`random.ensemble_workers`; when configured, the case runner uses the same
-deterministic local threaded kernel and writes `ensemble_execution` provenance
-into `run_manifest_v1` while cases that omit the field keep the serial ensemble
-path.
-
-What not to do: Do not add SLURM, MPI, GPU, distributed frameworks, or changed
-default execution order before local chunk/reducer contracts are stable.
-
-Estimated order: 8.
-
-## Target 9: Design Physical Source-Frequency Semantics
-
-Objective: Decide whether and how the project can represent physical or annual
-intensity-frequency products.
-
-Rationale: Annual products require source and block occurrence evidence, units,
-overlap rules, uncertainty, and validation boundaries. Sampling weights are not
-physical probability.
-
-Expected value for Swiss hazard-map goal: High, but only after the conditional
-pilot evidence exists.
-
-Scientific risk: High.
-
-Engineering risk: Medium.
-
-Likely affected areas: `docs/hazard_map_semantics.md`,
-`docs/probabilistic_scenario_model_design.md`, `docs/validation_plan.md`,
-`docs/dataset_strategy.md`, future probability schemas and tests.
-
-Evidence needed: source-frequency units, block-frequency semantics, uncertainty
-model, source-zone overlap rules, validation/calibration separation, fixtures,
-and rejection tests for incomplete frequency metadata.
-
-Minimal acceptable deliverable: complete as a deferred design gate.
-`docs/physical_source_frequency_design_gate.md` and
-`validation/pilot_runs/physical_source_frequency_design_gate_v1.yaml` define
-required source-rate units, block and release-cell conditional denominators,
-source-zone overlap rules, uncertainty components, and validation/calibration
-separation. The validator
-`scripts/validate_physical_source_frequency_design_gate.py` rejects missing
-units, sampling-weight reuse as physical probability, missing overlap policy,
-missing uncertainty, and premature prototype authorization.
-
-What not to do: Do not back-fill annual frequencies from sampling weights or
-calibrate frequency to match one map pattern.
-
-Estimated order: 9.
-
-## Target 10: Implement An Annual/Physical Intensity-Frequency Prototype
-
-Objective: Implement a clearly experimental annual or physical frequency path
-only if Target 9 passes.
-
-Rationale: This is the long-term national hazard-map quantity, but implementing
-it before the evidence model exists would create misleading products.
-
-Expected value for Swiss hazard-map goal: Very high eventually.
-
-Scientific risk: High.
-
-Engineering risk: Medium.
-
-Likely affected areas: `src/probabilistic.rs`, scenario metadata, map-package
-schemas, `scripts/build_hazard_layers.py`, `tests/probabilistic_phase1.rs`,
-`tests/test_hazard_layers.py`, and hazard-map docs.
-
-Evidence needed: complete frequency metadata, analytic frequency-sum fixture,
-unit-labelled per-cell curves, manifest provenance, and explicit
-non-operational report labels.
-
-Minimal acceptable deliverable: a small fixture proving annual or physical
-frequency sums with explicit units and complete provenance.
-
-What not to do: Do not promote annual-frequency defaults or imply regulatory
-readiness.
-
-Estimated order: 10.
-
-## Target 11: Execute Selected Scalable Conditional Target-Scale Gate
-
-Objective: run the selected Tschamut scalable conditional execution workflow
-with ignored local inputs present and record convergence and output-budget
-evidence without changing physics, defaults, sampling weights, or probability
-semantics.
-
-Rationale: The repository now has the required scalable conditional execution
-contract, summary-only curve export, deterministic hazard reducer chunks,
-validation-runner ensemble chunk provenance, and no-scale-up decision record.
-What is still missing is actual target-scale evidence for the selected domain:
-whether the proposed larger conditional ensemble is reproducible, bounded by
-output budgets, and materially different from the 60-trajectory gate.
-
-Expected value for Swiss hazard-map goal: Very high.
-
-Scientific risk: Medium. Larger trajectory counts can make uncertain
-source-zone, block-scenario, forest/obstacle, and terrain assumptions look
-more precise than they are.
-
-Engineering risk: Medium. This depends on ignored local geodata and generated
-outputs, and must not commit large artifacts.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
-`docs/tschamut_public_scalable_conditional_execution.md`,
-`docs/tschamut_public_ensemble_feasibility.md`,
-`docs/tschamut_public_pilot_scaling_review.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`,
-ignored `validation/private/`, ignored `hazard/results/`, and possibly
-`scripts/summarize_pilot_scaling.py` if report fields are missing.
-
-Evidence needed: executed validation command with `random.ensemble_workers`,
-run manifest `ensemble_execution`, hazard manifest
-`conditional_hazard_execution_diagnostics_v1`, reducer chunk manifests,
-summary-only conditional-curve status, output file count and bytes, wall time,
-hazard input rows per second, memory sidecars where available, worker-count
-parity for the selected run, and convergence diagnostics comparing gate and
-target trajectory counts by threshold and supporting raster.
-
-Minimal acceptable deliverable: a share-safe updated record/report stating
-`target_scale_executed`, `blocked_missing_inputs`, or `inconclusive`, with
-checksums and generated-artifact paths kept outside git. The deliverable does
-not by itself authorize operational use or annual/physical probability.
-
-Current status: complete as an executed but inconclusive evidence record.
-`validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
-`docs/tschamut_public_scalable_conditional_target_gate.md`, and
-`scripts/validate_scalable_conditional_target_gate.py` now record
-`inconclusive` target-scale evidence: ignored inputs were regenerated, 1,000
-observed-release trajectories were produced, summary-only hazard layers were
-built, output budget/runtime/memory/checksum evidence was recorded, and 1-vs-2
-worker reducer parity matched compared outputs. The result does not authorize
-scale-up because convergence interpretation, obstacle context, balfrin
-reproducibility, and validation-runner provenance scope remain unresolved.
-Manual GIS QA remains secondary interoperability evidence.
-
-What not to do: Do not tune parameters, change release/source assumptions
-after seeing results, change defaults, commit raw geodata or generated
-products, use annual/physical/risk labels, or claim operational validation.
-
-Estimated order: 11.
-
-## Target 12: Reassess Selected Ensemble-Size Increase Gate
-
-Objective: decide whether the selected Tschamut ensemble-size gate remains
-blocked, becomes conditionally authorized for a larger diagnostic run, or
-should stop because convergence/output/provenance/obstacle evidence is
-insufficient.
-
-Rationale: Target 5 intentionally recorded a no-go feasibility state. Target
-11 produced target-scale execution evidence, but the gate must still consider
-convergence interpretation, output budget, forest/obstacle omission,
-validation-runner provenance scope, and balfrin reproducibility before any
-larger run is interpreted scientifically. Manual GIS visual QA remains useful
-interoperability evidence, not the primary hazard-map acceptance criterion.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Medium to high if the gate is relaxed without resolving
-interpretation blockers.
-
-Engineering risk: Low to medium once Target 11 evidence exists.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`,
-`docs/tschamut_public_ensemble_feasibility.md`,
-`docs/tschamut_public_scalable_conditional_execution.md`, and selected pilot
-reports.
-
-Evidence needed: Target 11 convergence/output-budget result, current
-hazard-map convergence and provenance classification, current forest/obstacle
-context classification, balfrin reproduction status when available, secondary
-GIS visual QA classification, and a clear pass/no-go/inconclusive decision with
-claim boundaries.
-
-Minimal acceptable deliverable: an updated ensemble-feasibility record that
-keeps scale-up blocked or authorizes exactly one next diagnostic scale step
-with explicit evidence and limitations.
-
-Current status: complete as a reassessed `no_go` gate. The updated
-`validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` reviews the
-executed but inconclusive Target 11 evidence and keeps ensemble increase blocked
-because convergence has not been accepted, target-scale manual GIS/QGIS visual
-QA is now explicitly blocked as a secondary interoperability check,
-forest/obstacle context remains limiting,
-validation-runner parallel provenance is partial for observed-release outputs,
-and validation debug output volume remains too large for another increase
-without reduction or explicit justification.
-
-What not to do: Do not treat a successful technical run as scientific or
-operational validation.
-
-Estimated order: 12.
-
-## Target 13: Complete Secondary GIS/QGIS Review For Target-Scale Package
-
-Objective: complete the human GIS/QGIS inspection of the executed target-scale
-Tschamut package, or record a new explicit blocker if the local package or GUI
-environment is unavailable.
-
-Rationale: Automated package and manifest checks cannot verify visual
-alignment, nodata rendering, layer ordering, source-zone overlay plausibility,
-or whether labels are interpretable by a GIS reviewer. This is a useful
-interoperability and spatial-sanity check, but it is secondary to the pilot's
-main outcome: reproducible conditional hazard maps with clear convergence,
-uncertainty, performance, and provenance evidence.
-
-Expected value for Swiss hazard-map goal: Medium to high.
-
-Scientific risk: Medium if visual review is skipped and target-scale rasters
-are interpreted as spatially credible only because metadata checks pass.
-
-Engineering risk: Low to medium. The work depends on ignored generated package
-artifacts and a GUI/QGIS environment, but should not require simulator changes.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`,
-`docs/tschamut_public_pilot_gis_package_review.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`,
-`docs/tschamut_public_scalable_conditional_target_gate.md`, and ignored
-`hazard/results/` package outputs.
-
-Evidence needed: QGIS review notes or screenshots for CRS alignment, DEM or
-hillshade context alignment, source-zone/release overlay, nodata styling,
-conditional-product labels, layer values, and reviewer interpretation limits.
-
-Minimal acceptable deliverable: a share-safe visual-QA record that is either
-`passed`, `failed`, or explicitly `blocked`, replacing the current non-GUI
-`inconclusive` state for the target-scale package. Generated images and QGIS
-projects remain untracked unless deliberately tiny fixtures are approved.
-
-Current status: complete as an explicit `blocked` target-scale visual-QA record.
-`validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml` now points to the
-target-scale package paths and records that QGIS is unavailable and the ignored
-target package artifacts are absent in this checkout. The package is not
-visually accepted. This should remain visible, but it should not outrank
-hazard-map convergence/provenance or balfrin reproducibility work.
-
-What not to do: Do not style or describe the package as operational,
-annual-frequency, physical-probability, risk, or regulatory evidence.
-
-Estimated order: 13.
-
-## Target 14: Review Forest And Obstacle Context For Target-Scale Interpretation
-
-Objective: inspect public forest, building, road, barrier, and terrain-surface
-context for the selected Tschamut target-scale corridor and decide whether the
-current no-forest/no-obstacle workflow is acceptable, limiting, or invalidating
-for interpretation.
-
-Rationale: The current omission is classified `limiting` from a share-safe
-scope record, but public context layers have not been locally reviewed. This
-can dominate real Alpine corridor interpretation and must not be absorbed into
-terrain/material calibration or contact-model tuning.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Medium to high if omitted forest, roads, buildings, barriers,
-or nets control runout patterns.
-
-Engineering risk: Low for review and documentation; high only if it leads to
-new obstacle physics, which is not part of this target.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`,
-`docs/tschamut_public_obstacle_context_scope.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`, local ignored context
-layers, and public swisstopo metadata records.
-
-Evidence needed: share-safe notes on SWISSIMAGE, swissTLM3D,
-swissSURFACE3D/swissSURFACE3D Raster, swissBUILDINGS3D, forest/barrier/nets
-where available, and whether each context source changes interpretation of the
-target-scale package.
-
-Minimal acceptable deliverable: an updated obstacle-context record that keeps
-the omission `limiting`, upgrades it to `acceptable_for_diagnostic_pilot`, or
-downgrades it to `invalidating_for_interpretation`, with explicit evidence and
-claim boundaries.
-
-Current status: complete as a target-scale `limiting` review with a blocked
-local context-artifact state. `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`
-now points to the target-scale gate, records that public context crops are not
-present in this checkout, keeps all six required context categories classified,
-and preserves the no-obstacle-physics/no-risk claim boundary.
-
-What not to do: Do not implement forest/barrier physics, tune friction or
-restitution, or reinterpret omitted obstacles as validation failure modes.
-
-Estimated order: 14.
-
-## Target 15: Clarify Target-Run Provenance And Debug Output Budget
-
-Objective: decide whether the current validation-runner provenance and debug
-output volume are sufficient for the selected target-scale workflow, and add a
-small guardrail or report if they are not.
-
-Rationale: The target-scale evidence records `ensemble_execution` provenance
-only for an auxiliary single-release ensemble path, while the observed-release
-target outputs are not fully covered by that provenance. Validation-side debug
-outputs are also too large for another selected-domain increase without either
-reduction or an explicit audit justification.
-
-Expected value for Swiss hazard-map goal: High.
-
-Scientific risk: Medium if target-scale outputs are interpreted without clear
-trajectory provenance and output-budget constraints. This target is now the
-highest-value implementable task because it directly affects whether the
-target-scale conditional hazard map can be interpreted, reproduced on balfrin,
-and compared across ensemble sizes. Targets 13 and 14 remain useful
-interoperability/context checks, but they are not the main pilot deliverable.
-
-Engineering risk: Medium because this may touch validation runner manifests or
-output modes, but it should remain additive and opt-in.
-
-Likely affected areas: `src/validation.rs`, `src/manifest.rs`,
-`docs/validation_data_schema.md`, selected run manifests, target-scale reports,
-and tests for validation-runner provenance.
-
-Evidence needed: explicit distinction between observed-release target outputs
-and auxiliary ensemble-provenance outputs; output row/file/byte counts for the
-target run; and a decision to reduce debug outputs, keep them with a hard
-budget, or require resumable chunk manifests before further scaling.
-
-Minimal acceptable deliverable: a report or manifest guardrail that prevents a
-future agent from mistaking auxiliary `ensemble_execution` provenance for full
-target-run provenance, plus a documented output-budget decision.
-
-Current status: active next target. Recent refactors improved validation module
-boundaries and CI coverage, but they did not resolve whether the target-scale
-observed-release outputs have adequate trajectory provenance or whether debug
-outputs are acceptable for another selected-domain increase.
-
-What not to do: Do not change default validation output behavior, refresh
-baselines, or hide diagnostic data needed for auditability without an explicit
-versioned output-policy decision.
-
-Estimated order: 15.
-
-## Target 16: Prepare Balfrin Artifact And Environment Readiness Gate
-
-Objective: verify that the balfrin checkout at
-`/users/olifu/work/rust_rockfall` has the repository, ignored public-input
-artifacts, processed pilot products, Python/Rust tooling, scratch paths, and
-environment settings needed to reproduce the selected Tschamut conditional
-hazard-map gate.
-
-Rationale: The next meaningful pilot step should happen in the intended HPC
-environment, but scheduler execution should not start until missing ignored
-artifacts and environment assumptions are visible. A share-safe readiness gate
-prevents confusing a missing local cache with a model or workflow failure.
-
-Expected value for Swiss hazard-map goal: Very high.
-
-Scientific risk: Low if this remains an inventory/readiness task.
-
-Engineering risk: Medium. It depends on non-git artifacts and balfrin-local
-tooling, but should not require code or physics changes.
-
-Likely affected areas: `docs/balfrin_skills.md`,
-`docs/tschamut_public_scalable_conditional_target_gate.md`,
-`docs/tschamut_public_scalable_conditional_execution.md`, a new or updated
-balfrin readiness record under `validation/pilot_runs/`, and local ignored
-paths under `data/processed/`, `validation/private/`, and `hazard/results/`.
-
-Evidence needed: git revision, `cargo`/`uv` availability, `SCRATCH` and
-`CARGO_TARGET_DIR` choices, presence or absence of required ignored public
-artifacts, checksum/status of processed pilot inputs, expected output location,
-and a classification such as `ready_for_balfrin_target_gate`,
-`blocked_missing_artifacts`, or `blocked_environment`.
-
-Minimal acceptable deliverable: a share-safe balfrin readiness record and
-validation command that reports readiness or a concrete blocker without running
-large simulations and without committing raw geodata or generated products.
-
-Current status: new near-term target. `docs/balfrin_skills.md` documents the
-cluster, user, filesystem, scratch, and SLURM context, but there is no selected
-Tschamut hazard-map readiness record for the installed repository at
-`/users/olifu/work/rust_rockfall`.
-
-What not to do: Do not add SLURM arrays, MPI, GPU execution, production
-orchestration, or larger ensemble runs in this readiness step.
-
-Estimated order: 16.
-
-## Target 17: Reproduce Selected Tschamut Conditional Hazard-Map Gate On Balfrin
-
-Objective: reproduce the selected target-scale conditional hazard-map evidence
-on balfrin using unchanged inputs, defaults, filters, source/scenario policy,
-and probability semantics.
-
-Rationale: The pilot goal is a reproducible conditional hazard map, not a GIS
-artifact. Before increasing ensemble size or adding scheduler orchestration,
-the current 1,000 observed-release target gate should be reproduced in the
-intended HPC environment with output budgets, checksums, convergence summaries,
-and performance metrics recorded.
-
-Expected value for Swiss hazard-map goal: Very high.
-
-Scientific risk: Medium. A successful balfrin run still does not resolve source
-frequency, forest/obstacle omission, convergence acceptance, or operational
-validity.
-
-Engineering risk: Medium to high. It depends on balfrin-local ignored inputs
-and generated outputs, but should be a controlled execution of existing
-workflows rather than new orchestration.
-
-Likely affected areas:
-`validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
-`docs/tschamut_public_scalable_conditional_target_gate.md`,
-`docs/tschamut_public_conditional_pilot_gate_report.md`,
-`docs/tschamut_public_pilot_scaling_review.md`, ignored balfrin outputs under
-scratch/work paths, and possibly a new share-safe balfrin execution report.
-
-Evidence needed: exact commands run on balfrin, git revision, environment
-summary, input checksums, output row/file/byte counts, wall time, memory where
-available, reducer/chunk metadata, summary-only conditional hazard-map
-outputs, convergence comparison with the existing gate, and final
-`passed`/`failed`/`inconclusive` classification for reproducibility.
-
-Minimal acceptable deliverable: a share-safe report stating whether balfrin
-reproduces the current target-scale conditional hazard-map gate at the same
-scale. This does not authorize larger ensembles, annual/physical probabilities,
-or operational use.
-
-Current status: not started. Existing target-scale evidence was generated from
-ignored local artifacts, not recorded as a balfrin reproduction.
-
-What not to do: Do not change physics, defaults, filters, release assumptions,
-source/scenario weights, or convergence thresholds after seeing balfrin
-results. Do not increase ensemble size in this target.
-
-Estimated order: 17.
-
-## Completed Selected-Domain Roadmap Items
-
-- Public Tschamut real-site swisstopo pilot package is complete at the
-  share-safe manifest level.
-- Domain-specific source-zone and block-scenario policy is complete at the
-  share-safe policy level.
-- DEM/terrain sensitivity is complete as a selected-domain gate with local
-  ignored terrain-variant metrics recorded in the reconciled run-freeze.
-- Small frozen conditional pilot gate is complete as a regenerated local
-  ignored trajectory/hazard run with `inconclusive` report classification, not
-  as an operational or target-scale result.
-- Real-pilot GIS package is complete at automated manifest/file QA level for
-  local ignored small-gate outputs, and the selected target-scale manual
-  GIS/QGIS visual-QA gate is explicitly classified `blocked` by a share-safe
-  checklist because QGIS is unavailable and ignored target package artifacts
-  are absent in this checkout.
-- Forest and obstacle omission is scoped at the share-safe target-scale
-  interpretation level and classified `limiting` for the selected Tschamut
-  corridor because public context layers are documented but not locally
-  reviewed in this checkout.
-- Conditional-curve output volume has an opt-in mitigation:
-  `--conditional-curve-export summary-only`. The default remains full
-  curve-table export for small debug/review runs.
-- Ensemble-size increase has a reassessed selected-domain no-go feasibility
-  gate. The gate now reviews the executed but inconclusive target-scale
-  evidence and records that larger Tschamut runs remain unauthorized until
-  convergence interpretation, output budget, secondary GIS/QGIS
-  interoperability review, forest/obstacle context, balfrin reproducibility,
-  and validation-runner provenance scope are resolved.
-- Fallible terrain/integrator API migration is complete at the guardrail
-  level. DEM-facing fixed-step runtime code propagates structured terrain
-  errors through the fallible integration path, with compatibility wrappers
-  retained for older analytic callers.
-- Several validation-module concerns have been split: pure metric math, metric
-  evaluation, probabilistic metadata loading, validation I/O, public type
-  re-exports, and the case runner now live in focused `src/validation/`
-  submodules with behavior-preserving tests and consistency guards. Larger
-  validation and shape splits remain future work.
-- CI and onboarding checks now use the project tool requirements more
-  consistently: the GitHub Actions Python job installs `requirements-tools.txt`
-  and the workflow is split into lint, Rust tests, verify/validate, and Python
-  consistency jobs.
-- Multi-trajectory Parquet writing is available in `src/io.rs` as a building
-  block for large ensemble output contracts, with tests covering writer
-  behavior and read-back.
-- Deterministic local parallel ensemble execution is available as an opt-in
-  library path. Serial execution remains the default, and no SLURM, MPI, GPU,
-  distributed orchestration, validation-runner default change, or larger
-  selected-domain run is introduced.
-- Local scaling/output-volume summary is complete at the manifest-summary
-  level and is reconciled with the authoritative run-freeze. It records
-  validation/hazard timings, row/file/byte counts, reducer metadata, memory
-  sidecars, and a no-default-change bottleneck decision.
-- Physical/source-frequency semantics are complete as a deferred design gate.
-  The gate documents the evidence and schema blockers for annual or physical
-  products and does not authorize the annual/physical prototype.
-- The first source-frequency blocker is partially resolved as an inactive
-  evidence contract. `docs/source_frequency_evidence_contract.md`,
-  `validation/templates/source_frequency_evidence_v1.yaml`, and
-  `scripts/validate_source_frequency_evidence.py` define and validate
-  candidate source-rate evidence records while keeping the selected template at
-  `no_accepted_frequency_evidence`.
-- A synthetic source-frequency design-review fixture now exercises the
-  `accepted_for_design_review` record state without changing the selected gate
-  input or authorizing annual/physical runtime products.
-- The block/release probability evidence blocker is partially resolved as an
-  inactive evidence contract.
-  `docs/block_release_probability_evidence_contract.md`,
-  `validation/templates/block_release_probability_evidence_v1.yaml`, and
-  `scripts/validate_block_release_probability_evidence.py` define and validate
-  candidate conditional block-scenario and release-cell probability evidence
-  records while keeping the selected template at
-  `no_accepted_block_release_probability_evidence`.
-- A synthetic block/release design-review fixture now exercises the
-  `accepted_for_design_review` record state without changing the selected gate
-  input or authorizing annual/physical runtime products.
-- The overlap-adjusted reducer and uncertainty-propagation blocker is
-  partially resolved as an inactive precondition contract.
-  `docs/physical_frequency_reducer_preconditions.md`,
-  `validation/templates/physical_frequency_reducer_preconditions_v1.yaml`, and
-  `scripts/validate_physical_frequency_reducer_preconditions.py` define and
-  validate future reducer preconditions while keeping the selected template at
-  `preconditions_not_satisfied`.
-- A synthetic reducer-precondition design-review fixture now exercises the
-  `accepted_for_design_review` record state without implementing reducers,
-  activating annual/physical output units, or authorizing runtime products.
-- The validation/calibration review blocker is partially resolved as an
-  inactive review-gate contract.
-  `docs/annual_physical_validation_calibration_review_gate.md`,
-  `validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml`,
-  and
-  `scripts/validate_annual_physical_validation_calibration_review_gate.py`
-  define and validate future review records while keeping the selected
-  template at `review_not_passed`.
-- A synthetic validation/calibration review design-review fixture now exercises
-  the `accepted_for_design_review` record state without accepting real
-  validation evidence or authorizing annual/physical runtime products.
-- The physical/source-frequency design gate has been reassessed against all
-  four inactive contracts. The selected gate record now lists the contract
-  paths and checked statuses, and
-  `scripts/validate_physical_source_frequency_design_gate.py` verifies that
-  the gate remains deferred while those records are not accepted or
-  implemented.
-- The same design gate now also reassesses the four synthetic design-review
-  fixtures and verifies that they are accepted-record schema fixtures only, not
-  selected gate inputs or runtime authorization evidence.
-- Target 10 has an inactive preflight guard. `docs/annual_physical_prototype_preflight.md`,
-  `validation/templates/annual_physical_prototype_preflight_v1.yaml`, and
-  `scripts/validate_annual_physical_prototype_preflight.py` verify that the
-  annual/physical prototype remains blocked by the deferred design gate and
-  that no runtime support is added.
-- A scalable conditional execution contract now supports the selected Tschamut
-  pilot without changing semantics. `docs/tschamut_public_scalable_conditional_execution.md`,
-  `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
-  and `scripts/validate_scalable_conditional_execution.py` define deterministic
-  local chunking, chunk manifests, sorted merge rules, summary-only conditional
-  curve export, output-budget fields, and convergence diagnostics required
-  before any ensemble-size increase.
-- The selected target-scale gate now has local ignored execution evidence:
-  regenerated public/processed inputs, 1,000 observed-release trajectories,
-  summary-only conditional hazard layers, output-budget/runtime/memory
-  sidecars, checksums, and reducer worker parity. It remains `inconclusive`
-  because convergence, obstacle context, balfrin reproducibility, and
-  validation-runner provenance scope are not accepted. Manual GIS/QGIS remains
-  a secondary interoperability check rather than the main hazard-map outcome.
-
-## Deferred But Important Cross-Cutting Work
-
-- Shape/contact runtime work remains paused until provenance and rebound
-  blockers are resolved.
-- Terrain/material calibration remains deferred until DEM sensitivity, pilot
-  evidence, and holdout policy are available.
-- Production COG/tiled packages remain deferred until local GeoTIFF/QGIS
-  acceptance is useful enough to justify more GIS packaging and reducer
-  contracts are stable.
-- `validation.rs` and `shape.rs` modularization is now an explicit
-  maintainability target, not a prerequisite for every feature.
-- CSCS/SLURM orchestration remains deferred until selected target-scale
-  evidence has been reproduced on balfrin and resumable local chunk/reducer
-  contracts justify scheduler work.
+| Former item | Current status |
+| --- | --- |
+| Reconcile and regenerate selected pilot gate evidence | Complete. The selected run-freeze and reports reference regenerated or verified ignored DEM-sensitivity, validation, hazard, GIS, reducer, scaling, runtime, memory, file-count, byte-count, and checksum evidence with an `inconclusive` non-operational classification. |
+| Manual QGIS visual QA for the selected package | Complete at the share-safe checklist level as `blocked`; QGIS and ignored target package artifacts are unavailable in this checkout. |
+| Forest and obstacle omission scoping | Complete at the share-safe scoping level as `limiting`; local public context-layer review remains DT-10. |
+| Conditional-curve output-volume bottleneck | Complete for the largest curve-table output through opt-in `--conditional-curve-export summary-only`; raster-output optimization remains future work. |
+| Ensemble-size increase gate | Complete as `no_go`; further diagnostic scale-up is not authorized until convergence, output budget, obstacle context, balfrin reproducibility, and provenance blockers are resolved. |
+| Fallible terrain/integrator API guardrails | Complete at the guardrail level; DEM-facing fixed-step runtime code propagates terrain errors through fallible helpers, with infallible wrappers retained as compatibility helpers. |
+| Validation module split | Substantially complete for validation; remaining shape/validation splits are maintenance work under DT-12. |
+| Deterministic local parallel ensemble execution | Complete at the library-contract level with opt-in `simulate_ensemble_parallel`, `random.ensemble_workers`, `ensemble_execution`, `local_parallel_ensemble_v1`, and deterministic `requested_trajectory_index` merge semantics. |
+| Selected scalable conditional target-scale gate | Complete as executed but inconclusive evidence; 1,000 observed-release trajectories, summary-only hazard layers, output budgets, checksums, and reducer parity exist, but scale-up remains unauthorized. |
+| Physical/source-frequency semantics and annual prototype | Deferred behind inactive design-gate and preflight records. |
 
 ## Recommended Sequence
 
-1. Clarify validation-runner parallel provenance for observed-release
-   ensembles if the next gate requires `ensemble_execution` to cover all 1,000
-   target trajectories rather than the auxiliary single-release ensemble path.
-2. Reduce or explicitly justify validation-side debug output volume before any
-   further selected-domain increase. Prefer an additive output-policy record or
-   manifest field before changing defaults.
-3. Add a balfrin artifact/environment readiness record for
-   `/users/olifu/work/rust_rockfall`, including ignored input status, scratch
-   output location, toolchain checks, and a concrete ready/blocked
-   classification.
-4. Reproduce the existing selected Tschamut conditional hazard-map target gate
-   on balfrin at the same scale, recording commands, checksums, output budgets,
-   convergence summaries, and performance evidence. Keep the result
-   non-operational and do not increase ensemble size in this step.
-5. Use the new Parquet trajectory writer only through an explicit output
-   contract if large ensemble debug output remains necessary; do not silently
-   replace existing CSV debug artifacts.
-6. Continue mechanical `validation.rs` / `shape.rs` module splits only when a
-   focused behavior-preserving change already touches that concern.
-7. Resolve the remaining physical/source-frequency design-gate blockers if
-   annual or physical products are still desired: accepted evidence,
-   implemented overlap-adjusted reducers, implemented uncertainty propagation,
-   and accepted validation/calibration review. The current design gate has
-   been reassessed and remains deferred.
-8. Implement an annual/physical prototype only if the design gate passes.
-   Until then, use the Target 10 preflight record as the executable no-go
-   check rather than adding annual or physical runtime semantics.
+1. Keep DT-05 as the classification reference for the completed DT-04
+   balfrin evidence.
+2. Complete DT-06 and DT-07 before treating the pilot as accepted evidence.
+3. Keep DT-08 in place before any ensemble-size increase.
+4. Consider DT-09 only if accepted gates show restartability, load-balancing,
+   output-size, or memory bottlenecks that justify distributed execution.
+5. Treat DT-10 and DT-11 as interpretation/interoperability blockers that
+   should be closed when their local data/tool dependencies are available.
+
+## Boundaries
+
+- Do not change physics, defaults, validation cases, thresholds, release
+  assumptions, sampling weights, or baselines as part of target documentation.
+- Do not commit raw swisstopo or other large public/private geodata products.
+- Do not present conditional hazard maps as annual, physical-probability,
+  return-period, risk, regulatory, or operational products.
+- Do not use Tschamut/Mel diagnostic evidence as physics-selection evidence.
+- Do not continue public `shape_contact_v0` runtime validation while its pause
+  decision remains active.
