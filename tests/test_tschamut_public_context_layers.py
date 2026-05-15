@@ -34,17 +34,31 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["classification"], inspector.BLOCKED)
         self.assertEqual(report["context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
         self.assertEqual(report["target_scale_context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
+        self.assertEqual(report["spatial_relevance_status"], inspector.BLOCKED)
         self.assertFalse(report["context_root_present"])
         self.assertGreater(report["blocked_context_layer_count"], 0)
         self.assertEqual(report["layers_available"], [])
         self.assertEqual(len(report["layers_missing"]), report["context_layer_count"])
         self.assertFalse(report["operational_claims_allowed"])
+        self.assertEqual(report["selected_extent_or_corridor"]["name"], "Tschamut 2014 public release/deposition corridor")
         self.assertTrue(
             any(item["dataset_id"] == "swisstopo_swissimage" for item in report["acquisition_checklist"])
         )
         self.assertTrue(report["source_products"])
         self.assertEqual(report["local_cache_paths"]["context_root"], str(context_root))
         self.assertEqual(report["checksums"]["available_layers"], [])
+        self.assertEqual(report["spatial_relevance_indicators"]["available_layer_count"], 0)
+        self.assertEqual(
+            report["spatial_relevance_indicators"]["classification_summary"]["unresolved"],
+            [
+                "forest_or_canopy",
+                "buildings_or_structures",
+                "roads_or_transport",
+                "barriers_or_protection",
+                "water_or_channel",
+                "orthophoto_visual_context",
+            ],
+        )
 
     def test_metadata_only_fixture_reports_file_stats_and_layer_classification(self) -> None:
         report = inspector.inspect_context_layers(
@@ -56,10 +70,12 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["status"], "limiting")
         self.assertEqual(report["classification"], "limiting")
         self.assertEqual(report["context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
+        self.assertEqual(report["spatial_relevance_status"], "fixture_reviewed_context")
         self.assertTrue(report["context_root_present"])
         self.assertEqual(report["context_layer_count"], 6)
         self.assertEqual(len(report["layers_available"]), 6)
         self.assertEqual(len(report["layers_missing"]), 0)
+        self.assertEqual(report["selected_extent_or_corridor"]["extent_lv95_m"]["xmin"], 2696376.0)
         canopy = next(layer for layer in report["expected_context_layers"] if layer["category"] == "forest_or_canopy")
         self.assertEqual(canopy["classification"], "acceptable")
         self.assertEqual(canopy["file_count"], 1)
@@ -69,6 +85,19 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertTrue(report["crs_or_spatial_reference"])
         self.assertFalse(report["operational_claims_allowed"])
         self.assertEqual(report["spatial_relevance_summary"]["acceptable"], ["forest_or_canopy"])
+        self.assertEqual(report["spatial_relevance_indicators"]["available_layer_count"], 6)
+        self.assertEqual(report["spatial_relevance_indicators"]["missing_layer_count"], 0)
+        self.assertTrue(
+            report["spatial_relevance_indicators"]["spatial_extent_alignment"]["all_reviewed_layers_share_selected_epsg"]
+        )
+        self.assertEqual(
+            report["spatial_relevance_indicators"]["classification_summary"]["acceptable"],
+            ["forest_or_canopy"],
+        )
+        self.assertEqual(
+            report["spatial_relevance_indicators"]["classification_summary"]["limiting"],
+            ["buildings_or_structures", "orthophoto_visual_context"],
+        )
 
     def test_json_serializable_output_schema_is_stable(self) -> None:
         report = inspector.inspect_context_layers(
@@ -107,7 +136,10 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
                 "run_id",
                 "schema_version",
                 "scope_record_path",
+                "selected_extent_or_corridor",
                 "source_products",
+                "spatial_relevance_indicators",
+                "spatial_relevance_status",
                 "spatial_relevance_summary",
                 "status",
                 "target_scale_context_review_status",

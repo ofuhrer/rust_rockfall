@@ -94,6 +94,7 @@ def inspect_context_layers(
     registry = load_dataset_registry(datasets_registry_path)
     validate_scope_shape(scope)
 
+    selected_extent_or_corridor = build_selected_extent_or_corridor(scope)
     target_review = scope["target_scale_review"]
     evidence = scope["evidence"]
     context_inventory = {item["category"]: item for item in scope["context_inventory"]}
@@ -127,6 +128,12 @@ def inspect_context_layers(
     local_cache_paths = build_local_cache_paths(context_root, layer_reports, registry)
     checksums = build_checksum_summary(layer_reports)
     crs_or_spatial_reference = build_crs_summary(layer_reports)
+    spatial_relevance_status = determine_spatial_relevance_status(context_root, layer_reports)
+    spatial_relevance_indicators = build_spatial_relevance_indicators(
+        selected_extent_or_corridor=selected_extent_or_corridor,
+        layer_reports=layer_reports,
+        context_root=context_root,
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -134,8 +141,10 @@ def inspect_context_layers(
         "run_id": scope["run_id"],
         "scope_record_path": str(scope_record_path),
         "context_root": str(context_root),
+        "selected_extent_or_corridor": selected_extent_or_corridor,
         "classification": overall_classification,
         "context_review_status": target_review["local_context_review_status"],
+        "spatial_relevance_status": spatial_relevance_status,
         "status": overall_classification,
         "target_scale_context_review_status": target_review["local_context_review_status"],
         "context_root_present": context_root.exists(),
@@ -150,6 +159,7 @@ def inspect_context_layers(
         "local_cache_paths": local_cache_paths,
         "checksums": checksums,
         "crs_or_spatial_reference": crs_or_spatial_reference,
+        "spatial_relevance_indicators": spatial_relevance_indicators,
         "interpretation_impact": build_interpretation_impact(scope, layer_reports),
         "operational_claims_allowed": False,
         "expected_context_layers": layer_reports,
@@ -399,6 +409,88 @@ def build_interpretation_impact(scope: dict[str, Any], layer_reports: list[dict[
     }
 
 
+def build_selected_extent_or_corridor(scope: dict[str, Any]) -> dict[str, Any]:
+    selected_domain = scope.get("selected_domain") or {}
+    if not selected_domain:
+        pilot_manifest_path = ROOT / "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml"
+        if pilot_manifest_path.exists():
+            pilot_manifest = read_yaml(pilot_manifest_path)
+            selected_domain = pilot_manifest.get("selected_domain") or {}
+    extent = selected_domain.get("extent_lv95_m") or {}
+    crs = selected_domain.get("coordinate_reference_system") or {}
+    return {
+        "name": selected_domain.get("name"),
+        "purpose": selected_domain.get("purpose"),
+        "selection_status": selected_domain.get("selection_status"),
+        "extent_lv95_m": extent,
+        "coordinate_reference_system": crs,
+        "source_zone_status": selected_domain.get("source_zone_status"),
+        "forest_obstacle_relevance_status": selected_domain.get("forest_obstacle_relevance_status"),
+    }
+
+
+def determine_spatial_relevance_status(context_root: Path, layer_reports: list[dict[str, Any]]) -> str:
+    if not context_root.exists():
+        return BLOCKED
+    if any(not layer["path_exists"] for layer in layer_reports):
+        return "blocked_missing_context_layers"
+    fixture_root = ROOT / "tests/fixtures/tschamut_context_layers/available"
+    if context_root.resolve() == fixture_root.resolve():
+        return "fixture_reviewed_context"
+    return "reviewed_local_context"
+
+
+def build_spatial_relevance_indicators(
+    *,
+    selected_extent_or_corridor: dict[str, Any],
+    layer_reports: list[dict[str, Any]],
+    context_root: Path,
+) -> dict[str, Any]:
+    summary = summarize_spatial_relevance(layer_reports)
+    available_layers = [layer for layer in layer_reports if layer["path_exists"]]
+    selected_epsg = (selected_extent_or_corridor.get("coordinate_reference_system") or {}).get("epsg")
+    reviewed_epsg_values = sorted(
+        {
+            epsg
+            for layer in available_layers
+            for epsg in [
+                (layer.get("metadata") or {}).get("coordinate_reference_system", {}).get("epsg")
+                if isinstance((layer.get("metadata") or {}).get("coordinate_reference_system"), dict)
+                else None
+            ]
+            if isinstance(epsg, int)
+        }
+    )
+    crs_match = bool(available_layers) and all(
+        (layer.get("metadata") or {}).get("coordinate_reference_system", {}).get("epsg") == selected_epsg
+        for layer in available_layers
+        if isinstance((layer.get("metadata") or {}).get("coordinate_reference_system"), dict)
+    )
+    return {
+        "context_root_present": context_root.exists(),
+        "selected_extent_or_corridor": selected_extent_or_corridor,
+        "available_layer_count": len(available_layers),
+        "missing_layer_count": sum(1 for layer in layer_reports if not layer["path_exists"]),
+        "reviewed_layer_count": sum(1 for layer in layer_reports if layer["classification"] != "unresolved"),
+        "classification_summary": summary,
+        "reviewed_categories": [layer["category"] for layer in available_layers],
+        "missing_categories": [layer["category"] for layer in layer_reports if not layer["path_exists"]],
+        "relevant_product_categories": {
+            "forest_or_canopy": "swisssurface3d_raster",
+            "buildings_or_structures": "swissbuildings3d",
+            "roads_or_transport": "swisstlm3d",
+            "barriers_or_protection": "swisstlm3d",
+            "water_or_channel": "swisstlm3d",
+            "orthophoto_visual_context": "swissimage",
+        },
+        "spatial_extent_alignment": {
+            "selected_epsg": selected_epsg,
+            "reviewed_epsg_values": reviewed_epsg_values,
+            "all_reviewed_layers_share_selected_epsg": crs_match,
+        },
+    }
+
+
 def summarize_spatial_relevance(layer_reports: list[dict[str, Any]]) -> dict[str, Any]:
     summary = {
         "acceptable": [],
@@ -507,8 +599,10 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"context inspection status: {report['classification']}",
         f"context review status: {report['context_review_status']}",
+        f"spatial relevance status: {report['spatial_relevance_status']}",
         f"scope record: {report['scope_record_path']}",
         f"context root: {report['context_root']}",
+        f"selected extent/corridor: {report['selected_extent_or_corridor']['name']}",
         f"target-scale context review: {report['target_scale_context_review_status']}",
         f"context layers inspected: {report['context_layer_count']}",
         f"blocked missing layers: {report['blocked_context_layer_count']}",
@@ -524,6 +618,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append("source products:")
         for product in report["source_products"]:
             lines.append(f"- {product['source_product']}: {product['processed_cache_path']}")
+    indicators = report.get("spatial_relevance_indicators") or {}
+    if indicators:
+        lines.append("spatial relevance indicators:")
+        lines.append(
+            f"- available={indicators.get('available_layer_count', 0)}, "
+            f"missing={indicators.get('missing_layer_count', 0)}, "
+            f"crs_match={indicators.get('spatial_extent_alignment', {}).get('all_reviewed_layers_share_selected_epsg', False)}"
+        )
     if report["acquisition_checklist"]:
         lines.append("acquisition checklist:")
         for item in report["acquisition_checklist"]:
