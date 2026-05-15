@@ -82,6 +82,66 @@ evidence_result:
     manifest records a 100-trajectory auxiliary single-release ensemble rather
     than the 1,000 observed-release validation trajectories.
 
+target_run_provenance_policy:
+  schema_version: target_run_provenance_policy_v1
+  policy_status: closed_for_current_gate_with_caveat
+  observed_release_target_run:
+    scope_label: observed_release_target_run
+    release_count: 10
+    simulated_trajectory_count: 1000
+    provenance_sources:
+      - validation_run_manifest
+      - validation_metrics
+      - per_trajectory_outputs
+    represents_full_target_run: true
+  auxiliary_ensemble_execution:
+    present: true
+    schema_version: local_parallel_ensemble_v1
+    scope_label: auxiliary_single_release_ensemble_path
+    trajectory_count: 100
+    may_be_interpreted_as_full_observed_release_target_provenance: false
+  interpretation: >
+    The observed-release target run and the auxiliary ensemble_execution
+    manifest are now explicitly separated. The target run has 1,000 simulated
+    observed-release trajectories. The local_parallel_ensemble_v1 provenance
+    sidecar proves deterministic local threading for the auxiliary
+    single-release path only and must not be used as evidence that every
+    observed-release target trajectory was generated through that path.
+  ensemble_size_increase_authorized: false
+
+output_profile_policy:
+  schema_version: selected_output_profile_policy_v1
+  policy_status: closed_for_current_gate
+  profile_contract: docs/hazard_output_profile_contract.md
+  current_target_gate_profile:
+    profile: custom_or_mixed_legacy_summary_only
+    classification_reason: >
+      The recorded target gate used summary-only conditional curves and
+      no-plots, but the available command evidence does not prove
+      --grid-csv-export none. It is therefore not reclassified as a pure
+      scalable_conditional run.
+    conditional_curve_export_mode: summary-only
+    grid_csv_export_mode: legacy_default_full_or_unrecorded
+    plots_enabled: false
+    generated_outputs_committed: false
+  selected_followup_profile:
+    profile: scalable_conditional
+    required_controls:
+      - --conditional-curve-export summary-only
+      - --grid-csv-export none
+      - --no-plots
+    rationale: >
+      Future selected balfrin/reproduction runs should use the scalable
+      conditional output profile unless an explicit provenance audit is needed.
+  provenance_audit_profile_allowed_when:
+    profile: provenance_audit
+    condition: deterministic replay or sidecar/package audit requires stronger metadata
+  validation_debug_output_budget:
+    status: blocker_retained
+    target_validation_output_file_count: 2004
+    target_validation_output_total_bytes: 571131205
+    acceptable_for_next_scale_increase_without_reduction_or_justification: false
+
 execution_evidence:
   regenerated_inputs:
     preparation_command: UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py --output-root data/processed/swisstopo/tschamut_public_pilot --padding-m 250 --force
@@ -134,7 +194,7 @@ remaining_before_gate_reassessment:
   - accept_or_reject_target_vs_small_gate_convergence
   - complete_manual_gis_visual_qa
   - resolve_or_bound_forest_obstacle_context_limitation
-  - clarify_validation_runner_parallel_provenance_for_observed_release_ensembles
+  - reduce_or_justify_validation_debug_output_volume
   - keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible
 
 claim_boundary:
@@ -157,5 +217,6 @@ claim_boundary:
 limitations:
   - target-scale workflow evidence is inconclusive and does not authorize ensemble-size increase
   - regenerated inputs and generated outputs are ignored artifacts and must not be committed
-  - validation-runner ensemble_execution provenance is partial for this observed-release target run
+  - validation-runner ensemble_execution provenance is explicitly auxiliary and must not be interpreted as full observed-release target-run provenance
+  - current target-gate output profile is legacy/custom because grid CSV suppression was not proven in recorded command evidence
   - no annual, physical-probability, return-period, risk, or operational semantics are included

@@ -1,0 +1,16 @@
+[project]
+name = "rust-rockfall-tools"
+version = "0.0.0"
+description = "Python tool environment for rust_rockfall repository scripts and tests."
+requires-python = ">=3.12"
+dependencies = [
+    "PyYAML",
+    "numpy",
+    "Pillow",
+    "pyproj",
+    "pyarrow",
+    "scipy",
+]
+
+[tool.uv]
+package = false

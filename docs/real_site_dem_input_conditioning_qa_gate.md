@@ -4,6 +4,11 @@ Status: DT-07 QA gate for selected public Swiss pilot domains. This fail-closed 
 physics, change DEM runtime behavior, change defaults, tune parameters, or
 authorize annual, physical, risk, exposure, or operational claims.
 
+Maintenance note: this is the completed DT-07 evidence contract. It is not a
+current target list. Routine target sequencing and current gap assessment live
+only in `docs/task_backlog.md`; update this file only when the
+DEM/input QA gate itself changes.
+
 ## Scope
 
 This gate applies to:

@@ -47,11 +47,15 @@ the target evidence is itself `inconclusive`.
   absent in this checkout.
 - Forest/obstacle omission remains `limiting` for interpretation because public
   context crops are not available or reviewed in this checkout.
-- Validation-runner `ensemble_execution` provenance covers the auxiliary
-  single-release 100-trajectory path, not all 1,000 observed-release target
-  trajectories.
 - Validation-side debug output volume remains too large for another increase
   without reduction or explicit justification.
+
+The target-run provenance ambiguity is closed in
+`validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`:
+the record now explicitly separates the 1,000 observed-release target run from
+the auxiliary single-release `ensemble_execution` sidecar. That clarification
+does not remove the remaining convergence, obstacle/context, GIS, or debug
+output-budget blockers.
 
 ## Scope Boundary
 

@@ -1,0 +1,189 @@
+schema_version: balfrin_target_gate_reproduction_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_balfrin_target_gate_reproduction_v1
+roadmap_item: DT-04
+operational_status: research_diagnostic
+execution_status: completed
+reproducibility_classification: inconclusive
+classification_rationale: >
+  The selected Tschamut conditional target-scale workflow completed on balfrin
+  with unchanged physics/defaults, 10 observed release cells, 100 trajectories
+  per release cell, summary-only conditional curves, grid CSV suppression,
+  GeoTIFF export, deterministic trajectory/reducer chunking, checksums,
+  performance evidence, and a clean log audit. The scientific classification
+  remains inconclusive because conditional hazard-map convergence has not been
+  accepted and forest/obstacle context plus manual GIS/QGIS QA remain separate
+  limitations.
+upstream_records:
+  balfrin_readiness: validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml
+  slurm_probe_repeatability: validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml
+  target_gate_local_record: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  ensemble_feasibility_gate: validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml
+  scaling_review: docs/tschamut_public_pilot_scaling_review.md
+run_environment:
+  host: balfrin.cscs.ch
+  repo_root: /users/olifu/work/rust_rockfall
+  commit: 61ab9c6542ba1d2274139940777ff0238f1983cf
+  partition: postproc
+  cpus_per_task: 16
+  single_job_driver: true
+  slurm_arrays_or_distributed_reducers: false
+  run_root: /scratch/mch/olifu/rust_rockfall/selected_gate/dt04_clean_20260515_001436
+  job_id: "4318941"
+  slurm_state: COMPLETED
+  slurm_exit_code: "0:0"
+  elapsed: "00:01:55"
+case_generation:
+  case_path: validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml
+  generated_output_committed: false
+  source_case_path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+  generation_policy: >
+    The ignored target case was generated from the frozen selected small-gate
+    case by changing target-scale IDs, ignored output paths, ensemble_size to
+    100, and ensemble_workers to 2. Physics, terrain, release/deposition inputs,
+    source/scenario metadata, thresholds, friction, restitution, roughness, and
+    sampling seed were unchanged.
+input_freeze:
+  geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+  terrain_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+  source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+  release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
+  deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+physics_and_sampling:
+  contact_model: translational_v0
+  roughness_model: stochastic_contact_v1
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+  gravity_mps2: 9.81
+  random_seed: 34014
+  release_cell_count: 10
+  trajectories_per_release_cell: 100
+  simulated_trajectory_count: 1000
+  trajectory_workers: 2
+  reducer_workers: 2
+  changes_physics: false
+  changes_defaults: false
+  changes_release_assumptions: false
+  changes_thresholds: false
+hazard_output_profile:
+  profile: scalable_conditional
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  conditional_curve_export: summary-only
+  conditional_curve_csv_written: false
+  conditional_curve_row_count: 729600
+  grid_csv_export: none
+  grid_csv_written: false
+  export_geotiff: true
+  no_plots: true
+  pilot_gis_package: true
+  manual_gis_qa_status: not-run
+  kinetic_energy_exceedance_j: [1000.0, 10000.0]
+  jump_height_exceedance_m: [1.0, 2.0]
+validation_metrics:
+  validation_release_count: 10.0
+  validation_simulated_trajectory_count: 1000.0
+  observed_mean_runout_m: 102.84352800000002
+  simulated_mean_runout_m: 72.06819369632703
+  runout_distance_error_m: 30.77533430367299
+  deposition_centroid_error_m: 30.218287182188995
+  deposition_cloud_mean_nearest_error_m: 23.869086482077364
+  deposition_cloud_overlap_fraction: 0.761
+  lateral_spread_error_m: 16.857580834708518
+performance:
+  validation_time_file_seconds: 56.01
+  hazard_time_file_seconds: 56.33
+  validation_total_wall_seconds: 55.277021307
+  validation_simulation_seconds: 17.273719969999977
+  validation_output_write_seconds: 37.68192163
+  validation_output_file_count: 2005
+  validation_output_bytes: 571377719
+  validation_impact_event_count: 537809
+  hazard_total_wall_seconds: 55.12473134789616
+  hazard_accumulation_seconds: 45.565163870109245
+  hazard_output_write_seconds: 3.1881142819765955
+  hazard_output_file_count: 46
+  hazard_output_bytes: 16613900
+  hazard_total_input_rows_read: 1345755
+  hazard_impact_event_count: 446782
+conditional_execution:
+  schema_version: conditional_hazard_execution_diagnostics_v1
+  trajectory_generation:
+    mode: chunked_local_threads
+    worker_count: 2
+    chunk_count: 2
+    chunk_manifest_count: 2
+    merge_order: sorted_chunk_id
+    plan_id: validation_tschamut_public_target_gate_v1__trajectory_execution_plan__c2d8d8ce7d083f44e85b65bf
+  reducer:
+    mode: chunked_local_threads
+    worker_count: 2
+    chunk_count: 2
+    chunk_manifest_count: 2
+    merge_order: sorted_chunk_id
+    merge_order_independent: true
+    trajectory_execution_plan_id: validation_tschamut_public_target_gate_v1__trajectory_execution_plan__c2d8d8ce7d083f44e85b65bf
+  convergence_diagnostics:
+    probability_standard_error_layers_present: false
+    requires_trajectory_count_sensitivity_before_scale_up: true
+    requires_worker_count_reducer_parity_before_scale_up: true
+checksums:
+  validation_manifest:
+    path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+    sha256: 46bc2910ed11e2660294b2b684afe298934e56590d942a83475fd452ddb0741c
+    bytes: 10920
+  hazard_manifest:
+    path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+    sha256: 091964dbdbc8a06a0b8d88140c96944eb796aee5e186edd39456f7d30b1e9c92
+    bytes: 78946
+  map_package_manifest:
+    path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json
+    sha256: 21a9d3c85d06f50bed75a5962a34309749568f977c6206dec57e79c58bf8bc3b
+    bytes: 14956
+  pilot_gis_package_manifest:
+    path: hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json
+    sha256: 5cc6a64076640efadd81e9dd98a061696d499c1d440160cde949020a3c3671b2
+    bytes: 16654
+  scaling_summary:
+    path: hazard/results/tschamut_public_pilot/target_gate_v1/target_gate_balfrin_scaling_summary.json
+    sha256: f10c4421ae1288965f3fb4df1724d27d875db3d9522d3b8850611d4a9ac9cd1e
+    bytes: 11936
+log_audit:
+  classification: pass_clean
+  matched_line_count: 0
+  warning_like_line_count: 0
+  error_like_line_count: 0
+  affected_log_paths: []
+wrapper_attempts:
+  - job_id: "4318926"
+    status: failed_wrapper_before_hazard
+    note: timed hazard command used an invalid environment-assignment form after /usr/bin/time; validation completed successfully before wrapper failure
+  - job_id: "4318934"
+    status: failed_postprocessing_after_hazard
+    note: validation and hazard completed, but post-run summary failed because RUN_ROOT was not exported
+claim_boundary:
+  generated_outputs_committed: false
+  raw_geodata_committed: false
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+  validated_hazard_map: false
+limitations:
+  - The run is a research diagnostic conditional hazard-map reproduction, not operational validation.
+  - The scientific classification remains inconclusive until conditional convergence acceptance rules are defined and applied.
+  - Manual GIS/QGIS QA is still not run and is secondary interoperability evidence.
+  - Forest/obstacle context remains a separate interpretation limitation.
+  - The scalable output profile suppresses full conditional curve CSV and grid CSV outputs, so byte-level comparison to older local legacy-output target artifacts is not expected.
+  - Generated validation and hazard outputs remain ignored on balfrin and are not committed.
+next_step: >
+  Define the conditional hazard-map convergence acceptance protocol before using
+  this completed balfrin reproduction to accept, reject, or scale the selected
+  Tschamut conditional hazard-map workflow.

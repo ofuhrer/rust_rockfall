@@ -84,6 +84,37 @@ class ScalableConditionalTargetGateTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "output_budget_status"):
                 validator.validate_target_gate_record(path)
 
+    def test_rejects_auxiliary_ensemble_as_full_target_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["target_run_provenance_policy"]["auxiliary_ensemble_execution"][
+                "may_be_interpreted_as_full_observed_release_target_provenance"
+            ] = True
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "must not be interpreted"):
+                validator.validate_target_gate_record(path)
+
+    def test_rejects_missing_selected_followup_output_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["output_profile_policy"]["selected_followup_profile"]["profile"] = "full_debug"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "scalable_conditional"):
+                validator.validate_target_gate_record(path)
+
+    def test_rejects_scale_increase_without_debug_output_budget_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["output_profile_policy"]["validation_debug_output_budget"][
+                "acceptable_for_next_scale_increase_without_reduction_or_justification"
+            ] = True
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.ScalableConditionalTargetGateError, "debug output budget"):
+                validator.validate_target_gate_record(path)
+
     def write_record(self, work: Path, record: dict) -> Path:
         path = work / "target_gate.yaml"
         path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")

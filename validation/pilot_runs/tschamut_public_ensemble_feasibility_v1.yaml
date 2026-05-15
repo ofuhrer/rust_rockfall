@@ -11,8 +11,8 @@ decision_rationale: >
   is blocked by missing QGIS and absent ignored target package artifacts,
   forest/obstacle omission remains limiting after blocked local context-layer
   review for
-  interpretation, and validation-runner parallel provenance is partial for the
-  observed-release target outputs.
+  interpretation, and validation-side debug output volume remains too large
+  for another increase without reduction or explicit justification.
 operational_status: research_diagnostic
 
 input_evidence:
@@ -40,7 +40,7 @@ convergence_assessment:
     - accepted_target_vs_small_gate_convergence_interpretation
     - manual_gis_visual_qa_for_target_package
     - forest_obstacle_context_review_for_target_outputs
-    - validation_runner_parallel_provenance_for_observed_release_ensembles
+    - validation_debug_output_reduction_or_justification
   interpretation: >
     The target gate generated 1,000 observed-release trajectories and
     summary-only conditional hazard layers, so the earlier missing-execution
@@ -48,8 +48,8 @@ convergence_assessment:
     target-scale record itself is inconclusive: target-vs-small-gate stability
     has not been accepted, manual GIS/QGIS review is blocked, obstacle
     context remains limiting with public context layers not locally reviewed,
-    and validation-runner local parallel provenance
-    does not cover every observed-release target trajectory.
+    and validation-side debug output still needs reduction or explicit
+    justification before another scale step.
 
 output_budget_assessment:
   status: no-go
@@ -132,7 +132,6 @@ blockers:
   - target_scale_convergence_inconclusive
   - manual_gis_visual_qa_inconclusive
   - forest_obstacle_omission_limiting
-  - validation_runner_parallel_provenance_partial_for_observed_release_outputs
   - validation_debug_output_budget_too_large_for_next_increase
 
 required_preconditions_before_increase:
@@ -141,7 +140,7 @@ required_preconditions_before_increase:
   - record_output_budget
   - review_manual_gis_visual_qa
   - review_forest_obstacle_context
-  - clarify_validation_runner_parallel_provenance
+  - apply_target_run_provenance_policy
   - reduce_or_justify_validation_debug_output_volume
 
 claim_boundary:

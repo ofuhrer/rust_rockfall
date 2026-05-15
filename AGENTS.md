@@ -10,6 +10,12 @@ Use this document to decide how to work. Use the docs to decide what to build.
 
 - Project overview and quickstart: `README.md`
 - Local prerequisites, installation, hooks, and onboarding checks: `docs/onboarding.md`
+- Executable task queue: `docs/task_backlog.md`. If a prompt asks for the next
+  task, use this file and its `TB-xxx` identifiers. Worker agents may remove a
+  task from the backlog when it is completed successfully and may add one
+  concrete follow-up task when needed.
+- Durable decisions: `docs/decision_log.md`.
+- Completed task history: `docs/agent_work_log.md`.
 - Literature and background inventory: `docs/literature_review.md`
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`
@@ -24,6 +30,25 @@ When these files conflict, preserve the safety constraints first, then update th
 ## Agent Workflow
 
 - Inspect the relevant docs and code before changing behavior.
+- Progress over process: prefer concrete implementation, execution,
+  validation, measured scientific analysis, bug fixes, and performance
+  improvements over creating more gates, labels, validators, roadmaps, or
+  consistency hooks. Do not make a new gate, validator, roadmap transition, or
+  consistency hook the primary output unless it directly enables executable
+  implementation or validation.
+- Whenever feasible, each task must produce at least one concrete executable
+  artifact, measured validation result, bug fix, performance improvement, or
+  scientific analysis result. Explain how the work reduces implementation or
+  scientific uncertainty.
+- Do not end a task with only a "next gate" recommendation. If the next step is
+  a gate or policy decision, tie it to the concrete run, script, bug, dataset,
+  metric, or implementation work it will enable.
+- For backlog tasks, start with `rg -n` against `docs/task_backlog.md` and
+  read only the matching `TB-xxx` section before opening supporting docs. Treat
+  roadmaps and scoring matrices as context, not as executable task authority.
+- Keep context bounded: read narrow line ranges around matches, avoid opening
+  whole long docs unless the section structure is unknown, and verify edits
+  with targeted `rg`/`sed` checks before broad scans.
 - Keep changes aligned with the current implementation phase unless the user explicitly asks to advance the phase.
 - Make the smallest coherent change that improves the simulator, tests, or documentation.
 - Add or update focused tests for every feature, behavior branch, physical model, parser, and output format change.
@@ -38,6 +63,27 @@ When these files conflict, preserve the safety constraints first, then update th
 - Leave generated trajectory outputs out of git unless they are intentional fixtures.
 - Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
+
+## Context-Efficient Roadmap Work
+
+Use this workflow for roadmap/target tasks to reduce token use and avoid
+cross-document drift:
+
+1. Locate the active task in `docs/task_backlog.md` with `rg`.
+2. Read only that target section and the specific files named by it.
+3. Decide the smallest fixed file set before editing; do not propagate wording
+   into every roadmap unless a consistency check or broken link requires it.
+4. Reuse the existing audit-gate pattern for new evidence packages:
+   one doc, one YAML record, one validator, one focused test file, and one
+   narrow consistency hook.
+5. Prefer consistency checks that require exact artifact paths and a few
+   stable claim-boundary phrases rather than broad semantic scans over many
+   docs.
+6. After edits, verify changed sections with `rg -n` and short `sed -n`
+   ranges. Avoid rereading entire large docs just to confirm a small patch.
+7. When the task is done, remove it from `docs/task_backlog.md`, optionally add
+   one concrete follow-up task, and keep `docs/agent_work_log.md` concise.
+   Record the decision and checks, not a full transcript.
 
 ## Hard Boundaries
 
@@ -90,8 +136,11 @@ python3 scripts/check_repo_consistency.py
 ```
 
 Repository Python scripts should normally run through the project-local `uv`
-environment described in `docs/onboarding.md`. If direct `python3` uses an
-older or incompatible system interpreter, use:
+environment described in `docs/onboarding.md`. The repository Python tool
+dependencies are declared in `pyproject.toml`, so plain `uv run python ...`
+from the repository root should install/import PyYAML and the other tool
+packages without adding `--with` flags. If direct `python3` uses an older or
+incompatible system interpreter, use:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py

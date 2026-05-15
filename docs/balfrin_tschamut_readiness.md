@@ -14,8 +14,31 @@ The checker validates only execution prerequisites:
 - optional QGIS availability (explicitly allowed to be missing).
 
 The checker does **not** run simulation commands and does **not** alter data.
+In plain terms: it does not run simulation commands.
 
 This check does not assess annual-frequency semantics, physical-frequency claims, risk-map claim status, or return-period outputs. Those products remain out of scope for this readiness gate.
+
+## Selected readiness record
+
+The selected DT-02 readiness result is recorded in
+`validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml`.
+It reports the `/users/olifu/work/rust_rockfall` checkout on balfrin as
+`ready_for_balfrin_target_gate` for the current Tschamut conditional pilot
+readiness gate, with zero blocking checks and QGIS reported as an optional
+warning.
+
+Validate the recorded result with:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_balfrin_tschamut_readiness_record.py \
+  validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml
+```
+
+The record is share-safe: it records path/status/toolchain/provenance summaries,
+not raw geodata, generated hazard products, or the full checker JSON output.
+It does not authorize scale-up, complete manual GIS/QGIS QA, or run the
+selected hazard-map workflow.
 
 ## Usage
 

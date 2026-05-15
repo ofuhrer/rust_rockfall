@@ -3676,3 +3676,63 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT.
 - Next proposed milestone: DT-11 or the next active roadmap blocker if the
   local context review remains unavailable.
+
+### M067
+
+- Milestone id: M067.
+- Roadmap item: planning-document consolidation.
+- Hypothesis/objective: Replace the maintained target-list pattern with three
+  clear planning records: `task_backlog.md` for executable worker tasks,
+  `decision_log.md` for durable decisions, and `agent_work_log.md` for
+  completed execution history.
+- Files intended to change:
+  `docs/task_backlog.md`,
+  `docs/next_development_targets.md`,
+  `docs/decision_log.md`,
+  `docs/README.md`,
+  `docs/onboarding.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/real_site_dem_input_conditioning_qa_gate.md`,
+  `docs/output_budget_reducer_scaling_gate.md`,
+  `docs/tschamut_swissalti3d_controlled_pilot_plan.md`,
+  `README.md`,
+  `AGENTS.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added the authoritative executable backlog with
+  worker-sized `TB-xxx` tasks, converted `next_development_targets.md` into a
+  legacy pointer, updated onboarding/agent/index docs, and adjusted the
+  consistency check to enforce the backlog/decision/work-log split.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+
+### M068
+
+- Milestone id: M068.
+- Roadmap item: progress-over-process development rule.
+- Hypothesis/objective: Rebalance repository process so future agents prefer
+  executable implementation, measured validation, scientific analysis,
+  reproducibility improvements, performance work, and tested bug fixes over
+  procedural gate work.
+- Files intended to change:
+  `AGENTS.md`,
+  `README.md`,
+  `docs/task_backlog.md`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/README.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added an explicit progress-over-process rule,
+  clarified that gates and validators are support mechanisms rather than
+  deliverables, and required backlog tasks to name the concrete implementation
+  or validation outcome they enable.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `rg -n "Progress over process|progress over process|Progress Over Process|support mechanisms|not substitutes|concrete implementation or validation outcome|next gate" AGENTS.md README.md docs/task_backlog.md docs/next_development_targets.md docs/real_case_intensity_frequency_implementation_roadmap.md docs/README.md docs/decision_log.md docs/agent_work_log.md` passed.
+  `scripts/git-hooks/pre-commit` passed.

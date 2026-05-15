@@ -19,7 +19,10 @@ literature-based and transparent by design. It does not decompile or inspect
 proprietary binaries, and it does not claim numerical equivalence with any
 proprietary or operational hazard tool.
 
-The roadmap is documented in `docs/roadmap_hazard_mapping.md`. It frames current
+Current executable tasks are authoritative in `docs/task_backlog.md` using
+`TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,
+and completed task history is recorded in `docs/agent_work_log.md`. Long-term roadmap
+context is documented in `docs/roadmap_hazard_mapping.md`; it frames current
 conditional products such as reach, deposition, maximum kinetic energy, maximum
 jump height, threshold exceedance, and scenario uncertainty layers, plus future
 physical-probability and annual intensity-frequency products. Claim levels are
@@ -27,6 +30,12 @@ defined in `docs/validation_maturity_framework.md`. Risk modelling,
 exposure/vulnerability analysis, and operational warning systems are out of
 scope; hazard maps must not be presented as risk maps or operational products
 without separate validation and review.
+
+Development process should favor executable progress over process artifacts:
+new gates, YAML records, validators, roadmap labels, and consistency hooks are
+supporting mechanisms, not substitutes for implemented features, measured
+validation, scientific analysis, reproducibility improvements, performance
+work, or tested bug fixes.
 
 ## Current Model
 

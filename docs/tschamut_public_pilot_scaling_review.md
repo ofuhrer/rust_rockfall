@@ -377,3 +377,43 @@ Recommended next step:
 
 - run one repeat/reuse check for 420×450 to confirm the same provenance/manifest drift rule applies at this grid scale.
 - otherwise continue one-dimension variation and/or raster I/O strategy tests (e.g., COG/GeoTIFF trade-off exploration).
+
+## DT-03 repeat/reuse closure for the 420×450 SLURM probe
+
+DT-03 is now recorded in
+`validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`.
+The record classifies the tracked 420×450 probe as
+`pass_with_scope_limits` and the single-job SLURM driver as
+`ready_for_same_scale_selected_gate_reproduction`.
+
+Repeat jobs:
+
+| Job | Run root | SLURM state | Trajectory chunks | Reducer chunks | Total wall seconds | Output bytes | Output files | Log audit |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |
+| `4318872` | `/scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/dt03_repeat_420x450_20260514_235658` | `COMPLETED 0:0` | `reused_completed_state: 2` | `reused_completed_state: 2` | `10.4635` | `32,125,888` | `46` | clean |
+| `4318896` | `/scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/dt03_repeat2_420x450_20260514_235851` | `COMPLETED 0:0` | `reused_completed_state: 2` | `reused_completed_state: 2` | `10.4597` | `32,125,876` | `46` | clean |
+
+Additional hash-stability check:
+
+- compared before and after the second repeat run;
+- `33/33 numeric hazard artifacts` unchanged;
+- artifact families: GeoTIFF, ESRI ASCII, GeoJSON, CSV;
+- total compared numeric artifact bytes: `31,831,717` before and after;
+- changed artifact count: `0`.
+
+Interpretation:
+
+- repeat/reuse behavior is stable for the tracked 420×450 single-job probe;
+- trajectory and reducer plan IDs remained stable across repeat runs;
+- warning-like and error-like log-audit counts were zero for both repeat jobs;
+- manifest/provenance byte identity is not required because timing and metadata
+  sidecars may update between repeats;
+- the driver is acceptable for DT-04 same-scale selected-gate reproduction with
+  the same controls.
+
+Scope limits:
+
+- this is conditional-only execution evidence;
+- it does not reproduce the selected Tschamut target gate itself;
+- it does not authorize ensemble-size increase, SLURM arrays, MPI, GPU execution,
+  annual/physical probabilities, or operational hazard-map claims.

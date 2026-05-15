@@ -1,0 +1,176 @@
+schema_version: balfrin_slurm_probe_repeatability_v1
+pilot_id: tschamut_public_pilot
+probe_id: tschamut_mid_scale_grid_probe_420x450_v1
+run_id: tschamut_public_slurm_probe_repeatability_v1
+roadmap_item: DT-03
+operational_status: research_diagnostic
+classification: pass_with_scope_limits
+driver_decision: ready_for_same_scale_selected_gate_reproduction
+checked_environment:
+  host: balfrin.cscs.ch
+  repo_root: /users/olifu/work/rust_rockfall
+  commit: 61ab9c6542ba1d2274139940777ff0238f1983cf
+  partition: postproc
+  cpus_per_task: 16
+  single_job_driver: true
+  slurm_arrays_or_distributed_reducers: false
+probe_definition:
+  manifest_path: validation/probes/tschamut_mid_scale_grid_probe_420x450_v1/tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_pilot_run.yaml
+  release_cell_count: 20
+  trajectories_per_release_cell: 12
+  expected_simulated_trajectory_count: 120
+  grid:
+    ncols: 420
+    nrows: 450
+    cell_size_m: 2.0
+  output_profile:
+    conditional_curve_export: summary-only
+    grid_csv_export: none
+    export_geotiff: true
+    no_plots: true
+  workers:
+    trajectory_workers: 2
+    reducer_workers: 2
+fresh_baseline:
+  job_id: "4289703"
+  run_root: /scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/fresh_baseline_ee8c4eb
+  source: docs/tschamut_public_pilot_scaling_review.md
+  chunk_state: executed
+  trajectory_decision_counts:
+    executed: 2
+  reducer_decision_counts:
+    executed: 2
+  total_wall_seconds: 14.95406103390269
+  command_sequence_wall_seconds: 23.446129538002424
+  hazard_stage_wall_seconds: 15.635101707070135
+  output_bytes: 32124738
+  output_file_count: 46
+  output_write_seconds: 5.986803226056509
+  log_audit_review:
+    classification: pass_clean
+    warning_like_line_count: 0
+    error_like_line_count: 0
+    notes:
+      - no repo-path quoting warning
+      - no fatal git warning
+      - no account flag
+      - no operational or GPU partition usage
+repeat_runs:
+  - job_id: "4318872"
+    run_root: /scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/dt03_repeat_420x450_20260514_235658
+    slurm_state: COMPLETED
+    slurm_exit_code: "0:0"
+    elapsed: "00:00:38"
+    trajectory_decision_counts:
+      reused_completed_state: 2
+    reducer_decision_counts:
+      reused_completed_state: 2
+    total_wall_seconds: 10.46352063305676
+    output_bytes: 32125888
+    output_file_count: 46
+    output_write_seconds: 6.875532265054062
+    trajectory_plan_id: validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__trajectory_execution_plan__75b0ef839657fa96a9fed7d6
+    reducer_plan_id: validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__execution_plan__b26a5e3da0a3cf72f6e550d3
+    log_audit:
+      classification: pass_clean
+      file_count: 0
+      matched_line_count: 0
+      warning_like_line_count: 0
+      error_like_line_count: 0
+  - job_id: "4318896"
+    run_root: /scratch/mch/olifu/rust_rockfall/probes/slurm_smoke_420x450/dt03_repeat2_420x450_20260514_235851
+    slurm_state: COMPLETED
+    slurm_exit_code: "0:0"
+    elapsed: "00:00:20"
+    trajectory_decision_counts:
+      reused_completed_state: 2
+    reducer_decision_counts:
+      reused_completed_state: 2
+    total_wall_seconds: 10.459748723078519
+    output_bytes: 32125876
+    output_file_count: 46
+    output_write_seconds: 6.862602659035474
+    trajectory_plan_id: validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__trajectory_execution_plan__75b0ef839657fa96a9fed7d6
+    reducer_plan_id: validation_tschamut_public_conditional_mid_scale_grid_probe_420x450_12traj_probe_v1__execution_plan__b26a5e3da0a3cf72f6e550d3
+    log_audit:
+      classification: pass_clean
+      file_count: 0
+      matched_line_count: 0
+      warning_like_line_count: 0
+      error_like_line_count: 0
+repeatability_assessment:
+  repeat_reuse_classification: pass_reuse_stable
+  plan_id_stability: pass
+  trajectory_plan_id_stable: true
+  reducer_plan_id_stable: true
+  trajectory_reuse_decisions_stable: true
+  reducer_reuse_decisions_stable: true
+  output_file_count_stable: true
+  metadata_byte_identity_required: false
+  metadata_byte_identity_interpretation: >
+    Manifest and sidecar byte identity is not required for repeat runs because
+    timing/provenance fields may update. Numerical hazard artifacts are checked
+    separately.
+numerical_artifact_stability:
+  classification: pass_hash_stable
+  compared_between: pre_second_repeat_and_post_second_repeat
+  artifact_families:
+    - geotiff
+    - esri_ascii_grid
+    - geojson
+    - csv
+  artifact_count_before: 33
+  artifact_count_after: 33
+  total_bytes_before: 31831717
+  total_bytes_after: 31831717
+  changed_artifact_count: 0
+  changed_paths: []
+log_audit_assessment:
+  classification: pass_clean
+  reviewed_repeat_jobs:
+    - "4318872"
+    - "4318896"
+  warning_like_line_count: 0
+  error_like_line_count: 0
+  affected_log_paths: []
+selected_gate_readiness_decision:
+  driver_ready_for_selected_gate_use: true
+  allowed_next_use: same_scale_selected_tschamut_conditional_hazard_map_reproduction
+  required_controls:
+    - single_job_slurm_driver
+    - trajectory_workers_2
+    - reducer_workers_2
+    - conditional_curve_export_summary_only
+    - grid_csv_export_none
+    - no_plots
+    - generated_outputs_ignored
+  not_authorized:
+    - ensemble_size_increase
+    - slurm_arrays
+    - distributed_reducers
+    - mpi
+    - gpu_execution
+    - annual_or_physical_probability_products
+    - operational_hazard_map_claims
+claim_boundary:
+  generated_outputs_committed: false
+  raw_geodata_committed: false
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+  public_benchmark_enabled: false
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+limitations:
+  - This record covers the tracked 420x450 mid-scale probe only.
+  - This record does not reproduce the selected Tschamut target gate itself.
+  - This record does not authorize larger ensembles or scheduler arrays.
+  - Manual GIS/QGIS QA and forest/obstacle context limitations remain separate blockers.
+  - The checker ran against ignored/generated artifacts on balfrin; no generated outputs are committed.
+next_step: >
+  Use the same single-job SLURM driver controls for DT-04, the same-scale
+  selected Tschamut conditional hazard-map reproduction on balfrin, unless a
+  fresh review identifies a driver or artifact blocker.

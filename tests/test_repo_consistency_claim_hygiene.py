@@ -26,6 +26,12 @@ class HazardClaimHygieneTests(unittest.TestCase):
             ["docs/next_development_targets 2.md", "docs/archive/old copy.md"],
         )
 
+    def test_current_roadmap_target_authority_is_unambiguous(self) -> None:
+        self.assertEqual(check_repo_consistency.check_roadmap_target_authority(), [])
+
+    def test_python_tool_dependency_metadata_is_consistent(self) -> None:
+        self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
+
     def test_rejects_bare_annual_current_product_claim(self) -> None:
         errors = check_repo_consistency.find_hazard_claim_hygiene_errors(
             "Current hazard layers report annual frequency for each cell.",

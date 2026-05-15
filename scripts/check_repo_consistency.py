@@ -298,7 +298,7 @@ def check_local_parallel_ensemble_contract() -> list[str]:
             ROOT / "docs/model_design.md",
             ROOT / "docs/validation_data_schema.md",
             ROOT / "docs/scalability_and_data_formats_review.md",
-            ROOT / "docs/next_development_targets.md",
+            ROOT / "docs/task_backlog.md",
         )
     )
 
@@ -1226,7 +1226,7 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         ROOT / "scripts/validate_balfrin_target_gate_reproduction.py",
         ROOT / "tests/test_balfrin_target_gate_reproduction.py",
         ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md",
-        ROOT / "docs/next_development_targets.md",
+        ROOT / "docs/task_backlog.md",
     ]
     for path in required_paths:
         if not path.exists():
@@ -1238,7 +1238,7 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
     validator = (ROOT / "scripts/validate_balfrin_target_gate_reproduction.py").read_text()
     tests = (ROOT / "tests/test_balfrin_target_gate_reproduction.py").read_text()
     target_doc = (ROOT / "docs/tschamut_public_scalable_conditional_target_gate.md").read_text()
-    targets = (ROOT / "docs/next_development_targets.md").read_text()
+    backlog = (ROOT / "docs/task_backlog.md").read_text()
 
     for term in (
         "schema_version: balfrin_target_gate_reproduction_v1",
@@ -1296,21 +1296,14 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
             errors.append(f"docs/tschamut_public_scalable_conditional_target_gate.md omits {term!r}")
 
     for term in (
-        "### DT-04: Reproduce Selected Tschamut Conditional Hazard-Map Gate On Balfrin",
-        "Status: complete; classification `inconclusive`.",
-        "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol",
-        "Status: complete for the current selected target gate; classification",
-        "### DT-08: Define Output Budget And Reducer Scaling Gate",
-        "Status: complete; classification `blocked_before_scale_up`.",
-        "### DT-09: Design Balfrin Distributed Execution Only If Needed",
-        "Status: conditional; only if measured need for distributed execution.",
-        "### DT-10: Review Target-Scale Forest And Obstacle Context",
-        "Status: complete; classification `blocked_pending_local_evidence`.",
-        "### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA",
-        "Status: next active target.",
+        "Status: authoritative executable task backlog.",
+        "TB-001: Reassess Conditional Pilot Classification Using Existing Gates",
+        "Balfrin evidence",
+        "The selected Tschamut target-scale evidence remains `inconclusive`.",
+        "ensembles remain blocked",
     ):
-        if term not in targets:
-            errors.append(f"docs/next_development_targets.md omits {term!r}")
+        if term not in backlog:
+            errors.append(f"docs/task_backlog.md omits {term!r}")
     return errors
 
 
@@ -1861,15 +1854,29 @@ def _requirement_name(requirement: str) -> str:
 
 def check_roadmap_target_authority() -> list[str]:
     errors: list[str] = []
-    authority = ROOT / "docs/next_development_targets.md"
+    backlog = ROOT / "docs/task_backlog.md"
+    legacy_targets = ROOT / "docs/next_development_targets.md"
     matrix = ROOT / "docs/roadmap_recommendation_matrix.md"
     long_term = ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md"
 
-    expected_marker = "Status: authoritative current development targets."
-    if expected_marker not in authority.read_text():
-        errors.append(
-            "docs/next_development_targets.md must contain the authoritative current development targets marker"
-        )
+    expected_marker = "Status: authoritative executable task backlog."
+    backlog_text = backlog.read_text()
+    if expected_marker not in backlog_text:
+        errors.append("docs/task_backlog.md must contain the authoritative executable task backlog marker")
+    for term in (
+        "Worker rule:",
+        "TB-001: Reassess Conditional Pilot Classification Using Existing Gates",
+        "TB-002: Reduce Or Justify Validation Debug-Output Budget Blocker",
+        "TB-003: Prepare Local Public Context-Layer Acquisition Checklist For Tschamut",
+        "decision_log.md",
+        "agent_work_log.md",
+    ):
+        if term not in backlog_text:
+            errors.append(f"docs/task_backlog.md omits {term!r}")
+
+    legacy_text = legacy_targets.read_text()
+    if "Status: legacy pointer." not in legacy_text or "Current executable tasks have moved to `task_backlog.md`." not in legacy_text:
+        errors.append("docs/next_development_targets.md must remain a legacy pointer to task_backlog.md")
 
     support_marker = "not authoritative for current target selection"
     for path in (matrix, long_term):
@@ -1883,6 +1890,7 @@ def check_roadmap_target_authority() -> list[str]:
         for path in sorted((ROOT / "docs").glob("*.md"))
         if path.name
         in {
+            "task_backlog.md",
             "next_development_targets.md",
             "roadmap_recommendation_matrix.md",
             "real_case_intensity_frequency_implementation_roadmap.md",
@@ -1892,34 +1900,8 @@ def check_roadmap_target_authority() -> list[str]:
         for line_number, line in enumerate(path.read_text().splitlines(), start=1):
             if re.match(r"^## Target \d+:", line):
                 errors.append(
-                    f"{path.relative_to(ROOT)}:{line_number} uses active-looking '## Target N:' heading; use DT-xx in next_development_targets.md"
+                    f"{path.relative_to(ROOT)}:{line_number} uses active-looking '## Target N:' heading; use TB-xxx in task_backlog.md"
                 )
-
-    targets_text = authority.read_text()
-    if "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-05 heading")
-    if "Status: complete for the current selected target gate; classification" not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-05 complete")
-    if "### DT-06: Audit Stochastic Sampling And RNG Stream Semantics" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-06 heading")
-    if "Status: complete; classification `diagnostic_incomplete`." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-06 complete")
-    if "### DT-07: Define Real-Site DEM/Input Conditioning QA Gate" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-07 heading")
-    if "Status: complete; classification `blocked_pending_local_evidence`." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-07 complete")
-    if "### DT-08: Define Output Budget And Reducer Scaling Gate" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-08 heading")
-    if "Status: complete; classification `blocked_before_scale_up`." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-08 complete")
-    if "### DT-10: Review Target-Scale Forest And Obstacle Context" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-10 heading")
-    if "Status: complete; classification `blocked_pending_local_evidence`." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-10 complete")
-    if "### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA" not in targets_text:
-        errors.append("docs/next_development_targets.md must include the DT-11 heading")
-    if "Status: next active target." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-11 as next active target")
     return errors
 
 

@@ -1,9 +1,9 @@
 # Tschamut/swissALTI3D Controlled Pilot Plan
 
 Status: historical execution plan for a controlled local/private Tschamut
-swissALTI3D-style pilot. Current priorities are tracked in
-`next_development_targets.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`, and
+swissALTI3D-style pilot. Current executable tasks are tracked in
+`task_backlog.md`; long-term context remains in
+`real_case_intensity_frequency_implementation_roadmap.md` and
 `roadmap_recommendation_matrix.md`. This document does not implement new
 physics, tune parameters, change defaults, add shape models, add GeoTIFF
 export, or add trajectory Parquet.

@@ -76,9 +76,10 @@ cargo clippy --version
 ## Python and PyYAML
 
 Use `uv` so repository Python tools do not depend on system Python packages or
-the system default Python version. GitHub Actions installs the same
-`requirements-tools.txt` package set on Python 3.12, so local checks should use
-this environment rather than a hand-installed PyYAML-only interpreter.
+the system default Python version. The repository declares its tool dependencies
+in `pyproject.toml`, while `requirements-tools.txt` is kept for CI/pip
+compatibility. Local checks should use this environment rather than a
+hand-installed PyYAML-only interpreter.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -86,6 +87,14 @@ export PATH="$HOME/.local/bin:$PATH"
 uv python install 3.12
 uv venv --python 3.12 .venv
 uv pip install -r requirements-tools.txt
+```
+
+For one-off commands, plain `uv run python ...` is sufficient from the
+repository root because `uv` reads `pyproject.toml` and syncs the tool
+dependencies automatically:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
 ```
 
 The `.venv/` directory is ignored by git. The repository hooks prefer
@@ -162,6 +171,23 @@ scripts/git-hooks/pre-push
 `cargo run -- verify --all` and `cargo run -- validate --all` write ignored
 diagnostic outputs. Do not stage those generated files unless a tiny fixture is
 being intentionally added and documented.
+
+## Context-Efficient Agent Workflow
+
+For roadmap implementation tasks, keep onboarding and planning narrow:
+
+- Start from `docs/task_backlog.md`; it is the executable task authority.
+- Use `rg -n "TB-001|task phrase"` first, then read only the matching section
+  with `sed -n`.
+- Open supporting roadmap docs only when a target, link, or consistency check
+  requires them.
+- Reuse the existing evidence-gate pattern for audit packages: doc, YAML
+  record, validator, focused tests, and a narrow consistency hook.
+- Prefer targeted checks before broad test chains, and record only the checks
+  that were actually relevant to the changed files.
+- When a task is complete, remove it from `docs/task_backlog.md`; optionally
+  add one concrete follow-up task. Keep work-log entries short; they are audit
+  breadcrumbs, not design documents.
 
 ## Optional Public Benchmark Data
 

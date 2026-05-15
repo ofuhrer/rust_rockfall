@@ -63,7 +63,7 @@ REQUIRED_INCONCLUSIVE_REMAINING_STEPS = {
     "accept_or_reject_target_vs_small_gate_convergence",
     "complete_manual_gis_visual_qa",
     "resolve_or_bound_forest_obstacle_context_limitation",
-    "clarify_validation_runner_parallel_provenance_for_observed_release_ensembles",
+    "reduce_or_justify_validation_debug_output_volume",
     "keep_manual_gis_visual_qa_and_obstacle_context_limitations_visible",
 }
 MISLEADING_PATTERNS = [
@@ -121,6 +121,16 @@ def validate_target_gate_record(record_path: Path) -> dict[str, Any]:
         gate_status,
     )
     validate_evidence_result(require_mapping(record.get("evidence_result"), "evidence_result"), gate_status)
+    if gate_status != "blocked_missing_inputs":
+        validate_target_run_provenance_policy(
+            require_mapping(
+                record.get("target_run_provenance_policy"),
+                "target_run_provenance_policy",
+            )
+        )
+        validate_output_profile_policy(
+            require_mapping(record.get("output_profile_policy"), "output_profile_policy")
+        )
     remaining = set(require_list(record.get("remaining_before_gate_reassessment"), "remaining_before_gate_reassessment"))
     required_remaining = (
         REQUIRED_BLOCKED_REMAINING_STEPS
@@ -227,6 +237,151 @@ def validate_evidence_result(evidence: dict[str, Any], gate_status: str) -> None
             "ensemble_execution_manifest_status must be generated or partial_auxiliary_single_release_only",
         )
     require_text(evidence.get("interpretation"), "evidence_result.interpretation")
+
+
+def validate_target_run_provenance_policy(policy: dict[str, Any]) -> None:
+    require(
+        policy.get("schema_version") == "target_run_provenance_policy_v1",
+        "target_run_provenance_policy.schema_version must be target_run_provenance_policy_v1",
+    )
+    require(
+        policy.get("policy_status") == "closed_for_current_gate_with_caveat",
+        "target_run_provenance_policy.policy_status must be closed_for_current_gate_with_caveat",
+    )
+    observed = require_mapping(
+        policy.get("observed_release_target_run"),
+        "target_run_provenance_policy.observed_release_target_run",
+    )
+    require(
+        observed.get("scope_label") == "observed_release_target_run",
+        "observed_release_target_run.scope_label must be observed_release_target_run",
+    )
+    require_positive_int(observed.get("release_count"), "observed_release_target_run.release_count")
+    require_positive_int(
+        observed.get("simulated_trajectory_count"),
+        "observed_release_target_run.simulated_trajectory_count",
+    )
+    require(
+        observed.get("represents_full_target_run") is True,
+        "observed_release_target_run.represents_full_target_run must be true",
+    )
+    sources = set(
+        require_list(
+            observed.get("provenance_sources"),
+            "observed_release_target_run.provenance_sources",
+        )
+    )
+    missing_sources = sorted(
+        {"validation_run_manifest", "validation_metrics", "per_trajectory_outputs"} - sources
+    )
+    require(not missing_sources, f"observed_release_target_run.provenance_sources missing: {missing_sources}")
+
+    auxiliary = require_mapping(
+        policy.get("auxiliary_ensemble_execution"),
+        "target_run_provenance_policy.auxiliary_ensemble_execution",
+    )
+    require(auxiliary.get("present") is True, "auxiliary_ensemble_execution.present must be true")
+    require(
+        auxiliary.get("schema_version") == "local_parallel_ensemble_v1",
+        "auxiliary_ensemble_execution.schema_version must be local_parallel_ensemble_v1",
+    )
+    require(
+        auxiliary.get("scope_label") == "auxiliary_single_release_ensemble_path",
+        "auxiliary_ensemble_execution.scope_label must be auxiliary_single_release_ensemble_path",
+    )
+    require_positive_int(
+        auxiliary.get("trajectory_count"),
+        "auxiliary_ensemble_execution.trajectory_count",
+    )
+    require(
+        auxiliary.get("may_be_interpreted_as_full_observed_release_target_provenance") is False,
+        "auxiliary ensemble_execution must not be interpreted as full observed-release target provenance",
+    )
+    require_text(policy.get("interpretation"), "target_run_provenance_policy.interpretation")
+    require(
+        policy.get("ensemble_size_increase_authorized") is False,
+        "target_run_provenance_policy.ensemble_size_increase_authorized must be false",
+    )
+
+
+def validate_output_profile_policy(policy: dict[str, Any]) -> None:
+    require(
+        policy.get("schema_version") == "selected_output_profile_policy_v1",
+        "output_profile_policy.schema_version must be selected_output_profile_policy_v1",
+    )
+    require(
+        policy.get("policy_status") == "closed_for_current_gate",
+        "output_profile_policy.policy_status must be closed_for_current_gate",
+    )
+    require(
+        policy.get("profile_contract") == "docs/hazard_output_profile_contract.md",
+        "output_profile_policy.profile_contract must reference docs/hazard_output_profile_contract.md",
+    )
+    current = require_mapping(
+        policy.get("current_target_gate_profile"),
+        "output_profile_policy.current_target_gate_profile",
+    )
+    require(
+        current.get("profile") == "custom_or_mixed_legacy_summary_only",
+        "current_target_gate_profile.profile must be custom_or_mixed_legacy_summary_only",
+    )
+    require_text(current.get("classification_reason"), "current_target_gate_profile.classification_reason")
+    require(
+        current.get("conditional_curve_export_mode") == "summary-only",
+        "current_target_gate_profile.conditional_curve_export_mode must be summary-only",
+    )
+    require(
+        current.get("grid_csv_export_mode") == "legacy_default_full_or_unrecorded",
+        "current_target_gate_profile.grid_csv_export_mode must be legacy_default_full_or_unrecorded",
+    )
+    require(current.get("plots_enabled") is False, "current_target_gate_profile.plots_enabled must be false")
+    require(
+        current.get("generated_outputs_committed") is False,
+        "current_target_gate_profile.generated_outputs_committed must be false",
+    )
+    followup = require_mapping(
+        policy.get("selected_followup_profile"),
+        "output_profile_policy.selected_followup_profile",
+    )
+    require(
+        followup.get("profile") == "scalable_conditional",
+        "selected_followup_profile.profile must be scalable_conditional",
+    )
+    controls = set(require_list(followup.get("required_controls"), "selected_followup_profile.required_controls"))
+    missing_controls = sorted(
+        {"--conditional-curve-export summary-only", "--grid-csv-export none", "--no-plots"} - controls
+    )
+    require(not missing_controls, f"selected_followup_profile.required_controls missing: {missing_controls}")
+    require_text(followup.get("rationale"), "selected_followup_profile.rationale")
+    audit = require_mapping(
+        policy.get("provenance_audit_profile_allowed_when"),
+        "output_profile_policy.provenance_audit_profile_allowed_when",
+    )
+    require(
+        audit.get("profile") == "provenance_audit",
+        "provenance_audit_profile_allowed_when.profile must be provenance_audit",
+    )
+    require_text(audit.get("condition"), "provenance_audit_profile_allowed_when.condition")
+    debug = require_mapping(
+        policy.get("validation_debug_output_budget"),
+        "output_profile_policy.validation_debug_output_budget",
+    )
+    require(
+        debug.get("status") == "blocker_retained",
+        "validation_debug_output_budget.status must be blocker_retained",
+    )
+    require_positive_int(
+        debug.get("target_validation_output_file_count"),
+        "validation_debug_output_budget.target_validation_output_file_count",
+    )
+    require_positive_int(
+        debug.get("target_validation_output_total_bytes"),
+        "validation_debug_output_budget.target_validation_output_total_bytes",
+    )
+    require(
+        debug.get("acceptable_for_next_scale_increase_without_reduction_or_justification") is False,
+        "validation debug output budget must remain a blocker before another scale increase",
+    )
 
 
 def validate_execution_evidence(evidence: dict[str, Any]) -> None:

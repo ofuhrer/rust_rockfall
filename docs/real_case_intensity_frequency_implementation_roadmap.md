@@ -2,15 +2,31 @@
 
 Status: long-term phase roadmap, not authoritative for current target selection.
 
-Current implementation target selection is authoritative only in
-`docs/next_development_targets.md`. This document explains the staged path from
+Current executable task selection is authoritative only in
+`docs/task_backlog.md`. This document explains the staged path from
 conditional public-data hazard-map products to later physical or annual
-intensity-frequency semantics; it does not define current target numbering.
+intensity-frequency semantics; it does not define the executable task queue.
 This document does not change simulator behavior, claim operational validity,
 introduce annual frequencies, or redefine current hazard-map semantics.
-Routine `DT-xx` implementation should not update this roadmap unless the
-long-term phase model changes. Current pilot status, target order, and
-near-term gaps live in `docs/next_development_targets.md`.
+Routine backlog task implementation should not update this roadmap unless the
+long-term phase model changes. Current worker-sized tasks live in
+`docs/task_backlog.md`.
+
+## Progress Over Process
+
+Recent roadmap work exposed an anti-pattern: procedural gate completion,
+status transitions, YAML records, validators, and consistency hooks can grow
+without producing feature, execution, validation, or scientific progress. Gates
+are support mechanisms, not deliverables in themselves.
+
+Roadmap work should therefore be tied to concrete progress: implemented
+simulator or workflow features, executable analysis scripts, validation runs
+with measured results, comparisons against reference or field data,
+reproducibility improvements that enable validation, performance improvements
+that enable larger validation, or tested bug fixes. Documentation-only gates,
+record-only changes, validator-only changes, roadmap reclassifications, and
+consistency-hook extensions are not sufficient by themselves unless the user
+explicitly requests a planning-only task.
 
 ## Target Definition
 
@@ -306,7 +322,7 @@ Likely affected areas:
 - `docs/validation_maturity_framework.md`;
 - `docs/hazard_map_semantics.md`;
 - `docs/roadmap_hazard_mapping.md`;
-- `docs/next_development_targets.md`;
+- `docs/task_backlog.md`;
 - `scripts/check_repo_consistency.py`;
 - report templates.
 
@@ -808,10 +824,10 @@ Do not:
 
 ## Current Target Authority
 
-The active implementation queue now lives only in
-`docs/next_development_targets.md`. This roadmap intentionally does not repeat a
-numbered near-term target table because duplicate rankings have caused agents
-to confuse completed historical gates with the current first target.
+The active implementation queue now lives only in `docs/task_backlog.md`. This
+roadmap intentionally does not repeat a numbered near-term target table because
+duplicate rankings have caused agents to confuse completed historical gates
+with the current first task.
 
 Current high-level sequence:
 
@@ -831,9 +847,8 @@ forest/obstacle omission is blocked pending local evidence, conditional curve ex
 summary-only mode, target-run provenance/output-profile policy is explicit,
 ensemble-size increase remains `no_go`, fallible DEM-facing guardrails and
 deterministic local parallel execution exist, and the selected target-scale
-gate has executed but inconclusive evidence. The current gap analysis and
-target order are intentionally not repeated here; use
-`docs/next_development_targets.md`.
+gate has executed but inconclusive evidence. The current executable queue is
+intentionally not repeated here; use `docs/task_backlog.md`.
 
 ## Earliest Useful Pilot
 

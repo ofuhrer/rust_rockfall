@@ -66,15 +66,13 @@ class PilotEnsembleFeasibilityTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.EnsembleFeasibilityError, "review_manual_gis_visual_qa"):
                 validator.validate_feasibility_record(record_path)
 
-    def test_rejects_missing_target_scale_provenance_blocker(self) -> None:
+    def test_rejects_missing_debug_output_budget_blocker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.base_record()
-            record["blockers"].remove(
-                "validation_runner_parallel_provenance_partial_for_observed_release_outputs"
-            )
+            record["blockers"].remove("validation_debug_output_budget_too_large_for_next_increase")
             record_path = self.write_record(Path(tmp), record)
 
-            with self.assertRaisesRegex(validator.EnsembleFeasibilityError, "parallel_provenance"):
+            with self.assertRaisesRegex(validator.EnsembleFeasibilityError, "debug_output_budget"):
                 validator.validate_feasibility_record(record_path)
 
     def test_rejects_target_scale_without_summary_only_curves(self) -> None:
@@ -133,7 +131,7 @@ class PilotEnsembleFeasibilityTests(unittest.TestCase):
                 "diagnostics_reviewed": ["small_gate_conditional_curves"],
                 "missing_diagnostics": [
                     "accepted_target_vs_small_gate_convergence_interpretation",
-                    "validation_runner_parallel_provenance_for_observed_release_ensembles",
+                    "validation_debug_output_reduction_or_justification",
                 ],
                 "interpretation": "Target-scale convergence is not established.",
             },
@@ -186,7 +184,6 @@ class PilotEnsembleFeasibilityTests(unittest.TestCase):
                 "target_scale_convergence_inconclusive",
                 "manual_gis_visual_qa_inconclusive",
                 "forest_obstacle_omission_limiting",
-                "validation_runner_parallel_provenance_partial_for_observed_release_outputs",
                 "validation_debug_output_budget_too_large_for_next_increase",
             ],
             "required_preconditions_before_increase": [
@@ -195,7 +192,7 @@ class PilotEnsembleFeasibilityTests(unittest.TestCase):
                 "record_output_budget",
                 "review_manual_gis_visual_qa",
                 "review_forest_obstacle_context",
-                "clarify_validation_runner_parallel_provenance",
+                "apply_target_run_provenance_policy",
                 "reduce_or_justify_validation_debug_output_volume",
             ],
             "claim_boundary": {

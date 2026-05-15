@@ -12,10 +12,10 @@ runs toward CSCS/SLURM workflows. Risk modelling, exposure/vulnerability
 analysis, and operational warning systems are out of scope.
 
 Use this index by authority level. Governing documents and the authoritative
-current target list are the starting point for new work. Evidence reports
+task backlog are the starting point for new work. Evidence reports
 describe what was observed at the time they were written. Historical decision
 fragments have been consolidated into `decision_log.md`; they do not override
-`next_development_targets.md`.
+`task_backlog.md`.
 
 ## Governing Documents
 
@@ -38,17 +38,24 @@ fragments have been consolidated into `decision_log.md`; they do not override
 
 ## Current Roadmaps
 
-- `next_development_targets.md`: authoritative current development targets.
-  If a prompt says "Target 1" or "the next target", use this file and its
-  `DT-xx` identifiers.
+- `task_backlog.md`: authoritative executable task backlog. Worker agents
+  should use its `TB-xxx` identifiers, remove completed tasks, and add at most
+  one concrete follow-up task when needed. Backlog tasks should identify the
+  executable implementation, validation, measured analysis, performance, or bug
+  fix outcome they enable.
+- `next_development_targets.md`: legacy pointer retained for older links; not
+  a maintained target list.
+- `decision_log.md`: durable design and sequencing decisions.
+- `agent_work_log.md`: concise record of completed task execution.
 - `roadmap_recommendation_matrix.md`: supporting scoring appendix behind target
-  ordering; not authoritative for current target selection.
+  ordering; not authoritative for current target selection and not updated for
+  routine DT completion.
 - `roadmap_hazard_mapping.md`: long-term hazard-map roadmap and hazard/risk
   boundary.
 - `real_case_intensity_frequency_implementation_roadmap.md`: staged path from
   conditional intensity-exceedance products to later physical/annual
   intensity-frequency semantics; not authoritative for current target
-  selection.
+  selection and not the current gap-analysis source.
 - `scalability_and_data_formats_review.md`: large-ensemble, output-format, and
   scaling roadmap.
 - `implementation_plan.md`: broad phased implementation plan.

@@ -2,9 +2,9 @@
 
 Status: consolidated historical decision log. This file replaces several
 standalone decision fragments and older roadmap snapshots that were useful at
-the time but had become competing sources of truth. Current implementation
-targets are owned only by `next_development_targets.md`; the long-term roadmap
-and recommendation matrix are supporting context, not current target authority.
+the time but had become competing sources of truth. Executable tasks are owned
+only by `task_backlog.md`; the long-term roadmap and recommendation matrix are
+supporting context, not current task authority.
 
 This log is intentionally concise. It records why a decision was made, its
 current status, and where the detailed evidence now lives. It does not define
@@ -12,6 +12,41 @@ new simulator behavior, validation status, hazard-map semantics, or operational
 claims.
 
 ## Active And Recent Decisions
+
+### Backlog, Decision, And Work-Log Split
+
+Decision: maintain exactly one executable task queue in `task_backlog.md`, keep
+durable choices in `decision_log.md`, and keep completed execution history in
+`agent_work_log.md`.
+
+Current status: active. `next_development_targets.md` is retained only as a
+legacy pointer for older links and must not regain an active target queue.
+
+Rationale: prior target and roadmap documents created duplicated priority
+language, forcing agents to read and update too many files for each task. The
+backlog is sized for focused worker-agent execution, while the decision and
+work logs separate durable rationale from execution history.
+
+Detailed sources: `task_backlog.md`, `agent_work_log.md`.
+
+### Progress Over Process
+
+Decision: future work should prefer executable implementation, measured
+validation, scientific analysis, reproducibility improvements, performance
+work, and tested bug fixes over creating additional gates, records, validators,
+roadmap labels, or consistency hooks.
+
+Current status: active. Procedural artifacts are acceptable only when they
+directly enable executable implementation or validation, or when the user
+explicitly asks for planning-only work.
+
+Rationale: the repository accumulated useful but costly gate scaffolding. The
+next phase needs to reduce scientific and implementation uncertainty through
+runs, measurements, scripts, features, and fixes rather than ending tasks with
+only another gate recommendation.
+
+Detailed sources: `../AGENTS.md`, `task_backlog.md`,
+`real_case_intensity_frequency_implementation_roadmap.md`.
 
 ### Project Priority Rule
 
@@ -27,7 +62,7 @@ real-site conditional hazard products, DEM/terrain sensitivity, GIS packaging,
 uncertainty provenance, and scalable ensemble execution.
 
 Detailed sources: `../README.md`, `../AGENTS.md`, `roadmap_hazard_mapping.md`,
-`next_development_targets.md`,
+`task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
 ### External Review Roadmap Pressure
@@ -48,7 +83,7 @@ reducers, or Balfrin orchestration before acceptance gates are defined would
 make behavior drift harder to review. The Tschamut pilot remains conditional,
 diagnostic, and non-operational until those gates classify it otherwise.
 
-Detailed sources: `next_development_targets.md`,
+Detailed sources: `task_backlog.md`,
 `roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
@@ -67,7 +102,7 @@ registration, nodata, terrain artifacts, and strict-versus-clamped boundary
 interpretation can all create plausible but spatially wrong hazard maps even
 when the simulation itself is unchanged.
 
-Detailed sources: `next_development_targets.md`,
+Detailed sources: `task_backlog.md`,
 `real_site_dem_input_conditioning_qa_gate.md`,
 `roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
@@ -86,7 +121,7 @@ Rationale: validation-side debug output, hazard output volume, reducer restart
 state, and dense-grid accumulator growth can make a run look finished while
 still being too large or too brittle for the next scale step.
 
-Detailed sources: `next_development_targets.md`,
+Detailed sources: `task_backlog.md`,
 `output_budget_reducer_scaling_gate.md`,
 `roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.

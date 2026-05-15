@@ -29,7 +29,6 @@ ALLOWED_LEGACY_BLOCKERS_FOR_NO_GO = {
     "target_scale_convergence_not_established",
 }
 REQUIRED_TARGET_SCALE_BLOCKERS = {
-    "validation_runner_parallel_provenance_partial_for_observed_release_outputs",
     "validation_debug_output_budget_too_large_for_next_increase",
 }
 REQUIRED_PRECONDITIONS = {
@@ -38,7 +37,7 @@ REQUIRED_PRECONDITIONS = {
     "record_output_budget",
     "review_manual_gis_visual_qa",
     "review_forest_obstacle_context",
-    "clarify_validation_runner_parallel_provenance",
+    "apply_target_run_provenance_policy",
     "reduce_or_justify_validation_debug_output_volume",
 }
 MISLEADING_PATTERNS = [

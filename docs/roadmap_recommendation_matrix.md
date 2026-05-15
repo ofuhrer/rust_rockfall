@@ -2,12 +2,12 @@
 
 Status: supporting scoring appendix, not authoritative for current target selection.
 
-Current implementation target selection is authoritative only in
-`docs/next_development_targets.md`. This matrix records the scoring rationale
-behind that target order; it must not introduce independent numbered target or
-rank semantics. Treat this document as a stable rationale snapshot. Routine
-`DT-xx` implementation should not update this matrix unless the scoring
-rationale or target order changes.
+Current executable task selection is authoritative only in
+`docs/task_backlog.md`. This matrix records the scoring rationale behind the
+recent target order; it must not introduce an independent task queue or rank
+semantics. Treat this document as a stable rationale snapshot. Routine backlog
+implementation should not update this matrix unless the scoring rationale or
+long-term ordering changes.
 
 Context: current prioritization matrix after the selected Tschamut public pilot
 manifest, source/scenario policy, DEM-sensitivity gate, reconciled no-go
@@ -213,15 +213,15 @@ Pause or defer:
 
 ## Roadmap Corrections
 
-1. Treat `docs/next_development_targets.md` as the only authoritative source
-   for current target selection.
+1. Treat `docs/task_backlog.md` as the only authoritative source for current
+   executable task selection.
 2. Treat `docs/real_case_intensity_frequency_implementation_roadmap.md` as the
    long-term phase roadmap and `docs/roadmap_recommendation_matrix.md` as this
    supporting scoring appendix. Neither document defines current target
    numbering.
-3. For routine target implementation, update `docs/next_development_targets.md`
-   and the target-specific evidence document only. Reopen this matrix only when
-   a new review changes target order or scoring rationale.
+3. For routine task implementation, update `docs/task_backlog.md` and the
+   task-specific evidence document only. Reopen this matrix only when a new
+   review changes target order or scoring rationale.
 4. Treat `docs/tschamut_public_scalable_conditional_execution.md`,
    `docs/tschamut_public_pilot_gis_package_review.md`, and
    `docs/tschamut_public_pilot_scaling_review.md` as selected-pilot evidence

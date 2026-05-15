@@ -5,6 +5,11 @@ gate defines the minimum evidence needed before a real-site pilot can be
 treated as output-budget safe for larger selected-domain runs. It does not
 change physics, reducer behavior, output defaults, or operational claims.
 
+Maintenance note: this is the completed DT-08 evidence contract. It is not a
+current target list. Routine target sequencing and current gap assessment live
+only in `docs/task_backlog.md`; update this file only when the
+output-budget/reducer gate itself changes.
+
 ## Scope
 
 This gate applies to:

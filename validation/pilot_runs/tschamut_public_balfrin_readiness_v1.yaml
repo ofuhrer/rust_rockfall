@@ -1,0 +1,126 @@
+schema_version: balfrin_tschamut_readiness_record_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_balfrin_readiness_v1
+roadmap_item: DT-02
+readiness_status: ready_for_balfrin_target_gate
+operational_status: research_diagnostic
+checked_at_utc: "2026-05-14T23:50:52Z"
+checked_host: balfrin.cscs.ch
+ssh_alias_used: balfrin
+repo_root: /users/olifu/work/rust_rockfall
+checker:
+  script: scripts/check_balfrin_tschamut_readiness.py
+  command: >
+    ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'
+  returncode: 0
+  output_status: ready_for_balfrin_target_gate
+  blocking_check_count: 0
+  warning_check_count: 1
+  raw_json_committed: false
+repository:
+  branch: main
+  commit: 61ab9c6542ba1d2274139940777ff0238f1983cf
+  git_status_summary: clean_tracked_with_untracked_local_scratch_files
+  untracked_files_present: true
+  untracked_files_interpretation: >
+    Untracked local command/probe scratch files were present in the balfrin
+    checkout. The readiness checker validates tracked repo context, toolchain,
+    required ignored inputs, processed artifacts, and writable output paths; it
+    does not require unrelated untracked scratch files to be absent.
+toolchain:
+  rustc:
+    available: true
+    version: rustc 1.95.0 (59807616e 2026-04-14)
+  cargo:
+    available: true
+    version: cargo 1.95.0 (f2d3ce0bd 2026-03-21)
+  python3:
+    available: true
+    version: Python 3.12.13
+  uv:
+    available: true
+    version: uv 0.11.11 (x86_64-unknown-linux-gnu)
+  qgis:
+    available: false
+    required_for_readiness: false
+    warning: QGIS not found; manual GIS visual QA remains out-of-scope for this readiness check
+paths:
+  target_run_manifest:
+    path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+    status: present
+  validation_private_root:
+    path: validation/private/tschamut_public_pilot/gate_v1
+    status: writable
+  hazard_results_root:
+    path: hazard/results/tschamut_public_pilot/gate_v1
+    status: writable
+  frozen_private_case:
+    path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+    status: present
+required_ignored_inputs:
+  status: present
+  missing_required_count: 0
+  items:
+    - role: geodata_manifest
+      path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+      status: present
+    - role: terrain_metadata
+      path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+      status: present
+    - role: source_zone_metadata
+      path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+      status: present
+    - role: scenario_table
+      path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+      status: present
+    - role: source_scenario_policy
+      path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+      status: present
+    - role: frozen_private_validation_case
+      path: validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+      status: present
+processed_artifacts:
+  status: present
+  missing_required_count: 0
+  items:
+    - role: processed_public_dem
+      path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+      status: present
+    - role: processed_public_dem_metadata
+      path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml
+      status: present
+command_plan_preconditions:
+  status: pass
+  required_commands_present:
+    - validate_geodata_manifest
+    - validate_source_scenario_policy
+    - run_validation_gate
+    - build_conditional_hazard_layers
+  required_inputs_present: true
+  required_output_locations_writable: true
+claim_boundary:
+  generated_outputs_committed: false
+  raw_geodata_committed: false
+  changes_physics: false
+  changes_defaults: false
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+  unsupported_current_claims:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk_map
+    - operational_hazard_map
+conclusion: >
+  The balfrin checkout at /users/olifu/work/rust_rockfall is ready for the
+  current Tschamut conditional pilot readiness gate: tracked repository context,
+  required Rust/Python tools, ignored public/processed inputs, private case
+  inputs, and output roots are present or writable. This does not run the
+  selected hazard-map workflow, authorize scale-up, complete manual GIS/QGIS QA,
+  or make operational/annual/physical probability claims.
+next_step: >
+  Proceed to the current SLURM probe repeatability/log-audit target before any
+  same-scale selected Tschamut conditional hazard-map reproduction on balfrin.

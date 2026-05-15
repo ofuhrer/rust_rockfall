@@ -182,6 +182,31 @@ Important run-history note:
   pre-existing `chunks/` and `trajectory_chunks/` for the same output root so the run
   executed `executed` chunks end-to-end.
 
+## DT-03 repeat/reuse closure
+
+The DT-03 repeat/reuse record is
+`validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`.
+It classifies the tracked 420×450 probe as `pass_with_scope_limits` and the
+single-job SLURM driver as ready for same-scale selected-gate reproduction under
+the same output controls.
+
+Evidence summary:
+
+- fresh baseline job `4289703` executed both trajectory and reducer chunks;
+- repeat jobs `4318872` and `4318896` reused both trajectory and reducer chunks
+  through `reused_completed_state`;
+- trajectory and reducer plan IDs stayed stable across repeats;
+- a before/after hash check around the second repeat found `33/33` numeric
+  hazard artifacts unchanged;
+- repeat log audits had zero warning-like and zero error-like matches.
+
+Decision:
+
+- continue using the single-job SLURM driver for the next same-scale selected
+  Tschamut conditional hazard-map reproduction;
+- do not add SLURM arrays, distributed reducers, MPI, GPU execution, or
+  production orchestration from this evidence alone.
+
 ## Metrics summary fields
 
 `balfrin_probe_summary.json` includes (at minimum):
