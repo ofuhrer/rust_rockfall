@@ -31,6 +31,40 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### Backlog Refill After Same-Scale Pilot Progress
+
+- Milestone id: backlog refill after TB-021.
+- Roadmap item: Reassess project progress and refill executable backlog after
+  restored same-scale artifacts, measured convergence, target-side output
+  reduction, and hazard-context overlap evidence.
+- Hypothesis/objective: The active backlog should stop treating missing
+  target-side artifacts as the dominant blocker and instead prioritize measured
+  uncertainty reduction, context-overlap broadening, reproducible case
+  regeneration, and Swiss public-geodata portability.
+- Files intended to change: `docs/task_backlog.md`, `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Updated the backlog capability-gap analysis to
+  reflect that target-side artifacts are restored, target-vs-gate convergence
+  is measured but inconclusive, target-side `summary_only` output reduction is
+  measured, and hazard-context overlap is measured only for a narrow top-cell
+  envelope. Preserved in-flight TB-022 and added focused follow-up tasks for a
+  broader overlap envelope, disagreement-driver diagnosis, bounded sampling
+  sensitivity, reproducible case regeneration, and second-site public-geodata
+  portability. Updated the durable decision log so the target-vs-gate state is
+  no longer recorded as missing-manifest blocked.
+- Checks run:
+  `git diff --check`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: This is a backlog-refill pass only; it does not change
+  simulator physics, thresholds, baselines, release assumptions, or
+  operational claim boundaries.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-022, already in flight; otherwise TB-023.
+
 ### TB-018 Target Same-Scale Artifact Restore
 
 - Milestone id: TB-018 target same-scale artifact restore.

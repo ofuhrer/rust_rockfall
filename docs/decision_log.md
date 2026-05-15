@@ -189,21 +189,29 @@ Detailed sources: `task_backlog.md`,
 `tschamut_public_obstacle_context_scope.md`,
 `balfrin_single_job_execution_sufficiency.md`.
 
-### Target-Vs-Gate Comparison Blocked On Missing Target Manifest
+### Same-Scale Target-Vs-Gate Convergence Measured Inconclusive
 
-Decision: treat the refreshed same-scale target-vs-gate convergence as
-blocked until the target-side hazard manifest and its referenced grid files
-are restored in this checkout.
+Decision: treat the same-scale target-vs-gate comparison as restored and
+measured, but not accepted. The next backlog work should diagnose the measured
+disagreement, broaden context-overlap and uncertainty evidence, and harden
+reproducible case regeneration instead of continuing to treat missing target
+artifacts as the dominant blocker.
 
 Current status: active.
 
-Rationale: the gate manifest exists and exposes usable `cellwise_layers`, but
-the corresponding target-side manifest path is absent locally. The diagnostic
-should keep returning `blocked_missing_inputs` until a real target artifact is
-available rather than promoting a manifest self-check into spatial evidence.
+Rationale: the target-side same-scale artifact chain has been regenerated
+locally under ignored paths, and the comparison command now completes with
+`status: ok` across 22 shared cell-wise layers. The measured differences are
+still too large for acceptance, including `cellwise_linf_abs_diff_max =
+3028.22579673`, `cellwise_l1_abs_diff_sum = 190790.42488112117`, and
+`cellwise_nonzero_jaccard_min = 0.1`. The result is useful scientific
+evidence, not operational convergence or scale-up authorization.
 
 Detailed sources: `task_backlog.md`,
 `tschamut_public_conditional_pilot_gate_report.md`,
+`tschamut_public_same_scale_uncertainty_envelope.md`,
+`tschamut_public_bounded_validation_output_profile.md`,
+`tschamut_public_obstacle_context_scope.md`,
 `conditional_hazard_convergence_acceptance_protocol.md`,
 `balfrin_single_job_execution_sufficiency.md`.
 
