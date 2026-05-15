@@ -207,6 +207,16 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The tiny staging helper
+`scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py` copies the
+synthetic core fixture set from
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+into the ignored Chant Sura paths. It only stages the minimum terrain,
+source-zone, scenario, and source-scenario policy records plus the ignored
+input, validation, and hazard roots. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+swissSURFACE3D Raster, and swissBUILDINGS3D stay deferred and continue to
+appear as explicit preflight blockers.
+
 The validation/calibration evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` now makes the current
 boundary explicit: workflow reproducibility is strong, diagnostic validation

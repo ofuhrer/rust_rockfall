@@ -5410,3 +5410,48 @@ Planning only; these milestones do not implement roadmap item content yet.
   plus a manifest for 6 files / 1,202,927 bytes total in the ignored reduced
   root; hazard builder proof wrote 63 files / 78,431,962 bytes to
   `/tmp/tb042_reduced_hazard`.
+
+### TB-045 Minimal Chant Sura Core-Input Staging
+
+- Milestone id: TB-045.
+- Roadmap item: Stage Minimal Chant Sura Inputs For Preflight Progress.
+- Hypothesis/objective: a tiny synthetic fixture set can move the Chant Sura /
+  Fluelapass preflight past the core terrain/source/scenario/root blockers
+  without downloading raw public geodata or pretending the public context is
+  available.
+- Files intended to change: `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`,
+  `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`.
+- Implementation summary: added a tiny synthetic Chant Sura staging helper,
+  committed the matching fixture set, and updated the portability docs to say
+  that the helper only stages the minimal core inputs and ignored roots while
+  keeping SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and
+  swissBUILDINGS3D explicitly deferred.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  passed with the expected deferred public-context blockers only.
+  `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py scripts/generate_pilot_command_plan.py tests/test_pilot_command_plan.py scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_pilot_command_plan`
+  failed because `scripts/generate_pilot_command_plan.py` still requires missing
+  same-scale Tschamut readiness inputs in this worktree.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: the preflight remains intentionally blocked on deferred
+  public context; the helper is only meant to separate that blocker from the
+  staged core inputs.
+- Decision: ACCEPT_WITH_LIMITATIONS.
+- Next proposed milestone: a concrete public-context staging decision for
+  Chant Sura / Fluelapass, if and when that path is authorized.

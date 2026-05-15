@@ -1,0 +1,2 @@
+scenario_id,source_zone_id,block_family,relative_weight,probability_semantics,release_point_id
+chant_sura_fluelapass_fixture_scenario_001,chant_sura_fluelapass_fixture_zone_001,chant_sura_fixture_block_family,1.0,normalized within a block family; no annual frequency claim,chant_sura_fluelapass_fixture_release_001

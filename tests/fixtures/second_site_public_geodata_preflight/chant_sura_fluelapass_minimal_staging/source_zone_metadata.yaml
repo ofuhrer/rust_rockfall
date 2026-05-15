@@ -1,0 +1,32 @@
+# Synthetic Chant Sura / Fluelapass source-zone metadata fixture.
+# The release polygon and release point are intentionally tiny and synthetic.
+schema_version: 1
+zone_id: chant_sura_fluelapass_fixture_zone_001
+title: Synthetic Chant Sura / Fluelapass release-source metadata fixture
+source_dataset: synthetic_chant_sura_fluelapass_fixture
+source_url: null
+license: synthetic fixture for repository tests; real source-area inputs must retain their own license/provenance
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+geometry:
+  type: polygon
+  coordinates:
+    - [2793001.0, 1180201.0]
+    - [2793006.0, 1180201.0]
+    - [2793006.0, 1180206.0]
+    - [2793001.0, 1180206.0]
+release_points:
+  - release_point_id: chant_sura_fluelapass_fixture_release_001
+    x: 2793002.0
+    y: 1180202.0
+    z_offset_m: 0.05
+    notes: synthetic release point for preflight staging only
+provenance:
+  intended_use: chant_sura_fluelapass_minimal_preflight_fixture
+  notes:
+    - Synthetic source-zone metadata; do not interpret as an actual source-zone survey.
+    - Exercises the site-specific source-zone contract shape.

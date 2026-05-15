@@ -487,6 +487,27 @@ Detailed sources: `docs/task_backlog.md`,
 `docs/public_real_site_geodata_preparation.md`,
 `docs/swisstopo_data_strategy.md`.
 
+### Chant Sura Minimal Core-Input Staging
+
+Decision: allow a tiny synthetic staging helper to populate the ignored
+Chant Sura / Fluelapass core-input roots so the second-site preflight can
+separate minimal terrain/source/scenario readiness from deferred public
+context products.
+
+Current status: active.
+
+Rationale: the second-site portability helper is existence-based, so a small
+synthetic fixture set is enough to prove that the core candidate roots and
+metadata records can be staged reproducibly without downloading raw swisstopo
+products. The public context layers remain intentionally deferred and must
+still be reported explicitly until a real context staging decision exists.
+
+Detailed sources: `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`,
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`,
+`docs/public_real_site_geodata_preparation.md`,
+`docs/swisstopo_data_strategy.md`,
+`docs/task_backlog.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

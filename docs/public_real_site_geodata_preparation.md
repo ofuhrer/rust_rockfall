@@ -213,6 +213,16 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+A tiny staging helper,
+`scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`, copies the
+synthetic core fixture set from
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+into the ignored Chant Sura paths. It is intentionally limited to terrain,
+source-zone, scenario, and policy files plus the ignored roots that the
+preflight checks for existence. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+swissSURFACE3D Raster, and swissBUILDINGS3D remain deferred and are still
+reported explicitly by the preflight.
+
 The new evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` keeps the current
 Tschamut evidence in the diagnostic category: observed deposition/runout,

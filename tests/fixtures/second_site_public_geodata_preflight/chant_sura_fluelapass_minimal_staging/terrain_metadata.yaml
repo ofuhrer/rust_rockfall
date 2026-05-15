@@ -1,0 +1,46 @@
+# Synthetic Chant Sura / Fluelapass terrain metadata fixture.
+# The DEM is intentionally tiny and synthetic so the staging helper can reduce
+# core preflight blockers without downloading raw swisstopo geodata.
+schema_version: 1
+tile_id: chant_sura_fluelapass_minimal_fixture_lv95_crop
+source_dataset: synthetic_chant_sura_fluelapass_fixture
+source_product: synthetic swissALTI3D-style crop
+source_url: null
+source_filename: chant_sura_fluelapass_minimal_fixture.asc
+source_file_present: false
+download_status: processed_fixture
+license: synthetic fixture for repository tests; real swisstopo data remain subject to swisstopo terms
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+raster:
+  format: ESRI ASCII GRID
+  resolution_m: 2.0
+  width_px: 4
+  height_px: 4
+  nodata: -9999.0
+extent_lv95_m:
+  xmin: 2793000.0
+  ymin: 1180200.0
+  xmax: 2793008.0
+  ymax: 1180208.0
+preprocessing:
+  status: staged_synthetic_fixture
+  crop_extent_lv95_m:
+    xmin: 2793000.0
+    ymin: 1180200.0
+    xmax: 2793008.0
+    ymax: 1180208.0
+  resampling_method: none
+  raw_sha256: null
+  processed_sha256: null
+  tool: handwritten synthetic fixture
+  processed_utc: null
+provenance:
+  intended_use: chant_sura_fluelapass_minimal_preflight_fixture
+  notes:
+    - Synthetic DEM values; do not interpret as real swisstopo elevation.
+    - Exercises terrain metadata, CRS, vertical datum, extent, and nodata handling.

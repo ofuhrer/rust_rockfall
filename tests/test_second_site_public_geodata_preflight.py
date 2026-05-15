@@ -12,12 +12,23 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
+STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 SPEC = importlib.util.spec_from_file_location("check_second_site_public_geodata_preflight", SCRIPT_PATH)
 assert SPEC is not None
 preflight = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 sys.modules[SPEC.name] = preflight
 SPEC.loader.exec_module(preflight)
+
+STAGING_SPEC = importlib.util.spec_from_file_location(
+    "prepare_chant_sura_fluelapass_minimal_preflight_inputs",
+    STAGING_SCRIPT_PATH,
+)
+assert STAGING_SPEC is not None
+staging = importlib.util.module_from_spec(STAGING_SPEC)
+assert STAGING_SPEC.loader is not None
+sys.modules[STAGING_SPEC.name] = staging
+STAGING_SPEC.loader.exec_module(staging)
 
 
 class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
@@ -93,7 +104,14 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         )
 
     def test_candidate_example_fixture_is_blocked_and_records_manifest_contract(self) -> None:
-        report = preflight.build_report(self._candidate_example_config_path())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            original_root = preflight.ROOT
+            try:
+                preflight.ROOT = root
+                report = preflight.build_report(self._candidate_example_config_path())
+            finally:
+                preflight.ROOT = original_root
 
         self.assertEqual(report["second_site_manifest_status"], "staged_candidate_manifest")
         self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
@@ -144,6 +162,45 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertIn("acquisition_manifest_status:", text)
         self.assertIn("missing_input_categories:", text)
         self.assertIn("second_site_manifest_status: staged_placeholder_manifest", text)
+
+    def test_minimal_staging_helper_reduces_core_blockers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            staging.stage_minimal_inputs(
+                repo_root=root,
+                site_config=self._candidate_example_config_path(),
+                fixture_root=ROOT
+                / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            original_root = preflight.ROOT
+            try:
+                preflight.ROOT = root
+                report = preflight.build_report(self._candidate_example_config_path())
+            finally:
+                preflight.ROOT = original_root
+
+        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
+        self.assertEqual(report["terrain_manifest_status"], "ready")
+        self.assertEqual(report["source_zone_manifest_status"], "ready")
+        self.assertEqual(report["scenario_manifest_status"], "ready")
+        self.assertEqual(
+            set(report["missing_input_categories"]),
+            {
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            },
+        )
+        self.assertNotIn("terrain_crop", report["missing_input_categories"])
+        self.assertNotIn("source_zone_metadata", report["missing_input_categories"])
+        self.assertNotIn("scenario_table", report["missing_input_categories"])
+        self.assertNotIn("source_scenario_policy", report["missing_input_categories"])
+        self.assertNotIn("validation_case_root", report["missing_input_categories"])
+        self.assertNotIn("hazard_results_root", report["missing_input_categories"])
+        self.assertNotIn("processed_input_root", report["missing_input_categories"])
+        self.assertNotIn("processed_context_root", report["missing_input_categories"])
 
     def _fixture_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml"

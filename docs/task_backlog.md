@@ -47,9 +47,9 @@ has multi-seed uncertainty, spatial uncertainty interpretation, closure
 criteria, GIS/package, command-plan, COG proof-of-concept, and bounded
 runtime/output evidence. Larger selected-domain runs remain blocked until the
 dominant uncertainty and output-profile gaps below are reduced with measured
-evidence. Second-site pilots remain metadata-only even though Chant Sura /
-Flüelapass is staged as the concrete candidate manifest with a concrete
-acquisition manifest.
+evidence. Second-site pilots remain metadata-only, although Chant Sura /
+Flüelapass now has a concrete candidate manifest, a concrete acquisition
+manifest, and a tiny synthetic core-input staging helper.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -104,11 +104,12 @@ objective are:
    pattern has only been audited, not implemented, for a non-Tschamut site with
    its own extent, terrain crop, source-zone metadata, scenario table, and
    context products.
-6. Swiss-wide portability has a concrete metadata-only candidate in Chant Sura /
-   Flüelapass, plus a multisite source/scenario contract audit. The candidate
-   remains blocked on missing terrain, source-zone, scenario, public-context,
-   validation-root, and hazard-root artifacts. No second-site ensemble or hazard
-   build is authorized.
+6. Swiss-wide portability has a concrete Chant Sura / Flüelapass candidate, a
+   multisite source/scenario contract audit, and a tiny synthetic core-input
+   staging path. The candidate now has the ignored terrain, source-zone,
+   scenario, processed-input, validation-root, and hazard-root inputs needed to
+   separate core readiness from deferred public-context blockers. No second-site
+   ensemble or hazard build is authorized.
 7. Scaling direction is measured for the current same-scale set. The
    single-job Balfrin path remains sufficient for the next same-scale step,
    distributed execution stays deferred, and the dominant bottleneck is
@@ -152,17 +153,17 @@ Underrepresented high-value work:
   only being specified;
 - regeneration of a same-scale GIS package into ignored COG-ready outputs so
   the scratch COG proof becomes normal package evidence;
-- staging of minimal Chant Sura / Flüelapass public inputs so the second-site
-  preflight moves from acquisition-manifest-ready to a more specific
-  blocked-or-ready state;
+- staging of Chant Sura / Flüelapass public-context inputs so the second-site
+  preflight can separate deferred public context from the minimal core input
+  path;
 - durable holdout evidence for Chant Sura so diagnostic selection evidence and
   independent validation evidence remain separated.
 
 Current priority order:
 
 1. TB-044 converts the proven COG path into an ignored package-level result.
-2. TB-045 advances Swiss-wide portability only after the diagnostic evidence
-   and output/product blockers are better controlled.
+2. Second-site work should now focus on the deferred public-context blockers,
+   not on another metadata-only stage.
 
 ## Backlog Protocol
 
@@ -234,43 +235,6 @@ Boundaries:
 - no manual QGIS acceptance unless actually performed;
 - no scientific acceptance, scale-up, operational, annual-frequency, risk,
   exposure, or vulnerability claims.
-
-### TB-045: Stage Minimal Chant Sura Inputs For Preflight Progress
-
-Goal: move the Chant Sura / Flüelapass candidate beyond metadata-only
-acquisition readiness by staging the smallest ignored input set needed to
-reduce core `blocked_missing_inputs` categories.
-
-Inspect first:
-
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Expected work:
-
-- stage or fixture a minimal terrain metadata, source-zone metadata, and
-  scenario-table input set under ignored Chant Sura paths, using only public or
-  tiny intentional fixture data;
-- keep missing context or validation artifacts explicit if they remain
-  intentionally deferred;
-- rerun the second-site preflight and report which blockers were reduced.
-
-Definition of done:
-
-- the preflight no longer fails on the staged core input categories, or it
-  reports exact remaining blockers after a bounded attempt;
-- no raw or large geodata is downloaded or committed;
-- no second-site validation ensemble or hazard build is run.
-
-Boundaries:
-
-- no Tschamut evidence reused as Chant Sura validation evidence;
-- no tuning, source-frequency, annual probability, risk, exposure,
-  vulnerability, scale-up, or operational claims.
 
 ## Deferred Backlog
 
