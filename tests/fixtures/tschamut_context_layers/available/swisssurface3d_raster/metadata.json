@@ -1,0 +1,13 @@
+{
+  "review_classification": "acceptable",
+  "source_product": "swissSURFACE3D Raster",
+  "source_url": "https://www.swisstopo.admin.ch/en/height-model-swisssurface3d-raster",
+  "source_tile_ids": ["2696-1167"],
+  "coordinate_reference_system": {
+    "epsg": 2056,
+    "horizontal_name": "CH1903+ / LV95",
+    "vertical_datum": "LN02"
+  },
+  "spatial_relevance": "canopy and surface-height comparison against bare-earth terrain",
+  "inspection_rationale": "Synthetic metadata-only fixture exercises the accepted-path summary."
+}

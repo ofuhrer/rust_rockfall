@@ -1702,6 +1702,7 @@ def check_pilot_obstacle_scope_contract() -> list[str]:
         "blocked_pending_local_evidence",
         "does not add obstacle physics",
         "research_diagnostic",
+        "inspect_tschamut_public_context_layers.py",
     ):
         if term not in doc:
             errors.append(f"docs/tschamut_public_obstacle_context_scope.md omits {term!r}")
@@ -1754,6 +1755,13 @@ def check_pilot_obstacle_scope_contract() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_pilot_obstacle_scope.py omits {test_name}")
+
+    for path in (
+        ROOT / "scripts/inspect_tschamut_public_context_layers.py",
+        ROOT / "tests/test_tschamut_public_context_layers.py",
+    ):
+        if not path.exists():
+            errors.append(f"pilot obstacle-scope inspection path is missing: {path.relative_to(ROOT)}")
     return errors
 
 
@@ -1867,7 +1875,6 @@ def check_roadmap_target_authority() -> list[str]:
         "Project Objective",
         "Capability Gap Analysis",
         "Backlog Quality Assessment",
-        "TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut",
         "decision_log.md",
         "agent_work_log.md",
     ):

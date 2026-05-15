@@ -1,0 +1,13 @@
+{
+  "review_classification": "unresolved",
+  "source_product": "swissTLM3D",
+  "source_url": "https://www.swisstopo.admin.ch/en/landscape-model-swisstlm3d",
+  "source_tile_ids": ["TCH-001"],
+  "coordinate_reference_system": {
+    "epsg": 2056,
+    "horizontal_name": "CH1903+ / LV95",
+    "vertical_datum": "LN02"
+  },
+  "spatial_relevance": "roads, hydrography, and constructed-features context for the Tschamut corridor",
+  "inspection_rationale": "Context metadata exists but this synthetic fixture does not encode a final acceptance review."
+}

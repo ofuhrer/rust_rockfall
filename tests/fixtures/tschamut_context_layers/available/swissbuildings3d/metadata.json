@@ -1,0 +1,13 @@
+{
+  "review_classification": "limiting",
+  "source_product": "swissBUILDINGS3D",
+  "source_url": "https://www.swisstopo.admin.ch/en/landscape-model-swissbuildings3d-3-0-beta",
+  "source_tile_ids": ["TCH-001"],
+  "coordinate_reference_system": {
+    "epsg": 2056,
+    "horizontal_name": "CH1903+ / LV95",
+    "vertical_datum": "LN02"
+  },
+  "spatial_relevance": "building and structure context around the corridor",
+  "inspection_rationale": "Building context is present in metadata-only form and remains limiting for omission review."
+}

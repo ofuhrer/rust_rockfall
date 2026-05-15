@@ -60,6 +60,20 @@ categories, claimed obstacle physics, blocked or limiting records without
 future context actions, acceptable classifications without reviewed target
 context, and unqualified annual/return-period/risk or operational language.
 
+For a concrete local inspection, run:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/inspect_tschamut_public_context_layers.py --format json
+```
+
+In the current checkout this returns `blocked_pending_local_evidence`, reports
+`data/processed/swisstopo/tschamut_public_pilot/context/` as absent, and emits
+an acquisition checklist with the exact raw cache paths and source URLs for the
+expected SWISSIMAGE, swissTLM3D, swissSURFACE3D Raster, and swissBUILDINGS3D
+products. That checklist is the executable next step when the context layers
+are not locally available.
+
 ## Interpretation Boundary
 
 Allowed current interpretation:

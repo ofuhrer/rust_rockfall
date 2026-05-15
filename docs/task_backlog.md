@@ -121,41 +121,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut
-
-Capability gap reduced: forest and obstacle context is unresolved.
-
-Goal: use public context products, where locally available, to determine
-whether omitted forest, buildings, roads, barriers, nets, or other obstacles
-are acceptable, limiting, invalidating, or still blocked for the selected
-Tschamut conditional hazard-map interpretation.
-
-Inspect first:
-
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`;
-- `docs/swisstopo_data_strategy.md`;
-- `docs/public_real_site_geodata_preparation.md`.
-
-Required work:
-
-1. If public context layers are locally available, record paths, checksums,
-   CRS/provenance, and a concise spatial relevance assessment.
-2. If public context layers are missing, produce the exact fetch/cache commands
-   or local acquisition checklist needed next.
-3. Do not infer obstacle absence from missing data.
-4. Do not implement obstacle physics or tune terrain/contact/stopping
-   parameters.
-5. Keep raw geodata out of git.
-
-Definition of done:
-
-- the obstacle-context status is based on inspected data or an executable
-  acquisition path, not only a policy statement;
-- interpretation classification is explicit;
-- no operational claim is added;
-- focused checks pass.
-
 ### TB-005: Measure Whether Single-Job Balfrin Execution Is Still Enough
 
 Capability gap reduced: scaling direction is underdetermined.

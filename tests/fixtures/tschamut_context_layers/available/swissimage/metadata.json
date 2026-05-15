@@ -1,0 +1,13 @@
+{
+  "review_classification": "limiting",
+  "source_product": "SWISSIMAGE",
+  "source_url": "https://www.swisstopo.admin.ch/en/orthoimage-swissimage-10",
+  "source_tile_ids": ["2696-1167"],
+  "coordinate_reference_system": {
+    "epsg": 2056,
+    "horizontal_name": "CH1903+ / LV95",
+    "vertical_datum": "LN02"
+  },
+  "spatial_relevance": "visual corridor and release-zone QA around the selected Tschamut domain",
+  "inspection_rationale": "Orthophoto context is present and useful but not sufficient to close the obstacle omission blocker."
+}

@@ -3876,3 +3876,44 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The bounded profile is measured, but the pilot remains inconclusive because convergence is not accepted, validation debug output is still retained, and local ignored outputs are absent in this checkout.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-004.
+
+### TB-004
+
+- Milestone id: TB-004
+- Roadmap item: Acquire Or Verify Public Context-Layer Evidence For Tschamut.
+- Hypothesis/objective: A reusable local context-layer inspection command can
+  determine whether public forest, building, transport, barrier, and related
+  obstacle/context layers are locally available for the selected Tschamut
+  conditional hazard-map interpretation, or else emit an explicit acquisition
+  path without inferring absence from missing data.
+- Files intended to change:
+  `scripts/inspect_tschamut_public_context_layers.py`,
+  `tests/test_tschamut_public_context_layers.py`,
+  `tests/fixtures/tschamut_context_layers/available/`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/task_backlog.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a reusable context-layer inspection command
+  that reads the Tschamut obstacle-scope record and the swisstopo dataset
+  registry, reports a blocked state when the expected processed context cache
+  is absent, and otherwise summarizes local file presence, sizes, checksums,
+  CRS/provenance metadata, and conservative layer classifications from tiny
+  metadata-only fixtures. Documented the command in the obstacle-scope guide,
+  removed TB-004 from the active backlog, and aligned the repo-consistency
+  checks with the new executable evidence path.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_tschamut_public_context_layers tests.test_pilot_obstacle_scope`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  returned a blocked pending-local-evidence report with an acquisition
+  checklist for the missing context layers.
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+- Reviewer notes: The inspection stays conditional and non-operational; the
+  current checkout still lacks the processed Tschamut context cache, so the
+  pilot remains blocked on local evidence rather than on a semantic
+  interpretation of absent obstacles.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-005.
