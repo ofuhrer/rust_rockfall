@@ -60,8 +60,9 @@ objective are:
    manifest summaries, cell-wise fixture grids, and normal hazard-output
    manifests when raster files exist. Same-scale local gate artifacts and real
    public context evidence now exist, but target-vs-gate spatial convergence on
-   the refreshed same-scale outputs still needs to be measured against the
-   current target artifacts.
+   the refreshed same-scale outputs is still blocked until the target-side
+   same-scale hazard manifest and grid files are restored or regenerated in the
+   current checkout.
 2. Validation-output volume remains a practical blocker for target-scale
    growth, but the same-scale gate now has measured before/after evidence:
    full debug validation output was `125` files / `34545900` bytes, while the
@@ -131,47 +132,40 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-014: Measure Target-Vs-Gate Spatial Convergence On Refreshed Same-Scale Artifacts
+### TB-017: Restore The Same-Scale Target Hazard Manifest For Comparison
 
-Capability gap reduced: the repo now has cell-wise convergence diagnostics,
-same-scale gate regeneration, bounded validation-output profiling, and real
-local context evidence, but the actual target-vs-gate spatial stability still
-needs a measured comparison on the refreshed same-scale artifacts.
+Capability gap reduced: the convergence diagnostic is ready, but the target
+side of the refreshed same-scale hazard comparison is still missing in this
+checkout.
 
-Goal: run the cell-wise convergence diagnostic on the refreshed same-scale
-target and gate hazard artifacts, or produce an exact missing-input checklist
-if one side is absent, and record whether the selected Tschamut outputs remain
-spatially stable enough for non-operational interpretation.
+Goal: restore or regenerate the target-side same-scale hazard manifest and its
+referenced raster/grid files under the ignored local paths so TB-014 can be
+rerun as a real target-vs-gate spatial comparison.
 
 Inspect first:
 
 - `docs/tschamut_public_conditional_pilot_gate_report.md`;
 - `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `scripts/compare_hazard_map_convergence.py`;
-- the refreshed same-scale target and gate manifests under ignored paths, if
-  present locally.
+- `docs/tschamut_public_scalable_conditional_target_gate.md`;
+- `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`;
+- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`;
+- the ignored target-side paths listed in those records, if present locally.
 
 Required work:
 
-1. Prefer composing existing executable diagnostics over writing another
-   one-off YAML reader.
-2. Do not run larger ensembles or change thresholds.
-3. Preserve conditional, non-operational semantics.
-4. Make missing diagnostic inputs explicit rather than silently passing.
-5. Keep per-layer units separate and report cell-wise metrics only where the
-   underlying raster paths are present.
-6. Include the measured `summary_only` validation-output reduction and the
-   current context classification in the interpretation.
+1. Restore or regenerate the target-side same-scale manifest and raster/grid
+   files, or produce an exact missing-input checklist if the case inputs are
+   unavailable.
+2. Do not change physics, thresholds, release assumptions, or ensemble size.
+3. Keep the outputs ignored and uncommitted.
+4. Preserve the target-vs-gate comparison contract so TB-014 can consume the
+   refreshed artifacts directly.
 
 Definition of done:
 
-- the target-vs-gate comparison consumes actual diagnostic outputs or reports
-  exact missing inputs;
-- final classification and blockers are explicit;
-- uncertainty reduced and remaining blockers are stated quantitatively where
-  possible;
+- the target-side manifest and referenced grids are present locally, or the
+  exact missing inputs and regeneration command are recorded;
+- TB-014 can be rerun without further ambiguity;
 - checks pass.
 
 ### TB-015: Measure Corridor-Level Context Relevance From The Staged SwissTLM3D Archive

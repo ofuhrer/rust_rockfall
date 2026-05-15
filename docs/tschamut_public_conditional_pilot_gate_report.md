@@ -321,6 +321,33 @@ Self-comparison result:
 This is a plumbing sanity check only. Target-vs-gate spatial convergence still
 requires the matching `target_gate_v1` hazard manifest and raster artifacts.
 
+Current applied comparison attempt:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  --format json
+```
+
+- `convergence_comparison_status`: `blocked_missing_inputs`
+- `target_manifest_available`: `false`
+- `gate_manifest_available`: `true`
+- `cellwise_layers_available`: `true` for the gate manifest only
+- missing target path:
+  `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- matching private target manifest path missing in this checkout:
+  `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `validation_output_mode_context`: `summary_only` for the separate reduced-output probe; the full debug run remains available for family accounting
+- `context_classification`: `limiting`
+- `scale_up_authorized`: `false`
+- `operational_claims_allowed`: `false`
+
+The comparison remains blocked until the target-side same-scale manifest and
+its referenced raster files are restored or regenerated. This keeps the result
+conditional and non-operational rather than inferring spatial stability from a
+single manifest-side self-check.
+
 ## TB-013 Context Stage Update
 
 Current checkout status: `reviewed_local_context`

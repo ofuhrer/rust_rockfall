@@ -189,6 +189,24 @@ Detailed sources: `task_backlog.md`,
 `tschamut_public_obstacle_context_scope.md`,
 `balfrin_single_job_execution_sufficiency.md`.
 
+### Target-Vs-Gate Comparison Blocked On Missing Target Manifest
+
+Decision: treat the refreshed same-scale target-vs-gate convergence as
+blocked until the target-side hazard manifest and its referenced grid files
+are restored in this checkout.
+
+Current status: active.
+
+Rationale: the gate manifest exists and exposes usable `cellwise_layers`, but
+the corresponding target-side manifest path is absent locally. The diagnostic
+should keep returning `blocked_missing_inputs` until a real target artifact is
+available rather than promoting a manifest self-check into spatial evidence.
+
+Detailed sources: `task_backlog.md`,
+`tschamut_public_conditional_pilot_gate_report.md`,
+`conditional_hazard_convergence_acceptance_protocol.md`,
+`balfrin_single_job_execution_sufficiency.md`.
+
 ### Contact Model Default
 
 Decision: keep `translational_v0` as the default contact model. Treat

@@ -207,6 +207,35 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-014.
 
+### M076
+
+- Milestone id: M076.
+- Roadmap item: post TB-014 same-scale convergence measurement.
+- Hypothesis/objective: The refreshed same-scale target-vs-gate comparison
+  should either produce measured per-layer cell-wise disagreement or return a
+  precise blocked-missing-input record.
+- Files intended to change:
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Verified that the gate-side hazard manifest exists
+  and exposes `cellwise_layers`, but the target-side same-scale manifest path
+  is absent in this checkout. The convergence CLI returned
+  `blocked_missing_inputs` when run against the gate and target paths, so the
+  report now records the exact missing target manifest path and the backlog
+  adds a restoration follow-up for the target-side artifacts.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  returned `blocked_missing_inputs`.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python - <<'PY' ...`
+  inspected the gate manifest and confirmed `cellwise_layers` are available
+  there while the target manifest is absent.
+- Reviewer notes: The diagnostic correctly refuses to use the gate-side
+  self-check as target-vs-gate spatial evidence.
+- Decision: BLOCKED_MISSING_INPUTS.
+- Next proposed milestone: TB-017.
+
 ### TB-008
 
 - Milestone id: TB-008
