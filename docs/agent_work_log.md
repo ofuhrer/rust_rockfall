@@ -31,6 +31,44 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-013
+
+- Milestone id: TB-013
+- Roadmap item: Stage Tschamut Context Crops And Measure Real Spatial Relevance.
+- Hypothesis/objective: The public-context inspector can either measure real
+  staged Tschamut context crops or emit an exact blocked acquisition path
+  without implying obstacle absence.
+- Files intended to change:
+  `scripts/inspect_tschamut_public_context_layers.py`,
+  `tests/test_tschamut_public_context_layers.py`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Extended the inspector report with selected corridor
+  metadata, spatial-relevance status, blocked reason, and conservative
+  indicators for the expected public context categories. The real checkout
+  still has no processed Tschamut context cache under
+  `data/processed/swisstopo/tschamut_public_pilot/context/`, so the default
+  inspection remains `blocked_pending_local_evidence` and prints an explicit
+  acquisition checklist instead of treating missing crops as obstacle absence.
+  The deterministic fixture crop remains available only as a fixture-backed
+  review path.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/inspect_tschamut_public_context_layers.py tests/test_tschamut_public_context_layers.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_tschamut_public_context_layers tests.test_pilot_obstacle_scope`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  returned `blocked_pending_local_evidence` with the explicit acquisition
+  checklist for the missing real crops.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --context-root tests/fixtures/tschamut_context_layers/available --format json`
+  returned `fixture_reviewed_context` for the deterministic fixture crop only.
+- Reviewer notes: No real public context crops are staged in this checkout, so
+  the context review stays blocked pending local evidence. The report and docs
+  now distinguish the blocked acquisition path from the fixture-only
+  demonstration path.
+- Decision: BLOCKED_PENDING_LOCAL_EVIDENCE.
+- Next proposed milestone: TB-014.
+
 ### TB-008
 
 - Milestone id: TB-008

@@ -75,10 +75,11 @@ products. That checklist is the executable next step when the context layers
 are not locally available.
 
 The JSON report also separates `classification`, `context_review_status`,
-`spatial_relevance_status`, `selected_extent_or_corridor`, `layers_expected`,
-`layers_available`, `layers_missing`, `source_products`, `local_cache_paths`,
-`checksums`, `crs_or_spatial_reference`, `spatial_relevance_indicators`, and
-`interpretation_impact`, while keeping `operational_claims_allowed` false.
+`spatial_relevance_status`, `blocked_reason`, `selected_extent_or_corridor`,
+`layers_expected`, `layers_available`, `layers_missing`, `source_products`,
+`local_cache_paths`, `checksums`, `crs_or_spatial_reference`,
+`spatial_relevance_indicators`, and `interpretation_impact`, while keeping
+`operational_claims_allowed` false.
 That makes the blocked-state evidence explicit without turning the missing
 cache into an obstacle-absence claim. The metadata-only fixture under
 `tests/fixtures/tschamut_context_layers/available/` is intentionally labeled as

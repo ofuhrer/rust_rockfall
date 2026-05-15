@@ -129,6 +129,11 @@ def inspect_context_layers(
     checksums = build_checksum_summary(layer_reports)
     crs_or_spatial_reference = build_crs_summary(layer_reports)
     spatial_relevance_status = determine_spatial_relevance_status(context_root, layer_reports)
+    blocked_reason = build_blocked_reason(
+        context_root=context_root,
+        layer_reports=layer_reports,
+        spatial_relevance_status=spatial_relevance_status,
+    )
     spatial_relevance_indicators = build_spatial_relevance_indicators(
         selected_extent_or_corridor=selected_extent_or_corridor,
         layer_reports=layer_reports,
@@ -145,6 +150,7 @@ def inspect_context_layers(
         "classification": overall_classification,
         "context_review_status": target_review["local_context_review_status"],
         "spatial_relevance_status": spatial_relevance_status,
+        "blocked_reason": blocked_reason,
         "status": overall_classification,
         "target_scale_context_review_status": target_review["local_context_review_status"],
         "context_root_present": context_root.exists(),
@@ -440,6 +446,25 @@ def determine_spatial_relevance_status(context_root: Path, layer_reports: list[d
     return "reviewed_local_context"
 
 
+def build_blocked_reason(
+    *,
+    context_root: Path,
+    layer_reports: list[dict[str, Any]],
+    spatial_relevance_status: str,
+) -> str | None:
+    if spatial_relevance_status not in {BLOCKED, "blocked_missing_context_layers"}:
+        return None
+    if not context_root.exists():
+        return f"real processed Tschamut context crops are absent from {context_root}"
+    missing_categories = [layer["category"] for layer in layer_reports if not layer["path_exists"]]
+    if missing_categories:
+        return (
+            "processed context crops are incomplete for categories: "
+            + ", ".join(missing_categories)
+        )
+    return "context review remains blocked pending local evidence"
+
+
 def build_spatial_relevance_indicators(
     *,
     selected_extent_or_corridor: dict[str, Any],
@@ -600,6 +625,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"context inspection status: {report['classification']}",
         f"context review status: {report['context_review_status']}",
         f"spatial relevance status: {report['spatial_relevance_status']}",
+        f"blocked reason: {report['blocked_reason']}",
         f"scope record: {report['scope_record_path']}",
         f"context root: {report['context_root']}",
         f"selected extent/corridor: {report['selected_extent_or_corridor']['name']}",

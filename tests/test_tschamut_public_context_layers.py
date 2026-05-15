@@ -35,6 +35,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
         self.assertEqual(report["target_scale_context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
         self.assertEqual(report["spatial_relevance_status"], inspector.BLOCKED)
+        self.assertIn("real processed Tschamut context crops are absent", report["blocked_reason"])
         self.assertFalse(report["context_root_present"])
         self.assertGreater(report["blocked_context_layer_count"], 0)
         self.assertEqual(report["layers_available"], [])
@@ -71,6 +72,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["classification"], "limiting")
         self.assertEqual(report["context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
         self.assertEqual(report["spatial_relevance_status"], "fixture_reviewed_context")
+        self.assertIsNone(report["blocked_reason"])
         self.assertTrue(report["context_root_present"])
         self.assertEqual(report["context_layer_count"], 6)
         self.assertEqual(len(report["layers_available"]), 6)
@@ -116,6 +118,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
                 "adjacent_context_products",
                 "blocked_context_layer_count",
                 "blocked_missing_context_layers",
+                "blocked_reason",
                 "checksums",
                 "classification",
                 "context_layer_count",
