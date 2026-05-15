@@ -161,6 +161,12 @@ processed crop, generated cases, validation outputs, and later hazard outputs
 remain ignored. The Tschamut terrain package is input geodata for workflow
 development; it is not validation evidence by itself.
 
+The same-scale hazard outputs are now also audited as GIS packages. The
+current roots have complete map-package and pilot-GIS manifests with GeoTIFFs
+present, but the audited GeoTIFF layout is still strip-organized with no
+overviews, so COG readiness remains blocked even though the package metadata
+itself is complete.
+
 ## Second-Site Portability Preflight
 
 `scripts/check_second_site_public_geodata_preflight.py` is a metadata-only

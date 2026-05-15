@@ -168,38 +168,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-033: Audit GIS And COG Package Readiness On Existing Outputs
-
-Capability gap reduced: GIS-ready outputs exist in the workflow, but the repo
-has not recently checked whether current same-scale rasters/manifests are
-package-ready for inspection or COG conversion.
-
-Goal: run a read-only GIS/package readiness audit on existing same-scale
-hazard outputs and report CRS, transform, nodata, layer inventory, GeoTIFF/COG
-convertibility, and pilot-GIS package manifest completeness.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`;
-- `docs/public_real_site_geodata_preparation.md`;
-- existing same-scale map-package and pilot-GIS manifests under
-  `hazard/results/tschamut_public_pilot/`;
-- `scripts/build_hazard_layers.py`.
-
-Required work:
-
-1. Use existing artifacts only; do not regenerate hazard outputs unless a
-   missing manifest makes the audit impossible.
-2. Prefer metadata inspection with available GDAL/raster tools.
-3. Do not make manual QGIS QA mandatory.
-4. Report exact blockers for COG or GIS package readiness.
-
-Definition of done:
-
-- current same-scale GIS/package readiness is measured or explicitly blocked;
-- no operational or regulatory claim is introduced;
-- checks pass.
-
 ### TB-034: Measure Bounded Reducer Runtime And Output Scaling
 
 Capability gap reduced: distributed execution is deferred, but larger

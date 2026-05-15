@@ -5024,3 +5024,29 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan`,
   `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`,
   `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`.
+
+- TB-033 GIS/COG package readiness audit. Files changed:
+  `scripts/audit_gis_cog_package_readiness.py`,
+  `tests/test_gis_cog_package_readiness.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the same-scale readiness preflight, the four
+  existing same-scale hazard roots, the four map-package manifests, the four
+  pilot-GIS manifests, and bounded `gdalinfo` metadata from representative
+  GeoTIFFs.
+- Classification: `gis_package_ready_cog_blocked`.
+- Uncertainty reduced: the current same-scale outputs are manifest-complete
+  with GeoTIFFs present and consistent LV95/LN02 grid metadata, so package
+  readiness is no longer a missing-manifest question.
+- Remaining uncertainty: the GeoTIFFs are strip-organized, not cloud-optimized,
+  and have no overviews, so COG readiness remains blocked. Manual QGIS QA is
+  still not run.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`,
+  `gdalinfo --version`,
+  `PYENV_VERSION=system uv run python -m py_compile scripts/audit_gis_cog_package_readiness.py tests/test_gis_cog_package_readiness.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json`.

@@ -25,6 +25,9 @@
 - `max_jump_height` remains sensitive to support and nodata differences, with narrower but still nonzero spread across the two probes.
 - Velocity exceedance layers vary across seeds but remain lower-order than kinetic-energy disagreement.
 - The probe envelope is reusable for future same-scale diagnostics, but it is still conservative and non-operational.
+- GIS/package readiness was audited separately in TB-033: the same-scale outputs
+  are manifest-complete and GeoTIFF-present, but COG readiness remains blocked
+  by the current strip layout and lack of overviews.
 
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid

@@ -306,6 +306,12 @@ target baseline, but `max_kinetic_energy` remains dominant and
 `docs/tschamut_public_same_scale_uncertainty_envelope.md` for the summarized
 multi-seed ranges.
 
+TB-033 separately audited the same-scale GIS/package outputs. The map-package
+and pilot-GIS manifests are complete and the GeoTIFFs are present, but the
+current rasters are not cloud-optimized, are strip-organized, and have no
+overviews, so packaging remains COG-blocked even though the scientific
+interpretation remains unchanged.
+
 ## Same-Scale Convergence Check
 
 The restored same-scale target-side artifacts are now present and the

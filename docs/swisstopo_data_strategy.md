@@ -226,3 +226,9 @@ This strategy prepares the project to use authoritative Swiss geodata. It does
 not make the simulator operationally validated. Hazard layers are simulated
 physical indicators only. Risk maps require exposure, vulnerability, temporal
 occurrence, and consequence assumptions that are not part of the current core.
+
+The current same-scale Tschamut outputs now have complete map-package and
+pilot-GIS manifests and GeoTIFF layer outputs, but the audited rasters are not
+yet cloud-optimized: the manifests mark `cloud_optimized: false`, the sampled
+GeoTIFFs are strip-organized with no overviews, and the GIS/COG audit therefore
+remains package-complete but COG-blocked rather than scientifically accepted.
