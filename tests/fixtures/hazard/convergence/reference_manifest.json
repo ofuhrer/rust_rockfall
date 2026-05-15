@@ -1,0 +1,99 @@
+{
+  "schema_version": "run_manifest_v1",
+  "created_unix_s": 1700000000,
+  "case_id": "hazard_fixture_convergence",
+  "model_version": "v0.6.1",
+  "grid": {
+    "xmin_m": 0.0,
+    "ymin_m": 0.0,
+    "ncols": 2,
+    "nrows": 2,
+    "cell_size_m": 1.0,
+    "source": "fixture"
+  },
+  "performance": {
+    "output_file_count": 4,
+    "output_bytes": 1111
+  },
+  "hazard_map_package": {
+    "map_product_id": "fixture_conditional",
+    "probability_mode": "sampling_weighted_conditional",
+    "normalization_scope": "conditioned_on_filter"
+  },
+  "conditional_intensity_exceedance_curves": {
+    "enabled": true,
+    "schema_version": "conditional_intensity_exceedance_curves_v1",
+    "row_count": 4,
+    "intensity_measures": [
+      "kinetic_energy",
+      "jump_height"
+    ],
+    "probability_modes": [
+      "sampling_weighted_conditional"
+    ],
+    "mode": "summary-only",
+    "csv_table_written": false,
+    "annualized": false
+  },
+  "layers": [
+    {
+      "key": "reach_probability",
+      "summary": {
+        "valid_cell_count": 4,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "sum": 2.0,
+        "nonzero_cell_count": 2
+      }
+    },
+    {
+      "key": "deposition_density",
+      "summary": {
+        "valid_cell_count": 4,
+        "minimum": 0.0,
+        "maximum": 0.5,
+        "sum": 1.0,
+        "nonzero_cell_count": 2
+      }
+    },
+    {
+      "key": "max_kinetic_energy",
+      "summary": {
+        "valid_cell_count": 4,
+        "minimum": 0.0,
+        "maximum": 12.0,
+        "sum": 20.0,
+        "nonzero_cell_count": 3
+      }
+    },
+    {
+      "key": "max_jump_height",
+      "summary": {
+        "valid_cell_count": 4,
+        "minimum": 0.0,
+        "maximum": 1.5,
+        "sum": 2.5,
+        "nonzero_cell_count": 2
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "hazard_metadata",
+      "format": "json",
+      "path": "hazard/results/fixture/reference/metadata.json",
+      "file_count": 1,
+      "total_bytes": 128,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "kind": "hazard_layer",
+      "format": "esri_ascii_grid",
+      "layer_name": "reach_probability",
+      "path": "hazard/results/fixture/reference/reach_probability.asc",
+      "file_count": 1,
+      "total_bytes": 512,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
+}

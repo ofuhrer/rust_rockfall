@@ -31,6 +31,38 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-002
+
+- Milestone id: TB-002
+- Roadmap item: Build Reusable Hazard-Map Convergence Diagnostics.
+- Hypothesis/objective: A reusable manifest-level comparison diagnostic can
+  report numeric convergence indicators for conditional hazard-map products
+  without changing physics, defaults, thresholds, or baselines.
+- Files intended to change:
+  `scripts/compare_hazard_map_convergence.py`,
+  `tests/test_hazard_map_convergence.py`,
+  `tests/fixtures/hazard/convergence/reference_manifest.json`,
+  `tests/fixtures/hazard/convergence/perturbed_manifest.json`,
+  `docs/conditional_hazard_convergence_acceptance_protocol.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added an importable and CLI-runnable hazard-map
+  convergence diagnostic that compares two or more hazard-manifest or summary
+  inputs, reports layer-summary deltas, conditional-curve row-count
+  differences, output checksum parity, and explicit blocked states for
+  missing inputs. Added deterministic tiny manifest fixtures and focused tests
+  for identical inputs, changed metrics, missing inputs, and schema stability.
+  Removed TB-002 from the active backlog.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_map_convergence`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/compare_hazard_map_convergence.py tests/test_hazard_map_convergence.py`
+  passed.
+- Reviewer notes: The diagnostic stays conditional-hazard only and does not
+  introduce annual, physical, risk, or operational semantics.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-003.
+
 ### TB-001
 
 - Milestone id: TB-001

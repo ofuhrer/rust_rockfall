@@ -103,3 +103,10 @@ Reasons:
 
 This assessment does not authorize scale-up, annual semantics, physical
 probability semantics, return periods, risk products, or operational use.
+
+For quantitative convergence review, compare two or more hazard-manifest or
+summary paths with `scripts/compare_hazard_map_convergence.py`. The diagnostic
+reports layer-summary deltas, conditional-curve row-count differences, and
+output checksum parity, and it returns `blocked_missing_inputs` when the local
+ignored outputs are absent so downstream acceptance summaries can distinguish
+missing evidence from a zero-difference comparison.

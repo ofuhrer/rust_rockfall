@@ -121,40 +121,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-002: Build Reusable Hazard-Map Convergence Diagnostics
-
-Capability gap reduced: conditional-pilot acceptance lacks quantitative
-convergence/statistical tooling.
-
-Goal: implement or extend an executable diagnostic script that compares two or
-more hazard-map runs or summaries and reports quantitative convergence
-indicators for conditional intensity-exceedance products.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`;
-- existing hazard manifests under ignored `hazard/results/` when available;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/hazard_map_semantics.md`;
-- existing tests around hazard-layer reducers and conditional curves.
-
-Required work:
-
-1. Prefer a reusable script or test fixture over a one-off manual comparison.
-2. Compare stable products such as threshold exceedance summaries, reach,
-   deposition density, maximum kinetic energy, maximum jump height, output
-   checksums, or selected raster statistics where available.
-3. Make missing local ignored outputs an explicit blocked/input state rather
-   than a failure to import or a silent pass.
-4. Do not tune thresholds, change hazard semantics, or alter baselines.
-
-Definition of done:
-
-- the diagnostic can run on a tiny fixture or existing selected-pilot outputs;
-- it reports concrete metrics, not just pass/fail labels;
-- tests cover at least one deterministic fixture or dry-run path;
-- output is suitable input for TB-001 acceptance summary.
-
 ### TB-003: Implement A Bounded Validation Output Profile For Pilot Runs
 
 Capability gap reduced: validation-output volume blocks larger selected-domain
