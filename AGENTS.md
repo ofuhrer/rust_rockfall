@@ -40,6 +40,10 @@ When these files conflict, preserve the safety constraints first, then update th
   artifact, measured validation result, bug fix, performance improvement, or
   scientific analysis result. Explain how the work reduces implementation or
   scientific uncertainty.
+- Backlog evolution must stay tied to capability-gap reduction. When adding,
+  removing, or reordering backlog tasks, state which simulator, validation,
+  reproducibility, scaling, uncertainty, usability, or interpretation gap is
+  affected. Avoid self-expanding governance loops.
 - Do not end a task with only a "next gate" recommendation. If the next step is
   a gate or policy decision, tie it to the concrete run, script, bug, dataset,
   metric, or implementation work it will enable.

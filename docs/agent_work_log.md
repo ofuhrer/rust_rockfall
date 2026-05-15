@@ -3736,3 +3736,26 @@ Planning only; these milestones do not implement roadmap item content yet.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
   `rg -n "Progress over process|progress over process|Progress Over Process|support mechanisms|not substitutes|concrete implementation or validation outcome|next gate" AGENTS.md README.md docs/task_backlog.md docs/next_development_targets.md docs/real_case_intensity_frequency_implementation_roadmap.md docs/README.md docs/decision_log.md docs/agent_work_log.md` passed.
   `scripts/git-hooks/pre-commit` passed.
+
+### M069
+
+- Milestone id: M069.
+- Roadmap item: backlog alignment with project capability gaps.
+- Hypothesis/objective: Keep the executable backlog connected to the actual
+  project goal: a reproducible Swiss public-data conditional hazard-map pilot,
+  not procedural gate maintenance.
+- Files intended to change:
+  `docs/task_backlog.md`,
+  `AGENTS.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reconstructed the objective and capability gaps in
+  the backlog, replaced procedural-first tasks with capability-gap tasks, and
+  added guidance that backlog evolution must remain tied to simulator,
+  validation, reproducibility, scaling, uncertainty, usability, or
+  interpretation gaps.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `scripts/git-hooks/pre-commit` passed.

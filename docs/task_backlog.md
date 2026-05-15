@@ -4,8 +4,13 @@ Status: authoritative executable task backlog.
 
 This file is the only maintained queue of implementation tasks. It is written
 for worker agents, including smaller GPT-5.4-Mini-style agents, so each task
-should be narrowly scoped, have a concrete definition of done, and avoid
-requiring broad roadmap rereads.
+must be small enough for focused execution and must name the concrete
+capability, analysis, run, or validation outcome it enables.
+
+Worker rule: when a task is completed successfully and committed, remove that
+task from this backlog. Add at most one follow-up task if the completed work
+uncovers a concrete next blocker. Record durable choices in `decision_log.md`
+and completed work in `agent_work_log.md`.
 
 Progress rule: backlog tasks must normally produce executable or measured
 progress, not only procedural artifacts. Acceptable real progress includes an
@@ -20,62 +25,82 @@ consistency-hook extensions, or reclassification of existing evidence without
 new analysis. These may support a task, but they are not the deliverable unless
 the user explicitly asks for a planning-only change.
 
-Worker rule: when a task is completed successfully and committed, remove that
-task from this backlog. Add at most one follow-up task if the completed work
-uncovers a concrete next blocker. Record durable choices in `decision_log.md`
-and completed work in `agent_work_log.md`.
+## Project Objective
 
-Supporting documents such as
-`real_case_intensity_frequency_implementation_roadmap.md` and
-`roadmap_recommendation_matrix.md` explain long-term context and rationale.
-They do not define the executable queue.
+The repository is trying to become an automated, reproducible rockfall
+hazard-map workflow for Switzerland's Alpine terrain using public geodata,
+primarily swisstopo. The first concrete milestone is a valley-scale Tschamut
+pilot that produces conditional grid-cell intensity-exceedance hazard-map
+products with documented uncertainty, provenance, performance, and
+non-operational interpretation limits.
 
-## Current Pilot State
-
-The closest achievable milestone is a conditional Tschamut hazard map with
-documented uncertainty, provenance, resource bounds, and non-operational
-framing. The repository is not close to a true physical or annual
-intensity-frequency map. Source occurrence rates, block-population frequency,
-annualization semantics, uncertainty propagation, physical-frequency reducer
-semantics, and validation/calibration gates remain deferred.
-
-Completed prerequisites include:
-
-- DT-05 conditional convergence and acceptance protocol;
-- DT-06 stochastic sampling and RNG stream audit;
-- DT-07 real-site DEM/input conditioning QA gate;
-- DT-08 output budget and reducer scaling gate;
-- Balfrin same-scale target-gate reproduction;
-- DT-10 forest/obstacle context review classified
-  `blocked_pending_local_evidence`.
+Medium-term objectives are to make the conditional pilot scientifically
+interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
+toward larger release-zone ensembles. True physical or annual
+intensity-frequency products remain deferred until source occurrence rates,
+block-population frequencies, uncertainty propagation, and validation or
+calibration evidence exist.
 
 The selected Tschamut target-scale evidence remains `inconclusive`. Larger
-ensembles remain blocked unless convergence, output budgets, stochastic audit,
-DEM/input QA, forest/obstacle context, and claim-state evidence justify the
-increase. QGIS/GIS visual QA is secondary to the hazard-map evidence chain.
+selected-domain runs remain blocked until the capability gaps below are reduced
+with measured evidence.
+
+Non-goals for current backlog work: operational warning systems, regulatory
+approval, risk/exposure/vulnerability modelling, annual return-period claims,
+parameter tuning to fit the pilot, and new contact/terrain physics unless a
+separate falsifiable implementation task is explicitly authorized.
+
+## Capability Gap Analysis
+
+The most important gaps between the current repository and the project
+objective are:
+
+1. Conditional pilot evidence is still inconclusive. The 1,000-trajectory
+   Balfrin target-gate reproduction exists, but convergence and output-budget
+   evidence have not been converted into an accepted conditional-pilot
+   scientific result.
+2. Validation-output volume remains a practical blocker. Larger selected-domain
+   runs are not credible until debug/validation outputs are bounded or
+   justified by a measured output profile.
+3. Forest and obstacle context is unresolved. Public context products are
+   identified, but local evidence is missing; without it, the Tschamut map can
+   remain visually plausible but physically hard to interpret.
+4. Scaling direction is underdetermined. Single-job Balfrin execution may be
+   enough for the next conditional pilot step, or it may need distributed
+   execution; this should be decided from measured wall-time, memory, output,
+   and restartability evidence.
+5. Source-zone and block-scenario evidence is still pragmatic and
+   inventory-conditioned. This is acceptable for the first pilot only if the
+   interpretation explicitly stays conditional and non-operational.
+6. Physical/annual frequency semantics are absent. This is not a near-term
+   implementation gap unless the conditional pilot first reaches accepted
+   diagnostic status.
 
 ## Backlog Protocol
 
-Each active task should include:
+Each active task must include:
 
 - scope small enough for one focused worker turn;
-- explicit files or evidence records to inspect first;
-- the concrete implementation or validation outcome it enables;
+- explicit files, data records, or commands to inspect first;
+- the concrete implementation, run, analysis, or validation outcome it enables;
 - no-physics/no-tuning/no-operational-claim boundaries when relevant;
 - exact outputs expected;
 - focused checks to run.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
-history.
+history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-001: Reassess Conditional Pilot Classification Using Existing Gates
+### TB-001: Produce Measured Conditional Pilot Acceptance Summary
 
-Goal: apply the completed DT-05 convergence protocol and DT-08 output-budget
-gate to the current 1,000-trajectory Balfrin target evidence and record whether
-the selected Tschamut pilot remains `inconclusive`, becomes `no_go`, or can be
-classified as an accepted conditional diagnostic pilot.
+Capability gap reduced: conditional pilot evidence is still inconclusive.
+
+Goal: run or extend an executable analysis that reads the current Balfrin
+target-gate, convergence, and output-budget records and produces a measured
+acceptance summary for the selected Tschamut conditional pilot. The result must
+state whether the pilot remains `inconclusive`, is `no_go`, or can be treated
+as an accepted conditional diagnostic pilot.
 
 Inspect first:
 
@@ -88,26 +113,30 @@ Inspect first:
 
 Required work:
 
-1. Update only the relevant assessment record or report.
-2. Keep all physics, defaults, thresholds, release assumptions, and baselines
+1. Prefer an executable script or report generator over manual reclassification.
+2. Use only existing evidence unless the task explicitly runs a small
+   non-public diagnostic analysis.
+3. Keep all physics, defaults, thresholds, release assumptions, and baselines
    unchanged.
-3. Do not run larger ensembles or public benchmarks.
-4. Preserve no annual/physical/risk/operational claims.
-5. If evidence is insufficient, keep the classification conservative and state
-   the exact missing evidence.
+4. Do not run larger ensembles or public benchmarks.
+5. Preserve no annual/physical/risk/operational claims.
 
 Definition of done:
 
-- classification is explicit;
-- scale-up authorization is explicit;
-- output-budget and convergence blockers are listed;
-- focused validator/tests and `scripts/check_repo_consistency.py` pass.
+- a generated or reproducible summary records the measured convergence,
+  output-budget, and blocker state;
+- classification and scale-up authorization are explicit;
+- the work explains what uncertainty was reduced and what remains unresolved;
+- focused tests/checks and `scripts/check_repo_consistency.py` pass.
 
-### TB-002: Reduce Or Justify Validation Debug-Output Budget Blocker
+### TB-002: Implement A Bounded Validation Output Profile For Pilot Runs
 
-Goal: decide whether validation debug-output volume is a real blocker for the
-selected Tschamut pilot or can be bounded by a documented output profile
-without changing defaults silently.
+Capability gap reduced: validation-output volume blocks larger selected-domain
+execution.
+
+Goal: add or exercise a concrete validation-output profile that bounds
+debug/output volume for selected pilot runs while preserving enough provenance
+for scientific review.
 
 Inspect first:
 
@@ -115,29 +144,32 @@ Inspect first:
 - `docs/tschamut_public_pilot_scaling_review.md`;
 - `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`;
 - `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`;
-- `scripts/validate_pilot_ensemble_feasibility.py`.
+- validation output-writing code and existing output-profile controls.
 
 Required work:
 
-1. Record the current validation output file/byte/inode pressure.
-2. Decide whether the blocker is `accepted_with_limits`, `blocked`, or
-   `requires_output_profile_change`.
-3. If proposing a future profile change, document it only; do not change
-   runtime defaults unless a separate task authorizes it.
-4. Keep generated outputs ignored.
+1. Measure or derive the current validation output file/byte/inode pressure.
+2. Implement or dry-run a bounded output profile only if it can be done without
+   changing defaults silently.
+3. Keep generated outputs ignored.
+4. Do not authorize scale-up unless output limits are explicitly accepted.
 
 Definition of done:
 
-- machine-readable record and docs agree;
-- no scale-up is authorized unless output limits are explicitly accepted;
-- focused tests and consistency checks pass.
+- executable code, script, or command path demonstrates the bounded output
+  profile or proves why it is still blocked;
+- measured file/byte/inode evidence is recorded;
+- public defaults and validation baselines are unchanged;
+- focused tests/checks pass.
 
-### TB-003: Prepare Local Public Context-Layer Acquisition Checklist For Tschamut
+### TB-003: Acquire Or Verify Public Context-Layer Evidence For Tschamut
 
-Goal: unblock the forest/obstacle context review by defining the exact public
-context layers, local cache paths, checksums, and review steps needed to move
-DT-10 from `blocked_pending_local_evidence` to an interpretation
-classification.
+Capability gap reduced: forest and obstacle context is unresolved.
+
+Goal: use public context products, where locally available, to determine
+whether omitted forest, buildings, roads, barriers, nets, or other obstacles
+are acceptable, limiting, invalidating, or still blocked for the selected
+Tschamut conditional hazard-map interpretation.
 
 Inspect first:
 
@@ -148,24 +180,30 @@ Inspect first:
 
 Required work:
 
-1. Do not infer obstacle absence from missing data.
-2. Do not implement obstacle physics.
-3. Do not tune terrain, restitution, friction, or stopping behavior.
-4. Produce a small acquisition/review checklist or update the existing obstacle
-   scope doc.
+1. If public context layers are locally available, record paths, checksums,
+   CRS/provenance, and a concise spatial relevance assessment.
+2. If public context layers are missing, produce the exact fetch/cache commands
+   or local acquisition checklist needed next.
+3. Do not infer obstacle absence from missing data.
+4. Do not implement obstacle physics or tune terrain/contact/stopping
+   parameters.
 5. Keep raw geodata out of git.
 
 Definition of done:
 
-- required public context products are named;
-- expected local ignored paths and checksum/provenance requirements are clear;
-- the current gate remains blocked unless evidence is actually reviewed;
+- the obstacle-context status is based on inspected data or an executable
+  acquisition path, not only a policy statement;
+- interpretation classification is explicit;
+- no operational claim is added;
 - focused checks pass.
 
-### TB-004: Decide Whether Single-Job Balfrin Execution Is Still Enough
+### TB-004: Measure Whether Single-Job Balfrin Execution Is Still Enough
 
-Goal: use existing DT-08 and Balfrin evidence to decide whether DT-09
-distributed execution design is needed now or should remain deferred.
+Capability gap reduced: scaling direction is underdetermined.
+
+Goal: use existing Balfrin and reducer evidence, or one small non-public probe
+if needed, to decide whether DT-09 distributed execution design is currently
+needed or should remain deferred.
 
 Inspect first:
 
@@ -180,18 +218,25 @@ Required work:
 1. Do not add SLURM arrays, MPI, GPU, or distributed reducers.
 2. Summarize measured wall time, memory, output size, restartability, and
    reducer-state evidence.
-3. Classify DT-09 as `defer`, `design_needed`, or `blocked_pending_evidence`.
+3. Classify distributed execution as `defer`, `design_needed`, or
+   `blocked_pending_evidence`.
 
 Definition of done:
 
-- decision is recorded in `decision_log.md` if durable;
-- no runtime behavior changes;
+- decision is based on measured execution/resource evidence;
+- any durable decision is recorded in `decision_log.md`;
+- no runtime behavior changes unless explicitly required for measurement;
 - consistency checks pass.
 
-### TB-005: Secondary Manual GIS/QGIS Visual QA Record
+### TB-005: Run Secondary Manual GIS/QGIS Visual QA If Local Artifacts Exist
 
-Goal: keep the visual-QA state explicit without letting it outrank the
-hazard-map evidence chain.
+Capability gap reduced: spatial interoperability remains unverified but
+secondary.
+
+Goal: if QGIS and local ignored package artifacts are available, perform the
+manual visual QA review for CRS alignment, nodata styling, source-zone overlay,
+layer labels, and interpretation notes. If unavailable, leave the task in the
+backlog or replace it with a concrete artifact-acquisition task.
 
 Inspect first:
 
@@ -201,16 +246,16 @@ Inspect first:
 
 Required work:
 
-1. If QGIS and local ignored package artifacts are unavailable, keep the record
-   `blocked`.
-2. If they are available, record CRS alignment, nodata styling, source-zone
-   overlay, layer labels, and interpretation notes.
+1. This is secondary interoperability evidence, not the main pilot outcome.
+2. If artifacts are missing, do not spend the task only reclassifying the same
+   blocked state; identify the concrete missing artifact command/path instead.
 3. Do not claim operational validity.
 
 Definition of done:
 
-- visual QA is `passed`, `failed`, or `blocked`;
-- docs state it is secondary interoperability evidence;
+- visual QA is based on actual local artifacts, or the task is replaced by a
+  concrete artifact-generation/acquisition task;
+- status is `passed`, `failed`, or still blocked with exact missing inputs;
 - checks pass.
 
 ## Deferred Backlog

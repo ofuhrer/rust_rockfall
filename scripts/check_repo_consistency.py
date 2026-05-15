@@ -1297,10 +1297,10 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
 
     for term in (
         "Status: authoritative executable task backlog.",
-        "TB-001: Reassess Conditional Pilot Classification Using Existing Gates",
-        "Balfrin evidence",
+        "TB-001: Produce Measured Conditional Pilot Acceptance Summary",
+        "Balfrin target-gate reproduction",
         "The selected Tschamut target-scale evidence remains `inconclusive`.",
-        "ensembles remain blocked",
+        "selected-domain runs remain blocked",
     ):
         if term not in backlog:
             errors.append(f"docs/task_backlog.md omits {term!r}")
@@ -1865,9 +1865,11 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/task_backlog.md must contain the authoritative executable task backlog marker")
     for term in (
         "Worker rule:",
-        "TB-001: Reassess Conditional Pilot Classification Using Existing Gates",
-        "TB-002: Reduce Or Justify Validation Debug-Output Budget Blocker",
-        "TB-003: Prepare Local Public Context-Layer Acquisition Checklist For Tschamut",
+        "Project Objective",
+        "Capability Gap Analysis",
+        "TB-001: Produce Measured Conditional Pilot Acceptance Summary",
+        "TB-002: Implement A Bounded Validation Output Profile For Pilot Runs",
+        "TB-003: Acquire Or Verify Public Context-Layer Evidence For Tschamut",
         "decision_log.md",
         "agent_work_log.md",
     ):

@@ -48,6 +48,23 @@ only another gate recommendation.
 Detailed sources: `../AGENTS.md`, `task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### Backlog Tied To Capability Gaps
+
+Decision: backlog changes must be justified by concrete capability-gap
+reduction, not by procedural completeness.
+
+Current status: active. The backlog should name the project objective,
+important unresolved gaps, and the capability or evidence each active task
+improves. Procedural tasks are proportional only when they enable executable
+analysis, validation, implementation, reproducibility, or scaling work.
+
+Rationale: the project objective is a reproducible Swiss public-data hazard-map
+workflow. Backlog drift toward policy-only gate completion slows progress
+unless each task is anchored to a missing capability, missing evidence, or
+measured blocker.
+
+Detailed sources: `task_backlog.md`, `../AGENTS.md`.
+
 ### Project Priority Rule
 
 Decision: prioritize work by importance to automated, reproducible Swiss Alpine
