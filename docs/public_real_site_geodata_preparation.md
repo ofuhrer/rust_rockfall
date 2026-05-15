@@ -217,6 +217,14 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The same candidate also has a synthetic source-zone / scenario policy fixture
+at
+`validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`.
+That policy file is a contract fixture only. It defines the portable shape of
+the candidate source-zone and scenario contract, but it is not physical
+validation evidence and it does not imply that the deferred public-context
+products have been staged.
+
 A tiny staging helper,
 `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`, copies the
 synthetic core fixture set from

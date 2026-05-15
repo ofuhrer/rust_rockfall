@@ -77,8 +77,8 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
     tschamut_policy = load_yaml(TSCHAMUT_POLICY)
     tschamut_gate = load_yaml(TSCHAMUT_GATE_FREEZE)
     tschamut_target = load_yaml(TSCHAMUT_TARGET_FREEZE)
-    tschamut_source_zone = load_yaml(TSCHAMUT_SOURCE_ZONE_METADATA)
-    tschamut_scenario_rows = load_csv(TSCHAMUT_SCENARIO_TABLE)
+    tschamut_source_zone = load_yaml(TSCHAMUT_SOURCE_ZONE_METADATA, default={})
+    tschamut_scenario_rows = load_csv(TSCHAMUT_SCENARIO_TABLE, default=[])
 
     candidate_contract = candidate.get("source_zone_scenario_contract", {})
 
@@ -97,6 +97,13 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
         candidate_config,
         candidate_available_fields,
         candidate_contract,
+    )
+    semantic_portability_matrix = build_semantic_portability_matrix(
+        tschamut_available_fields=tschamut_available_fields,
+        candidate_available_fields=candidate_available_fields,
+        field_records=field_records,
+        candidate_contract=candidate_contract,
+        candidate_report=candidate,
     )
 
     classifications = {
@@ -131,6 +138,16 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
         "fields_audited": [rec["field"] for rec in field_records],
         "field_classifications": classifications,
         "field_records": field_records,
+        "semantic_portability_matrix": semantic_portability_matrix,
+        "synthetic_contract_fixture_status": {
+            "chant_sura_candidate_manifest": "synthetic_contract_fixture",
+            "chant_sura_source_scenario_policy": "synthetic_contract_fixture",
+            "physical_validation_evidence": "not_claimed",
+        },
+        "tschamut_frozen_record_status": {
+            "source_zone_metadata": "ready" if tschamut_source_zone else "missing",
+            "scenario_table": "ready" if tschamut_scenario_rows else "missing",
+        },
         "tschamut_available_fields": tschamut_available_fields,
         "second_site_available_fields": candidate_available_fields,
         "missing_second_site_fields": missing_second_site_fields,
@@ -179,12 +196,16 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
     return report
 
 
-def load_yaml(path: Path) -> dict[str, Any]:
+def load_yaml(path: Path, default: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not path.exists():
+        return default or {}
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     return data if isinstance(data, dict) else {}
 
 
-def load_csv(path: Path) -> list[dict[str, str]]:
+def load_csv(path: Path, default: list[dict[str, str]] | None = None) -> list[dict[str, str]]:
+    if not path.exists():
+        return default or []
     with path.open("r", encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh))
 
@@ -201,6 +222,12 @@ def build_tschamut_available_fields(
     tschamut_source_zone: dict[str, Any],
     tschamut_scenario_rows: list[dict[str, str]],
 ) -> dict[str, Any]:
+    policy_source_zone = tschamut_policy.get("source_zone_policy", {}) if isinstance(tschamut_policy.get("source_zone_policy"), dict) else {}
+    policy_release_sampling = policy_source_zone.get("release_sampling", {}) if isinstance(policy_source_zone.get("release_sampling"), dict) else {}
+    policy_block_policy = tschamut_policy.get("block_scenario_policy", {}) if isinstance(tschamut_policy.get("block_scenario_policy"), dict) else {}
+    policy_scenarios = policy_block_policy.get("scenarios", []) if isinstance(policy_block_policy.get("scenarios"), list) else []
+    source_zone_record = tschamut_source_zone if isinstance(tschamut_source_zone, dict) else {}
+    release_sampling_policy = source_zone_record.get("release_sampling_policy", {}) if isinstance(source_zone_record.get("release_sampling_policy"), dict) else {}
     return {
         "site_id_and_naming": {
             "pilot_id": text_value(tschamut_gate.get("pilot_id")),
@@ -224,16 +251,16 @@ def build_tschamut_available_fields(
         "terrain_metadata_path": text_value(tschamut_gate.get("input_freeze", {}).get("terrain_metadata_path")),
         "source_zone_metadata_path": text_value(tschamut_gate.get("input_freeze", {}).get("source_zone_metadata_path")),
         "scenario_table_path": text_value(tschamut_gate.get("input_freeze", {}).get("scenario_table_path")),
-        "source_zone_id": text_value(tschamut_source_zone.get("source_zone_id")),
-        "source_zone_geometry": text_value(tschamut_policy.get("source_zone_policy", {}).get("geometry", {}).get("type")),
-        "release_sampling_mode": text_value(tschamut_source_zone.get("release_sampling_policy", {}).get("mode")),
-        "release_sampling_seed": tschamut_source_zone.get("release_sampling_policy", {}).get("seed"),
-        "release_cell_id_prefix": text_value(tschamut_source_zone.get("release_sampling_policy", {}).get("release_cell_id_prefix")),
-        "release_count": tschamut_source_zone.get("release_sampling_policy", {}).get("release_count"),
+        "source_zone_id": text_value(source_zone_record.get("source_zone_id")) or text_value(policy_source_zone.get("source_zone_id")) or "tschamut_public_lps_release_bbox",
+        "source_zone_geometry": text_value(policy_source_zone.get("geometry", {}).get("type")),
+        "release_sampling_mode": text_value(release_sampling_policy.get("mode")) or text_value(policy_release_sampling.get("mode")) or "deterministic_grid",
+        "release_sampling_seed": release_sampling_policy.get("seed") if release_sampling_policy.get("seed") is not None else policy_release_sampling.get("seed") if policy_release_sampling.get("seed") is not None else 34014,
+        "release_cell_id_prefix": text_value(release_sampling_policy.get("release_cell_id_prefix")) or text_value(policy_release_sampling.get("release_cell_id_prefix")) or "tschamut_public_release_cell",
+        "release_count": release_sampling_policy.get("release_count") if release_sampling_policy.get("release_count") is not None else policy_release_sampling.get("requested_release_cell_count") if policy_release_sampling.get("requested_release_cell_count") is not None else 10,
         "release_point_table_shape": "one row per release point",
-        "release_point_rows": "actual release-point rows derived from public Tschamut inputs",
+        "release_point_rows": [dict(row) for row in release_sampling_policy.get("release_cells", [])] if release_sampling_policy.get("release_cells") else "actual release-point rows derived from public Tschamut inputs",
         "block_scenario_table_shape": "CSV table with one row per block / scenario record",
-        "block_scenario_rows": [dict(row) for row in tschamut_scenario_rows],
+        "block_scenario_rows": [dict(row) for row in tschamut_scenario_rows] if tschamut_scenario_rows else [dict(scenario) for scenario in policy_scenarios],
         "block_mass_radius_values": [
             {
                 "block_scenario_id": scenario.get("block_scenario_id"),
@@ -241,10 +268,10 @@ def build_tschamut_available_fields(
                 "block_radius_m": scenario.get("block_radius_m"),
                 "sampling_weight": scenario.get("sampling_weight"),
             }
-            for scenario in tschamut_policy.get("block_scenario_policy", {}).get("scenarios", [])
+            for scenario in policy_scenarios
         ],
-        "sampling_weight_semantics": text_value(tschamut_policy.get("source_zone_policy", {}).get("release_sampling", {}).get("sampling_weight_semantics")),
-        "scenario_probability_semantics": text_value(tschamut_policy.get("block_scenario_policy", {}).get("sampling_weight_semantics")),
+        "sampling_weight_semantics": text_value(policy_release_sampling.get("sampling_weight_semantics")),
+        "scenario_probability_semantics": text_value(policy_block_policy.get("sampling_weight_semantics")),
         "random_seed": tschamut_gate.get("sampling_plan", {}).get("random_seed"),
         "ensemble_size": {
             "gate": tschamut_gate.get("sampling_plan", {}).get("gate_run_trajectories_per_release_zone"),
@@ -270,7 +297,8 @@ def build_tschamut_available_fields(
             "annual_frequency_supported": False,
             "physical_probability_supported": False,
         },
-        "source_scenario_policy_path": text_value(tschamut_gate.get("input_freeze", {}).get("source_scenario_policy_path")),
+        "source_scenario_policy_path": text_value(tschamut_gate.get("input_freeze", {}).get("source_scenario_policy_path"))
+        or text_value(TSCHAMUT_POLICY),
     }
 
 
@@ -481,6 +509,13 @@ def build_field_records(
         "Probability semantics are conditional-only in this phase.",
     )
     add(
+        "source_scenario_policy_path",
+        "site_specific_required",
+        tschamut["source_scenario_policy_path"],
+        candidate.get("expected_source_scenario_policy_path"),
+        "The candidate policy file is a synthetic contract fixture, not physical evidence.",
+    )
+    add(
         "random_seed",
         "site_specific_required",
         tschamut["random_seed"],
@@ -518,6 +553,48 @@ def build_field_records(
         "The context inventory is reusable as a category list, but each site must stage its own layers.",
     )
     add(
+        "swissimage_context",
+        "site_specific_required",
+        tschamut["context_layer_expectations"][0],
+        candidate.get("expected_swissimage_context_root"),
+        "SWISSIMAGE is a site-specific context product that remains deferred until staged.",
+    )
+    add(
+        "swisstlm3d_context",
+        "site_specific_required",
+        tschamut["context_layer_expectations"][1],
+        candidate.get("expected_swisstlm3d_context_root"),
+        "swissTLM3D context is site-specific and currently deferred.",
+    )
+    add(
+        "swisstlm3d_metadata_path",
+        "site_specific_required",
+        "metadata path available in the portable contract only after staging",
+        candidate.get("expected_swisstlm3d_metadata_path"),
+        "swissTLM3D metadata is part of the staged context contract and stays deferred until present.",
+    )
+    add(
+        "swisssurface3d_context",
+        "site_specific_required",
+        tschamut["context_layer_expectations"][2],
+        candidate.get("expected_swisssurface3d_context_root"),
+        "swissSURFACE3D context is site-specific and currently deferred.",
+    )
+    add(
+        "swisssurface3d_raster_context",
+        "site_specific_required",
+        tschamut["context_layer_expectations"][3],
+        candidate.get("expected_swisssurface3d_raster_context_root"),
+        "swissSURFACE3D Raster context is site-specific and currently deferred.",
+    )
+    add(
+        "swissbuildings3d_context",
+        "site_specific_required",
+        tschamut["context_layer_expectations"][4],
+        candidate.get("expected_swissbuildings3d_context_root"),
+        "swissBUILDINGS3D context is site-specific and currently deferred.",
+    )
+    add(
         "validation_or_field_evidence_boundary",
         "out_of_scope_for_current_phase",
         tschamut["validation_or_field_evidence_boundary"],
@@ -532,6 +609,125 @@ def build_field_records(
         "Annual frequency, physical probability, risk, exposure, and vulnerability remain out of scope.",
     )
     return field_records
+
+
+def build_semantic_portability_matrix(
+    *,
+    tschamut_available_fields: dict[str, Any],
+    candidate_available_fields: dict[str, Any],
+    field_records: list[dict[str, Any]],
+    candidate_contract: dict[str, Any],
+    candidate_report: dict[str, Any],
+) -> dict[str, Any]:
+    row_labels = {
+        "site_id_and_naming": "site identity and naming",
+        "site_extent_and_crs": "site extent and CRS",
+        "terrain_crop_path": "terrain crop path",
+        "terrain_metadata_path": "terrain metadata path",
+        "source_zone_metadata_path": "source-zone metadata path",
+        "scenario_table_path": "scenario table path",
+        "source_zone_id": "source-zone id",
+        "release_sampling_mode": "release sampling mode",
+        "release_sampling_seed": "release sampling seed",
+        "release_cell_id_prefix": "release-cell id prefix",
+        "release_count": "release count",
+        "source_zone_id_pattern": "source-zone id pattern",
+        "source_zone_geometry": "source-zone geometry",
+        "release_point_table_shape": "release-point table shape",
+        "release_point_rows": "release-point rows",
+        "observed_deposition_or_field_observation": "observed deposition or field observation",
+        "block_scenario_table_shape": "block/scenario table shape",
+        "block_scenario_rows": "block/scenario rows",
+        "block_mass_radius_values": "block mass / radius values",
+        "sampling_weight_semantics": "sampling weight semantics",
+        "scenario_probability_semantics": "scenario probability semantics",
+        "random_seed": "random seed",
+        "ensemble_size": "ensemble size",
+        "output_root_naming": "output-root naming",
+        "context_layer_expectations": "context layer expectations",
+        "validation_or_field_evidence_boundary": "validation / field-evidence boundary",
+        "annual_frequency_probability_boundary": "annual frequency / probability boundary",
+    }
+
+    row_summaries = []
+    for rec in field_records:
+        field = rec["field"]
+        row_summaries.append(
+            {
+                "field": field,
+                "label": row_labels.get(field, field.replace("_", " ")),
+                "classification": rec["classification"],
+                "tschamut": {
+                    "status": "available" if rec["tschamut_available"] else "not_available",
+                    "value": rec["tschamut_value"],
+                },
+                "chant_sura": {
+                    "status": candidate_status_for_field(field, rec, candidate_contract, candidate_report),
+                    "value": rec["candidate_value"],
+                },
+                "notes": rec["notes"],
+            }
+        )
+
+    return {
+        "tschamut": {
+            "site_name": "Tschamut",
+            "role": "reference_contract_and_measured_pilot",
+            "fixture_status": "frozen_reference_records",
+            "available_fields": tschamut_available_fields,
+        },
+        "chant_sura": {
+            "site_name": "Chant Sura / Flüelapass",
+            "role": "candidate_contract_fixture",
+            "fixture_status": "synthetic_contract_fixture",
+            "deferred_public_context_status": candidate_report.get("deferred_public_context_status")
+            if candidate_report.get("deferred_public_context_status") in {"deferred_public_context_inputs", "blocked_missing_inputs"}
+            else "deferred_public_context_inputs",
+            "available_fields": candidate_available_fields,
+        },
+        "rows": row_summaries,
+    }
+
+
+def candidate_status_for_field(
+    field: str,
+    record: dict[str, Any],
+    candidate_contract: dict[str, Any],
+    candidate_report: dict[str, Any],
+) -> str:
+    if field in {"observed_deposition_or_field_observation", "validation_or_field_evidence_boundary"}:
+        return "synthetic_contract_fixture"
+    if field == "source_scenario_policy_path":
+        return "synthetic_contract_fixture"
+    if field in {"site_id_and_naming", "site_extent_and_crs"}:
+        return "staged_contract_fixture"
+    if field in {
+        "swissimage_context",
+        "swisstlm3d_context",
+        "swisstlm3d_metadata_path",
+        "swisssurface3d_context",
+        "swisssurface3d_raster_context",
+        "swissbuildings3d_context",
+    }:
+        return "deferred_public_context"
+    if field in {
+        "terrain_crop_path",
+        "terrain_metadata_path",
+        "source_zone_metadata_path",
+        "scenario_table_path",
+        "output_root_naming",
+        "context_layer_expectations",
+    }:
+        return "staged_core_fixture" if record["candidate_available"] else "missing"
+    if field in {"source_zone_id_pattern", "source_zone_geometry", "release_point_table_shape", "block_scenario_table_shape", "sampling_weight_semantics", "scenario_probability_semantics"}:
+        return "synthetic_contract_fixture"
+    if field in {"source_zone_id", "release_sampling_mode", "release_sampling_seed", "release_cell_id_prefix", "release_count", "block_mass_radius_values"}:
+        return "tschamut_heuristic_only"
+    if field in {"release_point_rows", "block_scenario_rows", "random_seed", "ensemble_size"}:
+        return "site_specific_required"
+    if field in {"annual_frequency_probability_boundary"}:
+        return "out_of_scope"
+    return "synthetic_contract_fixture" if record["candidate_available"] else "missing"
 
 
 def next_required_artifacts(
@@ -564,11 +760,22 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"second_site_portability_status: {report['second_site_portability_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
+        "synthetic_contract_fixture_status: "
+        + ", ".join(
+            [
+                report["synthetic_contract_fixture_status"]["chant_sura_candidate_manifest"],
+                report["synthetic_contract_fixture_status"]["chant_sura_source_scenario_policy"],
+            ]
+        ),
         f"blocked_reason: {report['blocked_reason']}",
         "portable_contract_fields: " + ", ".join(report["portable_contract_fields"]),
         "site_specific_contract_fields: " + ", ".join(report["site_specific_contract_fields"]),
-        "tschamut_specific_heuristics:",
+        "semantic_portability_matrix:",
     ]
+    for site_name in ("tschamut", "chant_sura"):
+        site_matrix = report["semantic_portability_matrix"][site_name]
+        lines.append(f"  - {site_name}: {site_matrix['fixture_status']} ({site_matrix['role']})")
+    lines.append("tschamut_specific_heuristics:")
     for item in report["tschamut_specific_heuristics"]:
         lines.append(f"  - {item['field']}: {item['value']}")
     lines.append("missing_second_site_fields: " + ", ".join(report["missing_second_site_fields"]))
