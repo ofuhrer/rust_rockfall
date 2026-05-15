@@ -207,3 +207,111 @@ Unsupported current claims:
 - physical probability;
 - risk-map meaning;
 - operational or validated hazard-map status.
+
+## TB-012 Checkout Audit
+
+Current checkout status: `blocked_missing_inputs`
+
+- artifact_refresh_status: `blocked_missing_inputs`
+- validation_output_mode: `unavailable`
+- defaults_changed: `false`
+- selected_pilot_artifacts_available: `false`
+- cellwise_layers_available: `false`
+- convergence_comparison_status: `blocked_missing_inputs`
+- validation_output_accounting_status: `blocked_missing_outputs`
+- file_count: `0`
+- byte_count: `0`
+- blocked_reason: missing ignored validation/hazard roots, missing private gate case, and missing processed public Tschamut inputs in this checkout
+- scale_up_authorized: `false`
+- operational_claims_allowed: `false`
+
+Executable staging checklist:
+
+1. Restore or regenerate the processed public benchmark inputs:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py \
+  --output-root data/processed/swisstopo/tschamut_public_pilot \
+  --padding-m 250 \
+  --force
+```
+
+2. Revalidate the selected gate run-freeze and print the command plan:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python \
+  scripts/validate_public_real_site_conditional_pilot_run.py \
+  validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml \
+  --print-command-plan --format json
+```
+
+3. Run the frozen validation case and hazard builder only after the private case exists:
+
+```bash
+cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py \
+  --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml \
+  --output-dir hazard/results/tschamut_public_pilot/gate_v1 \
+  --grid-xmin 2696376.0 \
+  --grid-ymin 1167384.0 \
+  --grid-ncols 300 \
+  --grid-nrows 304 \
+  --grid-cell-size 2.0 \
+  --map-product-id tschamut_public_conditional_gate_v1 \
+  --probability-mode sampling_weighted_conditional \
+  --normalization-scope conditioned_on_filter \
+  --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml \
+  --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv \
+  --map-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json \
+  --export-geotiff \
+  --pilot-gis-package \
+  --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json \
+  --pilot-gis-qa-status not-run \
+  --pilot-gis-qa-note "Manual GIS/QGIS inspection has not been run for this generated package." \
+  --reducer-workers 2 \
+  --no-plots \
+  --diagnostics validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_metrics.json \
+  --trajectory validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv \
+  --ensemble-trajectories-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectories \
+  --deposition validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_deposition.csv \
+  --ensemble-impact-events-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_impacts \
+  --kinetic-energy-exceedance-j 1000.0 \
+  --kinetic-energy-exceedance-j 10000.0 \
+  --jump-height-exceedance-m 1.0 \
+  --jump-height-exceedance-m 2.0
+```
+
+4. Compare the refreshed hazard manifests when both exist:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  --format json
+```
+
+5. Refresh the bounded validation-output accounting when the validation manifest exists:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py \
+  --format json
+```
+
+Missing-path evidence from the local audit and readiness check:
+
+- `validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml`
+- `validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json`
+- `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`
+
+Read-only audit note:
+
+- `scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/gate_v1 hazard/results/tschamut_public_pilot/gate_v1`
+  reported both roots as absent with `0` files and `0` bytes.
+- `scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json`
+  reported `blocked_for_balfrin_readiness` because the output roots and required processed inputs are missing in this checkout.

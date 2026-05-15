@@ -4205,3 +4205,23 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run:
   `git diff --check` passed.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+
+### TB-012
+
+- Milestone id: TB-012
+- Roadmap item: Refresh Same-Scale Selected Tschamut Pilot Artifacts.
+- Hypothesis/objective: The selected Tschamut gate artifacts can either be refreshed under the current output contracts or staged as an explicit blocked-input checklist without changing physics, defaults, or baselines.
+- Files intended to change:
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Audited the current checkout and confirmed that the ignored selected-gate roots are absent here. Recorded an executable staging checklist and the exact missing paths in the selected-gate report rather than fabricating refreshed outputs. The blocked-state record keeps validation/output accounting, cell-wise convergence, and reduced-output provenance conditional until the missing private gate case and processed public inputs are restored.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/gate_v1 hazard/results/tschamut_public_pilot/gate_v1`
+  passed and reported both roots absent with zero files/bytes.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/validate_scalable_conditional_target_gate.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --format json`
+  passed and confirmed the target-gate record is still `inconclusive`.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json`
+  failed as expected with `blocked_for_balfrin_readiness` because the processed inputs and ignored output roots are missing in this checkout.
+- Reviewer notes: The refresh path is documented precisely enough for a future worker to execute on a machine that has the missing inputs or can regenerate them.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-013.
