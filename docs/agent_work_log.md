@@ -5579,3 +5579,15 @@ Planning only; these milestones do not implement roadmap item content yet.
   completed with closure status `inconclusive`.
 - Boundaries preserved: no new ensembles, physics changes, threshold tuning,
   or operational claims were introduced.
+
+### Post-TB-048 Backlog Handoff Cleanup
+
+- Roadmap item: remove stale completed-task metadata after the TB-047/TB-048
+  merge sequence.
+- Implementation summary: removed completed TB-047 from `docs/task_backlog.md`
+  and updated the active priority order so the task-context helper reports
+  TB-049, TB-050, and TB-051 as the active queue.
+- Hygiene summary: removed local generated placeholder roots under
+  `data/processed/swisstopo/placeholder_second_site_v1`,
+  `validation/private/placeholder_second_site_v1`, and
+  `hazard/results/placeholder_second_site_v1` before committing.

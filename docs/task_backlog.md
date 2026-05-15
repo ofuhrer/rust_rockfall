@@ -154,9 +154,6 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- hardening the portable source-zone/scenario semantics against the concrete
-  Chant Sura candidate now that its core-input and public-context boundaries
-  are explicit;
 - turning spatial same-scale uncertainty into reusable masks/surfaces that show
   where closure-limiting uncertainty concentrates, not just scalar layer
   summaries;
@@ -170,12 +167,12 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-047 hardens portable source-zone/scenario semantics because it is the
-   immediate Swiss-wide portability blocker after TB-046.
-2. TB-049 canonicalizes the rebuildable reduced-output workflow because output
+1. TB-049 canonicalizes the rebuildable reduced-output workflow because output
    volume remains the measured scaling bottleneck.
-3. TB-050 promotes the COG conversion proof toward a reusable export path after
+2. TB-050 promotes the COG conversion proof toward a reusable export path after
    the core scientific/output blockers have executable support.
+3. TB-051 assembles the measured conditional diagnostic interpretation after
+   the output-profile and GIS export paths have a canonical workflow surface.
 
 ## Backlog Protocol
 
@@ -217,44 +214,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-047: Harden Portable Source-Zone And Scenario Semantics
-
-Goal: separate reusable source-zone/scenario semantics from Tschamut-specific
-heuristics using the concrete Chant Sura / Flüelapass candidate, without
-running a second-site ensemble or claiming transferability.
-
-Inspect first:
-
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
-- `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Expected work:
-
-- run the minimal Chant Sura staging helper and the second-site preflight;
-- audit which source-zone and scenario fields are reusable workflow semantics,
-  which are site-specific required inputs, and which still inherit Tschamut
-  assumptions;
-- extend the multisite source/scenario audit or add a narrow companion report
-  so it emits a machine-readable semantic portability matrix for Tschamut and
-  Chant Sura;
-- update docs to make the synthetic Chant Sura records explicit as contract
-  fixtures, not physical evidence.
-
-Definition of done:
-
-- the report identifies reusable, site-specific, and unresolved source/scenario
-  semantics without requiring real public-context downloads;
-- Chant Sura remains `deferred_public_context_inputs` and no second-site
-  ensemble or hazard build is run;
-- no tuning, source-frequency, annual-probability, risk, exposure,
-  vulnerability, scale-up, or operational claims are introduced.
 
 ### TB-049: Canonicalize Rebuildable Reduced-Output Commands
 
