@@ -44,6 +44,8 @@ When these files conflict, preserve the safety constraints first, then update th
   removing, or reordering backlog tasks, state which simulator, validation,
   reproducibility, scaling, uncertainty, usability, or interpretation gap is
   affected. Avoid self-expanding governance loops.
+- Backlog sequencing should favor tasks that generate reusable measurements or
+  executable analysis over tasks that only restate evidence status.
 - Do not end a task with only a "next gate" recommendation. If the next step is
   a gate or policy decision, tie it to the concrete run, script, bug, dataset,
   metric, or implementation work it will enable.

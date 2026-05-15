@@ -3759,3 +3759,26 @@ Planning only; these milestones do not implement roadmap item content yet.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
   `scripts/git-hooks/pre-commit` passed.
+
+### M070
+
+- Milestone id: M070.
+- Roadmap item: executable capability backlog refocus.
+- Hypothesis/objective: Keep the active backlog centered on new measurements,
+  executable diagnostics, reproducibility, and scaling evidence for the
+  conditional Tschamut hazard-map pilot rather than further procedural status
+  maintenance.
+- Files intended to change:
+  `AGENTS.md`,
+  `docs/task_backlog.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a backlog quality assessment, promoted a
+  reusable hazard-map convergence diagnostic task, deprioritized secondary
+  manual GIS/QGIS QA until the main evidence chain is less blocked, and kept
+  consistency expectations aligned with the executable backlog.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `scripts/git-hooks/pre-commit` passed.

@@ -1867,9 +1867,11 @@ def check_roadmap_target_authority() -> list[str]:
         "Worker rule:",
         "Project Objective",
         "Capability Gap Analysis",
+        "Backlog Quality Assessment",
         "TB-001: Produce Measured Conditional Pilot Acceptance Summary",
-        "TB-002: Implement A Bounded Validation Output Profile For Pilot Runs",
-        "TB-003: Acquire Or Verify Public Context-Layer Evidence For Tschamut",
+        "TB-002: Build Reusable Hazard-Map Convergence Diagnostics",
+        "TB-003: Implement A Bounded Validation Output Profile For Pilot Runs",
+        "TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut",
         "decision_log.md",
         "agent_work_log.md",
     ):

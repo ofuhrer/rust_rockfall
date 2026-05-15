@@ -76,6 +76,35 @@ objective are:
    implementation gap unless the conditional pilot first reaches accepted
    diagnostic status.
 
+## Backlog Quality Assessment
+
+The current backlog should be judged by whether it creates new measurements,
+analysis capabilities, reproducibility, or execution capacity. The strongest
+tasks are those that turn the existing Tschamut/Balfrin artifacts into
+actionable scientific evidence or remove a measured execution blocker.
+
+Over-procedural areas to avoid:
+
+- repeated reclassification of the same `inconclusive` evidence without a new
+  analysis or run;
+- additional YAML records or validators that do not enable execution,
+  measurement, or reproducibility;
+- roadmap/status maintenance that does not change what a worker can run or
+  learn;
+- secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
+  remains unresolved.
+
+Underrepresented high-value work:
+
+- reusable convergence/statistics tooling for comparing hazard rasters and
+  conditional exceedance summaries across runs;
+- measured validation-output profile reduction;
+- obstacle/context evidence acquisition and overlap analysis;
+- resource and runtime profiling that decides whether single-job Balfrin
+  execution is enough;
+- uncertainty summaries that quantify what changes with sampling, chunking, or
+  output profile choices.
+
 ## Backlog Protocol
 
 Each active task must include:
@@ -129,7 +158,41 @@ Definition of done:
 - the work explains what uncertainty was reduced and what remains unresolved;
 - focused tests/checks and `scripts/check_repo_consistency.py` pass.
 
-### TB-002: Implement A Bounded Validation Output Profile For Pilot Runs
+### TB-002: Build Reusable Hazard-Map Convergence Diagnostics
+
+Capability gap reduced: conditional-pilot acceptance lacks quantitative
+convergence/statistical tooling.
+
+Goal: implement or extend an executable diagnostic script that compares two or
+more hazard-map runs or summaries and reports quantitative convergence
+indicators for conditional intensity-exceedance products.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`;
+- existing hazard manifests under ignored `hazard/results/` when available;
+- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
+- `docs/hazard_map_semantics.md`;
+- existing tests around hazard-layer reducers and conditional curves.
+
+Required work:
+
+1. Prefer a reusable script or test fixture over a one-off manual comparison.
+2. Compare stable products such as threshold exceedance summaries, reach,
+   deposition density, maximum kinetic energy, maximum jump height, output
+   checksums, or selected raster statistics where available.
+3. Make missing local ignored outputs an explicit blocked/input state rather
+   than a failure to import or a silent pass.
+4. Do not tune thresholds, change hazard semantics, or alter baselines.
+
+Definition of done:
+
+- the diagnostic can run on a tiny fixture or existing selected-pilot outputs;
+- it reports concrete metrics, not just pass/fail labels;
+- tests cover at least one deterministic fixture or dry-run path;
+- output is suitable input for TB-001 acceptance summary.
+
+### TB-003: Implement A Bounded Validation Output Profile For Pilot Runs
 
 Capability gap reduced: validation-output volume blocks larger selected-domain
 execution.
@@ -162,7 +225,7 @@ Definition of done:
 - public defaults and validation baselines are unchanged;
 - focused tests/checks pass.
 
-### TB-003: Acquire Or Verify Public Context-Layer Evidence For Tschamut
+### TB-004: Acquire Or Verify Public Context-Layer Evidence For Tschamut
 
 Capability gap reduced: forest and obstacle context is unresolved.
 
@@ -197,7 +260,7 @@ Definition of done:
 - no operational claim is added;
 - focused checks pass.
 
-### TB-004: Measure Whether Single-Job Balfrin Execution Is Still Enough
+### TB-005: Measure Whether Single-Job Balfrin Execution Is Still Enough
 
 Capability gap reduced: scaling direction is underdetermined.
 
@@ -228,36 +291,6 @@ Definition of done:
 - no runtime behavior changes unless explicitly required for measurement;
 - consistency checks pass.
 
-### TB-005: Run Secondary Manual GIS/QGIS Visual QA If Local Artifacts Exist
-
-Capability gap reduced: spatial interoperability remains unverified but
-secondary.
-
-Goal: if QGIS and local ignored package artifacts are available, perform the
-manual visual QA review for CRS alignment, nodata styling, source-zone overlay,
-layer labels, and interpretation notes. If unavailable, leave the task in the
-backlog or replace it with a concrete artifact-acquisition task.
-
-Inspect first:
-
-- `docs/pilot_gis_package.md`;
-- `validation/pilot_runs/tschamut_public_gis_visual_qa_v1.yaml`;
-- `docs/tschamut_public_pilot_gis_package_review.md`.
-
-Required work:
-
-1. This is secondary interoperability evidence, not the main pilot outcome.
-2. If artifacts are missing, do not spend the task only reclassifying the same
-   blocked state; identify the concrete missing artifact command/path instead.
-3. Do not claim operational validity.
-
-Definition of done:
-
-- visual QA is based on actual local artifacts, or the task is replaced by a
-  concrete artifact-generation/acquisition task;
-- status is `passed`, `failed`, or still blocked with exact missing inputs;
-- checks pass.
-
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:
@@ -267,5 +300,7 @@ These are intentionally not current worker tasks:
 - shape-contact runtime progression;
 - terrain/material calibration libraries;
 - production COG or QGIS packaging work beyond secondary QA;
-- distributed SLURM orchestration unless TB-004 or later evidence shows a
+- manual GIS/QGIS visual QA unless the local package artifacts and QGIS are
+  actually available and the main acceptance evidence is not blocked elsewhere;
+- distributed SLURM orchestration unless TB-005 or later evidence shows a
   measured need.
