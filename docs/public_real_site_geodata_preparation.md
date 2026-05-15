@@ -213,6 +213,14 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The new evidence-gap helper
+`scripts/assess_validation_calibration_evidence_gaps.py` keeps the current
+Tschamut evidence in the diagnostic category: observed deposition/runout,
+release-zone, terrain/context, holdout, and multisite transfer evidence are
+only partial, while calibration and block-population evidence remain missing.
+That helper is read-only and does not tune the model or change acceptance
+status.
+
 The portable source-zone / scenario contract audit lives at
 `scripts/audit_multisite_source_scenario_contract.py`. It compares the frozen
 Tschamut source-zone and block-scenario records against the staged Chant Sura /

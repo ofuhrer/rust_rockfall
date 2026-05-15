@@ -184,37 +184,37 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-040: Assess Validation And Calibration Evidence Gaps For Physical Credibility
+### TB-041: Stage a Holdout Validation Evidence Manifest For Chant Sura
 
-Goal: identify the field, reference, or benchmark evidence required to move
-from workflow credibility toward physical credibility.
+Goal: turn the existing Chant Sura held-out contact metadata into a durable
+holdout-validation evidence manifest that clearly separates diagnostic
+selection evidence from independent validation evidence.
 
 Inspect first:
 
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `data/datasets.yaml`
-- any existing validation fixture references for Tschamut, Chant Sura,
-  Schiers, or Balfrin discovered from those files only.
+- `validation/cases/chant_sura_contact_heldout.yaml`
+- `validation/data/processed/chant_sura_2020/metadata_contact_split.json`
+- `validation/internal/shape_contact_v0_chant_sura_model_selection.yaml`
+- `docs/chant_sura_contact_validation.md`
+- `docs/chant_sura_contact_generalization.md`
+- `docs/shape_contact_v0_chant_sura_model_selection.md`
 
 Expected work:
 
-- produce a concise evidence-gap matrix separating observed deposition,
-  release-zone evidence, block-size distribution evidence, terrain/context
-  evidence, and calibration/holdout needs;
-- identify which gaps block physical probability claims versus which only
-  limit diagnostic interpretation;
-- update docs/backlog with executable next data-staging tasks only if the
-  evidence gap is concrete.
+- produce a small read-only manifest or summary that records the held-out split,
+  the fixture boundaries, and the evidence role of the Chant Sura held-out
+  contact subset;
+- identify which fields are diagnostic selection evidence versus independent
+  validation evidence;
+- keep the manifest explicit that it is not calibration, not physical
+  probability, and not operational use.
 
 Definition of done:
 
-- the report names the minimum evidence needed for physical credibility without
-  tuning the current model;
-- it does not relabel current same-scale evidence as physically validated;
-- it preserves all non-operational boundaries.
+- the report makes the holdout boundary explicit for Chant Sura;
+- diagnostic selection evidence and holdout validation evidence are separated
+  in a durable, read-only artifact;
+- current non-operational boundaries remain explicit.
 
 Boundaries:
 

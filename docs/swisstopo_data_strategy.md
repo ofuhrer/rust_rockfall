@@ -207,6 +207,13 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The validation/calibration evidence-gap helper
+`scripts/assess_validation_calibration_evidence_gaps.py` now makes the current
+boundary explicit: workflow reproducibility is strong, diagnostic validation
+is partial, but physical credibility is not yet established. Calibration and
+block-population evidence remain missing, and annual-frequency, risk,
+exposure, vulnerability, and operational claims stay out of scope.
+
 The source-zone / scenario contract audit helper
 `scripts/audit_multisite_source_scenario_contract.py` now distinguishes the
 portable contract shape from the Tschamut-specific heuristics that were used

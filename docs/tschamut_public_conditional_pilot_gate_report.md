@@ -415,6 +415,28 @@ to `/tmp`, and the GIS/COG audit can distinguish that converted sample as
 `cog_conversion_sample_ready` while the committed same-scale package roots
 remain `gis_package_ready_cog_blocked` until regenerated.
 
+## Validation And Calibration Evidence Gaps
+
+`scripts/assess_validation_calibration_evidence_gaps.py` now summarizes the
+boundary between workflow credibility and physical credibility. Its current
+derived status is `physical_credibility_status: not_established`, with
+`calibration_status: missing` and `validation_status: partial`. The helper
+keeps `scale_up_authorized: false` and `operational_claims_allowed: false`.
+
+Current category mapping:
+
+- observed deposition / runout evidence: `partial`
+- release-zone evidence: `partial`
+- block-size / block-population evidence: `missing`
+- terrain and context evidence: `partial`
+- calibration evidence: `missing`
+- holdout / validation evidence: `partial`
+- multi-site transfer evidence: `partial`
+
+This is evidence-gap analysis only. It does not relabel the current same-scale
+diagnostics as physically validated and it does not authorize annual-frequency,
+risk, exposure, vulnerability, or operational claims.
+
 ## Artifact Readiness Preflight
 
 Before rerunning convergence, output-profile, context, or uncertainty

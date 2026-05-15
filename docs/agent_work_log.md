@@ -5266,3 +5266,28 @@ Planning only; these milestones do not implement roadmap item content yet.
   regenerate hazard outputs or change the reduced-output profile in place.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-037.
+
+- TB-040 validation and calibration evidence-gap assessment. Files changed:
+  `scripts/assess_validation_calibration_evidence_gaps.py`,
+  `tests/test_validation_calibration_evidence_gaps.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`.
+- Evidence streams consumed: the Tschamut gate and target run freezes, the
+  same-scale uncertainty envelope, the second-site portability preflight, the
+  Chant Sura contact and held-out fixtures, the Schiers dataset metadata
+  entry, the Balfrin single-job sufficiency record, and the swisstopo / public
+  real-site portability docs.
+- Derived status: `physical_credibility_status=not_established`,
+  `calibration_status=missing`, `validation_status=partial`.
+- Interpretation: current same-scale evidence is strong for workflow
+  reproducibility and diagnostic interpretation but is still not physically
+  credible; calibration and block-population evidence are missing, and the
+  holdout boundary remains only partially satisfied.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/assess_validation_calibration_evidence_gaps.py tests/test_validation_calibration_evidence_gaps.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps`,
+  `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format text`.
