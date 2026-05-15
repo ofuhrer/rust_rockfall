@@ -342,6 +342,27 @@ Detailed sources: `docs/task_backlog.md`,
 `docs/tschamut_public_obstacle_context_scope.md`,
 `docs/balfrin_single_job_execution_sufficiency.md`.
 
+### Post TB-011 Backlog Direction
+
+Decision: prioritize refreshing the same-scale selected Tschamut artifacts
+under the current diagnostic contracts before running another integrated
+acceptance review.
+
+Current status: active backlog direction.
+
+Rationale: TB-009 through TB-011 added the right executable plumbing: hazard
+manifests can expose cell-wise layer paths, validation can opt into
+`summary_only` output, and context inspection can report selected-corridor
+spatial relevance. The current checkout still lacks the ignored selected-pilot
+hazard/validation artifacts and real processed context crops, so the next
+capability gain is to regenerate or restore those artifacts and run the
+diagnostics on them, not to add another synthesis over missing inputs.
+
+Detailed sources: `docs/task_backlog.md`,
+`docs/conditional_hazard_convergence_acceptance_protocol.md`,
+`docs/tschamut_public_bounded_validation_output_profile.md`,
+`docs/tschamut_public_obstacle_context_scope.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

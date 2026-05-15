@@ -4184,3 +4184,24 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: Baseline/reduced accounting is now executable on tiny fixtures; the real Tschamut selected-pilot outputs remain blocked_missing_outputs in this checkout.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-011.
+
+### M073
+
+- Milestone id: M073.
+- Roadmap item: post TB-009 through TB-011 backlog reassessment.
+- Hypothesis/objective: Convert the worker results into a next-step backlog
+  that prioritizes refreshing same-scale selected Tschamut artifacts under the
+  current diagnostic contracts before another acceptance synthesis.
+- Files intended to change:
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Updated the capability gaps to reflect that
+  cell-wise hazard output wiring, `summary_only` validation mode, and fixture
+  context spatial relevance now exist. Replaced the immediate integrated review
+  path with an artifact-refresh task that should either regenerate ignored
+  selected-pilot outputs and run the diagnostics or produce exact Balfrin/local
+  commands and missing-path evidence.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
