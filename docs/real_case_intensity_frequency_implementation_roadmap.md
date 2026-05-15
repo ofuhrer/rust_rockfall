@@ -165,8 +165,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `inconclusive` without authorizing scale-up. The DT-06 stochastic audit is
   complete and the DT-07 DEM/input QA gate is complete. The DT-08 output
   budget/reducer gate is complete, DT-09 remains conditional on measured need
-  for distributed execution, and DT-10 forest/obstacle context is now the next
-  active blocker.
+  for distributed execution, DT-10 forest/obstacle context is complete as a
+  blocked-pending-local-evidence gate, and DT-11 manual GIS/QGIS visual QA is
+  now the next active blocker.
 - Priority 5 is complete at the selected checklist level.
   `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
@@ -208,7 +209,7 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   forest/obstacle context, balfrin reproducibility, and validation-runner
   provenance scope are resolved. Manual GIS/QGIS remains a secondary
   interoperability check.
-- The next active work is DT-10 forest/obstacle context. DT-09 remains
+- The next active work is DT-11 manual GIS/QGIS visual QA. DT-09 remains
   conditional on measured need for distributed execution.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,

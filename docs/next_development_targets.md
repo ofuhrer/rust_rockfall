@@ -56,8 +56,9 @@ completed balfrin target-gate reproduction is not yet a convergence pass.
 DT-05 now records the conditional convergence protocol and keeps the DT-04
 evidence `inconclusive`. DT-06 through DT-08 have closed the stochastic-audit,
 DEM/input-QA, and output-budget/reducer gate definitions. DT-09 remains
-conditional on measured need for distributed execution, and DT-10 is now the
-next active target.
+conditional on measured need for distributed execution, DT-10 is complete as a
+blocked_pending_local_evidence context gate, and DT-11 is now the next active
+target.
 Target-run provenance is now explicitly classified: the
 1,000-trajectory observed-release target run is separated from the auxiliary
 single-release `ensemble_execution` sidecar.
@@ -301,7 +302,7 @@ undefined.
 
 ### DT-10: Review Target-Scale Forest And Obstacle Context
 
-Status: next active target.
+Status: complete; classification `blocked_pending_local_evidence`.
 
 Objective: decide whether omitted forest, buildings, roads, barriers, nets, or
 other obstacles are acceptable, blocked pending local evidence, limiting, or
@@ -319,6 +320,8 @@ Do not: tune restitution, terrain classes, stopping behavior, or contact
 parameters to absorb omitted obstacles.
 
 ### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA
+
+Status: next active target.
 
 Objective: review target-scale package alignment and labels in QGIS when local
 package artifacts and QGIS are available.

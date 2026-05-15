@@ -142,11 +142,11 @@ sampling-distribution contracts, DEM/input conditioning, boundary/termination
 semantics, dense-grid reducer scaling, and claim-state controls as explicit
 acceptance concerns. Manual GIS/QGIS remains a supporting QA item.
 
-Forest/obstacle context review remains a high-priority scientific
-interpretation blocker, but it is currently data blocked in this checkout.
-Manual QGIS visual QA remains useful for spatial sanity and interoperability,
-but it should not outrank the hazard-map evidence package itself. Automated
-manifest checks prove file and metadata consistency, but they cannot replace
+Forest/obstacle context review is now recorded as `blocked_pending_local_evidence`
+because the local checkout has no reviewed public context layers. Manual
+QGIS visual QA remains useful for spatial sanity and interoperability, but it
+should not outrank the hazard-map evidence package itself. Automated manifest
+checks prove file and metadata consistency, but they cannot replace
 terrain/forest/obstacle context assessment for a real Alpine corridor.
 
 Resumable cross-process trajectory chunk manifests and SLURM-array design now
@@ -234,9 +234,8 @@ Pause or defer:
 ## Final Recommendation
 
 Do not start annual or physical probability work yet. The highest-value
-implementable next move is DT-10 forest/obstacle context. Manual GIS/QGIS
-remains useful but secondary; distributed execution stays conditional on
-measured need and should not outrank acceptance, DEM/input, and output-budget
-gates.
+implementable next move is DT-11 manual GIS/QGIS visual QA. Distributed
+execution remains conditional on measured need and should not outrank
+acceptance, DEM/input, and output-budget gates.
 Larger diagnostic execution remains blocked by the reassessed no-go
 ensemble-size gate.

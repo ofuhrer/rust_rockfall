@@ -1305,8 +1305,9 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         "### DT-09: Design Balfrin Distributed Execution Only If Needed",
         "Status: conditional; only if measured need for distributed execution.",
         "### DT-10: Review Target-Scale Forest And Obstacle Context",
+        "Status: complete; classification `blocked_pending_local_evidence`.",
+        "### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA",
         "Status: next active target.",
-        "DT-10 is now the",
     ):
         if term not in targets:
             errors.append(f"docs/next_development_targets.md omits {term!r}")
@@ -1913,8 +1914,12 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/next_development_targets.md must mark DT-08 complete")
     if "### DT-10: Review Target-Scale Forest And Obstacle Context" not in targets_text:
         errors.append("docs/next_development_targets.md must include the DT-10 heading")
-    if "DT-10 is now the" not in targets_text or "next active target" not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-10 as next active target")
+    if "Status: complete; classification `blocked_pending_local_evidence`." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-10 complete")
+    if "### DT-11: Complete Secondary Target-Scale Manual GIS/QGIS Visual QA" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-11 heading")
+    if "Status: next active target." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-11 as next active target")
     return errors
 
 

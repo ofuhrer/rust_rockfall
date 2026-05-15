@@ -59,8 +59,8 @@ before larger Swiss public-data pilots are trusted.
 
 Current status: active. DT-07 is complete as the selected QA gate and keeps
 the Tschamut pilot classified `blocked_pending_local_evidence`. DT-08 is
-complete, DT-09 remains conditional on measured need, and DT-10 is now the
-next active target.
+complete, DT-09 remains conditional on measured need, DT-10 is complete as a
+`blocked_pending_local_evidence` gate, and DT-11 is now the next active target.
 
 Rationale: raw public inputs, intermediate processed artifacts, CRS/
 registration, nodata, terrain artifacts, and strict-versus-clamped boundary
@@ -79,7 +79,8 @@ before larger selected-domain runs or distributed execution are considered.
 
 Current status: active. DT-08 is complete as the selected QA gate and keeps
 the Tschamut pilot classified `blocked_before_scale_up`. DT-09 remains
-conditional on measured need, and DT-10 is now the next active target.
+conditional on measured need, DT-10 is complete as a
+`blocked_pending_local_evidence` gate, and DT-11 is now the next active target.
 
 Rationale: validation-side debug output, hazard output volume, reducer restart
 state, and dense-grid accumulator growth can make a run look finished while
