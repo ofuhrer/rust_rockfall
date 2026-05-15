@@ -51,19 +51,39 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     candidate_site_id = text_value(config.get("candidate_site_id")) or site_id or DEFAULT_CANDIDATE_SITE_ID
     candidate_site_id = candidate_site_id.strip()
     candidate_site_name = text_value(config.get("candidate_site_name")) or "unspecified"
+    candidate_selection_rationale = text_value(config.get("candidate_selection_rationale"))
     site_extent = config.get("site_extent") if isinstance(config.get("site_extent"), dict) else {}
+    source_zone_scenario_contract = (
+        config.get("source_zone_scenario_contract")
+        if isinstance(config.get("source_zone_scenario_contract"), dict)
+        else {}
+    )
 
     paths = build_paths(candidate_site_id, config)
     requirements = build_requirements(candidate_site_id, site_extent, paths)
     missing_required = [req for req in requirements if req["required"] and req["status"] != "ready"]
+    terrain_manifest_status = manifest_status(paths["terrain_crop"], paths["terrain_metadata"])
+    source_zone_manifest_status = manifest_status(paths["source_zone_metadata"])
+    scenario_manifest_status = manifest_status(paths["scenario_table"], paths["source_scenario_policy"])
 
     report = {
-        "second_site_manifest_status": "staged_placeholder_manifest" if site_config is not None and site_config.exists() else "missing_manifest_config",
+        "second_site_manifest_status": (
+            "staged_candidate_manifest"
+            if candidate_selection_rationale
+            else "staged_placeholder_manifest"
+            if site_config is not None and site_config.exists()
+            else "missing_manifest_config"
+        ),
         "portability_preflight_status": "ready" if not missing_required else "blocked_missing_inputs",
         "readiness_status": "ready" if not missing_required else "blocked_missing_inputs",
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
+        "candidate_selection_rationale": candidate_selection_rationale or "site selection remains blocked or unspecified",
         "site_extent_or_placeholder": site_extent if site_extent else "placeholder_extent_missing",
+        "terrain_manifest_status": terrain_manifest_status,
+        "source_zone_manifest_status": source_zone_manifest_status,
+        "scenario_manifest_status": scenario_manifest_status,
+        "source_zone_scenario_contract": source_zone_scenario_contract,
         "reusable_workflow_components": reusable_workflow_components(),
         "site_specific_required_inputs": [req for req in requirements if req["required"]],
         "required_public_geodata_products": [req for req in requirements if req["kind"] == "public_geodata_product"],
@@ -72,7 +92,15 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "expected_artifact_roots": [req for req in requirements if req["kind"] == "artifact_root"],
         "missing_input_categories": [req["category"] for req in missing_required],
         "missing_input_paths_or_patterns": [req["path_or_pattern"] for req in missing_required],
-        "acquisition_or_staging_checklist": build_checklist(candidate_site_id, candidate_site_name, paths, site_extent, missing_required),
+        "acquisition_or_staging_checklist": build_checklist(
+            candidate_site_id,
+            candidate_site_name,
+            paths,
+            site_extent,
+            source_zone_scenario_contract,
+            missing_required,
+            candidate_selection_rationale,
+        ),
         "blocked_reason": build_blocked_reason(candidate_site_id, site_extent, missing_required, site_config),
         "assumptions_not_yet_generalized": assumptions_not_yet_generalized(candidate_site_id),
         "scale_up_authorized": False,
@@ -100,6 +128,10 @@ def resolve_repo_path(value: Any, default: Path | None = None) -> Path:
         return default
     path = Path(text)
     return path if path.is_absolute() else ROOT / path
+
+
+def manifest_status(*paths: Path) -> str:
+    return "ready" if all(path.exists() for path in paths) else "blocked_missing_inputs"
 
 
 def build_paths(site_id: str, config: dict[str, Any]) -> dict[str, Path]:
@@ -405,7 +437,9 @@ def build_checklist(
     candidate_site_name: str,
     paths: dict[str, Path],
     site_extent: dict[str, Any],
+    source_zone_scenario_contract: dict[str, Any],
     missing_required: list[dict[str, Any]],
+    candidate_selection_rationale: str,
 ) -> list[str]:
     checklist = [
         f"PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/{candidate_site_id}_manifest.yaml",
@@ -419,6 +453,21 @@ def build_checklist(
         f"Keep validation and hazard outputs under {paths['validation_case_root']} and {paths['hazard_results_root']}.",
         "Use the existing Tschamut same-scale diagnostic scripts as reusable patterns, but do not treat them as second-site evidence.",
     ]
+    if candidate_selection_rationale:
+        checklist.append(f"Candidate selection rationale: {candidate_selection_rationale}")
+    if source_zone_scenario_contract:
+        checklist.append(
+            "Source-zone/scenario contract: "
+            + ", ".join(
+                [
+                    f"source_zone_id_pattern={text_value(source_zone_scenario_contract.get('source_zone_id_pattern')) or 'missing'}",
+                    f"source_zone_geometry={text_value(source_zone_scenario_contract.get('source_zone_geometry')) or 'missing'}",
+                    f"release_point_table={text_value(source_zone_scenario_contract.get('release_point_table')) or 'missing'}",
+                    f"observed_deposition_or_field_observation={text_value(source_zone_scenario_contract.get('observed_deposition_or_field_observation')) or 'missing'}",
+                    f"scenario_probability_semantics={text_value(source_zone_scenario_contract.get('scenario_probability_semantics')) or 'missing'}",
+                ]
+            )
+        )
     if missing_required:
         checklist.append("Fill the missing required categories before attempting a second-site port.")
     if candidate_site_name != "unspecified":
@@ -478,7 +527,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"readiness_status: {report['readiness_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
+        f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         f"site_extent_or_placeholder: {report['site_extent_or_placeholder']}",
+        f"terrain_manifest_status: {report['terrain_manifest_status']}",
+        f"source_zone_manifest_status: {report['source_zone_manifest_status']}",
+        f"scenario_manifest_status: {report['scenario_manifest_status']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
         "",

@@ -31,7 +31,11 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["second_site_manifest_status"], "staged_placeholder_manifest")
         self.assertEqual(report["candidate_site_id"], "placeholder_second_site_v1")
         self.assertEqual(report["candidate_site_name"], "Placeholder Second Site")
+        self.assertEqual(report["candidate_selection_rationale"], "site selection remains blocked or unspecified")
         self.assertEqual(report["site_extent_or_placeholder"]["crs"], "EPSG:2056")
+        self.assertEqual(report["terrain_manifest_status"], "ready")
+        self.assertEqual(report["source_zone_manifest_status"], "ready")
+        self.assertEqual(report["scenario_manifest_status"], "ready")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
         self.assertEqual(report["missing_input_categories"], [])
@@ -56,6 +60,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "blocked_reason",
                 "candidate_site_id",
                 "candidate_site_name",
+                "candidate_selection_rationale",
                 "expected_artifact_roots",
                 "missing_input_categories",
                 "missing_input_paths_or_patterns",
@@ -68,10 +73,30 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "required_public_geodata_products",
                 "reusable_workflow_components",
                 "scale_up_authorized",
+                "scenario_manifest_status",
+                "source_zone_manifest_status",
+                "source_zone_scenario_contract",
                 "site_extent_or_placeholder",
                 "site_specific_required_inputs",
+                "terrain_manifest_status",
             },
         )
+
+    def test_candidate_example_fixture_is_blocked_and_records_manifest_contract(self) -> None:
+        report = preflight.build_report(self._candidate_example_config_path())
+
+        self.assertEqual(report["second_site_manifest_status"], "staged_candidate_manifest")
+        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
+        self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
+        self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
+        self.assertIn("Chant Sura is the clearest concrete Swiss candidate", report["candidate_selection_rationale"])
+        self.assertEqual(report["terrain_manifest_status"], "blocked_missing_inputs")
+        self.assertEqual(report["source_zone_manifest_status"], "blocked_missing_inputs")
+        self.assertEqual(report["scenario_manifest_status"], "blocked_missing_inputs")
+        self.assertIn("source_zone_scenario_contract", report)
+        self.assertIn("source_zone_id_pattern", report["source_zone_scenario_contract"])
+        self.assertIn("Candidate selection rationale", "\n".join(report["acquisition_or_staging_checklist"]))
+        self.assertIn("Chant Sura / Flüelapass portability example", "\n".join(report["acquisition_or_staging_checklist"]))
 
     def test_missing_context_metadata_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,6 +133,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
 
     def _fixture_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml"
+
+    def _candidate_example_config_path(self) -> Path:
+        return ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 
     def _build_report(
         self,

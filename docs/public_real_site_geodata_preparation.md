@@ -181,6 +181,13 @@ Running the preflight against that manifest is expected to remain blocked until
 actual second-site terrain, context, source-zone, and scenario inputs are
 staged under the candidate roots.
 
+A more concrete example manifest also lives at
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`.
+It uses Chant Sura / Flüelapass as the candidate Swiss site because the repo
+already carries Chant Sura benchmark metadata and fixtures, but it still
+remains metadata-only and blocked until public terrain, source-zone, scenario,
+and context inputs are actually staged.
+
 Before the first conditional pilot run, also run:
 
 ```bash

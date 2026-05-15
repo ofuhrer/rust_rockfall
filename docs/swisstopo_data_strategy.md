@@ -194,6 +194,13 @@ The staged placeholder candidate manifest for that helper is
 Its current blocked report is expected, because it names site-specific paths
 without any real second-site public geodata yet staged under them.
 
+A more concrete candidate example is
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`.
+It treats Chant Sura / Flüelapass as the candidate site because the repo
+already contains Chant Sura dataset metadata and benchmark fixtures, but the
+example remains blocked until terrain, source-zone, scenario, and context
+products are staged at the candidate roots.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

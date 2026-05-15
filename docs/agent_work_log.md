@@ -4913,3 +4913,27 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
   `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml --format json`.
+
+- Roadmap item: TB-029 added a concrete Chant Sura / Flüelapass second-site
+  manifest example at
+  `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`,
+  `docs/task_backlog.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`.
+- Evidence streams consumed: the Tschamut same-scale readiness preflight, the
+  generic second-site portability preflight, Chant Sura dataset metadata in
+  `data/datasets.yaml`, and the public-real-site geodata / swisstopo strategy
+  docs.
+- Classification: `blocked_missing_inputs` for the Chant Sura portability
+  example; `staged_candidate_manifest` as the manifest status.
+- Uncertainty reduced: the portability helper now distinguishes a concrete
+  Swiss candidate example from a generic placeholder and reports terrain,
+  source-zone, and scenario manifest statuses explicitly.
+- Remaining uncertainty: the site still has no staged terrain, source-zone,
+  scenario, or public-context inputs, so it remains a metadata-only example.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`.

@@ -167,45 +167,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-029: Run A Same-Size Alternate-Seed Sampling Replicate
-
-Capability gap reduced: TB-025 showed a bounded 12-trajectory probe reduces
-but does not eliminate the dominant target-vs-gate disagreement. A same-size
-alternate-seed replicate is needed to separate seed sensitivity from
-structural sampled-output divergence.
-
-Goal: run one bounded 12-trajectory alternate-seed or deterministic split
-replicate, build matching hazard layers, and compare it against the gate,
-target, and first sampling-sensitivity probe.
-
-Inspect first:
-
-- `scripts/check_same_scale_artifact_readiness.py`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
-- `scripts/generate_tschamut_same_scale_cases.py`;
-- `scripts/build_hazard_layers.py`;
-- `scripts/compare_hazard_map_convergence.py`;
-- existing ignored sampling-sensitivity probe roots.
-
-Required work:
-
-1. Keep the probe bounded and local; do not run a larger production ensemble.
-2. Change only case ids, output paths, and the seed or deterministic split id
-   required for an alternate replicate.
-3. Preserve physics, thresholds, release assumptions, source/scenario inputs,
-   sampling weights, and non-operational semantics.
-4. Report validation/hazard file counts, bytes, strongest disagreement layers,
-   and whether `max_kinetic_energy`, `max_jump_height`, and velocity
-   exceedance differences shrink, persist, or vary across replicates.
-
-Definition of done:
-
-- one bounded alternate replicate is measured or explicitly blocked;
-- comparisons against existing same-scale artifacts are recorded;
-- scale-up remains unauthorized;
-- checks pass.
-
 ### TB-030: Summarize Sampling Uncertainty Across Same-Scale Probes
 
 Capability gap reduced: same-scale evidence now includes gate, target, and at
