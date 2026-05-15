@@ -4992,3 +4992,26 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/audit_multisite_source_scenario_contract.py tests/test_multisite_source_scenario_contract.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract`,
   `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --format json`.
+
+- TB-031 multi-seed same-scale uncertainty envelope. Files changed:
+  `scripts/summarize_same_scale_sampling_uncertainty.py`,
+  `tests/test_same_scale_sampling_uncertainty.py`,
+  `validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/tschamut_public_sampling_sensitivity_v2_full_case.yaml`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the Tschamut readiness preflight, the gate and
+  target same-scale manifests, the bounded sampling-sensitivity probe v1, and
+  the new bounded same-size probe v2 with seed `34015` and ensemble size `12`.
+- Classification: `sampling_uncertainty_measured`.
+- Uncertainty reduced: the envelope now spans two bounded 12-trajectory seeds
+  and shows that `max_kinetic_energy` remains dominant while `max_jump_height`
+  retains support/nodata sensitivity and the velocity-exceedance layers remain
+  lower-order.
+- Remaining uncertainty: seed sensitivity still limits the shared-grid
+  interpretation, `max_kinetic_energy` still dominates, and the pilot remains
+  conservative and non-operational.
+- Checks run: `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/summarize_same_scale_sampling_uncertainty.py --json-output /tmp/tschamut_sampling_uncertainty.json --markdown-output docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_same_scale_sampling_uncertainty.py tests/test_same_scale_sampling_uncertainty.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_sampling_uncertainty`.

@@ -299,6 +299,13 @@ Interpretation boundary:
 - `scale_up_authorized` stays `false`;
 - `operational_claims_allowed` stays `false`.
 
+TB-031 extends this into a reusable multi-seed envelope by adding a second
+bounded 12-trajectory seed. The measured envelope is lower than the gate-vs-
+target baseline, but `max_kinetic_energy` remains dominant and
+`max_jump_height` still carries support and nodata sensitivity. See
+`docs/tschamut_public_same_scale_uncertainty_envelope.md` for the summarized
+multi-seed ranges.
+
 ## Same-Scale Convergence Check
 
 The restored same-scale target-side artifacts are now present and the

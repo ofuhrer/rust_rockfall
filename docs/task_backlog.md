@@ -168,48 +168,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-031: Build A Multi-Seed Same-Scale Uncertainty Envelope
-
-Capability gap reduced: TB-025 showed one bounded 12-trajectory probe reduces
-but does not eliminate target-vs-gate disagreement. The repo still needs
-multi-seed evidence and a reusable summary before the conditional pilot can be
-scientifically interpreted as stable or unstable.
-
-Goal: run or consume one or more same-size alternate-seed/split bounded probes
-and summarize the sampling-uncertainty envelope across gate, target, and
-available bounded probes.
-
-Inspect first:
-
-- `scripts/check_same_scale_artifact_readiness.py`;
-- `scripts/generate_tschamut_same_scale_cases.py`;
-- `scripts/build_hazard_layers.py`;
-- `scripts/compare_hazard_map_convergence.py`;
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- existing same-scale and sampling-probe manifests under ignored paths.
-
-Required work:
-
-1. Prefer consuming existing bounded-probe artifacts first.
-2. If another replicate is needed and feasible, run only a bounded same-size
-   alternate-seed/split probe; do not run a larger production ensemble.
-3. Preserve physics, thresholds, source/scenario inputs, sampling weights,
-   baselines, and non-operational semantics.
-4. Report per-layer spread/range for dominant disagreement layers, support or
-   nodata sensitivity, output pressure, and whether disagreement shrinks,
-   varies, or persists across seeds.
-5. Add focused tests with tiny fixtures if a summary script is added or
-   extended.
-
-Definition of done:
-
-- multi-seed or explicitly blocked sampling-uncertainty evidence is summarized
-  in a reusable machine-readable form;
-- the Tschamut uncertainty envelope is updated from that summary;
-- operational claims and scale-up remain false;
-- checks pass.
-
 ### TB-032: Consolidate Portable Pilot Command Plans
 
 Capability gap reduced: workers still rely on long copied validation and
