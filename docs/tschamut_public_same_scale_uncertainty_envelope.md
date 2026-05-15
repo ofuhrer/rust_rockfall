@@ -56,6 +56,13 @@ The conditional closure helper now reads this spatial concentration directly,
 so the same evidence can be treated as closure-limiting, deferrable, or
 unresolved rather than only as a scalar envelope.
 
+Compact mask summaries are also available from
+`scripts/summarize_spatial_same_scale_uncertainty.py --mask-output-dir <ignored-root>`.
+Those summaries preserve the same layer-specific counts, extents, and closure
+roles for `max_kinetic_energy`, `max_jump_height`, and
+`velocity_exceedance_5mps` without forcing workers to re-derive the same cell
+sets from pairwise rasters.
+
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid
 - `max_kinetic_energy` still dominates the envelope

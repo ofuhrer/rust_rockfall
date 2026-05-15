@@ -22,12 +22,21 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
     def test_reports_spatial_concentration_and_json_shape(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             artifacts = self._write_artifacts(Path(tmp))
-            report = summary_script.build_report(artifacts, summary_script.DEFAULT_HAZARD_LAYERS, top_n=3)
+            read_only_report = summary_script.build_report(artifacts, summary_script.DEFAULT_HAZARD_LAYERS, top_n=3)
+            self.assertIsNone(read_only_report["layer_summaries"]["max_kinetic_energy"]["mask_evidence"]["mask_path"])
+            mask_output_dir = Path(tmp) / "masks"
+            report = summary_script.build_report(
+                artifacts,
+                summary_script.DEFAULT_HAZARD_LAYERS,
+                top_n=3,
+                mask_output_dir=mask_output_dir,
+            )
 
             self.assertEqual(report["spatial_uncertainty_status"], "measured_existing_artifacts")
             self.assertEqual(report["selected_layers"], list(summary_script.DEFAULT_HAZARD_LAYERS))
             self.assertFalse(report["scale_up_authorized"])
             self.assertFalse(report["operational_claims_allowed"])
+            self.assertEqual(report["mask_status"], "available")
             self.assertEqual(report["layer_summaries"]["max_kinetic_energy"]["uncertainty_concentration_class"], "spatially_localized_shared_support_magnitude")
             self.assertEqual(report["layer_summaries"]["max_jump_height"]["uncertainty_concentration_class"], "dominated_by_nodata_support_differences")
             self.assertEqual(report["layer_summaries"]["velocity_exceedance_5mps"]["uncertainty_concentration_class"], "diffuse_across_shared_support")
@@ -37,13 +46,39 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIsNotNone(report["layer_summaries"]["max_kinetic_energy"]["high_uncertainty_bbox"])
             self.assertLess(report["layer_summaries"]["max_kinetic_energy"]["nodata_disagreement_fraction"], 0.15)
 
+            kinetic_mask = report["layer_summaries"]["max_kinetic_energy"]["mask_evidence"]
+            jump_mask = report["layer_summaries"]["max_jump_height"]["mask_evidence"]
+            velocity_mask = report["layer_summaries"]["velocity_exceedance_5mps"]["mask_evidence"]
+            self.assertEqual(kinetic_mask["mask_status"], "available")
+            self.assertEqual(kinetic_mask["closure_role"], "closure_limiting")
+            self.assertEqual(kinetic_mask["high_uncertainty_cell_count"], 1)
+            self.assertGreater(kinetic_mask["shared_support_magnitude_cell_count"], 0)
+            self.assertGreaterEqual(kinetic_mask["mask_cell_count"], kinetic_mask["high_uncertainty_cell_count"])
+            self.assertIsNotNone(kinetic_mask["mask_bbox"])
+            self.assertIsNotNone(kinetic_mask["mask_path"])
+            self.assertTrue(Path(kinetic_mask["mask_path"]).exists())
+            self.assertEqual(jump_mask["closure_role"], "closure_limiting")
+            self.assertEqual(jump_mask["mask_status"], "available")
+            self.assertGreater(jump_mask["support_nodata_cell_count"], 0)
+            self.assertIsNotNone(velocity_mask["mask_path"])
+            self.assertTrue(Path(velocity_mask["mask_path"]).exists())
+            self.assertEqual(velocity_mask["closure_role"], "unresolved")
+
             rendered = summary_script.render_text(report)
             self.assertIn("spatial same-scale uncertainty: measured_existing_artifacts", rendered)
             self.assertIn("max_kinetic_energy", rendered)
             self.assertIn("dominated_by_nodata_support_differences", rendered)
+            self.assertIn("mask role=", rendered)
 
             payload = json.loads(json.dumps(report))
             self.assertEqual(payload["schema_version"], summary_script.SCHEMA_VERSION)
+
+            expected_mask_files = {
+                mask_output_dir / "max_kinetic_energy_mask_summary.json",
+                mask_output_dir / "max_jump_height_mask_summary.json",
+                mask_output_dir / "velocity_exceedance_5mps_mask_summary.json",
+            }
+            self.assertTrue(expected_mask_files.issubset({path for path in mask_output_dir.iterdir()}))
 
     def test_layer_selection_deduplicates(self) -> None:
         self.assertEqual(

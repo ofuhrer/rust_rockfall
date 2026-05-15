@@ -402,6 +402,11 @@ The closure helper now also consumes the spatial uncertainty summary directly:
 closure-limiting or unresolved, and `velocity_exceedance_5mps` is deferrable
 rather than a closure blocker.
 
+That same spatial helper can now emit compact mask summaries to an ignored
+output directory. The summaries preserve the layer counts, extents, and
+closure roles for the closure-limiting layers, which makes the high-
+uncertainty cell sets reusable without re-deriving them from pairwise rasters.
+
 The helper keeps `scale_up_authorized: false` and
 `operational_claims_allowed: false` and separates the evidence needed for
 `accepted_diagnostic`, `no_go`, and `deferred` closure decisions from the

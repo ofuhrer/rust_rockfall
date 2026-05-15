@@ -288,6 +288,7 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
     layer_roles = {}
     for layer_key in ("max_kinetic_energy", "max_jump_height", "velocity_exceedance_5mps"):
         layer = spatial_layer_summary(spatial_uncertainty, layer_key)
+        mask = layer.get("mask_evidence") or {}
         layer_roles[layer_key] = {
             "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
             "closure_role": layer_closure_role(spatial_uncertainty, layer_key),
@@ -297,6 +298,13 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
             "analysis_cell_count": layer.get("analysis_cell_count"),
             "nonzero_support_stability_fraction": layer.get("nonzero_support_stability_fraction"),
             "high_uncertainty_cell_fraction": layer.get("high_uncertainty_cell_fraction"),
+            "mask_status": mask.get("mask_status"),
+            "mask_closure_role": mask.get("closure_role"),
+            "high_uncertainty_cell_count": mask.get("high_uncertainty_cell_count"),
+            "support_nodata_cell_count": mask.get("support_nodata_cell_count"),
+            "shared_support_magnitude_cell_count": mask.get("shared_support_magnitude_cell_count"),
+            "mask_bbox": mask.get("mask_bbox"),
+            "mask_path": mask.get("mask_path"),
         }
     overall_role = spatial_uncertainty.get("spatial_interpretation")
     if overall_role == "nodata_support_dominated":
@@ -314,6 +322,7 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
         "layer_roles": layer_roles,
         "dominant_layers": spatial_uncertainty.get("dominant_layers_by_mean_range", []),
         "dominant_layer_summaries": spatial_uncertainty.get("dominant_layer_summaries", []),
+        "mask_status": spatial_uncertainty.get("mask_status"),
         "blocked_reason": spatial_uncertainty.get("blocked_reason", ""),
     }
 

@@ -5531,3 +5531,29 @@ Planning only; these milestones do not implement roadmap item content yet.
   while preserving existing group ids.
 - Boundaries preserved: no scientific classifications, preflight semantics,
   validation artifacts, hazard outputs, or operational/scale-up claims changed.
+
+### TB-048 Spatial Same-Scale Uncertainty Masks
+
+- Roadmap item: emit reusable compact mask summaries for the closure-limiting
+  same-scale layers without changing the underlying uncertainty interpretation.
+- Implementation summary: extended
+  `scripts/summarize_spatial_same_scale_uncertainty.py` with compact
+  per-layer mask evidence plus optional ignored JSON summaries, threaded the
+  new fields into
+  `scripts/summarize_tschamut_conditional_pilot_closure.py`, and kept the
+  closure status conservative.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_spatial_same_scale_uncertainty.py scripts/summarize_tschamut_conditional_pilot_closure.py tests/test_spatial_same_scale_uncertainty.py tests/test_tschamut_conditional_pilot_closure.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty tests.test_tschamut_conditional_pilot_closure`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`
+  reported same-scale readiness ready except for the known missing raw SWISSTLM3D zip in this worktree.
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`
+  and `--format text` both completed.
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json --mask-output-dir /tmp/tb048_spatial_masks`
+  wrote compact ignored mask summary files.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format json --evidence-json /tmp/tb048_closure_override.json`
+  completed with closure status `inconclusive`.
+- Boundaries preserved: no new ensembles, physics changes, threshold tuning,
+  or operational claims were introduced.

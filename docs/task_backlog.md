@@ -172,12 +172,9 @@ Current priority order:
 
 1. TB-047 hardens portable source-zone/scenario semantics because it is the
    immediate Swiss-wide portability blocker after TB-046.
-2. TB-048 adds spatial uncertainty masks/surfaces because closure remains
-   scientifically limited by where `max_kinetic_energy` and `max_jump_height`
-   disagreement concentrates.
-3. TB-049 canonicalizes the rebuildable reduced-output workflow because output
+2. TB-049 canonicalizes the rebuildable reduced-output workflow because output
    volume remains the measured scaling bottleneck.
-4. TB-050 promotes the COG conversion proof toward a reusable export path after
+3. TB-050 promotes the COG conversion proof toward a reusable export path after
    the core scientific/output blockers have executable support.
 
 ## Backlog Protocol
@@ -258,41 +255,6 @@ Definition of done:
   ensemble or hazard build is run;
 - no tuning, source-frequency, annual-probability, risk, exposure,
   vulnerability, scale-up, or operational claims are introduced.
-
-### TB-048: Emit Spatial Same-Scale Uncertainty Masks
-
-Goal: convert the measured spatial uncertainty interpretation into reusable
-grid artifacts or compact mask summaries for closure-limiting layers, so
-workers can inspect where uncertainty concentrates without re-deriving cell
-sets from pairwise rasters.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- same-scale hazard manifests under `hazard/results/tschamut_public_pilot/`
-
-Expected work:
-
-- derive per-layer high-uncertainty masks or compact mask summaries for
-  `max_kinetic_energy`, `max_jump_height`, and `velocity_exceedance_5mps` from
-  existing same-scale hazard rasters;
-- keep outputs either in `/tmp` or ignored artifact roots unless they are tiny
-  committed fixtures;
-- report support/nodata-dominated cells separately from shared-support
-  magnitude disagreement;
-- thread the mask evidence into the closure helper only as diagnostic evidence,
-  not as accepted convergence.
-
-Definition of done:
-
-- JSON/text output exposes mask counts, extents, and closure roles for the
-  selected layers;
-- closure remains conservative unless the evidence truly changes;
-- no new ensembles, physics changes, threshold tuning, scale-up, or operational
-  claims are introduced.
 
 ### TB-049: Canonicalize Rebuildable Reduced-Output Commands
 

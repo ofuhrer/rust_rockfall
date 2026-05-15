@@ -94,13 +94,20 @@ def main(argv: list[str] | None = None) -> int:
         help="hazard layer key to analyze; may be repeated",
     )
     parser.add_argument("--format", choices=("text", "json"), default="text")
-    parser.add_argument("--top-n", type=int, default=8)
+    parser.add_argument("--top-cell-count", "--top-n", dest="top_n", type=int, default=8)
+    parser.add_argument(
+        "--mask-output-dir",
+        type=Path,
+        default=None,
+        help="optional ignored output directory for compact mask summary artifacts",
+    )
     args = parser.parse_args(argv)
 
     report = build_report(
         manifest_paths=args.manifests or list(DEFAULT_MANIFESTS),
         hazard_layers=tuple(args.hazard_layers or DEFAULT_HAZARD_LAYERS),
         top_n=args.top_n,
+        mask_output_dir=args.mask_output_dir,
     )
 
     if args.format == "json":
@@ -115,6 +122,7 @@ def build_report(
     hazard_layers: Iterable[str],
     *,
     top_n: int,
+    mask_output_dir: Path | None = None,
 ) -> dict[str, Any]:
     manifests = [resolve_manifest(path) for path in manifest_paths]
     selected_layers = normalize_layer_selection(hazard_layers)
@@ -124,8 +132,11 @@ def build_report(
         return blocked_report(manifests, selected_layers, missing_paths, reason="required same-scale spatial uncertainty inputs are missing")
 
     artifacts = [summarize_artifact(manifest) for manifest in manifests]
+    mask_output_dir = Path(mask_output_dir) if mask_output_dir is not None else None
+    if mask_output_dir is not None:
+        mask_output_dir.mkdir(parents=True, exist_ok=True)
     layer_summaries = {
-        layer_key: summarize_layer(layer_key, artifacts, top_n=top_n)
+        layer_key: summarize_layer(layer_key, artifacts, top_n=top_n, mask_output_dir=mask_output_dir)
         for layer_key in selected_layers
     }
     dominant_layers = sorted(
@@ -152,6 +163,7 @@ def build_report(
         "blocked_reason": "",
         "measurement_command": "PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json",
         "spatial_interpretation": spatial_interpretation(dominant_layers),
+        "mask_status": "available",
     }
 
 
@@ -181,6 +193,7 @@ def blocked_report(
         "missing_input_paths": missing_paths,
         "measurement_command": "PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json",
         "spatial_interpretation": "blocked_missing_inputs",
+        "mask_status": "blocked_missing_inputs",
     }
 
 
@@ -204,6 +217,14 @@ def render_text(report: dict[str, Any]) -> str:
             f"stability={summary['nonzero_support_stability_fraction']:.6g} | "
             f"range_p95={summary['range_summary']['p95_range']:.6g}"
         )
+        mask = summary.get("mask_evidence") or {}
+        if mask:
+            lines.append(
+                f"  mask role={mask.get('closure_role')} status={mask.get('mask_status')} | "
+                f"high={mask.get('high_uncertainty_cell_count')} "
+                f"support/nodata={mask.get('support_nodata_cell_count')} "
+                f"shared-support={mask.get('shared_support_magnitude_cell_count')}"
+            )
         if summary["high_uncertainty_bbox"] is not None:
             bbox = summary["high_uncertainty_bbox"]
             lines.append(
@@ -211,6 +232,15 @@ def render_text(report: dict[str, Any]) -> str:
                 f"rows {bbox['row_min']}..{bbox['row_max']}, cols {bbox['col_min']}..{bbox['col_max']}, "
                 f"LV95 x {bbox['xmin']:.2f}..{bbox['xmax']:.2f}, y {bbox['ymin']:.2f}..{bbox['ymax']:.2f}"
             )
+        if mask and mask.get("mask_bbox") is not None:
+            bbox = mask["mask_bbox"]
+            lines.append(
+                "  mask bbox: "
+                f"rows {bbox['row_min']}..{bbox['row_max']}, cols {bbox['col_min']}..{bbox['col_max']}, "
+                f"LV95 x {bbox['xmin']:.2f}..{bbox['xmax']:.2f}, y {bbox['ymin']:.2f}..{bbox['ymax']:.2f}"
+            )
+        if mask and mask.get("mask_path"):
+            lines.append(f"  mask path: {mask['mask_path']}")
         lines.append(f"  top cells: {len(summary['top_high_uncertainty_cells'])}")
     return "\n".join(lines)
 
@@ -242,7 +272,13 @@ def summarize_artifact(manifest: ManifestArtifact) -> dict[str, Any]:
     }
 
 
-def summarize_layer(layer_key: str, artifacts: list[dict[str, Any]], *, top_n: int) -> dict[str, Any]:
+def summarize_layer(
+    layer_key: str,
+    artifacts: list[dict[str, Any]],
+    *,
+    top_n: int,
+    mask_output_dir: Path | None = None,
+) -> dict[str, Any]:
     layer_grids = [load_layer_grid(artifact["manifest_path"], layer_key) for artifact in artifacts]
     nrows = layer_grids[0].header.nrows
     ncols = layer_grids[0].header.ncols
@@ -263,6 +299,8 @@ def summarize_layer(layer_key: str, artifacts: list[dict[str, Any]], *, top_n: i
     nonzero_union_count = 0
     nonzero_intersection_count = 0
     high_uncertainty_cells: list[dict[str, Any]] = []
+    support_nodata_cells: list[dict[str, Any]] = []
+    shared_support_magnitude_cells: list[dict[str, Any]] = []
 
     cells: list[dict[str, Any]] = []
     for row in range(nrows):
@@ -317,9 +355,10 @@ def summarize_layer(layer_key: str, artifacts: list[dict[str, Any]], *, top_n: i
     high_uncertainty.sort(key=lambda cell: (-float(cell["range"]), cell["row"], cell["col"]))
     high_uncertainty = high_uncertainty[: max(top_n, 1)] if top_n > 0 else []
 
-    bbox = bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
-    centroid = centroid_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
-
+    support_nodata_cells = [cell for cell in cells if any(cell["valid_flags"]) and not all(cell["valid_flags"])]
+    shared_support_magnitude_cells = [
+        cell for cell in cells if cell["range"] is not None and cell["range"] >= range_threshold
+    ]
     interpretation = classify_layer(
         layer_key,
         nodata_disagreement_count=nodata_disagreement_count,
@@ -327,10 +366,32 @@ def summarize_layer(layer_key: str, artifacts: list[dict[str, Any]], *, top_n: i
         shared_valid_count=shared_valid_count,
         nonzero_union_count=nonzero_union_count,
         nonzero_intersection_count=nonzero_intersection_count,
-        high_uncertainty_bbox=bbox,
+        high_uncertainty_bbox=bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
         analysis_cell_count=analysis_cell_count,
         high_uncertainty_count=len(high_uncertainty),
     )
+
+    bbox = bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    centroid = centroid_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    mask_cells = dedupe_cells(high_uncertainty + support_nodata_cells + shared_support_magnitude_cells)
+    mask_bbox = bbox_for_cells(mask_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    mask_path = None
+    if mask_output_dir is not None:
+        mask_path = write_mask_summary(
+            output_dir=mask_output_dir,
+            layer_key=layer_key,
+            layer_grids=layer_grids,
+            nrows=nrows,
+            cellsize=cellsize,
+            xllcorner=xllcorner,
+            yllcorner=yllcorner,
+            high_uncertainty_cells=high_uncertainty,
+            support_nodata_cells=support_nodata_cells,
+            shared_support_magnitude_cells=shared_support_magnitude_cells,
+            mask_cells=mask_cells,
+            range_threshold=range_threshold,
+            interpretation=interpretation,
+        )
 
     return {
         "layer_key": layer_key,
@@ -370,9 +431,133 @@ def summarize_layer(layer_key: str, artifacts: list[dict[str, Any]], *, top_n: i
             format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
             for cell in high_uncertainty
         ],
+        "mask_evidence": build_mask_evidence(
+            layer_key=layer_key,
+            layer_grids=layer_grids,
+            mask_status="available",
+            closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+            nrows=nrows,
+            cellsize=cellsize,
+            xllcorner=xllcorner,
+            yllcorner=yllcorner,
+            high_uncertainty_cells=high_uncertainty,
+            support_nodata_cells=support_nodata_cells,
+            shared_support_magnitude_cells=shared_support_magnitude_cells,
+            mask_cells=mask_cells,
+            mask_bbox=mask_bbox,
+            mask_path=mask_path,
+            range_threshold=range_threshold,
+        ),
         "uncertainty_concentration_class": interpretation["uncertainty_concentration_class"],
         "interpretation_note": interpretation["interpretation_note"],
     }
+
+
+def build_mask_evidence(
+    *,
+    layer_key: str,
+    layer_grids: list[LayerGrid],
+    mask_status: str,
+    closure_role: str,
+    nrows: int,
+    cellsize: float,
+    xllcorner: float,
+    yllcorner: float,
+    high_uncertainty_cells: list[dict[str, Any]],
+    support_nodata_cells: list[dict[str, Any]],
+    shared_support_magnitude_cells: list[dict[str, Any]],
+    mask_cells: list[dict[str, Any]],
+    mask_bbox: dict[str, Any] | None,
+    mask_path: str | None,
+    range_threshold: float,
+) -> dict[str, Any]:
+    return {
+        "mask_status": mask_status,
+        "closure_role": closure_role,
+        "high_uncertainty_cell_count": len(high_uncertainty_cells),
+        "support_nodata_cell_count": len(support_nodata_cells),
+        "shared_support_magnitude_cell_count": len(shared_support_magnitude_cells),
+        "high_uncertainty_bbox": bbox_for_cells(high_uncertainty_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "support_nodata_bbox": bbox_for_cells(support_nodata_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "shared_support_magnitude_bbox": bbox_for_cells(shared_support_magnitude_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "mask_bbox": mask_bbox,
+        "mask_path": mask_path,
+        "mask_cell_count": len(mask_cells),
+        "mask_selection_threshold": range_threshold,
+    }
+
+
+def mask_closure_role(layer_key: str, concentration_class: str) -> str:
+    if concentration_class == "dominated_by_nodata_support_differences":
+        return "closure_limiting"
+    if concentration_class == "spatially_localized_shared_support_magnitude":
+        return "deferrable" if layer_key == "velocity_exceedance_5mps" else "closure_limiting"
+    if concentration_class in {"shared_support_magnitude_diffuse", "diffuse_across_shared_support"}:
+        return "unresolved"
+    return "unresolved"
+
+
+def dedupe_cells(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[int, int]] = set()
+    deduped: list[dict[str, Any]] = []
+    for cell in sorted(cells, key=lambda cell: (cell["row"], cell["col"], -(cell["range"] if cell["range"] is not None else -1.0))):
+        key = (cell["row"], cell["col"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cell)
+    return deduped
+
+
+def write_mask_summary(
+    *,
+    output_dir: Path,
+    layer_key: str,
+    layer_grids: list[LayerGrid],
+    nrows: int,
+    cellsize: float,
+    xllcorner: float,
+    yllcorner: float,
+    high_uncertainty_cells: list[dict[str, Any]],
+    support_nodata_cells: list[dict[str, Any]],
+    shared_support_magnitude_cells: list[dict[str, Any]],
+    mask_cells: list[dict[str, Any]],
+    range_threshold: float,
+    interpretation: dict[str, str] | None,
+) -> str:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / f"{layer_key}_mask_summary.json"
+    preview_limit = 25
+    preview_high_uncertainty = high_uncertainty_cells[:preview_limit]
+    preview_support_nodata = support_nodata_cells[:preview_limit]
+    preview_shared_support_magnitude = sorted(
+        shared_support_magnitude_cells,
+        key=lambda cell: (-float(cell["range"] if cell["range"] is not None else -1.0), cell["row"], cell["col"]),
+    )[:preview_limit]
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "layer_key": layer_key,
+        "artifact_ids": [layer.artifact_id for layer in layer_grids],
+        "mask_status": "available",
+        "closure_role": mask_closure_role(layer_key, (interpretation or {}).get("uncertainty_concentration_class", "")),
+        "mask_selection_threshold": range_threshold,
+        "mask_bbox": bbox_for_cells(mask_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "preview_cell_count": preview_limit,
+        "high_uncertainty_cells": [
+            format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+            for cell in preview_high_uncertainty
+        ],
+        "support_nodata_cells": [
+            format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+            for cell in preview_support_nodata
+        ],
+        "shared_support_magnitude_cells": [
+            format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+            for cell in preview_shared_support_magnitude
+        ],
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return str(path)
 
 
 def classify_layer(
