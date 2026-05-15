@@ -16,6 +16,38 @@ return-period products, or risk-map results.
 - Run-freeze file:
   `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
 
+## Canonical Diagnostic Interpretation
+
+The canonical measured interpretation helper is
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`.
+It composes the current closure, spatial uncertainty, reduced-output, GIS/COG,
+runtime/scaling, portability, and physical-credibility evidence into one
+reportable diagnostic artifact.
+
+Current synthesized status:
+
+- interpretation status: `inconclusive_conditional_diagnostic`
+- closure status: `inconclusive`
+- dominant scientific blockers:
+  - `closure_status_inconclusive`
+  - `spatial_uncertainty_support_nodata_dominates_closure`
+  - `max_kinetic_energy_closure_limiting`
+  - `max_jump_height_closure_limiting`
+- workflow/product blockers:
+  - `summary_only_not_rebuildable`
+  - `standard_gis_roots_cog_blocked`
+- portability blocker:
+  - `public_context_inputs_deferred`
+- physical credibility:
+  - `not_established`
+  - calibration `missing`
+  - validation `partial`
+
+This canonical interpretation remains non-operational. The reduced-output and
+COG proof paths are command-plan-addressable, but neither changes the current
+`inconclusive` diagnostic status or the `false` scale-up / operational
+boundaries.
+
 ## Frozen Inputs
 
 The selected gate freezes the share-safe upstream inputs that are available in

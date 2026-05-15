@@ -207,6 +207,12 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The canonical conditional diagnostic interpretation helper
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
+uses this portability boundary only as a blocker boundary. It does not turn
+the deferred Chant Sura public-context products into validation evidence or a
+second-site readiness claim.
+
 The candidate source-zone / scenario policy fixture at
 `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
 is a synthetic contract record, not physical evidence. It helps separate the

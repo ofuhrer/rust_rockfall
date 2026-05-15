@@ -212,6 +212,13 @@ Hazard-rebuild proof:
 - map-package manifest present: `True`
 - pilot-GIS manifest present: `True`
 
+The canonical diagnostic interpretation helper,
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`,
+consumes this reduced-output evidence together with closure, GIS/COG, runtime,
+portability, and physical-credibility summaries. It does not relabel
+`summary_only` as rebuildable; it keeps the reduced-output contract distinct
+from the current non-rebuildable summary-only profile.
+
 Ignored-root inventory from `audit_local_artifacts.py`:
 
 - Full target validation root: `2716` files, `764598257` bytes

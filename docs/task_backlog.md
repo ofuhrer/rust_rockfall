@@ -167,8 +167,7 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-051 assembles the measured conditional diagnostic interpretation after
-   the output-profile and GIS export paths have a canonical workflow surface.
+Backlog refill needed. No active executable tasks remain.
 
 ## Backlog Protocol
 
@@ -211,43 +210,7 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-051: Assemble A Canonical Conditional Diagnostic Interpretation Report
-
-Goal: produce one measured, non-operational pilot interpretation artifact that
-summarizes the current Tschamut evidence without asking workers to reconcile
-separate closure, uncertainty, output-profile, GIS, scaling, portability, and
-physical-credibility reports by hand.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Expected work:
-
-- add a narrow read-only synthesis helper or extend an existing summary path to
-  emit a single JSON/text interpretation record;
-- include current closure status, dominant uncertainty layers, spatial closure
-  roles, output-profile status, GIS/COG status, reducer/scaling status,
-  second-site portability boundary, and physical-credibility boundary;
-- keep the interpretation explicitly `inconclusive` unless the underlying
-  helper evidence changes.
-
-Definition of done:
-
-- one command emits a coherent measured diagnostic interpretation suitable for
-  release notes or review;
-- the report keeps `scale_up_authorized: false`,
-  `operational_claims_allowed: false`, and physical/annual/risk claims out of
-  scope;
-- no simulation, hazard rebuild, second-site run, or generated geodata is
-  performed.
+No active executable tasks remain. Backlog refill needed.
 
 ## Deferred Backlog
 

@@ -242,6 +242,12 @@ deferred public-context boundary. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
 swissSURFACE3D Raster, and swissBUILDINGS3D remain deferred and are still
 reported explicitly by the preflight as `deferred_public_context_inputs`.
 
+The canonical diagnostic interpretation helper
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
+cross-references this portability boundary without promoting it to validation
+evidence. It keeps Chant Sura public context in the deferred bucket until the
+corresponding products are actually staged.
+
 The new evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` keeps the current
 Tschamut evidence in the diagnostic category: observed deposition/runout,

@@ -56,6 +56,13 @@ The conditional closure helper now reads this spatial concentration directly,
 so the same evidence can be treated as closure-limiting, deferrable, or
 unresolved rather than only as a scalar envelope.
 
+The canonical conditional diagnostic interpretation helper,
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`,
+uses this envelope alongside closure, reduced-output, GIS/COG, runtime,
+portability, and physical-credibility summaries. That keeps the measured
+uncertainty evidence inside the diagnostic boundary without turning it into an
+acceptance claim.
+
 Compact mask summaries are also available from
 `scripts/summarize_spatial_same_scale_uncertainty.py --mask-output-dir <ignored-root>`.
 Those summaries preserve the same layer-specific counts, extents, and closure

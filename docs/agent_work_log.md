@@ -5651,3 +5651,42 @@ Planning only; these milestones do not implement roadmap item content yet.
   with `cloud_optimized: true`; the standard roots remain
   `gis_package_ready_cog_blocked`; the portable command plan now includes the
   package-level conversion and converted-package audit commands.
+
+### TB-051 Canonical Conditional Diagnostic Interpretation
+
+- Milestone id: TB-051.
+- Roadmap item: assemble one canonical measured interpretation artifact for
+  the Tschamut same-scale pilot.
+- Hypothesis/objective: the closure, spatial uncertainty, rebuildability,
+  GIS/COG, runtime, portability, and physical-credibility evidence can be
+  composed into a single read-only diagnostic interpretation without changing
+  acceptance status or operational boundaries.
+- Files intended to change: `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`,
+  `tests/test_tschamut_conditional_diagnostic_interpretation.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: built a compact synthesis helper that reports the
+  current `inconclusive_conditional_diagnostic` interpretation together with
+  the measured closure, spatial uncertainty, reduced-output, GIS/COG, runtime,
+  portability, and physical-credibility boundaries. The helper keeps
+  scale-up, operational, annual-frequency, and risk/exposure/vulnerability
+  claims blocked while making the canonical reduced-output and COG proof paths
+  command-plan-addressable.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_tschamut_conditional_diagnostic_interpretation.py tests/test_tschamut_conditional_diagnostic_interpretation.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_conditional_diagnostic_interpretation`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_diagnostic_interpretation.py --format json`
+  passed with output redirected to `/tmp/tb051_diag.json`.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_diagnostic_interpretation.py --format text`
+  passed.
+- Reviewer notes: the first compose is relatively slow because it reads the
+  existing helper evidence, but it remains read-only and reproducible.
+- Decision: completed.
+- Next proposed milestone: backlog refill needed.
