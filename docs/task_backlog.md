@@ -163,38 +163,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-023: Broaden Hazard-Context Overlap Envelope Beyond Top Cells
-
-Capability gap reduced: TB-021 added a reusable overlap diagnostic, but the
-first measurement used only the top positive cell from three hazard layers and
-therefore remains too narrow to interpret limiting corridor context.
-
-Goal: run the hazard-context overlap diagnostic over a bounded but broader
-high-relevance envelope, such as top `10`, top `50`, or top percentile positive
-cells for selected target-side hazard layers, and record whether roads,
-barriers/protection, or water remain outside the high-relevance envelope.
-
-Inspect first:
-
-- `scripts/measure_hazard_context_overlap.py`;
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- target-side hazard manifest under ignored paths.
-
-Required work:
-
-1. Reuse the existing overlap diagnostic; extend it only if needed for bounded
-   top-N or percentile envelopes.
-2. Keep GDAL/archive queries bounded and timeout-protected.
-3. Do not implement obstacle physics or infer obstacle absence.
-4. Record per-category overlap/proximity counts and limitations.
-
-Definition of done:
-
-- a broader high-relevance overlap envelope is measured or explicitly blocked;
-- interpretation remains conditional and non-operational;
-- checks pass.
-
 ### TB-024: Diagnose Target-Vs-Gate Spatial Disagreement Drivers
 
 Capability gap reduced: target-vs-gate convergence is now measured and

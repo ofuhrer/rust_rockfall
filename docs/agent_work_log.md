@@ -4677,3 +4677,44 @@ Planning only; these milestones do not implement roadmap item content yet.
   passed.
   `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_artifact_readiness`
   passed.
+
+### TB-023
+
+- Milestone id: TB-023.
+- Roadmap item: Broaden Hazard-Context Overlap Envelope Beyond Top Cells.
+- Implementation summary: Broadened the reusable hazard-context overlap
+  diagnostic from the earlier top-cell-only probe to a bounded higher-
+  relevance envelope. A `top 3` probe over `reach_probability` and
+  `max_kinetic_energy` completed successfully against the staged swissTLM3D
+  archive; both measured categories remained at zero within 20 m for roads,
+  barriers, and water. A three-layer probe that added `max_jump_height` was
+  runtime-limited and not counted in the final measured envelope.
+- Evidence streams consumed: `scripts/check_same_scale_artifact_readiness.py`,
+  `scripts/measure_hazard_context_overlap.py`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`, and the staged
+  target hazard/context artifacts.
+- Classification: `unresolved` for the bounded overlap envelope; `scale_up_authorized`
+  remains false and `operational_claims_allowed` remains false.
+- Uncertainty reduced: the corridor interpretation now has measured proximity
+  evidence for a broader high-relevance hazard envelope instead of only a
+  single top cell per layer.
+- Remaining uncertainty: the broader envelope still did not produce roads,
+  barriers, or water proximity hits within 20 m, and the three-layer probe
+  could not be sustained within a practical runtime bound.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`
+  passed.
+  `PYENV_VERSION=system timeout 180 uv run python scripts/measure_hazard_context_overlap.py --top-cell-count 3 --buffer-radii-m 20 --hazard-layer reach_probability --format json`
+  passed.
+  `PYENV_VERSION=system timeout 180 uv run python scripts/measure_hazard_context_overlap.py --top-cell-count 3 --buffer-radii-m 20 --hazard-layer reach_probability --hazard-layer max_kinetic_energy --format json`
+  passed.
+  `PYENV_VERSION=system timeout 180 uv run python scripts/measure_hazard_context_overlap.py --top-cell-count 3 --buffer-radii-m 20 --hazard-layer reach_probability --hazard-layer max_kinetic_energy --hazard-layer max_jump_height --format json`
+  was runtime-limited and killed after bounded waiting.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
