@@ -74,6 +74,39 @@ When these files conflict, preserve the safety constraints first, then update th
 - Keep generated hazard-layer products under `hazard/results/` and out of git unless they are intentional tiny fixtures.
 - If local git hooks are not installed, install them with `scripts/install_git_hooks.sh` unless the user explicitly asks not to.
 
+## Before Any TB Task
+
+Use this bootstrap before broad reading or implementation:
+
+1. Start from the repository root:
+
+   ```bash
+   cd /Users/fuhrer/Desktop/rust_rockfall/main
+   git pull --ff-only origin main
+   ```
+
+2. Print the current task context:
+
+   ```bash
+   PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-xxx --format json
+   ```
+
+3. Use `PYENV_VERSION=system uv run python ...`; avoid plain `python` or
+   `python3` because local pyenv shims can point at unavailable interpreters.
+4. Treat `docs/agent_work_log.md` as append-only history, not current state.
+   Prefer current reports, the backlog, and machine-readable helper output.
+5. Prefer canonical helpers over manually reconstructing long commands or
+   artifact paths.
+6. Keep scratch outputs in `/tmp` unless the file is an intentional tiny
+   fixture.
+7. Before committing, check for unintended generated placeholder artifacts:
+
+   ```bash
+   git status --short
+   find data/processed/swisstopo validation/private hazard/results validation/policies \
+     -path '*placeholder_second_site_v1*' -o -name '*placeholder*'
+   ```
+
 ## Context-Efficient Roadmap Work
 
 Use this workflow for roadmap/target tasks to reduce token use and avoid

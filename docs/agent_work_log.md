@@ -5291,3 +5291,22 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps`,
   `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`,
   `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format text`.
+
+- Sub-agent efficiency bootstrap helper.
+- Hypothesis/objective: recurring worker friction around repo root, pyenv,
+  canonical helper discovery, stray placeholder artifacts, and known pre-push
+  failures can be reduced with one read-only task-context helper plus concise
+  agent guidance.
+- Files changed:
+  `scripts/print_agent_task_context.py`,
+  `tests/test_agent_task_context.py`,
+  `AGENTS.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added `scripts/print_agent_task_context.py`, a
+  read-only bootstrap that reports the active backlog task, inspect-first
+  files, canonical helper scripts, known local environment issues,
+  generated roots to avoid, and the parquet rlib pre-push fallback. Updated
+  agent/backlog guidance to make this helper the first TB-task command.
+- Boundaries preserved: no simulator behavior, evidence classification,
+  validation case, physics, geodata, or hazard-output changes.

@@ -1,0 +1,131 @@
+import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = ROOT / "scripts" / "print_agent_task_context.py"
+SPEC = importlib.util.spec_from_file_location("print_agent_task_context", SCRIPT_PATH)
+assert SPEC is not None
+agent_context = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+sys.modules[SPEC.name] = agent_context
+SPEC.loader.exec_module(agent_context)
+
+
+class AgentTaskContextTest(unittest.TestCase):
+    def test_extracts_active_task_and_inspect_first_files(self) -> None:
+        backlog = """
+# Task Backlog
+
+## Active Tasks
+
+### TB-999: Example Task
+
+Inspect first:
+
+- `docs/example.md`
+- `scripts/example.py`
+
+Expected work:
+
+- do something.
+
+## Deferred Backlog
+"""
+        tasks = agent_context.parse_active_tasks(backlog)
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0].task_id, "TB-999")
+        self.assertEqual(tasks[0].title, "Example Task")
+        self.assertEqual(tasks[0].inspect_first, ["docs/example.md", "scripts/example.py"])
+
+    def test_report_contains_required_json_fields_without_live_checks(self) -> None:
+        report = agent_context.build_report("TB-041", run_checks=False)
+
+        self.assertEqual(report["agent_task_context_status"], "ready")
+        self.assertEqual(report["repo_root"], str(ROOT))
+        self.assertEqual(report["python_invocation"], "PYENV_VERSION=system uv run python")
+        self.assertIn("canonical_helpers", report)
+        self.assertIn("known_environment_issues", report)
+        self.assertIn("generated_roots_to_avoid", report)
+        self.assertIn("pre_push_fallback", report)
+        self.assertTrue(report["read_only"])
+        self.assertEqual(report["live_checks_status"], "skipped")
+        self.assertIn("docs/agent_work_log.md", ROOT.joinpath("AGENTS.md").read_text())
+
+    def test_missing_task_is_explicitly_blocked(self) -> None:
+        report = agent_context.build_report("TB-000", run_checks=False)
+
+        self.assertEqual(report["agent_task_context_status"], "blocked_missing_task")
+        self.assertIsNone(report["selected_task"])
+        self.assertTrue(report["active_tasks"])
+
+    def test_script_run_outside_repo_root_reports_resolved_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT_PATH),
+                    "--task",
+                    "TB-041",
+                    "--format",
+                    "json",
+                    "--no-live-checks",
+                ],
+                cwd=tmp,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        report = json.loads(completed.stdout)
+        self.assertEqual(report["repo_root"], str(ROOT))
+        self.assertFalse(report["running_from_repo_root"])
+        self.assertEqual(report["agent_task_context_status"], "ready")
+
+    def test_chant_sura_task_triggers_second_site_preflight(self) -> None:
+        task = agent_context.ActiveTask(
+            task_id="TB-041",
+            title="Stage a Holdout Validation Evidence Manifest For Chant Sura",
+            inspect_first=[],
+            text="Chant Sura held-out contact metadata",
+        )
+
+        self.assertTrue(agent_context.should_run_chant_sura_preflight(task, [task]))
+
+    def test_generated_roots_list_mentions_placeholder_paths(self) -> None:
+        report = agent_context.build_report(run_checks=False)
+
+        roots = "\n".join(report["generated_roots_to_avoid"])
+        self.assertIn("data/processed/swisstopo/placeholder_second_site_v1", roots)
+        self.assertIn("validation/policies/*placeholder*", roots)
+        self.assertIn("existing_generated_placeholder_paths", report)
+
+    def test_json_payload_from_nonzero_readiness_command_is_preserved(self) -> None:
+        original_run = agent_context.subprocess.run
+
+        def fake_run(*_args, **_kwargs):
+            return subprocess.CompletedProcess(
+                args=["uv"],
+                returncode=2,
+                stdout='{"readiness_status": "blocked_missing_inputs"}',
+                stderr="",
+            )
+
+        try:
+            agent_context.subprocess.run = fake_run
+            result = agent_context.run_json_command(["uv"])
+        finally:
+            agent_context.subprocess.run = original_run
+
+        self.assertEqual(result["status"], "blocked_missing_inputs")
+        self.assertEqual(result["returncode"], 2)
+        self.assertEqual(result["payload"]["readiness_status"], "blocked_missing_inputs")
+
+
+if __name__ == "__main__":
+    unittest.main()
