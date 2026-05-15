@@ -67,10 +67,9 @@ objective are:
    exists, but the current checkout still lacks the processed local public
    context cache; without reviewed context layers, the Tschamut map remains
    hard to interpret physically.
-4. Scaling direction is underdetermined. Single-job Balfrin execution may be
-   enough for the next conditional pilot step, or it may need distributed
-   execution; this should be decided after spatial convergence and
-   validation-output blockers are better measured.
+4. Scaling direction is now better bounded. The single-job Balfrin path is
+   sufficient for the next same-scale conditional pilot step; distributed
+   execution should stay deferred until a new measurement shows a need.
 5. Evidence tooling is becoming useful but remains ad hoc. Current summary
    scripts are valuable guardrails, but more one-off record readers would add
    process weight unless they generate new measurements or reusable analysis.
@@ -164,39 +163,6 @@ Definition of done:
 - no operational or obstacle-performance claim is added;
 - focused checks pass.
 
-### TB-008: Measure Whether Single-Job Balfrin Execution Is Still Enough
-
-Capability gap reduced: scaling direction is underdetermined.
-
-Goal: use existing Balfrin and reducer evidence, or one small non-public probe
-if needed, to decide whether distributed execution design is currently needed
-or should remain deferred.
-
-Inspect first:
-
-- `docs/output_budget_reducer_scaling_gate.md`;
-- `docs/balfrin_probe_slurm_driver.md`;
-- `docs/balfrin_tschamut_readiness.md`;
-- `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
-
-Required work:
-
-1. Do not add SLURM arrays, MPI, GPU, or distributed reducers.
-2. Summarize measured wall time, memory, output size, restartability, and
-   reducer-state evidence.
-3. Account for TB-005/TB-006 results before treating distributed execution as
-   the next bottleneck.
-4. Classify distributed execution as `defer`, `design_needed`, or
-   `blocked_pending_evidence`.
-
-Definition of done:
-
-- decision is based on measured execution/resource evidence;
-- any durable decision is recorded in `decision_log.md`;
-- no runtime behavior changes unless explicitly required for measurement;
-- consistency checks pass.
-
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:
@@ -208,7 +174,6 @@ These are intentionally not current worker tasks:
 - production COG or QGIS packaging work beyond secondary QA;
 - manual GIS/QGIS visual QA unless the local package artifacts and QGIS are
   actually available and the main acceptance evidence is not blocked elsewhere;
-- distributed SLURM orchestration unless TB-008 or later evidence shows a
-  measured need.
+- distributed SLURM orchestration unless later evidence shows a measured need.
 - shared typed evidence-reader refactors unless at least one more executable
   diagnostic exposes duplicated parsing as the implementation bottleneck.

@@ -143,6 +143,29 @@ Detailed sources: `task_backlog.md`,
 `roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### Balfrin Single-Job Sufficiency
+
+Decision: keep distributed Balfrin execution deferred. The current single-job SLURM path remains sufficient.
+
+Current status: active. The measured single-job evidence is enough for the
+next conditional pilot step, but not enough to authorize distributed
+execution design or scaling on its own, so distributed execution deferred
+remains the current stance.
+
+Rationale: the tracked repeatability record shows stable plan IDs, stable
+reused completed state, and hash-stable hazard artifacts; the target-gate
+reproduction completed within the single-job boundary with deterministic
+chunking; and the output-budget/reducer gate still keeps distributed execution
+unauthorized while validation debug output and convergence blockers remain the
+dominant concerns.
+
+Detailed sources: `docs/balfrin_probe_slurm_driver.md`,
+`validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`,
+`validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`,
+`validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`,
+`validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`,
+`docs/balfrin_single_job_execution_sufficiency.md`.
+
 ### Contact Model Default
 
 Decision: keep `translational_v0` as the default contact model. Treat

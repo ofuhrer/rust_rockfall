@@ -169,6 +169,7 @@ def main() -> int:
     errors.extend(check_balfrin_tschamut_readiness_record())
     errors.extend(check_balfrin_slurm_probe_repeatability())
     errors.extend(check_balfrin_target_gate_reproduction())
+    errors.extend(check_balfrin_single_job_execution_sufficiency())
     errors.extend(check_pilot_obstacle_scope_contract())
 
     if errors:
@@ -1303,6 +1304,69 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
     ):
         if term not in backlog:
             errors.append(f"docs/task_backlog.md omits {term!r}")
+    return errors
+
+
+def check_balfrin_single_job_execution_sufficiency() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "scripts/summarize_balfrin_single_job_execution.py",
+        ROOT / "tests/test_balfrin_single_job_execution.py",
+        ROOT / "docs/balfrin_single_job_execution_sufficiency.md",
+        ROOT / "docs/decision_log.md",
+        ROOT / "docs/task_backlog.md",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"balfrin single-job sufficiency path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    script = (ROOT / "scripts/summarize_balfrin_single_job_execution.py").read_text()
+    tests = (ROOT / "tests/test_balfrin_single_job_execution.py").read_text()
+    report = (ROOT / "docs/balfrin_single_job_execution_sufficiency.md").read_text()
+    decision_log = (ROOT / "docs/decision_log.md").read_text()
+    backlog = (ROOT / "docs/task_backlog.md").read_text()
+
+    for symbol in (
+        "build_summary",
+        "classify_distribution_decision",
+        "single_job_sufficient_for_next_step",
+        "blocked_pending_evidence",
+        "validation_debug_artifacts",
+    ):
+        if symbol not in script:
+            errors.append(f"scripts/summarize_balfrin_single_job_execution.py omits {symbol!r}")
+
+    for test_name in (
+        "test_current_records_classify_as_defer_and_expose_contract_fields",
+        "test_schema_field_names_remain_stable_for_downstream_acceptance_summaries",
+        "test_rejects_missing_inputs_as_blocked_pending_evidence",
+        "test_design_needed_when_restartability_is_not_demonstrated",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_balfrin_single_job_execution.py omits {test_name}")
+
+    for term in (
+        "Decision: `defer`",
+        "Single-job sufficient for next step",
+        "Distributed execution authorized: `False`",
+        "validation_debug_artifacts",
+        "Record Paths",
+    ):
+        if term not in report:
+            errors.append(f"docs/balfrin_single_job_execution_sufficiency.md omits {term!r}")
+
+    for term in (
+        "Balfrin Single-Job Sufficiency",
+        "single-job SLURM path remains sufficient",
+        "distributed execution deferred",
+    ):
+        if term not in decision_log:
+            errors.append(f"docs/decision_log.md omits {term!r}")
+
+    if "### TB-008: Measure Whether Single-Job Balfrin Execution Is Still Enough" in backlog:
+        errors.append("docs/task_backlog.md still contains TB-008 after closeout")
     return errors
 
 

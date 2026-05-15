@@ -31,6 +31,41 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-008
+
+- Milestone id: TB-008
+- Roadmap item: Measure Whether Single-Job Balfrin Execution Is Still Enough.
+- Hypothesis/objective: Existing Balfrin, repeatability, target-gate, output-
+  budget, and convergence evidence can determine whether distributed execution
+  design is needed or should remain deferred without changing runtime
+  behavior.
+- Files intended to change:
+  `scripts/summarize_balfrin_single_job_execution.py`,
+  `tests/test_balfrin_single_job_execution.py`,
+  `docs/balfrin_single_job_execution_sufficiency.md`,
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a record-driven sufficiency summary that
+  classifies distributed execution as `defer`, `design_needed`, or
+  `blocked_pending_evidence` using the existing repeatability, reproduction,
+  output-budget, convergence, feasibility, and current-gate records. The new
+  report pins wall time, memory, output size, restartability, and reducer-state
+  evidence, keeps distributed execution unauthorized, and records the decision
+  as deferred for the next same-scale conditional step. Removed TB-008 from
+  the active backlog.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/summarize_balfrin_single_job_execution.py tests/test_balfrin_single_job_execution.py scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_single_job_execution` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_balfrin_single_job_execution.py --output-json /tmp/balfrin_single_job_execution_sufficiency.json --output-md docs/balfrin_single_job_execution_sufficiency.md` passed.
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: Keeps the single-job path sufficient for the next same-scale
+  conditional pilot step while leaving distributed execution deferred.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-007.
+
 ### TB-002
 
 - Milestone id: TB-002
