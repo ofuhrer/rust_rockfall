@@ -124,6 +124,68 @@ constructed-feature subset does not yet provide corridor intersections. This
 is interpretation evidence only; it does not authorize scale-up or turn the
 conditional gate into an operational product.
 
+## Same-Scale Convergence Check
+
+The restored same-scale target-side artifacts are now present and the
+cell-wise convergence diagnostic can run directly on the emitted hazard
+manifests:
+
+- `target_artifact_restore_status`: `restored_or_regenerated`
+- `processed_input_bundle_available`: `true`
+- `target_private_case_available`: `true`
+- `target_validation_manifest_available`: `true`
+- `target_hazard_manifest_available`: `true`
+- `target_cellwise_layers_available`: `true`
+- `target_referenced_grids_available`: `true`
+- `gate_manifest_available`: `true`
+- readiness-audit total: `2063` files, `650545138` bytes
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  --format json
+```
+
+Both manifests expose `22` cell-wise layers. The comparison completed with
+`status: ok`, but the result is still interpreted conservatively as
+`inconclusive` rather than accepted convergence.
+
+Measured overall diagnostics:
+
+- `cellwise_layer_count`: `22`
+- `cellwise_linf_abs_diff_max`: `3028.22579673`
+- `cellwise_rmse_max`: `983.451160251898`
+- `cellwise_nodata_mismatch_count`: `90`
+- `cellwise_nonzero_jaccard_min`: `0.1`
+- `output_checksum_match_count`: `8`
+- `output_checksum_mismatch_count`: `36`
+- `output_checksum_missing_count`: `18`
+
+Largest disagreement layers:
+
+- `max_kinetic_energy`: Linf `3028.22579673`, RMSE `983.451160251898`, nonzero Jaccard `1.0`
+- `max_jump_height`: Linf `1.42875571255`, RMSE `0.21594778911463908`, nonzero Jaccard `0.7598039215686274`
+- `velocity_exceedance_5mps`: Linf `0.155778647582`, RMSE `0.0016156994693019395`, nonzero Jaccard `0.8279569892473119`
+- `weighted_velocity_exceedance_5mps`: Linf `0.13545454545400004`, RMSE `0.001482538767662409`, nonzero Jaccard `0.8279569892473119`
+- `velocity_exceedance_10mps`: Linf `0.12553020749800003`, RMSE `0.0014119067351479587`, nonzero Jaccard `0.7389162561576355`
+
+Interpretation boundaries remain unchanged:
+
+- the comparison is measured evidence, not operational validation;
+- the gate remains `scale_up_authorized: false`;
+- annual / physical-frequency / risk claims remain out of scope;
+- manual GIS/QGIS QA remains secondary;
+- the bounded validation-output profile remains relevant because debug volume is still a limiting workflow pressure;
+- the corridor-level context remains `limiting`;
+- distributed execution remains deferred on the Balfrin sufficiency record.
+
+Supporting same-scale evidence remains reusable:
+
+- bounded validation output profile: `summary_only` with `4` files / `81425` bytes versus `125` files / `34545900` bytes baseline;
+- swissTLM3D corridor relevance: roads, barriers, and water are measured as `limiting`;
+- Balfrin single-job execution sufficiency: next-step single-job execution is sufficient, distributed execution remains deferred.
+
 ## Executable Checks
 
 The run-freeze validator accepts the completed local gate record and can print

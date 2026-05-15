@@ -140,39 +140,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-019: Run Target-Vs-Gate Cell-Wise Spatial Convergence On Restored Artifacts
-
-Capability gap reduced: once target-side artifacts exist, the main scientific
-question is whether same-scale gate and target hazard layers are spatially
-stable under the current conditional workflow.
-
-Goal: run `scripts/compare_hazard_map_convergence.py` on the restored gate and
-target hazard manifests and record per-layer cell-wise convergence metrics with
-non-operational interpretation boundaries.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `scripts/compare_hazard_map_convergence.py`;
-- restored ignored gate and target hazard manifests.
-
-Required work:
-
-1. Require both manifests and referenced grids; return explicit
-   `blocked_missing_inputs` if either side is absent.
-2. Keep per-layer units separate and avoid aggregate mixed-unit claims.
-3. Record strongest disagreement layers, threshold disagreement counts, RMSE,
-   L1/Linf differences, nonzero Jaccard, and nodata mismatches where available.
-4. Preserve scale-up authorization as false and operational claims as false.
-
-Definition of done:
-
-- target-vs-gate cell-wise metrics are measured or exact missing inputs are
-  recorded;
-- the final interpretation is conservative and non-operational;
-- checks pass.
-
 ### TB-020: Measure Target-Side Summary-Only Validation Output Profile
 
 Capability gap reduced: `summary_only` validation output has been measured on

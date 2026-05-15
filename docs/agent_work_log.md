@@ -4534,3 +4534,23 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The envelope is intentionally non-operational; scale-up remains unauthorized and the target-vs-gate convergence remains pending due to missing target-side artifacts.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-019.
+
+### TB-019
+
+- Milestone id: TB-019.
+- Roadmap item: Run Target-Vs-Gate Cell-Wise Spatial Convergence On Restored Artifacts.
+- Implementation summary: Verified that both restored same-scale hazard manifests were present and compared them with `scripts/compare_hazard_map_convergence.py --format json`. The comparison completed with `status: ok` and exposed 22 shared cell-wise layers. The largest disagreement layers were `max_kinetic_energy`, `max_jump_height`, `velocity_exceedance_5mps`, `weighted_velocity_exceedance_5mps`, and `velocity_exceedance_10mps`. The result is recorded conservatively as `inconclusive`; scale-up remains unauthorized and operational claims remain false.
+- Readiness audit: the restored target-side artifact chain is available locally under ignored paths with `2007` validation files / `571384147` bytes, `56` hazard files / `79160991` bytes, and `2063` total files / `650545138` bytes.
+- Supporting evidence consumed: `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/conditional_hazard_convergence_acceptance_protocol.md`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`, `docs/tschamut_public_bounded_validation_output_profile.md`, `docs/tschamut_public_obstacle_context_scope.md`, `docs/balfrin_single_job_execution_sufficiency.md`, and the restored gate/target hazard manifests.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  passed.
+  `git diff --check`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: The target-side restoration blocker is cleared for this comparison, but the measured convergence remains conservative rather than accepted. The next scientific work is to interpret the measured differences, not to relabel them as convergence.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-020.
