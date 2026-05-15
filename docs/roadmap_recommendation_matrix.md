@@ -53,13 +53,14 @@ output-profile policy are now explicit for the current gate. Balfrin readiness
 is now recorded as ready for the current gate. The 420x450 SLURM probe
 repeat/log-audit loop is also closed. The selected target-scale conditional
 hazard-map gate has now been reproduced on balfrin and remains
-`inconclusive`, not accepted. External review showed that the existing DT-05
-convergence protocol is too narrow for scientific acceptance because it does
-not yet cover stochastic validity, DEM/input conditioning, boundary/termination
-semantics, and output-budget gates. The next implementable work should broaden
-DT-05 before any ensemble-size gate is relaxed or annual/physical semantics are
-attempted. GIS/QGIS work is treated as secondary interoperability QA rather
-than the main pilot outcome.
+`inconclusive`, not accepted. DT-05 now records the conservative conditional
+convergence protocol and classifies the DT-04 Balfrin evidence as
+`inconclusive`. External review risks that exceed that protocol are carried
+forward as DT-07 DEM/input conditioning QA, DT-08 output-budget/reducer
+gates, and DT-09 distributed execution before any ensemble-size gate is
+relaxed or annual/physical semantics are attempted. The DT-06 stochastic audit
+is complete, and GIS/QGIS work is treated as secondary interoperability QA
+rather than the main pilot outcome.
 
 ## External Review Synthesis
 
@@ -82,7 +83,7 @@ Balfrin execution architecture. They reprioritize the next gates as follows:
 | DT-02 (complete) | Record balfrin artifact/environment readiness result | 3 | 5 | 5 | 3 | 5 | 5 | 2 | 4 | 1 | 19 |
 | DT-03 (complete) | Close current SLURM probe repeat/log-audit loop | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 1 | 19 |
 | DT-04 (complete) | Reproduce selected Tschamut conditional hazard-map gate on balfrin | 4 | 5 | 5 | 4 | 5 | 5 | 4 | 4 | 2 | 18 |
-| DT-05 | Conditional hazard-map convergence and acceptance protocol | 5 | 5 | 5 | 5 | 5 | 5 | 3 | 3 | 2 | 22 |
+| DT-05 (complete) | Conditional hazard-map convergence and acceptance protocol | 5 | 5 | 5 | 5 | 5 | 5 | 3 | 3 | 2 | 22 |
 | DT-06 | Stochastic sampling and RNG stream audit | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 3 | 3 | 20 |
 | DT-07 | Real-site DEM/input conditioning QA gate | 5 | 5 | 5 | 4 | 5 | 5 | 3 | 4 | 2 | 20 |
 | DT-08 | Output budget and reducer scaling gate | 3 | 5 | 5 | 3 | 5 | 5 | 3 | 3 | 1 | 19 |
@@ -111,10 +112,11 @@ job `4318941`, with clean log audit and share-safe checksums recorded in
 It remains `inconclusive` because convergence has not been accepted,
 forest/obstacle context remains limiting because local context layers are
 absent, and manual GIS/QGIS visual QA is still secondary interoperability
-evidence rather than the main hazard-map acceptance gate. The existing DT-05
-protocol codifies that classification and keeps scale-up unauthorized, but the
-external review requires a broader acceptance protocol before the evidence can
-be treated as accepted.
+evidence rather than the main hazard-map acceptance gate. The DT-05 protocol
+codifies that classification and keeps scale-up unauthorized. The DT-06
+stochastic audit is complete, and the remaining acceptance concerns are now
+assigned to DT-07, DT-08, and DT-09 before the evidence can be treated as
+accepted.
 
 Balfrin readiness has moved from scaffolding to recorded readiness for the
 current gate. The readiness checker, runbook, output-profile contract,
@@ -130,10 +132,9 @@ The ensemble-size gate has now been reassessed and remains `no_go`. A
 successful technical run was not enough by itself: convergence, output budget,
 forest/obstacle context, balfrin reproducibility, and validation-runner
 provenance still block a larger diagnostic ensemble. External review adds
-stochastic-stream validity, sampling-distribution contracts, DEM/input
-conditioning, boundary/termination semantics, dense-grid reducer scaling, and
-claim-state controls as explicit acceptance concerns. Manual GIS/QGIS remains a
-supporting QA item.
+sampling-distribution contracts, DEM/input conditioning, boundary/termination
+semantics, dense-grid reducer scaling, and claim-state controls as explicit
+acceptance concerns. Manual GIS/QGIS remains a supporting QA item.
 
 Forest/obstacle context review remains a high-priority scientific
 interpretation blocker, but it is currently data blocked in this checkout.
@@ -143,9 +144,9 @@ manifest checks prove file and metadata consistency, but they cannot replace
 terrain/forest/obstacle context assessment for a real Alpine corridor.
 
 Resumable cross-process trajectory chunk manifests and SLURM-array design now
-rank after the acceptance, stochastic, DEM/input, and output-budget gates. The
-repository should not add scheduler-style complexity until accepted evidence
-shows the current single-job driver is the limiting factor.
+rank after the acceptance, DEM/input, and output-budget gates. The repository
+should not add scheduler-style complexity until accepted evidence shows the
+current single-job driver is the limiting factor.
 
 Focused module splits remain useful maintenance work. The validation harness
 has now been split into several submodules, so the next maintenance value is
@@ -171,19 +172,17 @@ the validation debug-output budget blocker visible.
 
 ### Best Near-Term Scientific Work Package
 
-Broaden DT-05 into the conditional convergence and scientific acceptance
-protocol described in the current target list. It should classify the completed
-DT-04 evidence only through predeclared gates covering convergence, stochastic
-validity, DEM/input conditioning, boundary semantics, output budgets, and
-claim states.
+Complete DT-07 DEM/input QA next, then DT-08 output-budget/reducer gates.
+DT-05 remains the current classification reference for DT-04, but the external
+review risks must be resolved before the pilot is accepted.
 
 ### Best Near-Term Engineering Work Package
 
-Document the DT-06 stochastic audit, DT-07 DEM/input QA gate, and DT-08
-output-budget/reducer gate before adding distributed execution. Use the
-SLURM-first single-job probe driver until those gates show a concrete need for
-arrays or cross-process reducers. Use the multi-trajectory Parquet writer only
-behind an explicit selected-pilot output policy decision.
+Document the DT-07 DEM/input QA gate and DT-08 output-budget/reducer gate
+before adding distributed execution. Use the SLURM-first single-job probe
+driver until those gates show a concrete need for arrays or cross-process
+reducers. Use the multi-trajectory Parquet writer only behind an explicit
+selected-pilot output policy decision.
 
 ## What Should Be Paused Or Deferred
 
@@ -198,8 +197,8 @@ Pause or defer:
 - forest/barrier/fragmentation implementation before pilot-domain scoping;
 - production COG/tiled package work before the conditional hazard-map evidence
   and output contracts justify more GIS packaging;
-- SLURM/CSCS orchestration before acceptance, stochastic, DEM/input, and
-  output-budget gates show measured bottlenecks that justify it.
+- SLURM/CSCS orchestration before acceptance, DEM/input, and output-budget
+  gates show measured bottlenecks that justify it.
 - annual/physical frequency implementation before source-frequency design and
   deterministic larger-ensemble execution are stable.
 
@@ -223,8 +222,9 @@ Pause or defer:
 ## Final Recommendation
 
 Do not start annual or physical probability work yet. The highest-value
-implementable next move is the broadened DT-05 acceptance protocol. Manual
-GIS/QGIS remains useful but secondary; forest/obstacle review remains
-scientifically important but should not outrank convergence, stochastic,
-DEM/input, and output-budget gates. Larger diagnostic execution remains blocked
-by the reassessed no-go ensemble-size gate.
+implementable next move is DT-07 DEM/input QA, followed by DT-08
+output-budget/reducer gates. Manual GIS/QGIS remains useful but secondary;
+forest/obstacle review remains scientifically important but should not outrank
+acceptance, DEM/input, and output-budget gates.
+Larger diagnostic execution remains blocked by the reassessed no-go
+ensemble-size gate.

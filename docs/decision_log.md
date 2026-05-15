@@ -2,11 +2,9 @@
 
 Status: consolidated historical decision log. This file replaces several
 standalone decision fragments and older roadmap snapshots that were useful at
-the time but had become competing sources of truth. Current priorities remain
-owned by `next_development_targets.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`,
-`roadmap_recommendation_matrix.md`, and the governing documents listed in
-`README.md` and `docs/README.md`.
+the time but had become competing sources of truth. Current implementation
+targets are owned only by `next_development_targets.md`; the long-term roadmap
+and recommendation matrix are supporting context, not current target authority.
 
 This log is intentionally concise. It records why a decision was made, its
 current status, and where the detailed evidence now lives. It does not define
@@ -30,6 +28,28 @@ uncertainty provenance, and scalable ensemble execution.
 
 Detailed sources: `../README.md`, `../AGENTS.md`, `roadmap_hazard_mapping.md`,
 `next_development_targets.md`,
+`real_case_intensity_frequency_implementation_roadmap.md`.
+
+### External Review Roadmap Pressure
+
+Decision: accept the external review findings as roadmap pressure, not as
+immediate implementation authorization.
+
+Current status: active. DT-05 is complete as the current conditional
+convergence protocol and keeps the DT-04 Balfrin evidence `inconclusive`. The
+DT-06 stochastic sampling/RNG stream audit is complete. The external review
+risks that exceed that protocol are now assigned to the next targets:
+DEM/input conditioning QA, boundary/termination semantics, output budget
+gates, and validation/claim states before distributed execution or larger
+ensembles.
+
+Rationale: changing RNG derivation, DEM storage, contact mechanics, dense
+reducers, or Balfrin orchestration before acceptance gates are defined would
+make behavior drift harder to review. The Tschamut pilot remains conditional,
+diagnostic, and non-operational until those gates classify it otherwise.
+
+Detailed sources: `next_development_targets.md`,
+`roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
 ### Contact Model Default

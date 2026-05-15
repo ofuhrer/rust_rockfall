@@ -163,6 +163,7 @@ def main() -> int:
     errors.extend(check_scalable_conditional_execution())
     errors.extend(check_scalable_conditional_target_gate())
     errors.extend(check_conditional_hazard_convergence_protocol())
+    errors.extend(check_stochastic_sampling_audit())
     errors.extend(check_balfrin_tschamut_readiness_record())
     errors.extend(check_balfrin_slurm_probe_repeatability())
     errors.extend(check_balfrin_target_gate_reproduction())
@@ -1297,7 +1298,7 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         "Status: complete; classification `inconclusive`.",
         "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol",
         "Status: complete for the current selected target gate; classification",
-        "DT-06 is now the next active target",
+        "DT-07 is now the next active target",
     ):
         if term not in targets:
             errors.append(f"docs/next_development_targets.md omits {term!r}")
@@ -1388,6 +1389,93 @@ def check_conditional_hazard_convergence_protocol() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_conditional_convergence_protocol.py omits {test_name}")
+    return errors
+
+
+def check_stochastic_sampling_audit() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/stochastic_sampling_rng_stream_audit.md",
+        ROOT / "validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml",
+        ROOT / "scripts/validate_stochastic_sampling_audit.py",
+        ROOT / "tests/test_stochastic_sampling_audit.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"stochastic sampling audit path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/stochastic_sampling_rng_stream_audit.md").read_text()
+    record = (ROOT / "validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_stochastic_sampling_audit.py").read_text()
+    tests = (ROOT / "tests/test_stochastic_sampling_audit.py").read_text()
+
+    for term in (
+        "Status: DT-06 audit package",
+        "no-behavior-change boundary",
+        "stream-separation",
+        "release perturbation",
+        "roughness/contact",
+        "sampling_weighted_conditional",
+        "not statistically validated",
+        "Tschamut pilot",
+    ):
+        if term not in doc:
+            errors.append(f"docs/stochastic_sampling_rng_stream_audit.md omits {term!r}")
+
+    for term in (
+        "schema_version: stochastic_sampling_audit_v1",
+        "roadmap_item: DT-06",
+        "current_classification: diagnostic_incomplete",
+        "stochastic_validity_accepted: false",
+        "scale_up_authorized: false",
+        "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml",
+        "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+        "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+        "stream_separation_assessment",
+        "distribution_truncation_support",
+        "weighted_uncertainty_assessment",
+        "physics_changes_claimed: false",
+        "rng_changes_claimed: false",
+        "stochastic_default_changes_claimed: false",
+        "annual_or_physical_probability_claimed: false",
+        "risk_exposure_or_operational_claimed: false",
+        "accepted_stochastic_validity_claimed: false",
+        "scale_up_authorized: false",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_stochastic_sampling_audit",
+        "REQUIRED_CODE_PATHS",
+        "REQUIRED_DOC_PATHS",
+        "REQUIRED_RECORD_PATHS",
+        "REQUIRED_STREAM_AXES",
+        "REQUIRED_FAMILIES",
+        "REQUIRED_BLOCKERS",
+        "REQUIRED_NON_BLOCKERS",
+        "validate_stream_separation_assessment",
+        "validate_distribution_truncation_support",
+        "validate_claim_boundary",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_stochastic_sampling_audit.py omits {symbol!r}")
+
+    for test_name in (
+        "test_current_record_is_valid",
+        "test_rejects_missing_stream_separation_assessment",
+        "test_rejects_missing_distribution_truncation_assessment",
+        "test_rejects_stochastic_validity_acceptance",
+        "test_rejects_rng_default_or_physics_change_claims",
+        "test_rejects_annual_physical_risk_operational_claims",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_stochastic_sampling_audit.py omits {test_name}")
     return errors
 
 
@@ -1604,6 +1692,12 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/next_development_targets.md must include the DT-05 heading")
     if "Status: complete for the current selected target gate; classification" not in targets_text:
         errors.append("docs/next_development_targets.md must mark DT-05 complete")
+    if "### DT-06: Audit Stochastic Sampling And RNG Stream Semantics" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-06 heading")
+    if "Status: complete; classification `diagnostic_incomplete`." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-06 complete")
+    if "### DT-07: Define Real-Site DEM/Input Conditioning QA Gate" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-07 heading")
     return errors
 
 
@@ -2256,6 +2350,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "hazard/README.md",
         ROOT / "docs/hazard_layers.md",
         ROOT / "docs/hazard_map_semantics.md",
+        ROOT / "docs/stochastic_sampling_rng_stream_audit.md",
         ROOT / "docs/conditional_hazard_convergence_acceptance_protocol.md",
         ROOT / "docs/roadmap_hazard_mapping.md",
         ROOT / "docs/validation_plan.md",

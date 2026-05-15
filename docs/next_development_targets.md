@@ -33,7 +33,7 @@ for the Swiss public-data hazard-map workflow:
 - balfrin readiness checker, pilot runbook, output-profile contract,
   SLURM-first probe driver, probe metrics/log-audit collection, and clean
   420x450 SLURM baseline evidence;
-- conditional hazard-map convergence acceptance protocol applied to the
+- initial conditional hazard-map convergence acceptance protocol applied to the
   completed DT-04 Balfrin reproduction, with the current classification still
   `inconclusive`;
 - completed balfrin same-scale reproduction of the selected conditional
@@ -43,10 +43,12 @@ The pilot is still not complete. The selected target-scale gate remains
 `inconclusive` because convergence has not been accepted, forest/obstacle
 context remains limiting, validation debug-output volume still needs reduction
 or explicit justification before a larger run, and the completed balfrin
-target-gate reproduction is not yet a convergence pass. DT-05 is now complete
-for the current selected gate. DT-06 is now the next active target; DT-07 and
-later remain subsequent interpretation work. Target-run provenance is now
-explicitly classified: the
+target-gate reproduction is not yet a convergence pass. DT-05 now records the
+conditional convergence protocol and keeps the DT-04 evidence
+`inconclusive`; external review risks are carried forward as DT-07 through
+DT-10 before the pilot can be accepted. The DT-06 stochastic sampling and RNG
+stream audit package is complete, and DT-07 is now the next active target.
+Target-run provenance is now explicitly classified: the
 1,000-trajectory observed-release target run is separated from the auxiliary
 single-release `ensemble_execution` sidecar.
 
@@ -151,35 +153,42 @@ Status: complete for the current selected target gate; classification
 Objective: predeclare how conditional hazard rasters, target-gate summaries,
 and pilot evidence are classified as `pass`, `inconclusive`, or `no_go`.
 
-Why this comes next: the selected target-scale gate remains inconclusive
-because technical completion is not enough. The acceptance gate must remain
-conservative, cover conditional hazard-map evidence only, and keep annual,
-physical, risk, exposure, vulnerability, and operational claims out of scope.
+Why this was needed: the selected target-scale gate remains inconclusive
+because technical completion is not enough. Acceptance needs predeclared
+conditional-only rules that are independent of annual/physical probability
+claims.
 
 Done: `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
-records the conservative DT-05 protocol, the required evidence categories, and
-the current DT-04 Balfrin assessment. The protocol classifies that evidence as
+records the conservative DT-05 protocol, required evidence categories, and the
+current DT-04 Balfrin assessment. The protocol classifies that evidence as
 `inconclusive`, keeps scale-up authorization false, and preserves the
-no-annual/no-physical/no-risk boundary.
+no-annual/no-physical/no-risk boundary. External review issues that exceed the
+current protocol are now carried forward as DT-07 DEM/input QA, DT-08
+output-budget/reducer gates, and DT-09 distributed execution; DT-06 stochastic
+sampling and RNG stream audit is complete.
 
 Do not: use the protocol to justify physical source frequency, return periods,
 risk products, regulatory acceptance, or a larger ensemble-size run.
 
 ### DT-06: Audit Stochastic Sampling And RNG Stream Semantics
 
+Status: complete; classification `diagnostic_incomplete`.
+
 Objective: turn stochastic validity concerns into an auditable contract before
 the selected pilot is used as accepted hazard-map evidence.
 
-Why this comes before execution scaling: the pilot can run and still be
+Why this came before execution scaling: the pilot can run and still be
 statistically weak if deterministic stream derivation, stochastic variable
 families, release perturbations, roughness draws, scenario weights, or weighted
 uncertainty semantics are not auditable.
 
-Done when: a documentation-and-test-ready audit plan records RNG stream labels,
-seed derivation requirements, stochastic variable families, distribution
-contracts, truncation/support policies, weighted estimator requirements, and
-future collision/independence tests. This target defines the audit and tests to
-add; it does not change RNG behavior by itself.
+Done: `docs/stochastic_sampling_rng_stream_audit.md` records the current RNG
+and seed derivation summary, stochastic variable families, release
+perturbation semantics, roughness/contact semantics, scenario/block sampling
+and weighting semantics, known limitations, and the no-behavior-change
+boundary. `validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml`
+captures the machine-readable audit record, and the focused validator/test
+pair enforces the current claim boundary.
 
 Do not: change stochastic defaults, tune distributions, or reinterpret current
 conditional layers as physical probabilities.
@@ -325,10 +334,10 @@ start at DT-01. They are no longer current target numbers.
 
 ## Recommended Sequence
 
-1. Keep DT-05 as the classification reference for the completed DT-04
-   balfrin evidence.
+1. Keep DT-05 as the classification reference for the completed DT-04 balfrin
+   evidence.
 2. Complete DT-06 and DT-07 before treating the pilot as accepted evidence.
-3. Keep DT-08 in place before any ensemble-size increase.
+3. Complete DT-08 before any ensemble-size increase.
 4. Consider DT-09 only if accepted gates show restartability, load-balancing,
    output-size, or memory bottlenecks that justify distributed execution.
 5. Treat DT-10 and DT-11 as interpretation/interoperability blockers that

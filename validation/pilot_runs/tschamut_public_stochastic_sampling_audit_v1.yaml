@@ -1,0 +1,141 @@
+schema_version: stochastic_sampling_audit_v1
+record_id: tschamut_public_stochastic_sampling_audit_v1
+pilot_id: tschamut_public_pilot
+roadmap_item: DT-06
+current_classification: diagnostic_incomplete
+stochastic_validity_accepted: false
+scale_up_authorized: false
+assessed_code:
+  - src/stochastic.rs
+  - src/simulation.rs
+  - src/integrator.rs
+assessed_docs:
+  - docs/hazard_map_semantics.md
+  - docs/probabilistic_scenario_model_design.md
+  - docs/conditional_hazard_convergence_acceptance_protocol.md
+  - docs/next_development_targets.md
+  - docs/real_case_intensity_frequency_implementation_roadmap.md
+  - docs/roadmap_recommendation_matrix.md
+assessed_records:
+  - validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml
+  - validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+stochastic_variable_families:
+  - family_id: trajectory_seed
+    current_status: implemented
+    notes: Deterministic seed derivation is limited to global seed, case id, and trajectory id.
+  - family_id: release_perturbation
+    current_status: implemented
+    notes: Axis-aligned uniform perturbations are sampled independently per component.
+  - family_id: roughness_contact
+    current_status: implemented_with_limits
+    notes: Roughness uses a local seed and bounded Gaussian-style perturbations for contact parameters.
+  - family_id: scenario_sampling_weight
+    current_status: implemented_for_conditional_weighting_only
+    notes: Sampling weights condition conditional products and do not encode physical probability.
+  - family_id: block_mass_shape_restitution
+    current_status: not_sampled
+    notes: The selected pilot path does not define sampled mass, shape, or restitution distributions.
+stream_separation_assessment:
+  current_status: incomplete
+  separation_axes:
+    - case_id
+    - trajectory_id
+    - worker_id
+    - stochastic_variable_family
+    - retry_or_chunk_execution
+    - draw_index
+  current_derivation_behavior:
+    hash_algorithm: fnv1a64
+    hash_inputs:
+      - global_seed
+      - case_id
+      - trajectory_id
+  limitations:
+    - derived seeds do not explicitly namespace worker id
+    - derived seeds do not explicitly namespace retry or chunk execution
+    - derived seeds do not explicitly namespace stochastic variable family
+    - derived seeds do not explicitly namespace draw index
+  future_tests:
+    - worker_and_chunk_namespace_collision_test
+    - stochastic_variable_family_namespace_test
+    - retry_namespace_stability_test
+    - draw_index_namespace_test
+release_perturbation_semantics:
+  model: axis_aligned_uniform_box
+  current_status: documented
+  axes:
+    - x
+    - y
+    - z
+  position_half_width_source: release_perturbation.position_uniform_m
+  velocity_half_width_source: release_perturbation.velocity_uniform_mps
+  limitations:
+    - each Cartesian component uses the same half-width
+    - perturbations are sampled independently per component
+    - the current contract is uniform-box only
+roughness_contact_semantics:
+  model: stochastic_contact_v1
+  current_status: documented_with_limits
+  contact_seed_source: roughness_seed_or_zero
+  perturbations:
+    - bounded_standard_normal_normal_restitution
+    - bounded_standard_normal_tangential_restitution
+    - bounded_standard_normal_normal_direction
+    - bounded_standard_normal_tangential_direction
+  limitations:
+    - bounded_standard_normal samples are clipped to plus or minus two standard deviations
+    - dissipative scaling clamps effective restitution to the [0, 1] interval
+    - friction is increased by the magnitude of tangent noise and never reduced below zero
+distribution_truncation_support:
+  current_status: incomplete
+  topics:
+    - release_perturbation_uniform_box
+    - roughness_bounded_gaussian_clamp
+    - dissipative_scale_clamp
+    - no_mass_shape_restitution_distribution
+  limitations:
+    - release perturbation does not define a general distribution family contract
+    - roughness support is clipped rather than fully parameterized
+    - mass, shape, and restitution do not have sampled distribution support in the current pilot path
+weighted_uncertainty_assessment:
+  current_status: incomplete
+  notes:
+    - sampling_weighted_conditional layers remain conditional weighting products
+    - sampling_weight is not physical probability, annual frequency, exposure, risk, or operational evidence
+    - weighted uncertainty provenance remains interpretation-level, not validated stochastic skill
+impact_on_tschamut_pilot_interpretation:
+  current_classification: diagnostic_incomplete
+  stochastic_validity_accepted: false
+  notes:
+    - the DT-04 and DT-05 evidence remains inconclusive for convergence acceptance
+    - this audit documents current stochastic semantics but does not validate them as statistically accepted
+    - the selected Tschamut pilot cannot be treated as accepted stochastic-validity evidence
+required_future_evidence:
+  - explicit stream-separation contracts for worker, chunk, retry, family, and draw-index labels
+  - collision and independence tests for derived seeds and roughness substreams
+  - release distribution and truncation contracts with support and tail-handling rules
+  - weighted estimator contract and claim-hygiene tests for conditional uncertainty products
+  - acceptance review that keeps stochastic validity unaccepted until the required evidence is present
+blockers:
+  - stream_separation_audit_incomplete
+  - distribution_truncation_support_incomplete
+  - weighted_uncertainty_semantics_incomplete
+  - stochastic_validity_not_accepted
+  - scale_up_authorization_not_granted
+non_blockers:
+  - current_seed_derivation_is_deterministic
+  - current_conditional_products_remain_diagnostic
+  - no_physics_change_is_required_for_this_audit
+claim_boundary:
+  physics_changes_claimed: false
+  rng_changes_claimed: false
+  stochastic_default_changes_claimed: false
+  annual_or_physical_probability_claimed: false
+  risk_exposure_or_operational_claimed: false
+  accepted_stochastic_validity_claimed: false
+  scale_up_authorized: false
+notes:
+  - no tuning, no physics change, and no RNG change are introduced by this audit
+  - current conditional layers remain conditional diagnostic products only
+

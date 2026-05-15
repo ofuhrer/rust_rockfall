@@ -101,6 +101,9 @@ fragments have been consolidated into `decision_log.md`; they do not override
 - `conditional_hazard_convergence_acceptance_protocol.md`: DT-05 acceptance
   protocol for conditional hazard-map evidence and the current DT-04 Balfrin
   assessment.
+- `stochastic_sampling_rng_stream_audit.md`: DT-06 audit of current stochastic
+  sampling semantics, RNG stream labels, known limitations, and current
+  no-behavior-change boundary.
 - `probabilistic_scenario_model_design.md`: scenario-level probability modes,
   source-zone placeholders, and normalization conventions.
 - `physical_source_frequency_design_gate.md`: design-gate decision for future

@@ -3336,6 +3336,30 @@ Planning only; these milestones do not implement roadmap item content yet.
   `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_balfrin_tschamut_readiness_record tests.test_balfrin_tschamut_readiness`;
   `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`.
 
+### M062
+
+- Milestone id: M062.
+- Roadmap item: Roadmap reprioritization after external hostile review.
+- Hypothesis/objective: Merge the review findings into the current Tschamut
+  pilot target sequence without changing code, physics, defaults, validation
+  cases, generated artifacts, or public claims.
+- Files changed:
+  `docs/next_development_targets.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Reconciled the completed DT-05 convergence protocol
+  with the external review findings. DT-05 remains complete and classifies the
+  DT-04 Balfrin evidence as `inconclusive`; DT-06 stochastic sampling/RNG audit,
+  DT-07 DEM/input conditioning QA, and DT-08 output-budget/reducer scaling gate
+  now carry the remaining review pressure. Distributed Balfrin execution stays
+  behind measured need.
+- Checks run:
+  `rg -n "DT-05|DT-06|DT-07|External review|convergence|stochastic|DEM/input|not authoritative" docs/next_development_targets.md docs/roadmap_recommendation_matrix.md docs/real_case_intensity_frequency_implementation_roadmap.md docs/decision_log.md`;
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py`;
+  `git diff --check`.
+
 ### M061
 
 - Milestone id: M061.
@@ -3486,3 +3510,38 @@ Planning only; these milestones do not implement roadmap item content yet.
   `rg -n "^## Target [0-9]+|authoritative current development targets|not authoritative for current target selection" docs`;
   `git diff --check`;
   `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`.
+
+### M062
+
+- Milestone id: M062.
+- Roadmap item: DT-06. Stochastic sampling and RNG stream audit.
+- Hypothesis/objective: Record current stochastic semantics, known stream and
+  distribution limits, and the no-behavior-change boundary in a machine-
+  readable audit package without changing physics or RNG behavior.
+- Files intended to change:
+  `docs/stochastic_sampling_rng_stream_audit.md`,
+  `validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml`,
+  `scripts/validate_stochastic_sampling_audit.py`,
+  `tests/test_stochastic_sampling_audit.py`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/README.md`,
+  `docs/decision_log.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added a DT-06 stochastic audit document, a
+  machine-readable audit record, a focused validator, targeted regression
+  tests, and repository-consistency hooks. Updated the authoritative targets
+  and roadmap docs so DT-06 is complete and DT-07 is now the next active
+  target.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_stochastic_sampling_audit.py validation/pilot_runs/tschamut_public_stochastic_sampling_audit_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_stochastic_sampling_audit` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_conditional_convergence_protocol tests.test_scalable_conditional_target_gate` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+- Reviewer notes: No physics changes, no RNG changes, no stochastic-default
+  changes, and no annual/physical/risk/operational claim language were added.
+- Decision: ACCEPT.
+- Next proposed milestone: DT-07.

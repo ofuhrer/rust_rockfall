@@ -35,10 +35,12 @@ Milestone 1 is still not complete because target-scale convergence decisions
 are not yet accepted and validation-runner provenance/output-volume questions
 remain partly open. The selected target-scale workflow has now been reproduced
 end to end in the intended balfrin environment and remains classified
-`inconclusive`. External review adds stochastic-stream validity,
-sampling-distribution contracts, DEM/input conditioning, boundary/termination
-semantics, output budgets, and validation-state controls as explicit acceptance
-risks. Balfrin readiness and probe tooling now exist, including a readiness
+`inconclusive`. The DT-06 stochastic sampling and RNG stream audit package is
+complete, which makes stochastic semantics auditable without changing
+behavior. External review now continues with DEM/input conditioning,
+boundary/termination semantics, output budgets, and validation-state controls
+as explicit acceptance risks. Balfrin readiness and probe tooling now exist,
+including a readiness
 checker, runbook, output-profile contract, SLURM-first probe driver, metrics
 collector with log-audit summaries, clean 420x450 probe evidence, and the DT-04
 target-gate reproduction record. In this checkout, the
@@ -120,26 +122,20 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. broaden the conditional hazard-map convergence protocol into a scientific
-   acceptance protocol covering convergence, stochastic validity, output
-   budgets, DEM/input conditioning, boundary semantics, and validation states;
-2. apply that protocol to the completed local and balfrin target-gate evidence;
-3. define an audit for stochastic sampling and RNG stream semantics before
-   accepted pilot evidence is claimed;
-4. define a real-site DEM/input conditioning QA gate for atomic ingest,
+1. define a real-site DEM/input conditioning QA gate for atomic ingest,
    checksums, CRS/registration, nodata/artifact checks, and domain-exit
    semantics;
-5. turn output-budget and dense-grid reducer risks into explicit pass/fail
+2. turn output-budget and dense-grid reducer risks into explicit pass/fail
    gates before any larger ensemble is attempted;
-6. close the remaining validation-runner provenance gap for observed-release
+3. close the remaining validation-runner provenance gap for observed-release
    ensembles if future gates require chunk metadata to cover every target
    trajectory;
-7. locally review forest/obstacle context and decide whether omission remains
+4. locally review forest/obstacle context and decide whether omission remains
    limiting, becomes acceptable for a diagnostic pilot, or invalidates
    target-scale interpretation;
-8. keep the target-scale manual GIS/QGIS visual QA decision explicit and
+5. keep the target-scale manual GIS/QGIS visual QA decision explicit and
    visible as a secondary interoperability check;
-9. defer physical/annual frequency semantics until source-frequency and
+6. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -161,14 +157,14 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `inconclusive` report classification. The checked-in run-freeze records
   regenerated ignored DEM-sensitivity, validation, hazard, GIS package,
   scaling, runtime, memory, file-count, byte-count, and checksum evidence.
-- Priority 4.5 is partially complete. The existing convergence acceptance protocol is
+- Priority 4.5 is complete for the current selected gate. The convergence acceptance protocol is
   recorded in
   `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
   and keeps the completed DT-04 Balfrin reproduction classified as
-  `inconclusive` without authorizing scale-up. External review broadened the
-  remaining DT-05 work to include stochastic validity, DEM/input conditioning,
-  boundary/termination semantics, output-budget gates, and explicit
-  validation/claim states.
+  `inconclusive` without authorizing scale-up. The DT-06 stochastic audit is
+  complete. Remaining external review risks are now carried forward as DT-07
+  DEM/input QA, DT-08 output-budget/reducer, DT-09 distributed execution, and
+  DT-10 forest/obstacle context gates.
 - Priority 5 is complete at the selected checklist level.
   `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
@@ -198,10 +194,10 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `--conditional-curve-export summary-only` keeps the existing rasters and
   metadata summaries but skips the large per-cell curve CSV table. The default
   remains full export for small debug/review workflows.
-- Conditional convergence acceptance is documented and machine-checkable, but
-  it is not yet broad enough for accepted pilot evidence after external review.
-  It keeps the DT-04 selected gate at `inconclusive` while preserving the
-  no-annual/no-physical/no-risk boundary.
+- Conditional convergence acceptance is documented and machine-checkable for
+  the current selected gate. It keeps the DT-04 selected gate at
+  `inconclusive` while preserving the no-annual/no-physical/no-risk boundary;
+  additional external-review risks are assigned to DT-06, DT-07, and DT-08.
 - Ensemble-size increase has a reassessed selected-domain no-go feasibility gate.
   `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml` and
   `docs/tschamut_public_ensemble_feasibility.md` now review the executed but
@@ -210,9 +206,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   forest/obstacle context, balfrin reproducibility, and validation-runner
   provenance scope are resolved. Manual GIS/QGIS remains a secondary
   interoperability check.
-- The next active work is the broadened DT-05 acceptance protocol, followed by
-  DT-06 stochastic audit and DT-07 DEM/input conditioning QA. Forest/obstacle
-  context remains important but is now DT-10.
+- The next active work is DT-07 DEM/input conditioning QA, followed by DT-08
+  output-budget/reducer gates. Forest/obstacle context remains important and is
+  now DT-10.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
   `docs/tschamut_public_scalable_conditional_execution.md`, and
@@ -817,9 +813,11 @@ to confuse completed historical gates with the current first target.
 
 Current high-level sequence:
 
-1. define the conditional hazard-map convergence acceptance protocol;
-2. apply it to the completed selected Tschamut balfrin target-gate
-   reproduction;
+1. keep the DT-05 conditional convergence protocol as the current
+   classification reference for the completed DT-04 evidence;
+2. define stochastic sampling and DEM/input QA gates before treating the
+   completed selected Tschamut balfrin target-gate reproduction as accepted
+   evidence;
 3. defer annual/physical intensity-frequency runtime work until the inactive
    source-frequency design gates have accepted evidence.
 
