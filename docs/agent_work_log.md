@@ -5131,3 +5131,17 @@ Planning only; these milestones do not implement roadmap item content yet.
   simulator physics, thresholds, release assumptions, or validation cases.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-036.
+
+- Backlog adjustment after external review of TB-035 follow-up priorities.
+- Files changed: `docs/task_backlog.md`.
+- Input assessed: existing same-scale uncertainty tooling is strong on scalar
+  pairwise metrics, layer summaries, and envelope ranges, but does not yet
+  answer the spatial question of where uncertainty concentrates across seeds
+  and layers.
+- Decision: ACCEPT with priority adjustment. Added spatial same-scale
+  uncertainty interpretation tooling as TB-037, after the
+  hazard-rebuild-compatible reduced-output blocker and before COG conversion,
+  second-site acquisition staging, and validation/calibration evidence-gap
+  work.
+- Boundaries preserved: no physics changes, no parameter tuning, no scale-up
+  authorization, no operational claims, and no large committed raster outputs.
