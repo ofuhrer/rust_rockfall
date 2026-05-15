@@ -140,48 +140,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-018: Regenerate Target-Side Same-Scale Tschamut Inputs And Hazard Artifacts
-
-Capability gap reduced: TB-017 recorded the target-side comparison as
-`blocked_missing_inputs`; the next concrete blocker is to restore the missing
-processed input bundle, target private case, target validation manifest, target
-hazard manifest, and referenced grids under ignored paths.
-
-Goal: regenerate or stage the target-side same-scale Tschamut input and output
-artifact chain without changing physics, thresholds, release assumptions, or
-ensemble size, so a real target-vs-gate spatial comparison can run.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/tschamut_public_scalable_conditional_target_gate.md`;
-- `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`;
-- `scripts/validate_public_real_site_conditional_pilot_run.py`;
-- `scripts/build_hazard_layers.py`;
-- the ignored target-side paths listed in those records, if present locally.
-
-Required work:
-
-1. Restore or regenerate the missing processed input metadata, scenario table,
-   source-zone metadata, target private case, target validation manifest, target
-   hazard manifest, map-package manifest, and referenced hazard grids.
-2. Use the recorded command plan and current output contracts.
-3. Do not change physics, thresholds, release assumptions, sampling weights, or
-   ensemble size.
-4. Keep raw/generated/private outputs ignored and uncommitted.
-5. Preserve the target-vs-gate comparison contract so the convergence
-   diagnostic can consume the refreshed artifacts directly.
-
-Definition of done:
-
-- the target private case, validation manifest, hazard manifest, and referenced
-  grids are present locally, or the exact missing inputs and regeneration
-  commands are updated with no ambiguity;
-- target artifact readiness is measured with the artifact audit and documented;
-- checks pass.
-
 ### TB-019: Run Target-Vs-Gate Cell-Wise Spatial Convergence On Restored Artifacts
 
 Capability gap reduced: once target-side artifacts exist, the main scientific

@@ -357,6 +357,85 @@ its referenced raster files are restored or regenerated. This keeps the result
 conditional and non-operational rather than inferring spatial stability from a
 single manifest-side self-check.
 
+## TB-018 Target Artifact Restore Status
+
+Current checkout status: `restored_or_regenerated`
+
+- target_artifact_restore_status: `restored_or_regenerated`
+- processed_input_bundle_available: `true`
+- target_private_case_available: `true`
+- target_validation_manifest_available: `true`
+- target_hazard_manifest_available: `true`
+- target_cellwise_layers_available: `true`
+- target_referenced_grids_available: `true`
+- gate_manifest_available: `true`
+- tb019_ready: `true`
+- scale_up_authorized: `false`
+- operational_claims_allowed: `false`
+- artifact_file_count: `2063`
+- artifact_byte_count: `650545138`
+- comparison_probe_status: `ok`
+- comparison_shared_layer_count: `22`
+- comparison_cellwise_linf_abs_diff_max: `3028.22579673`
+- comparison_cellwise_l1_abs_diff_sum: `190790.42488112117`
+
+Commands run:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/audit_local_artifacts.py \
+  validation/private/tschamut_public_pilot/target_gate_v1 \
+  hazard/results/tschamut_public_pilot/target_gate_v1
+
+CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case \
+  validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml
+
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py \
+  --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml \
+  --output-dir hazard/results/tschamut_public_pilot/target_gate_v1 \
+  --grid-xmin 2696376.0 \
+  --grid-ymin 1167384.0 \
+  --grid-ncols 300 \
+  --grid-nrows 304 \
+  --grid-cell-size 2.0 \
+  --map-product-id tschamut_public_scalable_conditional_target_gate_v1 \
+  --probability-mode sampling_weighted_conditional \
+  --normalization-scope conditioned_on_filter \
+  --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml \
+  --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv \
+  --map-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json \
+  --export-geotiff \
+  --pilot-gis-package \
+  --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json \
+  --pilot-gis-qa-status not-run \
+  --pilot-gis-qa-note "Manual GIS/QGIS inspection has not been run for this generated package." \
+  --reducer-workers 2 \
+  --no-plots \
+  --conditional-curve-export summary-only \
+  --grid-csv-export none \
+  --diagnostics validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_metrics.json \
+  --trajectory validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectory.csv \
+  --ensemble-trajectories-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectories \
+  --deposition validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_deposition.csv \
+  --ensemble-impact-events-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_impacts \
+  --kinetic-energy-exceedance-j 1000.0 \
+  --kinetic-energy-exceedance-j 10000.0 \
+  --jump-height-exceedance-m 0.5 \
+  --jump-height-exceedance-m 1.0 \
+  --jump-height-exceedance-m 2.0 \
+  --velocity-exceedance-mps 5.0 \
+  --velocity-exceedance-mps 10.0
+
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  --format json
+```
+
+Missing inputs: `[]`
+Blocked reason: `none`
+Commands required if blocked: `[]`
+TB-014/19 readiness: `true` for readiness probing only; not a convergence acceptance pass.
+
 ## TB-017 Target Manifest Restore Status
 
 Current checkout status: `blocked_missing_inputs`

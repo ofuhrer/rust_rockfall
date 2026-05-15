@@ -31,6 +31,44 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-018 Target Same-Scale Artifact Restore
+
+- Milestone id: TB-018 target same-scale artifact restore.
+- Roadmap item: Regenerate Target-Side Same-Scale Tschamut Inputs And Hazard Artifacts.
+- Hypothesis/objective: The missing target-side same-scale case, validation
+  manifest, hazard manifest, and referenced grids can be regenerated from the
+  frozen public inputs without changing physics, thresholds, release
+  assumptions, sampling weights, or ensemble size.
+- Files intended to change: `validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml`, `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/agent_work_log.md`
+- Implementation summary: Reconstructed the ignored target private case from
+  the frozen target-gate record and staged public inputs, then reran target
+  validation and hazard post-processing under ignored paths. The first cargo
+  run failed in the existing target directory with an unrelated parquet rlib
+  artifact error, so the run was repeated with a fresh
+  `CARGO_TARGET_DIR=/tmp/rust-rockfall-target`. The refreshed target hazard
+  manifest now exposes the same 22 cell-wise layers as the gate manifest, and
+  the readiness comparison between the gate and target hazard manifests
+  completed successfully as a readiness probe. The target side remains
+  conditional and non-operational.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/target_gate_v1 hazard/results/tschamut_public_pilot/target_gate_v1`
+  reported `validation/private/tschamut_public_pilot/target_gate_v1` with
+  `2007` files / `571384147` bytes and
+  `hazard/results/tschamut_public_pilot/target_gate_v1` with `56` files /
+  `79160991` bytes.
+  `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml`
+  passed after the fresh build directory was used.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml --output-dir hazard/results/tschamut_public_pilot/target_gate_v1 --grid-xmin 2696376.0 --grid-ymin 1167384.0 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 --map-product-id tschamut_public_scalable_conditional_target_gate_v1 --probability-mode sampling_weighted_conditional --normalization-scope conditioned_on_filter --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv --map-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json --export-geotiff --pilot-gis-package --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json --pilot-gis-qa-status not-run --pilot-gis-qa-note \"Manual GIS/QGIS inspection has not been run for this generated package.\" --reducer-workers 2 --no-plots --conditional-curve-export summary-only --grid-csv-export none --diagnostics validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_metrics.json --trajectory validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectory.csv --ensemble-trajectories-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectories --deposition validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_deposition.csv --ensemble-impact-events-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_impacts --kinetic-energy-exceedance-j 1000.0 --kinetic-energy-exceedance-j 10000.0 --jump-height-exceedance-m 0.5 --jump-height-exceedance-m 1.0 --jump-height-exceedance-m 2.0 --velocity-exceedance-mps 5.0 --velocity-exceedance-mps 10.0`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  returned `ok` readiness metrics with `22` shared cell-wise layers and
+  `cellwise_shared_layer_count: 22`.
+- Reviewer notes: The target artifact chain is now locally present under
+  ignored paths. The comparison probe is a readiness check only; it does not
+  replace TB-019’s interpretation step.
+- Decision: COMPLETED_WITH_LIMITATIONS.
+- Next proposed milestone: TB-019.
+
 ### TB-017 Target Manifest Restore Block
 
 - Milestone id: TB-017 target manifest restore block.

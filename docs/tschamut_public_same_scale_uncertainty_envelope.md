@@ -2,17 +2,15 @@
 
 - Pilot id: `tschamut_public_pilot`
 - Final classification: `inconclusive`
-- Envelope status: `measured_with_pending_target_artifacts`
+- Envelope status: `measured_with_remaining_scale_constraints`
 - Scale-up authorized: `false`
 - Operational claims allowed: `false`
-- Convergence status: `blocked_missing_target_artifacts`
-- Target artifact restore status: `blocked_missing_inputs`
+- Convergence status: `measured`
+- Target artifact restore status: `ready`
 
 ## Convergence
-- Artifact readiness: `blocked_missing_target_artifacts`
-- Missing or pending inputs:
-  - `/Users/fuhrer/Desktop/rust_rockfall/main/validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`: pending target-side same-scale validation manifest at /Users/fuhrer/Desktop/rust_rockfall/main/validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
-  - `/Users/fuhrer/Desktop/rust_rockfall/main/hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`: pending target-side same-scale hazard manifest at /Users/fuhrer/Desktop/rust_rockfall/main/hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+- Artifact readiness: `ready`
+- Measured per-layer convergence metrics are available.
 
 ## Validation Output
 - Status: `blocker_retained`
@@ -38,23 +36,19 @@
 - Decision: `defer`
 
 ## Limiting Factors
-- `target_vs_gate_convergence_pending`
 - `validation_output_pressure_retained`
 - `context_is_limiting`
 - `single_job_path_deferred`
-- `target_artifact_readiness_pending`
 
 ## Remaining Uncertainty
-- target-side same-scale artifacts are pending or blocked, so convergence remains unmeasured
 - validation debug-output pressure is still a scale-up blocker
 - corridor-level context remains interpretive evidence, not obstacle physics
 - distributed execution remains deferred on measured evidence
-- target-side same-scale hazard artifacts are still pending or blocked
 
 ## Target-Artifact Readiness
 - Gate manifest available: `true`
-- Target validation manifest available: `false`
-- Target hazard manifest available: `false`
-- Target cell-wise layers available: `false`
-- TB-014 ready: `false`
-- Target artifact restore status: `blocked_missing_inputs`
+- Target validation manifest available: `true`
+- Target hazard manifest available: `true`
+- Target cell-wise layers available: `true`
+- TB-014 ready: `true`
+- Target artifact restore status: `ready`
