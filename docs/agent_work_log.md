@@ -4126,3 +4126,37 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The selected Tschamut hazard outputs were not present in checkout, so the applied pilot comparison remains a missing-artifact state; the new inference path preserves the explicit missing-input behavior instead of silently passing.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-010.
+
+### TB-010
+
+- Milestone id: TB-010
+- Roadmap item: Implement A Reduced Validation Debug Output Mode.
+- Files changed:
+  `src/manifest.rs`,
+  `src/validation.rs`,
+  `src/validation/runner.rs`,
+  `src/validation/types.rs`,
+  `scripts/summarize_bounded_validation_output_profile.py`,
+  `tests/test_bounded_validation_output_profile.py`,
+  `tests/config_io_terrain.rs`,
+  `tests/fixtures/bounded_validation_output_profile/baseline_manifest.json`,
+  `tests/fixtures/bounded_validation_output_profile/reduced_manifest.json`,
+  `docs/validation_data_schema.md`,
+  `docs/benchmark_case_schema.yaml`,
+  `scripts/check_repo_consistency.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added an opt-in `outputs.validation_output_mode: summary_only` that suppresses the validation-side trajectory/impact debug artifacts while leaving diagnostics, manifest provenance, and summary outputs intact. The run manifest now records the mode additively. The bounded-output summary script now compares committed baseline/reduced fixtures and reports before/after file and byte totals, retained and omitted output classes, and retained provenance. The regenerated report keeps the real selected-pilot local audit blocked because the ignored manifests are still absent.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/summarize_bounded_validation_output_profile.py tests/test_bounded_validation_output_profile.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_bounded_validation_output_profile`
+  passed.
+  `cargo test validation_output_mode_summary_only_suppresses_debug_outputs_and_records_manifest_mode --test config_io_terrain`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py --validation-output-baseline-manifest tests/fixtures/bounded_validation_output_profile/baseline_manifest.json --validation-output-reduced-manifest tests/fixtures/bounded_validation_output_profile/reduced_manifest.json --markdown-output docs/tschamut_public_bounded_validation_output_profile.md --json-output /tmp/tschamut_bounded_validation_output_profile.json`
+  passed.
+- Reviewer notes: Baseline/reduced accounting is now executable on tiny fixtures; the real Tschamut selected-pilot outputs remain blocked_missing_outputs in this checkout.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-011.

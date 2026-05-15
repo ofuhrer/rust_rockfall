@@ -100,45 +100,47 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
     timing.trajectory_count += 1;
     timing.impact_event_count += result.impact_events.len();
     trajectory_metadata.insert_single_result(case, &result, &config.block, shape_metadata.as_ref());
-    if let Some(path) = &case.outputs.trajectory_csv {
-        let output_started = Instant::now();
-        write_trajectory_csv_with_id(path, default_single_trajectory_id(), &result.samples)?;
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-        output_entries.push(file_output_manifest(
-            path,
-            "trajectory",
-            "csv",
-            Some(result.samples.len()),
-            None,
-        )?);
-    }
-    if let Some(path) = &case.outputs.impact_events_csv {
-        let output_started = Instant::now();
-        write_impact_events_csv_with_id(
-            path,
-            default_single_trajectory_id(),
-            &result.impact_events,
-        )?;
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-        output_entries.push(file_output_manifest(
-            path,
-            "impact_events",
-            "csv",
-            Some(result.impact_events.len()),
-            None,
-        )?);
-    }
-    if let Some(path) = &case.outputs.impact_events_json {
-        let output_started = Instant::now();
-        io::write_impact_events_json(path, &result.impact_events)?;
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-        output_entries.push(file_output_manifest(
-            path,
-            "impact_events",
-            "json",
-            Some(result.impact_events.len()),
-            None,
-        )?);
+    if !validation_output_mode_is_summary_only(case) {
+        if let Some(path) = &case.outputs.trajectory_csv {
+            let output_started = Instant::now();
+            write_trajectory_csv_with_id(path, default_single_trajectory_id(), &result.samples)?;
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            output_entries.push(file_output_manifest(
+                path,
+                "trajectory",
+                "csv",
+                Some(result.samples.len()),
+                None,
+            )?);
+        }
+        if let Some(path) = &case.outputs.impact_events_csv {
+            let output_started = Instant::now();
+            write_impact_events_csv_with_id(
+                path,
+                default_single_trajectory_id(),
+                &result.impact_events,
+            )?;
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            output_entries.push(file_output_manifest(
+                path,
+                "impact_events",
+                "csv",
+                Some(result.impact_events.len()),
+                None,
+            )?);
+        }
+        if let Some(path) = &case.outputs.impact_events_json {
+            let output_started = Instant::now();
+            io::write_impact_events_json(path, &result.impact_events)?;
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            output_entries.push(file_output_manifest(
+                path,
+                "impact_events",
+                "json",
+                Some(result.impact_events.len()),
+                None,
+            )?);
+        }
     }
 
     let samples = &result.samples;
@@ -409,6 +411,7 @@ pub(super) fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest
         stop_state: report.stop_state.clone(),
         stop_state_summary,
         terrain_material_exposure_summary,
+        validation_output_mode: case.outputs.validation_output_mode,
         warnings: report.warnings.clone(),
     }
 }

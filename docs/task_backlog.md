@@ -126,42 +126,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-010: Implement A Reduced Validation Debug Output Mode
-
-Capability gap reduced: validation-output pressure remains the measured
-scale-up blocker.
-
-Goal: add an opt-in validation output mode that suppresses, samples, or
-summarizes nonessential debug artifacts for selected pilot runs, then measure
-before/after file count, bytes, and retained provenance on a tiny fixture or
-available selected-pilot output.
-
-Inspect first:
-
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `scripts/summarize_bounded_validation_output_profile.py`;
-- `tests/test_bounded_validation_output_profile.py`;
-- validation output-writing code;
-- validation manifest/output tests.
-
-Required work:
-
-1. Do not change public validation defaults or baselines.
-2. Keep the mode opt-in and explicit in provenance.
-3. Preserve required metrics, manifests, checksums, and scientific review
-   evidence.
-4. Measure file/byte/inode reduction or prove the specific output class cannot
-   yet be reduced safely.
-5. Do not authorize scale-up from this task alone.
-
-Definition of done:
-
-- a focused command or test demonstrates reduced validation output on a tiny
-  fixture or selected-pilot path;
-- before/after output accounting is recorded;
-- public defaults remain unchanged;
-- checks pass.
-
 ### TB-011: Stage Tschamut Context Crops And Measure Spatial Relevance
 
 Capability gap reduced: forest and obstacle context is still blocked by

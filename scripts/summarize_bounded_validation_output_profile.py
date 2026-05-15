@@ -45,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--convergence-record", type=Path, default=DEFAULT_CONVERGENCE_RECORD)
     parser.add_argument("--ensemble-feasibility-record", type=Path, default=DEFAULT_ENSEMBLE_FEASIBILITY_RECORD)
     parser.add_argument("--validation-output-manifest", type=Path, default=None)
+    parser.add_argument("--validation-output-baseline-manifest", type=Path, default=None)
+    parser.add_argument("--validation-output-reduced-manifest", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--format", choices=["text", "markdown", "json"], default="text")
@@ -58,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
             convergence_record_path=args.convergence_record,
             ensemble_feasibility_record_path=args.ensemble_feasibility_record,
             validation_output_manifest_path=args.validation_output_manifest,
+            validation_output_baseline_manifest_path=args.validation_output_baseline_manifest,
+            validation_output_reduced_manifest_path=args.validation_output_reduced_manifest,
         )
     except BoundedValidationOutputProfileError as exc:
         print(f"bounded validation output profile error: {exc}", file=sys.stderr)
@@ -79,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
             "bounded validation output profile summary: "
             f"{summary['final_classification']} "
             f"(profile={summary['bounded_profile']['profile']}, "
+            f"validation_mode={summary['validation_output_mode'] or 'unavailable'}, "
             f"hazard_files={summary['bounded_profile']['hazard_output_file_count']}, "
             f"hazard_bytes={summary['bounded_profile']['hazard_output_bytes']})"
         )
@@ -93,6 +98,8 @@ def build_summary(
     convergence_record_path: Path = DEFAULT_CONVERGENCE_RECORD,
     ensemble_feasibility_record_path: Path = DEFAULT_ENSEMBLE_FEASIBILITY_RECORD,
     validation_output_manifest_path: Path | None = None,
+    validation_output_baseline_manifest_path: Path | None = None,
+    validation_output_reduced_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     current_pressure_record = read_yaml(require_existing_path(current_pressure_record_path, "current_pressure_record_path"))
     bounded_profile_record = read_yaml(require_existing_path(bounded_profile_record_path, "bounded_profile_record_path"))
@@ -259,6 +266,10 @@ def build_summary(
         if validation_output_manifest_path is not None
         else optional_existing_path(require_text(current_evidence.get("validation_manifest_path"), "current_pressure_record.run_evidence.validation_manifest_path"))
     )
+    validation_output_comparison = summarize_validation_output_comparison(
+        baseline_manifest_path=validation_output_baseline_manifest_path,
+        reduced_manifest_path=validation_output_reduced_manifest_path,
+    )
     local_output_audit = summarize_local_outputs(current_evidence)
 
     acceptance_classification = classify_acceptance(
@@ -277,7 +288,17 @@ def build_summary(
         "final_classification": acceptance_classification,
         "feasibility_decision": feasibility_decision,
         "scale_up_authorized": False,
-        "validation_output_reduced": bool(validation_output_audit.get("reduced")),
+        "validation_output_mode": validation_output_comparison.get("validation_output_mode"),
+        "baseline_file_count": validation_output_comparison.get("baseline_file_count"),
+        "reduced_file_count": validation_output_comparison.get("reduced_file_count"),
+        "baseline_bytes": validation_output_comparison.get("baseline_bytes"),
+        "reduced_bytes": validation_output_comparison.get("reduced_bytes"),
+        "reduction_file_count_delta": validation_output_comparison.get("reduction_file_count_delta"),
+        "reduction_bytes_delta": validation_output_comparison.get("reduction_bytes_delta"),
+        "retained_output_classes": validation_output_comparison.get("retained_output_classes", []),
+        "omitted_or_sampled_output_classes": validation_output_comparison.get("omitted_or_sampled_output_classes", []),
+        "required_provenance_retained": bool(validation_output_comparison.get("required_provenance_retained")),
+        "validation_output_reduced": bool(validation_output_comparison.get("validation_output_reduced")),
         "validation_output_blocker_status": require_text(
             validation_debug_budget.get("status"), "output_budget_record.output_profile.validation_debug_output_budget.status"
         ),
@@ -403,6 +424,7 @@ def build_summary(
             "blockers": feasibility_blockers,
         },
         "local_output_audit": local_output_audit,
+        "validation_output_comparison": validation_output_comparison,
         "provenance": {
             "current_pressure_record_path": str(current_pressure_record_path),
             "bounded_profile_record_path": str(bounded_profile_record_path),
@@ -494,6 +516,7 @@ def summarize_validation_output_audit(manifest_path: Path | None) -> dict[str, A
             "required_for_audit": ["validation_manifest"],
             "families": [],
             "reduced": False,
+            "validation_output_mode": None,
         }
     if not manifest_path.exists():
         return {
@@ -502,8 +525,144 @@ def summarize_validation_output_audit(manifest_path: Path | None) -> dict[str, A
             "required_for_audit": ["validation_manifest"],
             "families": [],
             "reduced": False,
+            "validation_output_mode": None,
         }
     manifest = read_json(manifest_path)
+    summary = summarize_validation_output_manifest(manifest, manifest_path)
+    summary["reduced"] = False
+    return summary
+
+
+def summarize_validation_output_comparison(
+    *,
+    baseline_manifest_path: Path | None,
+    reduced_manifest_path: Path | None,
+) -> dict[str, Any]:
+    if baseline_manifest_path is None or reduced_manifest_path is None:
+        missing_paths = [
+            label
+            for label, path in (
+                ("baseline_validation_manifest", baseline_manifest_path),
+                ("reduced_validation_manifest", reduced_manifest_path),
+            )
+            if path is None
+        ]
+        return {
+            "status": "blocked_missing_outputs",
+            "baseline_manifest_path": str(baseline_manifest_path) if baseline_manifest_path is not None else None,
+            "reduced_manifest_path": str(reduced_manifest_path) if reduced_manifest_path is not None else None,
+            "missing_paths": missing_paths,
+            "validation_output_mode": None,
+            "baseline_file_count": None,
+            "reduced_file_count": None,
+            "baseline_bytes": None,
+            "reduced_bytes": None,
+            "reduction_file_count_delta": None,
+            "reduction_bytes_delta": None,
+            "retained_output_classes": [],
+            "omitted_or_sampled_output_classes": [],
+            "required_provenance_retained": False,
+            "validation_output_reduced": False,
+        }
+    missing_paths = [path for path in (baseline_manifest_path, reduced_manifest_path) if not path.exists()]
+    if missing_paths:
+        return {
+            "status": "blocked_missing_outputs",
+            "baseline_manifest_path": str(baseline_manifest_path),
+            "reduced_manifest_path": str(reduced_manifest_path),
+            "missing_paths": [str(path) for path in missing_paths],
+            "validation_output_mode": None,
+            "baseline_file_count": None,
+            "reduced_file_count": None,
+            "baseline_bytes": None,
+            "reduced_bytes": None,
+            "reduction_file_count_delta": None,
+            "reduction_bytes_delta": None,
+            "retained_output_classes": [],
+            "omitted_or_sampled_output_classes": [],
+            "required_provenance_retained": False,
+            "validation_output_reduced": False,
+        }
+
+    baseline_manifest = read_json(baseline_manifest_path)
+    reduced_manifest = read_json(reduced_manifest_path)
+    baseline_audit = summarize_validation_output_manifest(baseline_manifest, baseline_manifest_path)
+    reduced_audit = summarize_validation_output_manifest(reduced_manifest, reduced_manifest_path)
+
+    if baseline_audit["status"] != "available" or reduced_audit["status"] != "available":
+        return {
+            "status": "blocked_invalid_inputs",
+            "baseline_manifest_path": str(baseline_manifest_path),
+            "reduced_manifest_path": str(reduced_manifest_path),
+            "missing_paths": [],
+            "validation_output_mode": None,
+            "baseline_file_count": None,
+            "reduced_file_count": None,
+            "baseline_bytes": None,
+            "reduced_bytes": None,
+            "reduction_file_count_delta": None,
+            "reduction_bytes_delta": None,
+            "retained_output_classes": [],
+            "omitted_or_sampled_output_classes": [],
+            "required_provenance_retained": False,
+            "validation_output_reduced": False,
+        }
+
+    baseline_families = {family["family"]: family for family in baseline_audit["families"]}
+    reduced_families = {family["family"]: family for family in reduced_audit["families"]}
+    retained_output_classes: list[str] = []
+    omitted_or_sampled_output_classes: list[str] = []
+    for family_name in sorted(baseline_families):
+        baseline_family = baseline_families[family_name]
+        reduced_family = reduced_families.get(family_name)
+        if reduced_family is None:
+            omitted_or_sampled_output_classes.append(family_name)
+            continue
+        if (
+            baseline_family["file_count"] == reduced_family["file_count"]
+            and baseline_family["total_bytes"] == reduced_family["total_bytes"]
+        ):
+            retained_output_classes.append(family_name)
+        else:
+            omitted_or_sampled_output_classes.append(family_name)
+
+    reduced_mode = reduced_manifest.get("validation_output_mode")
+    baseline_file_count = baseline_audit["total_file_count"]
+    reduced_file_count = reduced_audit["total_file_count"]
+    baseline_bytes = baseline_audit["total_bytes"]
+    reduced_bytes = reduced_audit["total_bytes"]
+    required_provenance_retained = (
+        require_text(reduced_manifest.get("schema_version"), "reduced_validation_manifest.schema_version") == "run_manifest_v1"
+        and isinstance(reduced_manifest.get("performance"), dict)
+        and isinstance(reduced_manifest.get("trajectory_metadata"), dict)
+        and bool(reduced_manifest.get("outputs"))
+        and any(entry["family"] == "diagnostics_json" for entry in reduced_audit["families"])
+        and any(entry["family"] == "trajectory_metadata_csv" for entry in reduced_audit["families"])
+        and reduced_mode == "summary_only"
+    )
+    return {
+        "status": "available",
+        "baseline_manifest_path": str(baseline_manifest_path),
+        "reduced_manifest_path": str(reduced_manifest_path),
+        "missing_paths": [],
+        "validation_output_mode": reduced_mode,
+        "baseline_file_count": baseline_file_count,
+        "reduced_file_count": reduced_file_count,
+        "baseline_bytes": baseline_bytes,
+        "reduced_bytes": reduced_bytes,
+        "reduction_file_count_delta": baseline_file_count - reduced_file_count,
+        "reduction_bytes_delta": baseline_bytes - reduced_bytes,
+        "retained_output_classes": retained_output_classes,
+        "omitted_or_sampled_output_classes": omitted_or_sampled_output_classes,
+        "required_provenance_retained": required_provenance_retained,
+        "validation_output_reduced": (baseline_file_count > reduced_file_count)
+        or (baseline_bytes > reduced_bytes),
+        "baseline": baseline_audit,
+        "reduced": reduced_audit,
+    }
+
+
+def summarize_validation_output_manifest(manifest: dict[str, Any], manifest_path: Path) -> dict[str, Any]:
     outputs = require_list(manifest.get("outputs"), "validation_manifest.outputs")
     families: list[dict[str, Any]] = []
     total_file_count = 0
@@ -532,7 +691,7 @@ def summarize_validation_output_audit(manifest_path: Path | None) -> dict[str, A
     return {
         "status": "available",
         "manifest_path": str(manifest_path),
-        "reduced": False,
+        "validation_output_mode": manifest.get("validation_output_mode"),
         "family_count": len(families),
         "total_file_count": total_file_count,
         "total_bytes": total_bytes,
@@ -606,6 +765,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     feasibility = summary["ensemble_feasibility"]
     local = summary["local_output_audit"]
     validation_audit = summary["validation_output_audit"]
+    comparison = summary["validation_output_comparison"]
     savings = summary["measured_savings"]
     provenance = summary["provenance"]
 
@@ -687,6 +847,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
             f"- Status: `{validation_audit['status']}`",
             f"- Manifest path: `{validation_audit['manifest_path']}`",
             f"- Reduced: `{validation_audit['reduced']}`",
+            f"- Validation output mode: `{validation_audit.get('validation_output_mode')}`",
         ]
     )
     if validation_audit["status"] == "available":
@@ -712,6 +873,33 @@ def render_markdown(summary: dict[str, Any]) -> str:
             ]
         )
         lines.extend(f"- `{value}`" for value in validation_audit["required_for_audit"])
+    lines.extend(
+        [
+            "",
+            "## Validation Output Comparison",
+            "",
+            f"- Status: `{comparison['status']}`",
+            f"- Validation output mode: `{summary['validation_output_mode']}`",
+            f"- Baseline file count: `{summary['baseline_file_count']}`",
+            f"- Reduced file count: `{summary['reduced_file_count']}`",
+            f"- Baseline bytes: `{summary['baseline_bytes']}`",
+            f"- Reduced bytes: `{summary['reduced_bytes']}`",
+            f"- Reduction file-count delta: `{summary['reduction_file_count_delta']}`",
+            f"- Reduction byte delta: `{summary['reduction_bytes_delta']}`",
+            f"- Required provenance retained: `{summary['required_provenance_retained']}`",
+        ]
+    )
+    if comparison["status"] == "available":
+        lines.append("")
+        lines.append("Retained output classes:")
+        lines.extend(f"- `{item}`" for item in summary["retained_output_classes"])
+        lines.append("")
+        lines.append("Omitted or sampled output classes:")
+        lines.extend(f"- `{item}`" for item in summary["omitted_or_sampled_output_classes"])
+    elif comparison.get("missing_paths"):
+        lines.append("")
+        lines.append("Missing comparison inputs:")
+        lines.extend(f"- `{item}`" for item in comparison["missing_paths"])
     lines.extend(
         [
             "",

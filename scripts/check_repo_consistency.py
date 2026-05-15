@@ -51,6 +51,7 @@ KNOWN_OUTPUT_KEYS = {
     "trajectory_metadata_csv",
     "diagnostics_json",
     "manifest_json",
+    "validation_output_mode",
     "ensemble_deposition_csv",
     "ensemble_trajectories_dir",
     "ensemble_impact_events_dir",
@@ -2072,6 +2073,7 @@ def check_schema_docs() -> list[str]:
         "scarring_depth_source",
         "impact_events_csv",
         "impact_events_json",
+        "validation_output_mode",
         "ensemble_trajectories_dir",
         "ensemble_impact_events_dir",
         "ensemble_impact_events_parquet",
@@ -2108,6 +2110,7 @@ def check_schema_docs() -> list[str]:
         "hazard_reducer_chunk_manifest_v1",
         "normalization_convention",
         "conditioned_on_filter",
+        "summary_only",
         "kinetic_energy_exceedance_j",
         "jump_height_exceedance_m",
         "velocity_exceedance_mps",
@@ -2132,6 +2135,7 @@ def check_schema_docs() -> list[str]:
             "scarring_drag_coefficient",
             "scarring_layer_density_kgpm3",
             "scarring_max_depth_m",
+            "validation_output_mode",
         } and term not in benchmark:
             errors.append(f"docs/benchmark_case_schema.yaml omits {term}")
     return errors

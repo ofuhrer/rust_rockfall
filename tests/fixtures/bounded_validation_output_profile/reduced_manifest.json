@@ -1,0 +1,78 @@
+{
+  "schema_version": "run_manifest_v1",
+  "created_unix_s": 2,
+  "case_id": "bounded_validation_fixture",
+  "model_version": "0.1.0",
+  "completion_status": "passed",
+  "execution_status": "completed",
+  "scientific_status": "not_evaluated",
+  "validation_output_mode": "summary_only",
+  "seed_policy": {
+    "global_seed": 123,
+    "ensemble_size": 3,
+    "derivation": "fixture"
+  },
+  "terrain": {
+    "terrain_type": "plane"
+  },
+  "trajectory_metadata": {
+    "schema_version": "trajectory_metadata_table_v1",
+    "path": "reduced_trajectory_metadata.csv",
+    "row_count": 3,
+    "probability_model": "unweighted",
+    "probability_semantics": "sampling_weight_only",
+    "normalization_convention": "unweighted_current_outputs",
+    "total_sampling_weight": 3.0
+  },
+  "performance": {
+    "total_wall_seconds": 4.0,
+    "terrain_load_seconds": 1.0,
+    "release_generation_seconds": 0.0,
+    "simulation_seconds": 2.0,
+    "output_write_seconds": 1.0,
+    "hazard_layer_seconds": null,
+    "trajectory_count": 3,
+    "impact_event_count": 9,
+    "output_file_count": 4,
+    "output_bytes": 456
+  },
+  "outputs": [
+    {
+      "kind": "diagnostics",
+      "format": "json",
+      "path": "reduced_metrics.json",
+      "file_count": 1,
+      "total_bytes": 128,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "row_count": 2
+    },
+    {
+      "kind": "trajectory_metadata",
+      "format": "csv",
+      "path": "reduced_trajectory_metadata.csv",
+      "file_count": 1,
+      "total_bytes": 96,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "row_count": 3
+    },
+    {
+      "kind": "ensemble_deposition",
+      "format": "csv",
+      "path": "reduced_deposition.csv",
+      "file_count": 1,
+      "total_bytes": 144,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "row_count": 3
+    },
+    {
+      "kind": "stop_state",
+      "format": "csv",
+      "path": "reduced_deposition_stop_state.csv",
+      "file_count": 1,
+      "total_bytes": 88,
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "row_count": 3
+    }
+  ],
+  "warnings": []
+}

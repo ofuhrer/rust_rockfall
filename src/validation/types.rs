@@ -12,3 +12,4 @@ pub use super::{
     ReleasePoint, ReleaseZoneConfig, ScientificStatus, TerrainClassConfig,
     TerrainMaterialExposureRow, TrajectoryMetadataRow, ValidationError, ValidationScope,
 };
+pub use crate::manifest::ValidationOutputMode;

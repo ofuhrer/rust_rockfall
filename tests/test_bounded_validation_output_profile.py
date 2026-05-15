@@ -11,6 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "summarize_bounded_validation_output_profile.py"
+FIXTURE_DIR = ROOT / "tests" / "fixtures" / "bounded_validation_output_profile"
 SPEC = importlib.util.spec_from_file_location("summarize_bounded_validation_output_profile", SCRIPT_PATH)
 assert SPEC is not None
 summary_script = importlib.util.module_from_spec(SPEC)
@@ -144,6 +145,60 @@ class BoundedValidationOutputProfileTests(unittest.TestCase):
 
         self.assertEqual(audit["status"], "blocked_missing_outputs")
         self.assertFalse(audit["reduced"])
+
+    def test_validation_output_comparison_blocks_when_fixture_inputs_are_missing(self) -> None:
+        comparison = summary_script.summarize_validation_output_comparison(
+            baseline_manifest_path=None,
+            reduced_manifest_path=FIXTURE_DIR / "reduced_manifest.json",
+        )
+
+        self.assertEqual(comparison["status"], "blocked_missing_outputs")
+        self.assertFalse(comparison["validation_output_reduced"])
+        self.assertEqual(comparison["validation_output_mode"], None)
+        self.assertIn("baseline_validation_manifest", comparison["missing_paths"])
+
+    def test_validation_output_comparison_reports_before_after_accounting(self) -> None:
+        summary = summary_script.build_summary(
+            validation_output_baseline_manifest_path=FIXTURE_DIR / "baseline_manifest.json",
+            validation_output_reduced_manifest_path=FIXTURE_DIR / "reduced_manifest.json",
+        )
+
+        self.assertEqual(summary["validation_output_mode"], "summary_only")
+        self.assertTrue(summary["validation_output_reduced"])
+        self.assertEqual(summary["baseline_file_count"], 14)
+        self.assertEqual(summary["reduced_file_count"], 4)
+        self.assertEqual(summary["baseline_bytes"], 2848)
+        self.assertEqual(summary["reduced_bytes"], 456)
+        self.assertEqual(summary["reduction_file_count_delta"], 10)
+        self.assertEqual(summary["reduction_bytes_delta"], 2392)
+        self.assertEqual(
+            summary["retained_output_classes"],
+            [
+                "diagnostics_json",
+                "ensemble_deposition_csv",
+                "stop_state_summary_csv",
+                "trajectory_metadata_csv",
+            ],
+        )
+        self.assertEqual(
+            summary["omitted_or_sampled_output_classes"],
+            [
+                "ensemble_impact_events_dir",
+                "ensemble_impact_events_parquet",
+                "ensemble_trajectories_dir",
+                "impact_events_csv",
+                "impact_events_json",
+                "trajectory_csv",
+            ],
+        )
+        self.assertTrue(summary["required_provenance_retained"])
+        self.assertFalse(summary["defaults_changed"])
+        self.assertFalse(summary["scale_up_authorized"])
+        comparison = summary["validation_output_comparison"]
+        self.assertEqual(comparison["status"], "available")
+        self.assertEqual(comparison["validation_output_mode"], "summary_only")
+        self.assertEqual(comparison["baseline"]["family_count"], 10)
+        self.assertEqual(comparison["reduced"]["family_count"], 4)
 
     def test_markdown_mentions_missing_local_outputs_and_final_classification(self) -> None:
         markdown = summary_script.render_markdown(summary_script.build_summary())

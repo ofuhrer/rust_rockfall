@@ -22,8 +22,8 @@ use crate::{
         ShapeMetadataManifest, StopStateSummaryManifest, TerrainClassCoverageManifest,
         TerrainClassManifest, TerrainExtentManifest, TerrainManifest,
         TerrainMaterialExposureClassSummaryManifest, TerrainMaterialExposureSummaryManifest,
-        TrajectoryMetadataManifest, RUN_MANIFEST_SCHEMA_VERSION, STOP_STATE_SUMMARY_SCHEMA_VERSION,
-        TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION,
+        TrajectoryMetadataManifest, ValidationOutputMode, RUN_MANIFEST_SCHEMA_VERSION,
+        STOP_STATE_SUMMARY_SCHEMA_VERSION, TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION,
     },
     probabilistic::{
         MapPackageManifest, NormalizationScope, ProbabilisticMetadataError, ProbabilityMode,
@@ -362,6 +362,8 @@ pub struct OutputConfig {
     pub diagnostics_json: Option<PathBuf>,
     #[serde(default)]
     pub manifest_json: Option<PathBuf>,
+    #[serde(default)]
+    pub validation_output_mode: Option<ValidationOutputMode>,
     #[serde(default)]
     pub trajectory_csv: Option<PathBuf>,
     #[serde(default)]
@@ -1513,6 +1515,10 @@ fn file_output_manifest(
     })
 }
 
+fn validation_output_mode_is_summary_only(case: &BenchmarkCase) -> bool {
+    case.outputs.validation_output_mode == Some(ValidationOutputMode::SummaryOnly)
+}
+
 fn sha256_file(path: &Path) -> Result<String, ValidationError> {
     let mut file = File::open(path)?;
     let mut digest = Sha256::new();
@@ -1532,6 +1538,9 @@ fn warn_large_debug_outputs(
     expected_files: usize,
     warnings: &mut Vec<String>,
 ) {
+    if validation_output_mode_is_summary_only(case) {
+        return;
+    }
     if expected_files < OUTPUT_FILE_WARNING_THRESHOLD {
         return;
     }
@@ -1983,45 +1992,47 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
     }
     if case.observations.is_none() {
         warn_large_debug_outputs(case, ensemble_size, warnings);
-        if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
-            let output_started = Instant::now();
-            output_entries.push(write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?);
-            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-        }
-        if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
-            let output_started = Instant::now();
-            output_entries.push(write_ensemble_impact_events_dir(
-                dir,
-                &ensemble.trajectories,
-            )?);
-            if let Some(class_map) = terrain_class_map {
-                let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
-                output_entries.push(write_ensemble_impact_terrain_material_dir(
-                    &terrain_material_dir,
-                    &ensemble.trajectories,
-                    class_map,
-                )?);
+        if !validation_output_mode_is_summary_only(case) {
+            if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+                let output_started = Instant::now();
+                output_entries.push(write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?);
+                timing.output_write_seconds += output_started.elapsed().as_secs_f64();
             }
-            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-        }
-        if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
-            let output_started = Instant::now();
-            output_entries.push(write_ensemble_impact_events_parquet(
-                path,
-                &ensemble.trajectories,
-            )?);
-            if case.outputs.ensemble_impact_events_dir.is_none() {
+            if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+                let output_started = Instant::now();
+                output_entries.push(write_ensemble_impact_events_dir(
+                    dir,
+                    &ensemble.trajectories,
+                )?);
                 if let Some(class_map) = terrain_class_map {
-                    let terrain_material_dir =
-                        impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                    let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
                     output_entries.push(write_ensemble_impact_terrain_material_dir(
                         &terrain_material_dir,
                         &ensemble.trajectories,
                         class_map,
                     )?);
                 }
+                timing.output_write_seconds += output_started.elapsed().as_secs_f64();
             }
-            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+                let output_started = Instant::now();
+                output_entries.push(write_ensemble_impact_events_parquet(
+                    path,
+                    &ensemble.trajectories,
+                )?);
+                if case.outputs.ensemble_impact_events_dir.is_none() {
+                    if let Some(class_map) = terrain_class_map {
+                        let terrain_material_dir =
+                            impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                        output_entries.push(write_ensemble_impact_terrain_material_dir(
+                            &terrain_material_dir,
+                            &ensemble.trajectories,
+                            class_map,
+                        )?);
+                    }
+                }
+                timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            }
         }
     }
     let mut runouts = ensemble
@@ -2202,39 +2213,41 @@ fn compute_validation_ensemble_metrics(
             output_entries.push(exposure_output);
         }
     }
-    if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-    }
-    if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
-        if let Some(class_map) = terrain_class_map {
-            let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
-            output_entries.push(write_ensemble_impact_terrain_material_dir(
-                &terrain_material_dir,
-                &runs,
-                class_map,
-            )?);
+    if !validation_output_mode_is_summary_only(case) {
+        if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-    }
-    if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
-        if case.outputs.ensemble_impact_events_dir.is_none() {
+        if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
             if let Some(class_map) = terrain_class_map {
-                let terrain_material_dir =
-                    impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
                 output_entries.push(write_ensemble_impact_terrain_material_dir(
                     &terrain_material_dir,
                     &runs,
                     class_map,
                 )?);
             }
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
+            if case.outputs.ensemble_impact_events_dir.is_none() {
+                if let Some(class_map) = terrain_class_map {
+                    let terrain_material_dir =
+                        impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                    output_entries.push(write_ensemble_impact_terrain_material_dir(
+                        &terrain_material_dir,
+                        &runs,
+                        class_map,
+                    )?);
+                }
+            }
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        }
     }
 
     compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
@@ -2399,39 +2412,41 @@ fn compute_release_zone_metrics(
             output_entries.push(exposure_output);
         }
     }
-    if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-    }
-    if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
-        if let Some(class_map) = terrain_class_map {
-            let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
-            output_entries.push(write_ensemble_impact_terrain_material_dir(
-                &terrain_material_dir,
-                &runs,
-                class_map,
-            )?);
+    if !validation_output_mode_is_summary_only(case) {
+        if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-    }
-    if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
-        let output_started = Instant::now();
-        output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
-        if case.outputs.ensemble_impact_events_dir.is_none() {
+        if let Some(dir) = &case.outputs.ensemble_impact_events_dir {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_impact_events_dir(dir, &runs)?);
             if let Some(class_map) = terrain_class_map {
-                let terrain_material_dir =
-                    impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                let terrain_material_dir = impact_terrain_material_sidecar_dir(dir);
                 output_entries.push(write_ensemble_impact_terrain_material_dir(
                     &terrain_material_dir,
                     &runs,
                     class_map,
                 )?);
             }
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         }
-        timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        if let Some(path) = &case.outputs.ensemble_impact_events_parquet {
+            let output_started = Instant::now();
+            output_entries.push(write_ensemble_impact_events_parquet(path, &runs)?);
+            if case.outputs.ensemble_impact_events_dir.is_none() {
+                if let Some(class_map) = terrain_class_map {
+                    let terrain_material_dir =
+                        impact_terrain_material_sidecar_dir_for_parquet_path(path);
+                    output_entries.push(write_ensemble_impact_terrain_material_dir(
+                        &terrain_material_dir,
+                        &runs,
+                        class_map,
+                    )?);
+                }
+            }
+            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+        }
     }
 
     let mut runouts = runs

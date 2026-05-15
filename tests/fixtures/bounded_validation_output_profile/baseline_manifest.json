@@ -1,0 +1,136 @@
+{
+  "schema_version": "run_manifest_v1",
+  "created_unix_s": 1,
+  "case_id": "bounded_validation_fixture",
+  "model_version": "0.1.0",
+  "completion_status": "passed",
+  "execution_status": "completed",
+  "scientific_status": "not_evaluated",
+  "seed_policy": {
+    "global_seed": 123,
+    "ensemble_size": 3,
+    "derivation": "fixture"
+  },
+  "terrain": {
+    "terrain_type": "plane"
+  },
+  "trajectory_metadata": {
+    "schema_version": "trajectory_metadata_table_v1",
+    "path": "fixture_trajectory_metadata.csv",
+    "row_count": 3,
+    "probability_model": "unweighted",
+    "probability_semantics": "sampling_weight_only",
+    "normalization_convention": "unweighted_current_outputs",
+    "total_sampling_weight": 3.0
+  },
+  "performance": {
+    "total_wall_seconds": 10.0,
+    "terrain_load_seconds": 1.0,
+    "release_generation_seconds": 0.0,
+    "simulation_seconds": 4.0,
+    "output_write_seconds": 5.0,
+    "hazard_layer_seconds": null,
+    "trajectory_count": 3,
+    "impact_event_count": 9,
+    "output_file_count": 12,
+    "output_bytes": 2848
+  },
+  "outputs": [
+    {
+      "kind": "diagnostics",
+      "format": "json",
+      "path": "baseline_metrics.json",
+      "file_count": 1,
+      "total_bytes": 128,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "row_count": 2
+    },
+    {
+      "kind": "trajectory_metadata",
+      "format": "csv",
+      "path": "baseline_trajectory_metadata.csv",
+      "file_count": 1,
+      "total_bytes": 96,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "row_count": 3
+    },
+    {
+      "kind": "ensemble_deposition",
+      "format": "csv",
+      "path": "baseline_deposition.csv",
+      "file_count": 1,
+      "total_bytes": 144,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "row_count": 3
+    },
+    {
+      "kind": "stop_state",
+      "format": "csv",
+      "path": "baseline_deposition_stop_state.csv",
+      "file_count": 1,
+      "total_bytes": 88,
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "row_count": 3
+    },
+    {
+      "kind": "trajectory",
+      "format": "csv",
+      "path": "baseline_trajectory.csv",
+      "file_count": 1,
+      "total_bytes": 320,
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "row_count": 20
+    },
+    {
+      "kind": "impact_events",
+      "format": "csv",
+      "path": "baseline_impact_events.csv",
+      "file_count": 1,
+      "total_bytes": 200,
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "row_count": 5
+    },
+    {
+      "kind": "impact_events",
+      "format": "json",
+      "path": "baseline_impact_events.json",
+      "file_count": 1,
+      "total_bytes": 240,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "row_count": 5
+    },
+    {
+      "kind": "ensemble_trajectories",
+      "format": "csv_directory",
+      "path": "baseline_trajectories",
+      "file_count": 4,
+      "total_bytes": 640,
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "row_count": 80,
+      "skipped_empty_files": 0
+    },
+    {
+      "kind": "ensemble_impact_events",
+      "format": "csv_directory",
+      "path": "baseline_impacts",
+      "file_count": 2,
+      "total_bytes": 480,
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "row_count": 12,
+      "skipped_empty_files": 1
+    },
+    {
+      "kind": "ensemble_impact_events",
+      "format": "parquet",
+      "path": "baseline_impacts.parquet",
+      "file_count": 1,
+      "total_bytes": 512,
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "schema_version": "impact_events_table_v1",
+      "row_count": 12,
+      "compression": "uncompressed",
+      "row_group_count": 1
+    }
+  ],
+  "warnings": []
+}

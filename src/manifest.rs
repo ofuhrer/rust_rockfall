@@ -9,6 +9,12 @@ pub const STOP_STATE_SUMMARY_SCHEMA_VERSION: &str = "stop_state_summary_v3";
 pub const TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION: &str =
     "terrain_material_exposure_summary_v1";
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ValidationOutputMode {
+    SummaryOnly,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunManifest {
     pub schema_version: String,
@@ -41,6 +47,8 @@ pub struct RunManifest {
     pub stop_state_summary: Option<StopStateSummaryManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub terrain_material_exposure_summary: Option<TerrainMaterialExposureSummaryManifest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_output_mode: Option<ValidationOutputMode>,
     pub warnings: Vec<String>,
 }
 

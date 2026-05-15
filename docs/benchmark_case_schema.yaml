@@ -103,6 +103,7 @@ outputs:
   trajectory_metadata_csv: null
   diagnostics_json: verification/results/example.json
   manifest_json: verification/results/example_manifest.json
+  validation_output_mode: null
   ensemble_deposition_csv: null
   ensemble_trajectories_dir: null
   ensemble_impact_events_dir: null

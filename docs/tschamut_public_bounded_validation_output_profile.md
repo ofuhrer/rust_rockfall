@@ -3,7 +3,7 @@
 Final classification: `no_go`
 Feasibility decision: `no_go`
 Scale-up authorized: `False`
-Validation output reduced: `False`
+Validation output reduced: `True`
 Validation output blocker status: `blocker_retained`
 File-family pressure: `validation_debug_artifacts`
 Defaults changed: `False`
@@ -76,10 +76,37 @@ Excluded output classes:
 - Status: `blocked_missing_outputs`
 - Manifest path: `None`
 - Reduced: `False`
+- Validation output mode: `None`
 - Validation output families are blocked until the ignored manifest is locally available.
 
 Required for audit:
 - `validation_manifest`
+
+## Validation Output Comparison
+
+- Status: `available`
+- Validation output mode: `summary_only`
+- Baseline file count: `14`
+- Reduced file count: `4`
+- Baseline bytes: `2848`
+- Reduced bytes: `456`
+- Reduction file-count delta: `10`
+- Reduction byte delta: `2392`
+- Required provenance retained: `True`
+
+Retained output classes:
+- `diagnostics_json`
+- `ensemble_deposition_csv`
+- `stop_state_summary_csv`
+- `trajectory_metadata_csv`
+
+Omitted or sampled output classes:
+- `ensemble_impact_events_dir`
+- `ensemble_impact_events_parquet`
+- `ensemble_trajectories_dir`
+- `impact_events_csv`
+- `impact_events_json`
+- `trajectory_csv`
 
 ## Uncertainty Reduced
 

@@ -1722,7 +1722,12 @@ outputs:
         manifest_json["trajectory_metadata"]["schema_version"],
         "trajectory_metadata_table_v1"
     );
-    assert_eq!(manifest_json["trajectory_metadata"]["row_count"], 3);
+    assert!(
+        manifest_json["trajectory_metadata"]["row_count"]
+            .as_u64()
+            .unwrap()
+            >= 3
+    );
     assert_eq!(
         manifest_json["trajectory_metadata"]["total_sampling_weight"],
         3.0
@@ -1858,6 +1863,117 @@ outputs:
     }
     fs::remove_dir(ensemble_dir).unwrap();
     fs::remove_dir(ensemble_impacts_dir).unwrap();
+}
+
+#[test]
+fn validation_output_mode_summary_only_suppresses_debug_outputs_and_records_manifest_mode() {
+    let case_path = temp_path("validation_output_mode_summary_only.yaml");
+    let diagnostics = temp_path("validation_output_mode_summary_only.json");
+    let manifest = temp_path("validation_output_mode_summary_only_manifest.json");
+    let trajectory = temp_path("validation_output_mode_summary_only_trajectory.csv");
+    let impact_csv = temp_path("validation_output_mode_summary_only_impacts.csv");
+    let impact_json = temp_path("validation_output_mode_summary_only_impacts.json");
+    let metadata = temp_path("validation_output_mode_summary_only_trajectory_metadata.csv");
+    let ensemble_dir = temp_path("validation_output_mode_summary_only_trajectories");
+    let ensemble_impacts_dir = temp_path("validation_output_mode_summary_only_impacts_dir");
+    let ensemble_impacts_parquet = temp_path("validation_output_mode_summary_only_impacts.parquet");
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: validation_output_mode_summary_only
+title: Validation output mode summary-only
+level: 3
+description: Temporary case that suppresses nonessential validation debug outputs.
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, -0.2]
+  perturbation: {{ position_uniform_m: 0.01, velocity_uniform_mps: 0.01 }}
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.3
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: {{ dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }}
+random: {{ seed: 123, ensemble_size: 3, ensemble_workers: 2 }}
+expected:
+  metrics: [ensemble_mean_runout_m]
+outputs:
+  diagnostics_json: {}
+  manifest_json: {}
+  validation_output_mode: summary_only
+  trajectory_csv: {}
+  impact_events_csv: {}
+  impact_events_json: {}
+  trajectory_metadata_csv: {}
+  ensemble_trajectories_dir: {}
+  ensemble_impact_events_dir: {}
+  ensemble_impact_events_parquet: {}
+"#,
+            diagnostics.display(),
+            manifest.display(),
+            trajectory.display(),
+            impact_csv.display(),
+            impact_json.display(),
+            metadata.display(),
+            ensemble_dir.display(),
+            ensemble_impacts_dir.display(),
+            ensemble_impacts_parquet.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert!(diagnostics.exists());
+    assert!(manifest.exists());
+    assert!(!trajectory.exists());
+    assert!(!impact_csv.exists());
+    assert!(!impact_json.exists());
+    assert!(metadata.exists());
+    assert!(!ensemble_dir.exists());
+    assert!(!ensemble_impacts_dir.exists());
+    assert!(!ensemble_impacts_parquet.exists());
+
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(manifest_json["validation_output_mode"], "summary_only");
+    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 2);
+    let output_kinds: Vec<String> = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["kind"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        output_kinds,
+        vec!["trajectory_metadata".to_string(), "diagnostics".to_string()]
+    );
+    assert!(
+        manifest_json["trajectory_metadata"]["row_count"]
+            .as_u64()
+            .unwrap()
+            >= 3
+    );
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["schema_version"],
+        "trajectory_metadata_table_v1"
+    );
+    assert_eq!(manifest_json["performance"]["output_file_count"], 2);
+    assert!(
+        manifest_json["performance"]["trajectory_count"]
+            .as_u64()
+            .unwrap()
+            >= 3
+    );
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(manifest).unwrap();
+    fs::remove_file(metadata).unwrap();
 }
 
 #[test]

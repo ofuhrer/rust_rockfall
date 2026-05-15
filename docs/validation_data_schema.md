@@ -36,6 +36,7 @@ Required case fields:
 - optional `observations.release_points_csv`, `observations.deposition_points_csv`, `observations.trajectory_csv`, `observations.contact_events_csv`
 - `expected.metrics`, `expected.tolerances`
 - `outputs.trajectory_csv`, `outputs.diagnostics_json`, optional `outputs.manifest_json`, optional `outputs.trajectory_metadata_csv`, optional `outputs.ensemble_deposition_csv`
+- optional `outputs.validation_output_mode: summary_only` to suppress nonessential validation debug outputs while retaining diagnostics, manifest provenance, and summary-sidecar evidence
 - optional `outputs.ensemble_trajectories_dir` for one full trajectory CSV per ensemble member; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_dir` for one impact-event CSV per ensemble member when impacts occur; this is opt-in because it can be large
 - optional `outputs.ensemble_impact_events_parquet` for one batched `impact_events_table_v1` Parquet file containing all ensemble impact events; this is opt-in and can be written alongside or instead of the CSV directory
@@ -532,6 +533,11 @@ additive `run_manifest_v1` sidecar. The manifest records the case id, model
 version, git hash, config fingerprint, seed policy, terrain source, output file
 summaries, warnings, completion status, execution status, and scientific status.
 It does not replace diagnostics JSON or change pass/fail semantics. If
+`outputs.validation_output_mode: summary_only` is set, the manifest records the
+mode additively and validation suppresses nonessential trajectory and impact
+debug outputs while continuing to write diagnostics, manifest provenance, and
+summary outputs such as trajectory metadata or deposition summaries. Public
+defaults remain unchanged. If
 `terrain.metadata_path` is present, the
 manifest terrain section includes CRS/EPSG, vertical datum, LV95 extent,
 resolution, nodata, source dataset/product, source filename/URL, license,
