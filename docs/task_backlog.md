@@ -114,12 +114,12 @@ objective are:
    distributed execution stays deferred, and the dominant bottleneck is
    validation output size rather than hazard-reducer parallelism.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
-   for the same-scale artifacts. COG readiness is blocked by the current
-   strip-organized raster layout, missing overviews, and
-   `cloud_optimized: false` metadata, not by missing package manifests. A
-   scratch COG conversion proof has shown this is technically fixable, but no
-   ignored same-scale package has yet been regenerated and audited as
-   COG-ready.
+   for the same-scale artifacts. COG readiness is blocked for the committed
+   standard roots by the current strip-organized raster layout, missing
+   overviews, and `cloud_optimized: false` metadata, not by missing package
+   manifests. The ignored `gate_v1_cog_poc` package now audits as
+   COG-ready, proving the package-level path without changing the committed
+   roots.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
@@ -150,8 +150,6 @@ Underrepresented high-value work:
 - implementation of the hazard-rebuild-compatible reduced-output contract so a
   smaller retained-output profile actually rebuilds hazard layers, rather than
   only being specified;
-- regeneration of a same-scale GIS package into ignored COG-ready outputs so
-  the scratch COG proof becomes normal package evidence;
 - staging of minimal Chant Sura / Flüelapass public inputs so the second-site
   preflight moves from acquisition-manifest-ready to a more specific
   blocked-or-ready state;
@@ -160,8 +158,7 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-044 converts the proven COG path into an ignored package-level result.
-2. TB-045 advances Swiss-wide portability only after the diagnostic evidence
+1. TB-045 advances Swiss-wide portability only after the diagnostic evidence
    and output/product blockers are better controlled.
 
 ## Backlog Protocol
@@ -199,41 +196,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-044: Regenerate One Ignored Same-Scale GIS Package As COG-Ready
-
-Goal: move from the scratch COG proof of concept to an ignored same-scale GIS
-package whose audit reports COG-ready rasters and `cloud_optimized: true`
-metadata.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/prototype_cog_conversion.py`
-- `scripts/build_hazard_layers.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `hazard/results/tschamut_public_pilot/gate_v1/`
-
-Expected work:
-
-- regenerate or convert one bounded same-scale package under an ignored output
-  root;
-- ensure rasters are tiled, compressed, and carry overviews;
-- update package manifests for the regenerated package only so the audit can
-  report COG readiness.
-
-Definition of done:
-
-- the GIS/COG audit reports the regenerated ignored package as COG-ready;
-- the current committed/standard package state remains truthfully reported;
-- no generated rasters or large package outputs are committed.
-
-Boundaries:
-
-- no manual QGIS acceptance unless actually performed;
-- no scientific acceptance, scale-up, operational, annual-frequency, risk,
-  exposure, or vulnerability claims.
 
 ### TB-045: Stage Minimal Chant Sura Inputs For Preflight Progress
 

@@ -171,13 +171,17 @@ A bounded proof-of-concept conversion path is now available through
 `scripts/prototype_cog_conversion.py`. It converts one existing same-scale
 GeoTIFF to a scratch output path under `/tmp`, verifies the result with
 `gdalinfo`, and confirms the sample is tiled, has overviews, and reports a COG
-layout. This proves the blocker is technically fixable without changing the
-committed same-scale outputs, which still report `gis_package_ready_cog_blocked`
-until they are regenerated.
+layout.
 
-The GIS/COG audit now also accepts an explicit converted-sample path and will
-report `cog_conversion_sample_ready` for the scratch proof while keeping the
-current committed packages marked as COG-blocked.
+That proof now extends to an ignored same-scale package-level result at
+`hazard/results/tschamut_public_pilot/gate_v1_cog_poc`. The converted root
+audits as `cog_package_ready` with `cloud_optimized: true` metadata, while the
+committed same-scale outputs still truthfully report
+`gis_package_ready_cog_blocked`.
+
+The GIS/COG audit now also accepts explicit converted-sample paths and ignored
+converted package roots while keeping the current committed packages marked as
+COG-blocked.
 
 ## Second-Site Portability Preflight
 

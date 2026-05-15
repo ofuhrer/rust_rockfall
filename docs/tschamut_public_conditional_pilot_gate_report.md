@@ -428,6 +428,12 @@ to `/tmp`, and the GIS/COG audit can distinguish that converted sample as
 `cog_conversion_sample_ready` while the committed same-scale package roots
 remain `gis_package_ready_cog_blocked` until regenerated.
 
+That sample proof has now been extended to an ignored same-scale package root
+at `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`, which the GIS/COG
+audit reports as `cog_package_ready` with `cloud_optimized: true` metadata.
+This keeps the standard roots truthfully blocked while proving the package-
+level COG path on an ignored copy.
+
 ## Validation And Calibration Evidence Gaps
 
 `scripts/assess_validation_calibration_evidence_gaps.py` now summarizes the

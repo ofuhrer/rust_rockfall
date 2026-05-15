@@ -84,12 +84,20 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="optional scratch COG sample to verify alongside the package audit",
     )
+    parser.add_argument(
+        "--converted-package-root",
+        action="append",
+        type=Path,
+        dest="converted_package_roots",
+        help="optional ignored package root to audit as a COG-ready proof; may be repeated",
+    )
     args = parser.parse_args(argv)
 
     try:
         report = build_gis_cog_readiness_report(
             artifact_roots=args.artifact_roots,
             converted_sample_path=args.converted_sample,
+            converted_package_roots=args.converted_package_roots,
             raster_metadata_provider=inspect_raster_metadata,
         )
     except GisCogReadinessError as exc:
@@ -111,12 +119,15 @@ def build_gis_cog_readiness_report(
     artifact_roots: list[Path] | None = None,
     *,
     converted_sample_path: Path | None = None,
+    converted_package_roots: list[Path] | None = None,
     raster_metadata_provider: Callable[[Path], dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     roots = [Path(root) for root in (artifact_roots or DEFAULT_ARTIFACT_ROOTS)]
+    converted_roots = [Path(root) for root in (converted_package_roots or [])]
     provider = raster_metadata_provider or inspect_raster_metadata
     artifacts = [audit_artifact_root(root, provider) for root in roots]
     converted_sample = audit_converted_sample(converted_sample_path, provider)
+    converted_packages = [audit_artifact_root(root, provider, verify_all_geotiffs=True) for root in converted_roots]
 
     missing_any = any(
         artifact["manifest_completeness"]["map_package_manifest_missing_fields"]
@@ -145,11 +156,16 @@ def build_gis_cog_readiness_report(
         "converted_sample": converted_sample,
         "artifacts_audited": len(artifacts),
         "artifact_roots": [str(artifact["artifact_root"]) for artifact in artifacts],
+        "converted_package_roots": [str(artifact["artifact_root"]) for artifact in converted_packages],
         "hazard_manifest_paths": {artifact["artifact_id"]: artifact["hazard_manifest_path"] for artifact in artifacts},
         "map_package_manifest_paths": {artifact["artifact_id"]: artifact["map_package_manifest_path"] for artifact in artifacts},
         "pilot_gis_package_manifest_paths": {
             artifact["artifact_id"]: artifact["pilot_gis_package_manifest_path"] for artifact in artifacts
         },
+        "converted_package_status": {
+            artifact["artifact_id"]: artifact["cog_package_status"] for artifact in converted_packages
+        },
+        "converted_packages": converted_packages,
         "raster_layer_count": {artifact["artifact_id"]: artifact["raster_layer_count"] for artifact in artifacts},
         "crs_or_epsg": {artifact["artifact_id"]: artifact["crs_or_epsg"] for artifact in artifacts},
         "grid_dimensions": {artifact["artifact_id"]: artifact["grid_dimensions"] for artifact in artifacts},
@@ -260,6 +276,8 @@ def audit_converted_sample(
 def audit_artifact_root(
     root: Path,
     raster_metadata_provider: Callable[[Path], dict[str, Any] | None],
+    *,
+    verify_all_geotiffs: bool = False,
 ) -> dict[str, Any]:
     map_manifest_path, map_manifest_missing = discover_single_manifest(root, "*map_package_manifest*.json")
     pilot_manifest_path, pilot_manifest_missing = discover_single_manifest(root, "*pilot_gis_package_manifest*.json")
@@ -277,8 +295,28 @@ def audit_artifact_root(
     ]
     sample_raster = sample_raster_path(root, raster_outputs, pilot_manifest) if (map_manifest and pilot_manifest) else None
     sample_metadata = raster_metadata_provider(sample_raster) if sample_raster is not None else None
+    geotiff_checks = audit_declared_geotiffs(root, raster_outputs, raster_metadata_provider) if verify_all_geotiffs else []
 
     cog_readiness_indicators = summarize_cog_readiness(map_manifest, pilot_manifest, sample_raster, sample_metadata)
+    cog_readiness_indicators["declared_geotiff_checks"] = geotiff_checks
+    cog_readiness_indicators["declared_geotiff_count"] = sum(1 for output in raster_outputs if output.get("format") == "geotiff")
+    if verify_all_geotiffs:
+        cog_readiness_indicators["all_declared_geotiffs_cog_ready"] = bool(
+            geotiff_checks
+            and all(
+                check["status"] == "ok"
+                and check["sample_raster_cog_layout"]
+                and check["sample_raster_tiled"]
+                and check["sample_raster_overviews"]
+                for check in geotiff_checks
+            )
+        )
+    else:
+        cog_readiness_indicators["all_declared_geotiffs_cog_ready"] = (
+            cog_readiness_indicators["sample_raster_cog_layout"]
+            and cog_readiness_indicators["sample_raster_tiled"]
+            and cog_readiness_indicators["sample_raster_overviews"]
+        )
     blockers = list(
         summarize_blockers(
             [str(map_manifest_missing)] if map_manifest_missing else [],
@@ -287,6 +325,8 @@ def audit_artifact_root(
             cog_readiness_indicators,
         )
     )
+    if verify_all_geotiffs:
+        blockers.extend(declared_geotiff_blockers(geotiff_checks))
     manifest_completeness = {
         "map_package_manifest_complete": bool(map_manifest) and not missing_map_fields,
         "pilot_gis_package_manifest_complete": bool(pilot_manifest) and not missing_pilot_fields,
@@ -301,6 +341,13 @@ def audit_artifact_root(
     return {
         "artifact_id": artifact_id,
         "artifact_root": str(root),
+        "cog_package_status": determine_package_status(
+            blockers=blockers,
+            missing_any=bool(missing_map_fields or missing_pilot_fields or missing_raster_outputs),
+            gdal_missing=not cog_readiness_indicators.get("gdalinfo_available", False),
+            verify_all_geotiffs=verify_all_geotiffs,
+            all_declared_geotiffs_cog_ready=cog_readiness_indicators.get("all_declared_geotiffs_cog_ready", False),
+        ),
         "hazard_manifest_path": str(resolve_relative_path(root, first_item(map_manifest.get("hazard_manifest_paths")))) if map_manifest else None,
         "map_package_manifest_path": str(map_manifest_path) if map_manifest_path else None,
         "pilot_gis_package_manifest_path": str(pilot_manifest_path) if pilot_manifest_path else None,
@@ -336,6 +383,78 @@ def audit_artifact_root(
         },
         "blockers": blockers,
     }
+
+
+def audit_declared_geotiffs(
+    root: Path,
+    raster_outputs: list[dict[str, Any]],
+    raster_metadata_provider: Callable[[Path], dict[str, Any] | None],
+) -> list[dict[str, Any]]:
+    checks: list[dict[str, Any]] = []
+    for output in raster_outputs:
+        if output.get("format") != "geotiff":
+            continue
+        candidate = resolve_relative_path(root, output.get("path"))
+        metadata = raster_metadata_provider(candidate) if candidate.exists() else {"status": "missing_inputs"}
+        if metadata is None:
+            metadata = {"status": "missing_gdal"}
+        sample_raster_cog_layout = metadata.get("sample_raster_cog_layout")
+        if sample_raster_cog_layout is None:
+            sample_raster_cog_layout = metadata.get("image_structure", {}).get("LAYOUT") == "COG"
+        sample_raster_tiled = metadata.get("sample_raster_tiled")
+        if sample_raster_tiled is None:
+            sample_raster_tiled = bool(
+                metadata.get("block_size")
+                and isinstance(metadata.get("size"), list)
+                and len(metadata["size"]) == 2
+                and metadata["block_size"][0] < metadata["size"][0]
+                and metadata["block_size"][1] < metadata["size"][1]
+            )
+        sample_raster_overviews = metadata.get("sample_raster_overviews")
+        if sample_raster_overviews is None:
+            sample_raster_overviews = metadata.get("overview_count", 0) > 0
+        check = {
+            "layer_name": output.get("layer_name"),
+            "path": str(candidate),
+            "status": metadata.get("status") if metadata else "missing_inputs",
+            "sample_raster_tiled": bool(sample_raster_tiled),
+            "sample_raster_overviews": bool(sample_raster_overviews),
+            "sample_raster_cog_layout": bool(sample_raster_cog_layout),
+        }
+        checks.append(check)
+    return checks
+
+
+def declared_geotiff_blockers(geotiff_checks: list[dict[str, Any]]) -> list[str]:
+    blockers: list[str] = []
+    for check in geotiff_checks:
+        if check.get("status") != "ok":
+            blockers.append(f"declared_geotiff_unverified:{check.get('layer_name')}")
+            continue
+        if not check.get("sample_raster_tiled"):
+            blockers.append(f"declared_geotiff_not_tiled:{check.get('layer_name')}")
+        if not check.get("sample_raster_overviews"):
+            blockers.append(f"declared_geotiff_no_overviews:{check.get('layer_name')}")
+        if not check.get("sample_raster_cog_layout"):
+            blockers.append(f"declared_geotiff_not_cog_layout:{check.get('layer_name')}")
+    return blockers
+
+
+def determine_package_status(
+    *,
+    blockers: list[str],
+    missing_any: bool,
+    gdal_missing: bool,
+    verify_all_geotiffs: bool,
+    all_declared_geotiffs_cog_ready: bool,
+) -> str:
+    if missing_any:
+        return "blocked_missing_inputs"
+    if gdal_missing:
+        return "metadata_only"
+    if verify_all_geotiffs:
+        return "cog_package_ready" if all_declared_geotiffs_cog_ready and not blockers else "cog_package_poc_ready"
+    return "gis_package_ready" if not blockers else "gis_package_ready_cog_blocked"
 
 
 def summarize_qgis_status(artifacts: list[dict[str, Any]]) -> str:
@@ -533,6 +652,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  geotiff presence: {artifact['geotiff_presence']}")
         lines.append(f"  cog indicators: {artifact['cog_readiness_indicators']}")
         lines.append(f"  blockers: {artifact['blockers']}")
+    if report.get("converted_packages"):
+        for package in report["converted_packages"]:
+            lines.append("")
+            lines.append(f"* converted {package['artifact_id']}")
+            lines.append(f"  root: {package['artifact_root']}")
+            lines.append(f"  status: {package['cog_package_status']}")
+            lines.append(f"  manifest completeness: {package['manifest_completeness']}")
+            lines.append(f"  geotiff presence: {package['geotiff_presence']}")
+            lines.append(f"  cog indicators: {package['cog_readiness_indicators']}")
+            lines.append(f"  blockers: {package['blockers']}")
     if report.get("converted_sample"):
         lines.append("")
         lines.append(f"converted sample path: {report['converted_sample'].get('path')}")

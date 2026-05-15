@@ -5410,3 +5410,32 @@ Planning only; these milestones do not implement roadmap item content yet.
   plus a manifest for 6 files / 1,202,927 bytes total in the ignored reduced
   root; hazard builder proof wrote 63 files / 78,431,962 bytes to
   `/tmp/tb042_reduced_hazard`.
+
+- TB-044 ignored same-scale GIS package as COG-ready.
+- Files changed:
+  `scripts/convert_same_scale_package_to_cog.py`,
+  `scripts/audit_gis_cog_package_readiness.py`,
+  `tests/test_same_scale_cog_package_conversion.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`.
+- Evidence streams consumed: the current same-scale package manifests, the
+  scratch COG proof helper, and the GIS/COG audit helper.
+- Result: the ignored `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`
+  package audits as `cog_package_ready` with `cloud_optimized: true`
+  metadata, while the standard `gate_v1`, `target_gate_v1`,
+  `sampling_sensitivity_v1_full`, and `sampling_sensitivity_v2_full` package
+  roots still audit as `gis_package_ready_cog_blocked`.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/convert_same_scale_package_to_cog.py scripts/audit_gis_cog_package_readiness.py tests/test_same_scale_cog_package_conversion.py tests/test_gis_cog_package_readiness.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_cog_package_conversion tests.test_gis_cog_package_readiness`,
+  `PYENV_VERSION=system uv run python scripts/convert_same_scale_package_to_cog.py --help`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/convert_same_scale_package_to_cog.py --input-root hazard/results/tschamut_public_pilot/gate_v1 --output-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc --overwrite --format json`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format text --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc`,
+  `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`.
