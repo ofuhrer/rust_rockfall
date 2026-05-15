@@ -375,6 +375,29 @@ Supporting same-scale evidence remains reusable:
 - swissTLM3D corridor relevance: roads, barriers, and water are measured as `limiting`;
 - Balfrin single-job execution sufficiency: next-step single-job execution is sufficient, distributed execution remains deferred.
 
+## Conditional Pilot Closure Assessment
+
+Measured evidence is now summarized by
+`scripts/summarize_tschamut_conditional_pilot_closure.py`. The current derived
+closure status remains `inconclusive`, which is consistent with the measured
+mix of signals:
+
+- same-scale readiness is `ready`;
+- convergence remains `inconclusive` across the measured multi-seed envelope;
+- `max_kinetic_energy` remains the dominant disagreement layer;
+- `max_jump_height` retains support and nodata sensitivity;
+- the validation-output profile still carries a measured no-go blocker for
+  hazard-rebuild compatibility;
+- GIS packages are manifest-complete but COG-blocked;
+- the corridor-context interpretation remains `limiting`;
+- reducer/runtime scaling still supports the single-job path;
+- second-site portability remains metadata/template-level rather than ready.
+
+The helper keeps `scale_up_authorized: false` and
+`operational_claims_allowed: false` and separates the evidence needed for
+`accepted_diagnostic`, `no_go`, and `deferred` closure decisions from the
+current non-operational pilot state.
+
 ## Artifact Readiness Preflight
 
 Before rerunning convergence, output-profile, context, or uncertainty

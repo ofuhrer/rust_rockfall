@@ -5098,3 +5098,36 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Boundaries preserved: no physics changes, no parameter tuning, no scale-up
   authorization, no distributed execution authorization, and no operational,
   annual-frequency, risk, exposure, or vulnerability claims.
+
+### TB-035 Conditional Pilot Closure Criteria
+
+- Milestone id: TB-035.
+- Roadmap item: Conditional pilot closure criteria from measured evidence.
+- Hypothesis/objective: A reusable closure helper can synthesize the measured
+  same-scale convergence, output-profile, GIS/COG, context, runtime, and
+  second-site portability evidence into explicit accepted/no-go/deferred
+  criteria while preserving the current inconclusive closure status.
+- Files intended to change:
+  `scripts/summarize_tschamut_conditional_pilot_closure.py`,
+  `tests/test_tschamut_conditional_pilot_closure.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a read-only closure helper that composes the
+  existing readiness, uncertainty, output-profile, GIS/COG, reducer/runtime,
+  context, portability, and multisite-contract evidence into a compact closure
+  matrix with explicit accepted_diagnostic, no_go, and deferred requirement
+  sets. The helper derives the current closure status as inconclusive and
+  keeps scale-up and operational claims false.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_tschamut_conditional_pilot_closure.py tests/test_tschamut_conditional_pilot_closure.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_conditional_pilot_closure`,
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format json >/tmp/tb035_closure.json`,
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format text`,
+  `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: The closure helper is diagnostic only; it does not change
+  simulator physics, thresholds, release assumptions, or validation cases.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-036.

@@ -176,55 +176,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-035: Define Conditional Pilot Closure Criteria From Measured Evidence
-
-Goal: determine what evidence would be required to close the Tschamut
-conditional diagnostic pilot as `accepted_diagnostic`, `no_go`, or
-`deferred`, while preserving the current `inconclusive` classification unless
-the measured evidence already supports a stricter outcome.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_obstacle_context_scope.md`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/task_backlog.md`
-- `scripts/check_same_scale_artifact_readiness.py`
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-
-Expected work:
-
-- run the same-scale readiness preflight;
-- synthesize the measured uncertainty, context, output-profile, GIS/COG, and
-  runtime evidence into a small closure matrix;
-- add a reusable helper or report if useful, for example
-  `scripts/summarize_tschamut_conditional_pilot_closure.py`, with JSON/text
-  output;
-- update the gate report and backlog only as needed.
-
-Definition of done:
-
-- the closure criteria explicitly list required evidence for
-  `accepted_diagnostic`, `no_go`, and `deferred`;
-- the current pilot status is derived from measured inputs and remains
-  non-operational;
-- unresolved blockers are named as executable follow-up tasks, not vague
-  roadmap items;
-- checks include `git diff --check`,
-  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
-  and focused tests if a helper is added.
-
-Boundaries:
-
-- do not change simulator physics, thresholds, release assumptions, sampling
-  weights, or validation cases;
-- do not authorize scale-up, operational use, annual frequency, risk, exposure,
-  or vulnerability claims.
-
 ### TB-036: Prototype A Hazard-Rebuild-Compatible Reduced Output Profile
 
 Goal: address the measured TB-025 blocker where `summary_only` validation
