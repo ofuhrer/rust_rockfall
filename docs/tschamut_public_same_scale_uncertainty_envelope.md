@@ -23,6 +23,7 @@
 - Summary-only validation output bytes: `81425`
 - Reduction file count delta: `121`
 - Reduction byte delta: `34464475`
+- Target-side summary-only validation output pressure is now measured separately as `summary_only` with `4` files / `1271721` bytes versus `2005` files / `571368823` bytes baseline.
 
 ## Context
 - Status: `limiting`
@@ -42,6 +43,7 @@
 
 ## Remaining Uncertainty
 - validation debug-output pressure is still a scale-up blocker
+- target-side summary-only validation output pressure is measured, but the target-vs-gate interpretation remains inconclusive
 - corridor-level context remains interpretive evidence, not obstacle physics
 - distributed execution remains deferred on measured evidence
 

@@ -183,6 +183,7 @@ Interpretation boundaries remain unchanged:
 Supporting same-scale evidence remains reusable:
 
 - bounded validation output profile: `summary_only` with `4` files / `81425` bytes versus `125` files / `34545900` bytes baseline;
+- target-side summary-only validation output profile: `summary_only` with `4` files / `1271721` bytes versus `2005` files / `571368823` bytes baseline;
 - swissTLM3D corridor relevance: roads, barriers, and water are measured as `limiting`;
 - Balfrin single-job execution sufficiency: next-step single-job execution is sufficient, distributed execution remains deferred.
 

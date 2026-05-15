@@ -140,36 +140,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-020: Measure Target-Side Summary-Only Validation Output Profile
-
-Capability gap reduced: `summary_only` validation output has been measured on
-the same-scale gate path, but target-side output pressure remains unmeasured.
-
-Goal: run or audit the target-side validation path with the opt-in
-`outputs.validation_output_mode: summary_only` profile and compare file/byte
-counts against the target full-debug or recorded target output profile.
-
-Inspect first:
-
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `scripts/summarize_bounded_validation_output_profile.py`;
-- target-side validation manifests under ignored paths, if present locally.
-
-Required work:
-
-1. Do not change public defaults or baselines.
-2. Preserve required metrics, manifests, checksums, and provenance.
-3. Report baseline and reduced file counts, bytes, omitted output classes, and
-   retained provenance for the target-side path.
-4. If target artifacts remain absent, record exact missing inputs and commands.
-
-Definition of done:
-
-- target-side validation-output reduction is measured or explicitly blocked;
-- scale-up remains unauthorized;
-- checks pass.
-
 ### TB-021: Measure Hazard-Context Overlap For Limiting Corridor Features
 
 Capability gap reduced: TB-015 measured roads, barriers, and water as limiting

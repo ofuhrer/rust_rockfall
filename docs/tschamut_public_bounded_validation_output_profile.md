@@ -109,11 +109,84 @@ Omitted or sampled output classes:
 - `trajectory_csv`
 - `trajectory_metadata_csv`
 
+## Target-Side Validation Output Profile
+
+- `target_validation_output_profile_status`: `measured`
+- `validation_output_mode`: `summary_only`
+- `defaults_changed`: `false`
+- `blocked_reason`: `none`
+- `validation_output_blocker_status`: `blocker_retained`
+- `baseline_manifest_path`: `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `reduced_manifest_path`: `validation/private/tschamut_public_pilot/target_gate_v1_summary_only/validation_tschamut_public_target_gate_v1_summary_only_manifest.json`
+- `baseline_file_count`: `2005`
+- `baseline_bytes`: `571368823`
+- `reduced_file_count`: `4`
+- `reduced_bytes`: `1271721`
+- `reduction_file_count_delta`: `2001`
+- `reduction_bytes_delta`: `570097102`
+- `required_provenance_retained`: `true`
+- `target_convergence_interpretation`: `inconclusive`
+- `scale_up_authorized`: `false`
+- `operational_claims_allowed`: `false`
+
+Ignored-root inventory from `audit_local_artifacts.py`:
+
+- Full target validation root: `2716` files, `764598257` bytes
+- Target summary-only root: `6` files, `1286207` bytes
+
+Validation output audit for the full-debug target manifest:
+
+- Status: `available`
+- Manifest path: `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- Validation output mode: `None`
+- Family count: `7`
+- Total file count: `2005`
+- Total bytes: `571368823`
+
+Validation output families:
+
+- `diagnostics_json`: files=`1` bytes=`4009`
+- `ensemble_deposition_csv`: files=`1` bytes=`135123`
+- `ensemble_impact_events_dir`: files=`1000` bytes=`329167071`
+- `ensemble_stop_state_csv`: files=`1` bytes=`645663`
+- `ensemble_trajectories_dir`: files=`1000` bytes=`240699621`
+- `trajectory_csv`: files=`1` bytes=`244218`
+- `trajectory_metadata_csv`: files=`1` bytes=`473118`
+
+Reduced summary-only validation families:
+
+- `diagnostics_json`: files=`1` bytes=`3794`
+- `ensemble_deposition_csv`: files=`1` bytes=`8138`
+- `ensemble_stop_state_csv`: files=`1` bytes=`39667`
+- `trajectory_metadata_csv`: files=`1` bytes=`29826`
+
+Retained output classes in the summary-only target profile:
+
+- `diagnostics_json`
+- `ensemble_deposition_csv`
+- `ensemble_stop_state_csv`
+- `trajectory_metadata_csv`
+
+Omitted or sampled output classes in the summary-only target profile:
+
+- `ensemble_impact_events_dir`
+- `ensemble_trajectories_dir`
+- `trajectory_csv`
+
+Provenance retained:
+
+- `schema_version`: `run_manifest_v1`
+- `performance`
+- `trajectory_metadata`
+- `outputs`
+- `validation_output_mode: summary_only`
+
 ## Uncertainty Reduced
 
 - The selected profile controls are explicit: summary-only conditional curves, no grid CSV, no plots, and two local reducer workers.
 - Hazard-side output volume is bounded in the measured Balfrin reproduction record.
 - Validation-side file and byte pressure is now measured separately from hazard-side output volume.
+- Target-side summary-only validation output pressure is now measured separately from the same-scale gate path.
 - The output-budget gate now records the file-family pressure label validation_debug_artifacts.
 - Validation output families can be audited from a run manifest when the ignored manifest is locally available.
 
@@ -123,6 +196,7 @@ Omitted or sampled output classes:
 - Validation debug output is reduced for the supplied comparison manifests, but target-scale scale-up still requires accepted convergence and output-budget evidence.
 - Local ignored manifests are available for this audit, but generated outputs remain uncommitted and must be regenerated or staged on other checkouts.
 - Scale-up is not authorized by the selected output-budget gate.
+- The target-side summary-only profile remains diagnostic only and does not alter convergence interpretation.
 
 ## Provenance
 

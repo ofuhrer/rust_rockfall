@@ -4554,3 +4554,19 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The target-side restoration blocker is cleared for this comparison, but the measured convergence remains conservative rather than accepted. The next scientific work is to interpret the measured differences, not to relabel them as convergence.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-020.
+
+### TB-020
+
+- Milestone id: TB-020.
+- Roadmap item: Measure Target-Side Summary-Only Validation Output Profile.
+- Implementation summary: Staged a target-side `summary_only` validation case under `validation/private/tschamut_public_pilot/target_gate_v1_summary_only/`, ran the validation with `CARGO_TARGET_DIR=/tmp/rust-rockfall-target`, and measured the reduced validation output profile against the full target manifest. The full target manifest records `2005` files / `571368823` bytes across seven output families; the target summary-only manifest records `4` files / `1271721` bytes. The local ignored-root inventory reports `2716` files / `764598257` bytes for the full target subtree and `6` files / `1286207` bytes for the summary-only subtree. Required provenance is retained, defaults remain unchanged, scale-up remains unauthorized, and TB-019 convergence interpretation stays `inconclusive`.
+- Checks run:
+  `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1_summary_only/tschamut_public_target_gate_summary_only_case.yaml`
+  passed.
+  `PYENV_VERSION=system python3 scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/target_gate_v1 validation/private/tschamut_public_pilot/target_gate_v1_summary_only`
+  passed.
+  `PYENV_VERSION=system python3 scripts/summarize_bounded_validation_output_profile.py --validation-output-baseline-manifest validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --validation-output-reduced-manifest validation/private/tschamut_public_pilot/target_gate_v1_summary_only/validation_tschamut_public_target_gate_v1_summary_only_manifest.json --format json`
+  passed.
+- Reviewer notes: The target-side summary-only profile is now measured, but it remains diagnostic only and does not alter convergence, scale-up authorization, or operational claim boundaries.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-021.
