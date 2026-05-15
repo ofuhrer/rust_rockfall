@@ -4813,3 +4813,23 @@ Planning only; these milestones do not implement roadmap item content yet.
   passed.
   `scripts/git-hooks/pre-commit`
   passed.
+- Roadmap item: TB-026 hardened source-zone and block-scenario case regeneration.
+- Files changed: `scripts/generate_tschamut_same_scale_cases.py`,
+  `tests/test_tschamut_same_scale_case_generation.py`,
+  `docs/task_backlog.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`.
+- Evidence streams consumed: `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv`.
+- Classification: `ready`.
+- Uncertainty reduced: gate and target private case regeneration is now deterministic from committed records and processed public inputs.
+- Remaining uncertainty: none for the case-regeneration path itself; future work can use the helper to recreate ignored private cases without manual editing.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/generate_tschamut_same_scale_cases.py tests/test_tschamut_same_scale_case_generation.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_same_scale_case_generation`,
+  `PYENV_VERSION=system uv run python scripts/generate_tschamut_same_scale_cases.py --format json --dry-run`,
+  `PYENV_VERSION=system uv run python scripts/generate_tschamut_same_scale_cases.py --format json`.

@@ -40,6 +40,27 @@ git:
 - explicit grid: EPSG:2056/LN02 crop extent from the selected manifest,
   300 by 304 cells at 2 m.
 
+Same-scale private case regeneration is now deterministic from the committed
+frozen pilot records and processed public inputs:
+
+- regeneration command:
+  `PYENV_VERSION=system uv run python scripts/generate_tschamut_same_scale_cases.py --format json`
+- source records:
+  `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`,
+  `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`,
+  `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml`,
+  `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc`
+- deterministic selection rule: lexicographically smallest shared
+  release/deposition `trajectory_id` from the processed public rows; the
+  current pilot resolves to `v004`
+- preserved claim boundary: the regenerated cases stay research-diagnostic and
+  do not change physics, defaults, thresholds, or source-zone semantics
+
 ## Gate Evidence
 
 The processed DEM and terrain metadata remain ignored local products, but they

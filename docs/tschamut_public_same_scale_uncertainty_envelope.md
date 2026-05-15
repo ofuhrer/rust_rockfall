@@ -55,6 +55,16 @@
 - Status: `defer`
 - Decision: `defer`
 
+## Case Regeneration
+- Status: `ready`
+- The gate and target private case YAMLs can now be regenerated
+  deterministically from the committed frozen pilot records and processed
+  public input metadata via
+  `scripts/generate_tschamut_same_scale_cases.py`.
+- The helper is a readiness and regeneration aid, not a new acceptance gate.
+- It preserves the non-operational claim boundary and does not change
+  physics, defaults, thresholds, or source-zone semantics.
+
 ## Limiting Factors
 - `validation_output_pressure_retained`
 - `context_is_limiting`

@@ -163,40 +163,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-026: Harden Source-Zone And Block-Scenario Case Regeneration
-
-Capability gap reduced: target-side artifacts were restored locally, but the
-workflow still relied on reconstructing private case files from frozen records.
-Future Swiss public-data pilots need a clearer reproducible case-generation
-path from public processed inputs.
-
-Goal: add or improve a lightweight case-generation command that reconstructs
-same-scale Tschamut validation cases from frozen public input metadata,
-scenario tables, and source-zone metadata without hand-editing private YAML.
-
-Inspect first:
-
-- `scripts/validate_public_real_site_conditional_pilot_run.py`;
-- `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`;
-- restored gate and target private cases under ignored paths.
-
-Required work:
-
-1. Generate or validate case YAML from frozen records without changing model
-   settings.
-2. Keep generated private cases ignored unless tiny fixtures are needed for
-   tests.
-3. Add focused fixtures/tests for deterministic case generation.
-4. Preserve all non-operational and no-annual-frequency boundaries.
-
-Definition of done:
-
-- future workers can regenerate gate/target private cases from committed
-  records and processed public inputs;
-- focused tests cover deterministic output shape;
-- checks pass.
-
 ### TB-027: Add A Second-Site Public-Geodata Portability Preflight
 
 Capability gap reduced: the current workflow is still Tschamut-specific. The
