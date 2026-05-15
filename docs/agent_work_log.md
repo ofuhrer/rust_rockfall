@@ -3977,3 +3977,36 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The new diagnostic is cell-wise only when cellwise fixtures or emitted grids are present; manifest-only comparisons still behave as before.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-006.
+
+### TB-006
+
+- Milestone id: TB-006
+- Roadmap item: Reduce Or Justify Validation Debug Output For Pilot Runs.
+- Hypothesis/objective: The bounded-output summary can be made semantically
+  exact for `no_go` feasibility decisions and can expose an executable
+  validation-output family audit path that distinguishes manifest, trajectory,
+  impact, and sidecar classes without changing public defaults or baselines.
+- Files intended to change:
+  `scripts/summarize_bounded_validation_output_profile.py`,
+  `tests/test_bounded_validation_output_profile.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Fixed the bounded-output summary so `no_go`
+  feasibility decisions remain `no_go` in the final classification instead of
+  collapsing to only `inconclusive`. Added an executable validation-output
+  manifest audit path that can classify output families by file count and
+  bytes when a local manifest exists, while still reporting
+  `blocked_missing_outputs` in a clean checkout. Regenerated the committed
+  bounded-output report and removed TB-006 from the active backlog.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/summarize_bounded_validation_output_profile.py tests/test_bounded_validation_output_profile.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_bounded_validation_output_profile`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py --format json`
+  passed and reported `final_classification=no_go` with `validation_output_audit.status=blocked_missing_outputs`.
+- Reviewer notes: The implementation stays conditional and diagnostic only;
+  it does not reduce public defaults or authorize scale-up.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-007.

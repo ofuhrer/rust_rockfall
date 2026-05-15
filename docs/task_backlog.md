@@ -127,46 +127,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-006: Reduce Or Justify Validation Debug Output For Pilot Runs
-
-Capability gap reduced: validation-output volume remains the measured scale-up
-blocker.
-
-Goal: implement or exercise a concrete validation debug-output reduction path,
-or prove with a measured experiment why the retained validation artifacts are
-still necessary. This should move beyond summarizing the existing 2,005-file /
-571 MB validation-output pressure.
-
-Inspect first:
-
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `scripts/summarize_bounded_validation_output_profile.py`;
-- `tests/test_bounded_validation_output_profile.py`;
-- validation output-writing code;
-- `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`;
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
-
-Required work:
-
-1. Fix any semantic mismatch where a `no_go` feasibility decision is reported
-   as only `inconclusive` in the bounded-output summary.
-2. Add or exercise an opt-in selected-pilot validation output profile that
-   suppresses or samples nonessential debug artifacts without changing public
-   defaults or baselines.
-3. Measure before/after file count, byte count, inode/file-family pressure, and
-   retained provenance.
-4. If reduction is not feasible in one focused task, emit an executable
-   measurement that identifies the exact output classes causing the pressure.
-5. Do not authorize scale-up from this task alone.
-
-Definition of done:
-
-- a focused command or test demonstrates reduced validation output or a precise
-  class-by-class reason it remains blocked;
-- no public validation defaults or baselines change silently;
-- no generated large outputs are committed;
-- checks pass.
-
 ### TB-007: Acquire And Inspect Tschamut Public Context Cache
 
 Capability gap reduced: forest and obstacle context is blocked by missing

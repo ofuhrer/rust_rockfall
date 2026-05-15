@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,8 +23,14 @@ class BoundedValidationOutputProfileTests(unittest.TestCase):
         summary = summary_script.build_summary()
 
         self.assertEqual(summary["measurement_status"], "record_based_measurement")
-        self.assertEqual(summary["acceptance_classification"], "inconclusive")
+        self.assertEqual(summary["acceptance_classification"], "no_go")
+        self.assertEqual(summary["final_classification"], "no_go")
+        self.assertEqual(summary["feasibility_decision"], "no_go")
         self.assertFalse(summary["scale_up_authorized"])
+        self.assertFalse(summary["validation_output_reduced"])
+        self.assertEqual(summary["validation_output_blocker_status"], "blocker_retained")
+        self.assertEqual(summary["file_family_pressure"], "validation_debug_artifacts")
+        self.assertFalse(summary["defaults_changed"])
         self.assertEqual(summary["bounded_profile"]["profile"], "scalable_conditional")
         self.assertEqual(summary["bounded_profile"]["hazard_output_file_count"], 46)
         self.assertEqual(summary["bounded_profile"]["hazard_output_bytes"], 16613900)
@@ -46,6 +53,8 @@ class BoundedValidationOutputProfileTests(unittest.TestCase):
         self.assertEqual(summary["ensemble_feasibility"]["decision"], "no_go")
         self.assertEqual(summary["local_output_audit"]["status"], "blocked_missing_outputs")
         self.assertEqual(len(summary["local_output_audit"]["missing_paths"]), 4)
+        self.assertEqual(summary["validation_output_audit"]["status"], "blocked_missing_outputs")
+        self.assertEqual(summary["validation_output_audit"]["required_for_audit"], ["validation_manifest"])
 
     def test_tiny_tree_accounting_counts_files_and_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -60,10 +69,87 @@ class BoundedValidationOutputProfileTests(unittest.TestCase):
             self.assertEqual(summary["file_count"], 2)
             self.assertEqual(summary["total_bytes"], 12)
 
+    def test_validation_output_manifest_audit_breaks_down_file_families(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            trajectories = work / "run_trajectories"
+            impacts = work / "run_impacts"
+            trajectories.mkdir()
+            impacts.mkdir()
+
+            (trajectories / "trajectory_000000.csv").write_text("sample-a\n", encoding="utf-8")
+            (trajectories / "trajectory_000001.csv").write_text("sample-b\n", encoding="utf-8")
+            (impacts / "trajectory_000000.csv").write_text("impact-a\n", encoding="utf-8")
+
+            manifest = {
+                "schema_version": "run_manifest_v1",
+                "outputs": [
+                    {
+                        "kind": "ensemble_trajectories",
+                        "format": "csv_directory",
+                        "path": str(trajectories),
+                        "file_count": 2,
+                        "total_bytes": 16,
+                        "row_count": 2,
+                        "skipped_empty_files": 0,
+                        "sha256": "a" * 64,
+                    },
+                    {
+                        "kind": "ensemble_impact_events",
+                        "format": "csv_directory",
+                        "path": str(impacts),
+                        "file_count": 1,
+                        "total_bytes": 8,
+                        "row_count": 1,
+                        "skipped_empty_files": 1,
+                        "sha256": "b" * 64,
+                    },
+                    {
+                        "kind": "trajectory_metadata",
+                        "format": "csv",
+                        "path": str(work / "trajectory_metadata.csv"),
+                        "file_count": 1,
+                        "total_bytes": 7,
+                        "row_count": 1,
+                        "sha256": "c" * 64,
+                    },
+                    {
+                        "kind": "pilot_gis_package_manifest",
+                        "format": "json",
+                        "path": str(work / "pilot_gis_package_manifest.json"),
+                        "file_count": 1,
+                        "total_bytes": 11,
+                        "sha256": "d" * 64,
+                    },
+                ],
+            }
+            manifest_path = work / "validation_manifest.json"
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+            audit = summary_script.summarize_validation_output_audit(manifest_path)
+
+            self.assertEqual(audit["status"], "available")
+            self.assertEqual(audit["family_count"], 4)
+            self.assertEqual(audit["total_file_count"], 5)
+            self.assertEqual(audit["total_bytes"], 42)
+            families = {family["family"]: family for family in audit["families"]}
+            self.assertEqual(families["ensemble_trajectories_dir"]["file_count"], 2)
+            self.assertEqual(families["ensemble_trajectories_dir"]["total_bytes"], 16)
+            self.assertEqual(families["ensemble_impact_events_dir"]["file_count"], 1)
+            self.assertEqual(families["trajectory_metadata_csv"]["kind"], "trajectory_metadata")
+            self.assertEqual(families["pilot_gis_package_manifest_json"]["format"], "json")
+
+    def test_validation_output_manifest_audit_blocks_when_missing(self) -> None:
+        audit = summary_script.summarize_validation_output_audit(None)
+
+        self.assertEqual(audit["status"], "blocked_missing_outputs")
+        self.assertFalse(audit["reduced"])
+
     def test_markdown_mentions_missing_local_outputs_and_final_classification(self) -> None:
         markdown = summary_script.render_markdown(summary_script.build_summary())
 
-        self.assertIn("Final classification: `inconclusive`", markdown)
+        self.assertIn("Final classification: `no_go`", markdown)
+        self.assertIn("Feasibility decision: `no_go`", markdown)
         self.assertIn("Status: `blocked_missing_outputs`", markdown)
         self.assertIn("validation_debug_artifacts", markdown)
         self.assertIn("Hazard file-count delta: `-8`", markdown)
@@ -96,6 +182,7 @@ class BoundedValidationOutputProfileTests(unittest.TestCase):
         self.assertFalse(summary["bounded_profile"]["claim_boundary"]["generated_outputs_committed"])
         self.assertFalse(summary["output_budget_gate"]["scale_up_authorized"])
         self.assertEqual(summary["current_target_gate_profile"]["profile"], "custom_or_mixed_legacy_summary_only")
+        self.assertFalse(summary["defaults_changed"])
 
 
 if __name__ == "__main__":

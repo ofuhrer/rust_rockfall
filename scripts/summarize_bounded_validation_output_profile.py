@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-budget-record", type=Path, default=DEFAULT_OUTPUT_BUDGET_RECORD)
     parser.add_argument("--convergence-record", type=Path, default=DEFAULT_CONVERGENCE_RECORD)
     parser.add_argument("--ensemble-feasibility-record", type=Path, default=DEFAULT_ENSEMBLE_FEASIBILITY_RECORD)
+    parser.add_argument("--validation-output-manifest", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--format", choices=["text", "markdown", "json"], default="text")
@@ -56,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
             output_budget_record_path=args.output_budget_record,
             convergence_record_path=args.convergence_record,
             ensemble_feasibility_record_path=args.ensemble_feasibility_record,
+            validation_output_manifest_path=args.validation_output_manifest,
         )
     except BoundedValidationOutputProfileError as exc:
         print(f"bounded validation output profile error: {exc}", file=sys.stderr)
@@ -75,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(
             "bounded validation output profile summary: "
-            f"{summary['acceptance_classification']} "
+            f"{summary['final_classification']} "
             f"(profile={summary['bounded_profile']['profile']}, "
             f"hazard_files={summary['bounded_profile']['hazard_output_file_count']}, "
             f"hazard_bytes={summary['bounded_profile']['hazard_output_bytes']})"
@@ -90,6 +92,7 @@ def build_summary(
     output_budget_record_path: Path = DEFAULT_OUTPUT_BUDGET_RECORD,
     convergence_record_path: Path = DEFAULT_CONVERGENCE_RECORD,
     ensemble_feasibility_record_path: Path = DEFAULT_ENSEMBLE_FEASIBILITY_RECORD,
+    validation_output_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     current_pressure_record = read_yaml(require_existing_path(current_pressure_record_path, "current_pressure_record_path"))
     bounded_profile_record = read_yaml(require_existing_path(bounded_profile_record_path, "bounded_profile_record_path"))
@@ -251,6 +254,11 @@ def build_summary(
         ).get("notes", []),
     }
 
+    validation_output_audit = summarize_validation_output_audit(
+        validation_output_manifest_path
+        if validation_output_manifest_path is not None
+        else optional_existing_path(require_text(current_evidence.get("validation_manifest_path"), "current_pressure_record.run_evidence.validation_manifest_path"))
+    )
     local_output_audit = summarize_local_outputs(current_evidence)
 
     acceptance_classification = classify_acceptance(
@@ -267,7 +275,14 @@ def build_summary(
         "case_path": require_text(target_validation_run.get("case_path"), "target_gate_record.execution_evidence.validation_run.case_path"),
         "acceptance_classification": acceptance_classification,
         "final_classification": acceptance_classification,
+        "feasibility_decision": feasibility_decision,
         "scale_up_authorized": False,
+        "validation_output_reduced": bool(validation_output_audit.get("reduced")),
+        "validation_output_blocker_status": require_text(
+            validation_debug_budget.get("status"), "output_budget_record.output_profile.validation_debug_output_budget.status"
+        ),
+        "file_family_pressure": require_text(inode_budget.get("file_family_pressure"), "output_budget_record.inode_and_file_family_budget.file_family_pressure"),
+        "defaults_changed": bool(bounded_claim_boundary.get("changes_defaults")),
         "measurement_status": "record_based_measurement",
         "bounded_profile": {
             "record_path": str(bounded_profile_record_path),
@@ -314,6 +329,7 @@ def build_summary(
             "limitations": bounded_limitations,
         },
         "current_pressure": current_pressure,
+        "validation_output_audit": validation_output_audit,
         "current_target_gate_profile": {
             "record_path": str(output_budget_record_path),
             "profile": require_text(current_target_profile.get("profile"), "output_budget_record.output_profile.current_target_gate_profile.profile"),
@@ -411,6 +427,7 @@ def build_summary(
             "Hazard-side output volume is bounded in the measured Balfrin reproduction record.",
             "Validation-side file and byte pressure is now measured separately from hazard-side output volume.",
             "The output-budget gate now records the file-family pressure label validation_debug_artifacts.",
+            "Validation output families can be audited from a run manifest when the ignored manifest is locally available.",
         ],
         "remaining_unresolved": [
             "Conditional hazard-map convergence remains inconclusive.",
@@ -427,14 +444,16 @@ def build_summary(
 
 
 def classify_acceptance(*, convergence_status: str, output_budget_status: str, local_output_status: str, feasibility_decision: str) -> str:
+    if feasibility_decision == "no_go" and output_budget_status == "blocker_retained":
+        return "no_go"
+    if feasibility_decision == "no_go" or output_budget_status == "no_go":
+        return "no_go"
     if output_budget_status == "blocker_retained" or local_output_status == "blocked_missing_outputs":
         return "inconclusive"
-    if convergence_status == "inconclusive" or feasibility_decision == "no_go":
+    if convergence_status == "inconclusive":
         return "inconclusive"
-    if convergence_status == "pass" and output_budget_status == "complete" and local_output_status == "available" and feasibility_decision != "no_go":
+    if convergence_status == "pass" and output_budget_status == "complete" and local_output_status == "available":
         return "accepted_conditional_diagnostic_pilot"
-    if output_budget_status == "no_go" or feasibility_decision == "no_go":
-        return "no_go"
     return "inconclusive"
 
 
@@ -467,6 +486,92 @@ def summarize_local_outputs(run_evidence: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_validation_output_audit(manifest_path: Path | None) -> dict[str, Any]:
+    if manifest_path is None:
+        return {
+            "status": "blocked_missing_outputs",
+            "manifest_path": None,
+            "required_for_audit": ["validation_manifest"],
+            "families": [],
+            "reduced": False,
+        }
+    if not manifest_path.exists():
+        return {
+            "status": "blocked_missing_outputs",
+            "manifest_path": str(manifest_path),
+            "required_for_audit": ["validation_manifest"],
+            "families": [],
+            "reduced": False,
+        }
+    manifest = read_json(manifest_path)
+    outputs = require_list(manifest.get("outputs"), "validation_manifest.outputs")
+    families: list[dict[str, Any]] = []
+    total_file_count = 0
+    total_bytes = 0
+    for output in outputs:
+        entry = require_mapping(output, "validation_manifest.output")
+        family = classify_validation_output_family(entry)
+        file_count = require_positive_int(entry.get("file_count"), f"validation_manifest.outputs[{family}].file_count")
+        total = require_positive_int(entry.get("total_bytes"), f"validation_manifest.outputs[{family}].total_bytes")
+        families.append(
+            {
+                "family": family,
+                "kind": require_text(entry.get("kind"), "validation_manifest.output.kind"),
+                "format": require_text(entry.get("format"), "validation_manifest.output.format"),
+                "path": require_text(entry.get("path"), "validation_manifest.output.path"),
+                "file_count": file_count,
+                "total_bytes": total,
+                "row_count": entry.get("row_count"),
+                "skipped_empty_files": entry.get("skipped_empty_files"),
+                "sha256": entry.get("sha256"),
+            }
+        )
+        total_file_count += file_count
+        total_bytes += total
+    families.sort(key=lambda item: item["family"])
+    return {
+        "status": "available",
+        "manifest_path": str(manifest_path),
+        "reduced": False,
+        "family_count": len(families),
+        "total_file_count": total_file_count,
+        "total_bytes": total_bytes,
+        "families": families,
+    }
+
+
+def classify_validation_output_family(entry: dict[str, Any]) -> str:
+    kind = require_text(entry.get("kind"), "validation_manifest.output.kind")
+    format_name = require_text(entry.get("format"), "validation_manifest.output.format")
+    if kind == "ensemble_trajectories":
+        return "ensemble_trajectories_dir"
+    if kind == "ensemble_impact_events" and format_name == "csv_directory":
+        return "ensemble_impact_events_dir"
+    if kind == "ensemble_impact_events" and format_name == "parquet":
+        return "ensemble_impact_events_parquet"
+    if kind == "ensemble_impact_terrain_material" and format_name == "csv_directory":
+        return "ensemble_impact_terrain_material_dir"
+    if kind == "trajectory_metadata":
+        return "trajectory_metadata_csv"
+    if kind == "ensemble_deposition":
+        return "ensemble_deposition_csv"
+    if kind == "release_zone_deposition":
+        return "release_zone_deposition_csv"
+    if kind == "stop_state":
+        return "stop_state_summary_csv"
+    if kind == "terrain_material_exposure":
+        return "terrain_material_exposure_csv"
+    if kind == "manifest":
+        return "manifest_json"
+    if kind == "map_package_manifest":
+        return "map_package_manifest_json"
+    if kind == "pilot_gis_package_manifest":
+        return "pilot_gis_package_manifest_json"
+    if kind == "diagnostics":
+        return f"{kind}_{format_name}"
+    return f"{kind}_{format_name}"
+
+
 def summarize_tree(path: Path) -> dict[str, Any]:
     file_count = 0
     total_bytes = 0
@@ -478,6 +583,21 @@ def summarize_tree(path: Path) -> dict[str, Any]:
     return {"path": str(path), "file_count": file_count, "total_bytes": total_bytes}
 
 
+def read_json(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 - keep path context.
+        raise BoundedValidationOutputProfileError(f"failed to read JSON {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise BoundedValidationOutputProfileError(f"JSON document must be an object: {path}")
+    return data
+
+
+def optional_existing_path(path: Path | str) -> Path | None:
+    candidate = Path(path)
+    return candidate if candidate.exists() else None
+
+
 def render_markdown(summary: dict[str, Any]) -> str:
     bounded = summary["bounded_profile"]
     current = summary["current_pressure"]
@@ -485,14 +605,20 @@ def render_markdown(summary: dict[str, Any]) -> str:
     convergence = summary["convergence"]
     feasibility = summary["ensemble_feasibility"]
     local = summary["local_output_audit"]
+    validation_audit = summary["validation_output_audit"]
     savings = summary["measured_savings"]
     provenance = summary["provenance"]
 
     lines = [
         "# Bounded Validation Output Profile Summary",
         "",
-        f"Final classification: `{summary['acceptance_classification']}`",
+        f"Final classification: `{summary['final_classification']}`",
+        f"Feasibility decision: `{summary['feasibility_decision']}`",
         f"Scale-up authorized: `{summary['scale_up_authorized']}`",
+        f"Validation output reduced: `{summary['validation_output_reduced']}`",
+        f"Validation output blocker status: `{summary['validation_output_blocker_status']}`",
+        f"File-family pressure: `{summary['file_family_pressure']}`",
+        f"Defaults changed: `{summary['defaults_changed']}`",
         f"Local output audit: `{local['status']}`",
         "",
         "## Bounded Profile",
@@ -553,6 +679,39 @@ def render_markdown(summary: dict[str, Any]) -> str:
     )
     if local["missing_paths"]:
         lines.extend(f"- Missing path: `{path}`" for path in local["missing_paths"])
+    lines.extend(
+        [
+            "",
+            "## Validation Output Audit",
+            "",
+            f"- Status: `{validation_audit['status']}`",
+            f"- Manifest path: `{validation_audit['manifest_path']}`",
+            f"- Reduced: `{validation_audit['reduced']}`",
+        ]
+    )
+    if validation_audit["status"] == "available":
+        lines.extend(
+            [
+                f"- Family count: `{validation_audit['family_count']}`",
+                f"- Total file count: `{validation_audit['total_file_count']}`",
+                f"- Total bytes: `{validation_audit['total_bytes']}`",
+                "",
+                "Validation output families:",
+            ]
+        )
+        for family in validation_audit["families"]:
+            lines.append(
+                f"- `{family['family']}`: files=`{family['file_count']}` bytes=`{family['total_bytes']}` kind=`{family['kind']}` format=`{family['format']}`"
+            )
+    else:
+        lines.extend(
+            [
+                "- Validation output families are blocked until the ignored manifest is locally available.",
+                "",
+                "Required for audit:",
+            ]
+        )
+        lines.extend(f"- `{value}`" for value in validation_audit["required_for_audit"])
     lines.extend(
         [
             "",

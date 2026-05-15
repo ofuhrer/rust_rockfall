@@ -1,7 +1,12 @@
 # Bounded Validation Output Profile Summary
 
-Final classification: `inconclusive`
+Final classification: `no_go`
+Feasibility decision: `no_go`
 Scale-up authorized: `False`
+Validation output reduced: `False`
+Validation output blocker status: `blocker_retained`
+File-family pressure: `validation_debug_artifacts`
+Defaults changed: `False`
 Local output audit: `blocked_missing_outputs`
 
 ## Bounded Profile
@@ -66,12 +71,23 @@ Excluded output classes:
 - Missing path: `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json`
 - Missing path: `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json`
 
+## Validation Output Audit
+
+- Status: `blocked_missing_outputs`
+- Manifest path: `None`
+- Reduced: `False`
+- Validation output families are blocked until the ignored manifest is locally available.
+
+Required for audit:
+- `validation_manifest`
+
 ## Uncertainty Reduced
 
 - The selected profile controls are explicit: summary-only conditional curves, no grid CSV, no plots, and two local reducer workers.
 - Hazard-side output volume is bounded in the measured Balfrin reproduction record.
 - Validation-side file and byte pressure is now measured separately from hazard-side output volume.
 - The output-budget gate now records the file-family pressure label validation_debug_artifacts.
+- Validation output families can be audited from a run manifest when the ignored manifest is locally available.
 
 ## Remaining Unresolved
 
