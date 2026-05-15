@@ -639,8 +639,10 @@ def compare_cellwise_layer(reference: CellwiseLayer, candidate: CellwiseLayer) -
             }
         )
 
+    layer_name = reference.layer_key
     return {
-        "layer_key": reference.layer_key,
+        "layer_key": layer_name,
+        "layer_name": layer_name,
         "grid_shape": {
             "reference_nrows": reference_rows,
             "reference_ncols": reference_cols,
@@ -648,12 +650,21 @@ def compare_cellwise_layer(reference: CellwiseLayer, candidate: CellwiseLayer) -
             "compare_ncols": candidate_cols,
             "shape_match": reference_rows == candidate_rows and reference_cols == candidate_cols,
         },
+        "linf_abs_diff": linf_abs_diff,
+        "l1_abs_diff": l1_abs_diff,
+        "rmse": rmse,
+        "compared_cell_count": compared_cell_count,
         "value_metrics": {
             "linf_abs_diff": linf_abs_diff,
             "l1_abs_diff": l1_abs_diff,
             "rmse": rmse,
             "compared_cell_count": compared_cell_count,
         },
+        "reference_nonzero_cell_count": reference_nonzero_count,
+        "compare_nonzero_cell_count": compare_nonzero_count,
+        "nonzero_overlap_count": nonzero_overlap_count,
+        "nonzero_union_count": nonzero_union_count,
+        "nonzero_jaccard": nonzero_jaccard,
         "nonzero_metrics": {
             "reference_nonzero_cell_count": reference_nonzero_count,
             "compare_nonzero_cell_count": compare_nonzero_count,
@@ -661,7 +672,13 @@ def compare_cellwise_layer(reference: CellwiseLayer, candidate: CellwiseLayer) -
             "nonzero_union_count": nonzero_union_count,
             "nonzero_jaccard": nonzero_jaccard,
         },
+        "threshold_exceedance_disagreement_count": sum(
+            int(entry["disagreement_cell_count"]) for entry in threshold_disagreement_metrics
+        ),
         "threshold_exceedance_disagreement": threshold_disagreement_metrics,
+        "reference_missing_cell_count": reference_missing_cell_count,
+        "compare_missing_cell_count": compare_missing_cell_count,
+        "nodata_mismatch_count": nodata_mismatch_count,
         "missing_cell_metrics": {
             "reference_missing_cell_count": reference_missing_cell_count,
             "compare_missing_cell_count": compare_missing_cell_count,
@@ -725,10 +742,12 @@ def aggregate_cellwise_layer_metrics(layer_comparisons: list[dict[str, Any]]) ->
 
 
 def cellwise_layer_index(resolved: ResolvedManifest) -> dict[str, CellwiseLayer]:
-    layers = resolved.manifest.get("cellwise_layers")
-    if not layers:
+    layer_entries = resolved.manifest.get("cellwise_layers")
+    if not layer_entries:
+        layer_entries = infer_cellwise_layers_from_outputs(resolved)
+    if not layer_entries:
         return {}
-    if not isinstance(layers, list):
+    if not isinstance(layer_entries, list):
         raise HazardMapConvergenceInputError(
             BLOCKED_INVALID_INPUTS,
             "cellwise_layers must be a list of layer definitions",
@@ -736,10 +755,10 @@ def cellwise_layer_index(resolved: ResolvedManifest) -> dict[str, CellwiseLayer]
         )
 
     index: dict[str, CellwiseLayer] = {}
-    for entry in layers:
+    for entry in layer_entries:
         if not isinstance(entry, dict):
             continue
-        layer_key = entry.get("key")
+        layer_key = entry.get("key") or entry.get("layer_name")
         grid_path_value = entry.get("grid_path") or entry.get("path")
         if not isinstance(layer_key, str) or not layer_key:
             raise HazardMapConvergenceInputError(
@@ -771,6 +790,8 @@ def cellwise_layer_index(resolved: ResolvedManifest) -> dict[str, CellwiseLayer]
                 f"cellwise layer {layer_key} thresholds must be a number or list of numbers",
                 requested_path=resolved.requested_path,
             )
+        if not thresholds:
+            thresholds = infer_thresholds_from_layer_key(layer_key)
         grid, nodata_value = load_cell_grid(grid_path)
         index[layer_key] = CellwiseLayer(
             layer_key=layer_key,
@@ -787,6 +808,70 @@ def cellwise_layer_index(resolved: ResolvedManifest) -> dict[str, CellwiseLayer]
             requested_path=resolved.requested_path,
         )
     return index
+
+
+def infer_cellwise_layers_from_outputs(resolved: ResolvedManifest) -> list[dict[str, Any]]:
+    outputs = resolved.manifest.get("outputs")
+    if not isinstance(outputs, list):
+        return []
+    cellwise_layers: list[dict[str, Any]] = []
+    for output in outputs:
+        if not isinstance(output, dict):
+            continue
+        if output.get("kind") != "hazard_layer":
+            continue
+        if output.get("format") != "esri_ascii_grid":
+            continue
+        layer_name = output.get("layer_name")
+        path_value = output.get("path")
+        if not isinstance(layer_name, str) or not layer_name:
+            continue
+        if not isinstance(path_value, str) or not path_value:
+            continue
+        grid_path = Path(path_value)
+        if not grid_path.is_absolute():
+            grid_path = (resolved.manifest_path.parent / grid_path).resolve()
+        if not grid_path.exists():
+            continue
+        cellwise_layers.append(
+            {
+                "key": layer_name,
+                "grid_path": path_value,
+                "thresholds": list(infer_thresholds_from_layer_key(layer_name)),
+                "source": "outputs",
+            }
+        )
+    return cellwise_layers
+
+
+def infer_thresholds_from_layer_key(layer_key: str) -> tuple[float, ...]:
+    parsed = parse_exceedance_layer_key(layer_key)
+    if parsed is None:
+        return ()
+    return (parsed[1],)
+
+
+def parse_exceedance_layer_key(layer_key: str) -> tuple[str, float, str, bool] | None:
+    if layer_key.endswith("_standard_error"):
+        return None
+    specs = (
+        ("weighted_kinetic_energy_exceedance_", "kinetic_energy", "J", "j", True),
+        ("kinetic_energy_exceedance_", "kinetic_energy", "J", "j", False),
+        ("weighted_jump_height_exceedance_", "jump_height", "m", "m", True),
+        ("jump_height_exceedance_", "jump_height", "m", "m", False),
+        ("weighted_velocity_exceedance_", "velocity", "m/s", "mps", True),
+        ("velocity_exceedance_", "velocity", "m/s", "mps", False),
+    )
+    for prefix, measure, units, suffix, weighted in specs:
+        if layer_key.startswith(prefix) and layer_key.endswith(suffix):
+            raw = layer_key[len(prefix) : -len(suffix)]
+            threshold_text = raw.replace("neg_", "-").replace("p", ".")
+            try:
+                threshold = float(threshold_text)
+            except ValueError:
+                return None
+            return measure, threshold, units, weighted
+    return None
 
 
 def load_cell_grid(path: Path) -> tuple[list[list[float | None]], float | None]:

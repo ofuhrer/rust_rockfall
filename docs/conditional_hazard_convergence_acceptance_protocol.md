@@ -117,3 +117,22 @@ nonzero overlap/Jaccard, threshold-exceedance disagreement, and nodata
 mismatch counts. This remains convergence evidence only, not operational
 validation, and pilot acceptance still depends on running or feeding the
 relevant selected-pilot outputs.
+
+Normal hazard manifests now also emit a `cellwise_layers` projection from the
+ASCII grid outputs, so the convergence tool can compare emitted hazard layers
+without a separate hand-written fixture manifest. If the selected Tschamut
+ignored outputs are absent in the checkout, the comparison stays explicitly
+`blocked_missing_inputs` and the accepted state remains conditional. The
+expected selected-pilot inputs are:
+
+- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+
+Run:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  --format json
+```

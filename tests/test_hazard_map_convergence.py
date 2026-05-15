@@ -7,6 +7,9 @@ import unittest
 import sys
 from pathlib import Path
 
+import scripts.build_hazard_layers as hazard
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "compare_hazard_map_convergence.py"
@@ -139,11 +142,25 @@ class HazardMapConvergenceTests(unittest.TestCase):
         self.assertEqual(
             sorted(reach.keys()),
             [
+                "compare_missing_cell_count",
+                "compare_nonzero_cell_count",
+                "compared_cell_count",
                 "grid_shape",
+                "l1_abs_diff",
                 "layer_key",
+                "layer_name",
+                "linf_abs_diff",
                 "missing_cell_metrics",
+                "nodata_mismatch_count",
+                "nonzero_jaccard",
                 "nonzero_metrics",
+                "nonzero_overlap_count",
+                "nonzero_union_count",
+                "reference_missing_cell_count",
+                "reference_nonzero_cell_count",
+                "rmse",
                 "threshold_exceedance_disagreement",
+                "threshold_exceedance_disagreement_count",
                 "value_metrics",
             ],
         )
@@ -203,6 +220,104 @@ class HazardMapConvergenceTests(unittest.TestCase):
             str((work / "cellwise/reference/missing_reach_probability.asc").resolve()),
         )
         self.assertIn("cellwise grid file does not exist", result["missing_inputs"][0]["reason"])
+
+    def test_emitted_hazard_manifest_cellwise_paths_feed_convergence_comparison(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml.safe_load((ROOT / "tests" / "fixtures" / "hazard" / "plane_case.yaml").read_text())
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(ROOT / "validation" / "data" / "processed" / "swisstopo_pilot" / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(
+                    ROOT / "validation" / "data" / "processed" / "swisstopo_pilot" / "swissalti3d_pilot_metadata.yaml"
+                ),
+            }
+            case_path = work / "plane_case.yaml"
+            case_path.write_text(yaml.safe_dump(case, sort_keys=False), encoding="utf-8")
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(ROOT / "tests" / "fixtures" / "hazard" / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                    "--kinetic-energy-exceedance-j",
+                    "5.0",
+                    "--jump-height-exceedance-m",
+                    "0.25",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            manifest_path = output_dir / "hazard_fixture_plane_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            self.assertTrue(manifest["cellwise_layers"])
+            self.assertTrue(all(entry["grid_path"].endswith(".asc") for entry in manifest["cellwise_layers"]))
+
+            stripped_manifest_path = work / "hazard_fixture_plane_manifest_without_cellwise.json"
+            stripped_manifest = dict(manifest)
+            stripped_manifest.pop("cellwise_layers", None)
+            stripped_manifest_path.write_text(json.dumps(stripped_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            result = diagnostic.compare_hazard_map_convergence([stripped_manifest_path, stripped_manifest_path])
+
+            self.assertEqual(result["status"], diagnostic.OK_STATUS)
+            self.assertIsNotNone(result["comparisons"][0]["cellwise_metrics"])
+            reach = next(
+                layer
+                for layer in result["comparisons"][0]["cellwise_metrics"]["layer_comparisons"]
+                if layer["layer_name"] == "reach_probability"
+            )
+            self.assertEqual(reach["layer_key"], "reach_probability")
+            self.assertIn("linf_abs_diff", reach)
+            self.assertIn("nonzero_jaccard", reach)
+
+    def test_emitted_hazard_manifest_missing_cellwise_grid_is_reported_as_blocked_missing_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml.safe_load((ROOT / "tests" / "fixtures" / "hazard" / "plane_case.yaml").read_text())
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(ROOT / "validation" / "data" / "processed" / "swisstopo_pilot" / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(
+                    ROOT / "validation" / "data" / "processed" / "swisstopo_pilot" / "swissalti3d_pilot_metadata.yaml"
+                ),
+            }
+            case_path = work / "plane_case.yaml"
+            case_path.write_text(yaml.safe_dump(case, sort_keys=False), encoding="utf-8")
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(ROOT / "tests" / "fixtures" / "hazard" / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            missing_manifest_path = work / "hazard_fixture_plane_manifest_missing_grid.json"
+            manifest["cellwise_layers"][0]["grid_path"] = "missing/reach_probability.asc"
+            missing_manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            result = diagnostic.compare_hazard_map_convergence([missing_manifest_path, missing_manifest_path])
+
+            self.assertEqual(result["status"], diagnostic.BLOCKED_MISSING_INPUTS)
+            self.assertTrue(result["missing_inputs"])
+            self.assertIn("cellwise grid file does not exist", result["missing_inputs"][0]["reason"])
 
 
 if __name__ == "__main__":

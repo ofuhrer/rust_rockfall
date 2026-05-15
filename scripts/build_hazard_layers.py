@@ -6149,22 +6149,22 @@ def build_hazard_manifest(
     outputs: list[dict[str, Any]] = []
     for layer in layers:
         if raster_exports.grid_csv_export == "full":
-            outputs.append(
-                output_manifest_entry(
-                    output_dir / f"{prefix}_{layer.key}.csv",
-                    "hazard_layer",
-                    "csv_grid",
-                    output_file_metadata=output_file_metadata,
-                )
-            )
-        outputs.append(
-            output_manifest_entry(
-                output_dir / f"{prefix}_{layer.key}.asc",
+            csv_entry = output_manifest_entry(
+                output_dir / f"{prefix}_{layer.key}.csv",
                 "hazard_layer",
-                "esri_ascii_grid",
+                "csv_grid",
                 output_file_metadata=output_file_metadata,
             )
+            csv_entry["layer_name"] = layer.key
+            outputs.append(csv_entry)
+        ascii_entry = output_manifest_entry(
+            output_dir / f"{prefix}_{layer.key}.asc",
+            "hazard_layer",
+            "esri_ascii_grid",
+            output_file_metadata=output_file_metadata,
         )
+        ascii_entry["layer_name"] = layer.key
+        outputs.append(ascii_entry)
         if raster_exports.geotiff:
             outputs.append(
                 geotiff_output_manifest_entry(
@@ -6324,6 +6324,7 @@ def build_hazard_manifest(
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
         "conditional_intensity_exceedance_curves": metadata.get("conditional_intensity_exceedance_curves", {}),
         "layer_semantics": layer_semantics,
+        "cellwise_layers": cellwise_layers_from_outputs(outputs),
         "layers": [
             {
                 "key": layer.key,
@@ -6581,6 +6582,30 @@ def geotiff_raster_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]
             }
         )
     return raster_outputs
+
+
+def cellwise_layers_from_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cellwise_layers: dict[str, dict[str, Any]] = {}
+    for output in outputs:
+        if output.get("kind") != "hazard_layer" or output.get("format") != "esri_ascii_grid":
+            continue
+        layer_name = output.get("layer_name")
+        path = output.get("path")
+        if not isinstance(layer_name, str) or not layer_name:
+            continue
+        if not isinstance(path, str) or not path:
+            continue
+        parsed = parse_exceedance_layer_key(layer_name)
+        thresholds = [parsed[1]] if parsed is not None else []
+        cellwise_layers[layer_name] = {
+            "key": layer_name,
+            "layer_name": layer_name,
+            "grid_path": path,
+            "format": output.get("format"),
+            "kind": output.get("kind"),
+            "thresholds": thresholds,
+        }
+    return [cellwise_layers[key] for key in sorted(cellwise_layers)]
 
 
 def input_artifact_identities(

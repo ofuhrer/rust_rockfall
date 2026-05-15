@@ -4095,3 +4095,34 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: No local public context cache was found in `data/processed/swisstopo/tschamut_public_pilot/context/`, so the review stays blocked and operational claims remain disallowed.
 - Decision: BLOCKED_PENDING_LOCAL_EVIDENCE.
 - Next proposed milestone: TB-008.
+
+### TB-009
+
+- Milestone id: TB-009
+- Roadmap item: Wire Cell-Wise Convergence Diagnostics To Pilot Hazard Outputs.
+- Hypothesis/objective: Normal hazard-layer manifests can expose cell-wise grid paths for conditional convergence checks without changing hazard semantics or collapsing mixed-unit layers.
+- Files changed:
+  `scripts/build_hazard_layers.py`,
+  `scripts/compare_hazard_map_convergence.py`,
+  `tests/test_hazard_layers.py`,
+  `tests/test_hazard_map_convergence.py`,
+  `docs/conditional_hazard_convergence_acceptance_protocol.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a manifest-side `cellwise_layers` projection for ASCII hazard-layer outputs, taught the convergence diagnostic to infer cell-wise layers only when the underlying grid files exist, and kept summary-only manifests on the legacy manifest/checksum path. Updated tiny cell-wise fixtures so the comparison tool can measure per-layer `linf_abs_diff`, `l1_abs_diff`, `rmse`, `nonzero_jaccard`, threshold disagreement, and nodata mismatch without relying on ignored pilot outputs.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/compare_hazard_map_convergence.py tests/test_hazard_map_convergence.py scripts/build_hazard_layers.py tests/test_hazard_layers.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_hazard_map_convergence tests.test_hazard_layers`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py tests/fixtures/hazard/convergence/cellwise/reference_manifest.json tests/fixtures/hazard/convergence/cellwise/reference_manifest.json --format json`
+  returned `ok` with zero cell-wise differences on the tiny emitted fixtures.
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  returned `blocked_missing_inputs` for the expected absent selected-pilot manifests.
+- Reviewer notes: The selected Tschamut hazard outputs were not present in checkout, so the applied pilot comparison remains a missing-artifact state; the new inference path preserves the explicit missing-input behavior instead of silently passing.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-010.

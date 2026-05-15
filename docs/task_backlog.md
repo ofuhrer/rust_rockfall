@@ -126,44 +126,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-009: Wire Cell-Wise Convergence Diagnostics To Pilot Hazard Outputs
-
-Capability gap reduced: cell-wise convergence tooling exists, but selected
-pilot hazard manifests still fall back to manifest-level comparison.
-
-Goal: make normal hazard-layer outputs discoverable by
-`scripts/compare_hazard_map_convergence.py` for cell-wise comparison, then run
-or dry-run the comparison on selected Tschamut pilot artifacts where available.
-
-Inspect first:
-
-- `scripts/compare_hazard_map_convergence.py`;
-- `scripts/build_hazard_layers.py`;
-- `tests/test_hazard_map_convergence.py`;
-- `tests/test_hazard_layers.py`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- available ignored `hazard/results/` manifests if present.
-
-Required work:
-
-1. Add `cellwise_layers` references or an equivalent inference path for
-   emitted hazard grids without changing hazard semantics.
-2. Keep generated hazard outputs ignored; use tiny fixtures for committed
-   tests.
-3. Run the convergence CLI on actual selected-pilot artifacts if present; if
-   absent, return an explicit `blocked_missing_inputs` state with exact paths.
-4. Report per-layer spatial metrics separately; do not collapse mixed-unit
-   layers into one aggregate.
-5. Do not rerun public benchmarks, tune thresholds, or change baselines.
-
-Definition of done:
-
-- normal hazard outputs can be compared cell-wise or the missing inputs are
-  identified precisely;
-- tests prove emitted or fixture manifests expose usable cell-wise paths;
-- the result feeds the conditional pilot acceptance summary;
-- focused checks pass.
-
 ### TB-010: Implement A Reduced Validation Debug Output Mode
 
 Capability gap reduced: validation-output pressure remains the measured

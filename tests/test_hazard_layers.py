@@ -676,6 +676,50 @@ class HazardLayerTests(unittest.TestCase):
             self.assertFalse(reach_output["probability_semantics"]["annualized"])
             self.assertRegex(reach_output["sha256"], r"^[0-9a-f]{64}$")
 
+    def test_hazard_manifest_exposes_cellwise_layer_paths_from_ascii_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case = yaml_load(FIXTURE / "plane_case.yaml")
+            case["terrain"] = {
+                "type": "ascii_dem_clamped",
+                "path": str(SWISS_PILOT / "swissalti3d_pilot_crop.asc"),
+                "metadata_path": str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"),
+            }
+            case_path = work / "terrain_metadata_case.yaml"
+            write_yaml(case_path, case)
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--diagnostics",
+                    str(FIXTURE / "diagnostics.json"),
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1.0",
+                    "--no-plots",
+                    "--kinetic-energy-exceedance-j",
+                    "5.0",
+                    "--jump-height-exceedance-m",
+                    "0.25",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            cellwise_layers = manifest["cellwise_layers"]
+            self.assertTrue(cellwise_layers)
+            self.assertTrue(all(entry["grid_path"].endswith(".asc") for entry in cellwise_layers))
+            self.assertTrue(all(entry["layer_name"] == entry["key"] for entry in cellwise_layers))
+            reach = next(entry for entry in cellwise_layers if entry["key"] == "reach_probability")
+            self.assertEqual(reach["thresholds"], [])
+            exceedance = next(
+                entry for entry in cellwise_layers if entry["key"] == "kinetic_energy_exceedance_5j"
+            )
+            self.assertEqual(exceedance["thresholds"], [5.0])
+
     def test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
