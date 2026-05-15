@@ -163,37 +163,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-027: Add A Second-Site Public-Geodata Portability Preflight
-
-Capability gap reduced: the current workflow is still Tschamut-specific. The
-national hazard-map goal needs an early, non-running portability check for a
-second Swiss public-geodata pilot site.
-
-Goal: define and run a metadata-only preflight for a second Swiss site that
-checks required public geodata products, CRS/extents, source-zone/scenario
-inputs, and expected command-plan gaps without running ensembles or committing
-raw geodata.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`;
-- `docs/public_real_site_geodata_preparation.md`;
-- `data/datasets.yaml`;
-- current Tschamut input-preparation scripts and records.
-
-Required work:
-
-1. Do not run a second-site ensemble.
-2. Do not commit raw or large geodata.
-3. Report exact public-data prerequisites and missing workflow assumptions.
-4. Identify what is reusable from Tschamut and what remains site-specific.
-
-Definition of done:
-
-- a second-site portability preflight report or script exists;
-- it produces actionable missing inputs and reusable workflow gaps;
-- checks pass.
-
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:

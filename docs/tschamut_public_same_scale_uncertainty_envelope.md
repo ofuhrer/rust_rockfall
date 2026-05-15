@@ -87,6 +87,10 @@
   size and jump-height statistic coverage in the restored case metadata
 - distributed execution remains deferred on measured evidence
 
+A second-site portability preflight is now available for future Swiss sites;
+it remains metadata-only and does not alter the current Tschamut same-scale
+uncertainty interpretation.
+
 ## Target-Artifact Readiness
 - Gate manifest available: `true`
 - Target validation manifest available: `true`

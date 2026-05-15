@@ -161,6 +161,20 @@ processed crop, generated cases, validation outputs, and later hazard outputs
 remain ignored. The Tschamut terrain package is input geodata for workflow
 development; it is not validation evidence by itself.
 
+## Second-Site Portability Preflight
+
+`scripts/check_second_site_public_geodata_preflight.py` is a metadata-only
+helper for a future Swiss site. It does not download geodata or run an
+ensemble. Instead, it reports which public geodata products, terrain metadata,
+source-zone/scenario records, extent definitions, and ignored output roots must
+exist before the Tschamut workflow can be ported to a second site.
+
+The preflight also distinguishes what is reusable from the current Tschamut
+workflow, including readiness checks, case regeneration, convergence, output
+profiling, context inspection, overlap diagnostics, and the uncertainty
+envelope summary. It is a portability helper, not a gate or an acceptance
+decision.
+
 Before the first conditional pilot run, also run:
 
 ```bash

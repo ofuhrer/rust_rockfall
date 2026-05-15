@@ -4833,3 +4833,28 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_same_scale_case_generation`,
   `PYENV_VERSION=system uv run python scripts/generate_tschamut_same_scale_cases.py --format json --dry-run`,
   `PYENV_VERSION=system uv run python scripts/generate_tschamut_same_scale_cases.py --format json`.
+
+- Roadmap item: TB-027 added a second-site public-geodata portability preflight.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `tests/fixtures/second_site_public_geodata_preflight/site_template.yaml`,
+  `docs/task_backlog.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`.
+- Evidence streams consumed: the Tschamut same-scale readiness preflight,
+  public real-site geodata preparation contract, swisstopo data strategy,
+  Tschamut case regeneration helper, pilot run-freeze validator, and the
+  current Tschamut input metadata as a reusable template.
+- Classification: `blocked_missing_inputs` by default; `ready` when a
+  second-site config plus required synthetic fixture paths are present.
+- Uncertainty reduced: the repo now has a reusable metadata-only portability
+  preflight that distinguishes reusable Tschamut workflow components from
+  second-site public-geodata prerequisites and missing command-plan inputs.
+- Remaining uncertainty: the actual second-site public geodata, site extent,
+  and source-zone/scenario records still need to be staged before any real
+  second-site pilot can be attempted.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --format json`.

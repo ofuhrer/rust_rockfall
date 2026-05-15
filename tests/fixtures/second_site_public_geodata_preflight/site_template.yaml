@@ -1,0 +1,9 @@
+schema_version: second_site_public_geodata_preflight_v1
+candidate_site_id: fixture_second_site
+candidate_site_name: Fixture Second Site
+site_extent:
+  crs: EPSG:2056
+  xmin: 2691000.0
+  ymin: 1161000.0
+  xmax: 2692000.0
+  ymax: 1162000.0

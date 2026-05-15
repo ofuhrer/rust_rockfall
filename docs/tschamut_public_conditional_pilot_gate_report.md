@@ -790,6 +790,11 @@ remaining gap is corridor-specific extraction or feature-level inspection for
 roads, channels, and barrier/protection context. Archive presence alone does
 not make the context acceptable, so the local classification stays `limiting`.
 
+A separate second-site portability preflight now reports the public-geodata
+products, metadata records, and ignored output roots that would be required to
+port this workflow beyond Tschamut. That helper is metadata-only and does not
+change the current Tschamut interpretation.
+
 Relevant paths:
 
 - raw archive:

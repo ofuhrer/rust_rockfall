@@ -177,8 +177,17 @@ provenance checks before any validation command is run. Details are in
 9. Export development products as CSV/ASCII for inspection; for real pilot
    exchange, move toward GeoTIFF/COG rasters and GeoPackage/GeoJSON vectors.
 10. Visually compare terrain, release zones, and hazard layers against
-   SWISSIMAGE and hillshade. Treat the result as a research diagnostic unless
-   separately reviewed and validated.
+    SWISSIMAGE and hillshade. Treat the result as a research diagnostic unless
+    separately reviewed and validated.
+
+## Second-Site Portability
+
+`scripts/check_second_site_public_geodata_preflight.py` summarizes the public
+geodata, metadata records, and ignored output roots needed to port the current
+Tschamut workflow to another Swiss site. It is metadata-only and does not
+download or stage any second-site data. The command is meant to surface what is
+reusable from Tschamut and what still needs site-specific public input before a
+new pilot can be attempted.
 
 ## Data-Size Implications
 
