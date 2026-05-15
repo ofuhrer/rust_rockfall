@@ -409,6 +409,14 @@ profiles are `hazard_rebuild_ready`, and the minimum reduced contract retains
 trajectory, deposition, impact-event, and diagnostics families while leaving
 trajectory metadata and stop-state as optional overhead.
 
+A concrete reduced-root proof now exists under
+`validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`
+with `validation_output_mode: rebuildable_reduced_output`. It keeps the
+builder-facing trajectory, deposition, impact-event, diagnostics, and
+trajectory-metadata families, omits the bulk ensemble directories, and
+successfully rebuilds hazard layers with `scripts/build_hazard_layers.py`
+against the existing same-scale target geometry.
+
 The COG blocker is also now shown to be technically fixable on a scratch
 sample: `scripts/prototype_cog_conversion.py` converts one same-scale GeoTIFF
 to `/tmp`, and the GIS/COG audit can distinguish that converted sample as

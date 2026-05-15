@@ -5362,3 +5362,36 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_holdout_evidence`,
   `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format json`,
   `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format text`.
+
+- TB-042 hazard-rebuild-compatible reduced output profile.
+- Files changed:
+  `scripts/derive_hazard_rebuild_reduced_profile.py`,
+  `scripts/check_hazard_rebuild_output_profile.py`,
+  `tests/test_hazard_rebuild_output_profile.py`,
+  `tests/test_hazard_rebuild_reduced_profile.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: current summary-only/full hazard-rebuild contract,
+  the current full target validation manifest, the reduced-root derivation
+  helper, and the hazard-layer builder proof on the derived reduced root.
+- Result: `rebuildable_reduced_output` is now a concrete reduced profile on the
+  ignored local root
+  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`;
+  the checker classifies it as rebuildable, the current target summary-only
+  profile remains `summary_only_not_rebuildable`, and the bounded probe
+  profiles remain `hazard_rebuild_ready`.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/derive_hazard_rebuild_reduced_profile.py scripts/check_hazard_rebuild_output_profile.py tests/test_hazard_rebuild_output_profile.py tests/test_hazard_rebuild_reduced_profile.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_hazard_rebuild_reduced_profile`,
+  `PYENV_VERSION=system uv run python scripts/derive_hazard_rebuild_reduced_profile.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format text`,
+  `/usr/bin/time -p env PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml --trajectory validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_trajectory.csv --deposition validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_deposition.csv --impact-events validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv --diagnostics validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_metrics.json --output-dir /tmp/tb042_reduced_hazard --grid-xmin 2696376.0 --grid-ymin 1167384.0 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 --map-product-id tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced --map-package-manifest-json /tmp/tb042_reduced_hazard/tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_map_package_manifest.json --export-geotiff --pilot-gis-package --pilot-gis-package-manifest-json /tmp/tb042_reduced_hazard/tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_pilot_gis_package_manifest.json --pilot-gis-qa-status not-run --pilot-gis-qa-note 'Reduced rebuildable profile proof; manual GIS/QGIS QA not run.' --trajectory-workers 2 --reducer-workers 2 --no-plots --conditional-curve-export summary-only --grid-csv-export none`,
+  `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`.
+- Result summary: reduced-root validation outputs are 5 files / 1,192,379 bytes
+  plus a manifest for 6 files / 1,202,927 bytes total in the ignored reduced
+  root; hazard builder proof wrote 63 files / 78,431,962 bytes to
+  `/tmp/tb042_reduced_hazard`.

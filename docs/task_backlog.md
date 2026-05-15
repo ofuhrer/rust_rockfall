@@ -163,12 +163,10 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-042 resolves the dominant output-profile blocker before any larger run is
-   considered.
-2. TB-043 turns measured spatial uncertainty into closure evidence rather than
+1. TB-043 turns measured spatial uncertainty into closure evidence rather than
    another standalone summary.
-3. TB-044 converts the proven COG path into an ignored package-level result.
-4. TB-045 advances Swiss-wide portability only after the diagnostic evidence
+2. TB-044 converts the proven COG path into an ignored package-level result.
+3. TB-045 advances Swiss-wide portability only after the diagnostic evidence
    and output/product blockers are better controlled.
 
 ## Backlog Protocol
@@ -206,47 +204,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-042: Implement A Hazard-Rebuild-Compatible Reduced Output Profile
-
-Goal: turn the TB-036 builder-facing contract into an actual reduced validation
-output profile that can rebuild hazard layers with fewer files and bytes than
-the full target output.
-
-Inspect first:
-
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/build_hazard_layers.py`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `validation/private/tschamut_public_pilot/target_gate_v1_summary_only/`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/`
-
-Expected work:
-
-- add or prototype a reduced output mode that retains the minimum hazard-builder
-  inputs: trajectory or ensemble-trajectory data, deposition, impact events,
-  and diagnostics;
-- run a bounded local probe or fixture-backed parity test that proves hazard
-  rebuilding works from the reduced profile;
-- measure file and byte counts against full-output and current `summary_only`
-  roots.
-
-Definition of done:
-
-- the checker reports a concrete `rebuildable_reduced_output` profile, not only
-  a specified contract;
-- hazard-layer rebuild parity is demonstrated for the bounded test scope;
-- output file/byte counts are lower than the full target output and explicitly
-  reported.
-
-Boundaries:
-
-- no physics changes, threshold changes, parameter tuning, scale-up
-  authorization, annual-frequency claims, risk, exposure, vulnerability, or
-  operational use;
-- no large generated outputs committed.
 
 ### TB-043: Use Spatial Uncertainty In Conditional Closure Logic
 

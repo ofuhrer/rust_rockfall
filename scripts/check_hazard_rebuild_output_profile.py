@@ -39,6 +39,13 @@ DEFAULT_PROFILE_SPECS = (
         "manifest": ROOT
         / "validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/validation_tschamut_public_sampling_sensitivity_v2_full_manifest.json",
     },
+    {
+        "profile_id": "target_rebuildable_reduced",
+        "label": "derived_rebuildable_reduced_output",
+        "root": ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
+        "manifest": ROOT
+        / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json",
+    },
 )
 
 REQUIRED_BUILDER_GROUPS = (
@@ -202,7 +209,10 @@ def classify_profile(manifest_path: Path, root: Path, profile_id: str, label: st
     for group in missing_groups:
         missing_kinds.extend(required_artifacts_for_group(group))
 
-    if not missing_groups:
+    validation_output_mode = manifest.get("validation_output_mode")
+    if not missing_groups and validation_output_mode == "rebuildable_reduced_output":
+        classification = "rebuildable_reduced_output"
+    elif not missing_groups:
         classification = "hazard_rebuild_ready"
     elif "trajectory_inputs" in missing_groups and "impact_event_inputs" in missing_groups:
         classification = "summary_only_not_rebuildable"
@@ -244,7 +254,7 @@ def build_contract() -> dict[str, Any]:
         "minimal_rebuildable_output_kinds": [
             "trajectory",
             "ensemble_deposition",
-            "ensemble_impact_events",
+            "impact_events_csv",
             "diagnostics",
         ],
         "minimal_rebuildable_artifacts": [
@@ -269,24 +279,28 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
     by_id = {profile.profile_id: profile for profile in profiles}
 
     summary = by_id.get("target_summary_only")
+    reduced = by_id.get("target_rebuildable_reduced")
     full_profiles = [profile for profile in profiles if profile.profile_id != "target_summary_only"]
     summary_file_count = summary.file_count if summary else 0
     summary_byte_count = summary.total_bytes if summary else 0
+    reduced_file_count = reduced.file_count if reduced else 0
+    reduced_byte_count = reduced.total_bytes if reduced else 0
 
     comparisons = []
     for profile in full_profiles:
-        comparisons.append(
-            {
-                "baseline_profile_id": summary.profile_id if summary else None,
-                "comparison_profile_id": profile.profile_id,
-                "baseline_file_count": summary_file_count,
-                "comparison_file_count": profile.file_count,
-                "baseline_byte_count": summary_byte_count,
-                "comparison_byte_count": profile.total_bytes,
-                "file_count_delta": profile.file_count - summary_file_count,
-                "byte_count_delta": profile.total_bytes - summary_byte_count,
-            }
-        )
+        comparison = {
+            "baseline_profile_id": summary.profile_id if summary else None,
+            "comparison_profile_id": profile.profile_id,
+            "baseline_file_count": summary_file_count,
+            "comparison_file_count": profile.file_count,
+            "baseline_byte_count": summary_byte_count,
+            "comparison_byte_count": profile.total_bytes,
+            "file_count_delta": profile.file_count - summary_file_count,
+            "byte_count_delta": profile.total_bytes - summary_byte_count,
+        }
+        if profile.profile_id == "target_rebuildable_reduced":
+            comparison["comparison_classification"] = profile.classification
+        comparisons.append(comparison)
 
     missing_summary_artifacts = {
         "required_builder_groups": list(next((profile.missing_output_groups for profile in profiles if profile.profile_id == "target_summary_only"), ())),
@@ -307,15 +321,28 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
                 "file_count": summary_file_count,
                 "byte_count": summary_byte_count,
             },
+            "target_rebuildable_reduced": {
+                "file_count": reduced_file_count,
+                "byte_count": reduced_byte_count,
+            },
             "comparisons": comparisons,
+        },
+        "reduced_profile": {
+            "profile_id": reduced.profile_id if reduced else None,
+            "label": reduced.label if reduced else None,
+            "classification": reduced.classification if reduced else "blocked_missing_inputs",
+            "file_count": reduced_file_count,
+            "byte_count": reduced_byte_count,
+            "output_kinds": list(reduced.output_kinds) if reduced else [],
+            "validation_output_mode": "rebuildable_reduced_output" if reduced else None,
         },
         "rebuildable_reduced_profile": {
             "status": "specified",
-            "classification": "hazard_rebuild_ready",
+            "classification": "rebuildable_reduced_output",
             "retained_output_kinds": [
                 "trajectory",
                 "ensemble_deposition",
-                "ensemble_impact_events",
+                "impact_events_csv",
                 "diagnostics",
             ],
             "retained_artifacts": [
@@ -373,6 +400,15 @@ def format_text(report: dict[str, Any]) -> str:
         "summary_only_missing_artifacts\t"
         + ", ".join(report["missing_summary_only_artifacts"]["required_builder_artifacts"])
     )
+    reduced = report.get("reduced_profile") or {}
+    lines.append(
+        "reduced_profile\t"
+        + str(reduced.get("profile_id"))
+        + "\t"
+        + str(reduced.get("classification"))
+        + f"\tfiles={reduced.get('file_count')}"
+        + f"\tbytes={reduced.get('byte_count')}"
+    )
     lines.append(f"scale_up_authorized\t{str(report['scale_up_authorized']).lower()}")
     lines.append(f"operational_claims_allowed\t{str(report['operational_claims_allowed']).lower()}")
     return "\n".join(lines)
@@ -426,6 +462,12 @@ def main(argv: list[str] | None = None) -> int:
                     "label": "bounded_probe_full_v2",
                     "root": DEFAULT_PROFILE_SPECS[2]["root"],
                     "manifest": DEFAULT_PROFILE_SPECS[2]["manifest"],
+                },
+                {
+                    "profile_id": "target_rebuildable_reduced",
+                    "label": "derived_rebuildable_reduced_output",
+                    "root": DEFAULT_PROFILE_SPECS[3]["root"],
+                    "manifest": DEFAULT_PROFILE_SPECS[3]["manifest"],
                 },
             ]
         )

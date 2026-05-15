@@ -169,6 +169,42 @@ Interpretation:
 - the full bounded probes remain hazard-rebuild-ready;
 - a reduced profile can be specified safely by retaining the builder-facing families above, but the summary-only profile itself still lacks them.
 
+## Rebuildable Reduced Profile
+
+A concrete reduced profile is now derived from the current full target root
+into an ignored local reduction root:
+
+- derivation command:
+  `PYENV_VERSION=system uv run python scripts/derive_hazard_rebuild_reduced_profile.py --format json`
+- reduced root:
+  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`
+- reduced validation output mode:
+  `rebuildable_reduced_output`
+- selected retained families:
+  `trajectory`, `ensemble_deposition`, `impact_events_csv`, `trajectory_metadata`, `diagnostics`
+- omitted families:
+  `ensemble_trajectories`, `ensemble_impact_events`, `ensemble_stop_state`
+
+Measured reduced profile size:
+
+- reduced validation-root file count: `6`
+- reduced validation-root byte count: `1202927`
+- reduced validation outputs only: `5` files, `1192379` bytes
+- compared with current target summary-only: `6` files, `1286207` bytes
+- compared with the full target output: `2005` files, `571368823` bytes
+- checker classification: `rebuildable_reduced_output`
+
+Hazard-rebuild proof:
+
+- command:
+  `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml --trajectory validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_trajectory.csv --deposition validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_deposition.csv --impact-events validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv --diagnostics validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_metrics.json --output-dir /tmp/tb042_reduced_hazard --grid-xmin 2696376.0 --grid-ymin 1167384.0 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 --map-product-id tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced --map-package-manifest-json /tmp/tb042_reduced_hazard/tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_map_package_manifest.json --export-geotiff --pilot-gis-package --pilot-gis-package-manifest-json /tmp/tb042_reduced_hazard/tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_pilot_gis_package_manifest.json --pilot-gis-qa-status not-run --pilot-gis-qa-note 'Reduced rebuildable profile proof; manual GIS/QGIS QA not run.' --trajectory-workers 2 --reducer-workers 2 --no-plots --conditional-curve-export summary-only --grid-csv-export none`
+- elapsed wall time: `12.24` s
+- hazard proof output root: `/tmp/tb042_reduced_hazard`
+- proof output root file count: `63`
+- proof output root bytes: `78431962`
+- map-package manifest present: `True`
+- pilot-GIS manifest present: `True`
+
 Ignored-root inventory from `audit_local_artifacts.py`:
 
 - Full target validation root: `2716` files, `764598257` bytes

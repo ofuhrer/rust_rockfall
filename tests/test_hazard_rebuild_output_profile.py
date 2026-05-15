@@ -73,6 +73,33 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             self.assertEqual(profile.missing_output_groups, tuple())
             self.assertEqual(profile.output_count, 7)
 
+    def test_reduced_profile_is_rebuildable_reduced_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "reduced"
+            outputs = [
+                {"kind": "trajectory", "path": "trajectory.csv"},
+                {"kind": "ensemble_deposition", "path": "deposition.csv"},
+                {"kind": "impact_events_csv", "path": "impact_events.csv"},
+                {"kind": "trajectory_metadata", "path": "trajectory_metadata.csv"},
+                {"kind": "diagnostics", "path": "metrics.json"},
+            ]
+            for item in outputs:
+                write_text(root / str(item["path"]), "1\n")
+            manifest_path = write_manifest(root, "reduced_manifest.json", outputs)
+            manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest_payload["validation_output_mode"] = "rebuildable_reduced_output"
+            manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            profile = classify_profile(manifest_path, root, "target_rebuildable_reduced", "derived_reduced")
+
+            self.assertEqual(profile.classification, "rebuildable_reduced_output")
+            self.assertEqual(profile.missing_output_groups, tuple())
+            self.assertIn("impact_events_csv", profile.output_kinds)
+            self.assertIn("trajectory", profile.output_kinds)
+            self.assertEqual(profile.output_count, 5)
+            self.assertEqual(profile.file_count, 6)
+            self.assertGreater(profile.total_bytes, 0)
+
     def test_missing_inputs_report_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "missing"
@@ -85,6 +112,7 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             root = Path(tmp)
             summary_root = root / "summary"
             full_root = root / "full"
+            reduced_root = root / "reduced"
             summary_outputs = [
                 {"kind": "ensemble_deposition", "path": "summary_deposition.csv"},
                 {"kind": "ensemble_stop_state", "path": "summary_stop_state.csv"},
@@ -109,8 +137,21 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
                 else:
                     target.mkdir(parents=True, exist_ok=True)
                     write_text(target / "sample.csv", "1\n")
+            reduced_outputs = [
+                {"kind": "trajectory", "path": "trajectory.csv"},
+                {"kind": "ensemble_deposition", "path": "deposition.csv"},
+                {"kind": "impact_events_csv", "path": "impact_events.csv"},
+                {"kind": "trajectory_metadata", "path": "trajectory_metadata.csv"},
+                {"kind": "diagnostics", "path": "metrics.json"},
+            ]
+            for item in reduced_outputs:
+                write_text(reduced_root / str(item["path"]), "1\n")
             summary_manifest = write_manifest(summary_root, "summary_manifest.json", summary_outputs)
             full_manifest = write_manifest(full_root, "full_manifest.json", full_outputs)
+            reduced_manifest = write_manifest(reduced_root, "reduced_manifest.json", reduced_outputs)
+            reduced_payload = json.loads(reduced_manifest.read_text(encoding="utf-8"))
+            reduced_payload["validation_output_mode"] = "rebuildable_reduced_output"
+            reduced_manifest.write_text(json.dumps(reduced_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
             report = build_report(
                 [
@@ -126,6 +167,12 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
                         "root": full_root,
                         "manifest": full_manifest,
                     },
+                    {
+                        "profile_id": "target_rebuildable_reduced",
+                        "label": "derived_rebuildable_reduced_output",
+                        "root": reduced_root,
+                        "manifest": reduced_manifest,
+                    },
                 ]
             )
 
@@ -135,6 +182,8 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             self.assertIn("rebuildable_reduced_profile", report)
             self.assertEqual(report["profile_classifications"]["target_summary_only"], "summary_only_not_rebuildable")
             self.assertEqual(report["profile_classifications"]["sampling_sensitivity_v1_full"], "hazard_rebuild_ready")
+            self.assertEqual(report["reduced_profile"]["classification"], "rebuildable_reduced_output")
+            self.assertEqual(report["rebuildable_reduced_profile"]["classification"], "rebuildable_reduced_output")
 
 
 if __name__ == "__main__":
