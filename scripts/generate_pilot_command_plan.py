@@ -211,6 +211,7 @@ def build_tschamut_site_plan(
             ],
         )
     )
+    commands.extend(build_gis_cog_package_conversion_commands())
     commands.extend(build_rebuildable_reduced_output_commands())
     commands.extend(
         [
@@ -591,6 +592,97 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
     ]
 
 
+def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
+    converted_root = Path("hazard/results/tschamut_public_pilot/gate_v1_cog_poc")
+    commands = [
+        command_entry(
+            site="tschamut_same_scale",
+            group="gis_cog_package_conversion",
+            command_id="tschamut_standard_package_audit",
+            description="Audit the committed same-scale GIS packages and report their current COG-blocked status.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "audit_gis_cog_package_readiness.py"),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "hazard/results/tschamut_public_pilot/gate_v1",
+                "hazard/results/tschamut_public_pilot/target_gate_v1",
+                "hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full",
+                "hazard/results/tschamut_public_pilot/sampling_sensitivity_v2_full",
+            ],
+            expected_outputs=["JSON GIS/COG readiness report for standard same-scale package roots"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="gis_cog_package_conversion",
+            command_id="tschamut_package_cog_conversion",
+            description="Convert the committed gate package into an ignored COG-ready same-scale package root.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "convert_same_scale_package_to_cog.py"),
+                    "--input-root",
+                    "hazard/results/tschamut_public_pilot/gate_v1",
+                    "--output-root",
+                    str(converted_root),
+                    "--overwrite",
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=["hazard/results/tschamut_public_pilot/gate_v1"],
+            expected_outputs=[
+                str(converted_root),
+                str(converted_root / "tschamut_public_conditional_gate_v1_map_package_manifest.json"),
+                str(converted_root / "tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json"),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=[str(converted_root)],
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="gis_cog_package_conversion",
+            command_id="tschamut_converted_package_audit",
+            description="Audit the ignored converted same-scale package and verify its COG-ready metadata.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "audit_gis_cog_package_readiness.py"),
+                    "--format",
+                    "json",
+                    "--converted-package-root",
+                    str(converted_root),
+                ]
+            ),
+            expected_inputs=[
+                str(converted_root),
+                str(converted_root / "tschamut_public_conditional_gate_v1_map_package_manifest.json"),
+                str(converted_root / "tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json"),
+            ],
+            expected_outputs=["JSON GIS/COG readiness report for the converted ignored package"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+    ]
+    return commands
+
+
 def build_second_site_plan(
     second_site_report: dict[str, Any],
     contract_report: dict[str, Any],
@@ -921,6 +1013,7 @@ GROUP_DESCRIPTIONS = {
     "case_generation": "Regenerate frozen pilot case YAMLs from committed records.",
     "validation_runs": "Run the frozen validation cases that feed the hazard builder.",
     "hazard_builds": "Build hazard-layer outputs and package manifests.",
+    "gis_cog_package_conversion": "Audit and convert same-scale GIS packages to COG-ready ignored outputs.",
     "convergence_comparisons": "Compare gate and target hazard manifests cell-wise.",
     "output_profile_checks": "Summarize bounded validation-output pressure.",
     "rebuildable_reduced_output": "Derive and proof the hazard-rebuild-compatible reduced target profile.",
@@ -939,6 +1032,7 @@ def ordered_group_ids(site: str) -> list[str]:
             "case_generation",
             "validation_runs",
             "hazard_builds",
+            "gis_cog_package_conversion",
             "convergence_comparisons",
             "output_profile_checks",
             "rebuildable_reduced_output",
@@ -962,6 +1056,7 @@ def readiness_ignored_output_paths() -> list[str]:
         "validation/private/tschamut_public_pilot/target_gate_v1_summary_only",
         "hazard/results/tschamut_public_pilot/gate_v1",
         "hazard/results/tschamut_public_pilot/target_gate_v1",
+        "hazard/results/tschamut_public_pilot/gate_v1_cog_poc",
     ]
 
 

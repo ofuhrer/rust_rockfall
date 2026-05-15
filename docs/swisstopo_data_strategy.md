@@ -274,3 +274,9 @@ package-level result at `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`,
 which audits as `cog_package_ready` with `cloud_optimized: true` metadata.
 The committed same-scale outputs remain unchanged and should still audit as
 `gis_package_ready_cog_blocked` until regenerated with a COG-ready layout.
+
+The canonical portable command plan now names the package-level conversion
+step explicitly, pairing `scripts/convert_same_scale_package_to_cog.py` with
+the standard and converted-package GIS/COG audits. The prototype script stays
+documented as a sample-only proof path; the command plan is the canonical
+workflow surface for the ignored package conversion.

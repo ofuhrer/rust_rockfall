@@ -444,6 +444,11 @@ audit reports as `cog_package_ready` with `cloud_optimized: true` metadata.
 This keeps the standard roots truthfully blocked while proving the package-
 level COG path on an ignored copy.
 
+The same-scale portable command plan now surfaces the standard GIS audit, the
+package-level conversion command, and the converted-package audit as explicit
+read-only workflow steps, so the ignored COG path can be reproduced without
+relying on prose instructions.
+
 ## Validation And Calibration Evidence Gaps
 
 `scripts/assess_validation_calibration_evidence_gaps.py` now summarizes the

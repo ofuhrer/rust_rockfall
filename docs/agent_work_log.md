@@ -5628,3 +5628,26 @@ Planning only; these milestones do not implement roadmap item content yet.
   current `summary_only` profile is still not rebuildable.
 - Decision: completed.
 - Next proposed milestone: TB-050.
+
+### TB-050 Canonical Same-Scale COG Package Conversion
+
+- Milestone id: TB-050.
+- Roadmap item: promote the ignored same-scale COG package proof into the
+  portable command plan as a first-class workflow step.
+- Files intended to change: `scripts/generate_pilot_command_plan.py`,
+  `tests/test_pilot_command_plan.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: added a dedicated `gis_cog_package_conversion`
+  command group with standard GIS audit, ignored-package conversion, and
+  converted-package audit commands. Updated the portable plan and docs so the
+  package-level COG path is canonical while the committed same-scale roots
+  remain truthfully `gis_package_ready_cog_blocked`.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/convert_same_scale_package_to_cog.py scripts/audit_gis_cog_package_readiness.py scripts/generate_pilot_command_plan.py tests/test_same_scale_cog_package_conversion.py tests/test_gis_cog_package_readiness.py tests/test_pilot_command_plan.py`, `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_cog_package_conversion tests.test_gis_cog_package_readiness tests.test_pilot_command_plan`, `PYENV_VERSION=system uv run python scripts/convert_same_scale_package_to_cog.py --input-root hazard/results/tschamut_public_pilot/gate_v1 --output-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc --overwrite --format json`, `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc`, `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`, `git diff --check`, `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`, and `scripts/git-hooks/pre-commit`.
+- Results: the converted ignored package root audits as `cog_package_ready`
+  with `cloud_optimized: true`; the standard roots remain
+  `gis_package_ready_cog_blocked`; the portable command plan now includes the
+  package-level conversion and converted-package audit commands.

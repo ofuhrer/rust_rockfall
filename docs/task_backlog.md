@@ -167,9 +167,7 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-050 promotes the COG conversion proof toward a reusable export path after
-   the core scientific/output blockers have executable support.
-2. TB-051 assembles the measured conditional diagnostic interpretation after
+1. TB-051 assembles the measured conditional diagnostic interpretation after
    the output-profile and GIS export paths have a canonical workflow surface.
 
 ## Backlog Protocol
@@ -212,37 +210,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-050: Promote COG Conversion Toward A Standard Export Path
-
-Goal: turn the ignored `gate_v1_cog_poc` package proof into a reusable export
-command path while preserving the truthful status of the existing standard
-package roots.
-
-Inspect first:
-
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `hazard/results/tschamut_public_pilot/gate_v1_cog_poc/`
-
-Expected work:
-
-- expose canonical command-plan entries for package-level COG conversion and
-  audit verification;
-- keep standard roots classified as `gis_package_ready_cog_blocked` unless they
-  are actually regenerated;
-- keep converted package outputs in ignored roots and preserve manifest
-  provenance.
-
-Definition of done:
-
-- the command plan can reproduce the ignored COG package proof;
-- GIS/COG audit JSON distinguishes standard roots, converted samples, and
-  converted package roots;
-- no generated COG rasters are committed.
 
 ### TB-051: Assemble A Canonical Conditional Diagnostic Interpretation Report
 

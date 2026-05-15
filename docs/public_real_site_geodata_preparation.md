@@ -183,6 +183,11 @@ The GIS/COG audit now also accepts explicit converted-sample paths and ignored
 converted package roots while keeping the current committed packages marked as
 COG-blocked.
 
+The portable command plan now exposes the canonical package-level conversion
+path directly, including the standard audit command, the ignored
+`gate_v1_cog_poc` conversion command, and the converted-package audit command,
+so future workers can recover the proof without scraping prose notes.
+
 ## Second-Site Portability Preflight
 
 `scripts/check_second_site_public_geodata_preflight.py` is a metadata-only
