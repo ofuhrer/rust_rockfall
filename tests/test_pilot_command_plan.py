@@ -55,7 +55,7 @@ class PilotCommandPlanTest(unittest.TestCase):
     def test_second_site_plan_marks_templates_blocked(self) -> None:
         report = MODULE.build_report("chant_sura_fluelapass", SECOND_SITE_CONFIG)
 
-        self.assertEqual(report["second_site_portability_status"], "blocked_missing_inputs")
+        self.assertEqual(report["second_site_portability_status"], "deferred_public_context_inputs")
         self.assertEqual(
             [group["id"] for group in report["command_groups"]],
             [

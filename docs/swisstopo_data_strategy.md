@@ -213,9 +213,12 @@ synthetic core fixture set from
 `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
 into the ignored Chant Sura paths. It only stages the minimum terrain,
 source-zone, scenario, and source-scenario policy records plus the ignored
-input, validation, and hazard roots. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
-swissSURFACE3D Raster, and swissBUILDINGS3D stay deferred and continue to
-appear as explicit preflight blockers.
+input, validation, and hazard roots. It also creates the empty processed-
+context root so the second-site preflight can report the public products as
+`deferred_public_context_inputs` rather than as missing core inputs. SWISSIMAGE,
+swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D stay
+deferred and continue to appear explicitly in the preflight and acquisition
+manifest.
 
 The validation/calibration evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` now makes the current

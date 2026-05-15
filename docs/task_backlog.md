@@ -157,11 +157,10 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-046 should focus on the remaining Chant Sura public-context blockers,
-   because TB-045 separated synthetic core-input readiness from the still-missing
-   swisstopo context products.
-2. A follow-up source/scenario portability task is useful only after the
-   context decision is either staged or explicitly deferred.
+1. Harden the portable source-zone/scenario contract for the next concrete
+   second site now that Chant Sura's public-context boundary is explicit.
+2. Keep second-site public-context product staging deferred unless a new
+   acquisition decision authorizes real public-context downloads.
 
 ## Backlog Protocol
 
@@ -196,53 +195,6 @@ can answer the question directly.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-## Active Tasks
-
-### TB-046: Decide Chant Sura Public-Context Staging Boundary
-
-Goal: move the Chant Sura / Flüelapass candidate from synthetic core-input
-readiness to an explicit public-context boundary by either staging tiny
-representative context fixtures under ignored paths or documenting a deliberate
-defer decision in the preflight output.
-
-Inspect first:
-
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Expected work:
-
-- run the minimal staging helper to create the ignored core inputs;
-- inspect the remaining blockers for `swissimage_context`, `swisstlm3d_context`,
-  `swisssurface3d_context`, `swisssurface3d_raster_context`, and
-  `swissbuildings3d_context`;
-- either add tiny intentional public-context fixture files that satisfy only the
-  preflight contract, or update the preflight/reporting to mark those context
-  products as explicitly deferred rather than confused with missing core inputs;
-- rerun the second-site preflight and command plan and document the remaining
-  blocked/deferred categories.
-
-Definition of done:
-
-- core terrain/source/scenario/root categories remain ready after the helper is
-  run;
-- remaining context categories are either staged as tiny fixtures or explicitly
-  reported as intentionally deferred with clear acquisition-manifest references;
-- no raw or large geodata is downloaded or committed;
-- no second-site validation ensemble or hazard build is run.
-
-Boundaries:
-
-- no Tschamut evidence reused as Chant Sura validation evidence;
-- no tuning, source-frequency, annual probability, risk, exposure,
-  vulnerability, scale-up, or operational claims.
 
 ## Deferred Backlog
 

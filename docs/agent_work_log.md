@@ -5484,3 +5484,38 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: ACCEPT_WITH_LIMITATIONS.
 - Next proposed milestone: a concrete public-context staging decision for
   Chant Sura / Fluelapass, if and when that path is authorized.
+
+### TB-046 Chant Sura Public-Context Staging Boundary
+
+- Roadmap item: Decide Chant Sura Public-Context Staging Boundary.
+- Hypothesis/objective: the Chant Sura / Flüelapass candidate should report
+  core terrain/source/scenario/root readiness separately from intentionally
+  deferred public-context products, without mistaking deferred context for
+  missing core inputs.
+- Implementation summary: updated the second-site preflight and portable
+  command-plan helper so an empty processed-context root yields
+  `deferred_public_context_inputs`, while the acquisition manifest continues to
+  spell out the expected SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+  swissSURFACE3D Raster, and swissBUILDINGS3D products. The minimal staging
+  helper still only stages the synthetic core inputs and ignored roots.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  returned `deferred_public_context_inputs`.
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  returned a portable plan that marks the second-site steps as template-only.
+  `PYENV_VERSION=system uv run python -m py_compile scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py scripts/check_second_site_public_geodata_preflight.py scripts/generate_pilot_command_plan.py tests/test_second_site_public_geodata_preflight.py tests/test_pilot_command_plan.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_pilot_command_plan`
+  passed.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Decision: ACCEPT_WITH_LIMITATIONS.
+- Next proposed milestone: harden the portable source-zone/scenario contract
+  for the next concrete second site once a new acquisition decision authorizes
+  real public-context downloads.

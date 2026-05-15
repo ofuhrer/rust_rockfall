@@ -55,6 +55,11 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
         self.assertEqual(report["missing_input_categories"], [])
         self.assertEqual(report["missing_input_paths_or_patterns"], [])
+        self.assertEqual(report["core_input_status"], "ready")
+        self.assertEqual(report["deferred_public_context_status"], "ready")
+        self.assertEqual(report["deferred_public_context_categories"], [])
+        self.assertEqual(report["deferred_public_context_paths_or_patterns"], [])
+        self.assertEqual(report["deferred_public_context_references"], {})
 
         required_products = {entry["category"]: entry for entry in report["required_public_geodata_products"]}
         self.assertEqual(required_products["terrain_crop"]["status"], "ready")
@@ -78,10 +83,15 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "acquisition_manifest_product_summaries",
                 "acquisition_manifest_status",
                 "assumptions_not_yet_generalized",
+                "core_input_status",
                 "blocked_reason",
                 "candidate_site_id",
                 "candidate_site_name",
                 "candidate_selection_rationale",
+                "deferred_public_context_categories",
+                "deferred_public_context_paths_or_patterns",
+                "deferred_public_context_references",
+                "deferred_public_context_status",
                 "expected_artifact_roots",
                 "missing_input_categories",
                 "missing_input_paths_or_patterns",
@@ -106,46 +116,65 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
     def test_candidate_example_fixture_is_blocked_and_records_manifest_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            original_root = preflight.ROOT
-            try:
-                preflight.ROOT = root
-                report = preflight.build_report(self._candidate_example_config_path())
-            finally:
-                preflight.ROOT = original_root
+            report = self._build_report(
+                root,
+                site_config=self._candidate_example_config_path(),
+                omit=[
+                    "swissimage_context",
+                    "swisstlm3d_metadata",
+                    "swisssurface3d_context",
+                    "swisssurface3d_raster_context",
+                    "swissbuildings3d_context",
+                ],
+            )
 
         self.assertEqual(report["second_site_manifest_status"], "staged_candidate_manifest")
-        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
+        self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
         self.assertIn("Chant Sura is the clearest concrete Swiss candidate", report["candidate_selection_rationale"])
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
         self.assertGreater(report["acquisition_manifest_command_template_count"], 0)
-        self.assertEqual(report["terrain_manifest_status"], "blocked_missing_inputs")
-        self.assertEqual(report["source_zone_manifest_status"], "blocked_missing_inputs")
-        self.assertEqual(report["scenario_manifest_status"], "blocked_missing_inputs")
+        self.assertEqual(report["terrain_manifest_status"], "ready")
+        self.assertEqual(report["source_zone_manifest_status"], "ready")
+        self.assertEqual(report["scenario_manifest_status"], "ready")
         self.assertIn("source_zone_scenario_contract", report)
         self.assertIn("source_zone_id_pattern", report["source_zone_scenario_contract"])
         self.assertIn("Candidate selection rationale", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertIn("Chant Sura / Flüelapass portability example", "\n".join(report["acquisition_or_staging_checklist"]))
+        self.assertEqual(report["core_input_status"], "ready")
+        self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
+        self.assertEqual(
+            set(report["deferred_public_context_categories"]),
+            {
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            },
+        )
+        self.assertEqual(report["missing_input_categories"], [])
+        self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
 
     def test_missing_context_metadata_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             report = self._build_report(root, site_config=self._fixture_config_path(), omit=["swisstlm3d_metadata"])
 
-        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
-        self.assertIn("swisstlm3d_context", report["missing_input_categories"])
+        self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
+        self.assertIn("swisstlm3d_context", report["deferred_public_context_categories"])
         self.assertIn(
             str(root / "data/processed/swisstopo/placeholder_second_site_v1/context/swisstlm3d/metadata.json"),
-            report["missing_input_paths_or_patterns"],
+            report["deferred_public_context_paths_or_patterns"],
         )
-        self.assertIn("missing required portability inputs", report["blocked_reason"])
+        self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
 
     def test_missing_site_extent_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._build_inputs(root)
+            self._build_inputs(root, config_path=self._fixture_config_path())
             report = self._build_report(root, site_config=self._fixture_config_path(), omit_site_extent=True)
 
         self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
@@ -157,11 +186,12 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             report = self._build_report(root, site_config=self._fixture_config_path(), omit=["swisstlm3d_metadata"])
 
         text = preflight.render_text_report(report)
-        self.assertIn("portability_preflight_status: blocked_missing_inputs", text)
+        self.assertIn("portability_preflight_status: deferred_public_context_inputs", text)
         self.assertIn("validate_public_real_site_conditional_pilot_run.py", text)
         self.assertIn("acquisition_manifest_status:", text)
-        self.assertIn("missing_input_categories:", text)
+        self.assertIn("deferred_public_context_categories:", text)
         self.assertIn("second_site_manifest_status: staged_placeholder_manifest", text)
+        self.assertIn("public-context products are intentionally deferred", text)
 
     def test_minimal_staging_helper_reduces_core_blockers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -179,12 +209,13 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             finally:
                 preflight.ROOT = original_root
 
-        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
+        self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
+        self.assertEqual(report["missing_input_categories"], [])
         self.assertEqual(
-            set(report["missing_input_categories"]),
+            set(report["deferred_public_context_categories"]),
             {
                 "swissimage_context",
                 "swisstlm3d_context",
@@ -193,14 +224,14 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "swissbuildings3d_context",
             },
         )
-        self.assertNotIn("terrain_crop", report["missing_input_categories"])
-        self.assertNotIn("source_zone_metadata", report["missing_input_categories"])
-        self.assertNotIn("scenario_table", report["missing_input_categories"])
-        self.assertNotIn("source_scenario_policy", report["missing_input_categories"])
-        self.assertNotIn("validation_case_root", report["missing_input_categories"])
-        self.assertNotIn("hazard_results_root", report["missing_input_categories"])
-        self.assertNotIn("processed_input_root", report["missing_input_categories"])
-        self.assertNotIn("processed_context_root", report["missing_input_categories"])
+        self.assertNotIn("terrain_crop", report["deferred_public_context_categories"])
+        self.assertNotIn("source_zone_metadata", report["deferred_public_context_categories"])
+        self.assertNotIn("scenario_table", report["deferred_public_context_categories"])
+        self.assertNotIn("source_scenario_policy", report["deferred_public_context_categories"])
+        self.assertNotIn("validation_case_root", report["deferred_public_context_categories"])
+        self.assertNotIn("hazard_results_root", report["deferred_public_context_categories"])
+        self.assertNotIn("processed_input_root", report["deferred_public_context_categories"])
+        self.assertNotIn("processed_context_root", report["deferred_public_context_categories"])
 
     def _fixture_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml"
@@ -219,21 +250,30 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         original_root = preflight.ROOT
         try:
             preflight.ROOT = root
-            self._build_inputs(root, omit=omit)
+            config_source = site_config or self._fixture_config_path()
+            config_data = yaml.safe_load(config_source.read_text(encoding="utf-8"))
+            acquisition_manifest_name = Path(
+                config_data.get("acquisition_manifest_path", "chant_sura_fluelapass_public_geodata_acquisition.yaml")
+            ).name
+            config_data["acquisition_manifest_path"] = str(
+                (config_source.parent / acquisition_manifest_name).resolve()
+            )
+            config_path = root / "site_config.yaml"
+            config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+            self._build_inputs(root, config_path=config_path, omit=omit)
             if omit_site_extent:
-                config = yaml.safe_load(self._fixture_config_path().read_text(encoding="utf-8"))
+                config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
                 config.pop("site_extent", None)
-                site_config = root / "site_config.yaml"
-                site_config.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
-            config_path = site_config or self._fixture_config_path()
+                config_path = root / "site_config.yaml"
+                config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
             preflight.ROOT = root
             return preflight.build_report(config_path)
         finally:
             preflight.ROOT = original_root
 
-    def _build_inputs(self, root: Path, omit: list[str] | None = None) -> None:
+    def _build_inputs(self, root: Path, *, config_path: Path, omit: list[str] | None = None) -> None:
         omit = omit or []
-        config = yaml.safe_load(self._fixture_config_path().read_text(encoding="utf-8"))
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         site_id = config["candidate_site_id"]
         paths = preflight.build_paths(site_id, config)
         input_root = paths["processed_input_root"]

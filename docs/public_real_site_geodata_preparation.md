@@ -223,9 +223,11 @@ synthetic core fixture set from
 `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
 into the ignored Chant Sura paths. It is intentionally limited to terrain,
 source-zone, scenario, and policy files plus the ignored roots that the
-preflight checks for existence. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+preflight checks for existence. It also creates the empty processed-context
+root so the preflight can distinguish a missing core root from an intentionally
+deferred public-context boundary. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
 swissSURFACE3D Raster, and swissBUILDINGS3D remain deferred and are still
-reported explicitly by the preflight.
+reported explicitly by the preflight as `deferred_public_context_inputs`.
 
 The new evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` keeps the current

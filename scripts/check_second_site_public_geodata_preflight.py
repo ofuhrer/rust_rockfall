@@ -25,6 +25,14 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "second_site_public_geodata_preflight_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
+DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
+    "swissimage_context",
+    "swisstlm3d_context",
+    "swisstlm3d_metadata",
+    "swisssurface3d_context",
+    "swisssurface3d_raster_context",
+    "swissbuildings3d_context",
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,10 +80,22 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
 
     paths = build_paths(candidate_site_id, config)
     requirements = build_requirements(candidate_site_id, site_extent, paths)
-    missing_required = [req for req in requirements if req["required"] and req["status"] != "ready"]
+    missing_required = [
+        req
+        for req in requirements
+        if req["required"]
+        and req["status"] != "ready"
+        and req["category"] not in DEFERRED_PUBLIC_CONTEXT_CATEGORIES
+    ]
+    deferred_required = [
+        req for req in requirements if req["required"] and req["category"] in DEFERRED_PUBLIC_CONTEXT_CATEGORIES and req["status"] != "ready"
+    ]
     terrain_manifest_status = manifest_status(paths["terrain_crop"], paths["terrain_metadata"])
     source_zone_manifest_status = manifest_status(paths["source_zone_metadata"])
     scenario_manifest_status = manifest_status(paths["scenario_table"], paths["source_scenario_policy"])
+    core_input_status = "ready" if not missing_required else "blocked_missing_inputs"
+    deferred_context_status = "deferred_public_context_inputs" if deferred_required and not missing_required else "ready"
+    overall_status = "ready" if not missing_required and not deferred_required else deferred_context_status if not missing_required else core_input_status
 
     report = {
         "second_site_manifest_status": (
@@ -85,12 +105,14 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
             if site_config is not None and site_config.exists()
             else "missing_manifest_config"
         ),
-        "portability_preflight_status": "ready" if not missing_required else "blocked_missing_inputs",
-        "readiness_status": "ready" if not missing_required else "blocked_missing_inputs",
+        "portability_preflight_status": overall_status,
+        "readiness_status": overall_status,
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
         "candidate_selection_rationale": candidate_selection_rationale or "site selection remains blocked or unspecified",
         "site_extent_or_placeholder": site_extent if site_extent else "placeholder_extent_missing",
+        "core_input_status": core_input_status,
+        "deferred_public_context_status": deferred_context_status,
         "terrain_manifest_status": terrain_manifest_status,
         "source_zone_manifest_status": source_zone_manifest_status,
         "scenario_manifest_status": scenario_manifest_status,
@@ -119,6 +141,11 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "expected_artifact_roots": [req for req in requirements if req["kind"] == "artifact_root"],
         "missing_input_categories": [req["category"] for req in missing_required],
         "missing_input_paths_or_patterns": [req["path_or_pattern"] for req in missing_required],
+        "deferred_public_context_categories": [req["category"] for req in deferred_required],
+        "deferred_public_context_paths_or_patterns": [req["path_or_pattern"] for req in deferred_required],
+        "deferred_public_context_references": {
+            req["category"]: req["notes"] for req in deferred_required
+        },
         "acquisition_or_staging_checklist": build_checklist(
             candidate_site_id,
             candidate_site_name,
@@ -126,10 +153,13 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
             site_extent,
             source_zone_scenario_contract,
             missing_required,
+            deferred_required,
             candidate_selection_rationale,
             acquisition_manifest_path,
         ),
-        "blocked_reason": build_blocked_reason(candidate_site_id, site_extent, missing_required, site_config),
+        "blocked_reason": build_blocked_reason(
+            candidate_site_id, site_extent, missing_required, deferred_required, site_config
+        ),
         "assumptions_not_yet_generalized": assumptions_not_yet_generalized(candidate_site_id),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
@@ -160,6 +190,16 @@ def resolve_repo_path(value: Any, default: Path | None = None, *, base: Path | N
 
 def manifest_status(*paths: Path) -> str:
     return "ready" if all(path.exists() for path in paths) else "blocked_missing_inputs"
+
+
+def staged_context_status(path: Path, category: str) -> str:
+    if category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
+        if path.is_file():
+            return "ready"
+        if path.is_dir() and any(path.iterdir()):
+            return "ready"
+        return "deferred_public_context"
+    return "ready" if path.exists() else "blocked_missing_inputs"
 
 
 def build_paths(site_id: str, config: dict[str, Any]) -> dict[str, Path]:
@@ -234,6 +274,11 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
             }
         )
 
+    def required_status(path: Path, category: str) -> str:
+        if path.exists():
+            return "ready"
+        return "deferred_public_context" if category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES else "blocked_missing_inputs"
+
     # Public geodata products.
     add_requirement(
         kind="public_geodata_product",
@@ -251,7 +296,7 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         product="SWISSIMAGE",
         path_or_pattern=str(paths["swissimage_context"]),
         required=True,
-        status="ready" if paths["swissimage_context"].exists() else "blocked_missing_inputs",
+        status=staged_context_status(paths["swissimage_context"], "swissimage_context"),
         reusable_from_tschamut=True,
         notes="Orthophoto context is reusable as a workflow category but site-specific in content.",
     )
@@ -261,7 +306,7 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         product="swissTLM3D",
         path_or_pattern=str(paths["swisstlm3d_metadata"]),
         required=True,
-        status="ready" if paths["swisstlm3d_metadata"].exists() else "blocked_missing_inputs",
+        status=staged_context_status(paths["swisstlm3d_metadata"], "swisstlm3d_context"),
         reusable_from_tschamut=True,
         notes="Archive metadata contract is reusable; archive contents remain site-specific.",
     )
@@ -271,7 +316,7 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         product="swissSURFACE3D",
         path_or_pattern=str(paths["swisssurface3d_context"]),
         required=True,
-        status="ready" if paths["swisssurface3d_context"].exists() else "blocked_missing_inputs",
+        status=staged_context_status(paths["swisssurface3d_context"], "swisssurface3d_context"),
         reusable_from_tschamut=True,
         notes="Context layer is optional for some pilots but should be enumerated up front.",
     )
@@ -281,7 +326,7 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         product="swissSURFACE3D Raster",
         path_or_pattern=str(paths["swisssurface3d_raster_context"]),
         required=True,
-        status="ready" if paths["swisssurface3d_raster_context"].exists() else "blocked_missing_inputs",
+        status=staged_context_status(paths["swisssurface3d_raster_context"], "swisssurface3d_raster_context"),
         reusable_from_tschamut=True,
         notes="Raster context can be used for canopy / surface-height QA when available.",
     )
@@ -291,7 +336,7 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         product="swissBUILDINGS3D",
         path_or_pattern=str(paths["swissbuildings3d_context"]),
         required=True,
-        status="ready" if paths["swissbuildings3d_context"].exists() else "blocked_missing_inputs",
+        status=staged_context_status(paths["swissbuildings3d_context"], "swissbuildings3d_context"),
         reusable_from_tschamut=True,
         notes="Building context is optional for hazard-only work but required for portability review.",
     )
@@ -467,6 +512,7 @@ def build_checklist(
     site_extent: dict[str, Any],
     source_zone_scenario_contract: dict[str, Any],
     missing_required: list[dict[str, Any]],
+    deferred_required: list[dict[str, Any]],
     candidate_selection_rationale: str,
     acquisition_manifest_path: Path,
 ) -> list[str]:
@@ -500,6 +546,12 @@ def build_checklist(
         )
     if missing_required:
         checklist.append("Fill the missing required categories before attempting a second-site port.")
+    if deferred_required:
+        checklist.append(
+            "Public-context products are intentionally deferred until staged: "
+            + ", ".join(req["category"] for req in deferred_required)
+            + ". Use the acquisition manifest as the staging contract; do not confuse these with missing core inputs."
+        )
     if candidate_site_name != "unspecified":
         checklist.append(f"Candidate site label: {candidate_site_name}.")
     if site_extent:
@@ -522,9 +574,15 @@ def build_blocked_reason(
     candidate_site_id: str,
     site_extent: dict[str, Any],
     missing_required: list[dict[str, Any]],
+    deferred_required: list[dict[str, Any]],
     site_config: Path | None,
 ) -> str:
     if not missing_required:
+        if deferred_required:
+            return (
+                f"public-context products are intentionally deferred until staged for {candidate_site_id}; "
+                + ", ".join(req["category"] for req in deferred_required)
+            )
         return "none"
     if site_config is None:
         return (
@@ -560,6 +618,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_site_name: {report['candidate_site_name']}",
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         f"site_extent_or_placeholder: {report['site_extent_or_placeholder']}",
+        f"core_input_status: {report['core_input_status']}",
+        f"deferred_public_context_status: {report['deferred_public_context_status']}",
         f"terrain_manifest_status: {report['terrain_manifest_status']}",
         f"source_zone_manifest_status: {report['source_zone_manifest_status']}",
         f"scenario_manifest_status: {report['scenario_manifest_status']}",
@@ -584,6 +644,18 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("expected_artifact_roots:")
     lines.extend(_render_entries(report["expected_artifact_roots"]))
     lines.append("")
+    lines.append("deferred_public_context_categories:")
+    if report.get("deferred_public_context_categories"):
+        lines.extend(f"- {item}" for item in report["deferred_public_context_categories"])
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("deferred_public_context_paths_or_patterns:")
+    if report.get("deferred_public_context_paths_or_patterns"):
+        lines.extend(f"- {item}" for item in report["deferred_public_context_paths_or_patterns"])
+    else:
+        lines.append("- none")
+    lines.append("")
     lines.append("missing_input_categories:")
     if report["missing_input_categories"]:
         lines.extend(f"- {item}" for item in report["missing_input_categories"])
@@ -595,6 +667,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.extend(f"- {item}" for item in report["missing_input_paths_or_patterns"])
     else:
         lines.append("- none")
+    lines.append("")
+    lines.append(f"blocked_reason: {report['blocked_reason']}")
     lines.append("")
     lines.append("acquisition_or_staging_checklist:")
     lines.extend(f"- {item}" for item in report["acquisition_or_staging_checklist"])
