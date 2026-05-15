@@ -1,0 +1,25 @@
+schema_version: second_site_public_geodata_preflight_v1
+candidate_site_id: placeholder_second_site_v1
+candidate_site_name: Placeholder Second Site
+site_extent:
+  crs: EPSG:2056
+  xmin: 2700000.0
+  ymin: 1180000.0
+  xmax: 2702000.0
+  ymax: 1182000.0
+expected_processed_input_root: data/processed/swisstopo/placeholder_second_site_v1/input
+expected_processed_context_root: data/processed/swisstopo/placeholder_second_site_v1/context
+expected_terrain_crop_path: data/processed/swisstopo/placeholder_second_site_v1/input/terrain.asc
+expected_terrain_metadata_path: data/processed/swisstopo/placeholder_second_site_v1/input/terrain_metadata.yaml
+expected_source_zone_metadata_path: data/processed/swisstopo/placeholder_second_site_v1/input/source_zone_metadata.yaml
+expected_scenario_table_path: data/processed/swisstopo/placeholder_second_site_v1/input/scenario_table.csv
+expected_source_scenario_policy_path: validation/policies/placeholder_second_site_v1_source_scenario_policy_v1.yaml
+expected_validation_private_root: validation/private/placeholder_second_site_v1
+expected_hazard_results_root: hazard/results/placeholder_second_site_v1
+expected_swissimage_context_root: data/processed/swisstopo/placeholder_second_site_v1/context/swissimage
+expected_swisstlm3d_context_root: data/processed/swisstopo/placeholder_second_site_v1/context/swisstlm3d
+expected_swisstlm3d_metadata_path: data/processed/swisstopo/placeholder_second_site_v1/context/swisstlm3d/metadata.json
+expected_swisssurface3d_context_root: data/processed/swisstopo/placeholder_second_site_v1/context/swisssurface3d
+expected_swisssurface3d_raster_context_root: data/processed/swisstopo/placeholder_second_site_v1/context/swisssurface3d_raster
+expected_swissbuildings3d_context_root: data/processed/swisstopo/placeholder_second_site_v1/context/swissbuildings3d
+expected_barrier_inventory_root: data/processed/swisstopo/placeholder_second_site_v1/context/barriers

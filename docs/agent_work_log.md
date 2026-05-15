@@ -4890,3 +4890,26 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
   `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --format json`.
+
+- Roadmap item: TB-028 staged a placeholder second-site public-geodata
+  manifest/config.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml`,
+  `docs/task_backlog.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`.
+- Evidence streams consumed: the generic second-site portability preflight,
+  the Tschamut same-scale readiness preflight, the public real-site
+  geodata-preparation contract, the swisstopo data-strategy contract, and the
+  Tschamut processed-input contract as a reusable example.
+- Classification: `blocked_missing_inputs` for the staged placeholder
+  candidate.
+- Uncertainty reduced: the portability helper now has a concrete placeholder
+  candidate manifest that surfaces site-specific missing inputs and staging
+  paths instead of only a generic template state.
+- Remaining uncertainty: no real second-site public geodata or site-specific
+  source-zone/scenario records have been staged yet.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml --format json`.

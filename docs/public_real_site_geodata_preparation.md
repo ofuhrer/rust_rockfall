@@ -175,6 +175,12 @@ profiling, context inspection, overlap diagnostics, and the uncertainty
 envelope summary. It is a portability helper, not a gate or an acceptance
 decision.
 
+A staged placeholder candidate manifest lives at
+`tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml`.
+Running the preflight against that manifest is expected to remain blocked until
+actual second-site terrain, context, source-zone, and scenario inputs are
+staged under the candidate roots.
+
 Before the first conditional pilot run, also run:
 
 ```bash

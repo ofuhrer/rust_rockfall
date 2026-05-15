@@ -53,14 +53,17 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     candidate_site_name = text_value(config.get("candidate_site_name")) or "unspecified"
     site_extent = config.get("site_extent") if isinstance(config.get("site_extent"), dict) else {}
 
-    paths = default_paths(candidate_site_id)
+    paths = build_paths(candidate_site_id, config)
     requirements = build_requirements(candidate_site_id, site_extent, paths)
     missing_required = [req for req in requirements if req["required"] and req["status"] != "ready"]
 
     report = {
+        "second_site_manifest_status": "staged_placeholder_manifest" if site_config is not None and site_config.exists() else "missing_manifest_config",
         "portability_preflight_status": "ready" if not missing_required else "blocked_missing_inputs",
         "readiness_status": "ready" if not missing_required else "blocked_missing_inputs",
         "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
+        "site_extent_or_placeholder": site_extent if site_extent else "placeholder_extent_missing",
         "reusable_workflow_components": reusable_workflow_components(),
         "site_specific_required_inputs": [req for req in requirements if req["required"]],
         "required_public_geodata_products": [req for req in requirements if req["kind"] == "public_geodata_product"],
@@ -89,29 +92,53 @@ def text_value(value: Any) -> str:
     return str(value).strip() if value not in (None, "") else ""
 
 
-def default_paths(site_id: str) -> dict[str, Path]:
-    processed_root = ROOT / "data/processed/swisstopo" / site_id
-    validation_root = ROOT / "validation/private" / site_id
-    hazard_root = ROOT / "hazard/results" / site_id
+def resolve_repo_path(value: Any, default: Path | None = None) -> Path:
+    text = text_value(value)
+    if not text:
+        if default is None:
+            raise ValueError("missing path value and no default provided")
+        return default
+    path = Path(text)
+    return path if path.is_absolute() else ROOT / path
+
+
+def build_paths(site_id: str, config: dict[str, Any]) -> dict[str, Path]:
+    processed_root = resolve_repo_path(
+        config.get("expected_processed_input_root"),
+        ROOT / "data/processed/swisstopo" / site_id / "input",
+    )
+    context_root = resolve_repo_path(
+        config.get("expected_processed_context_root"),
+        ROOT / "data/processed/swisstopo" / site_id / "context",
+    )
+    validation_root = resolve_repo_path(
+        config.get("expected_validation_private_root"),
+        ROOT / "validation/private" / site_id,
+    )
+    hazard_root = resolve_repo_path(
+        config.get("expected_hazard_results_root"),
+        ROOT / "hazard/results" / site_id,
+    )
     policy_root = ROOT / "validation/policies"
-    context_root = processed_root / "context"
-    input_root = processed_root / "input"
+    input_root = processed_root
     return {
-        "terrain_crop": input_root / "terrain.asc",
-        "terrain_metadata": input_root / "terrain_metadata.yaml",
-        "source_zone_metadata": input_root / "source_zone_metadata.yaml",
-        "scenario_table": input_root / "scenario_table.csv",
-        "source_scenario_policy": policy_root / f"{site_id}_source_scenario_policy_v1.yaml",
-        "swissimage_context": context_root / "swissimage",
-        "swisstlm3d_context": context_root / "swisstlm3d",
-        "swisstlm3d_metadata": context_root / "swisstlm3d" / "metadata.json",
-        "swisssurface3d_context": context_root / "swisssurface3d",
-        "swisssurface3d_raster_context": context_root / "swisssurface3d_raster",
-        "swissbuildings3d_context": context_root / "swissbuildings3d",
-        "barrier_inventory": context_root / "barriers",
-        "validation_observations": processed_root / "validation/observations",
+        "terrain_crop": resolve_repo_path(config.get("expected_terrain_crop_path"), input_root / "terrain.asc"),
+        "terrain_metadata": resolve_repo_path(config.get("expected_terrain_metadata_path"), input_root / "terrain_metadata.yaml"),
+        "source_zone_metadata": resolve_repo_path(config.get("expected_source_zone_metadata_path"), input_root / "source_zone_metadata.yaml"),
+        "scenario_table": resolve_repo_path(config.get("expected_scenario_table_path"), input_root / "scenario_table.csv"),
+        "source_scenario_policy": resolve_repo_path(config.get("expected_source_scenario_policy_path"), policy_root / f"{site_id}_source_scenario_policy_v1.yaml"),
+        "swissimage_context": resolve_repo_path(config.get("expected_swissimage_context_root"), context_root / "swissimage"),
+        "swisstlm3d_context": resolve_repo_path(config.get("expected_swisstlm3d_context_root"), context_root / "swisstlm3d"),
+        "swisstlm3d_metadata": resolve_repo_path(config.get("expected_swisstlm3d_metadata_path"), context_root / "swisstlm3d" / "metadata.json"),
+        "swisssurface3d_context": resolve_repo_path(config.get("expected_swisssurface3d_context_root"), context_root / "swisssurface3d"),
+        "swisssurface3d_raster_context": resolve_repo_path(config.get("expected_swisssurface3d_raster_context_root"), context_root / "swisssurface3d_raster"),
+        "swissbuildings3d_context": resolve_repo_path(config.get("expected_swissbuildings3d_context_root"), context_root / "swissbuildings3d"),
+        "barrier_inventory": resolve_repo_path(config.get("expected_barrier_inventory_root"), context_root / "barriers"),
+        "validation_observations": resolve_repo_path(config.get("expected_validation_observations_root"), processed_root / "validation/observations"),
         "validation_case_root": validation_root,
         "hazard_results_root": hazard_root,
+        "processed_input_root": processed_root,
+        "processed_context_root": context_root,
     }
 
 
@@ -308,9 +335,9 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         kind="artifact_root",
         category="processed_input_root",
         product="processed public-input root",
-        path_or_pattern=f"data/processed/swisstopo/{site_id}/input",
+        path_or_pattern=str(paths["processed_input_root"]),
         required=True,
-        status="ready" if (ROOT / f"data/processed/swisstopo/{site_id}/input").exists() else "blocked_missing_inputs",
+        status="ready" if paths["processed_input_root"].exists() else "blocked_missing_inputs",
         reusable_from_tschamut=True,
         notes="The processed-input root is reusable, but its contents are site-specific.",
     )
@@ -318,9 +345,9 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
         kind="artifact_root",
         category="processed_context_root",
         product="processed public-context root",
-        path_or_pattern=f"data/processed/swisstopo/{site_id}/context",
+        path_or_pattern=str(paths["processed_context_root"]),
         required=True,
-        status="ready" if (ROOT / f"data/processed/swisstopo/{site_id}/context").exists() else "blocked_missing_inputs",
+        status="ready" if paths["processed_context_root"].exists() else "blocked_missing_inputs",
         reusable_from_tschamut=True,
         notes="Context root layout is reusable, but product availability is site-specific.",
     )
@@ -446,9 +473,12 @@ def assumptions_not_yet_generalized(candidate_site_id: str) -> list[str]:
 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
+        f"second_site_manifest_status: {report['second_site_manifest_status']}",
         f"portability_preflight_status: {report['portability_preflight_status']}",
         f"readiness_status: {report['readiness_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
+        f"candidate_site_name: {report['candidate_site_name']}",
+        f"site_extent_or_placeholder: {report['site_extent_or_placeholder']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
         "",

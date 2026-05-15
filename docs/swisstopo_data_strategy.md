@@ -189,6 +189,11 @@ download or stage any second-site data. The command is meant to surface what is
 reusable from Tschamut and what still needs site-specific public input before a
 new pilot can be attempted.
 
+The staged placeholder candidate manifest for that helper is
+`tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml`.
+Its current blocked report is expected, because it names site-specific paths
+without any real second-site public geodata yet staged under them.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

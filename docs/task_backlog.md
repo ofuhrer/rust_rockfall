@@ -167,47 +167,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-028: Stage A Candidate Second-Site Public-Geodata Manifest
-
-Capability gap reduced: TB-027 added a generic second-site portability
-preflight, but the Swiss-wide workflow still lacks a concrete candidate site
-configuration that turns portability requirements into actionable public-data
-staging work.
-
-Goal: choose or stage a small candidate second-site metadata manifest/config
-that can be checked by `scripts/check_second_site_public_geodata_preflight.py`
-without downloading raw geodata or running simulations.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`;
-- `tests/fixtures/second_site_public_geodata_preflight/site_template.yaml`;
-- `docs/public_real_site_geodata_preparation.md`;
-- `docs/swisstopo_data_strategy.md`;
-- `data/datasets.yaml`;
-- current Tschamut processed input metadata only as a contract example.
-
-Required work:
-
-1. Add a concrete candidate-site config or manifest with site id, CRS/extent
-   placeholders, expected processed input roots, expected context roots, and
-   validation/hazard output roots.
-2. Do not download raw or large geodata.
-3. Do not run a second-site ensemble or hazard-layer build.
-4. Run the portability preflight against the candidate config and record exact
-   missing input categories, paths, and staging commands.
-5. Keep scale-up and operational claims false.
-
-Definition of done:
-
-- a concrete candidate second-site manifest/config exists or the blocker for
-  choosing one is explicit;
-- the portability preflight reports actionable readiness or missing inputs for
-  that candidate;
-- focused tests or fixture updates cover the candidate-config path where
-  appropriate;
-- checks pass.
-
 ### TB-029: Run A Same-Size Alternate-Seed Sampling Replicate
 
 Capability gap reduced: TB-025 showed a bounded 12-trajectory probe reduces
