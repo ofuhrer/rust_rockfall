@@ -5310,3 +5310,18 @@ Planning only; these milestones do not implement roadmap item content yet.
   agent/backlog guidance to make this helper the first TB-task command.
 - Boundaries preserved: no simulator behavior, evidence classification,
   validation case, physics, geodata, or hazard-output changes.
+
+- High-level reviewer finding triage after TB-040 and the task-context
+  bootstrap.
+- Files changed: `docs/task_backlog.md`.
+- Decision summary:
+  - ACCEPT into backlog: implement the rebuildable reduced-output profile,
+    wire spatial uncertainty into closure logic, regenerate one ignored
+    COG-ready same-scale package, and stage minimal Chant Sura inputs.
+  - KEEP already active: TB-041 Chant Sura holdout evidence manifest.
+  - DEFER: distributed execution, large ensembles, manual QGIS QA, operational
+    semantics, risk/exposure/vulnerability, and broad helper consolidation.
+  - DISMISS: no reviewer finding was dismissed as irrelevant; deferrals are
+    due to current priority and readiness, not irrelevance.
+- Boundaries preserved: no physics changes, no tuning, no scale-up
+  authorization, no operational claims, and no generated geodata committed.

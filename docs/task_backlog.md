@@ -138,22 +138,19 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- a closure assessment that turns the measured uncertainty, context, output,
-  GIS, and runtime evidence into explicit non-operational diagnostic
-  `accepted`, `no_go`, or `deferred` criteria without changing the current
-  classification by assertion;
-- a hazard-rebuild-compatible reduced-output profile that preserves the
-  trajectory metadata needed by `scripts/build_hazard_layers.py` while keeping
-  validation output closer to `summary_only`;
-- spatial uncertainty interpretation tooling that turns the existing same-scale
-  gate/target/probe artifacts into per-layer stability maps, agreement masks,
-  uncertainty surfaces, or cell-wise variance summaries;
-- a bounded COG conversion proof of concept that fixes the measured raster
-  layout blocker without committing generated raster products;
-- a concrete Chant Sura / Flüelapass public-geodata acquisition/staging plan
-  that turns the current metadata fixture into exact public input requirements;
-- validation/calibration evidence-gap analysis that names the field or
-  reference data needed for physical credibility without tuning the model.
+- implementation of the hazard-rebuild-compatible reduced-output contract so a
+  smaller retained-output profile actually rebuilds hazard layers, rather than
+  only being specified;
+- integration of spatial uncertainty summaries into closure logic so localized
+  versus closure-limiting disagreement affects `accepted_diagnostic`, `no_go`,
+  or `deferred` interpretation explicitly;
+- regeneration of a same-scale GIS package into ignored COG-ready outputs so
+  the scratch COG proof becomes normal package evidence;
+- staging of minimal Chant Sura / Flüelapass public inputs so the second-site
+  preflight moves from acquisition-manifest-ready to a more specific
+  blocked-or-ready state;
+- durable holdout evidence for Chant Sura so diagnostic selection evidence and
+  independent validation evidence remain separated.
 
 ## Backlog Protocol
 
@@ -228,6 +225,156 @@ Boundaries:
 - no calibration, parameter fitting, physics changes, annual-frequency claims,
   risk, exposure, vulnerability, or operational use.
 
+### TB-042: Implement A Hazard-Rebuild-Compatible Reduced Output Profile
+
+Goal: turn the TB-036 builder-facing contract into an actual reduced validation
+output profile that can rebuild hazard layers with fewer files and bytes than
+the full target output.
+
+Inspect first:
+
+- `scripts/check_hazard_rebuild_output_profile.py`
+- `scripts/build_hazard_layers.py`
+- `docs/tschamut_public_bounded_validation_output_profile.md`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+- `validation/private/tschamut_public_pilot/target_gate_v1_summary_only/`
+- `validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/`
+- `validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/`
+
+Expected work:
+
+- add or prototype a reduced output mode that retains the minimum hazard-builder
+  inputs: trajectory or ensemble-trajectory data, deposition, impact events,
+  and diagnostics;
+- run a bounded local probe or fixture-backed parity test that proves hazard
+  rebuilding works from the reduced profile;
+- measure file and byte counts against full-output and current `summary_only`
+  roots.
+
+Definition of done:
+
+- the checker reports a concrete `rebuildable_reduced_output` profile, not only
+  a specified contract;
+- hazard-layer rebuild parity is demonstrated for the bounded test scope;
+- output file/byte counts are lower than the full target output and explicitly
+  reported.
+
+Boundaries:
+
+- no physics changes, threshold changes, parameter tuning, scale-up
+  authorization, annual-frequency claims, risk, exposure, vulnerability, or
+  operational use;
+- no large generated outputs committed.
+
+### TB-043: Use Spatial Uncertainty In Conditional Closure Logic
+
+Goal: connect the measured spatial uncertainty diagnostics to the conditional
+pilot closure helper so localized uncertainty and support/nodata-driven
+uncertainty are interpreted consistently.
+
+Inspect first:
+
+- `scripts/summarize_spatial_same_scale_uncertainty.py`
+- `scripts/summarize_tschamut_conditional_pilot_closure.py`
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+
+Expected work:
+
+- extend the closure helper or its evidence mapping to consume the spatial
+  uncertainty summary;
+- distinguish localized shared-support magnitude variation from
+  support/nodata-dominated disagreement in the closure matrix;
+- report whether each dominant layer is closure-limiting, deferrable, or
+  compatible with a future accepted diagnostic threshold.
+
+Definition of done:
+
+- the closure report no longer treats all spatial uncertainty as a scalar
+  envelope; it names the layer-specific spatial concentration class;
+- current closure remains conservative unless measured evidence supports a
+  stricter status;
+- tests cover localized shared-support uncertainty versus nodata/support
+  dominated uncertainty.
+
+Boundaries:
+
+- no larger ensembles until the reduced-output blocker is resolved;
+- no physics changes, tuning, scale-up, annual-frequency claims, risk, exposure,
+  vulnerability, or operational use.
+
+### TB-044: Regenerate One Ignored Same-Scale GIS Package As COG-Ready
+
+Goal: move from the scratch COG proof of concept to an ignored same-scale GIS
+package whose audit reports COG-ready rasters and `cloud_optimized: true`
+metadata.
+
+Inspect first:
+
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/prototype_cog_conversion.py`
+- `scripts/build_hazard_layers.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `hazard/results/tschamut_public_pilot/gate_v1/`
+
+Expected work:
+
+- regenerate or convert one bounded same-scale package under an ignored output
+  root;
+- ensure rasters are tiled, compressed, and carry overviews;
+- update package manifests for the regenerated package only so the audit can
+  report COG readiness.
+
+Definition of done:
+
+- the GIS/COG audit reports the regenerated ignored package as COG-ready;
+- the current committed/standard package state remains truthfully reported;
+- no generated rasters or large package outputs are committed.
+
+Boundaries:
+
+- no manual QGIS acceptance unless actually performed;
+- no scientific acceptance, scale-up, operational, annual-frequency, risk,
+  exposure, or vulnerability claims.
+
+### TB-045: Stage Minimal Chant Sura Inputs For Preflight Progress
+
+Goal: move the Chant Sura / Flüelapass candidate beyond metadata-only
+acquisition readiness by staging the smallest ignored input set needed to
+reduce core `blocked_missing_inputs` categories.
+
+Inspect first:
+
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+
+Expected work:
+
+- stage or fixture a minimal terrain metadata, source-zone metadata, and
+  scenario-table input set under ignored Chant Sura paths, using only public or
+  tiny intentional fixture data;
+- keep missing context or validation artifacts explicit if they remain
+  intentionally deferred;
+- rerun the second-site preflight and report which blockers were reduced.
+
+Definition of done:
+
+- the preflight no longer fails on the staged core input categories, or it
+  reports exact remaining blockers after a bounded attempt;
+- no raw or large geodata is downloaded or committed;
+- no second-site validation ensemble or hazard build is run.
+
+Boundaries:
+
+- no Tschamut evidence reused as Chant Sura validation evidence;
+- no tuning, source-frequency, annual probability, risk, exposure,
+  vulnerability, scale-up, or operational claims.
+
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:
@@ -245,3 +392,5 @@ These are intentionally not current worker tasks:
 - larger selected-domain or production ensembles until closure criteria,
   rebuildable reduced outputs, and current same-scale uncertainty blockers are
   addressed.
+- helper consolidation beyond the task-context bootstrap until duplicated
+  parsing becomes a demonstrated implementation bottleneck.
