@@ -357,6 +357,85 @@ its referenced raster files are restored or regenerated. This keeps the result
 conditional and non-operational rather than inferring spatial stability from a
 single manifest-side self-check.
 
+## TB-017 Target Manifest Restore Status
+
+Current checkout status: `blocked_missing_inputs`
+
+- target_artifact_restore_status: `blocked_missing_inputs`
+- target_validation_manifest_available: `false`
+- target_hazard_manifest_available: `false`
+- target_cellwise_layers_available: `false`
+- target_referenced_grids_available: `false`
+- gate_manifest_available: `true` in this checkout
+- tb014_ready: `false`
+- validation_output_mode: `unavailable`
+- defaults_changed: `false`
+- scale_up_authorized: `false`
+- operational_claims_allowed: `false`
+
+Missing local paths in this checkout:
+
+- `validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml`
+- `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_conditional_intensity_exceedance_curves.csv`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/chunks/`
+
+Missing processed public inputs needed to regenerate the target side:
+
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`
+- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml`
+
+Required regeneration path when inputs are restored:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_public_real_site_conditional_pilot_run.py \
+  validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml \
+  --print-command-plan
+
+cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml
+
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py \
+  --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml \
+  --output-dir hazard/results/tschamut_public_pilot/target_gate_v1 \
+  --grid-xmin 2696376.0 \
+  --grid-ymin 1167384.0 \
+  --grid-ncols 300 \
+  --grid-nrows 304 \
+  --grid-cell-size 2.0 \
+  --map-product-id tschamut_public_scalable_conditional_target_gate_v1 \
+  --probability-mode sampling_weighted_conditional \
+  --normalization-scope conditioned_on_filter \
+  --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml \
+  --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv \
+  --map-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json \
+  --export-geotiff \
+  --pilot-gis-package \
+  --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json \
+  --pilot-gis-qa-status not-run \
+  --pilot-gis-qa-note "Manual GIS/QGIS inspection has not been run for this generated package." \
+  --reducer-workers 2 \
+  --no-plots \
+  --conditional-curve-export summary-only \
+  --grid-csv-export none \
+  --diagnostics validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_metrics.json \
+  --trajectory validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectory.csv \
+  --ensemble-trajectories-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_trajectories \
+  --deposition validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_deposition.csv \
+  --ensemble-impact-events-dir validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_impacts \
+  --kinetic-energy-exceedance-j 1000.0 \
+  --kinetic-energy-exceedance-j 10000.0 \
+  --jump-height-exceedance-m 1.0 \
+  --jump-height-exceedance-m 2.0
+```
+
+TB-014 readiness remains `false` in this checkout because the target-side
+manifest and referenced grid files are missing. TB-014 can be retried only
+after the ignored target artifacts are restored or regenerated locally.
+
 ## TB-013 Context Stage Update
 
 Current checkout status: `reviewed_local_context`

@@ -31,6 +31,32 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-017 Target Manifest Restore Block
+
+- Milestone id: TB-017 target manifest restore block.
+- Roadmap item: Restore The Same-Scale Target Hazard Manifest For Comparison.
+- Hypothesis/objective: The current checkout either contains the target-side
+  same-scale hazard manifest and referenced grid files or can record an exact
+  missing-input regeneration path without redoing corridor context work.
+- Files intended to change: `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/agent_work_log.md`
+- Implementation summary: Audited the local checkout and confirmed that the
+  target-side ignored roots are absent here: the private target case,
+  validation manifest, hazard manifest, map-package manifest, pilot-GIS
+  manifest, conditional curve CSV, and chunk directory are all missing, and
+  the processed public inputs needed to regenerate them are also absent.
+  Recorded the exact missing paths and the same command plan already used by
+  the selected gate so TB-014 can be retried without ambiguity once inputs
+  are restored.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/target_gate_v1 hazard/results/tschamut_public_pilot/target_gate_v1`
+  returned `false` for both target-side roots with `0` files and `0` bytes.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  is the blocked comparison command and remains unavailable until the target
+  manifest is restored locally.
+- Reviewer notes: No context extraction or corridor review was repeated; TB-015 already measured swissTLM3D corridor relevance. This entry only records the missing target-side comparison artifacts and the regeneration path.
+- Decision: BLOCKED_MISSING_INPUTS.
+- Next proposed milestone: TB-014.
+
 ### TB-012/TB-013 Local Unblock
 
 - Milestone id: TB-012/TB-013 local unblock.
