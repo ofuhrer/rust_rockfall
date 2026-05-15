@@ -5325,3 +5325,20 @@ Planning only; these milestones do not implement roadmap item content yet.
     due to current priority and readiness, not irrelevance.
 - Boundaries preserved: no physics changes, no tuning, no scale-up
   authorization, no operational claims, and no generated geodata committed.
+
+- Backlog refill after TB-040 maturity reassessment.
+- Files changed: `docs/task_backlog.md`.
+- Evidence streams consumed: same-scale readiness, closure criteria, multi-seed
+  and spatial uncertainty summaries, bounded output profile, reducer/runtime
+  scaling, GIS/COG audit and COG proof, Chant Sura acquisition manifest, and
+  validation/calibration evidence-gap assessment.
+- Decision summary: the current active queue TB-041 through TB-045 remains the
+  right sequence. The backlog context was updated so completed areas are no
+  longer described as missing: spatial uncertainty is measured, COG conversion
+  is proven on a scratch sample, closure criteria exist, Chant Sura has an
+  acquisition manifest, and physical credibility remains not established.
+- Rationale: prioritize holdout evidence, rebuildable reduced output, spatial
+  closure interpretation, ignored COG-ready package regeneration, and minimal
+  Chant Sura input staging. Defer distributed execution, operational semantics,
+  annual-frequency modelling, risk/exposure/vulnerability, large ensembles, and
+  helper consolidation.

@@ -43,11 +43,13 @@ calibration evidence exist.
 
 The selected Tschamut target-scale evidence remains `inconclusive`. The
 same-scale artifact chain is reproducible and measured, and the repository now
-has multi-seed uncertainty, GIS/package, command-plan, and bounded
+has multi-seed uncertainty, spatial uncertainty interpretation, closure
+criteria, GIS/package, command-plan, COG proof-of-concept, and bounded
 runtime/output evidence. Larger selected-domain runs remain blocked until the
 dominant uncertainty and output-profile gaps below are reduced with measured
 evidence. Second-site pilots remain metadata-only even though Chant Sura /
-Flüelapass is staged as the concrete candidate manifest.
+Flüelapass is staged as the concrete candidate manifest with a concrete
+acquisition manifest.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -63,8 +65,9 @@ objective are:
    Tschamut workflow is no longer blocked on missing local artifacts. The
    readiness preflight, deterministic case regeneration, restored gate/target
    manifests, target-side `summary_only` output profile, portable command
-   plan, measured convergence diagnostics, and bounded runtime/output summaries
-   now form an executable evidence chain. The earlier
+   plan, measured convergence diagnostics, closure criteria, spatial
+   uncertainty summary, and bounded runtime/output summaries now form an
+   executable evidence chain. The earlier
    `Balfrin target-gate reproduction` remains useful single-job execution
    evidence.
 2. Target-vs-gate convergence remains the dominant scientific uncertainty. The
@@ -78,18 +81,19 @@ objective are:
    nonzero Jaccard fixed at `1.0`. `max_jump_height` remains limited by
    support/nodata sensitivity with nonzero Jaccard from
    `0.7598039215686274` to `0.8579234972677595`.
-   Current tooling interprets this mostly through scalar pairwise metrics,
-   layer summaries, and envelope ranges. The next scientific maturation step is
-   spatial uncertainty interpretation: where uncertainty concentrates, which
-   cells are stable across seeds, and which layers produce persistent spatial
-   disagreement.
+   Spatial uncertainty is now measured from the same artifacts: the dominant
+   uncertainty is localized rather than diffuse, but `max_kinetic_energy` and
+   `max_jump_height` remain support/nodata sensitive enough that closure logic
+   still needs to consume the spatial classifications explicitly.
 3. Output volume is measured and partly controlled but not yet scale-ready.
    Target validation output remains the dominant measured pressure at
    `2716` files / `764598283` bytes and `272.573375917` seconds in the
    same-scale set. Target-side `summary_only` output reduced substantially,
    but TB-025 showed that `summary_only` validation artifacts cannot currently
-   rebuild hazard layers because the hazard builder still needs trajectory CSV
-   artifacts that the reduced profile omits.
+   rebuild hazard layers because the hazard builder still needs trajectory,
+   deposition, impact-event, and diagnostics artifacts that the reduced profile
+   omits. The minimum builder-facing contract is specified but not yet
+   implemented as a real reduced-output mode.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
@@ -112,11 +116,16 @@ objective are:
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked by the current
    strip-organized raster layout, missing overviews, and
-   `cloud_optimized: false` metadata, not by missing package manifests.
+   `cloud_optimized: false` metadata, not by missing package manifests. A
+   scratch COG conversion proof has shown this is technically fixable, but no
+   ignored same-scale package has yet been regenerated and audited as
+   COG-ready.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
-   evidence mature.
+   evidence mature. The validation/calibration gap assessment reports
+   `physical_credibility_status=not_established`, `calibration_status=missing`,
+   and `validation_status=partial`.
 
 ## Backlog Quality Assessment
 
@@ -151,6 +160,18 @@ Underrepresented high-value work:
   blocked-or-ready state;
 - durable holdout evidence for Chant Sura so diagnostic selection evidence and
   independent validation evidence remain separated.
+
+Current priority order:
+
+1. TB-041 addresses the active validation/holdout evidence gap without changing
+   model behavior.
+2. TB-042 resolves the dominant output-profile blocker before any larger run is
+   considered.
+3. TB-043 turns measured spatial uncertainty into closure evidence rather than
+   another standalone summary.
+4. TB-044 converts the proven COG path into an ignored package-level result.
+5. TB-045 advances Swiss-wide portability only after the diagnostic evidence
+   and output/product blockers are better controlled.
 
 ## Backlog Protocol
 
