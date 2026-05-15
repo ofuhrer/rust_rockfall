@@ -56,6 +56,63 @@ Planning only; these milestones do not implement roadmap item content yet.
   `scripts/git-hooks/pre-commit`
   passed.
 
+### TB-025
+
+- Milestone id: TB-025.
+- Roadmap item: Run A Bounded Same-Scale Sampling Sensitivity Probe.
+- Hypothesis/objective: A small bounded same-scale probe can show whether
+  the target-vs-gate disagreement shrinks under controlled sampling without
+  changing physics, thresholds, release assumptions, or sampling weights.
+- Files intended to change: `docs/task_backlog.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Ran the readiness preflight, then attempted a
+  summary-only bounded probe. The summary-only probe was blocked for hazard
+  rebuilding because trajectory CSV output was not available, so the measured
+  sensitivity probe used the bounded full-output case with 12 trajectories and
+  the same seed (`34014`). The probe built hazard layers successfully and was
+  compared against both gate and target same-scale artifacts. The dominant
+  disagreement layers remained `max_kinetic_energy` and `max_jump_height`,
+  but their differences shrank relative to the earlier gate-vs-target
+  comparison, which supports measured sampling sensitivity rather than an
+  accepted convergence claim.
+- Evidence streams consumed: the readiness preflight, the summary-only probe
+  case and manifest, the bounded full-output probe case and manifest, the
+  probe hazard artifacts, the gate and target manifests, and the JSON
+  comparison output from `scripts/compare_hazard_map_convergence.py`.
+- Classification: `sampling_sensitivity_measured`; `scale_up_authorized`
+  remains false and `operational_claims_allowed` remains false.
+- Uncertainty reduced: same-scale disagreement now has a measured bounded
+  sampling-sensitivity component, and the dominant layers shrink under the
+  12-trajectory probe.
+- Remaining uncertainty: the probe did not collapse the disagreement, so
+  convergence remains conservative and non-operational.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`
+  passed.
+  `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target timeout 600 cargo run -- validate --case validation/private/tschamut_public_pilot/sampling_sensitivity_v1/tschamut_public_sampling_sensitivity_v1_case.yaml`
+  passed, but hazard rebuilding was blocked because trajectory CSV output was
+  unavailable.
+  `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target timeout 600 cargo run -- validate --case validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/tschamut_public_sampling_sensitivity_v1_full_case.yaml`
+  passed.
+  `PYENV_VERSION=system timeout 600 uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/tschamut_public_sampling_sensitivity_v1_full_case.yaml --output-dir hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full/validation_tschamut_public_sampling_sensitivity_v1_full_manifest.json hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json`
+  passed.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: This is a bounded sensitivity measurement only; it does not
+  authorize scale-up or operational interpretation.
+- Decision: ACCEPT_WITH_LIMITATIONS.
+- Next proposed milestone: TB-026.
+
 ### TB-024
 
 - Milestone id: TB-024.

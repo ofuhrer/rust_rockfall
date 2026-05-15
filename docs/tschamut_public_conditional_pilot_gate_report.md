@@ -219,6 +219,65 @@ Interpretation:
 - same-source and same-scenario metadata reduce the likelihood that the
   disagreement is coming from geometry or source-zone mismatch alone.
 
+## Bounded Sampling Sensitivity Probe
+
+The same-scale sampling-sensitivity probe was run in a bounded local turn to
+test whether the target-vs-gate disagreement shrinks under controlled sample
+size while preserving physics, thresholds, release assumptions, source and
+scenario inputs, and non-operational semantics.
+
+The summary-only probe case was useful as a blocker check, but it could not be
+counted as the measured sensitivity probe because the hazard-layer builder
+needs trajectory CSV output:
+
+- case id: `validation_tschamut_public_sampling_sensitivity_v1`;
+- validation output mode: `summary_only`;
+- validation root:
+  `validation/private/tschamut_public_pilot/sampling_sensitivity_v1`;
+- audit footprint: `6` files, `171790` bytes.
+
+The measured bounded probe therefore used the full-output case:
+
+- case id: `validation_tschamut_public_sampling_sensitivity_v1_full`;
+- probe ensemble size: `12`;
+- probe seed: `34014`;
+- validation output mode: `full`;
+- validation root audit:
+  `247` files, `68221148` bytes;
+- hazard root audit:
+  `49` files, `21058710` bytes;
+- combined audit total:
+  `89279858` bytes.
+
+Measured probe commands:
+
+```bash
+PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/tschamut_public_sampling_sensitivity_v1_full_case.yaml
+PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/tschamut_public_sampling_sensitivity_v1_full_case.yaml --output-dir hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full
+PYENV_VERSION=system uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full/validation_tschamut_public_sampling_sensitivity_v1_full_manifest.json hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json --format json
+```
+
+Measured comparison result:
+
+- comparison status: `ok`;
+- comparison pairs run: `2`;
+- shared cell-wise layer count: `44` total across the two pairs;
+- strongest disagreement layers: `max_kinetic_energy`,
+  `max_jump_height`, `velocity_exceedance_5mps`,
+  `weighted_velocity_exceedance_5mps`, and `velocity_exceedance_10mps`;
+- `max_kinetic_energy` and `max_jump_height` both shrank relative to the
+  gate-vs-target comparison in TB-024, but they remain dominant;
+- support and nodata differences persist, especially in `max_jump_height`,
+  even though the total mismatch burden is lower than the gate-vs-target case.
+
+Interpretation boundary:
+
+- the probe shows measured sampling sensitivity, not accepted convergence;
+- the shrinkage is real but incomplete, so the same-scale pilot remains
+  conservative and non-operational;
+- `scale_up_authorized` stays `false`;
+- `operational_claims_allowed` stays `false`.
+
 ## Same-Scale Convergence Check
 
 The restored same-scale target-side artifacts are now present and the

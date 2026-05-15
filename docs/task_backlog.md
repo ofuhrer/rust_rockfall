@@ -163,38 +163,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-025: Run A Bounded Same-Scale Sampling Sensitivity Probe
-
-Capability gap reduced: same-scale convergence remains inconclusive, and the
-repo needs a measured indication of whether differences shrink under controlled
-sampling or seed/chunk variation before considering larger ensembles.
-
-Goal: run a small, bounded sampling-sensitivity or split-run probe using the
-existing same-scale workflow and summary-only output profile, then compare the
-result with the existing target/gate artifacts.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `scripts/build_hazard_layers.py`;
-- `scripts/compare_hazard_map_convergence.py`;
-- same-scale private cases and manifests under ignored paths.
-
-Required work:
-
-1. Keep the probe bounded and local; do not run a larger production ensemble.
-2. Preserve physics, thresholds, release assumptions, sampling weights,
-   baselines, and non-operational semantics.
-3. Use `summary_only` output where possible.
-4. Report file/byte/runtime pressure and cell-wise sensitivity metrics.
-
-Definition of done:
-
-- a bounded sensitivity measurement exists or exact blockers are recorded;
-- results inform whether larger deterministic ensembles are justified;
-- checks pass.
-
 ### TB-026: Harden Source-Zone And Block-Scenario Case Regeneration
 
 Capability gap reduced: target-side artifacts were restored locally, but the

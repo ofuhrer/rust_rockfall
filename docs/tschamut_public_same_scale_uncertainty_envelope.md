@@ -15,6 +15,22 @@
   `max_jump_height`, and the velocity exceedance layers; the cell-wise
   comparison is `ok` but remains conservative rather than accepted.
 
+## Sampling Sensitivity
+- Status: `measured`
+- A bounded 12-trajectory full-output probe at seed `34014` was run to test
+  whether the target-vs-gate disagreement shrinks under controlled sampling.
+- The summary-only probe attempt stayed blocked for hazard rebuilding because
+  trajectory CSV output was not available there, so it is recorded only as a
+  blocker check.
+- Probe output pressure:
+  `247` validation files / `68221148` bytes and `49` hazard files /
+  `21058710` bytes.
+- Probe-vs-gate and probe-vs-target comparisons both completed with `ok`
+  status, and the disagreement shrank compared with TB-024 but did not
+  disappear.
+- `max_kinetic_energy` remains the dominant disagreement layer, while
+  `max_jump_height` still carries support and nodata differences.
+
 ## Validation Output
 - Status: `blocker_retained`
 - Validation output mode context: `summary_only`
@@ -52,6 +68,10 @@
   within 20 m for roads, barriers, and water; a three-layer probe was runtime
   limited, and the corridor interpretation still does not reach accepted
   obstacle interaction evidence
+- the bounded sampling-sensitivity probe reduced the dominant disagreement
+  layers but did not collapse them; the remaining uncertainty is therefore
+  sampling-size sensitivity versus structural sampled-output divergence, not a
+  grid or scenario/source mismatch
 - the target-vs-gate disagreement is dominated by sampled-output differences
   on the shared grid, with identical CRS/grid geometry but different ensemble
   size and jump-height statistic coverage in the restored case metadata
