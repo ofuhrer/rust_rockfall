@@ -12,11 +12,11 @@ vulnerability, or approve an operational hazard product.
 - Run id: `tschamut_public_scalable_conditional_target_gate_v1`
 - Scope record:
   `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`
-- Current classification: `limiting`
+- Current classification: `blocked_pending_local_evidence`
 - Target-scale context review status: `blocked_missing_context_layers`
 - Operational status: `research_diagnostic`
 
-Forest and obstacle omission remains a limiting boundary condition for
+Forest and obstacle omission remains blocked pending local evidence for
 interpreting the executed target-scale gate. The target run uses bare-earth
 swissALTI3D terrain and no reviewed local context crop for canopy, buildings,
 roads, channels, protection works, or orthophoto alignment. The current
@@ -52,20 +52,21 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python \
   --format json
 ```
 
-Expected result: `classification` is `limiting`, target-scale context review
-status is `blocked_missing_context_layers`, all six required context categories
-are classified, and future context downloads/review actions are explicit. The
-validator rejects missing context categories, claimed obstacle physics,
-limiting records without future context actions, acceptable classifications
-without reviewed target context, and unqualified annual/return-period/risk or
-operational language.
+Expected result: `classification` is `blocked_pending_local_evidence`,
+target-scale context review status is `blocked_missing_context_layers`, all six
+required context categories are classified, and future context
+downloads/review actions are explicit. The validator rejects missing context
+categories, claimed obstacle physics, blocked or limiting records without
+future context actions, acceptable classifications without reviewed target
+context, and unqualified annual/return-period/risk or operational language.
 
 ## Interpretation Boundary
 
 Allowed current interpretation:
 
 - the selected target-scale gate omits forest and obstacle effects;
-- omission is a documented limitation for spatial interpretation;
+- omission is a blocked-pending-local-evidence limitation for spatial
+  interpretation;
 - future review should use SWISSIMAGE, swissTLM3D, swissSURFACE3D or
   swissSURFACE3D Raster, and swissBUILDINGS3D where relevant;
 - current outputs remain conditional diagnostics over the supplied DEM,
@@ -92,6 +93,6 @@ for the selected extent:
 4. swissBUILDINGS3D where building or structure context is relevant.
 
 The next context review should update the scope record to
-`acceptable`, `limiting`, or `invalidating` based on actual context evidence.
-It should not tune simulator parameters to absorb omitted forest or obstacle
-effects.
+`blocked_pending_local_evidence`, `acceptable`, `limiting`, or `invalidating`
+based on actual context evidence. It should not tune simulator parameters to
+absorb omitted forest or obstacle effects.

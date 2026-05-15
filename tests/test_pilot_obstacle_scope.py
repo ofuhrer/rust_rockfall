@@ -18,23 +18,23 @@ SPEC.loader.exec_module(validator)
 
 
 class PilotObstacleScopeTests(unittest.TestCase):
-    def test_selected_target_scope_is_limiting_with_blocked_context_review(self) -> None:
+    def test_selected_target_scope_is_blocked_pending_local_evidence_with_blocked_context_review(self) -> None:
         summary = validator.validate_scope_record(
             ROOT / "validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml"
         )
 
         self.assertEqual(summary["run_id"], "tschamut_public_scalable_conditional_target_gate_v1")
-        self.assertEqual(summary["classification"], "limiting")
+        self.assertEqual(summary["classification"], "blocked_pending_local_evidence")
         self.assertEqual(summary["target_scale_context_review_status"], "blocked_missing_context_layers")
         self.assertGreater(summary["missing_context_artifact_count"], 0)
 
-    def test_accepts_limiting_scope_with_future_context_actions(self) -> None:
+    def test_accepts_blocked_scope_with_future_context_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record_path = self.write_record(Path(tmp), self.base_record())
 
             summary = validator.validate_scope_record(record_path)
 
-            self.assertEqual(summary["classification"], "limiting")
+            self.assertEqual(summary["classification"], "blocked_pending_local_evidence")
             self.assertEqual(summary["context_category_count"], 6)
             self.assertEqual(summary["future_context_download_count"], 3)
             self.assertEqual(summary["target_scale_context_review_status"], "blocked_missing_context_layers")
@@ -50,7 +50,7 @@ class PilotObstacleScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.ObstacleScopeError, "barriers_or_protection"):
                 validator.validate_scope_record(record_path)
 
-    def test_rejects_limiting_scope_without_future_actions(self) -> None:
+    def test_rejects_blocked_scope_without_future_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.base_record()
             record["evidence"]["required_future_context_downloads"] = []
@@ -107,8 +107,8 @@ class PilotObstacleScopeTests(unittest.TestCase):
             "schema_version": "pilot_obstacle_scope_v1",
             "pilot_id": "tschamut_public_pilot",
             "run_id": "tschamut_public_conditional_gate_v1",
-            "classification": "limiting",
-            "classification_rationale": "Context layers were not reviewed, so omission is limiting.",
+            "classification": "blocked_pending_local_evidence",
+            "classification_rationale": "Context layers were not reviewed, so omission is blocked pending local evidence.",
             "input_scope": {
                 "changes_physics": False,
                 "changes_defaults": False,
@@ -136,7 +136,7 @@ class PilotObstacleScopeTests(unittest.TestCase):
                 self.context("orthophoto_visual_context", "swisstopo_swissimage"),
             ],
             "omission_interpretation": {
-                "summary": "Omission is limiting for interpretation.",
+                "summary": "Omission is blocked pending local evidence for interpretation.",
                 "required_before_interpretation": "Review public context layers before scale-up.",
                 "do_not_tune_to_absorb_omission": ["restitution", "roughness"],
             },

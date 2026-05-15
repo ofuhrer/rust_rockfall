@@ -27,7 +27,7 @@ REQUIRED_CONTEXT_CATEGORIES = {
     "water_or_channel",
     "orthophoto_visual_context",
 }
-CLASSIFICATIONS = {"acceptable", "limiting", "invalidating"}
+CLASSIFICATIONS = {"acceptable", "limiting", "invalidating", "blocked_pending_local_evidence"}
 DATASET_STATUSES = {
     "available_reviewed",
     "documented_not_downloaded",
@@ -127,15 +127,24 @@ def validate_scope_record(record_path: Path) -> dict[str, Any]:
             not evidence.get("required_future_context_downloads"),
             "acceptable classification cannot require future context downloads",
         )
-    elif classification == "limiting":
+    elif classification in {"limiting", "blocked_pending_local_evidence"}:
         require(
             evidence.get("required_future_context_downloads"),
-            "limiting classification requires explicit future context downloads or review actions",
+            "blocked or limiting classification requires explicit future context downloads or review actions",
         )
         require(
             target_review["status"] in {"blocked_missing_context_layers", "reviewed_limiting_omission"},
-            "limiting classification requires blocked or reviewed limiting target-scale context status",
+            "blocked or limiting classification requires blocked or reviewed limiting target-scale context status",
         )
+        if classification == "blocked_pending_local_evidence":
+            require(
+                target_review["status"] == "blocked_missing_context_layers",
+                "blocked_pending_local_evidence classification requires blocked_missing_context_layers target-scale review",
+            )
+            require(
+                not any(item["status"] == "available_reviewed" for item in contexts),
+                "blocked_pending_local_evidence classification cannot mark reviewed context datasets",
+            )
     elif classification == "invalidating":
         require_text(record.get("invalidating_reason"), "invalidating_reason")
         require(

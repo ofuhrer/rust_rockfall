@@ -8,6 +8,9 @@ conditional public-data hazard-map products to later physical or annual
 intensity-frequency semantics; it does not define current target numbering.
 This document does not change simulator behavior, claim operational validity,
 introduce annual frequencies, or redefine current hazard-map semantics.
+Routine `DT-xx` implementation should not update this roadmap unless the
+long-term phase model changes. Current pilot status, target order, and
+near-term gaps live in `docs/next_development_targets.md`.
 
 ## Target Definition
 
@@ -32,21 +35,21 @@ run-freeze record with regenerated local ignored outputs, conditional curves,
 automated GIS artifact checks, local performance evidence, executed
 target-scale conditional evidence, and a reassessed no-go ensemble-size gate.
 Milestone 1 is still not complete because target-scale convergence decisions
-are not yet accepted and validation-runner provenance/output-volume questions
-remain partly open. The selected target-scale workflow has now been reproduced
+are not yet accepted. The selected target-scale workflow has now been reproduced
 end to end in the intended balfrin environment and remains classified
 `inconclusive`. The DT-06 stochastic sampling and RNG stream audit package is
 complete, which makes stochastic semantics auditable without changing
-behavior. External review now continues with DEM/input conditioning,
-boundary/termination semantics, output budgets, and validation-state controls
-as explicit acceptance risks. Balfrin readiness and probe tooling now exist,
+behavior. DT-07 DEM/input conditioning QA and DT-08 output-budget/reducer
+gates are also complete as fail-closed prerequisites, not as pilot acceptance.
+Balfrin readiness and probe tooling now exist,
 including a readiness
 checker, runbook, output-profile contract, SLURM-first probe driver, metrics
 collector with log-audit summaries, clean 420x450 probe evidence, and the DT-04
 target-gate reproduction record. In this checkout, the
 selected package visual-QA gate is `blocked` because QGIS and ignored target
 package artifacts are unavailable, and forest/obstacle omission is classified
-`limiting` because public context layers have not been locally reviewed.
+`blocked_pending_local_evidence` because public context layers have not been
+locally reviewed.
 GIS/QGIS review remains a secondary interoperability check; the main pilot
 outcome is a conditional hazard map with interpretable uncertainty,
 convergence, performance, and provenance evidence. It is not yet close to
@@ -85,7 +88,7 @@ Already available:
 - share-safe Tschamut target-scale forest/obstacle context scope record, with
   SWISSIMAGE, swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and
   swissBUILDINGS3D context documented but not locally reviewed and omission
-  classified `limiting`;
+  classified `blocked_pending_local_evidence`;
 - share-safe Tschamut public pilot scaling review note based on ignored local
   validation, hazard, GIS-package, and reducer manifests, identifying
   conditional-curve/raster output volume as the next bottleneck before
@@ -120,17 +123,20 @@ Already available:
 - multi-trajectory Parquet writer support for future large-output contracts;
 - strong verification and deterministic seed/order checks.
 
-Main remaining pieces, in priority order:
+Main remaining pieces:
 
-1. close the remaining validation-runner provenance gap for observed-release
-   ensembles if future gates require chunk metadata to cover every target
-   trajectory;
+1. apply the completed DT-05 convergence/acceptance protocol and DT-08
+   output-budget/reducer gate to any selected-domain evidence before increasing
+   ensemble size;
 2. locally review forest/obstacle context and decide whether omission remains
-   limiting, becomes acceptable for a diagnostic pilot, or invalidates
+   blocked pending local evidence, becomes acceptable for a diagnostic pilot,
+   or invalidates
    target-scale interpretation;
-3. keep the target-scale manual GIS/QGIS visual QA decision explicit and
+3. keep DT-09 distributed execution conditional on measured need rather than
+   making SLURM arrays or cross-process reducers the next default step;
+4. keep the target-scale manual GIS/QGIS visual QA decision explicit and
    visible as a secondary interoperability check;
-4. defer physical/annual frequency semantics until source-frequency and
+5. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -177,9 +183,9 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `scripts/validate_pilot_obstacle_scope.py`,
   `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`, and
   `docs/tschamut_public_obstacle_context_scope.md` classify the omission as
-  `limiting`: public context layers are documented but not locally reviewed in
-  this checkout, no obstacle physics is implemented, and parameter tuning must
-  not absorb the omission.
+  `blocked_pending_local_evidence`: public context layers are documented but
+  not locally reviewed in this checkout, no obstacle physics is implemented,
+  and parameter tuning must not absorb the omission.
 - Local scaling/output-volume evidence is complete at the manifest-summary
   level. `scripts/summarize_pilot_scaling.py` and
   `docs/tschamut_public_pilot_scaling_review.md` record validation/hazard wall
@@ -810,19 +816,23 @@ Current high-level sequence:
 
 1. keep the DT-05 conditional convergence protocol as the current
    classification reference for the completed DT-04 evidence;
-2. define stochastic sampling and DEM/input QA gates before treating the
-   completed selected Tschamut balfrin target-gate reproduction as accepted
-   evidence;
-3. defer annual/physical intensity-frequency runtime work until the inactive
+2. treat the DT-06 stochastic audit, DT-07 DEM/input QA gate, and DT-08
+   output-budget/reducer gate as completed prerequisites, not as pilot
+   acceptance;
+3. close DT-10 forest/obstacle context before interpreting the selected
+   Tschamut hazard map as more than a conditional diagnostic product;
+4. defer annual/physical intensity-frequency runtime work until the inactive
    source-frequency design gates have accepted evidence.
 
 The completed historical gates remain relevant as context: selected pilot
 evidence has been reconciled, manual QGIS/visual QA is share-safely blocked,
-forest/obstacle omission is limiting, conditional curve export has a
+forest/obstacle omission is blocked pending local evidence, conditional curve export has a
 summary-only mode, target-run provenance/output-profile policy is explicit,
 ensemble-size increase remains `no_go`, fallible DEM-facing guardrails and
 deterministic local parallel execution exist, and the selected target-scale
-gate has executed but inconclusive evidence.
+gate has executed but inconclusive evidence. The current gap analysis and
+target order are intentionally not repeated here; use
+`docs/next_development_targets.md`.
 
 ## Earliest Useful Pilot
 
@@ -843,16 +853,17 @@ At the current state, the first two bullets are complete at the share-safe
 contract level and the middle bullets have reconciled local ignored-artifact
 evidence for the small gate. The package visual-QA gate is explicitly
 `inconclusive` rather than unclassified, and obstacle/forest omission is
-explicitly classified `limiting`. Output-volume control, deterministic local
-reducer chunks, validation-runner ensemble chunk provenance, and scalable
-conditional execution diagnostics are available. The selected target-scale gate
-now has local ignored execution evidence with 1,000 observed-release
-trajectories, summary-only curves, output-budget/runtime/memory/checksum
-sidecars, and reducer worker parity. The result is still `inconclusive` because
-target-vs-gate convergence has not been accepted, obstacle context remains
-limiting, stochastic and DEM/input acceptance gates are not yet defined, and
-validation-runner `ensemble_execution` provenance covers only the auxiliary
-single-release ensemble path. Balfrin probe evidence and the DT-04 target-gate
+explicitly classified `blocked_pending_local_evidence`. Output-volume control,
+deterministic local reducer chunks, validation-runner ensemble chunk
+provenance, and scalable conditional execution diagnostics are available. The
+selected target-scale gate now has local ignored execution evidence with 1,000
+observed-release trajectories, summary-only curves,
+output-budget/runtime/memory/checksum sidecars, and reducer worker parity. The
+result is still `inconclusive` because target-vs-gate convergence has not been
+accepted, obstacle context remains blocked pending local evidence, and the
+completed stochastic, DEM/input, and output/reducer gates are prerequisites
+rather than acceptance evidence by themselves. Balfrin probe
+evidence and the DT-04 target-gate
 reproduction demonstrate the SLURM-first execution scaffolding, but they do not
 make the selected target-scale gate an accepted pilot. Manual GIS/QGIS visual
 QA remains blocked as a secondary

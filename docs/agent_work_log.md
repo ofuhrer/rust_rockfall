@@ -3616,3 +3616,63 @@ Planning only; these milestones do not implement roadmap item content yet.
   added.
 - Decision: ACCEPT.
 - Next proposed milestone: DT-10.
+
+### M065
+
+- Milestone id: M065.
+- Roadmap item: documentation consolidation after DT-08.
+- Hypothesis/objective: Reduce roadmap drift and agent context cost by making
+  `docs/next_development_targets.md` carry the current pilot gap assessment
+  and by treating the matrix, long-term roadmap, and completed gate docs as
+  supporting context rather than routine DT update targets.
+- Files intended to change:
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `docs/real_site_dem_input_conditioning_qa_gate.md`,
+  `docs/output_budget_reducer_scaling_gate.md`,
+  `docs/README.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Added maintenance rules that routine DT work should
+  update only the authoritative target file and target-specific evidence doc;
+  recorded the current post-DT-08 gap assessment with DT-10 as the next active
+  target; fixed the roadmap consistency check so it expects DT-08 complete and
+  DT-10 active.
+- Checks run:
+  `rg -n "Maintenance rule|Current Pilot Gap Assessment|DT-08|DT-09|DT-10|not authoritative|routine DT" docs/next_development_targets.md docs/roadmap_recommendation_matrix.md docs/real_case_intensity_frequency_implementation_roadmap.md docs/real_site_dem_input_conditioning_qa_gate.md docs/output_budget_reducer_scaling_gate.md docs/README.md scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+
+### M066
+
+- Milestone id: M066.
+- Roadmap item: DT-10. Target-scale forest and obstacle context review.
+- Hypothesis/objective: Record the selected Tschamut forest/obstacle context
+  gate as blocked pending local evidence because no reviewed public context
+  layers are present in this checkout, without changing physics or adding
+  obstacle behavior.
+- Files intended to change:
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`,
+  `scripts/validate_pilot_obstacle_scope.py`,
+  `tests/test_pilot_obstacle_scope.py`,
+  `docs/next_development_targets.md`,
+  `docs/real_case_intensity_frequency_implementation_roadmap.md`,
+  `docs/roadmap_recommendation_matrix.md`,
+  `scripts/check_repo_consistency.py`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Updated the obstacle-context gate record,
+  validator, tests, and supporting docs to classify the selected Tschamut
+  context review as `blocked_pending_local_evidence`; local public context
+  layers remain absent, so the pilot stays non-operational and diagnostic.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_obstacle_scope.py validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml --format json` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_pilot_obstacle_scope` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py` passed.
+  `git diff --check` passed.
+- Reviewer notes: No obstacle physics, tuning, or operational hazard-map
+  claims were added.
+- Decision: ACCEPT.
+- Next proposed milestone: DT-11 or the next active roadmap blocker if the
+  local context review remains unavailable.

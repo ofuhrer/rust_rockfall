@@ -1306,7 +1306,7 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         "Status: conditional; only if measured need for distributed execution.",
         "### DT-10: Review Target-Scale Forest And Obstacle Context",
         "Status: next active target.",
-        "DT-10 is now the next active target",
+        "DT-10 is now the",
     ):
         if term not in targets:
             errors.append(f"docs/next_development_targets.md omits {term!r}")
@@ -1706,7 +1706,7 @@ def check_pilot_obstacle_scope_contract() -> list[str]:
     for term in (
         "target-scale interpretation review",
         "blocked_missing_context_layers",
-        "`limiting`",
+        "blocked_pending_local_evidence",
         "does not add obstacle physics",
         "research_diagnostic",
     ):
@@ -1715,7 +1715,7 @@ def check_pilot_obstacle_scope_contract() -> list[str]:
 
     for term in (
         "run_id: tschamut_public_scalable_conditional_target_gate_v1",
-        "classification: limiting",
+        "classification: blocked_pending_local_evidence",
         "target_scale_review:",
         "target_gate_status: inconclusive",
         "target_package_visual_qa_status: blocked",
@@ -1753,8 +1753,10 @@ def check_pilot_obstacle_scope_contract() -> list[str]:
             errors.append(f"scripts/validate_pilot_obstacle_scope.py omits {symbol!r}")
 
     for test_name in (
-        "test_selected_target_scope_is_limiting_with_blocked_context_review",
+        "test_selected_target_scope_is_blocked_pending_local_evidence_with_blocked_context_review",
         "test_rejects_blocked_context_review_with_reviewed_artifacts",
+        "test_accepts_blocked_scope_with_future_context_actions",
+        "test_rejects_blocked_scope_without_future_actions",
         "test_rejects_acceptable_classification_without_reviewed_target_context",
     ):
         if test_name not in tests:
@@ -1907,8 +1909,12 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/next_development_targets.md must mark DT-07 complete")
     if "### DT-08: Define Output Budget And Reducer Scaling Gate" not in targets_text:
         errors.append("docs/next_development_targets.md must include the DT-08 heading")
-    if "Status: next active target." not in targets_text:
-        errors.append("docs/next_development_targets.md must mark DT-08 as next active target")
+    if "Status: complete; classification `blocked_before_scale_up`." not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-08 complete")
+    if "### DT-10: Review Target-Scale Forest And Obstacle Context" not in targets_text:
+        errors.append("docs/next_development_targets.md must include the DT-10 heading")
+    if "DT-10 is now the" not in targets_text or "next active target" not in targets_text:
+        errors.append("docs/next_development_targets.md must mark DT-10 as next active target")
     return errors
 
 

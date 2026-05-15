@@ -9,6 +9,15 @@ matrix, work log, or decision record. Supporting roadmap documents may explain
 why these targets are ordered this way, but they do not define current target
 selection.
 
+Maintenance rule: routine `DT-xx` implementation should update this file and
+the evidence document for the target being worked on. Do not also rewrite
+`docs/real_case_intensity_frequency_implementation_roadmap.md` or
+`docs/roadmap_recommendation_matrix.md` unless the long-term phase model,
+scoring rationale, or target ordering changes. Completed gate documents such as
+`docs/real_site_dem_input_conditioning_qa_gate.md` and
+`docs/output_budget_reducer_scaling_gate.md` are evidence contracts, not active
+target lists.
+
 These targets are planning recommendations only. They do not change simulator
 physics, defaults, validation cases, sampling weights, public benchmark status,
 annual/physical probability semantics, or operational claims.
@@ -29,7 +38,7 @@ for the Swiss public-data hazard-map workflow:
 - target-scale conditional evidence with 1,000 observed-release trajectories;
 - reassessed `no_go` ensemble-size gate;
 - blocked secondary QGIS/visual-QA record;
-- limiting forest/obstacle context record;
+- blocked_pending_local_evidence forest/obstacle context record;
 - balfrin readiness checker, pilot runbook, output-profile contract,
   SLURM-first probe driver, probe metrics/log-audit collection, and clean
   420x450 SLURM baseline evidence;
@@ -41,19 +50,48 @@ for the Swiss public-data hazard-map workflow:
 
 The pilot is still not complete. The selected target-scale gate remains
 `inconclusive` because convergence has not been accepted, forest/obstacle
-context remains limiting, validation debug-output volume still needs reduction
-or explicit justification before a larger run, and the completed balfrin
-target-gate reproduction is not yet a convergence pass. DT-05 now records the
-conditional convergence protocol and keeps the DT-04 evidence
-`inconclusive`; external review risks are carried forward as DT-08 through
-DT-10 before the pilot can be accepted. The DT-06 stochastic sampling and RNG
-stream audit package is complete, DT-07 is complete, DT-08 is complete, DT-09
-remains conditional on measured need for distributed execution, and DT-10 is
-now the next active target.
-DT-10 is now the next active target.
+context remains blocked pending local evidence, validation debug-output volume
+still needs reduction or explicit justification before a larger run, and the
+completed balfrin target-gate reproduction is not yet a convergence pass.
+DT-05 now records the conditional convergence protocol and keeps the DT-04
+evidence `inconclusive`. DT-06 through DT-08 have closed the stochastic-audit,
+DEM/input-QA, and output-budget/reducer gate definitions. DT-09 remains
+conditional on measured need for distributed execution, and DT-10 is now the
+next active target.
 Target-run provenance is now explicitly classified: the
 1,000-trajectory observed-release target run is separated from the auxiliary
 single-release `ensemble_execution` sidecar.
+
+## Current Pilot Gap Assessment
+
+The closest achievable milestone is a conditional Tschamut hazard map with
+documented uncertainty, provenance, resource bounds, and non-operational
+framing. The repository is not close to a true physical or annual
+intensity-frequency map: source occurrence rates, block-population frequency,
+annualization semantics, uncertainty propagation, reducer semantics, and
+validation/calibration gates remain deferred.
+
+The remaining pilot blockers are:
+
+1. apply the DT-05/DT-08 acceptance gates to the completed 1,000-trajectory
+   Balfrin evidence and keep the classification `inconclusive`, `no_go`, or
+   `accepted` without tuning or post-hoc threshold changes;
+2. complete DT-10 forest/obstacle context review because omitted forest,
+   buildings, roads, barriers, nets, or other obstacles affect whether the
+   hazard map is physically interpretable and the current gate is blocked
+   pending local evidence;
+3. consider DT-09 distributed execution only if the completed output/reducer
+   gate shows single-job execution, restartability, memory, I/O, or reducer
+   state size is the limiting blocker;
+4. keep larger ensembles blocked until convergence, output budgets,
+   stochastic-audit, DEM/input-QA, forest/obstacle context, and claim-state
+   evidence support the increase;
+5. keep annual/physical intensity-frequency work deferred until source-zone
+   occurrence frequency and block-frequency evidence exist.
+
+QGIS/GIS visual QA remains useful interoperability evidence, but it is not the
+primary pilot outcome. The main outcome is the hazard map and its evidence
+chain.
 
 ## Active Development Targets
 
@@ -231,9 +269,12 @@ volume and dense-grid reduction remain plausible bottlenecks. Scaling should be
 authorized only after budgets and reducer behavior are enforced rather than
 described after the fact.
 
-Done when: the selected pilot has explicit byte/file/inode budgets, summary-only
-export requirements, reducer state-size limits, dense-vs-sparse risk
-classification, and no-go rules for budget overruns.
+Done: `docs/output_budget_reducer_scaling_gate.md` defines explicit
+byte/file/inode budgets, summary-only export requirements, grid CSV suppression
+requirements, reducer state-size limits, dense-vs-sparse risk classification,
+restart-manifest requirements, and no-go rules for budget overruns.
+`validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`
+keeps the selected pilot blocked before scale-up.
 
 Do not: increase ensemble size, add full curve/grid CSV outputs at scale, or
 replace acceptance criteria with ad hoc output cleanup.
@@ -263,8 +304,8 @@ undefined.
 Status: next active target.
 
 Objective: decide whether omitted forest, buildings, roads, barriers, nets, or
-other obstacles are acceptable, limiting, or invalidating for interpreting the
-selected Tschamut outputs.
+other obstacles are acceptable, blocked pending local evidence, limiting, or
+invalidating for interpreting the selected Tschamut outputs.
 
 Why this remains important: the context-layer inventory exists, but local
 public context layers have not been reviewed for the selected corridor.
@@ -335,7 +376,7 @@ start at DT-01. They are no longer current target numbers.
 | --- | --- |
 | Reconcile and regenerate selected pilot gate evidence | Complete. The selected run-freeze and reports reference regenerated or verified ignored DEM-sensitivity, validation, hazard, GIS, reducer, scaling, runtime, memory, file-count, byte-count, and checksum evidence with an `inconclusive` non-operational classification. |
 | Manual QGIS visual QA for the selected package | Complete at the share-safe checklist level as `blocked`; QGIS and ignored target package artifacts are unavailable in this checkout. |
-| Forest and obstacle omission scoping | Complete at the share-safe scoping level as `limiting`; local public context-layer review remains DT-10. |
+| Forest and obstacle omission scoping | Complete at the share-safe scoping level as `blocked_pending_local_evidence`; local public context-layer review remains DT-10. |
 | Conditional-curve output-volume bottleneck | Complete for the largest curve-table output through opt-in `--conditional-curve-export summary-only`; raster-output optimization remains future work. |
 | Ensemble-size increase gate | Complete as `no_go`; further diagnostic scale-up is not authorized until convergence, output budget, obstacle context, balfrin reproducibility, and provenance blockers are resolved. |
 | Fallible terrain/integrator API guardrails | Complete at the guardrail level; DEM-facing fixed-step runtime code propagates terrain errors through fallible helpers, with infallible wrappers retained as compatibility helpers. |
@@ -348,12 +389,14 @@ start at DT-01. They are no longer current target numbers.
 
 1. Keep DT-05 as the classification reference for the completed DT-04 balfrin
    evidence.
-2. Complete DT-06 and DT-07 before treating the pilot as accepted evidence.
-3. Complete DT-08 before any ensemble-size increase.
-4. Consider DT-09 only if accepted gates show restartability, load-balancing,
+2. Treat DT-06, DT-07, and DT-08 as completed gate definitions, not as pilot
+   acceptance.
+3. Apply DT-05 and DT-08 before any ensemble-size increase.
+4. Complete DT-10 before interpreting the selected Tschamut hazard map as more
+   than a conditional diagnostic product.
+5. Consider DT-09 only if accepted gates show restartability, load-balancing,
    output-size, or memory bottlenecks that justify distributed execution.
-5. Treat DT-10 and DT-11 as interpretation/interoperability blockers that
-   should be closed when their local data/tool dependencies are available.
+6. Treat DT-11 as secondary interoperability QA, not as the main pilot outcome.
 
 ## Boundaries
 

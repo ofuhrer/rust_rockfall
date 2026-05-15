@@ -1,14 +1,14 @@
 schema_version: pilot_obstacle_scope_v1
 pilot_id: tschamut_public_pilot
 run_id: tschamut_public_scalable_conditional_target_gate_v1
-classification: limiting
+classification: blocked_pending_local_evidence
 classification_rationale: >
   The executed target-scale conditional gate still uses a bare-earth
   swissALTI3D DEM and has no locally reviewed public context crop for canopy,
   roads, structures, protection works, channels, or orthophoto interpretation.
-  The omission remains limiting for target-scale interpretation because the
-  current checkout cannot rule out first-order forest or obstacle effects in
-  the Tschamut corridor.
+  The omission is blocked pending local evidence for target-scale
+  interpretation because the current checkout cannot rule out first-order
+  forest or obstacle effects in the Tschamut corridor.
 input_scope:
   changes_physics: false
   changes_defaults: false
@@ -83,16 +83,16 @@ context_inventory:
       available for this target-scale review.
 omission_interpretation:
   summary: >
-    Forest and obstacle omission is a limiting boundary condition for the
-    executed target-scale Tschamut conditional pilot gate. Current outputs may
-    be useful for workflow diagnostics, but they must not be interpreted as
-    evidence that vegetation, roads, buildings, channels, barriers, or
-    protection structures are irrelevant in the corridor.
+    Forest and obstacle omission is a blocked-pending-local-evidence boundary
+    condition for the executed target-scale Tschamut conditional pilot gate.
+    Current outputs may be useful for workflow diagnostics, but they must not
+    be interpreted as evidence that vegetation, roads, buildings, channels,
+    barriers, or protection structures are irrelevant in the corridor.
   required_before_interpretation: >
     Before interpreting target-scale spatial patterns or considering another
     ensemble increase, restore or download SWISSIMAGE, swissTLM3D,
     swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D context for the
-    selected extent, then classify whether the omission remains limiting,
+    selected extent, then classify whether the omission remains blocked,
     becomes acceptable for a diagnostic pilot, or invalidates interpretation.
   do_not_tune_to_absorb_omission:
     - restitution

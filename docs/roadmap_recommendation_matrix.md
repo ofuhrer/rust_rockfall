@@ -5,14 +5,17 @@ Status: supporting scoring appendix, not authoritative for current target select
 Current implementation target selection is authoritative only in
 `docs/next_development_targets.md`. This matrix records the scoring rationale
 behind that target order; it must not introduce independent numbered target or
-rank semantics.
+rank semantics. Treat this document as a stable rationale snapshot. Routine
+`DT-xx` implementation should not update this matrix unless the scoring
+rationale or target order changes.
 
 Context: current prioritization matrix after the selected Tschamut public pilot
 manifest, source/scenario policy, DEM-sensitivity gate, reconciled no-go
 run-freeze, automated GIS package review, pilot scaling review, fallible
 DEM-facing integration guardrails, opt-in local parallel ensemble execution,
-target-scale conditional evidence, blocked visual-QA record, limiting obstacle
-context record, and expanded validation/CI refactors. Scores are planning
+target-scale conditional evidence, blocked visual-QA record, blocked pending
+local-evidence obstacle context record, and expanded validation/CI refactors.
+Scores are planning
 guidance, not implementation commitments. The latest balfrin work adds a
 readiness checker, output-profile contract, SLURM-first probe driver, probe
 metrics/log-audit collector, tracked 20-release-cell and 420x450 probe
@@ -111,10 +114,11 @@ conditional hazard layers, output-budget/runtime/memory/checksum evidence, and
 job `4318941`, with clean log audit and share-safe checksums recorded in
 `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
 It remains `inconclusive` because convergence has not been accepted,
-forest/obstacle context remains limiting because local context layers are
-absent, and manual GIS/QGIS visual QA is still secondary interoperability
-evidence rather than the main hazard-map acceptance gate. The DT-05 protocol
-codifies that classification and keeps scale-up unauthorized. The DT-06
+forest/obstacle context remains blocked pending local evidence because local
+context layers are absent, and manual GIS/QGIS visual QA is still secondary
+interoperability evidence rather than the main hazard-map acceptance gate. The
+DT-05 protocol codifies that classification and keeps scale-up unauthorized.
+The DT-06
 stochastic audit is complete, the DT-07 DEM/input conditioning gate is
 complete, and the remaining acceptance concerns are now DT-09 only if
 measured need emerges, otherwise DT-10, before the evidence can be treated as
@@ -176,8 +180,10 @@ the validation debug-output budget blocker visible.
 
 DT-07 DEM/input QA is complete; DT-08 output-budget/reducer is complete.
 DT-09 remains conditional on measured need, and DT-10 is the next active
-blocker. DT-05 remains the current classification reference for DT-04, but
-the external review risks must be resolved before the pilot is accepted.
+blocker. DT-05 remains the current classification reference for DT-04, and
+DT-08 is the scale-up/output-budget gate; neither turns the 1,000-trajectory
+Balfrin evidence into an accepted pilot without the remaining interpretation
+evidence.
 
 ### Best Near-Term Engineering Work Package
 
@@ -213,13 +219,16 @@ Pause or defer:
    long-term phase roadmap and `docs/roadmap_recommendation_matrix.md` as this
    supporting scoring appendix. Neither document defines current target
    numbering.
-3. Treat `docs/tschamut_public_scalable_conditional_execution.md`,
+3. For routine target implementation, update `docs/next_development_targets.md`
+   and the target-specific evidence document only. Reopen this matrix only when
+   a new review changes target order or scoring rationale.
+4. Treat `docs/tschamut_public_scalable_conditional_execution.md`,
    `docs/tschamut_public_pilot_gis_package_review.md`, and
    `docs/tschamut_public_pilot_scaling_review.md` as selected-pilot evidence
    records with explicit local/ignored artifact boundaries.
-4. Keep `docs/hazard_map_semantics.md`, `docs/pilot_gis_package.md`, and
+5. Keep `docs/hazard_map_semantics.md`, `docs/pilot_gis_package.md`, and
    `docs/validation_maturity_framework.md` as active interpretation contracts.
-5. Keep `docs/agent_work_log.md` as an audit log only. It should not outrank
+6. Keep `docs/agent_work_log.md` as an audit log only. It should not outrank
    `AGENTS.md`, `README.md`, or the current roadmap docs.
 
 ## Final Recommendation
