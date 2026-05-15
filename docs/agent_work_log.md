@@ -31,6 +31,38 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### Backlog Refill After Portability Preflight
+
+- Milestone id: backlog refill after TB-027.
+- Roadmap item: Reassess repository progress against the Swiss-wide public
+  geodata hazard-map workflow goal and refill the executable backlog.
+- Hypothesis/objective: The active queue should reflect the latest measured
+  state: Tschamut artifacts are ready, convergence is measured but
+  inconclusive, sampling sensitivity and output pressure are measured, context
+  remains limiting/unresolved, case regeneration is deterministic, and
+  second-site portability has a metadata-only preflight.
+- Files intended to change: `docs/task_backlog.md`, `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Refilled the active backlog with TB-028 through
+  TB-033. The new sequence prioritizes a concrete second-site manifest,
+  same-size alternate-seed sampling evidence, a reusable sampling-uncertainty
+  summary, command-plan consolidation, GIS/COG package readiness, and bounded
+  reducer/runtime scaling measurement. Updated the capability-gap analysis to
+  remove stale missing-artifact blockers and to keep scale-up and operational
+  claims unauthorized.
+- Checks run:
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: This pass changes planning state only. It does not alter
+  simulator physics, thresholds, sampling weights, release assumptions,
+  baselines, validation cases, or claim boundaries.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-028.
+
 ### Worker Efficiency Consolidation
 
 - Milestone id: worker efficiency consolidation after TB-022.

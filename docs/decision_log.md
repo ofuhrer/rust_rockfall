@@ -432,6 +432,34 @@ Detailed sources: `docs/task_backlog.md`,
 `docs/tschamut_public_obstacle_context_scope.md`,
 `docs/tschamut_public_conditional_pilot_gate_report.md`.
 
+### Post TB-027 Backlog Direction
+
+Decision: refill the active backlog around concrete second-site portability,
+bounded same-scale uncertainty reduction, command-plan consolidation, GIS
+package readiness, and reducer/runtime measurements.
+
+Current status: active backlog direction.
+
+Rationale: TB-018 through TB-027 changed the dominant blockers. The same-scale
+Tschamut artifact chain is ready and reproducible, target-vs-gate convergence
+is measured but still inconclusive, output reduction is measured, public
+context is limiting rather than absent, hazard-context overlap is measured but
+unresolved, case regeneration is deterministic, and second-site portability is
+now represented by a metadata-only preflight. The next capability gains should
+turn that generic portability preflight into a concrete candidate-site
+manifest, quantify sampling uncertainty with bounded replicates, consolidate
+local command plans, and measure GIS/scaling readiness before any larger or
+second-site run.
+
+Detailed sources: `docs/task_backlog.md`,
+`docs/tschamut_public_conditional_pilot_gate_report.md`,
+`docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+`docs/tschamut_public_bounded_validation_output_profile.md`,
+`docs/tschamut_public_obstacle_context_scope.md`,
+`scripts/check_second_site_public_geodata_preflight.py`,
+`scripts/generate_tschamut_same_scale_cases.py`,
+`scripts/check_same_scale_artifact_readiness.py`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

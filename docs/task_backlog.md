@@ -41,9 +41,11 @@ intensity-frequency products remain deferred until source occurrence rates,
 block-population frequencies, uncertainty propagation, and validation or
 calibration evidence exist.
 
-The selected Tschamut target-scale evidence remains `inconclusive`. Larger
+The selected Tschamut target-scale evidence remains `inconclusive`. The
+same-scale artifact chain is now reproducible and measured, but larger
 selected-domain runs remain blocked until the capability gaps below are reduced
-with measured evidence.
+with measured evidence. Second-site pilots remain at metadata-preflight status
+until a concrete candidate manifest and public-geodata staging path exist.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -55,51 +57,52 @@ separate falsifiable implementation task is explicitly authorized.
 The most important gaps between the current repository and the project
 objective are:
 
-1. Conditional pilot evidence is still inconclusive, but the main same-scale
-   artifacts are now present and measured. The earlier
-   Balfrin target-gate reproduction remains useful execution evidence, while
-   the restored Tschamut gate and target hazard manifests expose 22 shared
-   cell-wise layers and the target-vs-gate comparison completed with large
-   differences, including
+1. Conditional pilot evidence is still inconclusive, but the same-scale
+   Tschamut workflow is no longer blocked on missing local artifacts. The
+   earlier Balfrin target-gate reproduction remains useful execution evidence.
+   The readiness preflight, deterministic case regeneration, restored
+   gate/target manifests, target-side `summary_only` output profile, and
+   measured convergence diagnostics now form an executable evidence chain.
+2. Target-vs-gate convergence remains the dominant scientific uncertainty. The
+   restored Tschamut gate and target hazard manifests expose 22 shared
+   cell-wise layers, but the comparison remains inconclusive with
    `cellwise_linf_abs_diff_max = 3028.22579673`,
    `cellwise_l1_abs_diff_sum = 190790.42488112117`, and
-   `cellwise_nonzero_jaccard_min = 0.1`. The next gap is explaining and
-   reducing the uncertainty behind those differences, not restoring inputs.
-2. Validation-output volume is now reduced but still operationally relevant.
+   `cellwise_nonzero_jaccard_min = 0.1`. TB-024 ruled out grid/CRS and
+   scenario/source path mismatch as dominant drivers. TB-025 showed a bounded
+   12-trajectory sampling probe reduced but did not eliminate the dominant
+   `max_kinetic_energy`, `max_jump_height`, and velocity-exceedance
+   disagreements.
+3. Output volume is measured and partly controlled but not yet scale-ready.
    Gate-side `summary_only` output reduced from `125` files / `34545900` bytes
    to `4` files / `81425` bytes; target-side `summary_only` output reduced
    from `2005` files / `571368823` bytes to `4` files / `1271721` bytes. The
-   remaining question is how these profiles behave for repeated or larger
-   deterministic ensembles.
-3. Forest and obstacle context is no longer an absent-cache problem; it is a
-   corridor-relevance problem. The inspector now has real local public
-   context evidence for swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D,
-   and a staged swissTLM3D archive that has now been queried at corridor
-   level. Roads, barriers, and water are measured as limiting context rather
-   than missing-cache evidence, and the same-scale top-cell overlap envelope
-   has now been measured as unresolved within the current 20 m proximity
-   check. The same-scale interpretation remains conditional because context
-   is still not obstacle physics.
-4. Scaling direction is now better bounded. The single-job Balfrin path is
-   sufficient for the next same-scale conditional pilot step; distributed
-   execution should stay deferred until a new measurement shows a need.
-5. Evidence tooling is becoming useful but remains ad hoc. Current summary and
-   measurement scripts are valuable because they generate reusable evidence,
-   but more one-off record readers would add process weight unless they remove
-   a real execution or interpretation blocker.
-6. Local ignored-artifact readiness remains fragile. Several tasks found exact
-   missing paths after long audits; a reusable preflight now exists so future
-   workers can check readiness before expensive diagnostics.
-7. The current same-scale hazard-context overlap measurement is too narrow for
-   interpretation. The top positive cell in each of three layers had zero
-   20 m proximity hits, but that does not quantify overlap across broader
-   high-relevance envelopes or percentile masks.
-8. Source-zone and block-scenario evidence is still pragmatic and
-   inventory-conditioned. This is acceptable for the first pilot only if the
-   interpretation explicitly stays conditional and non-operational.
-9. Physical/annual frequency semantics are absent. This is not a near-term
-   implementation gap unless the conditional pilot first reaches accepted
-   diagnostic status.
+   bounded full-output sampling probe still produced `247` validation files /
+   `68221148` bytes, showing hazard rebuilding currently needs trajectory
+   artifacts that `summary_only` omits.
+4. Forest and obstacle context is no longer an absent-cache problem; it is a
+   limiting interpretation problem. Public context is staged and measured at
+   corridor level, and hazard-context overlap has been measured for a narrow
+   broader envelope. The overlap remains unresolved and does not imply
+   obstacle absence or obstacle physics.
+5. Tschamut source-zone and block-scenario case regeneration is now
+   deterministic from committed records and processed public inputs. The same
+   pattern is not yet generalized to a non-Tschamut site with its own extent,
+   terrain crop, source-zone metadata, scenario table, and context products.
+6. Swiss-wide portability has a metadata-only preflight, but it is still
+   abstract. A concrete second-site manifest/config is needed to turn the
+   portability checklist into actionable public-geodata staging work.
+7. Scaling direction is bounded but undermeasured. The single-job Balfrin path
+   remains sufficient for the next same-scale step and distributed execution
+   stays deferred, but reducer/runtime behavior for repeated bounded probes or
+   larger deterministic ensembles still needs measurement before scale-up.
+8. GIS-ready outputs exist in the workflow, but COG/package interoperability
+   remains secondary and under-audited. It should be checked with existing
+   artifacts before any larger or second-site run depends on those products.
+9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
+   operational claims remain out of scope until conditional diagnostic
+   convergence, source-frequency semantics, and validation/calibration
+   evidence mature.
 
 ## Backlog Quality Assessment
 
@@ -121,18 +124,19 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- explaining target-vs-gate disagreement drivers across the measured same-scale
-  hazard layers;
-- broadening hazard-context overlap from a top-cell probe to a small
-  high-relevance envelope;
-- bounded repeatability or ensemble-sensitivity probes that quantify whether
-  same-scale differences shrink with sampling or remain structurally limiting;
-- hardening source-zone and block-scenario generation so future Swiss public
-  pilots do not depend on hand-restored private case files;
-- GIS-ready output usability checks that remain secondary to scientific
-  acceptance but make generated products inspectable when artifacts exist;
-- portability preflights for applying the workflow to a second Swiss
-  public-geodata site.
+- turning the generic second-site portability preflight into a concrete
+  candidate-site manifest/config;
+- same-size alternate-seed or split-replicate sampling probes that separate
+  seed sensitivity from structural sampled-output divergence;
+- reusable sampling-uncertainty summaries across the original gate/target and
+  bounded probe artifacts;
+- command-plan consolidation for local pilot execution so workers do not copy
+  long validation/hazard commands from work-log prose;
+- GIS/COG/package readiness checks on existing same-scale artifacts;
+- reducer/runtime/output scaling measurements on bounded, non-production
+  ensembles;
+- non-Tschamut source-zone and block-scenario generation contracts tied to the
+  second-site manifest.
 
 ## Backlog Protocol
 
@@ -162,6 +166,222 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
+
+### TB-028: Stage A Candidate Second-Site Public-Geodata Manifest
+
+Capability gap reduced: TB-027 added a generic second-site portability
+preflight, but the Swiss-wide workflow still lacks a concrete candidate site
+configuration that turns portability requirements into actionable public-data
+staging work.
+
+Goal: choose or stage a small candidate second-site metadata manifest/config
+that can be checked by `scripts/check_second_site_public_geodata_preflight.py`
+without downloading raw geodata or running simulations.
+
+Inspect first:
+
+- `scripts/check_second_site_public_geodata_preflight.py`;
+- `tests/fixtures/second_site_public_geodata_preflight/site_template.yaml`;
+- `docs/public_real_site_geodata_preparation.md`;
+- `docs/swisstopo_data_strategy.md`;
+- `data/datasets.yaml`;
+- current Tschamut processed input metadata only as a contract example.
+
+Required work:
+
+1. Add a concrete candidate-site config or manifest with site id, CRS/extent
+   placeholders, expected processed input roots, expected context roots, and
+   validation/hazard output roots.
+2. Do not download raw or large geodata.
+3. Do not run a second-site ensemble or hazard-layer build.
+4. Run the portability preflight against the candidate config and record exact
+   missing input categories, paths, and staging commands.
+5. Keep scale-up and operational claims false.
+
+Definition of done:
+
+- a concrete candidate second-site manifest/config exists or the blocker for
+  choosing one is explicit;
+- the portability preflight reports actionable readiness or missing inputs for
+  that candidate;
+- focused tests or fixture updates cover the candidate-config path where
+  appropriate;
+- checks pass.
+
+### TB-029: Run A Same-Size Alternate-Seed Sampling Replicate
+
+Capability gap reduced: TB-025 showed a bounded 12-trajectory probe reduces
+but does not eliminate the dominant target-vs-gate disagreement. A same-size
+alternate-seed replicate is needed to separate seed sensitivity from
+structural sampled-output divergence.
+
+Goal: run one bounded 12-trajectory alternate-seed or deterministic split
+replicate, build matching hazard layers, and compare it against the gate,
+target, and first sampling-sensitivity probe.
+
+Inspect first:
+
+- `scripts/check_same_scale_artifact_readiness.py`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
+- `scripts/generate_tschamut_same_scale_cases.py`;
+- `scripts/build_hazard_layers.py`;
+- `scripts/compare_hazard_map_convergence.py`;
+- existing ignored sampling-sensitivity probe roots.
+
+Required work:
+
+1. Keep the probe bounded and local; do not run a larger production ensemble.
+2. Change only case ids, output paths, and the seed or deterministic split id
+   required for an alternate replicate.
+3. Preserve physics, thresholds, release assumptions, source/scenario inputs,
+   sampling weights, and non-operational semantics.
+4. Report validation/hazard file counts, bytes, strongest disagreement layers,
+   and whether `max_kinetic_energy`, `max_jump_height`, and velocity
+   exceedance differences shrink, persist, or vary across replicates.
+
+Definition of done:
+
+- one bounded alternate replicate is measured or explicitly blocked;
+- comparisons against existing same-scale artifacts are recorded;
+- scale-up remains unauthorized;
+- checks pass.
+
+### TB-030: Summarize Sampling Uncertainty Across Same-Scale Probes
+
+Capability gap reduced: same-scale evidence now includes gate, target, and at
+least one bounded probe, but the results are scattered across reports. The
+repo needs a reusable summary that distinguishes sampling sensitivity from
+structural disagreement across available same-scale artifacts.
+
+Goal: add or extend a lightweight summary script that consumes existing
+comparison JSON/manifests for gate, target, and bounded probes and reports a
+compact sampling-uncertainty envelope.
+
+Inspect first:
+
+- `scripts/compare_hazard_map_convergence.py`;
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- existing same-scale hazard manifests under ignored paths.
+
+Required work:
+
+1. Prefer consuming existing manifests and comparison output; do not rerun
+   validation unless a required manifest is missing.
+2. Report per-layer spread/range for dominant disagreement layers and support
+   or nodata sensitivity where available.
+3. Clearly distinguish measured sampling sensitivity from accepted
+   convergence.
+4. Add focused tests with tiny fixtures if a script is added or extended.
+
+Definition of done:
+
+- sampling-uncertainty evidence is summarized in a reusable machine-readable
+  form;
+- the Tschamut uncertainty envelope is updated from that summary;
+- operational claims and scale-up remain false;
+- checks pass.
+
+### TB-031: Consolidate Local Pilot Command Plans
+
+Capability gap reduced: workers still rely on long copied validation and
+hazard-build commands from reports. The readiness and case-regeneration
+helpers reduce this, but a single local pilot command-plan output would make
+future Tschamut and second-site runs less fragile.
+
+Goal: add or extend a command-plan helper that emits the canonical local steps
+for case generation, validation, hazard-layer building, convergence
+comparison, output profiling, context inspection, overlap diagnostics, and
+uncertainty summary.
+
+Inspect first:
+
+- `scripts/check_same_scale_artifact_readiness.py`;
+- `scripts/generate_tschamut_same_scale_cases.py`;
+- `scripts/validate_public_real_site_conditional_pilot_run.py`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- `docs/public_real_site_geodata_preparation.md`.
+
+Required work:
+
+1. Reuse existing command builders where possible.
+2. Emit JSON and concise text output.
+3. Include exact output roots and known ignored artifact paths.
+4. Do not run the commands by default.
+5. Add focused tests for stable command output.
+
+Definition of done:
+
+- future workers can obtain canonical local command plans without scraping
+  work-log prose;
+- tests cover at least Tschamut same-scale command output and a blocked/missing
+  input path;
+- checks pass.
+
+### TB-032: Audit GIS And COG Package Readiness On Existing Outputs
+
+Capability gap reduced: GIS-ready outputs exist in the workflow, but the repo
+has not recently checked whether current same-scale rasters/manifests are
+package-ready for inspection or COG conversion.
+
+Goal: run a read-only GIS/package readiness audit on existing same-scale
+hazard outputs and report CRS, transform, nodata, layer inventory, GeoTIFF/COG
+convertibility, and pilot-GIS package manifest completeness.
+
+Inspect first:
+
+- `docs/swisstopo_data_strategy.md`;
+- `docs/public_real_site_geodata_preparation.md`;
+- existing same-scale map-package and pilot-GIS manifests under
+  `hazard/results/tschamut_public_pilot/`;
+- `scripts/build_hazard_layers.py`.
+
+Required work:
+
+1. Use existing artifacts only; do not regenerate hazard outputs unless a
+   missing manifest makes the audit impossible.
+2. Prefer metadata inspection with available GDAL/raster tools.
+3. Do not make manual QGIS QA mandatory.
+4. Report exact blockers for COG or GIS package readiness.
+
+Definition of done:
+
+- current same-scale GIS/package readiness is measured or explicitly blocked;
+- no operational or regulatory claim is introduced;
+- checks pass.
+
+### TB-033: Measure Bounded Reducer Runtime And Output Scaling
+
+Capability gap reduced: distributed execution is deferred, but larger
+deterministic ensemble readiness still depends on reducer/runtime/output
+behavior beyond the current same-scale probes.
+
+Goal: run a bounded reducer/runtime/output scaling measurement using existing
+small artifacts or a tiny controlled probe, then report whether local
+single-job execution still appears sufficient for the next measurement step.
+
+Inspect first:
+
+- `docs/balfrin_single_job_execution_sufficiency.md`;
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `scripts/build_hazard_layers.py`;
+- existing validation/hazard manifests for gate, target, and sampling probes;
+- reducer/chunking code paths referenced by the hazard builder.
+
+Required work:
+
+1. Keep the measurement bounded; do not run a large production ensemble.
+2. Preserve physics, thresholds, source/scenario inputs, and baselines.
+3. Record runtime, reducer workers, file counts, bytes, and bottleneck class.
+4. Do not authorize distributed execution unless a measured need is shown.
+
+Definition of done:
+
+- bounded reducer/runtime/output evidence is recorded;
+- the next scaling decision is supported by measurements rather than
+  assumption;
+- checks pass.
 
 ## Deferred Backlog
 
