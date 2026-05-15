@@ -320,3 +320,32 @@ Self-comparison result:
 
 This is a plumbing sanity check only. Target-vs-gate spatial convergence still
 requires the matching `target_gate_v1` hazard manifest and raster artifacts.
+
+## TB-013 Context Stage Update
+
+Current checkout status: `reviewed_local_context`
+
+- context_review_status: `reviewed_local_context`
+- spatial_relevance_status: `reviewed_local_context`
+- classification: `limiting`
+- swissSURFACE3D Raster: staged locally
+- SWISSIMAGE: staged locally
+- swissBUILDINGS3D: staged locally
+- swissTLM3D: staged locally, but not yet clipped or queried for the selected
+  corridor
+- operational_claims_allowed: `false`
+
+The swissTLM3D archive is now present under the ignored raw and processed
+context paths. The report therefore no longer treats it as metadata-only; the
+remaining gap is corridor-specific extraction or feature-level inspection for
+roads, channels, and barrier/protection context. Archive presence alone does
+not make the context acceptable, so the local classification stays `limiting`.
+
+Relevant paths:
+
+- raw archive:
+  `data/raw/swisstopo/swisstlm3d/swisstlm3d_2021-04_2056_5728.shp.zip`
+- staged context archive:
+  `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/swisstlm3d_2021-04_2056_5728.shp.zip`
+- metadata sidecar:
+  `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/metadata.json`

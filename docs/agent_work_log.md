@@ -119,6 +119,32 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Decision: BLOCKED_PENDING_LOCAL_EVIDENCE.
 - Next proposed milestone: TB-014.
 
+### TB-013 swissTLM3D Follow-Up
+
+- Milestone id: TB-013 swisstlm3d follow-up.
+- Roadmap item: Stage Tschamut Context Crops And Measure Real Spatial Relevance.
+- Hypothesis/objective: The downloaded swissTLM3D archive can be staged as a
+  local ignored asset and reflected in the gate/context docs without turning
+  archive presence into corridor-level acceptability.
+- Files intended to change:
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Confirmed that the swissTLM3D archive is now present
+  under the ignored raw and processed context paths and updated the context and
+  gate docs so they describe it as staged locally but still unresolved until a
+  targeted corridor clip or query is performed. The context classification
+  remains `limiting`, not `acceptable`.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  passed and reported `reviewed_local_context` with `classification:
+  limiting`.
+- Reviewer notes: Archive download is not the same thing as corridor-level
+  context acceptance. The residual blocker is feature extraction or clipping for
+  roads, channels, and barrier/protection context.
+- Decision: COMPLETED_WITH_LIMITATIONS.
+- Next proposed milestone: TB-014.
+
 ### TB-008
 
 - Milestone id: TB-008

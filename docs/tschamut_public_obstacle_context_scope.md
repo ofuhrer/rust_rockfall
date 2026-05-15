@@ -19,8 +19,7 @@ vulnerability, or approve an operational hazard product.
 
 Forest and obstacle omission is no longer only a missing-cache problem in this
 checkout. Public context assets were staged under ignored paths for
-swissSURFACE3D Raster, SWISSIMAGE, and swissBUILDINGS3D, and a metadata-only
-swisTLM3D entry records why the full archive was not downloaded here. The
+swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D, and swissTLM3D. The
 local inspection now reports `reviewed_local_context` and classifies the
 context as `limiting`: relevant surface-height, building/structure, and visual
 context exists, while roads, channels, and barrier/protection context remain
@@ -37,9 +36,9 @@ channels, barriers, or protection structures are irrelevant in the corridor.
 | --- | --- | --- | --- |
 | Forest/canopy | swissSURFACE3D Raster | Real tile staged locally | Limiting: sampled surface-minus-bare-earth context is present and not represented by bare-earth simulation. |
 | Buildings/structures | swissBUILDINGS3D and swissTLM3D constructed features | swissBUILDINGS3D regional asset staged locally | Limiting: structure context is present but not clipped to feature counts or represented by physics. |
-| Roads/transport | swissTLM3D roads, tracks, rail, paths | Metadata-only; full archive not downloaded | Unresolved pending targeted extraction. |
-| Barriers/protection | swissTLM3D constructed features plus local protection-work inventory where available | Metadata-only; full archive not downloaded | Unresolved pending targeted extraction and local inventory review. |
-| Water/channels | swissTLM3D hydrography and terrain review | Metadata-only; full archive not downloaded | Unresolved pending targeted extraction. |
+| Roads/transport | swissTLM3D roads, tracks, rail, paths | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction. |
+| Barriers/protection | swissTLM3D constructed features plus local protection-work inventory where available | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction and local inventory review. |
+| Water/channels | swissTLM3D hydrography and terrain review | Real archive staged locally; not yet clipped | Unresolved pending targeted extraction. |
 | Visual QA | SWISSIMAGE | Real tile staged locally | Limiting: visual context is available, but it is not acceptance evidence by itself. |
 
 ## Executable Check
@@ -81,7 +80,10 @@ The JSON report also separates `classification`, `context_review_status`,
 `spatial_relevance_indicators`, and `interpretation_impact`, while keeping
 `operational_claims_allowed` false.
 That makes local context evidence explicit without turning unresolved
-swisTLM3D categories into an obstacle-absence claim. The metadata-only fixture under
+swisTLM3D categories into an obstacle-absence claim. The staged swissTLM3D
+archive under `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/`
+is intentionally kept separate from any clipped corridor product. The
+metadata-only fixture under
 `tests/fixtures/tschamut_context_layers/available/` is intentionally labeled as
 a fixture and can be used to exercise the limiting/acceptable classification
 path without pretending to be staged public geodata.
@@ -105,9 +107,11 @@ Measured local context indicators:
   `0.03584429824561403`
 - surface-minus-bare-earth p95: `1.434826944921975 m`
 - surface-minus-bare-earth max: `20.673950351562553 m`
-- swisTLM3D source archive size from HEAD metadata: `3136564656` bytes; the
-  road, water, and barrier categories therefore remain unresolved pending a
-  targeted crop or feature-service extraction.
+- swisTLM3D source archive size from HEAD metadata: `3136564656` bytes;
+  archive SHA-256:
+  `e8ae3fdab1e0496ad780fcda4b58d04cc645808da94367b8ebaf51dad4bf6f0a`;
+  the road, water, and barrier categories therefore remain unresolved pending
+  a targeted crop or feature-service extraction.
 
 ## Interpretation Boundary
 
@@ -137,7 +141,7 @@ inconclusive local diagnostic gate, finish the unresolved public context
 review for the selected extent:
 
 1. Extract or query swissTLM3D roads, tracks, hydrography, and constructed
-   features for the selected corridor.
+   features for the selected corridor from the staged archive.
 2. Clip or inspect swissBUILDINGS3D features against the selected corridor
    instead of treating the regional asset as only presence evidence.
 3. Decide whether the staged surface-height and visual context should remain
