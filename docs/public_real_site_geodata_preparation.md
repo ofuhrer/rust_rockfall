@@ -213,21 +213,24 @@ output-volume metrics, convergence notes, and SHA-256 digests for the generated
 manifests/tables. It does not run the simulator or hazard builder and does not
 create or commit generated products.
 
-After a non-template freeze file validates, print the dry-run command plan:
+After a non-template freeze file validates, print the portable command plan:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python \
-  scripts/validate_public_real_site_conditional_pilot_run.py \
-  validation/private/<pilot_id>/<run_id>.yaml \
-  --print-command-plan
+PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py \
+  --site tschamut_same_scale --format text
+
+PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py \
+  --site chant_sura_fluelapass \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --format json
 ```
 
-The command plan validates the geodata manifest and source-scenario policy,
-runs the frozen validation case, and builds conditional hazard layers with the
-predeclared explicit grid, thresholds, map-package metadata, GeoTIFF export,
-pilot GIS package manifest, and deterministic local reducer options. It is a
-dry-run plan only; the user still executes the listed commands intentionally,
-and generated outputs remain under ignored validation and hazard result roots.
+The command-plan helper consolidates the Tschamut readiness preflight, case
+generation, validation, hazard-layer building, convergence comparison,
+output-profile checks, context inspection, overlap diagnostics, uncertainty
+summary, and second-site portability templates. It is read-only and does not
+execute commands by default; generated outputs remain under ignored validation
+and hazard result roots when the listed commands are run intentionally.
 
 ## Claim Boundary
 

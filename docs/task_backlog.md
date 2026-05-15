@@ -168,42 +168,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-032: Consolidate Portable Pilot Command Plans
-
-Capability gap reduced: workers still rely on long copied validation and
-hazard-build commands from reports. The readiness and case-regeneration
-helpers reduce this, but a single portable command-plan output would make
-future Tschamut and second-site runs less fragile.
-
-Goal: add or extend a command-plan helper that emits the canonical local steps
-for case generation, validation, hazard-layer building, convergence
-comparison, output profiling, context inspection, overlap diagnostics, and
-uncertainty summary.
-
-Inspect first:
-
-- `scripts/check_same_scale_artifact_readiness.py`;
-- `scripts/generate_tschamut_same_scale_cases.py`;
-- `scripts/validate_public_real_site_conditional_pilot_run.py`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `docs/public_real_site_geodata_preparation.md`.
-
-Required work:
-
-1. Reuse existing command builders where possible.
-2. Emit JSON and concise text output.
-3. Include exact output roots and known ignored artifact paths.
-4. Do not run the commands by default.
-5. Add focused tests for stable command output.
-
-Definition of done:
-
-- future workers can obtain canonical local command plans without scraping
-  work-log prose;
-- tests cover at least Tschamut same-scale command output and a blocked/missing
-  input path;
-- checks pass.
-
 ### TB-033: Audit GIS And COG Package Readiness On Existing Outputs
 
 Capability gap reduced: GIS-ready outputs exist in the workflow, but the repo

@@ -5015,3 +5015,12 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python scripts/summarize_same_scale_sampling_uncertainty.py --json-output /tmp/tschamut_sampling_uncertainty.json --markdown-output docs/tschamut_public_same_scale_uncertainty_envelope.md`,
   `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_same_scale_sampling_uncertainty.py tests/test_same_scale_sampling_uncertainty.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_sampling_uncertainty`.
+- TB-032 completed by adding `scripts/generate_pilot_command_plan.py` with
+  canonical Tschamut and Chant Sura / Flüelapass command plans. Updated the
+  fast-path docs to point at the helper, added
+  `tests/test_pilot_command_plan.py`, removed TB-032 from the backlog, and
+  verified the helper in JSON and text modes. Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/generate_pilot_command_plan.py tests/test_pilot_command_plan.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan`,
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`,
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`.

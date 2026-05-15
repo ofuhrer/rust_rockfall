@@ -116,6 +116,8 @@ inspection:
    scraping:
    - `scripts/check_same_scale_artifact_readiness.py` for local artifact state
      and regeneration commands;
+   - `scripts/generate_pilot_command_plan.py` for canonical portable command
+     plans across Tschamut and second-site workflows;
    - `scripts/compare_hazard_map_convergence.py` for gate/target cell-wise
      convergence;
    - `scripts/summarize_bounded_validation_output_profile.py` for validation

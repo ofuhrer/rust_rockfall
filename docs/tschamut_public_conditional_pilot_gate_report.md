@@ -398,10 +398,12 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python \
   --print-command-plan
 ```
 
-The command plan validates the selected geodata manifest and source/scenario
-policy, runs the frozen validation case, and builds sampling-weighted
-conditional hazard layers, conditional curves, GeoTIFFs, the GIS package
-manifest, and reducer chunk manifests. Generated outputs stay in ignored
+The canonical portable command plan is also available through
+`PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format text`.
+That helper consolidates the readiness preflight, case generation, validation,
+hazard-layer building, convergence comparison, output-profile checks, context
+inspection, hazard/context overlap, and uncertainty-summary commands for the
+selected Tschamut workflow. Generated outputs stay in ignored
 `validation/private/` and `hazard/results/` paths.
 
 The reconciled commands used for this evidence were:
