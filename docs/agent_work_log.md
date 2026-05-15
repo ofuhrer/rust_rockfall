@@ -4010,3 +4010,29 @@ Planning only; these milestones do not implement roadmap item content yet.
   it does not reduce public defaults or authorize scale-up.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-007.
+
+### TB-007
+
+- Milestone id: TB-007
+- Roadmap item: Acquire And Inspect Tschamut Public Context Cache.
+- Hypothesis/objective: The shared context-layer inspector can separate local evidence from blocked acquisition state and make the public Tschamut context review machine-readable without implying obstacle absence.
+- Files changed:
+  `scripts/inspect_tschamut_public_context_layers.py`,
+  `tests/test_tschamut_public_context_layers.py`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Extended the inspector report so it explicitly exposes `classification`, `context_review_status`, `layers_expected`, `layers_available`, `layers_missing`, `source_products`, `local_cache_paths`, `checksums`, `crs_or_spatial_reference`, `interpretation_impact`, and `operational_claims_allowed`. The checkout still has no processed Tschamut context cache, so the default inspection remains `blocked_pending_local_evidence` with a concrete acquisition checklist and staging commands instead of an obstacle-absence inference.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/inspect_tschamut_public_context_layers.py tests/test_tschamut_public_context_layers.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_tschamut_public_context_layers tests.test_pilot_obstacle_scope`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  returned `blocked_pending_local_evidence` and emitted the explicit acquisition checklist.
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit` passed.
+- Reviewer notes: No local public context cache was found in `data/processed/swisstopo/tschamut_public_pilot/context/`, so the review stays blocked and operational claims remain disallowed.
+- Decision: BLOCKED_PENDING_LOCAL_EVIDENCE.
+- Next proposed milestone: TB-008.

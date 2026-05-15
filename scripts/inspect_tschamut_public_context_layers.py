@@ -121,8 +121,12 @@ def inspect_context_layers(
     ]
 
     overall_classification = determine_overall_classification(layer_reports)
-    blocked_context = not any(layer["path_exists"] for layer in layer_reports)
+    available_layers = [layer for layer in layer_reports if layer["path_exists"]]
     missing_layers = [layer for layer in layer_reports if not layer["path_exists"]]
+    source_products = build_source_products(layer_reports, registry)
+    local_cache_paths = build_local_cache_paths(context_root, layer_reports, registry)
+    checksums = build_checksum_summary(layer_reports)
+    crs_or_spatial_reference = build_crs_summary(layer_reports)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -130,13 +134,24 @@ def inspect_context_layers(
         "run_id": scope["run_id"],
         "scope_record_path": str(scope_record_path),
         "context_root": str(context_root),
+        "classification": overall_classification,
+        "context_review_status": target_review["local_context_review_status"],
         "status": overall_classification,
         "target_scale_context_review_status": target_review["local_context_review_status"],
         "context_root_present": context_root.exists(),
         "context_layer_count": len(layer_reports),
         "reviewed_context_count": sum(1 for layer in layer_reports if layer["classification"] != "unresolved"),
         "blocked_context_layer_count": sum(1 for layer in layer_reports if not layer["path_exists"]),
-        "blocked_missing_context_layers": blocked_context,
+        "blocked_missing_context_layers": not any(layer["path_exists"] for layer in layer_reports),
+        "layers_expected": layer_reports,
+        "layers_available": available_layers,
+        "layers_missing": missing_layers,
+        "source_products": source_products,
+        "local_cache_paths": local_cache_paths,
+        "checksums": checksums,
+        "crs_or_spatial_reference": crs_or_spatial_reference,
+        "interpretation_impact": build_interpretation_impact(scope, layer_reports),
+        "operational_claims_allowed": False,
         "expected_context_layers": layer_reports,
         "adjacent_context_products": adjacent_context_products,
         "acquisition_checklist": build_acquisition_checklist(layer_reports, registry, context_root),
@@ -257,6 +272,10 @@ def build_acquisition_checklist(
                 "source_url": dataset.get("source_url"),
                 "raw_cache_path": dataset.get("local_path"),
                 "processed_cache_path": str(Path(layer["expected_path"])),
+                "staging_commands": [
+                    f"mkdir -p {dataset.get('local_path')}",
+                    f"mkdir -p {layer['expected_path']}",
+                ],
                 "verification_commands": [
                     "UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/validate_pilot_obstacle_scope.py validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml",
                     "UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json",
@@ -276,6 +295,108 @@ def build_acquisition_checklist(
             }
         )
     return checklist
+
+
+def build_source_products(
+    layer_reports: list[dict[str, Any]],
+    registry: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    products: dict[tuple[str | None, str | None], dict[str, Any]] = {}
+    for layer in layer_reports:
+        dataset = registry.get(layer["dataset_id"], {})
+        key = (dataset.get("id"), dataset.get("name"))
+        product = products.setdefault(
+            key,
+            {
+                "dataset_id": dataset.get("id", layer["dataset_id"]),
+                "source_product": dataset.get("name"),
+                "source_url": dataset.get("source_url"),
+                "raw_cache_path": dataset.get("local_path"),
+                "processed_cache_path": str(Path(layer["expected_path"])),
+                "layer_categories": [],
+            },
+        )
+        product["layer_categories"].append(layer["category"])
+    return sorted(products.values(), key=lambda item: (str(item["source_product"]), str(item["dataset_id"])))
+
+
+def build_local_cache_paths(
+    context_root: Path,
+    layer_reports: list[dict[str, Any]],
+    registry: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    raw_cache_paths = sorted(
+        {
+            str(registry.get(layer["dataset_id"], {}).get("local_path"))
+            for layer in layer_reports
+            if registry.get(layer["dataset_id"], {}).get("local_path")
+        }
+    )
+    processed_cache_paths = sorted({str(Path(layer["expected_path"])) for layer in layer_reports})
+    return {
+        "context_root": str(context_root),
+        "context_root_present": context_root.exists(),
+        "raw_cache_paths": raw_cache_paths,
+        "processed_cache_paths": processed_cache_paths,
+        "available_layer_paths": sorted({layer["expected_path"] for layer in layer_reports if layer["path_exists"]}),
+        "missing_layer_paths": sorted({layer["expected_path"] for layer in layer_reports if not layer["path_exists"]}),
+    }
+
+
+def build_checksum_summary(layer_reports: list[dict[str, Any]]) -> dict[str, Any]:
+    available_layers = [layer for layer in layer_reports if layer["path_exists"]]
+    return {
+        "available_layers": [
+            {
+                "category": layer["category"],
+                "dataset_id": layer["dataset_id"],
+                "metadata_path": layer["metadata_path"],
+                "combined_sha256": layer["combined_sha256"],
+                "file_count": layer["file_count"],
+                "total_bytes": layer["total_bytes"],
+                "file_sha256s": [entry["sha256"] for entry in layer["files"]],
+            }
+            for layer in available_layers
+        ],
+        "available_files": [
+            {
+                "category": layer["category"],
+                "path": entry["path"],
+                "size_bytes": entry["size_bytes"],
+                "sha256": entry["sha256"],
+            }
+            for layer in available_layers
+            for entry in layer["files"]
+        ],
+    }
+
+
+def build_crs_summary(layer_reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    crs_summary: list[dict[str, Any]] = []
+    for layer in layer_reports:
+        metadata = layer.get("metadata") or {}
+        crs = metadata.get("coordinate_reference_system")
+        if isinstance(crs, dict):
+            crs_summary.append(
+                {
+                    "category": layer["category"],
+                    "dataset_id": layer["dataset_id"],
+                    "metadata_path": layer["metadata_path"],
+                    "coordinate_reference_system": crs,
+                }
+            )
+    return crs_summary
+
+
+def build_interpretation_impact(scope: dict[str, Any], layer_reports: list[dict[str, Any]]) -> dict[str, Any]:
+    omission = scope.get("omission_interpretation", {})
+    return {
+        "summary": omission.get("summary"),
+        "required_before_interpretation": omission.get("required_before_interpretation"),
+        "current_effect": "Local context review remains blocked when no reviewed processed cache is staged in the checkout.",
+        "layer_classification_summary": summarize_spatial_relevance(layer_reports),
+        "operational_claims_allowed": False,
+    }
 
 
 def summarize_spatial_relevance(layer_reports: list[dict[str, Any]]) -> dict[str, Any]:
@@ -384,25 +505,33 @@ def sha256_text(text: str) -> str:
 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
-        f"context inspection status: {report['status']}",
+        f"context inspection status: {report['classification']}",
+        f"context review status: {report['context_review_status']}",
         f"scope record: {report['scope_record_path']}",
         f"context root: {report['context_root']}",
         f"target-scale context review: {report['target_scale_context_review_status']}",
         f"context layers inspected: {report['context_layer_count']}",
         f"blocked missing layers: {report['blocked_context_layer_count']}",
+        f"operational claims allowed: {report['operational_claims_allowed']}",
     ]
-    for layer in report["expected_context_layers"]:
+    for layer in report["layers_expected"]:
         lines.append(
             f"- {layer['category']} [{layer['classification']}]: {layer['expected_path']} "
             f"(files={layer['file_count']}, bytes={layer['total_bytes']})"
         )
         lines.append(f"  rationale: {layer['rationale']}")
+    if report["source_products"]:
+        lines.append("source products:")
+        for product in report["source_products"]:
+            lines.append(f"- {product['source_product']}: {product['processed_cache_path']}")
     if report["acquisition_checklist"]:
         lines.append("acquisition checklist:")
         for item in report["acquisition_checklist"]:
             lines.append(f"- {item['dataset_id']}: {item['processed_cache_path']}")
             if "source_url" in item and item["source_url"]:
                 lines.append(f"  source: {item['source_url']}")
+            if item.get("staging_commands"):
+                lines.append(f"  staging: {item['staging_commands'][0]}")
     return "\n".join(lines)
 
 

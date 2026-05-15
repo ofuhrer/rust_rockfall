@@ -74,6 +74,13 @@ expected SWISSIMAGE, swissTLM3D, swissSURFACE3D Raster, and swissBUILDINGS3D
 products. That checklist is the executable next step when the context layers
 are not locally available.
 
+The JSON report also separates `classification`, `context_review_status`,
+`layers_expected`, `layers_available`, `layers_missing`, `source_products`,
+`local_cache_paths`, `checksums`, `crs_or_spatial_reference`, and
+`interpretation_impact`, while keeping `operational_claims_allowed` false.
+That makes the blocked-state evidence explicit without turning the missing
+cache into an obstacle-absence claim.
+
 ## Interpretation Boundary
 
 Allowed current interpretation:
