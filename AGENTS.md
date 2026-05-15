@@ -95,6 +95,50 @@ cross-document drift:
    one concrete follow-up task, and keep `docs/agent_work_log.md` concise.
    Record the decision and checks, not a full transcript.
 
+## Tschamut Worker Fast Path
+
+Use this shortcut for Tschamut same-scale pilot tasks before broad document
+inspection:
+
+1. Run the readiness preflight first:
+
+   ```bash
+   PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json
+   ```
+
+   Treat its readiness flags, `missing_paths`, and `regeneration_commands` as
+   the current local artifact state unless a later task-specific command
+   proves otherwise.
+2. Do not reconstruct or manually re-audit gate, target, context, output
+   profile, convergence, or overlap artifacts when the preflight reports them
+   ready. Consume the existing manifests and run the requested diagnostic.
+3. Prefer the canonical Tschamut evidence scripts over markdown or work-log
+   scraping:
+   - `scripts/check_same_scale_artifact_readiness.py` for local artifact state
+     and regeneration commands;
+   - `scripts/compare_hazard_map_convergence.py` for gate/target cell-wise
+     convergence;
+   - `scripts/summarize_bounded_validation_output_profile.py` for validation
+     output accounting;
+   - `scripts/inspect_tschamut_public_context_layers.py` for public context
+     readiness and corridor relevance;
+   - `scripts/measure_hazard_context_overlap.py` for hazard/context proximity;
+   - `scripts/summarize_same_scale_uncertainty_envelope.py` for composed
+     evidence summaries.
+4. Treat `docs/agent_work_log.md` as append-only and non-chronological. Use it
+   for execution history, not as the primary current-state source. Prefer the
+   readiness preflight, current reports, and machine-readable script output.
+5. For hazard/context overlap work, start with bounded probes and broaden only
+   after a successful small run. Kill stale overlap or `ogrinfo` processes
+   before rerunning a changed query.
+6. Use `PYENV_VERSION=system` with `uv run` when local pyenv shims point at a
+   missing interpreter.
+7. The repository pre-push hook may fail on the known unrelated parquet rlib
+   build issue. If focused checks, `git diff --check`,
+   `scripts/check_repo_consistency.py`, and `scripts/git-hooks/pre-commit`
+   pass, report the hook failure explicitly and use `git push --no-verify`
+   when the user requested a push.
+
 ## Hard Boundaries
 
 - Do not replicate proprietary implementation internals without explicit permission.

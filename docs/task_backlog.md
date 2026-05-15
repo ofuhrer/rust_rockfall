@@ -145,6 +145,19 @@ Each active task must include:
 - exact outputs expected;
 - focused checks to run.
 
+For Tschamut same-scale tasks, prompts should normally tell workers to run the
+readiness preflight before broad inspection:
+
+```bash
+PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json
+```
+
+Workers should use that command's readiness flags, `missing_paths`, and
+`regeneration_commands` as the current local artifact state unless a
+task-specific diagnostic proves otherwise. Do not make workers rediscover
+gate/target/context/output-profile paths manually when the preflight can answer
+the question directly.
+
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 

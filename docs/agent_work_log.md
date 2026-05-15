@@ -31,6 +31,36 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### Worker Efficiency Consolidation
+
+- Milestone id: worker efficiency consolidation after TB-022.
+- Roadmap item: Improve future worker prompt efficiency without adding a new
+  governance layer.
+- Hypothesis/objective: Future Tschamut same-scale workers should avoid
+  repeatedly rediscovering artifact readiness, command plans, stale blocked
+  states, pyenv issues, and known pre-push behavior.
+- Files intended to change: `AGENTS.md`, `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a `Tschamut Worker Fast Path` to `AGENTS.md`
+  that makes the same-scale artifact readiness preflight the first command for
+  relevant tasks, identifies canonical evidence scripts, warns that
+  `agent_work_log.md` is non-chronological, and records bounded overlap,
+  `PYENV_VERSION=system`, and known parquet pre-push guidance. Added matching
+  backlog-protocol wording so future task prompts can point workers at the
+  preflight instead of asking them to manually rediscover paths.
+- Checks run:
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: This is execution guidance only; it does not change
+  simulator physics, thresholds, baselines, release assumptions, or claim
+  boundaries.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-023.
+
 ### Backlog Refill After Same-Scale Pilot Progress
 
 - Milestone id: backlog refill after TB-021.
