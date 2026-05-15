@@ -47,9 +47,11 @@ has multi-seed uncertainty, spatial uncertainty interpretation, closure
 criteria, GIS/package, command-plan, COG proof-of-concept, and bounded
 runtime/output evidence. Larger selected-domain runs remain blocked until the
 dominant uncertainty and output-profile gaps below are reduced with measured
-evidence. Second-site pilots remain metadata-only, although Chant Sura /
-Flüelapass now has a concrete candidate manifest, a concrete acquisition
-manifest, and a tiny synthetic core-input staging helper.
+evidence. Second-site pilots remain non-executed, but Chant Sura / Flüelapass
+now has a concrete candidate manifest, a concrete acquisition manifest, a tiny
+synthetic core-input staging helper, and an explicit
+`deferred_public_context_inputs` boundary for the missing public context
+products.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -85,7 +87,8 @@ objective are:
    uncertainty is localized rather than diffuse, but `max_kinetic_energy` and
    `max_jump_height` remain support/nodata sensitive enough that the closure
    matrix treats both dominant layers as closure-limiting.
-3. Output volume is measured and partly controlled but not yet scale-ready.
+3. Output volume is measured and partly controlled but not yet a standard
+   execution path.
    Target validation output remains the dominant measured pressure at
    `2716` files / `764598283` bytes and `272.573375917` seconds in the
    same-scale set. Target-side `summary_only` output reduced substantially but
@@ -93,7 +96,8 @@ objective are:
    `rebuildable_reduced_output` proof that retains the builder-facing
    trajectory, deposition, impact-event, and diagnostics artifacts in a compact
    ignored root and successfully rebuilds hazard layers from that reduced
-   profile.
+   profile. The remaining workflow gap is canonical use of that profile in
+   command plans or generation paths, not proof that the contract works.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
@@ -108,8 +112,9 @@ objective are:
    multisite source/scenario contract audit, and a tiny synthetic core-input
    staging path. The candidate now has the ignored terrain, source-zone,
    scenario, processed-input, validation-root, and hazard-root inputs needed to
-   separate core readiness from deferred public-context blockers. No second-site
-   ensemble or hazard build is authorized.
+   separate core readiness from `deferred_public_context_inputs`. No second-site
+   ensemble or hazard build is authorized, and the synthetic inputs must not be
+   represented as real swisstopo evidence.
 7. Scaling direction is measured for the current same-scale set. The
    single-job Balfrin path remains sufficient for the next same-scale step,
    distributed execution stays deferred, and the dominant bottleneck is
@@ -120,7 +125,8 @@ objective are:
    overviews, and `cloud_optimized: false` metadata, not by missing package
    manifests. The ignored `gate_v1_cog_poc` package now audits as
    COG-ready, proving the package-level path without changing the committed
-   roots.
+   roots. The remaining GIS workflow gap is turning that proof into a normal
+   export option when the standard package path is ready to change.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
@@ -148,19 +154,31 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- turning the package-level COG proof into the normal same-scale export path,
+- hardening the portable source-zone/scenario semantics against the concrete
+  Chant Sura candidate now that its core-input and public-context boundaries
+  are explicit;
+- turning spatial same-scale uncertainty into reusable masks/surfaces that show
+  where closure-limiting uncertainty concentrates, not just scalar layer
+  summaries;
+- making the rebuildable reduced-output proof a canonical workflow command
+  before any larger validation-output run is attempted;
+- turning the package-level COG proof into the normal same-scale export path
   once doing so is worth changing the standard package roots;
-- staging or explicitly deferring Chant Sura / Flüelapass public-context inputs
-  so the second-site preflight can move beyond synthetic core-input readiness;
-- hardening the portable source-zone/scenario contract against a second concrete
-  site without running a second-site ensemble or making transferability claims.
+- producing one measured conditional diagnostic interpretation artifact that
+  consumes closure, uncertainty, output-profile, GIS, scaling, portability, and
+  physical-credibility evidence without making acceptance claims.
 
 Current priority order:
 
-1. Harden the portable source-zone/scenario contract for the next concrete
-   second site now that Chant Sura's public-context boundary is explicit.
-2. Keep second-site public-context product staging deferred unless a new
-   acquisition decision authorizes real public-context downloads.
+1. TB-047 hardens portable source-zone/scenario semantics because it is the
+   immediate Swiss-wide portability blocker after TB-046.
+2. TB-048 adds spatial uncertainty masks/surfaces because closure remains
+   scientifically limited by where `max_kinetic_energy` and `max_jump_height`
+   disagreement concentrates.
+3. TB-049 canonicalizes the rebuildable reduced-output workflow because output
+   volume remains the measured scaling bottleneck.
+4. TB-050 promotes the COG conversion proof toward a reusable export path after
+   the core scientific/output blockers have executable support.
 
 ## Backlog Protocol
 
@@ -196,6 +214,182 @@ can answer the question directly.
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
+## Active Tasks
+
+### TB-047: Harden Portable Source-Zone And Scenario Semantics
+
+Goal: separate reusable source-zone/scenario semantics from Tschamut-specific
+heuristics using the concrete Chant Sura / Flüelapass candidate, without
+running a second-site ensemble or claiming transferability.
+
+Inspect first:
+
+- `scripts/audit_multisite_source_scenario_contract.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+- `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+
+Expected work:
+
+- run the minimal Chant Sura staging helper and the second-site preflight;
+- audit which source-zone and scenario fields are reusable workflow semantics,
+  which are site-specific required inputs, and which still inherit Tschamut
+  assumptions;
+- extend the multisite source/scenario audit or add a narrow companion report
+  so it emits a machine-readable semantic portability matrix for Tschamut and
+  Chant Sura;
+- update docs to make the synthetic Chant Sura records explicit as contract
+  fixtures, not physical evidence.
+
+Definition of done:
+
+- the report identifies reusable, site-specific, and unresolved source/scenario
+  semantics without requiring real public-context downloads;
+- Chant Sura remains `deferred_public_context_inputs` and no second-site
+  ensemble or hazard build is run;
+- no tuning, source-frequency, annual-probability, risk, exposure,
+  vulnerability, scale-up, or operational claims are introduced.
+
+### TB-048: Emit Spatial Same-Scale Uncertainty Masks
+
+Goal: convert the measured spatial uncertainty interpretation into reusable
+grid artifacts or compact mask summaries for closure-limiting layers, so
+workers can inspect where uncertainty concentrates without re-deriving cell
+sets from pairwise rasters.
+
+Inspect first:
+
+- `scripts/summarize_spatial_same_scale_uncertainty.py`
+- `scripts/summarize_tschamut_conditional_pilot_closure.py`
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+- same-scale hazard manifests under `hazard/results/tschamut_public_pilot/`
+
+Expected work:
+
+- derive per-layer high-uncertainty masks or compact mask summaries for
+  `max_kinetic_energy`, `max_jump_height`, and `velocity_exceedance_5mps` from
+  existing same-scale hazard rasters;
+- keep outputs either in `/tmp` or ignored artifact roots unless they are tiny
+  committed fixtures;
+- report support/nodata-dominated cells separately from shared-support
+  magnitude disagreement;
+- thread the mask evidence into the closure helper only as diagnostic evidence,
+  not as accepted convergence.
+
+Definition of done:
+
+- JSON/text output exposes mask counts, extents, and closure roles for the
+  selected layers;
+- closure remains conservative unless the evidence truly changes;
+- no new ensembles, physics changes, threshold tuning, scale-up, or operational
+  claims are introduced.
+
+### TB-049: Canonicalize Rebuildable Reduced-Output Commands
+
+Goal: make the `rebuildable_reduced_output` proof a reusable command-plan path
+instead of a one-off derivation command.
+
+Inspect first:
+
+- `scripts/derive_hazard_rebuild_reduced_profile.py`
+- `scripts/check_hazard_rebuild_output_profile.py`
+- `scripts/generate_pilot_command_plan.py`
+- `scripts/build_hazard_layers.py`
+- `docs/tschamut_public_bounded_validation_output_profile.md`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+
+Expected work:
+
+- add canonical command-plan entries for deriving and hazard-rebuilding the
+  reduced profile from the current target artifacts;
+- keep the generated reduced root ignored and reproducible;
+- ensure the checker still reports `target_summary_only` as
+  `summary_only_not_rebuildable` and `target_rebuildable_reduced` as
+  `rebuildable_reduced_output`;
+- document the command path as a scaling mitigation, not a scientific
+  acceptance step.
+
+Definition of done:
+
+- `scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
+  exposes the reduced-output derivation/rebuild commands;
+- focused tests cover command IDs and profile classifications;
+- no large generated validation or hazard outputs are committed.
+
+### TB-050: Promote COG Conversion Toward A Standard Export Path
+
+Goal: turn the ignored `gate_v1_cog_poc` package proof into a reusable export
+command path while preserving the truthful status of the existing standard
+package roots.
+
+Inspect first:
+
+- `scripts/convert_same_scale_package_to_cog.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `hazard/results/tschamut_public_pilot/gate_v1_cog_poc/`
+
+Expected work:
+
+- expose canonical command-plan entries for package-level COG conversion and
+  audit verification;
+- keep standard roots classified as `gis_package_ready_cog_blocked` unless they
+  are actually regenerated;
+- keep converted package outputs in ignored roots and preserve manifest
+  provenance.
+
+Definition of done:
+
+- the command plan can reproduce the ignored COG package proof;
+- GIS/COG audit JSON distinguishes standard roots, converted samples, and
+  converted package roots;
+- no generated COG rasters are committed.
+
+### TB-051: Assemble A Canonical Conditional Diagnostic Interpretation Report
+
+Goal: produce one measured, non-operational pilot interpretation artifact that
+summarizes the current Tschamut evidence without asking workers to reconcile
+separate closure, uncertainty, output-profile, GIS, scaling, portability, and
+physical-credibility reports by hand.
+
+Inspect first:
+
+- `scripts/summarize_tschamut_conditional_pilot_closure.py`
+- `scripts/summarize_same_scale_sampling_uncertainty.py`
+- `scripts/summarize_spatial_same_scale_uncertainty.py`
+- `scripts/check_hazard_rebuild_output_profile.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/summarize_bounded_reducer_runtime_scaling.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+
+Expected work:
+
+- add a narrow read-only synthesis helper or extend an existing summary path to
+  emit a single JSON/text interpretation record;
+- include current closure status, dominant uncertainty layers, spatial closure
+  roles, output-profile status, GIS/COG status, reducer/scaling status,
+  second-site portability boundary, and physical-credibility boundary;
+- keep the interpretation explicitly `inconclusive` unless the underlying
+  helper evidence changes.
+
+Definition of done:
+
+- one command emits a coherent measured diagnostic interpretation suitable for
+  release notes or review;
+- the report keeps `scale_up_authorized: false`,
+  `operational_claims_allowed: false`, and physical/annual/risk claims out of
+  scope;
+- no simulation, hazard rebuild, second-site run, or generated geodata is
+  performed.
+
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:
@@ -204,6 +398,10 @@ These are intentionally not current worker tasks:
 - risk, exposure, vulnerability, return-period, or operational products;
 - shape-contact runtime progression;
 - terrain/material calibration libraries;
+- real Chant Sura public-context product downloads until a specific
+  acquisition decision authorizes them;
+- physical credibility boundary expansion beyond the existing evidence-gap
+  matrix until new field/reference data is identified;
 - production COG or QGIS packaging work beyond secondary QA;
 - manual GIS/QGIS visual QA unless the local package artifacts and QGIS are
   actually available and the main acceptance evidence is not blocked elsewhere;
