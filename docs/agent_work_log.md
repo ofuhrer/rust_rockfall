@@ -5078,3 +5078,23 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_reducer_runtime_scaling`,
   `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json`,
   `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format text`.
+
+- Backlog refill after TB-031 through TB-034.
+- Files changed: `docs/task_backlog.md`.
+- Evidence streams consumed: the multi-seed same-scale uncertainty envelope,
+  portable command-plan helper, GIS/COG package audit, bounded
+  reducer/runtime scaling summary, same-scale readiness preflight, and
+  second-site portability docs.
+- Current maturity assessment: same-scale Tschamut execution is reproducible
+  and measured; convergence remains inconclusive; target validation output is
+  the dominant measured output pressure; GIS packages are manifest-complete but
+  COG-blocked; local single-job execution remains sufficient for the next
+  same-scale step; Chant Sura / Flüelapass remains metadata-only and
+  blocked-missing-inputs.
+- Backlog direction: prioritize conditional pilot closure criteria,
+  rebuildable reduced validation output, bounded COG conversion, concrete
+  Chant Sura public-geodata acquisition staging, and validation/calibration
+  evidence-gap analysis.
+- Boundaries preserved: no physics changes, no parameter tuning, no scale-up
+  authorization, no distributed execution authorization, and no operational,
+  annual-frequency, risk, exposure, or vulnerability claims.
