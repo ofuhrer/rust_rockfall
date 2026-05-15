@@ -5363,6 +5363,21 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format json`,
   `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_holdout_evidence.py --format text`.
 
+- TB-043 spatial uncertainty integration into conditional closure logic.
+- Files changed:
+  `scripts/summarize_tschamut_conditional_pilot_closure.py`,
+  `tests/test_tschamut_conditional_pilot_closure.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: the closure helper now consumes the spatial
+  same-scale uncertainty summary directly and records per-layer closure roles
+  so `max_kinetic_energy` and `max_jump_height` remain closure-limiting while
+  `velocity_exceedance_5mps` is deferrable under the current evidence.
+- Boundaries preserved: no physics changes, no tuning, no new ensembles, no
+  annual-frequency / risk / exposure / vulnerability / operational claims.
+
 - TB-042 hazard-rebuild-compatible reduced output profile.
 - Files changed:
   `scripts/derive_hazard_rebuild_reduced_profile.py`,

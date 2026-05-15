@@ -397,6 +397,11 @@ mix of signals:
 - reducer/runtime scaling still supports the single-job path;
 - second-site portability remains metadata/template-level rather than ready.
 
+The closure helper now also consumes the spatial uncertainty summary directly:
+`max_kinetic_energy` is closure-limiting, `max_jump_height` is
+closure-limiting or unresolved, and `velocity_exceedance_5mps` is deferrable
+rather than a closure blocker.
+
 The helper keeps `scale_up_authorized: false` and
 `operational_claims_allowed: false` and separates the evidence needed for
 `accepted_diagnostic`, `no_go`, and `deferred` closure decisions from the

@@ -52,6 +52,10 @@ small same-scale corridor, while `max_jump_height` remains the layer most
 affected by nodata/support differences. This does not change the existing
 `inconclusive` convergence interpretation.
 
+The conditional closure helper now reads this spatial concentration directly,
+so the same evidence can be treated as closure-limiting, deferrable, or
+unresolved rather than only as a scalar envelope.
+
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid
 - `max_kinetic_energy` still dominates the envelope

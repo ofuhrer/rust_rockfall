@@ -30,16 +30,30 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertIn("accepted_diagnostic_criteria", report)
         self.assertIn("no_go_criteria", report)
         self.assertIn("deferred_criteria", report)
+        self.assertIn("spatial_uncertainty_interpretation", report)
 
     def test_current_mapping_contains_satisfied_and_blocked_states(self) -> None:
         report = summary.build_closure_report()
         matrix = {entry["criterion"]: entry for entry in report["criteria_matrix"]}
         self.assertEqual(matrix["same_scale_readiness"]["current_state"], "satisfied")
         self.assertEqual(matrix["convergence_and_uncertainty_envelope"]["current_state"], "unresolved")
+        self.assertEqual(matrix["dominant_disagreement_layers"]["current_state"], "closure_limiting")
+        self.assertEqual(matrix["max_kinetic_energy_behavior"]["current_state"], "closure_limiting")
+        self.assertEqual(matrix["max_jump_height_support_nodata_sensitivity"]["current_state"], "closure_limiting")
+        self.assertEqual(matrix["velocity_exceedance_behavior"]["current_state"], "deferrable")
         self.assertEqual(matrix["hazard_rebuild_output_compatibility"]["current_state"], "blocked")
         self.assertEqual(matrix["gis_cog_readiness"]["current_state"], "blocked")
         self.assertEqual(matrix["reducer_runtime_scaling"]["current_state"], "satisfied")
         self.assertEqual(matrix["physical_annual_risk_operational_boundaries"]["current_state"], "out_of_scope")
+        spatial = report["spatial_uncertainty_interpretation"]
+        self.assertEqual(spatial["spatial_interpretation"], "nodata_support_dominated")
+        self.assertEqual(spatial["overall_closure_role"], "closure_limiting")
+        self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["closure_role"], "closure_limiting")
+        self.assertEqual(spatial["layer_roles"]["max_jump_height"]["closure_role"], "closure_limiting")
+        self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["closure_role"], "deferrable")
+        self.assertIn("spatial_uncertainty_support_nodata_dominates_closure", report["current_blockers"])
+        self.assertFalse(report["scale_up_authorized"])
+        self.assertFalse(report["operational_claims_allowed"])
 
     def test_blocked_missing_input_override(self) -> None:
         report = summary.build_closure_report({"missing_inputs": ["docs/missing.json"]})

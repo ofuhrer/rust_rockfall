@@ -150,9 +150,6 @@ Underrepresented high-value work:
 - implementation of the hazard-rebuild-compatible reduced-output contract so a
   smaller retained-output profile actually rebuilds hazard layers, rather than
   only being specified;
-- integration of spatial uncertainty summaries into closure logic so localized
-  versus closure-limiting disagreement affects `accepted_diagnostic`, `no_go`,
-  or `deferred` interpretation explicitly;
 - regeneration of a same-scale GIS package into ignored COG-ready outputs so
   the scratch COG proof becomes normal package evidence;
 - staging of minimal Chant Sura / Flüelapass public inputs so the second-site
@@ -163,10 +160,8 @@ Underrepresented high-value work:
 
 Current priority order:
 
-1. TB-043 turns measured spatial uncertainty into closure evidence rather than
-   another standalone summary.
-2. TB-044 converts the proven COG path into an ignored package-level result.
-3. TB-045 advances Swiss-wide portability only after the diagnostic evidence
+1. TB-044 converts the proven COG path into an ignored package-level result.
+2. TB-045 advances Swiss-wide portability only after the diagnostic evidence
    and output/product blockers are better controlled.
 
 ## Backlog Protocol
@@ -204,43 +199,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-043: Use Spatial Uncertainty In Conditional Closure Logic
-
-Goal: connect the measured spatial uncertainty diagnostics to the conditional
-pilot closure helper so localized uncertainty and support/nodata-driven
-uncertainty are interpreted consistently.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Expected work:
-
-- extend the closure helper or its evidence mapping to consume the spatial
-  uncertainty summary;
-- distinguish localized shared-support magnitude variation from
-  support/nodata-dominated disagreement in the closure matrix;
-- report whether each dominant layer is closure-limiting, deferrable, or
-  compatible with a future accepted diagnostic threshold.
-
-Definition of done:
-
-- the closure report no longer treats all spatial uncertainty as a scalar
-  envelope; it names the layer-specific spatial concentration class;
-- current closure remains conservative unless measured evidence supports a
-  stricter status;
-- tests cover localized shared-support uncertainty versus nodata/support
-  dominated uncertainty.
-
-Boundaries:
-
-- no larger ensembles until the reduced-output blocker is resolved;
-- no physics changes, tuning, scale-up, annual-frequency claims, risk, exposure,
-  vulnerability, or operational use.
 
 ### TB-044: Regenerate One Ignored Same-Scale GIS Package As COG-Ready
 

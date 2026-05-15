@@ -44,6 +44,7 @@ def _load_module(module_name: str, filename: str):
 
 READINESS = _load_module("tschamut_closure_readiness", "check_same_scale_artifact_readiness.py")
 UNCERTAINTY = _load_module("tschamut_closure_uncertainty", "summarize_same_scale_sampling_uncertainty.py")
+SPATIAL = _load_module("tschamut_closure_spatial", "summarize_spatial_same_scale_uncertainty.py")
 OUTPUT_PROFILE = _load_module("tschamut_closure_output_profile", "summarize_bounded_validation_output_profile.py")
 REDUCER = _load_module("tschamut_closure_reducer_scaling", "summarize_bounded_reducer_runtime_scaling.py")
 GIS = _load_module("tschamut_closure_gis_cog", "audit_gis_cog_package_readiness.py")
@@ -108,6 +109,7 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
 
     readiness = evidence["readiness"]
     uncertainty = evidence["sampling_uncertainty"]
+    spatial_uncertainty = evidence["spatial_uncertainty"]
     output_profile = evidence["validation_output_profile"]
     reducer_scaling = evidence["reducer_runtime_scaling"]
     gis_cog = evidence["gis_cog"]
@@ -118,6 +120,7 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
     criteria_matrix = build_criteria_matrix(
         readiness=readiness,
         uncertainty=uncertainty,
+        spatial_uncertainty=spatial_uncertainty,
         output_profile=output_profile,
         reducer_scaling=reducer_scaling,
         gis_cog=gis_cog,
@@ -135,9 +138,11 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
         "no_go_criteria": no_go_requirements(),
         "deferred_criteria": deferred_requirements(),
         "criteria_matrix": criteria_matrix,
+        "spatial_uncertainty_interpretation": summarize_spatial_uncertainty(spatial_uncertainty),
         "current_evidence": {
             "readiness": summarize_readiness(readiness),
             "uncertainty": summarize_uncertainty(uncertainty),
+            "spatial_uncertainty_interpretation": summarize_spatial_uncertainty(spatial_uncertainty),
             "validation_output_profile": summarize_output_profile(output_profile),
             "reducer_runtime_scaling": summarize_reducer_scaling(reducer_scaling),
             "gis_cog": summarize_gis_cog(gis_cog),
@@ -145,7 +150,14 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
             "portability": summarize_portability(portability),
             "contract_audit": summarize_contract_audit(contract_audit),
         },
-        "current_blockers": current_blockers(output_profile, gis_cog, context_scope, portability, contract_audit),
+        "current_blockers": current_blockers(
+            output_profile,
+            gis_cog,
+            context_scope,
+            portability,
+            contract_audit,
+            spatial_uncertainty,
+        ),
         "current_follow_up_blockers": follow_up_blockers(output_profile, gis_cog, portability, contract_audit),
         "evidence_sources": evidence_sources(),
         "scale_up_authorized": False,
@@ -158,6 +170,11 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
 def gather_current_evidence() -> dict[str, Any]:
     readiness = READINESS.build_readiness_report()
     uncertainty = UNCERTAINTY.build_sampling_uncertainty_summary()
+    spatial_uncertainty = SPATIAL.build_report(
+        manifest_paths=list(SPATIAL.DEFAULT_MANIFESTS),
+        hazard_layers=tuple(SPATIAL.DEFAULT_HAZARD_LAYERS),
+        top_n=8,
+    )
     output_profile = OUTPUT_PROFILE.build_summary()
     reducer_scaling = REDUCER.build_report(REDUCER.DEFAULT_ARTIFACTS)
     gis_cog = GIS.build_gis_cog_readiness_report()
@@ -171,6 +188,7 @@ def gather_current_evidence() -> dict[str, Any]:
     return {
         "readiness": readiness,
         "sampling_uncertainty": uncertainty,
+        "spatial_uncertainty": spatial_uncertainty,
         "validation_output_profile": output_profile,
         "reducer_runtime_scaling": reducer_scaling,
         "gis_cog": gis_cog,
@@ -184,6 +202,7 @@ def evidence_sources() -> list[str]:
     return [
         "scripts/check_same_scale_artifact_readiness.py",
         "scripts/summarize_same_scale_sampling_uncertainty.py",
+        "scripts/summarize_spatial_same_scale_uncertainty.py",
         "scripts/summarize_bounded_validation_output_profile.py",
         "scripts/summarize_bounded_reducer_runtime_scaling.py",
         "scripts/audit_gis_cog_package_readiness.py",
@@ -202,10 +221,11 @@ def accepted_diagnostic_requirements() -> list[str]:
     return [
         "same-scale readiness is ready",
         "multi-seed uncertainty is measured and convergence is accepted rather than inconclusive",
-        "dominant disagreement layers are bounded well enough that no single layer remains structurally limiting",
+        "spatial uncertainty is localized rather than support/nodata dominated",
+        "dominant disagreement layers are not closure-limiting",
         "max_kinetic_energy no longer dominates the shared-grid disagreement envelope",
-        "max_jump_height no longer carries support or nodata sensitivity that affects closure",
-        "velocity exceedance layers remain measured but no longer vary in a closure-limiting way",
+        "max_jump_height support or nodata sensitivity is resolved or explicitly bounded",
+        "velocity exceedance layers remain measured but are deferrable rather than blocking closure",
         "context / obstacle interpretation is resolved by measured local evidence",
         "validation output profile is compatible with hazard rebuild and keeps required provenance",
         "GIS / COG packaging is ready for the current outputs",
@@ -221,6 +241,7 @@ def no_go_requirements() -> list[str]:
         "validation output profile retains a measured blocker that prevents hazard-rebuild-compatible reuse",
         "GIS / COG packaging remains blocked by raster layout or manifest fields",
         "context interpretation remains limiting rather than resolved",
+        "spatial uncertainty remains support/nodata dominated in a closure-limiting layer",
         "convergence remains inconclusive under the measured multi-seed envelope",
         "a closure decision is recorded to stop further diagnostic expansion rather than to accept the pilot",
     ]
@@ -230,16 +251,78 @@ def deferred_requirements() -> list[str]:
     return [
         "same-scale readiness is ready",
         "convergence remains inconclusive but the evidence set is bounded and reusable",
+        "spatial uncertainty is localized but one or more dominant layers remain unresolved",
         "reducer / runtime scaling shows the local single-job path is sufficient for the next step",
         "follow-up blockers are concrete and executable rather than roadmap-only",
         "the pilot remains non-operational and scale-up unauthorized",
     ]
 
 
+def spatial_summary_state(overall_role: str | None) -> str:
+    if overall_role in {"closure_limiting", "nodata_support_dominated"}:
+        return "closure_limiting"
+    if overall_role in {"deferrable", "spatially_localized"}:
+        return "deferrable"
+    if overall_role in {"unresolved", "diffuse_across_shared_support"}:
+        return "unresolved"
+    return "blocked"
+
+
+def spatial_layer_summary(spatial_uncertainty: dict[str, Any], layer_key: str) -> dict[str, Any]:
+    return dict((spatial_uncertainty.get("layer_summaries") or {}).get(layer_key) or {})
+
+
+def layer_closure_role(spatial_uncertainty: dict[str, Any], layer_key: str) -> str:
+    layer = spatial_layer_summary(spatial_uncertainty, layer_key)
+    concentration = layer.get("uncertainty_concentration_class")
+    if concentration == "dominated_by_nodata_support_differences":
+        return "closure_limiting"
+    if concentration == "spatially_localized_shared_support_magnitude":
+        return "deferrable" if layer_key == "velocity_exceedance_5mps" else "compatible_with_future_threshold"
+    if concentration in {"shared_support_magnitude_diffuse", "diffuse_across_shared_support"}:
+        return "unresolved"
+    return "unresolved"
+
+
+def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[str, Any]:
+    layer_roles = {}
+    for layer_key in ("max_kinetic_energy", "max_jump_height", "velocity_exceedance_5mps"):
+        layer = spatial_layer_summary(spatial_uncertainty, layer_key)
+        layer_roles[layer_key] = {
+            "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
+            "closure_role": layer_closure_role(spatial_uncertainty, layer_key),
+            "interpretation_note": layer.get("interpretation_note"),
+            "nodata_disagreement_count": layer.get("nodata_disagreement_count"),
+            "shared_valid_cell_count": layer.get("shared_valid_cell_count"),
+            "analysis_cell_count": layer.get("analysis_cell_count"),
+            "nonzero_support_stability_fraction": layer.get("nonzero_support_stability_fraction"),
+            "high_uncertainty_cell_fraction": layer.get("high_uncertainty_cell_fraction"),
+        }
+    overall_role = spatial_uncertainty.get("spatial_interpretation")
+    if overall_role == "nodata_support_dominated":
+        overall_closure_role = "closure_limiting"
+    elif overall_role == "spatially_localized":
+        overall_closure_role = "deferrable"
+    elif overall_role == "diffuse_across_shared_support":
+        overall_closure_role = "unresolved"
+    else:
+        overall_closure_role = "blocked"
+    return {
+        "spatial_uncertainty_status": spatial_uncertainty.get("spatial_uncertainty_status"),
+        "spatial_interpretation": overall_role,
+        "overall_closure_role": overall_closure_role,
+        "layer_roles": layer_roles,
+        "dominant_layers": spatial_uncertainty.get("dominant_layers_by_mean_range", []),
+        "dominant_layer_summaries": spatial_uncertainty.get("dominant_layer_summaries", []),
+        "blocked_reason": spatial_uncertainty.get("blocked_reason", ""),
+    }
+
+
 def build_criteria_matrix(
     *,
     readiness: dict[str, Any],
     uncertainty: dict[str, Any],
+    spatial_uncertainty: dict[str, Any],
     output_profile: dict[str, Any],
     reducer_scaling: dict[str, Any],
     gis_cog: dict[str, Any],
@@ -275,47 +358,58 @@ def build_criteria_matrix(
         ),
         criterion_entry(
             criterion="dominant_disagreement_layers",
-            accepted_requirement="no single layer remains structurally limiting",
-            no_go_requirement="dominant layers are still present and unbounded",
-            deferred_requirement="dominant layers are identified and reusable for the next measurement",
-            current_state="satisfied",
+            accepted_requirement="no single layer remains structurally limiting and spatial uncertainty is not support/nodata dominated",
+            no_go_requirement="dominant layers remain support/nodata dominated and block closure interpretation",
+            deferred_requirement="dominant layers are localized but one or more remain unresolved",
+            current_state=spatial_summary_state(spatial_uncertainty.get("spatial_interpretation")),
             current_evidence_summary={
+                "spatial_uncertainty_status": spatial_uncertainty.get("spatial_uncertainty_status"),
+                "spatial_interpretation": spatial_uncertainty.get("spatial_interpretation"),
+                "overall_closure_role": spatial_uncertainty.get("overall_closure_role"),
                 "dominant_layer_spread": uncertainty.get("dominant_layer_spread", {}),
+                "dominant_layers": spatial_uncertainty.get("dominant_layers", []),
             },
-            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md"],
+            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md", "scripts/summarize_spatial_same_scale_uncertainty.py"],
         ),
         criterion_entry(
             criterion="max_kinetic_energy_behavior",
             accepted_requirement="max_kinetic_energy no longer dominates the shared-grid disagreement envelope",
-            no_go_requirement="max_kinetic_energy remains the dominant disagreement driver",
-            deferred_requirement="max_kinetic_energy remains dominant but bounded by a smaller probe envelope",
-            current_state="unresolved",
+            no_go_requirement="max_kinetic_energy remains the dominant disagreement driver with material support/nodata disagreement",
+            deferred_requirement="max_kinetic_energy remains localized but unresolved",
+            current_state=layer_closure_role(spatial_uncertainty, "max_kinetic_energy"),
             current_evidence_summary={
                 "max_kinetic_energy_uncertainty": uncertainty.get("max_kinetic_energy_uncertainty", {}),
+                "spatial_layer": spatial_layer_summary(spatial_uncertainty, "max_kinetic_energy"),
             },
-            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md"],
+            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md", "scripts/summarize_spatial_same_scale_uncertainty.py"],
         ),
         criterion_entry(
             criterion="max_jump_height_support_nodata_sensitivity",
             accepted_requirement="support and nodata sensitivity are no longer closure-limiting",
-            no_go_requirement="support or nodata sensitivity still changes the measured envelope",
+            no_go_requirement="support or nodata sensitivity still drives the measured envelope",
             deferred_requirement="support and nodata sensitivity are measured and bounded but not eliminated",
-            current_state="unresolved",
+            current_state=layer_closure_role(spatial_uncertainty, "max_jump_height"),
             current_evidence_summary={
                 "max_jump_height_uncertainty": uncertainty.get("max_jump_height_uncertainty", {}),
+                "spatial_layer": spatial_layer_summary(spatial_uncertainty, "max_jump_height"),
             },
-            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md", "docs/tschamut_public_obstacle_context_scope.md"],
+            evidence_refs=[
+                "docs/tschamut_public_same_scale_uncertainty_envelope.md",
+                "docs/tschamut_public_obstacle_context_scope.md",
+                "scripts/summarize_spatial_same_scale_uncertainty.py",
+            ],
         ),
         criterion_entry(
             criterion="velocity_exceedance_behavior",
             accepted_requirement="velocity exceedance spread is measured and no longer closure-limiting",
             no_go_requirement="velocity exceedance layers remain part of the measured spread",
-            deferred_requirement="velocity exceedance layers remain lower-order but still vary across probes",
-            current_state="satisfied",
+            deferred_requirement="velocity exceedance layers remain localized and deferrable",
+            current_state=layer_closure_role(spatial_uncertainty, "velocity_exceedance_5mps"),
             current_evidence_summary={
                 "velocity_exceedance_uncertainty": uncertainty.get("velocity_exceedance_uncertainty", {}),
+                "spatial_layer": spatial_layer_summary(spatial_uncertainty, "velocity_exceedance_5mps"),
             },
-            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md"],
+            evidence_refs=["docs/tschamut_public_same_scale_uncertainty_envelope.md", "scripts/summarize_spatial_same_scale_uncertainty.py"],
         ),
         criterion_entry(
             criterion="context_obstacle_interpretation",
@@ -571,6 +665,7 @@ def current_blockers(
     context_scope: dict[str, Any],
     portability: dict[str, Any],
     contract_audit: dict[str, Any],
+    spatial_uncertainty: dict[str, Any] | None = None,
 ) -> list[str]:
     blockers: list[str] = []
     if output_profile.get("validation_output_blocker_status") == "blocker_retained" or output_profile.get(
@@ -585,6 +680,8 @@ def current_blockers(
         blockers.append("second_site_portability_blocked_missing_inputs")
     if contract_audit.get("source_scenario_contract_audit_status") != "ready":
         blockers.append("source_scenario_contract_not_yet_ready_for_second_site")
+    if spatial_uncertainty is not None and spatial_summary_state(spatial_uncertainty.get("spatial_interpretation")) == "closure_limiting":
+        blockers.append("spatial_uncertainty_support_nodata_dominates_closure")
     return blockers
 
 
@@ -645,6 +742,16 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("follow-up blockers:")
     for item in report.get("current_follow_up_blockers", []):
         lines.append(f"- {item}")
+    spatial = report.get("spatial_uncertainty_interpretation", {})
+    lines.append("spatial uncertainty interpretation:")
+    if spatial:
+        lines.append(
+            f"- overall: {spatial.get('spatial_interpretation')} -> {spatial.get('overall_closure_role')}"
+        )
+        for layer_key, layer in spatial.get("layer_roles", {}).items():
+            lines.append(
+                f"- {layer_key}: {layer.get('uncertainty_concentration_class')} -> {layer.get('closure_role')}"
+            )
     lines.append(
         "scale_up_authorized=false operational_claims_allowed=false"
     )
