@@ -44,7 +44,7 @@ Expected work:
         self.assertEqual(tasks[0].inspect_first, ["docs/example.md", "scripts/example.py"])
 
     def test_report_contains_required_json_fields_without_live_checks(self) -> None:
-        report = agent_context.build_report("TB-041", run_checks=False)
+        report = agent_context.build_report("TB-046", run_checks=False)
 
         self.assertEqual(report["agent_task_context_status"], "ready")
         self.assertEqual(report["repo_root"], str(ROOT))
@@ -71,7 +71,7 @@ Expected work:
                     sys.executable,
                     str(SCRIPT_PATH),
                     "--task",
-                    "TB-041",
+                    "TB-046",
                     "--format",
                     "json",
                     "--no-live-checks",
@@ -89,10 +89,10 @@ Expected work:
 
     def test_chant_sura_task_triggers_second_site_preflight(self) -> None:
         task = agent_context.ActiveTask(
-            task_id="TB-041",
-            title="Stage a Holdout Validation Evidence Manifest For Chant Sura",
+            task_id="TB-046",
+            title="Decide Chant Sura Public-Context Staging Boundary",
             inspect_first=[],
-            text="Chant Sura held-out contact metadata",
+            text="Chant Sura public-context staging boundary",
         )
 
         self.assertTrue(agent_context.should_run_chant_sura_preflight(task, [task]))

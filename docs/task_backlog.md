@@ -83,17 +83,17 @@ objective are:
    `0.7598039215686274` to `0.8579234972677595`.
    Spatial uncertainty is now measured from the same artifacts: the dominant
    uncertainty is localized rather than diffuse, but `max_kinetic_energy` and
-   `max_jump_height` remain support/nodata sensitive enough that closure logic
-   still needs to consume the spatial classifications explicitly.
+   `max_jump_height` remain support/nodata sensitive enough that the closure
+   matrix treats both dominant layers as closure-limiting.
 3. Output volume is measured and partly controlled but not yet scale-ready.
    Target validation output remains the dominant measured pressure at
    `2716` files / `764598283` bytes and `272.573375917` seconds in the
-   same-scale set. Target-side `summary_only` output reduced substantially,
-   but TB-025 showed that `summary_only` validation artifacts cannot currently
-   rebuild hazard layers because the hazard builder still needs trajectory,
-   deposition, impact-event, and diagnostics artifacts that the reduced profile
-   omits. The minimum builder-facing contract is specified but not yet
-   implemented as a real reduced-output mode.
+   same-scale set. Target-side `summary_only` output reduced substantially but
+   remains non-rebuildable. TB-042 implemented a Python-side
+   `rebuildable_reduced_output` proof that retains the builder-facing
+   trajectory, deposition, impact-event, and diagnostics artifacts in a compact
+   ignored root and successfully rebuilds hazard layers from that reduced
+   profile.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
@@ -115,12 +115,12 @@ objective are:
    distributed execution stays deferred, and the dominant bottleneck is
    validation output size rather than hazard-reducer parallelism.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
-   for the same-scale artifacts. COG readiness is blocked by the current
-   strip-organized raster layout, missing overviews, and
-   `cloud_optimized: false` metadata, not by missing package manifests. A
-   scratch COG conversion proof has shown this is technically fixable, but no
-   ignored same-scale package has yet been regenerated and audited as
-   COG-ready.
+   for the same-scale artifacts. COG readiness is blocked for the committed
+   standard roots by the current strip-organized raster layout, missing
+   overviews, and `cloud_optimized: false` metadata, not by missing package
+   manifests. The ignored `gate_v1_cog_poc` package now audits as
+   COG-ready, proving the package-level path without changing the committed
+   roots.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
@@ -148,22 +148,20 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- implementation of the hazard-rebuild-compatible reduced-output contract so a
-  smaller retained-output profile actually rebuilds hazard layers, rather than
-  only being specified;
-- regeneration of a same-scale GIS package into ignored COG-ready outputs so
-  the scratch COG proof becomes normal package evidence;
-- staging of Chant Sura / Flüelapass public-context inputs so the second-site
-  preflight can separate deferred public context from the minimal core input
-  path;
-- durable holdout evidence for Chant Sura so diagnostic selection evidence and
-  independent validation evidence remain separated.
+- turning the package-level COG proof into the normal same-scale export path,
+  once doing so is worth changing the standard package roots;
+- staging or explicitly deferring Chant Sura / Flüelapass public-context inputs
+  so the second-site preflight can move beyond synthetic core-input readiness;
+- hardening the portable source-zone/scenario contract against a second concrete
+  site without running a second-site ensemble or making transferability claims.
 
 Current priority order:
 
-1. TB-044 converts the proven COG path into an ignored package-level result.
-2. Second-site work should now focus on the deferred public-context blockers,
-   not on another metadata-only stage.
+1. TB-046 should focus on the remaining Chant Sura public-context blockers,
+   because TB-045 separated synthetic core-input readiness from the still-missing
+   swisstopo context products.
+2. A follow-up source/scenario portability task is useful only after the
+   context decision is either staged or explicitly deferred.
 
 ## Backlog Protocol
 
@@ -201,40 +199,50 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-044: Regenerate One Ignored Same-Scale GIS Package As COG-Ready
+### TB-046: Decide Chant Sura Public-Context Staging Boundary
 
-Goal: move from the scratch COG proof of concept to an ignored same-scale GIS
-package whose audit reports COG-ready rasters and `cloud_optimized: true`
-metadata.
+Goal: move the Chant Sura / Flüelapass candidate from synthetic core-input
+readiness to an explicit public-context boundary by either staging tiny
+representative context fixtures under ignored paths or documenting a deliberate
+defer decision in the preflight output.
 
 Inspect first:
 
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/prototype_cog_conversion.py`
-- `scripts/build_hazard_layers.py`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/generate_pilot_command_plan.py`
 - `docs/public_real_site_geodata_preparation.md`
 - `docs/swisstopo_data_strategy.md`
-- `hazard/results/tschamut_public_pilot/gate_v1/`
 
 Expected work:
 
-- regenerate or convert one bounded same-scale package under an ignored output
-  root;
-- ensure rasters are tiled, compressed, and carry overviews;
-- update package manifests for the regenerated package only so the audit can
-  report COG readiness.
+- run the minimal staging helper to create the ignored core inputs;
+- inspect the remaining blockers for `swissimage_context`, `swisstlm3d_context`,
+  `swisssurface3d_context`, `swisssurface3d_raster_context`, and
+  `swissbuildings3d_context`;
+- either add tiny intentional public-context fixture files that satisfy only the
+  preflight contract, or update the preflight/reporting to mark those context
+  products as explicitly deferred rather than confused with missing core inputs;
+- rerun the second-site preflight and command plan and document the remaining
+  blocked/deferred categories.
 
 Definition of done:
 
-- the GIS/COG audit reports the regenerated ignored package as COG-ready;
-- the current committed/standard package state remains truthfully reported;
-- no generated rasters or large package outputs are committed.
+- core terrain/source/scenario/root categories remain ready after the helper is
+  run;
+- remaining context categories are either staged as tiny fixtures or explicitly
+  reported as intentionally deferred with clear acquisition-manifest references;
+- no raw or large geodata is downloaded or committed;
+- no second-site validation ensemble or hazard build is run.
 
 Boundaries:
 
-- no manual QGIS acceptance unless actually performed;
-- no scientific acceptance, scale-up, operational, annual-frequency, risk,
-  exposure, or vulnerability claims.
+- no Tschamut evidence reused as Chant Sura validation evidence;
+- no tuning, source-frequency, annual probability, risk, exposure,
+  vulnerability, scale-up, or operational claims.
 
 ## Deferred Backlog
 

@@ -260,6 +260,8 @@ A bounded proof-of-concept conversion path now exists in
 `scripts/prototype_cog_conversion.py`. On a single same-scale GeoTIFF it writes
 only to `/tmp`, converts with `gdal_translate -of COG -co BLOCKSIZE=256 -co
 COMPRESS=ZSTD`, and verifies a tiled COG layout with overviews via
-`gdalinfo`. The committed same-scale outputs remain unchanged and should still
-audit as `gis_package_ready_cog_blocked` until regenerated with a COG-ready
-layout.
+`gdalinfo`. That scratch proof is now extended to an ignored same-scale
+package-level result at `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`,
+which audits as `cog_package_ready` with `cloud_optimized: true` metadata.
+The committed same-scale outputs remain unchanged and should still audit as
+`gis_package_ready_cog_blocked` until regenerated with a COG-ready layout.
