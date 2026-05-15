@@ -5050,3 +5050,31 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m py_compile scripts/audit_gis_cog_package_readiness.py tests/test_gis_cog_package_readiness.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness`,
   `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json`.
+
+- TB-034 bounded reducer/runtime scaling measurement. Files changed:
+  `scripts/summarize_bounded_reducer_runtime_scaling.py`,
+  `tests/test_bounded_reducer_runtime_scaling.py`,
+  `docs/balfrin_single_job_execution_sufficiency.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the same-scale readiness preflight, the canonical
+  Tschamut command-plan helper, and the four existing same-scale artifacts
+  `gate_v1`, `target_gate_v1`, `sampling_sensitivity_v1_full`, and
+  `sampling_sensitivity_v2_full`.
+- Classification: `measured_existing_artifacts` with bottleneck
+  `validation_output_size`.
+- Measured runtime/output evidence: target validation `272.573375917 s` and
+  `571368823 bytes`; gate validation `3.999294125 s` and `34545900 bytes`;
+  target hazard `41.61543712497223 s` and `22061720 bytes`; gate hazard
+  `7.108489040983841 s` and `21025596 bytes`.
+- Reducer evidence: target and gate hazard manifests both record `2` workers
+  with `22` cellwise layers; the bounded sampling probes remain at the same
+  output scale without a distributed-reducer signal.
+- Conclusion: local single-job execution remains sufficient for the next
+  same-scale step and distributed execution remains unauthorized.
+- Checks run:
+  `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`,
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_bounded_reducer_runtime_scaling.py tests/test_bounded_reducer_runtime_scaling.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_reducer_runtime_scaling`,
+  `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format text`.

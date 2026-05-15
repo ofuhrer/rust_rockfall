@@ -168,38 +168,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-034: Measure Bounded Reducer Runtime And Output Scaling
-
-Capability gap reduced: distributed execution is deferred, but larger
-deterministic ensemble readiness still depends on reducer/runtime/output
-behavior beyond the current same-scale probes.
-
-Goal: run a bounded reducer/runtime/output scaling measurement using existing
-small artifacts or a tiny controlled probe, then report whether local
-single-job execution still appears sufficient for the next measurement step.
-
-Inspect first:
-
-- `docs/balfrin_single_job_execution_sufficiency.md`;
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `scripts/build_hazard_layers.py`;
-- existing validation/hazard manifests for gate, target, and sampling probes;
-- reducer/chunking code paths referenced by the hazard builder.
-
-Required work:
-
-1. Keep the measurement bounded; do not run a large production ensemble.
-2. Preserve physics, thresholds, source/scenario inputs, and baselines.
-3. Record runtime, reducer workers, file counts, bytes, and bottleneck class.
-4. Do not authorize distributed execution unless a measured need is shown.
-
-Definition of done:
-
-- bounded reducer/runtime/output evidence is recorded;
-- the next scaling decision is supported by measurements rather than
-  assumption;
-- checks pass.
-
 ## Deferred Backlog
 
 These are intentionally not current worker tasks:

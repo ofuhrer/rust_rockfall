@@ -110,3 +110,25 @@ Continue using the single-job Balfrin SLURM driver for the next same-scale selec
 - `convergence_record`: `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
 - `feasibility_record`: `validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml`
 - `current_gap_record`: `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
+
+## Bounded Reducer Scaling Evidence
+
+- `bounded_reducer_scaling_status`: `measured_existing_artifacts`
+- `bounded_reducer_scaling_command`: `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json`
+- `timing_source`: `manifest_performance.total_wall_seconds`
+- `reducer_workers_compared`: `[2, 2, null, 2]`
+- `hazard_layer_counts`: `[22, 22, 22, 22]`
+- `validation_roots_file_counts`: `[127, 2716, 247, 247]`
+- `validation_roots_bytes`: `[34560918, 764598283, 68221148, 68384888]`
+- `hazard_roots_file_counts`: `[56, 56, 49, 56]`
+- `hazard_roots_bytes`: `[77758043, 79160991, 21058710, 77883219]`
+- `validation_runtime_seconds`: `[3.999294125, 272.573375917, 8.460070916, 7.736682417]`
+- `hazard_runtime_seconds`: `[7.108489040983841, 41.61543712497223, 9.922129791986663, 12.383317541971337]`
+- `bottleneck_classification`: `validation_output_size`
+- `output_scaling_findings`:
+  - target validation output remains the dominant volume pressure;
+  - target validation runtime is the slowest observed stage in the measured same-scale set;
+  - the measured reducer remains chunked local threads with two workers for gate and target;
+  - the bounded sampling probes stay near the same order of magnitude without a distributed-reducer signal.
+
+The bounded same-scale measurement supports the existing conclusion: local single-job execution is still sufficient for the next same-scale step, and distributed execution remains unauthorized by the current evidence set.
