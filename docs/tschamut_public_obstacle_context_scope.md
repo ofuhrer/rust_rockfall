@@ -134,6 +134,35 @@ Measured swissTLM3D corridor relevance from the staged archive:
 - interpretation boundary: these counts measure contextual relevance only;
   they do not turn the staged swissTLM3D archive into obstacle physics.
 
+Measured hazard-context overlap against the same-scale target hazard envelope:
+
+```bash
+PYENV_VERSION=system uv run python scripts/measure_hazard_context_overlap.py \
+  --top-cell-count 1 \
+  --buffer-radii-m 20 \
+  --hazard-layer reach_probability \
+  --hazard-layer max_kinetic_energy \
+  --hazard-layer max_jump_height \
+  --format json
+```
+
+For the top positive cell of each analyzed layer, the measured corridor
+features remained unresolved within the 20 m proximity envelope:
+
+- selected hazard layers: `reach_probability`, `max_kinetic_energy`,
+  `max_jump_height`;
+- hazard mask criterion: top positive cell per layer, no acceptance threshold;
+- context categories queried: roads/transport, barriers/protection,
+  water/channels;
+- `roads_or_transport_overlap.within_20m_cell_count_total`: `0`;
+- `barriers_or_protection_overlap.within_20m_cell_count_total`: `0`;
+- `water_or_channel_overlap.within_20m_cell_count_total`: `0`;
+- `selected_cell_total`: `3`;
+- final classification: `unresolved`.
+
+This is measured context-overlap evidence, not obstacle absence and not
+obstacle physics. It does not authorize scale-up or operational claims.
+
 ## Interpretation Boundary
 
 Allowed current interpretation:

@@ -45,6 +45,9 @@
 - validation debug-output pressure is still a scale-up blocker
 - target-side summary-only validation output pressure is measured, but the target-vs-gate interpretation remains inconclusive
 - corridor-level context remains interpretive evidence, not obstacle physics
+- the measured top-cell hazard-context overlap envelope remained unresolved
+  within 20 m for roads, barriers, and water, so the corridor interpretation
+  still does not reach accepted obstacle interaction evidence
 - distributed execution remains deferred on measured evidence
 
 ## Target-Artifact Readiness

@@ -4570,3 +4570,29 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The target-side summary-only profile is now measured, but it remains diagnostic only and does not alter convergence, scale-up authorization, or operational claim boundaries.
 - Decision: COMPLETED.
 - Next proposed milestone: TB-021.
+
+### TB-021
+
+- Milestone id: TB-021.
+- Roadmap item: Measure Hazard-Context Overlap For Limiting Corridor Features.
+- Implementation summary: Added `scripts/measure_hazard_context_overlap.py` and focused tests, then measured the selected Tschamut target hazard envelope against the staged swissTLM3D corridor archive. The top positive cell from each of the analyzed hazard layers (`reach_probability`, `max_kinetic_energy`, `max_jump_height`) was queried against roads/transport, barriers/protection, and water/channels with a 20 m proximity radius. The measured result is conservative and unresolved: all three context categories returned zero overlap/proximity cells within 20 m for the selected top-cell envelope. This is interpretation evidence only; it does not imply obstacle absence or obstacle physics.
+- Evidence streams consumed: `docs/tschamut_public_obstacle_context_scope.md`, `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`, `scripts/inspect_tschamut_public_context_layers.py`, `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`, and `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/metadata.json`.
+- Classification: `unresolved` at the hazard-context overlap envelope; `operational_claims_allowed` remains false and `scale_up_authorized` remains false.
+- Uncertainty reduced: the repo now has a reusable, executable overlap diagnostic that measures corridor-context proximity against selected hazard cells instead of only reporting corridor-level context relevance.
+- Remaining uncertainty: the top-cell envelope still does not show a measured roads/barriers/water proximity hit within 20 m, so the context interpretation remains conditional and not obstacle physics.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/measure_hazard_context_overlap.py tests/test_hazard_context_overlap.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_context_overlap`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/measure_hazard_context_overlap.py --top-cell-count 1 --buffer-radii-m 20 --hazard-layer reach_probability --hazard-layer max_kinetic_energy --hazard-layer max_jump_height --format json`
+  passed and produced the measured overlap JSON.
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: The corridor context remains limiting, but the top-cell overlap envelope did not produce a proximity hit for the measured categories. That is useful boundary evidence, not acceptance.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-022.

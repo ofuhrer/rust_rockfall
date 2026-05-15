@@ -124,6 +124,49 @@ constructed-feature subset does not yet provide corridor intersections. This
 is interpretation evidence only; it does not authorize scale-up or turn the
 conditional gate into an operational product.
 
+## Hazard-Context Overlap
+
+The same-scale target hazard envelope was measured against the staged context
+archive with the overlap diagnostic:
+
+```bash
+PYENV_VERSION=system uv run python scripts/measure_hazard_context_overlap.py \
+  --top-cell-count 1 \
+  --buffer-radii-m 20 \
+  --hazard-layer reach_probability \
+  --hazard-layer max_kinetic_energy \
+  --hazard-layer max_jump_height \
+  --format json
+```
+
+Measured result:
+
+- `hazard_context_overlap_status`: `measured`
+- `context_archive_status`: `measured_corridor_relevance`
+- `selected_hazard_layers`: `reach_probability`, `max_kinetic_energy`,
+  `max_jump_height`
+- `selected_cell_total`: `3`
+- `roads_or_transport_overlap`: `unresolved`
+- `barriers_or_protection_overlap`: `unresolved`
+- `water_or_channel_overlap`: `unresolved`
+- `roads_or_transport_overlap.within_20m_cell_count_total`: `0`
+- `barriers_or_protection_overlap.within_20m_cell_count_total`: `0`
+- `water_or_channel_overlap.within_20m_cell_count_total`: `0`
+- `final_classification`: `unresolved`
+
+Interpretation boundary:
+
+- the limiting corridor features remain measured as corridor-relevant at the
+  archive level;
+- the top positive cells in the same-scale target hazard envelope did not show
+  proximity within 20 m for roads, barriers, or water in this diagnostic
+  envelope;
+- this remains measured context-overlap evidence only;
+- it does not validate hazard-map skill, obstacle physics, or scale-up
+  readiness;
+- `scale_up_authorized` stays `false`;
+- `operational_claims_allowed` stays `false`.
+
 ## Same-Scale Convergence Check
 
 The restored same-scale target-side artifacts are now present and the

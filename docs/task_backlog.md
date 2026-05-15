@@ -73,8 +73,10 @@ objective are:
    context evidence for swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D,
    and a staged swissTLM3D archive that has now been queried at corridor
    level. Roads, barriers, and water are measured as limiting context rather
-   than missing-cache evidence, but the same-scale interpretation remains
-   conditional because context is still not obstacle physics.
+   than missing-cache evidence, and the same-scale top-cell overlap envelope
+   has now been measured as unresolved within the current 20 m proximity
+   check. The same-scale interpretation remains conditional because context
+   is still not obstacle physics.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -116,7 +118,6 @@ Underrepresented high-value work:
   artifact chain;
 - target-vs-gate spatial convergence on restored same-scale hazard outputs;
 - target-side `summary_only` validation-output measurement;
-- overlap between limiting corridor context and high-relevance hazard cells;
 - a reusable same-scale uncertainty envelope that composes the measured
   convergence, output budget, context, and execution-sufficiency evidence;
 - reusable readiness/preflight tooling for future selected-pilot artifact
@@ -139,38 +140,6 @@ Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
-
-### TB-021: Measure Hazard-Context Overlap For Limiting Corridor Features
-
-Capability gap reduced: TB-015 measured roads, barriers, and water as limiting
-context, but the repo has not quantified whether those limiting features
-overlap or neighbor the highest-relevance hazard cells.
-
-Goal: combine existing hazard rasters and the measured swissTLM3D corridor
-feature summaries to quantify overlap or proximity between high-relevance
-conditional hazard cells and roads, barriers/protection features, and water.
-
-Inspect first:
-
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `scripts/inspect_tschamut_public_context_layers.py`;
-- available ignored hazard rasters/manifests.
-
-Required work:
-
-1. Use existing hazard outputs and staged context evidence; do not implement
-   obstacle physics.
-2. Compute simple, documented overlap/proximity indicators only where artifact
-   paths are available.
-3. Keep the result as interpretation evidence, not operational acceptance.
-4. If hazard or context artifacts are missing, record exact missing inputs.
-
-Definition of done:
-
-- hazard/context overlap is measured or explicitly blocked;
-- limiting interpretation is updated with quantitative evidence;
-- checks pass.
 
 ### TB-022: Add Same-Scale Artifact Readiness Preflight
 
