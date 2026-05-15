@@ -91,6 +91,11 @@ A second-site portability preflight is now available for future Swiss sites;
 it remains metadata-only and does not alter the current Tschamut same-scale
 uncertainty interpretation.
 
+The multi-site source-zone / scenario contract audit
+`scripts/audit_multisite_source_scenario_contract.py` separates portable
+contract fields from Tschamut-specific heuristics, but it does not reduce the
+current convergence or sampling uncertainty on its own.
+
 ## Target-Artifact Readiness
 - Gate manifest available: `true`
 - Target validation manifest available: `true`

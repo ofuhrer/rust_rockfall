@@ -4968,3 +4968,27 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py tests/test_second_site_public_geodata_preflight.py`,
   `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`,
   `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`.
+
+- Roadmap item: TB-030 added a multisite source-zone / scenario contract
+  audit at `scripts/audit_multisite_source_scenario_contract.py`.
+- Files changed: `scripts/audit_multisite_source_scenario_contract.py`,
+  `tests/test_multisite_source_scenario_contract.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the Tschamut same-scale readiness preflight,
+  the frozen Tschamut source-zone policy, the frozen gate/target run records,
+  the Tschamut source-zone metadata and scenario table, and the Chant Sura /
+  Flüelapass candidate portability manifest plus its blocked preflight.
+- Classification: `measured` for the audit, with the Chant Sura candidate
+  still `blocked_missing_inputs`.
+- Uncertainty reduced: the repo now separates portable source/scenario
+  contract shape from Tschamut-specific heuristics, and it records which
+  second-site inputs remain missing before a non-Tschamut pilot can be staged.
+- Remaining uncertainty: the Chant Sura / Flüelapass candidate still lacks
+  staged terrain, source-zone, scenario, and context artifacts.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/audit_multisite_source_scenario_contract.py tests/test_multisite_source_scenario_contract.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract`,
+  `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --format json`.

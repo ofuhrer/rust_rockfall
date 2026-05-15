@@ -795,6 +795,11 @@ products, metadata records, and ignored output roots that would be required to
 port this workflow beyond Tschamut. That helper is metadata-only and does not
 change the current Tschamut interpretation.
 
+The source-zone / scenario contract audit
+`scripts/audit_multisite_source_scenario_contract.py` further separates the
+portable contract shape from Tschamut-specific release and block heuristics,
+which helps future second-site staging without reinterpreting the gate result.
+
 Relevant paths:
 
 - raw archive:

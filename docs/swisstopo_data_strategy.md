@@ -201,6 +201,12 @@ already contains Chant Sura dataset metadata and benchmark fixtures, but the
 example remains blocked until terrain, source-zone, scenario, and context
 products are staged at the candidate roots.
 
+The source-zone / scenario contract audit helper
+`scripts/audit_multisite_source_scenario_contract.py` now distinguishes the
+portable contract shape from the Tschamut-specific heuristics that were used
+to freeze the current pilot. It is still metadata-only and does not imply that
+the Chant Sura candidate is ready for a run.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

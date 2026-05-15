@@ -168,47 +168,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-030: Audit Multi-Site Source-Zone And Scenario Contract
-
-Capability gap reduced: the repository now has deterministic Tschamut case
-regeneration and a concrete Chant Sura / Flüelapass second-site manifest
-example, but it has not separated portable source-zone/block-scenario contract
-fields from Tschamut-specific heuristics.
-
-Goal: compare the Tschamut source-zone and block-scenario inputs against the
-staged second-site manifest and define the minimal portable source/scenario
-contract needed before a non-Tschamut pilot can be staged.
-
-Inspect first:
-
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`;
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`;
-- `scripts/generate_tschamut_same_scale_cases.py`;
-- `scripts/check_second_site_public_geodata_preflight.py`;
-- `docs/public_real_site_geodata_preparation.md`;
-- `docs/swisstopo_data_strategy.md`;
-- `data/datasets.yaml`.
-
-Required work:
-
-1. Do not run a second-site ensemble or hazard build.
-2. Compare required source-zone, release-point, observed-deposition,
-   block-scenario, sampling-weight, terrain, and context metadata fields.
-3. Classify each field as portable, site-specific but required,
-   Tschamut-specific heuristic, missing for the second site, or deferred.
-4. Produce a compact machine-readable audit or report that future workers can
-   use to stage the second-site source/scenario inputs.
-5. Preserve conditional-only semantics; do not introduce annual or physical
-   source-frequency claims.
-
-Definition of done:
-
-- a multi-site source/scenario contract audit exists and is referenced by the
-  portability docs;
-- missing second-site source/scenario fields are explicit and actionable;
-- no physics, thresholds, source semantics, or scenario weights are changed;
-- checks pass.
-
 ### TB-031: Build A Multi-Seed Same-Scale Uncertainty Envelope
 
 Capability gap reduced: TB-025 showed one bounded 12-trajectory probe reduces

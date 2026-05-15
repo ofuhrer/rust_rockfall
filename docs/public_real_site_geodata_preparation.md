@@ -188,6 +188,13 @@ already carries Chant Sura benchmark metadata and fixtures, but it still
 remains metadata-only and blocked until public terrain, source-zone, scenario,
 and context inputs are actually staged.
 
+The portable source-zone / scenario contract audit lives at
+`scripts/audit_multisite_source_scenario_contract.py`. It compares the frozen
+Tschamut source-zone and block-scenario records against the staged Chant Sura /
+Flüelapass candidate manifest so future workers can see which fields are
+portable contract shape, which are site-specific inputs, and which are still
+Tschamut-specific heuristics.
+
 Before the first conditional pilot run, also run:
 
 ```bash
