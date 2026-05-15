@@ -47,9 +47,10 @@ target-gate reproduction is not yet a convergence pass. DT-05 now records the
 conditional convergence protocol and keeps the DT-04 evidence
 `inconclusive`; external review risks are carried forward as DT-08 through
 DT-10 before the pilot can be accepted. The DT-06 stochastic sampling and RNG
-stream audit package is complete, DT-07 is complete, and DT-08 is now the next
-active target.
-DT-08 is now the next active target.
+stream audit package is complete, DT-07 is complete, DT-08 is complete, DT-09
+remains conditional on measured need for distributed execution, and DT-10 is
+now the next active target.
+DT-10 is now the next active target.
 Target-run provenance is now explicitly classified: the
 1,000-trajectory observed-release target run is separated from the auxiliary
 single-release `ensemble_execution` sidecar.
@@ -219,7 +220,7 @@ edge behavior as physical terrain continuation.
 
 ### DT-08: Define Output Budget And Reducer Scaling Gate
 
-Status: next active target.
+Status: complete; classification `blocked_before_scale_up`.
 
 Objective: convert output file count, byte count, inode use, dense-grid
 accumulator behavior, reducer restart files, and summary-only output policy
@@ -239,6 +240,8 @@ replace acceptance criteria with ad hoc output cleanup.
 
 ### DT-09: Design Balfrin Distributed Execution Only If Needed
 
+Status: conditional; only if measured need for distributed execution.
+
 Objective: define restartable cross-process trajectory/hazard chunks, SLURM
 arrays, work balancing, and reducer dependencies only if DT-05 through DT-08
 show the current single-job driver is the limiting blocker.
@@ -256,6 +259,8 @@ production orchestration while scientific acceptance and output gates are still
 undefined.
 
 ### DT-10: Review Target-Scale Forest And Obstacle Context
+
+Status: next active target.
 
 Objective: decide whether omitted forest, buildings, roads, barriers, nets, or
 other obstacles are acceptable, limiting, or invalidating for interpreting the

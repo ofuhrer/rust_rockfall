@@ -165,6 +165,7 @@ def main() -> int:
     errors.extend(check_conditional_hazard_convergence_protocol())
     errors.extend(check_stochastic_sampling_audit())
     errors.extend(check_dem_input_conditioning_qa())
+    errors.extend(check_output_budget_reducer_scaling_gate())
     errors.extend(check_balfrin_tschamut_readiness_record())
     errors.extend(check_balfrin_slurm_probe_repeatability())
     errors.extend(check_balfrin_target_gate_reproduction())
@@ -1299,7 +1300,13 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         "Status: complete; classification `inconclusive`.",
         "### DT-05: Define Conditional Hazard-Map Convergence And Acceptance Protocol",
         "Status: complete for the current selected target gate; classification",
-        "DT-08 is now the next active target",
+        "### DT-08: Define Output Budget And Reducer Scaling Gate",
+        "Status: complete; classification `blocked_before_scale_up`.",
+        "### DT-09: Design Balfrin Distributed Execution Only If Needed",
+        "Status: conditional; only if measured need for distributed execution.",
+        "### DT-10: Review Target-Scale Forest And Obstacle Context",
+        "Status: next active target.",
+        "DT-10 is now the next active target",
     ):
         if term not in targets:
             errors.append(f"docs/next_development_targets.md omits {term!r}")
@@ -1569,6 +1576,111 @@ def check_dem_input_conditioning_qa() -> list[str]:
     ):
         if test_name not in tests:
             errors.append(f"tests/test_dem_input_conditioning_qa.py omits {test_name}")
+    return errors
+
+
+def check_output_budget_reducer_scaling_gate() -> list[str]:
+    errors = []
+    required_paths = [
+        ROOT / "docs/output_budget_reducer_scaling_gate.md",
+        ROOT / "validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml",
+        ROOT / "scripts/validate_output_budget_reducer_gate.py",
+        ROOT / "tests/test_output_budget_reducer_gate.py",
+    ]
+    for path in required_paths:
+        if not path.exists():
+            errors.append(f"output/reducer scaling gate path is missing: {path.relative_to(ROOT)}")
+    if errors:
+        return errors
+
+    doc = (ROOT / "docs/output_budget_reducer_scaling_gate.md").read_text()
+    record = (ROOT / "validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml").read_text()
+    validator = (ROOT / "scripts/validate_output_budget_reducer_gate.py").read_text()
+    tests = (ROOT / "tests/test_output_budget_reducer_gate.py").read_text()
+
+    for term in (
+        "fail-closed gate",
+        "output file-count budget",
+        "byte-count budget",
+        "inode/file-family budget",
+        "summary-only conditional curves",
+        "grid CSV suppression",
+        "reducer state-size and dense-grid accumulator risk classification",
+        "reducer chunk/restart manifest requirements",
+        "checksum and hash requirements",
+        "local single-job",
+        "future distributed execution",
+        "no-tuning/no-physics/no-output-default-change/no-operational boundary",
+    ):
+        if term not in doc:
+            errors.append(f"docs/output_budget_reducer_scaling_gate.md omits {term!r}")
+
+    for term in (
+        "schema_version: output_budget_reducer_gate_v1",
+        "roadmap_item: DT-08",
+        "current_classification: blocked_before_scale_up",
+        "qa_status: diagnostic_incomplete",
+        "scale_up_authorized: false",
+        "selected_dt04_output_evidence:",
+        "referenced_records:",
+        "validation_output_budget:",
+        "hazard_output_budget:",
+        "inode_and_file_family_budget:",
+        "reducer_scaling:",
+        "dense_grid_risk:",
+        "checksum_evidence:",
+        "claim_boundary:",
+        "physics_changes_claimed: false",
+        "reducer_behavior_changes_claimed: false",
+        "output_default_changes_claimed: false",
+        "ensemble_size_increase_claimed: false",
+        "distributed_execution_claimed: false",
+        "annual_or_physical_claimed: false",
+        "risk_exposure_or_operational_claimed: false",
+        "full_curve_csv_default_claimed: false",
+        "grid_csv_default_claimed: false",
+        "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+        "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+        "validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml",
+        "docs/tschamut_public_pilot_scaling_review.md",
+        "docs/conditional_hazard_convergence_acceptance_protocol.md",
+        "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml",
+        "required_future_evidence:",
+        "limitations:",
+    ):
+        if term not in record:
+            errors.append(
+                "validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml "
+                f"omits {term!r}"
+            )
+
+    for symbol in (
+        "validate_output_budget_reducer_gate",
+        "ALLOWED_CLASSIFICATIONS",
+        "REQUIRED_REFERENCES",
+        "REQUIRED_BLOCKERS",
+        "REQUIRED_FOLLOWUP_CONTROLS",
+        "validate_budget_block",
+        "validate_claim_boundary",
+        "scan_text_for_prohibited_claims",
+        "output/reducer gate record is valid",
+    ):
+        if symbol not in validator:
+            errors.append(f"scripts/validate_output_budget_reducer_gate.py omits {symbol!r}")
+
+    for test_name in (
+        "test_current_record_is_valid",
+        "test_rejects_missing_validation_output_budget",
+        "test_rejects_missing_hazard_output_budget",
+        "test_rejects_missing_reducer_evidence",
+        "test_rejects_passed_while_blockers_remain",
+        "test_rejects_scale_up_authorization_while_blockers_remain",
+        "test_rejects_scalable_output_default_claims",
+        "test_rejects_physics_reducer_behavior_and_output_default_change_claims",
+        "test_rejects_annual_physical_risk_operational_claims",
+    ):
+        if test_name not in tests:
+            errors.append(f"tests/test_output_budget_reducer_gate.py omits {test_name}")
     return errors
 
 

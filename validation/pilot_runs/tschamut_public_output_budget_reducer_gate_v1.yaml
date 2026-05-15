@@ -1,0 +1,143 @@
+schema_version: output_budget_reducer_gate_v1
+record_id: tschamut_public_output_budget_reducer_gate_v1
+pilot_id: tschamut_public_pilot
+roadmap_item: DT-08
+assessed_domain:
+  name: Tschamut selected target-scale conditional pilot
+  selected_manifest_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  selected_classification: inconclusive
+selected_dt04_output_evidence:
+  target_gate_record_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  balfrin_reproduction_record_path: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  ensemble_feasibility_record_path: validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml
+  scaling_review_doc_path: docs/tschamut_public_pilot_scaling_review.md
+  validation_output_file_count: 2004
+  validation_output_bytes: 571131205
+  hazard_output_file_count: 54
+  hazard_output_bytes: 75423367
+  conditional_curve_export_mode: summary-only
+  grid_csv_export_mode: legacy_default_full_or_unrecorded
+  reducer_workers: 2
+  reducer_chunk_count: 2
+  reducer_merge_order: sorted_chunk_id
+  reducer_parity_status: pass_for_hazard_reducer_outputs
+  output_profile_status: custom_or_mixed_legacy_summary_only
+output_profile:
+  status: legacy_custom_summary_only
+  current_target_gate_profile:
+    profile: custom_or_mixed_legacy_summary_only
+    conditional_curve_export_mode: summary-only
+    grid_csv_export_mode: legacy_default_full_or_unrecorded
+    plots_enabled: false
+    generated_outputs_committed: false
+  selected_followup_profile:
+    profile: scalable_conditional
+    required_controls:
+      - --conditional-curve-export summary-only
+      - --grid-csv-export none
+      - --no-plots
+    rationale: >
+      Scalable runs must keep conditional curves summary-only, suppress grid
+      CSV, and avoid plots so the output budget stays bounded.
+  validation_debug_output_budget:
+    status: blocker_retained
+    target_validation_output_file_count: 2004
+    target_validation_output_total_bytes: 571131205
+    acceptable_for_next_scale_increase_without_reduction_or_justification: false
+referenced_records:
+  - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  - validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  - validation/pilot_runs/tschamut_public_ensemble_feasibility_v1.yaml
+  - docs/tschamut_public_pilot_scaling_review.md
+  - docs/conditional_hazard_convergence_acceptance_protocol.md
+  - validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml
+validation_output_budget:
+  status: blocker_retained
+  file_count: 2004
+  bytes: 571131205
+  manifest_path: validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+  manifest_sha256: 73b5db351727522264c10e48f24a646150122903d2296457c08eb34814819fc0
+  sidecar_status: retained
+  note: Validation-side debug output remains the dominant blocker for a larger run.
+hazard_output_budget:
+  status: recorded
+  file_count: 54
+  bytes: 75423367
+  manifest_path: hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
+  manifest_sha256: 2d743fbd28fc4af2d65dfcc00cf3801aad9805126b87362a32de8b5f767fbc8b
+  conditional_curve_rows_suppressed: 729600
+  conditional_curve_export_mode: summary-only
+  grid_csv_export_mode: legacy_default_full_or_unrecorded
+  note: Hazard-side output remains bounded for the current selected gate.
+inode_and_file_family_budget:
+  status: blocked_before_scale_up
+  file_family_pressure: validation_debug_artifacts
+  validation_file_count: 2004
+  hazard_file_count: 54
+  note: File-family pressure is dominated by validation-side debug artifacts.
+reducer_scaling:
+  status: recorded
+  mode: chunked_local_threads
+  worker_counts_compared: [1, 2]
+  parity_status: pass_for_hazard_reducer_outputs
+  chunk_count: 2
+  chunk_manifest_count: 2
+  merge_order: sorted_chunk_id
+  local_restartability_status: recorded
+  reducer_chunk_manifest_status: generated
+  reducer_execution_index_status: generated
+  reducer_merge_state_status: generated
+  note: Reducer scaling is currently limited to the local single-job boundary.
+dense_grid_risk:
+  status: blocked_before_scale_up
+  classification: dense_grid_accumulator_and_restart_state_size
+  note: Dense-grid accumulator and restart-state growth remain explicit no-go
+    risks for any larger scale-up until a dedicated gate says otherwise.
+checksum_evidence:
+  status: recorded
+  validation_manifest_sha256: 73b5db351727522264c10e48f24a646150122903d2296457c08eb34814819fc0
+  hazard_manifest_sha256: 2d743fbd28fc4af2d65dfcc00cf3801aad9805126b87362a32de8b5f767fbc8b
+  reducer_sidecar_checksum_status: recorded
+  note: Checksums come from ignored local outputs and their associated sidecars.
+current_classification: blocked_before_scale_up
+qa_status: diagnostic_incomplete
+scale_up_authorized: false
+physics_changes_claimed: false
+reducer_behavior_changes_claimed: false
+output_default_changes_claimed: false
+ensemble_size_increase_claimed: false
+annual_or_physical_claimed: false
+risk_exposure_or_operational_claimed: false
+required_blockers:
+  - validation_debug_output_volume_requires_reduction_or_justification
+  - full_curve_csv_scalable_default_not_authorized
+  - grid_csv_scalable_default_not_authorized
+  - reducer_restart_and_merge_state_not_rehearsed_for_larger_scale
+  - dense_grid_accumulator_risk_not_bound
+  - distributed_execution_not_authorized
+required_future_evidence:
+  - validation_debug_output_budget_explicitly_accepted_or_reduced
+  - hazard_output_budget_remains_bounded_under_the_selected_profile
+  - reducer_restart_and_chunk_manifests_remain_auditable
+  - distributed_execution_considered_only_if_measured_need_exists
+  - dt09_remains_conditional_until_output_or_reducer_bottlenecks_justify_it
+limitations:
+  - Current evidence remains bounded to the selected target-scale gate.
+  - Validation-side debug output remains too large for the next scale increase.
+  - Distributed execution remains a later DT-09 concern and is not authorized here.
+claim_boundary:
+  physics_changes_claimed: false
+  reducer_behavior_changes_claimed: false
+  output_default_changes_claimed: false
+  ensemble_size_increase_claimed: false
+  distributed_execution_claimed: false
+  annual_or_physical_claimed: false
+  risk_exposure_or_operational_claimed: false
+  return_period_claimed: false
+  validated_hazard_map_claimed: false
+  full_curve_csv_default_claimed: false
+  grid_csv_default_claimed: false
+notes:
+  - This record intentionally keeps scale-up unauthorized.
+  - It defines the output/reducer QA gate before larger runs or distributed
+    execution are considered.

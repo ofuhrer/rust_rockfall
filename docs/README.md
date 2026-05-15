@@ -107,6 +107,9 @@ fragments have been consolidated into `decision_log.md`; they do not override
 - `real_site_dem_input_conditioning_qa_gate.md`: DT-07 fail-closed QA gate for
   raw public inputs, DEM conditioning, CRS/registration, nodata, artifact, and
   boundary semantics.
+- `output_budget_reducer_scaling_gate.md`: DT-08 fail-closed QA gate for
+  validation/hazard output budgets, summary-only curves, grid CSV suppression,
+  reducer restart manifests, and dense-grid scaling risk.
 - `probabilistic_scenario_model_design.md`: scenario-level probability modes,
   source-zone placeholders, and normalization conventions.
 - `physical_source_frequency_design_gate.md`: design-gate decision for future

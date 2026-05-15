@@ -122,20 +122,15 @@ Already available:
 
 Main remaining pieces, in priority order:
 
-1. define a real-site DEM/input conditioning QA gate for atomic ingest,
-   checksums, CRS/registration, nodata/artifact checks, and domain-exit
-   semantics;
-2. turn output-budget and dense-grid reducer risks into explicit pass/fail
-   gates before any larger ensemble is attempted;
-3. close the remaining validation-runner provenance gap for observed-release
+1. close the remaining validation-runner provenance gap for observed-release
    ensembles if future gates require chunk metadata to cover every target
    trajectory;
-4. locally review forest/obstacle context and decide whether omission remains
+2. locally review forest/obstacle context and decide whether omission remains
    limiting, becomes acceptable for a diagnostic pilot, or invalidates
    target-scale interpretation;
-5. keep the target-scale manual GIS/QGIS visual QA decision explicit and
+3. keep the target-scale manual GIS/QGIS visual QA decision explicit and
    visible as a secondary interoperability check;
-6. defer physical/annual frequency semantics until source-frequency and
+4. defer physical/annual frequency semantics until source-frequency and
    block-population evidence are designed and reviewable.
 
 ## Current Implementation Assessment
@@ -162,9 +157,10 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   `validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml`
   and keeps the completed DT-04 Balfrin reproduction classified as
   `inconclusive` without authorizing scale-up. The DT-06 stochastic audit is
-  complete and the DT-07 DEM/input QA gate is complete. Remaining external
-  review risks are now carried forward as DT-08 output-budget/reducer, DT-09
-  distributed execution, and DT-10 forest/obstacle context gates.
+  complete and the DT-07 DEM/input QA gate is complete. The DT-08 output
+  budget/reducer gate is complete, DT-09 remains conditional on measured need
+  for distributed execution, and DT-10 forest/obstacle context is now the next
+  active blocker.
 - Priority 5 is complete at the selected checklist level.
   `scripts/validate_pilot_gis_package.py`
   and `docs/tschamut_public_pilot_gis_package_review.md` record automated QA
@@ -206,8 +202,8 @@ the roadmap and left interpretation gaps that should be resolved before scale-up
   forest/obstacle context, balfrin reproducibility, and validation-runner
   provenance scope are resolved. Manual GIS/QGIS remains a secondary
   interoperability check.
-- The next active work is DT-08 output-budget/reducer gates. Forest/obstacle
-  context remains important and is now DT-10.
+- The next active work is DT-10 forest/obstacle context. DT-09 remains
+  conditional on measured need for distributed execution.
 - Scalable conditional execution is now design-ready but not authorized for
   scale-up. `validation/pilot_runs/tschamut_public_scalable_conditional_execution_v1.yaml`,
   `docs/tschamut_public_scalable_conditional_execution.md`, and

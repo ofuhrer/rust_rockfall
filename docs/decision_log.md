@@ -58,8 +58,9 @@ Decision: treat real-site DEM/input conditioning as a fail-closed QA gate
 before larger Swiss public-data pilots are trusted.
 
 Current status: active. DT-07 is complete as the selected QA gate and keeps
-the Tschamut pilot classified `blocked_pending_local_evidence`. DT-08 is now
-the next active target.
+the Tschamut pilot classified `blocked_pending_local_evidence`. DT-08 is
+complete, DT-09 remains conditional on measured need, and DT-10 is now the
+next active target.
 
 Rationale: raw public inputs, intermediate processed artifacts, CRS/
 registration, nodata, terrain artifacts, and strict-versus-clamped boundary
@@ -68,6 +69,24 @@ when the simulation itself is unchanged.
 
 Detailed sources: `next_development_targets.md`,
 `real_site_dem_input_conditioning_qa_gate.md`,
+`roadmap_recommendation_matrix.md`,
+`real_case_intensity_frequency_implementation_roadmap.md`.
+
+### Output Budget And Reducer Scaling Gate
+
+Decision: treat output budgets and reducer scaling as a fail-closed QA gate
+before larger selected-domain runs or distributed execution are considered.
+
+Current status: active. DT-08 is complete as the selected QA gate and keeps
+the Tschamut pilot classified `blocked_before_scale_up`. DT-09 remains
+conditional on measured need, and DT-10 is now the next active target.
+
+Rationale: validation-side debug output, hazard output volume, reducer restart
+state, and dense-grid accumulator growth can make a run look finished while
+still being too large or too brittle for the next scale step.
+
+Detailed sources: `next_development_targets.md`,
+`output_budget_reducer_scaling_gate.md`,
 `roadmap_recommendation_matrix.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
