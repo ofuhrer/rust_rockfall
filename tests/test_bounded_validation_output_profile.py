@@ -21,7 +21,18 @@ SPEC.loader.exec_module(summary_script)
 
 class BoundedValidationOutputProfileTests(unittest.TestCase):
     def test_summary_records_measured_pressure_and_bounded_profile(self) -> None:
-        summary = summary_script.build_summary()
+        with tempfile.TemporaryDirectory() as tmp:
+            record = yaml.safe_load(summary_script.DEFAULT_CURRENT_PRESSURE_RECORD.read_text(encoding="utf-8"))
+            missing_root = Path(tmp) / "missing"
+            evidence = record["run_evidence"]
+            evidence["validation_manifest_path"] = str(missing_root / "validation_manifest.json")
+            evidence["hazard_manifest_path"] = str(missing_root / "hazard_manifest.json")
+            evidence["map_package_manifest_path"] = str(missing_root / "map_package_manifest.json")
+            evidence["pilot_gis_package_manifest_path"] = str(missing_root / "pilot_gis_package_manifest.json")
+            record_path = Path(tmp) / "current_pressure.yaml"
+            record_path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
+
+            summary = summary_script.build_summary(current_pressure_record_path=record_path)
 
         self.assertEqual(summary["measurement_status"], "record_based_measurement")
         self.assertEqual(summary["acceptance_classification"], "no_go")

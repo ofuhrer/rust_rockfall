@@ -70,7 +70,8 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
 
         self.assertEqual(report["status"], "limiting")
         self.assertEqual(report["classification"], "limiting")
-        self.assertEqual(report["context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
+        self.assertEqual(report["context_review_status"], "fixture_reviewed_context")
+        self.assertEqual(report["target_scale_context_review_status"], inspector.BLOCKED_REVIEW_STATUS)
         self.assertEqual(report["spatial_relevance_status"], "fixture_reviewed_context")
         self.assertIsNone(report["blocked_reason"])
         self.assertTrue(report["context_root_present"])
@@ -100,6 +101,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
             report["spatial_relevance_indicators"]["classification_summary"]["limiting"],
             ["buildings_or_structures", "orthophoto_visual_context"],
         )
+        self.assertIn("per_layer_metadata_indicators", report["spatial_relevance_indicators"])
 
     def test_json_serializable_output_schema_is_stable(self) -> None:
         report = inspector.inspect_context_layers(

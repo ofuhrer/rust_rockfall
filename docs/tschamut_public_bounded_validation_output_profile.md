@@ -7,7 +7,7 @@ Validation output reduced: `True`
 Validation output blocker status: `blocker_retained`
 File-family pressure: `validation_debug_artifacts`
 Defaults changed: `False`
-Local output audit: `blocked_missing_outputs`
+Local output audit: `available`
 
 ## Bounded Profile
 
@@ -65,48 +65,49 @@ Excluded output classes:
 
 ## Local Output Audit
 
-- Status: `blocked_missing_outputs`
-- Missing path: `validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- Missing path: `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- Missing path: `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json`
-- Missing path: `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json`
+- Status: `available`
 
 ## Validation Output Audit
 
-- Status: `blocked_missing_outputs`
-- Manifest path: `None`
+- Status: `available`
+- Manifest path: `validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
 - Reduced: `False`
 - Validation output mode: `None`
-- Validation output families are blocked until the ignored manifest is locally available.
+- Family count: `7`
+- Total file count: `125`
+- Total bytes: `34545900`
 
-Required for audit:
-- `validation_manifest`
+Validation output families:
+- `diagnostics_json`: files=`1` bytes=`3778` kind=`diagnostics` format=`json`
+- `ensemble_deposition_csv`: files=`1` bytes=`8140` kind=`ensemble_deposition` format=`csv`
+- `ensemble_impact_events_dir`: files=`60` bytes=`19759181` kind=`ensemble_impact_events` format=`csv_directory`
+- `ensemble_stop_state_csv`: files=`1` bytes=`39649` kind=`ensemble_stop_state` format=`csv`
+- `ensemble_trajectories_dir`: files=`60` bytes=`14461966` kind=`ensemble_trajectories` format=`csv_directory`
+- `trajectory_csv`: files=`1` bytes=`244218` kind=`trajectory` format=`csv`
+- `trajectory_metadata_csv`: files=`1` bytes=`28968` kind=`trajectory_metadata` format=`csv`
 
 ## Validation Output Comparison
 
 - Status: `available`
 - Validation output mode: `summary_only`
-- Baseline file count: `14`
+- Baseline file count: `125`
 - Reduced file count: `4`
-- Baseline bytes: `2848`
-- Reduced bytes: `456`
-- Reduction file-count delta: `10`
-- Reduction byte delta: `2392`
+- Baseline bytes: `34545900`
+- Reduced bytes: `81425`
+- Reduction file-count delta: `121`
+- Reduction byte delta: `34464475`
 - Required provenance retained: `True`
 
 Retained output classes:
-- `diagnostics_json`
-- `ensemble_deposition_csv`
-- `stop_state_summary_csv`
-- `trajectory_metadata_csv`
 
 Omitted or sampled output classes:
+- `diagnostics_json`
+- `ensemble_deposition_csv`
 - `ensemble_impact_events_dir`
-- `ensemble_impact_events_parquet`
+- `ensemble_stop_state_csv`
 - `ensemble_trajectories_dir`
-- `impact_events_csv`
-- `impact_events_json`
 - `trajectory_csv`
+- `trajectory_metadata_csv`
 
 ## Uncertainty Reduced
 
@@ -119,8 +120,8 @@ Omitted or sampled output classes:
 ## Remaining Unresolved
 
 - Conditional hazard-map convergence remains inconclusive.
-- Validation debug output remains retained as a blocker for the next scale increase.
-- Local ignored manifests are absent in this clean checkout, so local output audit remains blocked_missing_outputs.
+- Validation debug output is reduced for the supplied comparison manifests, but target-scale scale-up still requires accepted convergence and output-budget evidence.
+- Local ignored manifests are available for this audit, but generated outputs remain uncommitted and must be regenerated or staged on other checkouts.
 - Scale-up is not authorized by the selected output-budget gate.
 
 ## Provenance

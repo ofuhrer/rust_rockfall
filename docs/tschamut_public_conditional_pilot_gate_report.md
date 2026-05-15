@@ -208,68 +208,58 @@ Unsupported current claims:
 - risk-map meaning;
 - operational or validated hazard-map status.
 
-## TB-012 Checkout Audit
+## TB-012 Local Artifact Refresh
 
-Current checkout status: `blocked_missing_inputs`
+Current checkout status: `locally_refreshed_same_scale_gate`
 
-- artifact_refresh_status: `blocked_missing_inputs`
-- validation_output_mode: `unavailable`
+- artifact_refresh_status: `locally_refreshed_same_scale_gate`
+- validation_output_mode: `summary_only` for the separate reduced-output probe; the full debug run remains available for family accounting
 - defaults_changed: `false`
-- selected_pilot_artifacts_available: `false`
-- cellwise_layers_available: `false`
-- convergence_comparison_status: `blocked_missing_inputs`
-- validation_output_accounting_status: `blocked_missing_outputs`
-- file_count: `0`
-- byte_count: `0`
-- blocked_reason: missing ignored validation/hazard roots, missing private gate case, and missing processed public Tschamut inputs in this checkout
+- selected_pilot_artifacts_available: `true` for the locally staged small gate
+- cellwise_layers_available: `true`
+- convergence_comparison_status: `ok_self_check_only`
+- validation_output_accounting_status: `available`
+- full validation output: `125` files, `34545900` bytes from the local full-debug gate manifest
+- summary-only validation output: `4` files, `81425` bytes from the local reduced-output gate manifest
+- validation reduction: `121` fewer files and `34464475` fewer bytes
+- hazard output audit: `56` files, `77758043` bytes under `hazard/results/tschamut_public_pilot/gate_v1`
+- local audit total across validation and hazard roots: `183` files, `112318957` bytes
 - scale_up_authorized: `false`
 - operational_claims_allowed: `false`
 
-Executable staging checklist:
+The selected-gate inputs were regenerated from public Tschamut/swissALTI3D
+sources and staged under ignored paths. The local private case and output
+artifacts are intentionally not committed. This refresh proves that the current
+contracts can produce validation manifests, hazard manifests, map-package
+manifests, pilot-GIS manifests, cell-wise hazard-grid references, and
+summary-only validation output evidence on the same-scale gate. It does not
+replace the older Balfrin target-scale evidence, does not increase ensemble
+size, and does not accept the pilot scientifically.
 
-1. Restore or regenerate the processed public benchmark inputs:
+Commands executed:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/prepare_tschamut_public_benchmark.py \
   --output-root data/processed/swisstopo/tschamut_public_pilot \
-  --padding-m 250 \
-  --force
-```
-
-2. Revalidate the selected gate run-freeze and print the command plan:
-
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python \
-  scripts/validate_public_real_site_conditional_pilot_run.py \
-  validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml \
-  --print-command-plan --format json
-```
-
-3. Run the frozen validation case and hazard builder only after the private case exists:
-
-```bash
+  --padding-m 250 --force
 cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml
 UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py \
   --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml \
   --output-dir hazard/results/tschamut_public_pilot/gate_v1 \
-  --grid-xmin 2696376.0 \
-  --grid-ymin 1167384.0 \
-  --grid-ncols 300 \
-  --grid-nrows 304 \
-  --grid-cell-size 2.0 \
+  --grid-xmin 2696376.0 --grid-ymin 1167384.0 \
+  --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 \
   --map-product-id tschamut_public_conditional_gate_v1 \
   --probability-mode sampling_weighted_conditional \
   --normalization-scope conditioned_on_filter \
   --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml \
   --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv \
   --map-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json \
-  --export-geotiff \
-  --pilot-gis-package \
+  --export-geotiff --pilot-gis-package \
   --pilot-gis-package-manifest-json hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json \
   --pilot-gis-qa-status not-run \
   --pilot-gis-qa-note "Manual GIS/QGIS inspection has not been run for this generated package." \
-  --reducer-workers 2 \
-  --no-plots \
+  --reducer-workers 2 --no-plots \
+  --conditional-curve-export summary-only --grid-csv-export none \
   --diagnostics validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_metrics.json \
   --trajectory validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv \
   --ensemble-trajectories-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectories \
@@ -279,39 +269,54 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/build_hazard_layers.py \
   --kinetic-energy-exceedance-j 10000.0 \
   --jump-height-exceedance-m 1.0 \
   --jump-height-exceedance-m 2.0
+cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1_summary_only/tschamut_public_conditional_gate_summary_only_case.yaml
 ```
 
-4. Compare the refreshed hazard manifests when both exist:
+Validation metrics from the full local gate:
+
+- `validation_release_count`: `10.0`
+- `validation_simulated_trajectory_count`: `60.0`
+- `observed_mean_runout_m`: `102.84352800000002`
+- `simulated_mean_runout_m`: `71.88091457322881`
+- `runout_distance_error_m`: `30.962613426771213`
+- `deposition_centroid_error_m`: `30.43179306979487`
+- `deposition_cloud_mean_nearest_error_m`: `24.61802934798019`
+- `deposition_cloud_overlap_fraction`: `0.7`
+- `lateral_spread_error_m`: `16.709094142790736`
+
+Hazard manifest evidence:
+
+- manifest path:
+  `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
+- `cellwise_layers`: `22`
+- `output_file_count`: `53` recorded in the hazard performance snapshot
+- `output_bytes`: `21025596` recorded in the hazard performance snapshot
+- `total_wall_seconds`: `7.108489040983841`
+- `conditional_curve_export.mode`: `summary-only`
+- `grid_csv_export`: `none`
+- `conditional_curve.row_count`: `1276800`
+
+The cell-wise convergence command now works against normal emitted hazard
+manifests with repo-relative grid paths:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py \
   hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
-  hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json \
+  hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json \
   --format json
 ```
 
-5. Refresh the bounded validation-output accounting when the validation manifest exists:
+Self-comparison result:
 
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py \
-  --format json
-```
+- `status`: `ok`
+- `cellwise_layer_count`: `22`
+- `cellwise_shared_layer_count`: `22`
+- `cellwise_linf_abs_diff_max`: `0.0`
+- `cellwise_l1_abs_diff_sum`: `0.0`
+- `cellwise_rmse_max`: `0.0`
+- `cellwise_nonzero_jaccard_min`: `1.0`
+- `cellwise_threshold_disagreement_count`: `0`
+- `output_checksum_match_count`: `53`
 
-Missing-path evidence from the local audit and readiness check:
-
-- `validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml`
-- `validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json`
-- `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`
-
-Read-only audit note:
-
-- `scripts/audit_local_artifacts.py validation/private/tschamut_public_pilot/gate_v1 hazard/results/tschamut_public_pilot/gate_v1`
-  reported both roots as absent with `0` files and `0` bytes.
-- `scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json`
-  reported `blocked_for_balfrin_readiness` because the output roots and required processed inputs are missing in this checkout.
+This is a plumbing sanity check only. Target-vs-gate spatial convergence still
+requires the matching `target_gate_v1` hazard manifest and raster artifacts.

@@ -58,19 +58,19 @@ objective are:
 1. Conditional pilot evidence is still inconclusive. The 1,000-trajectory
    Balfrin target-gate reproduction exists and the convergence CLI can compare
    manifest summaries, cell-wise fixture grids, and normal hazard-output
-   manifests when raster files exist. In this checkout, the selected Tschamut
-   hazard artifacts are still missing, so applied cell-wise pilot evidence is
-   blocked on regenerating or restoring ignored outputs.
-2. Validation-output volume remains a practical blocker. The bounded-profile
-   summary now preserves `no_go` semantics, can audit output families when
-   local manifests exist, and an opt-in `summary_only` validation mode reduces
-   debug outputs on fixtures. The real selected-pilot reduced-output evidence
-   still needs to be generated or restored.
-3. Forest and obstacle context is unresolved. The inspection command now
-   exposes expected layers, provenance fields, acquisition checklists, selected
-   corridor metadata, and fixture spatial-relevance measurements. The current
-   checkout still lacks processed local public context crops, so real context
-   relevance remains blocked pending local evidence.
+   manifests when raster files exist. The same-scale local gate has now been
+   regenerated under ignored paths and passes a cell-wise self-check, but
+   target-vs-gate spatial convergence still needs the matching target artifacts
+   or a fresh same-scale comparison run.
+2. Validation-output volume remains a practical blocker for target-scale
+   growth, but the local same-scale gate now has measured before/after
+   evidence: full debug validation output was `125` files / `34545900` bytes,
+   while the opt-in `summary_only` probe was `4` files / `81425` bytes.
+3. Forest and obstacle context is limiting and partly unresolved. The
+   inspection command now has real local public context evidence for
+   swissSURFACE3D Raster, SWISSIMAGE, and swissBUILDINGS3D, with surface-height
+   relevance indicators. swissTLM3D road, channel, and barrier categories
+   remain unresolved pending a targeted crop or feature-service extraction.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -106,11 +106,12 @@ Underrepresented high-value work:
 
 - cell-wise convergence/statistics tooling for comparing hazard rasters and
   conditional exceedance summaries across actual selected-pilot outputs;
-- selected-pilot artifact refresh using the current cell-wise hazard and
-  reduced validation-output modes;
-- measured validation-debug output reduction on the real selected-pilot path,
-  not just fixtures;
-- obstacle/context crop staging and real spatial overlap analysis;
+- target-vs-gate or split-half convergence using the refreshed same-scale
+  hazard-output contract;
+- measured validation-debug output reduction on target-scale or repeated
+  same-scale pilot paths;
+- targeted swisTLM3D extraction for roads, channels, and barrier/protection
+  context;
 - resource and runtime profiling that decides whether single-job Balfrin
   execution is enough after the current scientific blockers are reduced;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
@@ -132,90 +133,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-012: Refresh Same-Scale Selected Tschamut Pilot Artifacts
-
-Capability gap reduced: the new diagnostics cannot produce selected-pilot
-evidence until the ignored same-scale validation and hazard artifacts are
-regenerated or restored with current output contracts.
-
-Goal: run or stage the same-scale selected Tschamut conditional pilot artifacts
-needed by the current diagnostics, without increasing ensemble size or
-changing physics. The refreshed artifacts should use the current
-`summary_only` validation output mode where applicable and hazard manifests
-that expose cell-wise layer paths.
-
-Inspect first:
-
-- `docs/balfrin_tschamut_pilot_runbook.md`;
-- `docs/balfrin_single_job_execution_sufficiency.md`;
-- `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
-- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
-- `docs/tschamut_public_bounded_validation_output_profile.md`;
-- `scripts/compare_hazard_map_convergence.py`;
-- `scripts/summarize_bounded_validation_output_profile.py`;
-- selected private/ignored Tschamut case paths if available locally.
-
-Required work:
-
-1. Do not run a larger ensemble, tune thresholds, change release assumptions,
-   or refresh public baselines.
-2. Keep all generated validation and hazard outputs under ignored paths.
-3. If local/Balfrin inputs are present, run the same-scale selected workflow
-   and record the commands, artifact paths, checksums, file/byte counts,
-   validation output mode, and hazard `cellwise_layers` availability.
-4. Run the cell-wise convergence diagnostic on the refreshed hazard artifacts
-   when both comparison manifests are present.
-5. Run the bounded-output summary against refreshed validation manifests when
-   available.
-6. If required private/ignored inputs are missing, produce the exact command
-   sequence and path checklist needed on Balfrin or the local machine; do not
-   silently reclassify missing inputs as success.
-7. Preserve conditional, non-operational semantics.
-
-Definition of done:
-
-- selected-pilot artifact availability is converted from vague missing state
-  into either refreshed ignored outputs with measured diagnostics or exact
-  executable commands and required paths;
-- generated outputs are not committed;
-- checks pass.
-
-### TB-013: Stage Tschamut Context Crops And Measure Real Spatial Relevance
-
-Capability gap reduced: forest and obstacle context remains blocked by missing
-real public context crops.
-
-Goal: acquire, stage, or verify minimal public context crops for the selected
-Tschamut extent and use the existing inspector to measure whether forest,
-buildings, roads, channels, barriers, or visual context intersect or materially
-limit the interpreted hazard corridor.
-
-Inspect first:
-
-- `scripts/inspect_tschamut_public_context_layers.py`;
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`;
-- `docs/swisstopo_data_strategy.md`;
-- `docs/public_real_site_geodata_preparation.md`.
-
-Required work:
-
-1. Do not infer obstacle absence from missing data.
-2. Keep raw geodata and large processed crops out of git.
-3. Record cache paths, checksums, CRS/provenance, and spatial relevance.
-4. If data remain unavailable, produce the exact acquisition command or
-   Balfrin/local staging step needed next.
-5. Do not implement obstacle physics or tune terrain/contact/stopping
-   parameters.
-
-Definition of done:
-
-- the context review is based on actual local context evidence or an exact
-  executable acquisition path;
-- overlap/relevance is classified conservatively;
-- no operational or obstacle-performance claim is added;
-- focused checks pass.
-
 ### TB-014: Apply Current Diagnostics To A Same-Scale Conditional Pilot Review
 
 Capability gap reduced: the repo has separate diagnostics, but no integrated
@@ -232,7 +149,10 @@ Inspect first:
 - `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
 - `scripts/summarize_conditional_pilot_acceptance.py`;
 - `docs/balfrin_single_job_execution_sufficiency.md`;
-- outputs from TB-012 and TB-013 when available.
+- refreshed ignored outputs documented in
+  `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- local context evidence documented in
+  `docs/tschamut_public_obstacle_context_scope.md`.
 
 Required work:
 
@@ -241,6 +161,10 @@ Required work:
 2. Do not run larger ensembles or change thresholds.
 3. Preserve conditional, non-operational semantics.
 4. Make missing diagnostic inputs explicit rather than silently passing.
+5. Treat the current same-scale cell-wise self-check as plumbing evidence only;
+   do not convert it into target-vs-gate convergence acceptance.
+6. Include the measured `summary_only` validation-output reduction and the
+   limiting/unresolved context classification in the review.
 
 Definition of done:
 

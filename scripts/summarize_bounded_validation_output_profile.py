@@ -451,12 +451,10 @@ def build_summary(
             "The output-budget gate now records the file-family pressure label validation_debug_artifacts.",
             "Validation output families can be audited from a run manifest when the ignored manifest is locally available.",
         ],
-        "remaining_unresolved": [
-            "Conditional hazard-map convergence remains inconclusive.",
-            "Validation debug output remains retained as a blocker for the next scale increase.",
-            "Local ignored manifests are absent in this clean checkout, so local output audit remains blocked_missing_outputs.",
-            "Scale-up is not authorized by the selected output-budget gate.",
-        ],
+        "remaining_unresolved": build_remaining_unresolved(
+            local_output_status=local_output_audit["status"],
+            validation_output_reduced=bool(validation_output_comparison.get("validation_output_reduced")),
+        ),
         "limitations": bounded_limitations
         + [
             "This summary does not change physics, defaults, thresholds, release assumptions, validation cases, or baselines.",
@@ -477,6 +475,34 @@ def classify_acceptance(*, convergence_status: str, output_budget_status: str, l
     if convergence_status == "pass" and output_budget_status == "complete" and local_output_status == "available":
         return "accepted_conditional_diagnostic_pilot"
     return "inconclusive"
+
+
+def build_remaining_unresolved(*, local_output_status: str, validation_output_reduced: bool) -> list[str]:
+    remaining = [
+        "Conditional hazard-map convergence remains inconclusive.",
+        "Scale-up is not authorized by the selected output-budget gate.",
+    ]
+    if validation_output_reduced:
+        remaining.insert(
+            1,
+            "Validation debug output is reduced for the supplied comparison manifests, but target-scale scale-up still requires accepted convergence and output-budget evidence.",
+        )
+    else:
+        remaining.insert(
+            1,
+            "Validation debug output remains retained as a blocker for the next scale increase.",
+        )
+    if local_output_status == "blocked_missing_outputs":
+        remaining.insert(
+            -1,
+            "Local ignored manifests are absent in this clean checkout, so local output audit remains blocked_missing_outputs.",
+        )
+    else:
+        remaining.insert(
+            -1,
+            "Local ignored manifests are available for this audit, but generated outputs remain uncommitted and must be regenerated or staged on other checkouts.",
+        )
+    return remaining
 
 
 def summarize_local_outputs(run_evidence: dict[str, Any]) -> dict[str, Any]:

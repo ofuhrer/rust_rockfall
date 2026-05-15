@@ -24,6 +24,7 @@ BLOCKED_MISSING_INPUTS = "blocked_missing_inputs"
 BLOCKED_INVALID_INPUTS = "blocked_invalid_inputs"
 OK_STATUS = "ok"
 LAYER_SUMMARY_FIELDS = ("valid_cell_count", "minimum", "maximum", "sum", "nonzero_cell_count")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class HazardMapConvergenceDiagnosticError(ValueError):
@@ -772,7 +773,7 @@ def cellwise_layer_index(resolved: ResolvedManifest) -> dict[str, CellwiseLayer]
                 f"cellwise layer {layer_key} is missing grid_path",
                 requested_path=resolved.requested_path,
             )
-        grid_path = (resolved.manifest_path.parent / grid_path_value).resolve()
+        grid_path = resolve_artifact_path(grid_path_value, resolved.manifest_path.parent)
         if not grid_path.exists():
             raise HazardMapConvergenceInputError(
                 BLOCKED_MISSING_INPUTS,
@@ -828,9 +829,7 @@ def infer_cellwise_layers_from_outputs(resolved: ResolvedManifest) -> list[dict[
             continue
         if not isinstance(path_value, str) or not path_value:
             continue
-        grid_path = Path(path_value)
-        if not grid_path.is_absolute():
-            grid_path = (resolved.manifest_path.parent / grid_path).resolve()
+        grid_path = resolve_artifact_path(path_value, resolved.manifest_path.parent)
         if not grid_path.exists():
             continue
         cellwise_layers.append(
@@ -842,6 +841,16 @@ def infer_cellwise_layers_from_outputs(resolved: ResolvedManifest) -> list[dict[
             }
         )
     return cellwise_layers
+
+
+def resolve_artifact_path(path_value: str, manifest_dir: Path) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    repo_relative = (ROOT / path).resolve()
+    if repo_relative.exists():
+        return repo_relative
+    return (manifest_dir / path).resolve()
 
 
 def infer_thresholds_from_layer_key(layer_key: str) -> tuple[float, ...]:

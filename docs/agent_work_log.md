@@ -31,6 +31,56 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-012/TB-013 Local Unblock
+
+- Milestone id: TB-012/TB-013 local unblock.
+- Roadmap item: Refresh Same-Scale Selected Tschamut Pilot Artifacts; Stage
+  Tschamut Context Crops And Measure Real Spatial Relevance.
+- Hypothesis/objective: Locally regenerate the ignored public Tschamut input
+  bundle, same-scale gate outputs, summary-only validation-output probe, and
+  public context evidence so the next review task has measured inputs instead
+  of only blocked checklists.
+- Files intended to change:
+  `scripts/compare_hazard_map_convergence.py`,
+  `scripts/inspect_tschamut_public_context_layers.py`,
+  `tests/test_tschamut_public_context_layers.py`,
+  `docs/task_backlog.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_obstacle_context_scope.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Regenerated the public Tschamut/swissALTI3D
+  processed bundle under ignored paths, staged the local private gate case,
+  ran the same-scale validation and hazard builder, and added a separate
+  ignored `summary_only` validation-output probe. The local full-debug gate
+  produced `125` validation files / `34545900` bytes; the summary-only probe
+  produced `4` files / `81425` bytes. The hazard manifest now exposes `22`
+  cell-wise layers, and the convergence CLI self-check over the emitted hazard
+  manifest reports zero cell-wise differences. Public context assets were
+  staged under ignored paths for swissSURFACE3D Raster, SWISSIMAGE, and
+  swissBUILDINGS3D; swisTLM3D remains metadata-only and unresolved because the
+  matching archive is about `3136564656` bytes. The context inspector now
+  reports `reviewed_local_context` with `classification: limiting` and
+  surfaces the staged surface-minus-bare-earth indicators.
+- Checks run:
+  `cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml`
+  passed.
+  `cargo run -- validate --case validation/private/tschamut_public_pilot/gate_v1_summary_only/tschamut_public_conditional_gate_summary_only_case.yaml`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/compare_hazard_map_convergence.py hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --format json`
+  passed with `22` shared cell-wise layers and zero differences.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/summarize_bounded_validation_output_profile.py --validation-output-baseline-manifest validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json --validation-output-reduced-manifest validation/private/tschamut_public_pilot/gate_v1_summary_only/validation_tschamut_public_conditional_gate_v1_summary_only_manifest.json --format json`
+  passed and measured the local reduction.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  returned the expected non-acceptable `limiting` classification with local
+  context evidence.
+- Reviewer notes: Generated validation, hazard, raw geodata, and processed
+  context files remain ignored and uncommitted. The cell-wise convergence
+  result is a same-manifest plumbing self-check, not target-vs-gate
+  convergence acceptance. The local gate is a same-scale public-input refresh,
+  not a replacement for the older Balfrin target-scale run.
+- Decision: COMPLETED_WITH_LIMITATIONS.
+- Next proposed milestone: TB-014.
+
 ### TB-013
 
 - Milestone id: TB-013

@@ -129,6 +129,7 @@ def inspect_context_layers(
     checksums = build_checksum_summary(layer_reports)
     crs_or_spatial_reference = build_crs_summary(layer_reports)
     spatial_relevance_status = determine_spatial_relevance_status(context_root, layer_reports)
+    local_context_review_status = determine_local_context_review_status(spatial_relevance_status)
     blocked_reason = build_blocked_reason(
         context_root=context_root,
         layer_reports=layer_reports,
@@ -148,7 +149,7 @@ def inspect_context_layers(
         "context_root": str(context_root),
         "selected_extent_or_corridor": selected_extent_or_corridor,
         "classification": overall_classification,
-        "context_review_status": target_review["local_context_review_status"],
+        "context_review_status": local_context_review_status,
         "spatial_relevance_status": spatial_relevance_status,
         "blocked_reason": blocked_reason,
         "status": overall_classification,
@@ -446,6 +447,12 @@ def determine_spatial_relevance_status(context_root: Path, layer_reports: list[d
     return "reviewed_local_context"
 
 
+def determine_local_context_review_status(spatial_relevance_status: str) -> str:
+    if spatial_relevance_status == BLOCKED:
+        return BLOCKED_REVIEW_STATUS
+    return spatial_relevance_status
+
+
 def build_blocked_reason(
     *,
     context_root: Path,
@@ -508,12 +515,44 @@ def build_spatial_relevance_indicators(
             "water_or_channel": "swisstlm3d",
             "orthophoto_visual_context": "swissimage",
         },
+        "per_layer_metadata_indicators": build_per_layer_metadata_indicators(available_layers),
+        "surface_minus_bare_earth": build_surface_minus_bare_earth_summary(available_layers),
         "spatial_extent_alignment": {
             "selected_epsg": selected_epsg,
             "reviewed_epsg_values": reviewed_epsg_values,
             "all_reviewed_layers_share_selected_epsg": crs_match,
         },
     }
+
+
+def build_per_layer_metadata_indicators(layer_reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    indicators: list[dict[str, Any]] = []
+    for layer in layer_reports:
+        metadata = layer.get("metadata") or {}
+        indicators.append(
+            {
+                "category": layer["category"],
+                "classification": layer["classification"],
+                "source_product": metadata.get("source_product") or layer.get("source_product"),
+                "source_tile_ids": metadata.get("source_tile_ids"),
+                "spatial_relevance": metadata.get("spatial_relevance"),
+                "local_asset_path": metadata.get("local_asset_path"),
+                "local_asset_bytes": metadata.get("local_asset_bytes"),
+                "raw_asset_downloaded": metadata.get("raw_asset_downloaded"),
+                "raw_asset_head_content_length_bytes": metadata.get("raw_asset_head_content_length_bytes"),
+                "spatial_relevance_indicators": metadata.get("spatial_relevance_indicators"),
+            }
+        )
+    return indicators
+
+
+def build_surface_minus_bare_earth_summary(layer_reports: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for layer in layer_reports:
+        metadata = layer.get("metadata") or {}
+        indicators = metadata.get("spatial_relevance_indicators")
+        if layer["category"] == "forest_or_canopy" and isinstance(indicators, dict):
+            return indicators
+    return None
 
 
 def summarize_spatial_relevance(layer_reports: list[dict[str, Any]]) -> dict[str, Any]:
@@ -593,6 +632,13 @@ def extract_metadata_summary(metadata: dict[str, Any]) -> dict[str, Any]:
         "license",
         "processed_sha256",
         "raw_sha256",
+        "local_asset_path",
+        "local_asset_bytes",
+        "local_asset_sha256",
+        "raw_asset_downloaded",
+        "raw_asset_head_content_length_bytes",
+        "selected_extent_lv95_m",
+        "spatial_relevance_indicators",
     )
     summary = {key: metadata.get(key) for key in interesting_keys if key in metadata}
     return summary
