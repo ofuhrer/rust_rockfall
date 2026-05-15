@@ -460,6 +460,33 @@ Detailed sources: `docs/task_backlog.md`,
 `scripts/generate_tschamut_same_scale_cases.py`,
 `scripts/check_same_scale_artifact_readiness.py`.
 
+### Post TB-028/TB-029 External Backlog Reassessment
+
+Decision: prioritize the multi-site source-zone and scenario contract audit
+before additional Tschamut sampling probes, then proceed to a multi-seed
+same-scale uncertainty envelope, portable command plans, GIS/COG readiness,
+and bounded reducer/runtime measurements.
+
+Current status: active backlog direction.
+
+Rationale: the external assessment correctly identified that the dominant
+remaining work has shifted from raw Tschamut execution toward scientific
+uncertainty characterization and Swiss-wide portability. The concrete
+second-site manifest direction has already been advanced by the staged Chant
+Sura / Flüelapass candidate, so the next bottleneck is not another generic
+manifest but the portable source-zone/block-scenario contract needed to make
+that candidate actionable. Multi-seed uncertainty remains high priority, but
+it should follow the source/scenario contract audit so the Swiss-wide path is
+not delayed by more Tschamut-specific stabilization.
+
+Detailed sources: `docs/task_backlog.md`,
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`,
+`scripts/check_second_site_public_geodata_preflight.py`,
+`scripts/generate_tschamut_same_scale_cases.py`,
+`docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+`docs/public_real_site_geodata_preparation.md`,
+`docs/swisstopo_data_strategy.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

@@ -31,6 +31,37 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### Backlog Reprioritization After External Assessment
+
+- Milestone id: backlog reprioritization after external assessment.
+- Roadmap item: Reorder the active backlog around Swiss-wide portability and
+  scientifically interpretable uncertainty.
+- Hypothesis/objective: The external assessment is directionally correct, but
+  its numbering is stale because the placeholder and concrete second-site
+  manifest work has already advanced. The next highest-value task should be a
+  multi-site source-zone/scenario contract audit, followed by multi-seed
+  same-scale uncertainty characterization.
+- Files intended to change: `docs/task_backlog.md`, `docs/decision_log.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added TB-030 as the multi-site source-zone and
+  scenario contract audit, rewrote the sampling task as TB-031 multi-seed
+  same-scale uncertainty envelope, and renumbered the command-plan, GIS/COG,
+  and reducer/runtime tasks to TB-032 through TB-034. Updated the durable
+  decision log to record why source/scenario portability now precedes more
+  Tschamut-specific sampling work.
+- Checks run:
+  `git diff --check`
+  passed.
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: This is a backlog prioritization update only. It does not
+  change simulator physics, thresholds, release assumptions, sampling weights,
+  validation cases, or claim boundaries.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-030.
+
 ### Backlog Refill After Portability Preflight
 
 - Milestone id: backlog refill after TB-027.

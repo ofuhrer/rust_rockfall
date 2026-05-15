@@ -124,10 +124,11 @@ Over-procedural areas to avoid:
 
 Underrepresented high-value work:
 
-- turning the generic second-site portability preflight into a concrete
-  candidate-site manifest/config;
-- same-size alternate-seed or split-replicate sampling probes that separate
-  seed sensitivity from structural sampled-output divergence;
+- comparing the Tschamut source-zone/block-scenario assumptions with the
+  staged Chant Sura / Flüelapass second-site manifest so portable contract
+  fields are separated from Tschamut-specific heuristics;
+- multi-seed same-scale uncertainty characterization that separates seed
+  sensitivity from structural sampled-output divergence;
 - reusable sampling-uncertainty summaries across the original gate/target and
   bounded probe artifacts;
 - command-plan consolidation for local pilot execution so workers do not copy
@@ -135,8 +136,8 @@ Underrepresented high-value work:
 - GIS/COG/package readiness checks on existing same-scale artifacts;
 - reducer/runtime/output scaling measurements on bounded, non-production
   ensembles;
-- non-Tschamut source-zone and block-scenario generation contracts tied to the
-  second-site manifest.
+- concrete public-geodata staging plans for the Chant Sura / Flüelapass
+  candidate after its source/scenario portability contract is understood.
 
 ## Backlog Protocol
 
@@ -167,47 +168,94 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-030: Summarize Sampling Uncertainty Across Same-Scale Probes
+### TB-030: Audit Multi-Site Source-Zone And Scenario Contract
 
-Capability gap reduced: same-scale evidence now includes gate, target, and at
-least one bounded probe, but the results are scattered across reports. The
-repo needs a reusable summary that distinguishes sampling sensitivity from
-structural disagreement across available same-scale artifacts.
+Capability gap reduced: the repository now has deterministic Tschamut case
+regeneration and a concrete Chant Sura / Flüelapass second-site manifest
+example, but it has not separated portable source-zone/block-scenario contract
+fields from Tschamut-specific heuristics.
 
-Goal: add or extend a lightweight summary script that consumes existing
-comparison JSON/manifests for gate, target, and bounded probes and reports a
-compact sampling-uncertainty envelope.
+Goal: compare the Tschamut source-zone and block-scenario inputs against the
+staged second-site manifest and define the minimal portable source/scenario
+contract needed before a non-Tschamut pilot can be staged.
 
 Inspect first:
 
-- `scripts/compare_hazard_map_convergence.py`;
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- existing same-scale hazard manifests under ignored paths.
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`;
+- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`;
+- `scripts/generate_tschamut_same_scale_cases.py`;
+- `scripts/check_second_site_public_geodata_preflight.py`;
+- `docs/public_real_site_geodata_preparation.md`;
+- `docs/swisstopo_data_strategy.md`;
+- `data/datasets.yaml`.
 
 Required work:
 
-1. Prefer consuming existing manifests and comparison output; do not rerun
-   validation unless a required manifest is missing.
-2. Report per-layer spread/range for dominant disagreement layers and support
-   or nodata sensitivity where available.
-3. Clearly distinguish measured sampling sensitivity from accepted
-   convergence.
-4. Add focused tests with tiny fixtures if a script is added or extended.
+1. Do not run a second-site ensemble or hazard build.
+2. Compare required source-zone, release-point, observed-deposition,
+   block-scenario, sampling-weight, terrain, and context metadata fields.
+3. Classify each field as portable, site-specific but required,
+   Tschamut-specific heuristic, missing for the second site, or deferred.
+4. Produce a compact machine-readable audit or report that future workers can
+   use to stage the second-site source/scenario inputs.
+5. Preserve conditional-only semantics; do not introduce annual or physical
+   source-frequency claims.
 
 Definition of done:
 
-- sampling-uncertainty evidence is summarized in a reusable machine-readable
-  form;
+- a multi-site source/scenario contract audit exists and is referenced by the
+  portability docs;
+- missing second-site source/scenario fields are explicit and actionable;
+- no physics, thresholds, source semantics, or scenario weights are changed;
+- checks pass.
+
+### TB-031: Build A Multi-Seed Same-Scale Uncertainty Envelope
+
+Capability gap reduced: TB-025 showed one bounded 12-trajectory probe reduces
+but does not eliminate target-vs-gate disagreement. The repo still needs
+multi-seed evidence and a reusable summary before the conditional pilot can be
+scientifically interpreted as stable or unstable.
+
+Goal: run or consume one or more same-size alternate-seed/split bounded probes
+and summarize the sampling-uncertainty envelope across gate, target, and
+available bounded probes.
+
+Inspect first:
+
+- `scripts/check_same_scale_artifact_readiness.py`;
+- `scripts/generate_tschamut_same_scale_cases.py`;
+- `scripts/build_hazard_layers.py`;
+- `scripts/compare_hazard_map_convergence.py`;
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`;
+- `docs/tschamut_public_conditional_pilot_gate_report.md`;
+- existing same-scale and sampling-probe manifests under ignored paths.
+
+Required work:
+
+1. Prefer consuming existing bounded-probe artifacts first.
+2. If another replicate is needed and feasible, run only a bounded same-size
+   alternate-seed/split probe; do not run a larger production ensemble.
+3. Preserve physics, thresholds, source/scenario inputs, sampling weights,
+   baselines, and non-operational semantics.
+4. Report per-layer spread/range for dominant disagreement layers, support or
+   nodata sensitivity, output pressure, and whether disagreement shrinks,
+   varies, or persists across seeds.
+5. Add focused tests with tiny fixtures if a summary script is added or
+   extended.
+
+Definition of done:
+
+- multi-seed or explicitly blocked sampling-uncertainty evidence is summarized
+  in a reusable machine-readable form;
 - the Tschamut uncertainty envelope is updated from that summary;
 - operational claims and scale-up remain false;
 - checks pass.
 
-### TB-031: Consolidate Local Pilot Command Plans
+### TB-032: Consolidate Portable Pilot Command Plans
 
 Capability gap reduced: workers still rely on long copied validation and
 hazard-build commands from reports. The readiness and case-regeneration
-helpers reduce this, but a single local pilot command-plan output would make
+helpers reduce this, but a single portable command-plan output would make
 future Tschamut and second-site runs less fragile.
 
 Goal: add or extend a command-plan helper that emits the canonical local steps
@@ -239,7 +287,7 @@ Definition of done:
   input path;
 - checks pass.
 
-### TB-032: Audit GIS And COG Package Readiness On Existing Outputs
+### TB-033: Audit GIS And COG Package Readiness On Existing Outputs
 
 Capability gap reduced: GIS-ready outputs exist in the workflow, but the repo
 has not recently checked whether current same-scale rasters/manifests are
@@ -271,7 +319,7 @@ Definition of done:
 - no operational or regulatory claim is introduced;
 - checks pass.
 
-### TB-033: Measure Bounded Reducer Runtime And Output Scaling
+### TB-034: Measure Bounded Reducer Runtime And Output Scaling
 
 Capability gap reduced: distributed execution is deferred, but larger
 deterministic ensemble readiness still depends on reducer/runtime/output
