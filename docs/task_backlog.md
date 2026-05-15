@@ -56,17 +56,18 @@ The most important gaps between the current repository and the project
 objective are:
 
 1. Conditional pilot evidence is still inconclusive. The 1,000-trajectory
-   Balfrin target-gate reproduction exists and the reusable convergence CLI can
-   compare manifest summaries, but there is not yet cell-wise spatial
-   convergence evidence for conditional hazard layers.
+   Balfrin target-gate reproduction exists and the convergence CLI can compare
+   both manifest summaries and cell-wise fixture grids, but normal hazard
+   manifests do not yet expose the cell-wise layer paths needed for selected
+   pilot evidence.
 2. Validation-output volume remains a practical blocker. The bounded-profile
-   summary split hazard-side and validation-side output pressure, but it did
-   not reduce validation debug artifacts; larger selected-domain runs are not
-   credible until that output is reduced or justified by measured evidence.
-3. Forest and obstacle context is unresolved. A reusable inspection command now
-   exists, but the current checkout still lacks the processed local public
-   context cache; without reviewed context layers, the Tschamut map remains
-   hard to interpret physically.
+   summary now preserves `no_go` semantics and can audit output families when
+   local manifests exist, but it did not reduce the retained validation debug
+   artifacts.
+3. Forest and obstacle context is unresolved. The inspection command now
+   exposes expected layers, provenance fields, and acquisition checklists, but
+   the current checkout still lacks processed local public context crops and no
+   spatial overlap/relevance measurement has been made.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -101,10 +102,9 @@ Over-procedural areas to avoid:
 Underrepresented high-value work:
 
 - cell-wise convergence/statistics tooling for comparing hazard rasters and
-  conditional exceedance summaries across runs;
-- measured validation-debug output reduction, not just output-pressure
-  summaries;
-- obstacle/context evidence acquisition and spatial overlap analysis;
+  conditional exceedance summaries across actual selected-pilot outputs;
+- measured validation-debug output reduction, not just output-family audits;
+- obstacle/context cache staging and spatial overlap analysis;
 - resource and runtime profiling that decides whether single-job Balfrin
   execution is enough after the current scientific blockers are reduced;
 - uncertainty summaries that quantify what changes with sampling, chunking, or
@@ -126,15 +126,89 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-007: Acquire And Inspect Tschamut Public Context Cache
+### TB-009: Wire Cell-Wise Convergence Diagnostics To Pilot Hazard Outputs
 
-Capability gap reduced: forest and obstacle context is blocked by missing
-local public-context evidence.
+Capability gap reduced: cell-wise convergence tooling exists, but selected
+pilot hazard manifests still fall back to manifest-level comparison.
 
-Goal: use the existing context-layer inspection command to acquire, stage, or
-verify the processed public context cache for Tschamut, then classify forest,
-building, transport, barrier, channel, and visual context using actual local
-evidence where available.
+Goal: make normal hazard-layer outputs discoverable by
+`scripts/compare_hazard_map_convergence.py` for cell-wise comparison, then run
+or dry-run the comparison on selected Tschamut pilot artifacts where available.
+
+Inspect first:
+
+- `scripts/compare_hazard_map_convergence.py`;
+- `scripts/build_hazard_layers.py`;
+- `tests/test_hazard_map_convergence.py`;
+- `tests/test_hazard_layers.py`;
+- `docs/conditional_hazard_convergence_acceptance_protocol.md`;
+- available ignored `hazard/results/` manifests if present.
+
+Required work:
+
+1. Add `cellwise_layers` references or an equivalent inference path for
+   emitted hazard grids without changing hazard semantics.
+2. Keep generated hazard outputs ignored; use tiny fixtures for committed
+   tests.
+3. Run the convergence CLI on actual selected-pilot artifacts if present; if
+   absent, return an explicit `blocked_missing_inputs` state with exact paths.
+4. Report per-layer spatial metrics separately; do not collapse mixed-unit
+   layers into one aggregate.
+5. Do not rerun public benchmarks, tune thresholds, or change baselines.
+
+Definition of done:
+
+- normal hazard outputs can be compared cell-wise or the missing inputs are
+  identified precisely;
+- tests prove emitted or fixture manifests expose usable cell-wise paths;
+- the result feeds the conditional pilot acceptance summary;
+- focused checks pass.
+
+### TB-010: Implement A Reduced Validation Debug Output Mode
+
+Capability gap reduced: validation-output pressure remains the measured
+scale-up blocker.
+
+Goal: add an opt-in validation output mode that suppresses, samples, or
+summarizes nonessential debug artifacts for selected pilot runs, then measure
+before/after file count, bytes, and retained provenance on a tiny fixture or
+available selected-pilot output.
+
+Inspect first:
+
+- `docs/tschamut_public_bounded_validation_output_profile.md`;
+- `scripts/summarize_bounded_validation_output_profile.py`;
+- `tests/test_bounded_validation_output_profile.py`;
+- validation output-writing code;
+- validation manifest/output tests.
+
+Required work:
+
+1. Do not change public validation defaults or baselines.
+2. Keep the mode opt-in and explicit in provenance.
+3. Preserve required metrics, manifests, checksums, and scientific review
+   evidence.
+4. Measure file/byte/inode reduction or prove the specific output class cannot
+   yet be reduced safely.
+5. Do not authorize scale-up from this task alone.
+
+Definition of done:
+
+- a focused command or test demonstrates reduced validation output on a tiny
+  fixture or selected-pilot path;
+- before/after output accounting is recorded;
+- public defaults remain unchanged;
+- checks pass.
+
+### TB-011: Stage Tschamut Context Crops And Measure Spatial Relevance
+
+Capability gap reduced: forest and obstacle context is still blocked by
+missing local evidence and no overlap/relevance measurement.
+
+Goal: acquire, stage, or verify minimal public context crops for the selected
+Tschamut extent and use the existing inspector to measure whether forest,
+buildings, roads, channels, barriers, or visual context intersect or materially
+limit the interpreted hazard corridor.
 
 Inspect first:
 
@@ -147,21 +221,55 @@ Inspect first:
 Required work:
 
 1. Do not infer obstacle absence from missing data.
-2. Keep raw geodata out of git.
-3. If public products are locally available, record path patterns, checksums,
-   CRS/provenance, and spatial relevance to the selected Tschamut extent.
-4. If products are unavailable, produce the exact cache/acquisition commands
-   needed next and keep the classification blocked.
+2. Keep raw geodata and large processed crops out of git.
+3. Record cache paths, checksums, CRS/provenance, and spatial relevance.
+4. If data remain unavailable, produce the exact acquisition command or
+   Balfrin/local staging step needed next.
 5. Do not implement obstacle physics or tune terrain/contact/stopping
    parameters.
 
 Definition of done:
 
-- the inspection result is based on actual local context evidence or an exact
+- the context review is based on actual local context evidence or an exact
   executable acquisition path;
-- interpretation is classified conservatively;
+- overlap/relevance is classified conservatively;
 - no operational or obstacle-performance claim is added;
 - focused checks pass.
+
+### TB-012: Apply Current Diagnostics To A Same-Scale Conditional Pilot Review
+
+Capability gap reduced: the repo has separate diagnostics, but no integrated
+same-scale review that uses cell-wise convergence, validation-output, context,
+and single-job evidence together.
+
+Goal: run or generate a single reproducible same-scale pilot review that
+combines the outputs of TB-009 through TB-011 with existing acceptance records
+and states whether the Tschamut conditional pilot is still `no_go`,
+`inconclusive`, or accepted as a non-operational diagnostic.
+
+Inspect first:
+
+- `docs/tschamut_public_conditional_pilot_acceptance_summary.md`;
+- `scripts/summarize_conditional_pilot_acceptance.py`;
+- `docs/balfrin_single_job_execution_sufficiency.md`;
+- outputs from TB-009 through TB-011 when available.
+
+Required work:
+
+1. Prefer composing existing executable diagnostics over writing another
+   one-off YAML reader.
+2. Do not run larger ensembles or change thresholds.
+3. Preserve conditional, non-operational semantics.
+4. Make missing diagnostic inputs explicit rather than silently passing.
+
+Definition of done:
+
+- the review consumes actual diagnostic outputs or reports exact missing
+  inputs;
+- final classification and blockers are explicit;
+- uncertainty reduced and remaining blockers are stated quantitatively where
+  possible;
+- checks pass.
 
 ## Deferred Backlog
 

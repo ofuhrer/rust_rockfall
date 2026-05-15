@@ -48,6 +48,8 @@ When these files conflict, preserve the safety constraints first, then update th
   executable analysis over tasks that only restate evidence status.
 - When the scientific question is spatial hazard-map stability, prefer
   data-level or cell-wise diagnostics over manifest-only summaries.
+- After a reusable diagnostic is built, prioritize wiring it to normal emitted
+  artifacts or running it on pilot evidence before adding another status layer.
 - Do not end a task with only a "next gate" recommendation. If the next step is
   a gate or policy decision, tie it to the concrete run, script, bug, dataset,
   metric, or implementation work it will enable.

@@ -64,7 +64,31 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: Keeps the single-job path sufficient for the next same-scale
   conditional pilot step while leaving distributed execution deferred.
 - Decision: ACCEPT.
-- Next proposed milestone: TB-007.
+- Next proposed milestone: post-TB-008 backlog reassessment.
+
+### M072
+
+- Milestone id: M072.
+- Roadmap item: post TB-001 through TB-008 backlog reassessment.
+- Hypothesis/objective: Recenter the backlog on applying the new diagnostics to
+  selected-pilot artifacts and reducing measured blockers, rather than adding
+  more evidence-status layers after TB-008 deferred distributed execution.
+- Files intended to change:
+  `AGENTS.md`,
+  `docs/task_backlog.md`,
+  `docs/decision_log.md`,
+  `docs/agent_work_log.md`.
+- Implementation summary: Replaced the stale active TB-007 entry with a new
+  sequence: wire cell-wise convergence to normal hazard outputs, implement a
+  reduced validation debug-output mode, stage and measure public context crops,
+  then run an integrated same-scale conditional pilot review. Kept distributed
+  Balfrin orchestration deferred because TB-008 found the single-job path
+  sufficient for the next same-scale step.
+- Checks run:
+  `git diff --check` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py` passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python -m unittest tests.test_repo_consistency_claim_hygiene` passed.
+  `scripts/git-hooks/pre-commit` passed.
 
 ### TB-002
 

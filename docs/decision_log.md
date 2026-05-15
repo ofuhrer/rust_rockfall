@@ -321,6 +321,27 @@ Detailed sources: `docs/task_backlog.md`,
 `docs/tschamut_public_bounded_validation_output_profile.md`,
 `docs/tschamut_public_obstacle_context_scope.md`.
 
+### Post TB-008 Backlog Direction
+
+Decision: keep single-job Balfrin execution as the current execution boundary
+and prioritize applied pilot evidence: wire cell-wise convergence to emitted
+hazard outputs, reduce validation debug output, and stage context crops before
+any distributed execution design.
+
+Current status: active backlog direction.
+
+Rationale: TB-005 through TB-008 added real diagnostic capabilities and bounded
+the execution architecture question. The remaining blockers are not primarily
+SLURM orchestration; they are whether selected-pilot hazard rasters are
+spatially stable, whether validation debug output can be reduced, and whether
+public forest/obstacle context materially limits interpretation.
+
+Detailed sources: `docs/task_backlog.md`,
+`scripts/compare_hazard_map_convergence.py`,
+`docs/tschamut_public_bounded_validation_output_profile.md`,
+`docs/tschamut_public_obstacle_context_scope.md`,
+`docs/balfrin_single_job_execution_sufficiency.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had
