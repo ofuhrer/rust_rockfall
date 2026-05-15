@@ -129,6 +129,46 @@ Omitted or sampled output classes:
 - `scale_up_authorized`: `false`
 - `operational_claims_allowed`: `false`
 
+## Hazard-Rebuild Compatibility
+
+Read-only helper:
+`scripts/check_hazard_rebuild_output_profile.py`
+
+Current classification:
+- `target_summary_only`: `summary_only_not_rebuildable`
+- `sampling_sensitivity_v1_full`: `hazard_rebuild_ready`
+- `sampling_sensitivity_v2_full`: `hazard_rebuild_ready`
+
+Current target summary-only profile keeps:
+- `diagnostics`
+- `ensemble_deposition`
+- `ensemble_stop_state`
+- `trajectory_metadata`
+
+Current target summary-only profile omits:
+- `trajectory`
+- `ensemble_trajectories`
+- `ensemble_impact_events`
+
+Minimal builder-facing reduced contract:
+- `trajectory_csv` or `ensemble_trajectories_dir`
+- `ensemble_deposition_csv`
+- `ensemble_impact_events_dir` or `impact_events_csv` or `ensemble_impact_events_parquet`
+- `diagnostics_json`
+
+Optional overhead that the builder does not consume directly:
+- `trajectory_metadata_csv`
+- `ensemble_stop_state_csv`
+
+Measured file pressure:
+- current target summary-only root: `6` files / `1286207` bytes
+- full bounded probe roots: `247` files / `68221148` bytes and `247` files / `68384888` bytes
+
+Interpretation:
+- the current summary-only profile is intentionally compact but not hazard-rebuild compatible;
+- the full bounded probes remain hazard-rebuild-ready;
+- a reduced profile can be specified safely by retaining the builder-facing families above, but the summary-only profile itself still lacks them.
+
 Ignored-root inventory from `audit_local_artifacts.py`:
 
 - Full target validation root: `2716` files, `764598257` bytes

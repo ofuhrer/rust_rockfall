@@ -184,44 +184,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-036: Prototype A Hazard-Rebuild-Compatible Reduced Output Profile
-
-Goal: address the measured TB-025 blocker where `summary_only` validation
-artifacts were too small to support hazard rebuilding because trajectory CSV
-artifacts were absent.
-
-Inspect first:
-
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `validation/private/tschamut_public_pilot/target_gate_v1_summary_only/`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/`
-
-Expected work:
-
-- identify the minimum retained validation artifacts needed by the hazard
-  builder;
-- add a fixture-backed test, diagnostic helper, or bounded local probe that
-  proves whether a reduced profile can preserve those artifacts;
-- measure file/byte counts for the proposed retained-output profile when
-  feasible.
-
-Definition of done:
-
-- the repo can distinguish `summary_only_not_rebuildable` from a concrete
-  `rebuildable_reduced_output` profile, or it records the exact missing
-  artifacts that still block the profile;
-- no large raw/private/geodata outputs are committed;
-- hazard semantics and thresholds are unchanged.
-
-Boundaries:
-
-- no physics changes, parameter tuning, or new acceptance claims;
-- no large ensemble or production-scale run.
-
 ### TB-037: Add Spatial Same-Scale Uncertainty Interpretation Tooling
 
 Goal: move beyond scalar pairwise convergence summaries by identifying where

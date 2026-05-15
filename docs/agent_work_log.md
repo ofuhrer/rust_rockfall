@@ -5145,3 +5145,39 @@ Planning only; these milestones do not implement roadmap item content yet.
   work.
 - Boundaries preserved: no physics changes, no parameter tuning, no scale-up
   authorization, no operational claims, and no large committed raster outputs.
+
+### TB-036 Hazard-Rebuild-Compatible Reduced Output Profile
+
+- Milestone id: TB-036.
+- Roadmap item: Hazard-rebuild-compatible reduced output profile.
+- Hypothesis/objective: The hazard builder only needs a small builder-facing
+  subset of validation outputs, and the repo can now distinguish the current
+  `summary_only_not_rebuildable` profile from a hazard-rebuild-ready reduced
+  contract without changing simulation semantics.
+- Files changed:
+  `scripts/check_hazard_rebuild_output_profile.py`,
+  `tests/test_hazard_rebuild_output_profile.py`,
+  `docs/tschamut_public_bounded_validation_output_profile.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a read-only hazard-rebuild audit that reads
+  the current summary-only and full bounded-probe manifests, compares their
+  output families against the inputs consumed by `scripts/build_hazard_layers.py`,
+  and reports a minimal builder-facing contract. The current target summary-only
+  profile is `summary_only_not_rebuildable`; both bounded probes are
+  `hazard_rebuild_ready`. The specified reduced contract retains trajectory,
+  deposition, impact-event, and diagnostics families, while treating trajectory
+  metadata and stop-state as optional overhead.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/check_hazard_rebuild_output_profile.py tests/test_hazard_rebuild_output_profile.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile`,
+  `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format text`,
+  `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  `scripts/git-hooks/pre-commit`.
+- Reviewer notes: This helper is a compatibility audit only. It does not
+  regenerate hazard outputs or change the reduced-output profile in place.
+- Decision: ACCEPT.
+- Next proposed milestone: TB-037.

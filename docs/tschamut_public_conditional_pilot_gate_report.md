@@ -398,6 +398,13 @@ The helper keeps `scale_up_authorized: false` and
 `accepted_diagnostic`, `no_go`, and `deferred` closure decisions from the
 current non-operational pilot state.
 
+Hazard-rebuild compatibility is now summarized separately by
+`scripts/check_hazard_rebuild_output_profile.py`: the current target
+`summary_only` profile is `summary_only_not_rebuildable`, both bounded probe
+profiles are `hazard_rebuild_ready`, and the minimum reduced contract retains
+trajectory, deposition, impact-event, and diagnostics families while leaving
+trajectory metadata and stop-state as optional overhead.
+
 ## Artifact Readiness Preflight
 
 Before rerunning convergence, output-profile, context, or uncertainty
