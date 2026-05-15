@@ -5519,3 +5519,15 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Next proposed milestone: harden the portable source-zone/scenario contract
   for the next concrete second site once a new acquisition decision authorizes
   real public-context downloads.
+
+### Post-TB-046 Engineering Drift Cleanup
+
+- Roadmap item: stabilize task context, generated-artifact hygiene, and command
+  plan metadata before starting TB-047.
+- Implementation summary: removed hard-coded completed task ids from
+  `tests/test_agent_task_context.py`, added the package-level COG conversion
+  helper to `scripts/print_agent_task_context.py`, and added unique
+  `site::group` command group keys to `scripts/generate_pilot_command_plan.py`
+  while preserving existing group ids.
+- Boundaries preserved: no scientific classifications, preflight semantics,
+  validation artifacts, hazard outputs, or operational/scale-up claims changed.

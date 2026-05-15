@@ -46,6 +46,20 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "uncertainty_summary",
             ],
         )
+        self.assertEqual(
+            report["command_group_keys"],
+            [
+                "tschamut_same_scale::readiness_checks",
+                "tschamut_same_scale::case_generation",
+                "tschamut_same_scale::validation_runs",
+                "tschamut_same_scale::hazard_builds",
+                "tschamut_same_scale::convergence_comparisons",
+                "tschamut_same_scale::output_profile_checks",
+                "tschamut_same_scale::context_inspection",
+                "tschamut_same_scale::hazard_context_overlap",
+                "tschamut_same_scale::uncertainty_summary",
+            ],
+        )
         self.assertIn("tschamut_case_generation", report["command_ids"])
         self.assertIn("tschamut_target_hazard_build", report["command_ids"])
         self.assertIn("tschamut_output_profile_summary", report["command_ids"])
@@ -84,6 +98,14 @@ class PilotCommandPlanTest(unittest.TestCase):
             "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
             contract_plan["commands"][0]["expected_inputs"],
         )
+
+    def test_all_site_group_keys_are_unique_when_group_ids_repeat(self) -> None:
+        report = MODULE.build_report("all", SECOND_SITE_CONFIG)
+
+        self.assertGreater(report["command_group_ids"].count("readiness_checks"), 1)
+        self.assertEqual(len(report["command_group_keys"]), len(set(report["command_group_keys"])))
+        self.assertIn("tschamut_same_scale::readiness_checks", report["command_group_keys"])
+        self.assertIn("chant_sura_fluelapass::readiness_checks", report["command_group_keys"])
 
     def test_text_output_smoke(self) -> None:
         buffer = io.StringIO()

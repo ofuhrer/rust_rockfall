@@ -18,6 +18,11 @@ SPEC.loader.exec_module(agent_context)
 
 
 class AgentTaskContextTest(unittest.TestCase):
+    def current_active_task_id(self) -> str:
+        report = agent_context.build_report(run_checks=False)
+        self.assertTrue(report["active_tasks"])
+        return report["active_tasks"][0]["task_id"]
+
     def test_extracts_active_task_and_inspect_first_files(self) -> None:
         backlog = """
 # Task Backlog
@@ -44,18 +49,30 @@ Expected work:
         self.assertEqual(tasks[0].inspect_first, ["docs/example.md", "scripts/example.py"])
 
     def test_report_contains_required_json_fields_without_live_checks(self) -> None:
-        report = agent_context.build_report("TB-046", run_checks=False)
+        report = agent_context.build_report(run_checks=False)
 
         self.assertEqual(report["agent_task_context_status"], "ready")
         self.assertEqual(report["repo_root"], str(ROOT))
         self.assertEqual(report["python_invocation"], "PYENV_VERSION=system uv run python")
         self.assertIn("canonical_helpers", report)
+        self.assertIn(
+            "scripts/convert_same_scale_package_to_cog.py",
+            {helper["path"] for helper in report["canonical_helpers"]},
+        )
         self.assertIn("known_environment_issues", report)
         self.assertIn("generated_roots_to_avoid", report)
         self.assertIn("pre_push_fallback", report)
         self.assertTrue(report["read_only"])
         self.assertEqual(report["live_checks_status"], "skipped")
         self.assertIn("docs/agent_work_log.md", ROOT.joinpath("AGENTS.md").read_text())
+
+    def test_report_can_focus_current_active_task_without_live_checks(self) -> None:
+        current_task_id = self.current_active_task_id()
+
+        report = agent_context.build_report(current_task_id, run_checks=False)
+
+        self.assertEqual(report["agent_task_context_status"], "ready")
+        self.assertEqual(report["selected_task"]["task_id"], current_task_id)
 
     def test_missing_task_is_explicitly_blocked(self) -> None:
         report = agent_context.build_report("TB-000", run_checks=False)
@@ -71,7 +88,7 @@ Expected work:
                     sys.executable,
                     str(SCRIPT_PATH),
                     "--task",
-                    "TB-046",
+                    self.current_active_task_id(),
                     "--format",
                     "json",
                     "--no-live-checks",
@@ -89,8 +106,8 @@ Expected work:
 
     def test_chant_sura_task_triggers_second_site_preflight(self) -> None:
         task = agent_context.ActiveTask(
-            task_id="TB-046",
-            title="Decide Chant Sura Public-Context Staging Boundary",
+            task_id="TB-999",
+            title="Example Chant Sura Task",
             inspect_first=[],
             text="Chant Sura public-context staging boundary",
         )

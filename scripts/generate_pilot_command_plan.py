@@ -83,7 +83,11 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
     flattened_groups: list[dict[str, Any]] = []
     flattened_commands: list[dict[str, Any]] = []
     for site_name, plan in site_plans.items():
-        flattened_groups.extend(plan["command_groups"])
+        for group in plan["command_groups"]:
+            group_with_key = dict(group)
+            group_with_key["site"] = site_name
+            group_with_key["group_key"] = f"{site_name}::{group['id']}"
+            flattened_groups.append(group_with_key)
         flattened_commands.extend(plan["commands"])
 
     blocked_template_commands = sorted(
@@ -113,6 +117,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "blocked_template_commands": blocked_template_commands,
         "ignored_output_paths": ignored_output_paths,
         "command_group_ids": [group["id"] for group in flattened_groups],
+        "command_group_keys": [group["group_key"] for group in flattened_groups],
     }
     return report
 

@@ -75,9 +75,14 @@ CANONICAL_HELPERS = [
         "command": f"{PYTHON_INVOCATION} scripts/audit_gis_cog_package_readiness.py --format json",
     },
     {
-        "name": "bounded COG conversion",
+        "name": "scratch/sample COG conversion proof",
         "path": "scripts/prototype_cog_conversion.py",
         "command": f"{PYTHON_INVOCATION} scripts/prototype_cog_conversion.py --help",
+    },
+    {
+        "name": "package-level COG conversion",
+        "path": "scripts/convert_same_scale_package_to_cog.py",
+        "command": f"{PYTHON_INVOCATION} scripts/convert_same_scale_package_to_cog.py --help",
     },
     {
         "name": "bounded reducer/runtime scaling",

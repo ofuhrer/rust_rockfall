@@ -211,6 +211,11 @@ state unless a task-specific diagnostic proves otherwise. Do not make workers
 rediscover gate/target/context/output-profile paths manually when these helpers
 can answer the question directly.
 
+If bootstrap, command-plan, or generated-artifact hygiene tests fail after a
+task has been removed from this backlog, fix that engineering drift before
+starting the next scientific or portability task. This does not replace the
+active task queue; it keeps the queue executable.
+
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
 
