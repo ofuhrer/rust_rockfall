@@ -186,17 +186,15 @@ Underrepresented high-value work:
 
 Current priority order:
 
-P0. TB-052 decomposes support/nodata uncertainty because this is the dominant
-    scientific blocker in the current closure matrix.
-P1. TB-053 converts spatial uncertainty masks into closure-gap deltas so the
+P0. TB-053 converts spatial uncertainty masks into closure-gap deltas so the
     inconclusive pilot can move toward a precise defer/no-go/accepted decision.
-P2. TB-054 makes rebuildable reduced output a standard generation path because
+P1. TB-054 makes rebuildable reduced output a standard generation path because
     validation output size remains the measured scalability bottleneck.
-P3. TB-055 advances Chant Sura public-context realism without starting a
+P2. TB-055 advances Chant Sura public-context realism without starting a
     second-site ensemble.
-P4. TB-056 promotes COG export from package-copy proof to a reusable export
+P3. TB-056 promotes COG export from package-copy proof to a reusable export
     option for GIS-ready products.
-P5. TB-057 makes physical-credibility evidence requirements executable and
+P4. TB-057 makes physical-credibility evidence requirements executable and
     site-aware without adding calibration or operational claims.
 
 ## Backlog Protocol
@@ -237,50 +235,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-## Active Tasks
-
-### TB-052: Decompose Support And Nodata Uncertainty For Closure-Limiting Layers
-
-Priority: P0.
-
-Why now: the canonical diagnostic interpretation is blocked most directly by
-support/nodata-dominated spatial uncertainty in `max_kinetic_energy` and
-`max_jump_height`. The repo can localize those cells, but it does not yet
-quantify how much of each layer's disagreement is shared-support magnitude
-variation versus support entry/exit behavior.
-
-Capability gap reduced: scientific interpretability and uncertainty
-characterization for the current Tschamut pilot.
-
-Why higher priority than alternatives: larger ensembles, GIS polish, and
-second-site work are less informative until the dominant same-scale
-uncertainty mechanism is separated from pure magnitude variation.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- same-scale hazard manifests under `hazard/results/tschamut_public_pilot/`
-
-Expected measurable outputs:
-
-- a read-only JSON/text summary that reports, per closure-limiting layer,
-  shared-valid cell counts, support-only disagreement counts, magnitude-only
-  disagreement summaries, and overlap with the existing high-uncertainty masks;
-- focused fixture tests for support-only, magnitude-only, and mixed cells;
-- docs updated with the measured decomposition.
-
-Definition of done:
-
-- `max_kinetic_energy` and `max_jump_height` each have a machine-readable
-  support/nodata-versus-magnitude decomposition;
-- closure remains conservative unless the measured evidence already supports a
-  different status;
-- no physics, threshold, calibration, ensemble, scale-up, operational, annual
-  frequency, risk, exposure, or vulnerability semantics are changed.
 
 ### TB-053: Quantify Closure-Gap Deltas From Spatial Uncertainty Masks
 

@@ -46,6 +46,26 @@ grid, not just as scalar pairwise disagreement:
 - `velocity_exceedance_5mps`: localized shared-support magnitude variation with
   a very small high-uncertainty fraction relative to the 91,200-cell grid.
 
+Measured support/nodata decomposition for the closure-limiting layers:
+
+- `max_kinetic_energy`: the layer-level concentration class remains
+  `dominated_by_nodata_support_differences`, but the selected high-uncertainty
+  cells are `shared_support_magnitude_dominated` with support/nodata fraction
+  `0.0` and shared-support magnitude fraction `1.0`. The broader layer still
+  carries `66` nodata/support disagreements across `229` valid-any cells, so
+  it remains closure-limiting.
+- `max_jump_height`: the layer-level concentration class remains
+  `dominated_by_nodata_support_differences`, but the decomposition is
+  `mixed_support_and_magnitude` with support/nodata fraction `0.25` and
+  shared-support magnitude fraction `0.75`. The layer still carries `66`
+  nodata/support disagreements and remains closure-limiting.
+- `velocity_exceedance_5mps`: the layer-level concentration class remains
+  `spatially_localized_shared_support_magnitude`, and the selected
+  high-uncertainty cells are entirely shared-support magnitude variation
+  (`support/nodata=0.0`, `shared-support magnitude=1.0`). Across the full
+  grid, the decomposition is still measured as mixed, but the layer remains
+  deferrable rather than closure-limiting.
+
 The spatial diagnostic therefore answers "where does uncertainty concentrate?"
 with a conservative answer: the dominant disagreement is concentrated in a
 small same-scale corridor, while `max_jump_height` remains the layer most

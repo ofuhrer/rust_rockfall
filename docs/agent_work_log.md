@@ -31,6 +31,50 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-052 Support And Nodata Uncertainty Decomposition
+
+- Milestone id: TB-052.
+- Roadmap item: Decompose support/nodata uncertainty for the closure-limiting
+  same-scale layers.
+- Hypothesis/objective: The closure-limiting spatial uncertainty can be split
+  into a measurable support/nodata component and a shared-support magnitude
+  component without changing the underlying closure status.
+- Files intended to change: `scripts/summarize_spatial_same_scale_uncertainty.py`,
+  `scripts/summarize_tschamut_conditional_pilot_closure.py`,
+  `tests/test_spatial_same_scale_uncertainty.py`,
+  `tests/test_tschamut_conditional_pilot_closure.py`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a read-only decomposition for
+  `max_kinetic_energy`, `max_jump_height`, and `velocity_exceedance_5mps`
+  that reports support-only, nodata-only, and shared-support magnitude counts,
+  high-uncertainty fractions, and compact decomposition classes. Threaded the
+  new decomposition through the closure helper and canonical diagnostic
+  interpretation helper. Real same-scale evidence now shows
+  `max_kinetic_energy` as overall nodata/support-dominated but
+  high-uncertainty shared-support magnitude dominated, `max_jump_height` as
+  mixed, and `velocity_exceedance_5mps` as deferrable with shared-support
+  magnitude at the selected high-uncertainty cells.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_spatial_same_scale_uncertainty.py scripts/summarize_tschamut_conditional_pilot_closure.py tests/test_spatial_same_scale_uncertainty.py tests/test_tschamut_conditional_pilot_closure.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty tests.test_tschamut_conditional_pilot_closure`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format text`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_diagnostic_interpretation.py --format json`
+  passed.
+- Reviewer notes: This keeps the pilot conservative and non-operational. The
+  closure status remains `inconclusive`.
+- Decision: completed.
+- Next proposed milestone: TB-053.
+
 ### TB-047 Portable Source-Scenario Semantics Audit
 
 - Milestone id: TB-047.

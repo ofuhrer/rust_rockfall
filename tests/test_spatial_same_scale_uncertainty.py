@@ -40,6 +40,22 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertEqual(report["layer_summaries"]["max_kinetic_energy"]["uncertainty_concentration_class"], "spatially_localized_shared_support_magnitude")
             self.assertEqual(report["layer_summaries"]["max_jump_height"]["uncertainty_concentration_class"], "dominated_by_nodata_support_differences")
             self.assertEqual(report["layer_summaries"]["velocity_exceedance_5mps"]["uncertainty_concentration_class"], "diffuse_across_shared_support")
+            self.assertEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["disagreement_decomposition"]["classification"],
+                "shared_support_magnitude_dominated",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["max_jump_height"]["disagreement_decomposition"]["classification"],
+                "support_nodata_dominated",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["disagreement_decomposition"]["classification"],
+                "mixed_support_and_magnitude",
+            )
+            self.assertGreaterEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["high_uncertainty_shared_support_magnitude_fraction"],
+                0.5,
+            )
             self.assertGreater(report["layer_summaries"]["max_kinetic_energy"]["high_uncertainty_cell_count"], 0)
             self.assertGreaterEqual(len(report["layer_summaries"]["max_kinetic_energy"]["top_high_uncertainty_cells"]), 1)
             self.assertLessEqual(len(report["layer_summaries"]["max_kinetic_energy"]["top_high_uncertainty_cells"]), 3)
@@ -69,6 +85,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("max_kinetic_energy", rendered)
             self.assertIn("dominated_by_nodata_support_differences", rendered)
             self.assertIn("mask role=", rendered)
+            self.assertIn("decomposition=", rendered)
 
             payload = json.loads(json.dumps(report))
             self.assertEqual(payload["schema_version"], summary_script.SCHEMA_VERSION)
@@ -102,6 +119,43 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertEqual(report["spatial_uncertainty_status"], "blocked_missing_inputs")
             self.assertIn("missing", report["blocked_reason"])
             self.assertTrue(report["missing_input_paths"])
+
+    def test_mixed_decomposition_is_reported_for_custom_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = self._write_single_layer_artifacts(
+                Path(tmp),
+                layer_key="max_kinetic_energy",
+                grids=[
+                    [
+                        [None, 1],
+                        [0, 1],
+                    ],
+                    [
+                        [1, 2],
+                        [0, 1],
+                    ],
+                    [
+                        [1, 1],
+                        [0, 1],
+                    ],
+                    [
+                        [1, 1],
+                        [0, 1],
+                    ],
+                ],
+            )
+            report = summary_script.build_report(artifact, ("max_kinetic_energy",), top_n=3)
+            self.assertEqual(report["spatial_uncertainty_status"], "measured_existing_artifacts")
+            self.assertEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["disagreement_decomposition"]["classification"],
+                "mixed_support_and_magnitude",
+            )
+            self.assertGreater(
+                report["layer_summaries"]["max_kinetic_energy"]["support_nodata_disagreement_count"], 0
+            )
+            self.assertGreater(
+                report["layer_summaries"]["max_kinetic_energy"]["magnitude_only_disagreement_count"], 0
+            )
 
     def _write_artifacts(self, root: Path):
         artifact_specs = []
@@ -232,11 +286,68 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             artifact_specs.append(manifest_path)
         return tuple(artifact_specs)
 
+    def _write_single_layer_artifacts(self, root: Path, *, layer_key: str, grids: list[list[list[float | None]]]):
+        manifest_paths = []
+        for index, grid in enumerate(grids):
+            manifest_dir = root / f"artifact_{index}"
+            manifest_dir.mkdir(parents=True, exist_ok=True)
+            grid_path = manifest_dir / f"{layer_key}.asc"
+            self._write_ascii_grid(grid_path, grid)
+            manifest = {
+                "schema_version": "run_manifest_v1",
+                "case_id": f"artifact_{index}",
+                "grid": {
+                    "ncols": len(grid[0]),
+                    "nrows": len(grid),
+                    "xllcorner": 100.0,
+                    "yllcorner": 200.0,
+                    "cellsize": 2.0,
+                },
+                "cellwise_layers": [
+                    {
+                        "key": layer_key,
+                        "layer_name": layer_key,
+                        "grid_path": str(grid_path),
+                        "kind": "hazard_layer",
+                        "format": "esri_ascii_grid",
+                        "thresholds": [],
+                    }
+                ],
+                "layers": [
+                    {
+                        "key": layer_key,
+                        "summary": {
+                            "valid_cell_count": 9,
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "sum": 1.0,
+                            "nonzero_cell_count": 1,
+                        },
+                    }
+                ],
+                "outputs": [
+                    {
+                        "kind": "hazard_layer",
+                        "format": "esri_ascii_grid",
+                        "layer_name": layer_key,
+                        "path": str(grid_path),
+                        "total_bytes": 1,
+                        "sha256": f"artifact-{index}-{layer_key}",
+                    }
+                ],
+            }
+            manifest_path = manifest_dir / f"artifact_{index}.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            manifest_paths.append(manifest_path)
+        return tuple(manifest_paths)
+
     def _write_ascii_grid(self, path: Path, grid: list[list[float | None]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        nrows = len(grid)
+        ncols = len(grid[0]) if grid else 0
         lines = [
-            "ncols 3",
-            "nrows 3",
+            f"ncols {ncols}",
+            f"nrows {nrows}",
             "xllcorner 100",
             "yllcorner 200",
             "cellsize 2",

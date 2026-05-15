@@ -33,6 +33,15 @@ Current synthesized status:
   - `spatial_uncertainty_support_nodata_dominates_closure`
   - `max_kinetic_energy_closure_limiting`
   - `max_jump_height_closure_limiting`
+- spatial decomposition:
+  - `max_kinetic_energy` remains overall nodata/support-dominated, but the
+    selected high-uncertainty cells are shared-support magnitude only
+    (`support/nodata=0.0`, `shared-support magnitude=1.0`)
+  - `max_jump_height` is measured as `mixed_support_and_magnitude`
+    (`support/nodata=0.25`, `shared-support magnitude=0.75`)
+  - `velocity_exceedance_5mps` is deferrable at the high-uncertainty-cell
+    level with shared-support magnitude only, while the full-grid
+    decomposition stays mixed
 - workflow/product blockers:
   - `summary_only_not_rebuildable`
   - `standard_gis_roots_cog_blocked`
@@ -42,6 +51,15 @@ Current synthesized status:
   - `not_established`
   - calibration `missing`
   - validation `partial`
+- spatial decomposition:
+  - `max_kinetic_energy` is still overall nodata/support-dominated, but the
+    selected high-uncertainty cells are entirely shared-support magnitude
+    variation (`support/nodata=0.0`, `shared-support magnitude=1.0`)
+  - `max_jump_height` is `mixed_support_and_magnitude`
+    (`support/nodata=0.25`, `shared-support magnitude=0.75`)
+  - `velocity_exceedance_5mps` is deferrable at the selected-cell level with
+    shared-support magnitude only, while the full-grid decomposition remains
+    mixed
 
 This canonical interpretation remains non-operational. The reduced-output and
 COG proof paths are command-plan-addressable, but neither changes the current
@@ -432,7 +450,10 @@ mix of signals:
 The closure helper now also consumes the spatial uncertainty summary directly:
 `max_kinetic_energy` is closure-limiting, `max_jump_height` is
 closure-limiting or unresolved, and `velocity_exceedance_5mps` is deferrable
-rather than a closure blocker.
+rather than a closure blocker. The new decomposition keeps the same status but
+clarifies that the closure-limiting layers combine broader nodata/support
+disagreement with high-uncertainty cells that are mostly shared-support
+magnitude variation.
 
 That same spatial helper can now emit compact mask summaries to an ignored
 output directory. The summaries preserve the layer counts, extents, and

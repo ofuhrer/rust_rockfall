@@ -217,6 +217,14 @@ def render_text(report: dict[str, Any]) -> str:
             f"stability={summary['nonzero_support_stability_fraction']:.6g} | "
             f"range_p95={summary['range_summary']['p95_range']:.6g}"
         )
+        decomposition = summary.get("disagreement_decomposition") or {}
+        if decomposition:
+            fractions = decomposition.get("high_uncertainty_fraction_explained") or {}
+            lines.append(
+                f"  decomposition={decomposition.get('classification')} | "
+                f"support/nodata={fractions.get('support_nodata', 0.0):.6g} | "
+                f"shared-support magnitude={fractions.get('shared_support_magnitude', 0.0):.6g}"
+            )
         mask = summary.get("mask_evidence") or {}
         if mask:
             lines.append(
@@ -343,6 +351,21 @@ def summarize_layer(
     if not shared_valid_ranges:
         raise SpatialSameScaleUncertaintyError(f"no shared-valid cells found for {layer_key}")
 
+    support_only_disagreement_cells = [
+        cell for cell in cells if all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1
+    ]
+    magnitude_only_disagreement_cells = [
+        cell
+        for cell in cells
+        if all(cell["valid_flags"]) and all(cell["support_flags"]) and cell["range"] is not None and cell["range"] > 0
+    ]
+    stable_shared_support_cells = [
+        cell
+        for cell in cells
+        if all(cell["valid_flags"]) and len(set(cell["support_flags"])) <= 1 and all(cell["support_flags"]) and (cell["range"] is None or cell["range"] == 0)
+    ]
+    support_nodata_disagreement_count = nodata_disagreement_count + len(support_only_disagreement_cells)
+
     p50 = percentile(shared_valid_ranges, 0.50)
     p90 = percentile(shared_valid_ranges, 0.90)
     p95 = percentile(shared_valid_ranges, 0.95)
@@ -354,6 +377,31 @@ def summarize_layer(
     ]
     high_uncertainty.sort(key=lambda cell: (-float(cell["range"]), cell["row"], cell["col"]))
     high_uncertainty = high_uncertainty[: max(top_n, 1)] if top_n > 0 else []
+
+    high_uncertainty_support_nodata_count = sum(
+        1
+        for cell in high_uncertainty
+        if (not all(cell["valid_flags"])) or (all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1)
+    )
+    high_uncertainty_magnitude_only_count = sum(
+        1
+        for cell in high_uncertainty
+        if all(cell["valid_flags"]) and all(cell["support_flags"]) and cell["range"] is not None and cell["range"] > 0
+    )
+    decomposition_class = classify_decomposition(
+        nodata_count=nodata_disagreement_count,
+        support_only_count=len(support_only_disagreement_cells),
+        magnitude_only_count=len(magnitude_only_disagreement_cells),
+        shared_valid_count=shared_valid_count,
+    )
+    shared_support_magnitude_ranges = [float(cell["range"]) for cell in magnitude_only_disagreement_cells if cell["range"] is not None]
+    shared_support_magnitude_range_summary = {
+        "max_range": max(shared_support_magnitude_ranges) if shared_support_magnitude_ranges else 0.0,
+        "mean_range": mean(shared_support_magnitude_ranges) if shared_support_magnitude_ranges else 0.0,
+        "p50_range": percentile(shared_support_magnitude_ranges, 0.50) if shared_support_magnitude_ranges else 0.0,
+        "p90_range": percentile(shared_support_magnitude_ranges, 0.90) if shared_support_magnitude_ranges else 0.0,
+        "p95_range": percentile(shared_support_magnitude_ranges, 0.95) if shared_support_magnitude_ranges else 0.0,
+    }
 
     support_nodata_cells = [cell for cell in cells if any(cell["valid_flags"]) and not all(cell["valid_flags"])]
     shared_support_magnitude_cells = [
@@ -409,7 +457,14 @@ def summarize_layer(
         "shared_valid_cell_count": shared_valid_count,
         "all_nodata_cell_count": all_nodata_count,
         "nodata_disagreement_count": nodata_disagreement_count,
+        "support_only_disagreement_count": len(support_only_disagreement_cells),
+        "nodata_only_disagreement_count": nodata_disagreement_count,
+        "support_nodata_disagreement_count": support_nodata_disagreement_count,
+        "magnitude_only_disagreement_count": len(magnitude_only_disagreement_cells),
+        "stable_shared_support_count": len(stable_shared_support_cells),
         "nodata_disagreement_fraction": nodata_disagreement_count / any_valid_count if any_valid_count else 0.0,
+        "support_only_disagreement_fraction": len(support_only_disagreement_cells) / any_valid_count if any_valid_count else 0.0,
+        "magnitude_only_disagreement_fraction": len(magnitude_only_disagreement_cells) / any_valid_count if any_valid_count else 0.0,
         "nonzero_support_union_count": nonzero_union_count,
         "nonzero_support_intersection_count": nonzero_intersection_count,
         "nonzero_support_stability_fraction": (
@@ -425,8 +480,36 @@ def summarize_layer(
         "high_uncertainty_threshold": range_threshold,
         "high_uncertainty_cell_count": len(high_uncertainty),
         "high_uncertainty_cell_fraction": len(high_uncertainty) / shared_valid_count if shared_valid_count else 0.0,
+        "high_uncertainty_support_nodata_fraction": high_uncertainty_support_nodata_count / len(high_uncertainty) if high_uncertainty else 0.0,
+        "high_uncertainty_shared_support_magnitude_fraction": high_uncertainty_magnitude_only_count / len(high_uncertainty) if high_uncertainty else 0.0,
         "high_uncertainty_bbox": bbox,
         "high_uncertainty_centroid": centroid,
+        "shared_support_magnitude_range_summary": shared_support_magnitude_range_summary,
+        "disagreement_decomposition": {
+            "classification": decomposition_class,
+            "cell_counts": {
+                "any_valid_cell_count": any_valid_count,
+                "shared_valid_cell_count": shared_valid_count,
+                "nodata_disagreement_count": nodata_disagreement_count,
+                "support_only_disagreement_count": len(support_only_disagreement_cells),
+                "support_nodata_disagreement_count": support_nodata_disagreement_count,
+                "magnitude_only_disagreement_count": len(magnitude_only_disagreement_cells),
+                "stable_shared_support_count": len(stable_shared_support_cells),
+            },
+            "high_uncertainty_fraction_explained": {
+                "support_nodata": high_uncertainty_support_nodata_count / len(high_uncertainty) if high_uncertainty else 0.0,
+                "shared_support_magnitude": high_uncertainty_magnitude_only_count / len(high_uncertainty) if high_uncertainty else 0.0,
+            },
+            "shared_support_magnitude_range_summary": shared_support_magnitude_range_summary,
+            "interpretation_note": decomposition_note(
+                layer_key=layer_key,
+                classification=decomposition_class,
+                support_nodata_count=support_nodata_disagreement_count,
+                magnitude_only_count=len(magnitude_only_disagreement_cells),
+                high_uncertainty_support_nodata_count=high_uncertainty_support_nodata_count,
+                high_uncertainty_magnitude_only_count=high_uncertainty_magnitude_only_count,
+            ),
+        },
         "top_high_uncertainty_cells": [
             format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
             for cell in high_uncertainty
@@ -612,6 +695,47 @@ def classify_layer(
             f"(bbox fraction {bbox_fraction:.3f}, high-cell fraction {high_fraction:.3f}, stability {stability:.3f})."
         ),
     }
+
+
+def classify_decomposition(
+    *,
+    nodata_count: int,
+    support_only_count: int,
+    magnitude_only_count: int,
+    shared_valid_count: int,
+) -> str:
+    support_nodata_count = nodata_count + support_only_count
+    if support_nodata_count == 0 and magnitude_only_count == 0:
+        return "mixed_support_and_magnitude"
+    if support_nodata_count == 0:
+        return "shared_support_magnitude_dominated"
+    if magnitude_only_count == 0:
+        return "support_nodata_dominated"
+
+    support_fraction = support_nodata_count / shared_valid_count if shared_valid_count else 0.0
+    magnitude_fraction = magnitude_only_count / shared_valid_count if shared_valid_count else 0.0
+    if support_fraction >= max(0.15, magnitude_fraction * 1.5):
+        return "support_nodata_dominated"
+    if magnitude_fraction >= max(0.15, support_fraction * 1.5):
+        return "shared_support_magnitude_dominated"
+    return "mixed_support_and_magnitude"
+
+
+def decomposition_note(
+    *,
+    layer_key: str,
+    classification: str,
+    support_nodata_count: int,
+    magnitude_only_count: int,
+    high_uncertainty_support_nodata_count: int,
+    high_uncertainty_magnitude_only_count: int,
+) -> str:
+    return (
+        f"{layer_key} decomposition={classification} "
+        f"(support/nodata={support_nodata_count}, magnitude-only={magnitude_only_count}, "
+        f"high-support/nodata={high_uncertainty_support_nodata_count}, "
+        f"high-magnitude-only={high_uncertainty_magnitude_only_count})"
+    )
 
 
 def format_high_uncertainty_cell(

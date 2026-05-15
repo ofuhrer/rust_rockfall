@@ -51,6 +51,9 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["closure_role"], "closure_limiting")
         self.assertEqual(spatial["layer_roles"]["max_jump_height"]["closure_role"], "closure_limiting")
         self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["closure_role"], "deferrable")
+        self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["disagreement_decomposition_class"], "mixed_support_and_magnitude")
+        self.assertEqual(spatial["layer_roles"]["max_jump_height"]["disagreement_decomposition_class"], "support_nodata_dominated")
+        self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["disagreement_decomposition_class"], "shared_support_magnitude_dominated")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_status"], "available")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_closure_role"], "closure_limiting")
         self.assertGreaterEqual(spatial["layer_roles"]["max_kinetic_energy"]["high_uncertainty_cell_count"], 0)
@@ -93,10 +96,21 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                         "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
                         "interpretation_note": "synthetic",
                         "nodata_disagreement_count": 12,
+                        "support_only_disagreement_count": 2,
+                        "magnitude_only_disagreement_count": 6,
                         "shared_valid_cell_count": 20,
                         "analysis_cell_count": 25,
                         "nonzero_support_stability_fraction": 0.5,
                         "high_uncertainty_cell_fraction": 0.1,
+                        "high_uncertainty_support_nodata_fraction": 0.75,
+                        "high_uncertainty_shared_support_magnitude_fraction": 0.25,
+                        "disagreement_decomposition": {
+                            "classification": "mixed_support_and_magnitude",
+                            "high_uncertainty_fraction_explained": {
+                                "support_nodata": 0.75,
+                                "shared_support_magnitude": 0.25,
+                            },
+                        },
                         "mask_evidence": {
                             "mask_status": "available",
                             "closure_role": "closure_limiting",
@@ -111,10 +125,21 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                         "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
                         "interpretation_note": "synthetic",
                         "nodata_disagreement_count": 8,
+                        "support_only_disagreement_count": 1,
+                        "magnitude_only_disagreement_count": 1,
                         "shared_valid_cell_count": 20,
                         "analysis_cell_count": 25,
                         "nonzero_support_stability_fraction": 0.7,
                         "high_uncertainty_cell_fraction": 0.05,
+                        "high_uncertainty_support_nodata_fraction": 0.8,
+                        "high_uncertainty_shared_support_magnitude_fraction": 0.2,
+                        "disagreement_decomposition": {
+                            "classification": "support_nodata_dominated",
+                            "high_uncertainty_fraction_explained": {
+                                "support_nodata": 0.8,
+                                "shared_support_magnitude": 0.2,
+                            },
+                        },
                         "mask_evidence": {
                             "mask_status": "available",
                             "closure_role": "closure_limiting",
@@ -129,10 +154,21 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                         "uncertainty_concentration_class": "spatially_localized_shared_support_magnitude",
                         "interpretation_note": "synthetic",
                         "nodata_disagreement_count": 0,
+                        "support_only_disagreement_count": 1,
+                        "magnitude_only_disagreement_count": 4,
                         "shared_valid_cell_count": 20,
                         "analysis_cell_count": 25,
                         "nonzero_support_stability_fraction": 1.0,
                         "high_uncertainty_cell_fraction": 0.1,
+                        "high_uncertainty_support_nodata_fraction": 0.2,
+                        "high_uncertainty_shared_support_magnitude_fraction": 0.8,
+                        "disagreement_decomposition": {
+                            "classification": "shared_support_magnitude_dominated",
+                            "high_uncertainty_fraction_explained": {
+                                "support_nodata": 0.2,
+                                "shared_support_magnitude": 0.8,
+                            },
+                        },
                         "mask_evidence": {
                             "mask_status": "available",
                             "closure_role": "deferrable",
