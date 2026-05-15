@@ -404,6 +404,26 @@ Detailed sources: `docs/task_backlog.md`,
 `docs/tschamut_public_bounded_validation_output_profile.md`,
 `docs/tschamut_public_obstacle_context_scope.md`.
 
+### Post TB-015 Corridor Context Measurement
+
+Decision: treat the staged swissTLM3D archive as measured corridor-level
+context evidence, not as missing-cache evidence, and keep the interpretation
+boundary conditional and non-operational.
+
+Current status: active backlog direction.
+
+Rationale: TB-015 converted the archive from "staged" to a measurable
+corridor-level context signal. Roads, barriers, and water are now quantified
+against the selected Tschamut extent, and the result remains limiting rather
+than acceptable. The next highest-value work is still the target-vs-gate
+spatial comparison on the refreshed same-scale hazard artifacts, because that
+gap remains the dominant scientific uncertainty.
+
+Detailed sources: `docs/task_backlog.md`,
+`scripts/inspect_tschamut_public_context_layers.py`,
+`docs/tschamut_public_obstacle_context_scope.md`,
+`docs/tschamut_public_conditional_pilot_gate_report.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

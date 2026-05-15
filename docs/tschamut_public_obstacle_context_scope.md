@@ -114,6 +114,26 @@ Measured local context indicators:
   the archive is staged locally and treated as limiting context evidence in the
   current inspection.
 
+Measured swissTLM3D corridor relevance from the staged archive:
+
+- corridor query method: `ogrinfo` spatial filter over the staged
+  `/vsizip/` archive member paths against the selected Tschamut corridor in
+  EPSG:2056 / LV95;
+- roads/transport: `22` `swissTLM3D_TLM_STRASSE` features and `16`
+  `swissTLM3D_TLM_STRASSENINFO` features intersect the corridor;
+- barriers/protection: `2` `swissTLM3D_TLM_MAUER` features and `4`
+  `swissTLM3D_TLM_VERBAUUNG` features intersect the corridor, while
+  `swissTLM3D_TLM_STAUBAUTE` has `0` corridor intersections;
+- water/channels: `24` `swissTLM3D_TLM_FLIESSGEWAESSER` features intersect
+  the corridor, while `swissTLM3D_TLM_STEHENDES_GEWAESSER` has `0`
+  corridor intersections;
+- constructed-feature subset: `0` `swissTLM3D_TLM_GEBAEUDE_FOOTPRINT`
+  intersections and `0` intersections for the sampled
+  `VERKEHRSBAUTE_*` and `VERSORGUNGS_BAUTE_*` layers;
+- corridor-level archive status: `measured_corridor_relevance`;
+- interpretation boundary: these counts measure contextual relevance only;
+  they do not turn the staged swissTLM3D archive into obstacle physics.
+
 ## Interpretation Boundary
 
 Allowed current interpretation:

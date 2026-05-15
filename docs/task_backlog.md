@@ -71,9 +71,10 @@ objective are:
 3. Forest and obstacle context is no longer an absent-cache problem; it is a
    corridor-relevance problem. The inspector now has real local public
    context evidence for swissSURFACE3D Raster, SWISSIMAGE, swissBUILDINGS3D,
-   and a staged swissTLM3D archive, but roads, barriers, and water still need
-   corridor-level quantification before the same-scale interpretation is more
-   than conditional.
+   and a staged swissTLM3D archive that has now been queried at corridor
+   level. Roads, barriers, and water are measured as limiting context rather
+   than missing-cache evidence, but the same-scale interpretation remains
+   conditional because context is still not obstacle physics.
 4. Scaling direction is now better bounded. The single-job Balfrin path is
    sufficient for the next same-scale conditional pilot step; distributed
    execution should stay deferred until a new measurement shows a need.
@@ -166,45 +167,6 @@ Definition of done:
 - the target-side manifest and referenced grids are present locally, or the
   exact missing inputs and regeneration command are recorded;
 - TB-014 can be rerun without further ambiguity;
-- checks pass.
-
-### TB-015: Measure Corridor-Level Context Relevance From The Staged SwissTLM3D Archive
-
-Capability gap reduced: the repository now has staged public context evidence,
-but the remaining roads, barriers, and water interpretation is still only
-limitatively classified at the corridor level.
-
-Goal: use the staged swissTLM3D archive and the existing context inspector to
-measure corridor-level relevance for roads, water/channels,
-barriers/protection structures, and any other relevant public features on the
-selected Tschamut extent, or produce an exact missing-input checklist if the
-staged archive is absent.
-
-Inspect first:
-
-- `docs/tschamut_public_obstacle_context_scope.md`;
-- `docs/tschamut_public_conditional_pilot_gate_report.md`;
-- `scripts/inspect_tschamut_public_context_layers.py`;
-- `data/processed/swisstopo/tschamut_public_pilot/context/swisstlm3d/metadata.json`,
-  if present locally;
-- `validation/pilot_runs/tschamut_public_obstacle_scope_v1.yaml`.
-
-Required work:
-
-1. Prefer corridor-level measurement over another status-only summary.
-2. Do not infer obstacle absence from archive presence.
-3. If the archive is present, extract or query only the minimum fields needed
-   to classify roads, barriers, and water relevance for the selected corridor.
-4. Record explicit spatial-relevance indicators and their interpretation
-   boundary.
-5. Preserve conditional, non-operational semantics.
-
-Definition of done:
-
-- measured corridor relevance or exact missing inputs are recorded;
-- final classification and blockers are explicit;
-- uncertainty reduced and remaining blockers are stated quantitatively where
-  possible;
 - checks pass.
 
 ### TB-016: Build A Reusable Same-Scale Uncertainty Envelope Report

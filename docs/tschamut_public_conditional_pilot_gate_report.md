@@ -115,6 +115,15 @@ not justify tuning restitution, roughness, terrain classes, stopping
 thresholds, or scenario weights to absorb omitted vegetation or constructed
 features.
 
+The staged swissTLM3D archive has since been queried at corridor level
+against the selected Tschamut extent. The measured counts are consistent with
+the context review remaining `limiting`, not acceptable: roads and transport
+features intersect the corridor, flowing-water features intersect the
+corridor, barrier/protection features intersect the corridor, and the sampled
+constructed-feature subset does not yet provide corridor intersections. This
+is interpretation evidence only; it does not authorize scale-up or turn the
+conditional gate into an operational product.
+
 ## Executable Checks
 
 The run-freeze validator accepts the completed local gate record and can print

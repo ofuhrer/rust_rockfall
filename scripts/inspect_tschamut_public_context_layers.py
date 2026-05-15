@@ -12,6 +12,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
+import subprocess
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -36,6 +39,66 @@ EXPECTED_LAYER_PATHS = {
     "barriers_or_protection": "swisstlm3d",
     "water_or_channel": "swisstlm3d",
     "orthophoto_visual_context": "swissimage",
+}
+SWISSTLM3D_CONTEXT_DIR_NAME = "swisstlm3d"
+SWISSTLM3D_ARCHIVE_MEMBER_ROOT = "2021_SWISSTLM3D_SHP_CHLV95_LN02"
+SWISSTLM3D_CORRIDOR_QUERY_SPEC = {
+    "roads_or_transport": [
+        {
+            "layer_name": "swissTLM3D_TLM_STRASSE",
+            "member_path": "TLM_STRASSEN/swissTLM3D_TLM_STRASSE.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_STRASSENINFO",
+            "member_path": "TLM_STRASSEN/swissTLM3D_TLM_STRASSENINFO.shp",
+        },
+    ],
+    "barriers_or_protection": [
+        {
+            "layer_name": "swissTLM3D_TLM_MAUER",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_MAUER.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_VERBAUUNG",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_VERBAUUNG.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_STAUBAUTE",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_STAUBAUTE.shp",
+        },
+    ],
+    "water_or_channel": [
+        {
+            "layer_name": "swissTLM3D_TLM_FLIESSGEWAESSER",
+            "member_path": "TLM_GEWAESSER/swissTLM3D_TLM_FLIESSGEWAESSER.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_STEHENDES_GEWAESSER",
+            "member_path": "TLM_GEWAESSER/swissTLM3D_TLM_STEHENDES_GEWAESSER.shp",
+        },
+    ],
+    "constructed_feature_relevance": [
+        {
+            "layer_name": "swissTLM3D_TLM_GEBAEUDE_FOOTPRINT",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_GEBAEUDE_FOOTPRINT.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_VERKEHRSBAUTE_LIN",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_VERKEHRSBAUTE_LIN.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_VERKEHRSBAUTE_PLY",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_VERKEHRSBAUTE_PLY.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_VERSORGUNGS_BAUTE_LIN",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_VERSORGUNGS_BAUTE_LIN.shp",
+        },
+        {
+            "layer_name": "swissTLM3D_TLM_VERSORGUNGS_BAUTE_PKT",
+            "member_path": "TLM_BAUTEN/swissTLM3D_TLM_VERSORGUNGS_BAUTE_PKT.shp",
+        },
+    ],
 }
 
 
@@ -130,6 +193,11 @@ def inspect_context_layers(
     crs_or_spatial_reference = build_crs_summary(layer_reports)
     spatial_relevance_status = determine_spatial_relevance_status(context_root, layer_reports)
     local_context_review_status = determine_local_context_review_status(spatial_relevance_status)
+    swisstlm3d_corridor_relevance = inspect_swisstlm3d_corridor_relevance(
+        context_root=context_root,
+        selected_extent_or_corridor=selected_extent_or_corridor,
+        registry=registry,
+    )
     blocked_reason = build_blocked_reason(
         context_root=context_root,
         layer_reports=layer_reports,
@@ -140,6 +208,11 @@ def inspect_context_layers(
         layer_reports=layer_reports,
         context_root=context_root,
     )
+    spatial_relevance_indicators["swisstlm3d_archive_status"] = swisstlm3d_corridor_relevance["archive_status"]
+    spatial_relevance_indicators["swisstlm3d_queried_layers_count"] = len(swisstlm3d_corridor_relevance["queried_layers"])
+    spatial_relevance_indicators["swisstlm3d_intersecting_feature_counts"] = swisstlm3d_corridor_relevance[
+        "intersecting_feature_counts"
+    ]
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -151,8 +224,11 @@ def inspect_context_layers(
         "classification": overall_classification,
         "context_review_status": local_context_review_status,
         "spatial_relevance_status": spatial_relevance_status,
+        "swisstlm3d_archive_status": swisstlm3d_corridor_relevance["archive_status"],
+        "swisstlm3d_archive_blocked_reason": swisstlm3d_corridor_relevance["blocked_reason"],
         "blocked_reason": blocked_reason,
         "status": overall_classification,
+        "final_classification": overall_classification,
         "target_scale_context_review_status": target_review["local_context_review_status"],
         "context_root_present": context_root.exists(),
         "context_layer_count": len(layer_reports),
@@ -167,6 +243,14 @@ def inspect_context_layers(
         "checksums": checksums,
         "crs_or_spatial_reference": crs_or_spatial_reference,
         "spatial_relevance_indicators": spatial_relevance_indicators,
+        "queried_layers": swisstlm3d_corridor_relevance["queried_layers"],
+        "feature_counts": swisstlm3d_corridor_relevance["feature_counts"],
+        "intersecting_feature_counts": swisstlm3d_corridor_relevance["intersecting_feature_counts"],
+        "nearest_feature_distances_m": swisstlm3d_corridor_relevance["nearest_feature_distances_m"],
+        "roads_or_transport_relevance": swisstlm3d_corridor_relevance["roads_or_transport_relevance"],
+        "barriers_or_protection_relevance": swisstlm3d_corridor_relevance["barriers_or_protection_relevance"],
+        "water_or_channel_relevance": swisstlm3d_corridor_relevance["water_or_channel_relevance"],
+        "constructed_feature_relevance": swisstlm3d_corridor_relevance["constructed_feature_relevance"],
         "interpretation_impact": build_interpretation_impact(scope, layer_reports),
         "operational_claims_allowed": False,
         "expected_context_layers": layer_reports,
@@ -256,6 +340,224 @@ def inspect_layer(
         result["rationale"] = "context directory is present but no metadata sidecar was found"
 
     return result
+
+
+def inspect_swisstlm3d_corridor_relevance(
+    *,
+    context_root: Path,
+    selected_extent_or_corridor: dict[str, Any],
+    registry: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    archive_context_root = context_root / SWISSTLM3D_CONTEXT_DIR_NAME
+    metadata_path = archive_context_root / "metadata.json"
+    archive_summary: dict[str, Any] = {
+        "archive_status": BLOCKED,
+        "blocked_reason": None,
+        "metadata_path": str(metadata_path),
+        "archive_path": None,
+        "archive_sha256": None,
+        "archive_size_bytes": None,
+        "coordinate_reference_system": None,
+        "source_product": "swissTLM3D",
+        "source_url": registry.get("swisstopo_swisstlm3d", {}).get("source_url"),
+        "queried_layers": [],
+        "feature_counts": {},
+        "intersecting_feature_counts": {},
+        "nearest_feature_distances_m": {},
+        "roads_or_transport_relevance": {
+            "classification": "unresolved",
+            "queried_layers": [],
+            "feature_count": 0,
+            "intersecting_feature_count": 0,
+            "nearest_feature_distance_m": None,
+        },
+        "barriers_or_protection_relevance": {
+            "classification": "unresolved",
+            "queried_layers": [],
+            "feature_count": 0,
+            "intersecting_feature_count": 0,
+            "nearest_feature_distance_m": None,
+        },
+        "water_or_channel_relevance": {
+            "classification": "unresolved",
+            "queried_layers": [],
+            "feature_count": 0,
+            "intersecting_feature_count": 0,
+            "nearest_feature_distance_m": None,
+        },
+        "constructed_feature_relevance": {
+            "classification": "unresolved",
+            "queried_layers": [],
+            "feature_count": 0,
+            "intersecting_feature_count": 0,
+            "nearest_feature_distance_m": None,
+        },
+    }
+    if not metadata_path.exists():
+        archive_summary["blocked_reason"] = f"staged swissTLM3D metadata is absent at {metadata_path}"
+        return archive_summary
+
+    metadata = read_metadata(metadata_path)
+    try:
+        archive_path = resolve_archive_path(metadata, root=ROOT)
+    except ContextLayerInspectionError as exc:
+        archive_summary["blocked_reason"] = str(exc)
+        return archive_summary
+    archive_summary["archive_path"] = str(archive_path)
+    archive_summary["archive_sha256"] = metadata.get("local_asset_sha256") or metadata.get("raw_asset_sha256")
+    archive_summary["archive_size_bytes"] = metadata.get("local_asset_bytes") or metadata.get("raw_asset_head_content_length_bytes")
+    archive_summary["coordinate_reference_system"] = metadata.get("coordinate_reference_system")
+    if not archive_path.exists():
+        archive_summary["blocked_reason"] = f"staged swissTLM3D archive is absent at {archive_path}"
+        return archive_summary
+
+    bbox = selected_extent_or_corridor.get("extent_lv95_m") or {}
+    required_bbox_keys = ("xmin", "ymin", "xmax", "ymax")
+    if any(key not in bbox for key in required_bbox_keys):
+        archive_summary["blocked_reason"] = "selected extent/corridor is missing LV95 bounds"
+        return archive_summary
+
+    ogrinfo = shutil.which("ogrinfo")
+    if ogrinfo is None:
+        archive_summary["blocked_reason"] = "ogrinfo is unavailable in the current environment"
+        return archive_summary
+
+    layer_results: list[dict[str, Any]] = []
+    for category, specs in SWISSTLM3D_CORRIDOR_QUERY_SPEC.items():
+        category_layer_results: list[dict[str, Any]] = []
+        for spec in specs:
+            layer_result = query_swisstlm3d_layer_count(
+                ogrinfo=ogrinfo,
+                archive_path=archive_path,
+                layer_name=spec["layer_name"],
+                member_path=spec["member_path"],
+                bbox=bbox,
+                category=category,
+            )
+            if layer_result.get("status") != "ok":
+                archive_summary["blocked_reason"] = layer_result.get("blocked_reason") or "failed to query swissTLM3D archive"
+                return archive_summary
+            category_layer_results.append(layer_result)
+            layer_results.append(layer_result)
+
+        total_count = sum(item["intersecting_feature_count"] for item in category_layer_results)
+        category_nearest = 0.0 if total_count > 0 else None
+        classification = "limiting" if total_count > 0 else "unresolved"
+        archive_summary[category + "_relevance"] = {
+            "classification": classification,
+            "queried_layers": [
+                {
+                    "layer_name": item["layer_name"],
+                    "member_path": item["member_path"],
+                    "intersecting_feature_count": item["intersecting_feature_count"],
+                    "nearest_feature_distance_m": item["nearest_feature_distance_m"],
+                }
+                for item in category_layer_results
+            ],
+            "feature_count": total_count,
+            "intersecting_feature_count": total_count,
+            "nearest_feature_distance_m": category_nearest,
+        }
+        archive_summary["feature_counts"][category] = {
+            "by_layer": {
+                item["layer_name"]: item["intersecting_feature_count"] for item in category_layer_results
+            },
+            "total_intersecting_feature_count": total_count,
+        }
+        archive_summary["intersecting_feature_counts"][category] = total_count
+        archive_summary["nearest_feature_distances_m"][category] = category_nearest
+
+    archive_summary["queried_layers"] = layer_results
+    archive_summary["archive_status"] = "measured_corridor_relevance"
+    return archive_summary
+
+
+def resolve_archive_path(metadata: dict[str, Any], *, root: Path) -> Path:
+    for key in ("local_asset_path", "raw_asset_path"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value:
+            path = Path(value)
+            return path if path.is_absolute() else root / path
+    raise ContextLayerInspectionError("swissTLM3D metadata is missing an archive path")
+
+
+def query_swisstlm3d_layer_count(
+    *,
+    ogrinfo: str,
+    archive_path: Path,
+    layer_name: str,
+    member_path: str,
+    bbox: dict[str, Any],
+    category: str,
+) -> dict[str, Any]:
+    datasource_path = f"/vsizip/{archive_path}/{SWISSTLM3D_ARCHIVE_MEMBER_ROOT}/{member_path}"
+    return query_vector_layer_count(
+        ogrinfo=ogrinfo,
+        datasource_path=datasource_path,
+        layer_name=layer_name,
+        bbox=bbox,
+        category=category,
+        member_path=member_path,
+    )
+
+
+def query_vector_layer_count(
+    *,
+    ogrinfo: str,
+    datasource_path: str,
+    layer_name: str,
+    bbox: dict[str, Any],
+    category: str,
+    member_path: str | None = None,
+) -> dict[str, Any]:
+    try:
+        completed = subprocess.run(
+            [
+                ogrinfo,
+                "-ro",
+                "-q",
+                "-geom=NO",
+                "-al",
+                "-spat",
+                str(bbox["xmin"]),
+                str(bbox["ymin"]),
+                str(bbox["xmax"]),
+                str(bbox["ymax"]),
+                datasource_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=180,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "status": "blocked",
+            "blocked_reason": f"swissTLM3D query timed out for {layer_name}: {exc}",
+            "category": category,
+            "layer_name": layer_name,
+            "member_path": member_path,
+            "datasource_path": datasource_path,
+        }
+    except subprocess.CalledProcessError as exc:
+        return {
+            "status": "blocked",
+            "blocked_reason": f"swissTLM3D query failed for {layer_name}: {exc.stderr or exc.stdout or exc}",
+            "category": category,
+            "layer_name": layer_name,
+            "member_path": member_path,
+            "datasource_path": datasource_path,
+        }
+    intersecting_feature_count = completed.stdout.count("OGRFeature(")
+    return {
+        "status": "ok",
+        "category": category,
+        "layer_name": layer_name,
+        "member_path": member_path,
+        "datasource_path": datasource_path,
+        "intersecting_feature_count": intersecting_feature_count,
+        "nearest_feature_distance_m": 0.0 if intersecting_feature_count > 0 else None,
+    }
 
 
 def determine_overall_classification(layer_reports: list[dict[str, Any]]) -> str:
@@ -410,7 +712,11 @@ def build_interpretation_impact(scope: dict[str, Any], layer_reports: list[dict[
     return {
         "summary": omission.get("summary"),
         "required_before_interpretation": omission.get("required_before_interpretation"),
-        "current_effect": "Local context review remains blocked when no reviewed processed cache is staged in the checkout.",
+        "current_effect": (
+            "Local context review remains conditional; the staged swissTLM3D archive now "
+            "provides corridor-level counts for roads, water, and barrier/protection features, "
+            "but that remains interpretation evidence rather than obstacle physics."
+        ),
         "layer_classification_summary": summarize_spatial_relevance(layer_reports),
         "operational_claims_allowed": False,
     }
@@ -669,8 +975,10 @@ def sha256_text(text: str) -> str:
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"context inspection status: {report['classification']}",
+        f"final classification: {report.get('final_classification')}",
         f"context review status: {report['context_review_status']}",
         f"spatial relevance status: {report['spatial_relevance_status']}",
+        f"swisstlm3d archive status: {report.get('swisstlm3d_archive_status')}",
         f"blocked reason: {report['blocked_reason']}",
         f"scope record: {report['scope_record_path']}",
         f"context root: {report['context_root']}",
@@ -696,8 +1004,21 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(
             f"- available={indicators.get('available_layer_count', 0)}, "
             f"missing={indicators.get('missing_layer_count', 0)}, "
-            f"crs_match={indicators.get('spatial_extent_alignment', {}).get('all_reviewed_layers_share_selected_epsg', False)}"
+            f"crs_match={indicators.get('spatial_extent_alignment', {}).get('all_reviewed_layers_share_selected_epsg', False)}, "
+            f"swisstlm3d_archive_status={indicators.get('swisstlm3d_archive_status')}"
         )
+    queried_layers = report.get("queried_layers") or []
+    if queried_layers:
+        lines.append("swisstlm3d corridor query:")
+        for item in queried_layers:
+            lines.append(
+                f"- {item['category']}::{item['layer_name']}: "
+                f"intersections={item['intersecting_feature_count']}, "
+                f"nearest_m={item['nearest_feature_distance_m']}"
+            )
+    archive_blocked_reason = report.get("swisstlm3d_archive_blocked_reason")
+    if archive_blocked_reason:
+        lines.append(f"swisstlm3d blocked reason: {archive_blocked_reason}")
     if report["acquisition_checklist"]:
         lines.append("acquisition checklist:")
         for item in report["acquisition_checklist"]:

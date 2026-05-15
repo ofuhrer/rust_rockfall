@@ -4430,3 +4430,25 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Reviewer notes: The refresh path is documented precisely enough for a future worker to execute on a machine that has the missing inputs or can regenerate them.
 - Decision: ACCEPT.
 - Next proposed milestone: TB-013.
+
+### TB-015
+
+- Milestone id: TB-015.
+- Roadmap item: Measure Corridor-Level Context Relevance From The Staged SwissTLM3D Archive.
+- Implementation summary: Extended the Tschamut context inspector with a corridor-query path that uses `ogrinfo` against the staged swissTLM3D zip archive member paths and records per-layer corridor counts, category summaries, queried layer names, and archive status fields. The measured corridor evidence is limiting, not acceptable: roads/transport, flowing water, and barrier/protection features intersect the selected corridor, while the constructed-feature subset remains unresolved.
+- Checks run:
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m py_compile scripts/inspect_tschamut_public_context_layers.py tests/test_tschamut_public_context_layers.py`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python -m unittest tests.test_tschamut_public_context_layers tests.test_pilot_obstacle_scope`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/inspect_tschamut_public_context_layers.py --format json`
+  passed in the sense of producing the JSON report; the process exits nonzero for non-acceptable classifications by design.
+  `git diff --check`
+  passed.
+  `UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py`
+  passed.
+  `scripts/git-hooks/pre-commit`
+  passed.
+- Reviewer notes: The archive is now measured at corridor level and should no longer be treated as a missing-cache problem.
+- Decision: COMPLETED.
+- Next proposed milestone: TB-017.
