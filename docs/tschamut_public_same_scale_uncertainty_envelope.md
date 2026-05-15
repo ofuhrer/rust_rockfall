@@ -29,6 +29,29 @@
   are manifest-complete and GeoTIFF-present, but COG readiness remains blocked
   by the current strip layout and lack of overviews.
 
+## Spatial Uncertainty Interpretation
+
+Spatial same-scale uncertainty is now localized and measurable on the shared
+grid, not just as scalar pairwise disagreement:
+
+- `max_kinetic_energy`: concentrated but still nodata/support affected. The
+  selected high-uncertainty cells cluster in a compact LV95 box near
+  `x 2696638..2696668`, `y 1167684..1167714`. The layer remains the dominant
+  disagreement field, but the concentration is not purely magnitude-only
+  because nodata/support disagreement is still material.
+- `max_jump_height`: dominated by support/nodata differences. The high-
+  uncertainty cells cluster in a similarly compact box near
+  `x 2696648..2696660`, `y 1167690..1167704`, with a lower magnitude spread
+  than kinetic energy but stronger missing-cell sensitivity.
+- `velocity_exceedance_5mps`: localized shared-support magnitude variation with
+  a very small high-uncertainty fraction relative to the 91,200-cell grid.
+
+The spatial diagnostic therefore answers "where does uncertainty concentrate?"
+with a conservative answer: the dominant disagreement is concentrated in a
+small same-scale corridor, while `max_jump_height` remains the layer most
+affected by nodata/support differences. This does not change the existing
+`inconclusive` convergence interpretation.
+
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid
 - `max_kinetic_energy` still dominates the envelope

@@ -5079,6 +5079,26 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json`,
   `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format text`.
 
+- TB-037 spatial same-scale uncertainty interpretation. Files changed:
+  `scripts/summarize_spatial_same_scale_uncertainty.py`,
+  `tests/test_spatial_same_scale_uncertainty.py`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`.
+- Evidence streams consumed: the same-scale readiness preflight, the sampling
+  uncertainty envelope, and the four same-scale hazard manifests for gate,
+  target, and the two bounded probes.
+- Classification: `measured_existing_artifacts`.
+- Spatial interpretation: `max_kinetic_energy` is still the dominant
+  disagreement field, but the highest-uncertainty cells cluster in a compact
+  LV95 corridor; `max_jump_height` is dominated by support/nodata differences;
+  `velocity_exceedance_5mps` is localized with much smaller range.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_spatial_same_scale_uncertainty.py tests/test_spatial_same_scale_uncertainty.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty`,
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format text`.
+
 - Backlog refill after TB-031 through TB-034.
 - Files changed: `docs/task_backlog.md`.
 - Evidence streams consumed: the multi-seed same-scale uncertainty envelope,

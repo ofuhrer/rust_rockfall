@@ -184,49 +184,6 @@ history and `decision_log.md` for durable decisions.
 
 ## Active Tasks
 
-### TB-037: Add Spatial Same-Scale Uncertainty Interpretation Tooling
-
-Goal: move beyond scalar pairwise convergence summaries by identifying where
-same-scale uncertainty concentrates spatially across the gate, target, and
-bounded sampling probes.
-
-Inspect first:
-
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `scripts/compare_hazard_map_convergence.py`
-- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/sampling_sensitivity_v1_full/validation_tschamut_public_sampling_sensitivity_v1_full_manifest.json`
-- `hazard/results/tschamut_public_pilot/sampling_sensitivity_v2_full/validation_tschamut_public_sampling_sensitivity_v2_full_manifest.json`
-
-Expected work:
-
-- add a read-only diagnostic that computes spatial uncertainty summaries for a
-  small high-value layer set, at least `max_kinetic_energy`,
-  `max_jump_height`, and one velocity-exceedance layer;
-- report cell-wise stability, disagreement concentration, support/nodata
-  sensitivity, and high-variance masks or equivalent summary rasters/tables;
-- emit JSON plus a compact human-readable report; generated rasters or arrays
-  must go to `/tmp` or ignored output paths unless they are tiny test fixtures.
-
-Definition of done:
-
-- the repo can answer "where does same-scale uncertainty concentrate?" for the
-  dominant disagreement layers, not only "how large are the scalar pairwise
-  differences?";
-- tests cover the spatial summary math with small fixture grids;
-- the uncertainty-envelope or gate report records the interpretation without
-  claiming accepted convergence.
-
-Boundaries:
-
-- no physics changes, tuning, threshold changes, or validation-case changes;
-- no large committed rasters or raw/private/geodata outputs;
-- no scale-up, operational, annual-frequency, risk, exposure, or vulnerability
-  claims.
-
 ### TB-038: Add A Bounded COG Conversion Proof Of Concept
 
 Goal: convert the measured GIS blocker from "strip-organized GeoTIFFs with no

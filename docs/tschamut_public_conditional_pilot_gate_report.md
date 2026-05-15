@@ -374,6 +374,10 @@ Supporting same-scale evidence remains reusable:
 - target-side summary-only validation output profile: `summary_only` with `4` files / `1271721` bytes versus `2005` files / `571368823` bytes baseline;
 - swissTLM3D corridor relevance: roads, barriers, and water are measured as `limiting`;
 - Balfrin single-job execution sufficiency: next-step single-job execution is sufficient, distributed execution remains deferred.
+- Spatial same-scale uncertainty tooling now localizes the dominant disagreement corridor:
+  `max_kinetic_energy` is concentrated in a compact LV95 footprint but still carries
+  material support/nodata disagreement, `max_jump_height` remains support/nodata
+  sensitive, and `velocity_exceedance_5mps` is localized with much smaller range.
 
 ## Conditional Pilot Closure Assessment
 
