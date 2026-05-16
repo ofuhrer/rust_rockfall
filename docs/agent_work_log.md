@@ -1551,3 +1551,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: fixture-backed recovery evidence only; no live interruption, distributed execution, physics, sampling, or output-profile claims were introduced.
 - Next task: `TB-107`
+
+### TB-107: Write Balfrin Demonstration Failure-Recovery Playbook
+
+- Date: 2026-05-16
+- Commit: `f2a9a64`
+- Objective: Provide deterministic operator-facing recovery procedures for Balfrin demo failures across readiness, scheduler, partial-output, metrics, GIS/export, and interpretation states.
+- Files changed: `docs/balfrin_tschamut_pilot_runbook.md`, `docs/balfrin_failure_recovery_playbook.md`, `tests/test_balfrin_failure_recovery_playbook.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a standalone Balfrin failure-recovery playbook with a small taxonomy table and command-specific recovery steps for readiness, scheduler, partial-output, metrics, GIS/export, and scientific-state failures.
+  - Added a short runbook pointer so operators can reach the playbook from the existing Balfrin operational guidance without changing the execution boundary.
+  - Added smoke tests that exercise the readiness, metrics, GIS/COG, and interpretation helper outputs the playbook depends on.
+  - Removed TB-107 from the active backlog once the playbook was in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_failure_recovery_playbook -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no jobs were run or broadened, the playbook stays within the current Balfrin single-release-zone demo scope, and the helper contracts remain read-only.
+- Next task: `TB-108`
