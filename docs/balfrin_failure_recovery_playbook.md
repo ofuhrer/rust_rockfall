@@ -31,6 +31,12 @@ Observed on 2026-05-17 via
 Use the same `RUN_ROOT` and `RUN_ID` when retrying the canonical submit from
 that SSH context.
 
+Balfrin may have a separate clone of this repository and may not contain the
+ignored validation, hazard, processed-input, or scratch artifacts present on the
+desktop checkout. Always rerun `check_balfrin_tschamut_readiness.py` inside the
+Balfrin checkout before submitting. Treat missing non-git artifacts on Balfrin
+as a readiness blocker, not as a scheduler or scientific result.
+
 ## Taxonomy
 
 The canonical machine-readable taxonomy helper is

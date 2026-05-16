@@ -19,6 +19,11 @@ The Balfrin SSH entry point currently exposes `sbatch`, so the retry path for
 the canonical demo is to hop into `balfrin` first and then reuse the same run
 identifiers from that shell.
 
+The Balfrin checkout may not contain the same ignored local artifacts as the
+desktop checkout. Before submitting from Balfrin, run the readiness check inside
+the Balfrin checkout and repair any missing non-git artifacts or scratch roots
+there. A clean Git clone alone is not enough evidence that the demo is runnable.
+
 ## Minimal Demo Boundary
 
 Use [`docs/balfrin_minimal_demo_vs_closure.md`](./balfrin_minimal_demo_vs_closure.md) as the short pointer for the demo boundary.
@@ -53,6 +58,11 @@ the run stays reproducible.
 PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py \
   "$RUN_MANIFEST" --format both
 ```
+
+Run this preflight from the same checkout and shell that will call `sbatch`.
+If you entered Balfrin through SSH, rerun it there even if it already passed on
+the desktop checkout. The check must see the ignored validation, hazard, and
+processed-input artifacts used by the run.
 
 ### 2.2 Generate-only
 
