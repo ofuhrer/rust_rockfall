@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-099: Add Balfrin Pilot Post-Run Interpretation Gate
-
-Goal: Define the post-run gate that decides whether the Balfrin single-release-zone pilot is usable as a conditional diagnostic artifact.
-
-Capability gap reduced: Pilot closure readiness and scientific interpretation.
-
-Why this outranks alternatives: A large run is only useful if the repository already knows how to interpret success, instability, output pressure, and GIS product readiness.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- A post-run gate summary for the Balfrin pilot that names required readiness, convergence/stability, output, GIS/COG, and physical-credibility checks.
-- Tests for measured, blocked, and inconclusive post-run states.
-- Documentation that the gate can accept a conditional diagnostic artifact without operational or physical-probability claims.
-
-Definition of done:
-
-- The post-run gate emits JSON/text, focused tests pass, and TB-099 is removed from this backlog.
-
-Boundaries: Do not change current closure criteria, do not reclassify existing Tschamut evidence without new artifacts, and do not authorize operational use.
-
 ### TB-100: Refill Maturity Snapshot For The Balfrin Pilot Track
 
 Goal: Update the compact maturity snapshot and command-context guidance so future workers see the Balfrin single-release-zone pilot track as the current execution focus.

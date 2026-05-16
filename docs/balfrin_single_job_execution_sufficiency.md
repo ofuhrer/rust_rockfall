@@ -43,6 +43,32 @@
 - `output_budget_hazard_output_file_count`: `54`
 - `output_budget_hazard_output_bytes`: `75423367`
 
+## Post-Run Interpretation Gate
+
+The Balfrin post-run interpretation gate is
+`scripts/summarize_balfrin_post_run_interpretation_gate.py`. It composes the
+contract-ready release-zone scope, the single-job sufficiency signal, the
+stability-frontier proxy, GIS / COG readiness, and the physical-credibility
+boundary checks into one read-only diagnostic summary.
+
+The gate uses three post-run states:
+
+- `measured` when readiness, stability, output, GIS / COG, and claim-boundary
+  checks all support a conditional diagnostic artifact;
+- `inconclusive` when the artifact is still diagnostic but one or more checks
+  remain unresolved or weaker than the measured state;
+- `blocked_missing_inputs` when a required evidence input is absent.
+
+The gate can accept a conditional diagnostic artifact while keeping these
+boundaries explicit:
+
+- `operational_claims_allowed`: `False`
+- `physical_probability_claims_allowed`: `False`
+- `annual_frequency_claims_allowed`: `False`
+- `risk_exposure_vulnerability_claims_allowed`: `False`
+- `scale_up_authorized`: `False`
+- `distributed_execution_authorized`: `False`
+
 ## Restartability Evidence
 
 - `driver_ready_for_selected_gate_use`: `True`
@@ -92,6 +118,10 @@ The canonical conditional diagnostic interpretation helper,
 preferred synthesis entrypoint when the current single-job evidence needs to
 be bundled into JSON and text artifacts. Use `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
 to materialize that bundle without changing the execution boundary.
+The Balfrin post-run interpretation gate,
+`scripts/summarize_balfrin_post_run_interpretation_gate.py`, is the read-only
+acceptance layer for a conditional diagnostic artifact. It keeps operational
+and physical-probability claims false even when the artifact is accepted.
 
 ## Scientific Blockers
 
