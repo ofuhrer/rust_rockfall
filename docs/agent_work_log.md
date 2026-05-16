@@ -1956,7 +1956,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-120 blocked provenance: Classify Balfrin restartability and output-tier evidence by source
 
 - Date: 2026-05-17
-- Commit: `pending`
+- Commit: `86fa8cc`
 - Objective: make the Balfrin output-tier audit and restartability notes
   explicitly distinguish measured run-root evidence from fixture-backed
   contract evidence, then remove the TB-120 backlog entry without claiming a
