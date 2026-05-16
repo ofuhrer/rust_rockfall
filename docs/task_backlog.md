@@ -18,6 +18,263 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
+### TB-073: Stabilize Clean-Checkout Python Test Gates
+
+Goal: Make the Python regression suite pass in a clean checkout without relying
+on ignored local Tschamut or Chant Sura artifacts.
+
+Inspect first:
+
+- `tests/test_hazard_context_overlap.py`
+- `tests/test_hazard_layers.py`
+- `tests/test_tschamut_conditional_diagnostic_interpretation.py`
+- `tests/test_tschamut_public_context_layers.py`
+- `tests/test_pilot_command_plan.py`
+- `scripts/generate_pilot_command_plan.py`
+- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
+
+Deliverables:
+
+- Fixture-backed or explicit blocked/skip behavior for tests that currently
+  assume ignored artifact roots, staged public context archives, or local GDAL
+  binaries.
+- Focused tests that still exercise the happy path with tiny fixtures or mocks.
+- Documentation or test comments that separate clean-checkout unit coverage
+  from local artifact integration checks.
+
+Definition of done:
+
+- `PYENV_VERSION=system uv run python -m unittest discover -s tests -p 'test_*.py'`
+  passes in this checkout after removing dependencies on ignored generated
+  artifacts, or artifact-dependent cases skip explicitly with a reason.
+- No generated artifact roots or placeholder policies are committed.
+
+Boundaries: Do not change scientific classifications, hazard-layer semantics,
+physics, operational boundaries, or scale-up authorization.
+
+### TB-074: Stabilize Clean-Checkout Rust Reduced-Output Test
+
+Goal: Fix the Rust clean-checkout failure where the native
+`rebuildable_reduced_output` fixture test reports `Skipped` instead of proving
+the builder-facing output contract.
+
+Inspect first:
+
+- `tests/config_io_terrain.rs`
+- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
+- `src/validation.rs`
+- `src/validation/runner.rs`
+- `src/manifest.rs`
+
+Deliverables:
+
+- A deterministic tiny reduced-output fixture path that can run in CI without
+  private or ignored same-scale artifacts.
+- Assertions that the native reduced mode writes trajectory, deposition,
+  impact-event CSV, diagnostics, trajectory metadata, and stop-state artifacts
+  needed by the hazard builder.
+- Clear skip behavior only for genuinely unavailable external prerequisites,
+  not for committed fixture inputs.
+
+Definition of done:
+
+- `cargo test validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs`
+  passes.
+- `cargo test` passes locally.
+
+Boundaries: Do not change reduced-output scientific meaning, simulator physics,
+  or summary-only behavior; keep `summary_only` non-rebuildable.
+
+### TB-075: Emit Full-Scope COG Export Parity Proof
+
+Goal: Make the first-class COG export path prove the intended same-scale layer
+scope rather than only the smaller proof layer set.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/generate_pilot_command_plan.py`
+- `tests/test_hazard_layers.py`
+- `tests/test_gis_cog_package_readiness.py`
+- `docs/pilot_gis_package.md`
+
+Deliverables:
+
+- A command-plan COG export path whose requested threshold layers match the
+  documented standard same-scale package scope, or an explicit machine-readable
+  statement of any intentionally omitted layers.
+- Audit output that reports standard-root layer counts, converted-root layer
+  counts, and parity status without hiding the standard roots'
+  `gis_package_ready_cog_blocked` state.
+- Focused tests for full-scope COG parity reporting.
+
+Definition of done:
+
+- The COG export helper/audit can distinguish `cog_package_ready` from
+  `cog_package_ready_with_scope_delta`.
+- The same-scale command plan contains the intended full-scope COG export
+  command or a documented bounded proof command with explicit scope delta.
+
+Boundaries: Do not commit generated rasters, require manual QGIS acceptance,
+  or introduce operational GIS claims.
+
+### TB-076: Define Conditional Gridpoint Curve Product Contract
+
+Goal: Specify and exercise the conditional gridpoint intensity-exceedance curve
+contract that current hazard maps can support without annual frequency claims.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `docs/hazard_layers.md`
+- `docs/hazard_map_semantics.md`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+- `tests/test_hazard_layers.py`
+
+Deliverables:
+
+- A small machine-readable contract or helper report describing per-gridpoint
+  conditional exceedance curves, their threshold units, normalization scope,
+  and unsupported physical-frequency fields.
+- A tiny fixture or existing-output summary proving the curve schema can be
+  emitted or audited without new simulations.
+- Documentation that cleanly separates conditional exceedance curves from
+  physical intensity-frequency curves.
+
+Definition of done:
+
+- A focused test validates the conditional curve contract shape.
+- The report/docs state that annual or physical frequency remains unsupported.
+
+Boundaries: Do not implement annual-frequency modelling, return periods,
+  source occurrence rates, risk, exposure, vulnerability, or operational use.
+
+### TB-077: Prototype AOI-To-Release-Zone Heuristic Dry Run
+
+Goal: Start closing the automation gap between "user provides a region" and a
+candidate release-zone set by defining a deterministic, fixture-backed heuristic
+dry run.
+
+Inspect first:
+
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+
+Deliverables:
+
+- A dry-run helper or report that accepts an AOI/site config and emits candidate
+  release-zone heuristic requirements, inputs, and blocked/missing products.
+- A tiny fixture-backed example that does not claim the synthetic candidate is a
+  real public-geodata release-zone interpretation.
+- Documentation of heuristic assumptions and missing terrain/context
+  prerequisites for a real site.
+
+Definition of done:
+
+- The dry run produces deterministic JSON/text output for the Chant Sura fixture
+  and reports `deferred_public_context_inputs` where real context is absent.
+
+Boundaries: Do not download public data, run a second-site ensemble, tune
+  release-zone physics, or treat synthetic fixtures as field evidence.
+
+### TB-078: Generate Pragmatic Release-Plan Dry Run
+
+Goal: Define how a portable source-zone candidate becomes deterministic release
+and block-scenario rows before any new ensemble is run.
+
+Inspect first:
+
+- `scripts/audit_multisite_source_scenario_contract.py`
+- `scripts/generate_pilot_command_plan.py`
+- `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+
+Deliverables:
+
+- A fixture-backed release-plan dry run that emits deterministic release counts,
+  seed policy, block-scenario classes, and site-specific fields for a candidate
+  source-zone record.
+- A machine-readable distinction between reusable semantics, site-specific
+  inputs, and Tschamut-only heuristics.
+- A command-plan entry that remains blocked/template-only for real second-site
+  execution until public context is present.
+
+Definition of done:
+
+- Focused tests verify deterministic dry-run output and that no second-site
+  simulation command is authorized.
+
+Boundaries: Do not create a production release plan, tune parameters, run
+  ensembles, or authorize scale-up.
+
+### TB-079: Add Chant Sura Real-Context Readiness Gate Artifact
+
+Goal: Move Chant Sura from synthetic core-input staging toward real
+public-context readiness by adding an explicit gate artifact for acquisition
+decisions.
+
+Inspect first:
+
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+
+Deliverables:
+
+- A readiness-gate report that compares the deterministic acquisition plan,
+  local staged files, and deferred public-context products for Chant Sura.
+- Concrete next acquisition decisions for SWISSIMAGE, swissTLM3D,
+  swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D without
+  downloading them.
+- A clear indication that synthetic core inputs are not public-context evidence.
+
+Definition of done:
+
+- The gate report has JSON/text output and tests covering ready core inputs plus
+  deferred real-context products.
+
+Boundaries: Do not perform downloads, run second-site hazard maps, or claim
+  second-site validation/calibration readiness.
+
+### TB-080: Define Observed Runout And Deposition Validation Intake Contract
+
+Goal: Turn the physical-credibility evidence map into a concrete future data
+intake contract for observed runout/deposition evidence.
+
+Inspect first:
+
+- `scripts/map_physical_credibility_evidence_requirements.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `scripts/summarize_chant_sura_holdout_evidence.py`
+- `docs/tschamut_public_conditional_pilot_gate_report.md`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- A minimal schema/report for observed runout/deposition benchmark intake,
+  including geometry, event/source metadata, uncertainty fields, and objective
+  function placeholders.
+- Explicit mapping from each field to the physical-credibility requirement it
+  would satisfy.
+- A blocked/current-state report showing that no such calibration dataset is
+  currently available in the repo.
+
+Definition of done:
+
+- Focused tests validate the intake contract and current blocked status.
+- Documentation states that calibration, physical probability, and operational
+  claims remain unsupported until real evidence is acquired.
+
+Boundaries: Do not fabricate validation data, fit parameters, change closure
+  status, or introduce annual-frequency/risk/exposure/vulnerability semantics.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
