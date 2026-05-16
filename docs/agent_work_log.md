@@ -220,6 +220,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   recorded in the archive.
 - Next task: see `docs/task_backlog.md` for the active queue.
 
+
 ### TB-014: the selected gate so TB-014 can be retried without ambiguity once inputs
 
 - Date: see archive if not listed in the original entry.
@@ -1219,3 +1220,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no data downloads, no ensemble runs, and no operational or probability claims were introduced; the real repo-root invocation still reports the candidate as blocked/deferred where core or public-context inputs are absent.
 - Next task: `TB-090`
+
+### TB-090: Generate Second-Site Conditional Case Skeleton
+
+- Date: 2026-05-16
+- Commit: `d45de1f`
+- Objective: finalized the blocked Chant Sura / Fluelapass dry-run skeleton bookkeeping so the task is removed from the active backlog without authorizing execution.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the existing dry-run skeleton helper emits a non-executable case draft into `/tmp` or the ignored validation/private path.
+  - Verified the command plan exposes the skeleton step alongside the portability preflight and source/scenario audit.
+  - Removed TB-090 from the active backlog after the skeleton contract was validated in dry-run mode.
+- Checks run:
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py tests/test_pilot_command_plan.py tests/test_second_site_public_geodata_preflight.py tests/test_multisite_source_scenario_contract.py`
+  - `PYENV_VERSION=system uv run python scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --output-root /tmp/tb090_chant_sura_fluelapass_case_skeleton --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no Chant Sura validation or hazard generation was run, and no public-context readiness or operational claim was added.
+- Next task: backlog refill needed.
