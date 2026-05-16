@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-104: Add Structured Worker Output Compression
-
-Goal: Reduce autonomous worker/orchestrator output pressure by standardizing concise progress summaries, bounded command output, and final structured reports.
-
-Capability gap reduced: Agent scalability and orchestration stability.
-
-Why this outranks alternatives: Real Balfrin runs and repeated autonomous tasks will make raw logs, diffs, and test output a first-order orchestration cost.
-
-Inspect first:
-
-- `AGENTS.md`
-- `docs/agent_reference.md`
-- `scripts/print_agent_task_context.py`
-- `docs/agent_work_log.md`
-- `scripts/check_repo_consistency.py`
-
-Deliverables:
-
-- Updated worker guidance or helper support for bounded output, no full-diff dumps, `/tmp` redirection for large JSON, and final report schemas.
-- Consistency checks or tests that prevent common output/logging pitfalls where practical.
-- No loss of final failure diagnostics.
-
-Definition of done:
-
-- Focused tests and repo consistency pass, future worker prompts have compact output guidance, and TB-104 is removed from this backlog.
-
-Boundaries: Do not hide actionable failure blocks, do not change scientific helpers, and do not add branch/worktree workflows.
-
 ### TB-105: Build Canonical Balfrin Evidence Bundle
 
 Goal: Assemble measured Balfrin readiness, metrics, outputs, GIS/COG status, restartability, and interpretation checks into one canonical evidence bundle and report.
@@ -374,7 +346,10 @@ helper only for orchestrator/review work.
 
 Keep worker prompts compact: include the selected task body and essential
 pitfalls only. Redirect large JSON, diffs, and logs to `/tmp`, summarize the
-result, and preserve the final relevant error block when a command fails.
+result, preserve the final relevant error block when a command fails, and
+finish with the compact structured report schema:
+`TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,
+`PUSH_STATUS`, `REMAINING_NEXT_TASK`, `BOUNDARY_NOTE`.
 
 Before commit, run the task-specific checks, `git diff --check`, repository
 consistency, `scripts/git-hooks/pre-commit`, and the placeholder-artifact scan.

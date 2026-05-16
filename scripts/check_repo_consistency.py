@@ -140,6 +140,7 @@ def main() -> int:
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_roadmap_target_authority())
     errors.extend(check_task_backlog_and_work_log_hygiene())
+    errors.extend(check_worker_output_compression_guidance())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
     errors.extend(check_schema_docs())
@@ -2075,6 +2076,51 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
             if not re.search(rf"(?m)^- {re.escape(field)}:", block):
                 errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
 
+    return errors
+
+
+def check_worker_output_compression_guidance() -> list[str]:
+    errors: list[str] = []
+    agents = (ROOT / "AGENTS.md").read_text()
+    backlog = (ROOT / "docs/task_backlog.md").read_text()
+    helper = (ROOT / "scripts/print_agent_task_context.py").read_text()
+    tests = (ROOT / "tests/test_agent_task_context.py").read_text()
+
+    for term in (
+        "Keep visible worker progress compact: use 1-2 sentence updates, redirect",
+        "large JSON/logs/diffs to `/tmp`",
+        "Finish with the compact structured report schema",
+        "TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,",
+    ):
+        if term not in agents:
+            errors.append(f"AGENTS.md omits worker-output guidance {term!r}")
+
+    for term in (
+        "finish with the compact structured report schema",
+        "`TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,",
+    ):
+        if term not in backlog:
+            errors.append(f"docs/task_backlog.md omits worker-output guidance {term!r}")
+
+    for term in (
+        'WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION = "agent_worker_output_guidance_v1"',
+        "def build_worker_output_guidance() -> dict[str, Any]:",
+        '"worker_output_guidance": build_worker_output_guidance()',
+        '"final_report_schema": WORKER_OUTPUT_REPORT_SCHEMA',
+        "Redirect large JSON, logs, and diffs to /tmp.",
+        "Preserve the final relevant error block when a command fails.",
+    ):
+        if term not in helper:
+            errors.append(f"scripts/print_agent_task_context.py omits worker-output contract {term!r}")
+
+    for term in (
+        "test_report_contains_required_json_fields_without_live_checks",
+        "test_rendered_report_includes_compact_worker_output_guidance",
+        "worker_output_guidance",
+        "final_report_schema",
+    ):
+        if term not in tests:
+            errors.append(f"tests/test_agent_task_context.py omits worker-output coverage {term!r}")
     return errors
 
 

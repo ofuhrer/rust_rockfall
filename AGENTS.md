@@ -61,6 +61,12 @@ final relevant error block on failure.
 - Keep seeded/stochastic runs deterministic.
 - Keep scratch outputs in `/tmp`; do not commit generated trajectory or hazard
   outputs unless they are intentional tiny fixtures.
+- Keep visible worker progress compact: use 1-2 sentence updates, redirect
+  large JSON/logs/diffs to `/tmp`, never paste full diffs, and preserve the
+  final relevant error block when a command fails.
+- Finish with the compact structured report schema:
+  `TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,
+  `PUSH_STATUS`, `REMAINING_NEXT_TASK`, `BOUNDARY_NOTE`.
 - For dataset or validation-case changes, keep calibration, validation, and
   operational input data separate.
 - For Swiss geodata changes, preserve CRS, vertical datum, resolution, extent,

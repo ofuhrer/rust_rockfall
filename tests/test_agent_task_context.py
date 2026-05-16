@@ -63,6 +63,16 @@ Expected work:
             "scripts/convert_same_scale_package_to_cog.py",
             {helper["path"] for helper in report["canonical_helpers"]},
         )
+        self.assertIn("worker_output_guidance", report)
+        self.assertEqual(
+            report["worker_output_guidance"]["schema_version"],
+            agent_context.WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION,
+        )
+        self.assertEqual(
+            report["worker_output_guidance"]["final_report_schema"],
+            agent_context.WORKER_OUTPUT_REPORT_SCHEMA,
+        )
+        self.assertIn("Redirect large JSON, logs, and diffs to /tmp.", report["worker_output_guidance"]["command_output_policy"])
         self.assertIn("known_environment_issues", report)
         self.assertIn("generated_roots_to_avoid", report)
         self.assertEqual(report["push_policy"]["repository_pre_push_hook"], "not_installed")
@@ -92,6 +102,15 @@ Expected work:
         self.assertEqual(report["detail"], "full")
         self.assertEqual(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
         self.assertTrue(all("inspect_first" in task for task in report["active_tasks"]))
+
+    def test_rendered_report_includes_compact_worker_output_guidance(self) -> None:
+        report = agent_context.build_report(run_checks=False)
+        text = agent_context.render_text(report)
+
+        self.assertIn("worker_output_guidance:", text)
+        self.assertIn("agent_worker_output_guidance_v1", text)
+        self.assertIn("final_report_schema: TASK, STATUS, SUMMARY, FILES_CHANGED", text)
+        self.assertIn("Preserve the final relevant error block", text)
 
     def test_missing_task_is_explicitly_blocked(self) -> None:
         report = agent_context.build_report("TB-000", run_checks=False)

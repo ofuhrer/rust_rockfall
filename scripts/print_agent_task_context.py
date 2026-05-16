@@ -29,6 +29,34 @@ CURRENT_EXECUTION_FOCUS = (
     "Balfrin single-release-zone pilot track: dry-run automation is in place, "
     "and measured Balfrin execution plus post-run evidence are the next step."
 )
+WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION = "agent_worker_output_guidance_v1"
+WORKER_OUTPUT_REPORT_SCHEMA = [
+    "TASK",
+    "STATUS",
+    "SUMMARY",
+    "FILES_CHANGED",
+    "CHECKS_RUN",
+    "COMMIT",
+    "PUSH_STATUS",
+    "REMAINING_NEXT_TASK",
+    "BOUNDARY_NOTE",
+]
+
+
+def build_worker_output_guidance() -> dict[str, Any]:
+    return {
+        "schema_version": WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION,
+        "progress_update_style": "1-2 sentences; include the concrete step, result, or blocker only.",
+        "command_output_policy": [
+            "Redirect large JSON, logs, and diffs to /tmp.",
+            "Do not paste full diffs or long raw logs into chat.",
+            "Summarize the result and keep the visible output bounded.",
+        ],
+        "failure_diagnostics_policy": (
+            "Preserve the final relevant error block when a command fails."
+        ),
+        "final_report_schema": WORKER_OUTPUT_REPORT_SCHEMA,
+    }
 
 
 @dataclass(frozen=True)
@@ -359,6 +387,7 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
         },
         "read_only": True,
         "recommended_first_commands": recommended_first_commands(task_id),
+        "worker_output_guidance": build_worker_output_guidance(),
         "live_checks": {},
     }
 
@@ -437,6 +466,18 @@ def render_text(report: dict[str, Any]) -> str:
         lines.append(f"current_execution_focus: {report['current_execution_focus']}")
     lines.append("recommended_first_commands:")
     lines.extend(f"- {command}" for command in report["recommended_first_commands"])
+    guidance = report.get("worker_output_guidance")
+    if guidance:
+        lines.append("worker_output_guidance:")
+        lines.append(f"- schema_version: {guidance['schema_version']}")
+        lines.append(f"- progress_update_style: {guidance['progress_update_style']}")
+        lines.append("- command_output_policy:")
+        lines.extend(f"  - {item}" for item in guidance["command_output_policy"])
+        lines.append(f"- failure_diagnostics_policy: {guidance['failure_diagnostics_policy']}")
+        lines.append(
+            "- final_report_schema: "
+            + ", ".join(guidance["final_report_schema"])
+        )
     lines.append("canonical_helpers:")
     lines.extend(f"- {helper['name']}: {helper['path']}" for helper in report["canonical_helpers"])
     lines.append("generated_roots_to_avoid:")
