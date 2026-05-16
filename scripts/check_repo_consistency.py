@@ -138,6 +138,7 @@ def main() -> int:
     errors.extend(check_tracked_copy_suffix_docs())
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_roadmap_target_authority())
+    errors.extend(check_task_backlog_and_work_log_hygiene())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
     errors.extend(check_schema_docs())
@@ -1986,6 +1987,130 @@ def check_roadmap_target_authority() -> list[str]:
                     f"{path.relative_to(ROOT)}:{line_number} uses active-looking '## Target N:' heading; use TB-xxx in task_backlog.md"
                 )
     return errors
+
+
+def check_task_backlog_and_work_log_hygiene() -> list[str]:
+    errors: list[str] = []
+    backlog_path = ROOT / "docs/task_backlog.md"
+    work_log_path = ROOT / "docs/agent_work_log.md"
+    backlog_text = backlog_path.read_text()
+    work_log_text = work_log_path.read_text()
+
+    active_backlog = _section_between(backlog_text, "## Active Tasks", "## Backlog Protocol")
+    backlog_entries = _extract_tb_headings(active_backlog)
+    work_log_entries = _extract_tb_headings(work_log_text)
+
+    for line_number, line in _tb_heading_lines(backlog_text):
+        if not re.match(r"^### TB-\d{3}: [^ ].+", line):
+            errors.append(
+                f"docs/task_backlog.md:{line_number} task heading must be exactly '### TB-XXX: Short Description'"
+            )
+        if re.match(r"^### TB-\d{3}\s+\(P\d+\):", line):
+            errors.append(f"docs/task_backlog.md:{line_number} must not put priority in the task heading")
+
+    backlog_ids = [task_id for task_id, _title in backlog_entries]
+    if backlog_ids != sorted(backlog_ids):
+        errors.append("docs/task_backlog.md active TB tasks must be sorted by numeric task id")
+    duplicate_backlog_ids = sorted({task_id for task_id in backlog_ids if backlog_ids.count(task_id) > 1})
+    if duplicate_backlog_ids:
+        errors.append(f"docs/task_backlog.md contains duplicate active TB ids: {duplicate_backlog_ids}")
+
+    required_backlog_terms = (
+        "Task headings must always be exactly:",
+        "Do not put priority, status, owner, or tags in the heading.",
+        "Do not keep completed tasks here.",
+        "Append completed TB work to the bottom of `docs/agent_work_log.md`",
+    )
+    for term in required_backlog_terms:
+        if term not in backlog_text:
+            errors.append(f"docs/task_backlog.md omits backlog hygiene instruction {term!r}")
+
+    work_log_ids = [task_id for task_id, _title in work_log_entries]
+    if work_log_ids != sorted(work_log_ids):
+        errors.append("docs/agent_work_log.md TB entries must be sorted in ascending order")
+    duplicate_work_log_ids = sorted({task_id for task_id in work_log_ids if work_log_ids.count(task_id) > 1})
+    if duplicate_work_log_ids:
+        errors.append(f"docs/agent_work_log.md contains duplicate TB ids: {duplicate_work_log_ids}")
+
+    overlap = sorted(set(backlog_ids) & set(work_log_ids))
+    if overlap:
+        errors.append(
+            "completed TB entries must not remain active in docs/task_backlog.md: "
+            + ", ".join(f"TB-{task_id:03d}" for task_id in overlap)
+        )
+
+    required_work_log_terms = (
+        "Always append new entries at the bottom of this file.",
+        "Use one `### TB-XXX: Short Title` heading per completed task.",
+        "Keep the TB entries in ascending order.",
+        "## Entry Template",
+    )
+    for term in required_work_log_terms:
+        if term not in work_log_text:
+            errors.append(f"docs/agent_work_log.md omits work-log hygiene instruction {term!r}")
+
+    if re.search(r"(?mi)^- Commit:\s*pending\b", work_log_text):
+        errors.append("docs/agent_work_log.md contains stale 'Commit: pending' placeholder")
+    if re.search(r"(?mi)^- Checks run:\s*pending\b", work_log_text):
+        errors.append("docs/agent_work_log.md contains stale 'Checks run: pending' placeholder")
+    if re.search(r"(?mi)^- Next task:\s*none\b", work_log_text):
+        errors.append("docs/agent_work_log.md should say 'backlog refill needed' instead of 'Next task: none'")
+
+    for task_id, block in _extract_tb_blocks(work_log_text):
+        for field in (
+            "Date",
+            "Commit",
+            "Objective",
+            "Files changed",
+            "Implementation summary",
+            "Checks run",
+            "Result/status",
+            "Boundaries",
+            "Next task",
+        ):
+            if not re.search(rf"(?m)^- {re.escape(field)}:", block):
+                errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
+
+    return errors
+
+
+def _section_between(text: str, start_heading: str, end_heading: str) -> str:
+    start = text.find(start_heading)
+    if start == -1:
+        return ""
+    start += len(start_heading)
+    end = text.find(end_heading, start)
+    return text[start:] if end == -1 else text[start:end]
+
+
+def _tb_heading_lines(text: str) -> list[tuple[int, str]]:
+    lines: list[tuple[int, str]] = []
+    in_fence = False
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence and line.startswith("### TB-"):
+            lines.append((line_number, line))
+    return lines
+
+
+def _extract_tb_headings(text: str) -> list[tuple[int, str]]:
+    entries: list[tuple[int, str]] = []
+    for _line_number, line in _tb_heading_lines(text):
+        match = re.match(r"^### TB-(\d{3}): (.+)$", line)
+        if match:
+            entries.append((int(match.group(1)), match.group(2).strip()))
+    return entries
+
+
+def _extract_tb_blocks(text: str) -> list[tuple[int, str]]:
+    matches = list(re.finditer(r"(?m)^### TB-(\d{3}): .*$", text))
+    blocks: list[tuple[int, str]] = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        blocks.append((int(match.group(1)), text[match.start():end]))
+    return blocks
 
 
 def check_strict_case_schema_audit() -> list[str]:

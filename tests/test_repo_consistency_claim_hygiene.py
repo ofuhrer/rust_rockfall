@@ -29,6 +29,55 @@ class HazardClaimHygieneTests(unittest.TestCase):
     def test_current_roadmap_target_authority_is_unambiguous(self) -> None:
         self.assertEqual(check_repo_consistency.check_roadmap_target_authority(), [])
 
+    def test_task_backlog_and_work_log_hygiene_is_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_task_backlog_and_work_log_hygiene(), [])
+
+    def test_task_hygiene_detects_unsorted_duplicate_or_stale_entries(self) -> None:
+        backlog_text = """## Active Tasks
+
+### TB-002: Second
+
+### TB-001 (P0): First
+
+### TB-002: Duplicate
+
+## Backlog Protocol
+"""
+        work_log_text = """### TB-003: Third
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: x
+- Files changed: x
+- Implementation summary: x
+- Checks run: pending
+- Result/status: completed.
+- Boundaries: x
+- Next task: none
+
+### TB-002: Second
+
+- Date: 2026-05-16
+- Commit: `abc1234`
+- Objective: x
+- Files changed: x
+- Implementation summary: x
+- Checks run: x
+- Result/status: completed.
+- Boundaries: x
+- Next task: backlog refill needed
+"""
+
+        backlog_entries = check_repo_consistency._extract_tb_headings(
+            check_repo_consistency._section_between(backlog_text, "## Active Tasks", "## Backlog Protocol")
+        )
+        work_log_entries = check_repo_consistency._extract_tb_headings(work_log_text)
+
+        self.assertEqual([task_id for task_id, _ in backlog_entries], [2, 2])
+        self.assertEqual([task_id for task_id, _ in work_log_entries], [3, 2])
+        self.assertRegex(backlog_text, r"(?m)^### TB-\d{3} \(P\d+\):", msg="fixture should contain bad priority heading")
+        self.assertRegex(work_log_text, r"Commit:\s*pending", msg="fixture should contain stale commit placeholder")
+
     def test_python_tool_dependency_metadata_is_consistent(self) -> None:
         self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
 
