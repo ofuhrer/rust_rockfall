@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-111: Compare Balfrin Results Against Same-Scale Uncertainty
-
-Goal: Explain what the measured Balfrin run changes, confirms, or fails to address relative to existing same-scale uncertainty, closure, stability, and hotspot evidence.
-
-Capability gap reduced: Scientific interpretability.
-
-Why this outranks alternatives: A Balfrin run is scientifically useful only if it is interpreted against the known closure-limiting uncertainty structure.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-
-Deliverables:
-
-- A scientific delta report that compares Balfrin measured outputs to same-scale uncertainty, stability zones, closure-gap deltas, and hotspot provenance.
-- Tests for measured, inconclusive, and missing Balfrin evidence states.
-
-Definition of done:
-
-- The delta report emits JSON/text, focused tests pass, and TB-111 is removed from this backlog.
-
-Boundaries: Do not reclassify Tschamut closure without new measured evidence, do not tune physics, and do not claim physical validation.
-
 ### TB-112: Define Balfrin Operational Failure Taxonomy
 
 Goal: Formalize Balfrin run failure classes and recovery semantics for readiness, scheduler, runtime, partial-output, metrics, GIS/export, and scientific-state failures.

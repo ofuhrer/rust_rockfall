@@ -16,3 +16,4 @@ Reference points:
 - `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
 - `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
 - `scripts/summarize_balfrin_post_run_interpretation_gate.py`
+- `scripts/summarize_balfrin_scientific_delta_report.py`
