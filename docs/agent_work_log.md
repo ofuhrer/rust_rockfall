@@ -1713,3 +1713,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no real swisstopo downloads were performed, no second-site ensemble was run, and synthetic fixtures were not treated as public-context evidence.
 - Next task: backlog refill needed
+
+### TB-115: Freeze Canonical Balfrin Demonstration Contract
+
+- Date: 2026-05-17
+- Commit: `cb7e1d2`
+- Objective: freeze the canonical Balfrin minimal demonstration contract, teach the readiness helper to accept that contract schema, and keep the frozen demo path distinct from scientific closure.
+- Files changed: `scripts/check_balfrin_tschamut_readiness.py`, `tests/test_balfrin_tschamut_readiness.py`, `docs/current_maturity_snapshot.md`, `docs/balfrin_single_release_zone_execution_report.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a contract-aware Balfrin readiness branch that accepts the frozen `balfrin_single_release_zone_pilot_contract_v1` schema without weakening the existing non-operational boundary checks.
+  - Kept the original conditional-pilot readiness path intact so existing same-scale readiness behavior remains available for that schema.
+  - Added focused regression coverage proving the Balfrin contract schema now passes readiness, the frozen command sequence remains read-only, and minimal-demo success remains distinct from scientific closure.
+  - Updated the maturity snapshot and the historical execution report to reflect that TB-115 resolved the schema mismatch blocker while preserving the original TB-102 failure record.
+  - Removed TB-115 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_tschamut_readiness tests.test_balfrin_single_release_zone_pilot_contract tests.test_balfrin_single_release_zone_case_plan_dry_run -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_balfrin_single_release_zone_case_dry_run.py --format json`
+  - `git diff --check`
+- Result/status: completed.
+- Boundaries: the contract remains a read-only demonstration artifact; no Balfrin job was run, readiness checks were not weakened, and no operational, distributed, scale-up, or physical-probability claims were introduced.
+- Next task: `TB-116`
