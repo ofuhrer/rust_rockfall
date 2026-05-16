@@ -1171,3 +1171,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new simulation was run, no physics or tuning was changed, no validation or operational claim was introduced, and attribution remained interpretive evidence only.
 - Next task: `TB-086`
+
+### TB-086: Summarize Same-Scale Ensemble Stability Frontier
+
+- Date: 2026-05-16
+- Commit: `7d81670`
+- Objective: Combine the committed same-scale uncertainty, runtime/output footprint, bounded-feasibility, and closure-gap evidence into a bounded stability frontier for deciding whether another small probe would be informative.
+- Files changed: scripts/summarize_same_scale_stability_frontier.py, tests/test_same_scale_stability_frontier.py, docs/balfrin_single_job_execution_sufficiency.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a deterministic frontier helper that composes the existing uncertainty, runtime/output, bounded-next-probe feasibility, and closure-gap summaries; classified the current frontier as `additional_probe_informative` when the measured uncertainty spread remains non-zero while the probe footprint stays bounded and local; added regression coverage for the measured and blocked helper-contract paths plus CLI smoke checks; and added a short docs pointer from the Balfrin sufficiency note to the new frontier helper.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_same_scale_stability_frontier.py tests/test_same_scale_stability_frontier.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_stability_frontier tests.test_same_scale_sampling_uncertainty tests.test_bounded_reducer_runtime_scaling tests.test_bounded_next_ensemble_feasibility_probe tests.test_tschamut_closure_gap_deltas`; `PYENV_VERSION=system uv run python scripts/summarize_same_scale_stability_frontier.py --format text`; `PYENV_VERSION=system uv run python scripts/summarize_same_scale_stability_frontier.py --format json`
+- Result/status: completed.
+- Boundaries: no new ensemble was run, no production scale-up was authorized, and no scientific closure criteria or physical-probability boundaries were changed.
+- Next task: `TB-087`
