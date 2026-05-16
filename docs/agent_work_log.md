@@ -1446,3 +1446,22 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no Balfrin jobs were run, the contract stays non-operational, and no annual-frequency, risk, exposure, vulnerability, distributed-execution, scale-up, or physical-probability claims were authorized.
 - Next task: `TB-102`
+
+### TB-102: Execute And Collect The Balfrin Single-Release-Zone Pilot
+
+- Date: 2026-05-16
+- Commit: `9944204`
+- Objective: attempt the first measured Balfrin single-release-zone pilot execution and, where execution was blocked, record the exact failure class with the minimal audited evidence needed for follow-up.
+- Files changed: `docs/balfrin_single_release_zone_execution_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a compact blocked execution report that records the exact pre-execution failure class: the readiness checker rejects the selected Balfrin contract because its `schema_version` does not match the public real-site gate schema.
+  - Removed TB-102 from the active backlog once the blocked-report path was committed, keeping the backlog consistent with the current executable state.
+  - Preserved the non-operational boundary and made clear that no run root, measured metrics bundle, or generated hazard/validation outputs were produced.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml --format both`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_balfrin_single_release_zone_case_dry_run.py --format json`
+  - `git commit -m "Record blocked Balfrin single-release-zone execution report"`
+- Result/status: blocked.
+- Boundaries: no Balfrin execution artifacts were generated or committed, and no operational, annual-frequency, risk, exposure, vulnerability, distributed-execution, or physical-probability claims were introduced.
+- Next task: `TB-103`
