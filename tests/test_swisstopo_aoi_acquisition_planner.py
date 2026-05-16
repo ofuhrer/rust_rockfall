@@ -53,6 +53,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
         self.assertIn("Chant Sura is the clearest concrete Swiss candidate", report["candidate_selection_rationale"])
         self.assertEqual(report["acquisition_manifest_status"], "ready")
+        self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
+        self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertEqual(
             report["deferred_public_context_categories"],
@@ -70,6 +72,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(product_rows["swissimage_context"]["current_status"], "deferred_public_context")
         self.assertEqual(product_rows["swissimage_context"]["expected_staged_path"], report["expected_staging_paths"]["swissimage_context"])
         self.assertFalse(product_rows["barrier_inventory"]["required"])
+        plan_rows = {entry["category"]: entry for entry in report["public_context_acquisition_plan"]}
+        self.assertTrue(plan_rows["swissimage_context"]["expected_staging_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"))
 
         metadata_rows = {entry["category"]: entry for entry in report["required_metadata_records"]}
         self.assertEqual(metadata_rows["terrain_metadata"]["current_status"], "ready")
@@ -90,6 +94,7 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertNotIn("barrier_inventory", unresolved_categories)
         self.assertEqual(report["claim_boundaries"]["operational_claims_allowed"], False)
         self.assertEqual(report["claim_boundaries"]["scale_up_authorized"], False)
+        self.assertTrue(report["public_context_acquisition_plan"][0]["expected_staging_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"))
 
     def test_text_and_json_output_remain_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -114,6 +119,7 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         text_report = planner.render_text_report(report)
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("required_public_geodata_products:", text_report)
+        self.assertIn("public_context_acquisition_plan:", text_report)
         self.assertIn("unresolved_acquisition_decisions:", text_report)
         self.assertIn("deferred_public_context_categories:", text_report)
 

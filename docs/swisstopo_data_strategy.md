@@ -243,6 +243,13 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The same manifest now drives a deterministic dry-run acquisition summary in
+the second-site preflight and the AOI acquisition planner. That summary names
+the expected staging roots and metadata contracts for SWISSIMAGE,
+swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, but
+it does not download anything and it does not convert the deferred public
+context into readiness.
+
 `scripts/map_physical_credibility_evidence_requirements.py` now maps the
 project's validation gap into concrete evidence requirements. It keeps the
 distinction explicit between:
@@ -293,6 +300,9 @@ context root so the second-site preflight can report the public products as
 swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D stay
 deferred and continue to appear explicitly in the preflight and acquisition
 manifest.
+That helper is a synthetic staging aid only. It is useful for core readiness
+checks, but it is not a real public-context acquisition workflow and must not
+be interpreted as one.
 
 The validation/calibration evidence-gap helper
 `scripts/assess_validation_calibration_evidence_gaps.py` now makes the current

@@ -51,6 +51,14 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
         self.assertGreaterEqual(report["acquisition_manifest_category_count"], 10)
+        self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
+        self.assertEqual(report["public_context_acquisition_summary"]["ready_product_count"], 0)
+        self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
+        self.assertTrue(
+            report["public_context_acquisition_summary"]["expected_staging_roots"][0].endswith(
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
+            )
+        )
         self.assertIn("Review acquisition manifest at", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
@@ -106,6 +114,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "missing_input_paths_or_patterns",
                 "metadata_requirements",
                 "operational_claims_allowed",
+                "public_context_acquisition_plan",
+                "public_context_acquisition_summary",
                 "public_context_boundary_status",
                 "public_context_product_requirements",
                 "portability_preflight_status",
@@ -149,6 +159,14 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
         self.assertGreater(report["acquisition_manifest_command_template_count"], 0)
+        self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
+        self.assertEqual(report["public_context_acquisition_summary"]["ready_product_count"], 5)
+        self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 0)
+        self.assertEqual(
+            report["public_context_acquisition_plan"][0]["expected_staging_root"],
+            str(root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"),
+        )
+        self.assertEqual(report["public_context_acquisition_plan"][1]["metadata_contract"][0], "expected_staged_path")
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
@@ -157,6 +175,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertIn("source_zone_id_pattern", report["source_zone_scenario_contract"])
         self.assertIn("Candidate selection rationale", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertIn("Chant Sura / Flüelapass portability example", "\n".join(report["acquisition_or_staging_checklist"]))
+        self.assertIn("Public-context acquisition plan roots", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertEqual(report["core_input_status"], "ready")
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertEqual(
@@ -174,6 +193,10 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
         self.assertFalse(product_requirements["swissimage_context"]["synthetic_fixture_allowed"])
         self.assertFalse(product_requirements["swissimage_context"]["staged"])
+        self.assertEqual(
+            product_requirements["swissimage_context"]["expected_staging_root"],
+            str(root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"),
+        )
         self.assertTrue(
             report["expected_local_paths"]["swissimage_context"].endswith(
                 "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
@@ -193,6 +216,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             str(root / "data/processed/swisstopo/placeholder_second_site_v1/context/swisstlm3d/metadata.json"),
             report["deferred_public_context_paths_or_patterns"],
         )
+        self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
         self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
         product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
         self.assertEqual(product_requirements["swisstlm3d_metadata"]["current_status"], "deferred_public_context")
@@ -213,6 +237,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         text = preflight.render_text_report(report)
         self.assertIn("portability_preflight_status: deferred_public_context_inputs", text)
         self.assertIn("public_context_boundary_status: deferred_public_context_inputs", text)
+        self.assertIn("public_context_acquisition_summary:", text)
+        self.assertIn("public_context_acquisition_plan:", text)
         self.assertIn("validate_public_real_site_conditional_pilot_run.py", text)
         self.assertIn("acquisition_manifest_status:", text)
         self.assertIn("public_context_product_requirements:", text)

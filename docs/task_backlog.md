@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-072: Stage First Real Chant Sura Public-Context Acquisition Plan
-
-Goal: Chant Sura portability remains synthetic/context-deferred, and the next realism step is a concrete dry-run acquisition plan for actual public-context products. Reduces: Swiss-wide portability uncertainty.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `tests/fixtures/second_site_public_geodata_preflight/`
-
-Deliverables:
-
-- explicit acquisition/staging plan for SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D;
-- exact expected staging roots and metadata contracts;
-- deterministic dry-run acquisition summary without downloads.
-
-Definition of done:
-
-- second-site preflight reports a concrete acquisition path while still marking unstaged public context as deferred;
-- no public geodata is downloaded or committed;
-- docs distinguish synthetic staging from real-context readiness.
-
-Boundaries: no second-site ensemble, no hazard build, no downloads, no
-operational claims.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

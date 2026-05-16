@@ -85,6 +85,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     )
     acquisition_manifest = PREFLIGHT.load_site_config(acquisition_manifest_path) if acquisition_manifest_path.exists() else {}
     paths = PREFLIGHT.build_paths(candidate_site_id, config)
+    public_context_acquisition_plan = PREFLIGHT.build_public_context_acquisition_plan(acquisition_manifest, [])
 
     product_rows: list[dict[str, Any]] = []
     metadata_rows: list[dict[str, Any]] = []
@@ -156,6 +157,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "site_extent": site_extent if site_extent else "placeholder_extent_missing",
         "acquisition_manifest_path": str(acquisition_manifest_path),
         "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
+        "public_context_acquisition_summary": PREFLIGHT.build_public_context_acquisition_summary(public_context_acquisition_plan),
+        "public_context_acquisition_plan": public_context_acquisition_plan,
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
         "expected_staging_paths": expected_staging_paths,
@@ -245,6 +248,26 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  {site_extent}")
 
     lines.append("")
+    lines.append("public_context_acquisition_summary:")
+    if report.get("public_context_acquisition_summary"):
+        for key, value in report["public_context_acquisition_summary"].items():
+            if isinstance(value, list):
+                lines.append(f"- {key}: {', '.join(value) if value else 'none'}")
+            elif isinstance(value, dict):
+                lines.append(f"- {key}:")
+                for subkey, subvalue in value.items():
+                    if isinstance(subvalue, list):
+                        lines.append(f"  - {subkey}: {', '.join(subvalue) if subvalue else 'none'}")
+                    else:
+                        lines.append(f"  - {subkey}: {subvalue}")
+            else:
+                lines.append(f"- {key}: {value}")
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("public_context_acquisition_plan:")
+    lines.extend(render_acquisition_plan_rows(report.get("public_context_acquisition_plan") or []))
+    lines.append("")
     lines.append("required_public_geodata_products:")
     lines.extend(render_rows(report["required_public_geodata_products"]))
 
@@ -273,6 +296,21 @@ def render_rows(rows: list[dict[str, Any]]) -> list[str]:
         rendered.append(
             f"- {row['category']}: product={row['product']}, required={row['required']}, "
             f"current_status={row['current_status']}, expected_staged_path={row['expected_staged_path']}"
+        )
+    if not rendered:
+        rendered.append("- []")
+    return rendered
+
+
+def render_acquisition_plan_rows(rows: list[dict[str, Any]]) -> list[str]:
+    rendered: list[str] = []
+    for row in rows:
+        rendered.append(
+            f"- {row['category']}: {row['current_status']}, "
+            f"staging_root={row['expected_staging_root']}, "
+            f"expected_staged_path={row['expected_staged_path']}, "
+            f"metadata_contract={', '.join(row['metadata_contract'])}, "
+            f"staging_mode={row['staging_mode']}"
         )
     if not rendered:
         rendered.append("- []")

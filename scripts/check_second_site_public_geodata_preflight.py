@@ -34,6 +34,14 @@ DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissbuildings3d_context",
 }
 
+PUBLIC_CONTEXT_ACQUISITION_PLAN_CATEGORIES = [
+    "swissimage_context",
+    "swisstlm3d_context",
+    "swisssurface3d_context",
+    "swisssurface3d_raster_context",
+    "swissbuildings3d_context",
+]
+
 PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS = {
     "swissimage_context": [
         "expected_staged_path",
@@ -125,6 +133,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     terrain_manifest_status = manifest_status(paths["terrain_crop"], paths["terrain_metadata"])
     source_zone_manifest_status = manifest_status(paths["source_zone_metadata"])
     scenario_manifest_status = manifest_status(paths["scenario_table"], paths["source_scenario_policy"])
+    public_context_acquisition_plan = build_public_context_acquisition_plan(acquisition_manifest, requirements)
     core_input_status = "ready" if not missing_required else "blocked_missing_inputs"
     deferred_context_status = "deferred_public_context_inputs" if deferred_required and not missing_required else "ready"
     overall_status = "ready" if not missing_required and not deferred_required else deferred_context_status if not missing_required else core_input_status
@@ -154,6 +163,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_category_count": len(acquisition_manifest.get("expected_products") or []),
         "acquisition_manifest_expected_ignored_roots": acquisition_manifest.get("expected_ignored_output_roots") or [],
         "acquisition_manifest_command_template_count": len(acquisition_manifest.get("command_templates") or []),
+        "public_context_acquisition_summary": build_public_context_acquisition_summary(public_context_acquisition_plan),
+        "public_context_acquisition_plan": public_context_acquisition_plan,
         "acquisition_manifest_product_summaries": [
             {
                 "category": entry.get("category"),
@@ -161,6 +172,10 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
                 "status": entry.get("status"),
                 "required": entry.get("required"),
                 "expected_staged_path": entry.get("expected_staged_path"),
+                "expected_staging_root": entry.get("expected_staging_root"),
+                "metadata_contract": entry.get("metadata_contract"),
+                "staging_mode": entry.get("staging_mode"),
+                "current_status": entry.get("current_status"),
             }
             for entry in acquisition_manifest.get("expected_products") or []
             if isinstance(entry, dict)
@@ -195,6 +210,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
             deferred_required,
             candidate_selection_rationale,
             acquisition_manifest_path,
+            public_context_acquisition_plan,
         ),
         "blocked_reason": build_blocked_reason(
             candidate_site_id, site_extent, missing_required, deferred_required, site_config
@@ -219,6 +235,9 @@ def build_public_context_product_requirements(
     requirements: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     requirement_by_category = {req["category"]: req for req in requirements}
+    acquisition_plan_by_category = {
+        entry["category"]: entry for entry in build_public_context_acquisition_plan(acquisition_manifest, requirements)
+    }
     products: list[dict[str, Any]] = []
     for entry in acquisition_manifest.get("expected_products") or []:
         if not isinstance(entry, dict):
@@ -228,6 +247,7 @@ def build_public_context_product_requirements(
         expected_path = text_value(entry.get("expected_staged_path")) or (requirement or {}).get("path_or_pattern", "")
         notes = text_value(entry.get("notes"))
         resolved_path = resolve_repo_path(expected_path) if expected_path else None
+        plan_entry = acquisition_plan_by_category.get(category, {})
         if resolved_path is not None and resolved_path.exists():
             current_status = "ready"
         elif category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
@@ -249,9 +269,75 @@ def build_public_context_product_requirements(
                 "metadata_requirements": PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS.get(category, ["expected_staged_path"]),
                 "source_reference": text_value(entry.get("source_reference")),
                 "notes": notes,
+                "expected_staging_root": plan_entry.get("expected_staging_root"),
+                "metadata_contract": plan_entry.get("metadata_contract"),
+                "staging_mode": plan_entry.get("staging_mode"),
+                "acquisition_mode": plan_entry.get("acquisition_mode"),
+                "dry_run_status": plan_entry.get("dry_run_status"),
             }
         )
     return products
+
+
+def build_public_context_acquisition_plan(
+    acquisition_manifest: dict[str, Any],
+    requirements: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    requirement_by_category = {req["category"]: req for req in requirements}
+    manifest_by_category: dict[str, dict[str, Any]] = {}
+    for entry in acquisition_manifest.get("expected_products") or []:
+        if isinstance(entry, dict) and text_value(entry.get("category")):
+            manifest_by_category[text_value(entry.get("category"))] = entry
+
+    plan: list[dict[str, Any]] = []
+    for category in PUBLIC_CONTEXT_ACQUISITION_PLAN_CATEGORIES:
+        entry = manifest_by_category.get(category, {})
+        requirement = requirement_by_category.get(category, {})
+        expected_path = text_value(entry.get("expected_staged_path")) or text_value(requirement.get("path_or_pattern"))
+        if not expected_path:
+            continue
+        expected_path_obj = resolve_repo_path(expected_path)
+        staging_root = expected_path_obj.parent if expected_path_obj.name == "metadata.json" else expected_path_obj
+        current_status = (
+            "ready"
+            if expected_path_obj.exists() or is_staged_path(expected_path_obj)
+            else "deferred_public_context"
+        )
+        if category not in DEFERRED_PUBLIC_CONTEXT_CATEGORIES and current_status != "ready":
+            current_status = "blocked_missing_inputs"
+        plan.append(
+            {
+                "category": category,
+                "product": text_value(entry.get("product")) or text_value(requirement.get("product")),
+                "required": bool(entry.get("required", True)),
+                "current_status": current_status,
+                "expected_staged_path": expected_path,
+                "expected_staging_root": str(staging_root),
+                "metadata_contract": PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS.get(category, ["expected_staged_path"]),
+                "staging_mode": "metadata_file" if expected_path_obj.name == "metadata.json" else "directory_bundle",
+                "acquisition_mode": "dry_run_only",
+                "dry_run_status": "deferred_public_context" if category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES else "blocked_missing_inputs",
+                "source_reference": text_value(entry.get("source_reference")),
+                "notes": text_value(entry.get("notes")),
+            }
+        )
+    return plan
+
+
+def build_public_context_acquisition_summary(plan: list[dict[str, Any]]) -> dict[str, Any]:
+    deferred = [entry["category"] for entry in plan if entry["current_status"] == "deferred_public_context"]
+    ready = [entry["category"] for entry in plan if entry["current_status"] == "ready"]
+    return {
+        "product_count": len(plan),
+        "ready_product_count": len(ready),
+        "deferred_product_count": len(deferred),
+        "ready_categories": ready,
+        "deferred_categories": deferred,
+        "expected_staging_roots": [entry["expected_staging_root"] for entry in plan],
+        "metadata_contracts": {
+            entry["category"]: entry["metadata_contract"] for entry in plan
+        },
+    }
 
 
 def build_expected_local_paths(requirements: list[dict[str, Any]]) -> dict[str, str]:
@@ -678,9 +764,11 @@ def build_checklist(
     deferred_required: list[dict[str, Any]],
     candidate_selection_rationale: str,
     acquisition_manifest_path: Path,
+    public_context_acquisition_plan: list[dict[str, Any]],
 ) -> list[str]:
     checklist = [
         f"Review acquisition manifest at {acquisition_manifest_path}.",
+        "Use the acquisition manifest as a dry-run staging contract only; do not download any public-context products during the plan review.",
         f"PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/{candidate_site_id}_manifest.yaml",
         "PYENV_VERSION=system uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/templates/public_real_site_conditional_pilot_run_v1.yaml",
         f"PYENV_VERSION=system uv run python scripts/prepare_<site_id>_public_benchmark.py --output-root data/processed/swisstopo/{candidate_site_id} --padding-m <buffer> --force",
@@ -692,6 +780,13 @@ def build_checklist(
         f"Keep validation and hazard outputs under {paths['validation_case_root']} and {paths['hazard_results_root']}.",
         "Use the existing Tschamut same-scale diagnostic scripts as reusable patterns, but do not treat them as second-site evidence.",
     ]
+    if public_context_acquisition_plan:
+        checklist.append(
+            "Public-context acquisition plan roots: "
+            + ", ".join(
+                f"{entry['category']}={entry['expected_staging_root']}" for entry in public_context_acquisition_plan
+            )
+        )
     if candidate_selection_rationale:
         checklist.append(f"Candidate selection rationale: {candidate_selection_rationale}")
     if source_zone_scenario_contract:
@@ -796,6 +891,26 @@ def render_text_report(report: dict[str, Any]) -> str:
     ]
     lines.extend(_render_entries(report["public_context_product_requirements"]))
     lines.append("")
+    lines.append("public_context_acquisition_summary:")
+    if report.get("public_context_acquisition_summary"):
+        for key, value in report["public_context_acquisition_summary"].items():
+            if isinstance(value, list):
+                lines.append(f"- {key}: {', '.join(value) if value else 'none'}")
+            elif isinstance(value, dict):
+                lines.append(f"- {key}:")
+                for subkey, subvalue in value.items():
+                    if isinstance(subvalue, list):
+                        lines.append(f"  - {subkey}: {', '.join(subvalue) if subvalue else 'none'}")
+                    else:
+                        lines.append(f"  - {subkey}: {subvalue}")
+            else:
+                lines.append(f"- {key}: {value}")
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("public_context_acquisition_plan:")
+    lines.extend(_render_public_context_acquisition_plan(report.get("public_context_acquisition_plan") or []))
+    lines.append("")
     lines.append("expected_local_paths:")
     if report.get("expected_local_paths"):
         lines.extend(f"- {key}: {value}" for key, value in report["expected_local_paths"].items())
@@ -877,6 +992,21 @@ def _render_entries(entries: list[dict[str, Any]]) -> list[str]:
             lines.append(
                 f"- {entry.get('category')}: {entry.get('status')} ({entry.get('expected_staged_path')})"
             )
+    if not lines:
+        lines.append("- none")
+    return lines
+
+
+def _render_public_context_acquisition_plan(entries: list[dict[str, Any]]) -> list[str]:
+    lines: list[str] = []
+    for entry in entries:
+        lines.append(
+            f"- {entry.get('category')}: {entry.get('current_status')} "
+            f"(staging_root={entry.get('expected_staging_root')}, "
+            f"expected_staged_path={entry.get('expected_staged_path')}, "
+            f"metadata_contract={', '.join(entry.get('metadata_contract') or [])}, "
+            f"staging_mode={entry.get('staging_mode')})"
+        )
     if not lines:
         lines.append("- none")
     return lines

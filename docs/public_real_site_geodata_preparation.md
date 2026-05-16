@@ -228,6 +228,13 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The second-site preflight and AOI planner now surface a deterministic dry-run
+acquisition summary from that manifest. The summary names the expected staging
+roots and metadata contracts for SWISSIMAGE, swissTLM3D, swissSURFACE3D,
+swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
+context as deferred until real products are staged. No downloads occur during
+that summary pass.
+
 The AOI-to-swisstopo dry-run planner,
 `scripts/plan_swisstopo_aoi_acquisition.py`, is the first step before any real
 staging. It reads the small AOI/site config and emits the required public
@@ -271,6 +278,9 @@ root so the preflight can distinguish a missing core root from an intentionally
 deferred public-context boundary. SWISSIMAGE, swissTLM3D, swissSURFACE3D,
 swissSURFACE3D Raster, and swissBUILDINGS3D remain deferred and are still
 reported explicitly by the preflight as `deferred_public_context_inputs`.
+That helper stages synthetic core readiness only; it is not a real-context
+readiness step and must not be treated as evidence that public geodata has been
+acquired.
 
 The canonical diagnostic interpretation helper
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
