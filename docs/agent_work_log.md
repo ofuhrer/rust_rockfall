@@ -1701,3 +1701,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the frontier stays read-only and conservative; it does not authorize Swiss-wide execution, distributed execution, or any operational hazard claim.
 - Next task: `TB-114`
+
+### TB-114 Prepare Second-Site Real-Context Acquisition Decision
+
+- Date: 2026-05-16
+- Commit: not recorded yet
+- Objective: decide whether the Chant Sura / Flüelapass public-context bundle should be staged next or explicitly deferred, and make the boundary explicit in a share-safe decision pack.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/decision_log.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary: added a dedicated decision pack that records the current defer recommendation, the required public-context products, the cache/output roots, the current blocked/deferred helper statuses, and exact commands to reproduce the boundary without downloading public context; linked that pack from the public real-site preparation and swisstopo strategy docs so the decision is easy to find; recorded the durable defer decision in the decision log; and removed TB-114 from the active backlog.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_swisstopo_aoi_acquisition_planner tests.test_chant_sura_real_context_readiness_gate tests.test_aoi_to_prepared_pilot_dry_run`; `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json > /tmp/tb114_plan_swisstopo_aoi_acquisition.json`; `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json > /tmp/tb114_second_site_preflight.json`; `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json > /tmp/tb114_real_context_gate.json`; `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json > /tmp/tb114_aoi_to_prepared_pilot.json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short`
+- Result/status: completed.
+- Boundaries: no real swisstopo downloads were performed, no second-site ensemble was run, and synthetic fixtures were not treated as public-context evidence.
+- Next task: backlog refill needed

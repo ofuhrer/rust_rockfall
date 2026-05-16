@@ -573,3 +573,10 @@ historical snapshots.
 - Decision: quantify spatial hotspot persistence by taking the selected hotspot cells from the existing four-artifact same-scale spatial summary and counting how often each cell reappears across the six pairwise artifact comparisons.
 - Rationale: this keeps the persistence metric deterministic, uses only committed artifacts, and avoids introducing a new hotspot definition or a new simulation artifact class.
 - Sources: `scripts/summarize_spatial_same_scale_uncertainty.py`, `tests/test_spatial_same_scale_uncertainty.py`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`.
+
+## TB-114 Chant Sura / Flüelapass Real-Context Acquisition Decision
+
+- Date: 2026-05-16
+- Decision: defer real public-context staging for Chant Sura / Flüelapass until the Balfrin demo path is assessed and an explicit acquisition authorization exists; keep the current candidate at `deferred_public_context_inputs`.
+- Rationale: the current helper reports are structurally ready for acquisition review, but the required SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D products are still intentionally deferred and the repository must not turn synthetic fixtures into evidence or download real public context without authorization.
+- Sources: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `scripts/plan_swisstopo_aoi_acquisition.py`, `scripts/check_chant_sura_real_context_readiness_gate.py`, `scripts/check_second_site_public_geodata_preflight.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`.

@@ -356,6 +356,12 @@ inputs, and Tschamut-only seed / block-class heuristics separate, and the
 portable command plan now carries a template-only second-site execution entry
 that remains blocked until public context is present.
 
+The current decision pack for the Chant Sura / Flüelapass candidate is
+`docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It keeps the
+decision explicit as `defer`, lists the cache/output roots, and preserves the
+public-context staging boundary until the Balfrin demo path has been assessed
+and an explicit acquisition authorization exists.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

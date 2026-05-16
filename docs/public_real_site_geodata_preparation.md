@@ -242,6 +242,12 @@ swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
 context as deferred until real products are staged. No downloads occur during
 that summary pass.
 
+The current decision pack for the Chant Sura / Flüelapass candidate lives at
+`docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It records a
+defer recommendation, the cache/output roots, the required public-context
+products, and the exact helper commands needed to reproduce the current
+readiness boundary without downloading real public context.
+
 The tiny synthetic staging fixture under
 `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
 is a local scaffolding helper only. It exercises the contract and staging

@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-114: Prepare Second-Site Real-Context Acquisition Decision
-
-Goal: Decide whether to stage real Chant Sura / Fluelapass public-context products next, or explicitly defer them with measured rationale after the Balfrin demo path is assessed.
-
-Capability gap reduced: Swiss-wide portability realism.
-
-Why this outranks alternatives: Portability cannot advance beyond synthetic boundaries until real public context is either staged or consciously deferred.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A decision pack that lists required real public-context products, expected data volume, cache/output roots, readiness impact, and proceed/defer recommendation.
-- Tests for proceed, defer, and blocked decision states if helper code changes.
-
-Definition of done:
-
-- The acquisition decision is explicit and machine-readable or documented with exact commands, focused checks pass, and TB-114 is removed from this backlog.
-
-Boundaries: Do not download real public context unless explicitly authorized, do not run a second-site ensemble, and do not treat synthetic fixtures as evidence.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
