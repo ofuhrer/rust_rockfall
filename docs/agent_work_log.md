@@ -1381,7 +1381,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
 - Result/status: completed.
 - Boundaries: no Swiss-wide execution was authorized, no jobs were submitted, and extrapolated multi-AOI requests remain labeled as no-go planning cases rather than operational or scale-up evidence.
-- Next task: `TB-099`
+- Next task: `TB-100`
 
 ### TB-099: Add Balfrin Post-Run Interpretation Gate
 
