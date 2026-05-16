@@ -1616,3 +1616,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the parity report stays read-only, does not commit generated rasters, does not require manual QGIS QA, and keeps operational, scale-up, and physical-probability claims false.
 - Next task: `TB-110`
+
+### TB-110: Audit Demo Claim Boundaries
+
+- Date: 2026-05-16
+- Commit: `419362f`
+- Objective: Add a machine-check that the Balfrin demo helpers and demo-facing docs keep operational, annual-frequency, risk, exposure, vulnerability, physical-probability, scale-up, and distributed-execution claims explicitly out of scope.
+- Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the existing repository claim-hygiene audit so it now scans the Balfrin post-run gate helper, the Tschamut conditional diagnostic helper, the Balfrin post-run interpretation doc, the Balfrin minimal-demo boundary note, and the Tschamut public conditional pilot gate report.
+  - Added explicit rejection of true claim-boundary flags so a future drift to `true` in demo-facing artifacts fails the audit instead of silently widening the boundary.
+  - Added focused regression coverage for the current clean repository state and for synthetic demo text that tries to assert operational, annual-frequency, risk, and hazard-map claims.
+  - Removed TB-110 from the active backlog after wiring the audit into the consistency checks.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: the audit only rejects overclaiming and false boundary flags; it does not change any scientific boundary, authorize operational use, or introduce new claim classes.
+- Next task: `TB-111`
