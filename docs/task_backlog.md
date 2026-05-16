@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-098: Estimate Swiss-Wide Runtime And Storage Envelope
-
-Goal: Convert the measured Tschamut/Balfrin pilot evidence into a conservative runtime and storage envelope for scaling to many Swiss AOIs.
-
-Capability gap reduced: Swiss-wide execution feasibility planning.
-
-Why this outranks alternatives: Before launching broader pilots, the repository needs a quantitative scaling estimate based on measured single-zone outputs and reduced-output mode.
-
-Inspect first:
-
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `scripts/run_performance_benchmark.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A read-only projection helper that estimates runtime, storage, file counts, and job counts for configurable AOI/release-zone counts using measured coefficients.
-- Tests for small, valley-scale, and Swiss-wide projection inputs.
-- Explicit uncertainty bands and no-go labels when extrapolation exceeds measured evidence.
-
-Definition of done:
-
-- The projection helper emits JSON/text from measured inputs, focused tests pass, and TB-098 is removed from this backlog.
-
-Boundaries: Do not claim Swiss-wide execution is authorized, do not submit jobs, and do not hide extrapolation uncertainty.
-
 ### TB-099: Add Balfrin Pilot Post-Run Interpretation Gate
 
 Goal: Define the post-run gate that decides whether the Balfrin single-release-zone pilot is usable as a conditional diagnostic artifact.

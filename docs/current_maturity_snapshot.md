@@ -110,7 +110,11 @@ objective are:
 7. Scaling direction is measured for the current same-scale set. The
    single-job Balfrin path remains sufficient for the next same-scale step,
    distributed execution stays deferred, and the dominant bottleneck is
-   validation output size rather than hazard-reducer parallelism.
+   validation output size rather than hazard-reducer parallelism. The
+   read-only Swiss-wide envelope helper now projects runtime, storage,
+   file-count, and job-count bands from those measured coefficients. It labels
+   multi-AOI or larger release-zone requests as extrapolated no-go planning
+   cases rather than authorizing scale-up.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing

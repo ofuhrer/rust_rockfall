@@ -119,6 +119,12 @@ to materialize that bundle without changing the execution boundary.
 
 Continue using the single-job Balfrin SLURM driver for the next same-scale selected Tschamut conditional hazard-map reproduction; keep distributed execution deferred until a new measurement shows a capacity need.
 
+For planning larger AOI counts without changing that execution boundary, use
+`scripts/estimate_swiss_wide_execution_envelope.py`. The helper is read-only:
+it projects runtime, storage, file-count, and job-count bands from measured
+same-scale and Balfrin coefficients, and it labels extrapolated multi-AOI
+requests as no-go planning cases rather than as authorized scale-up.
+
 ## Limitations
 
 - This summary reuses recorded Balfrin and reducer evidence; it does not run a new simulation.
