@@ -1383,28 +1383,6 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Boundaries: no Swiss-wide execution was authorized, no jobs were submitted, and extrapolated multi-AOI requests remain labeled as no-go planning cases rather than operational or scale-up evidence.
 - Next task: `TB-099`
 
-### TB-099: Add Balfrin Pilot Post-Run Interpretation Gate
-
-- Date: 2026-05-16
-- Commit: `9587e8e`
-- Objective: define a read-only post-run gate for the Balfrin single-release-zone pilot that can accept a conditional diagnostic artifact while keeping operational and physical-probability claims out of scope.
-- Files changed: `scripts/summarize_balfrin_post_run_interpretation_gate.py`, `tests/test_balfrin_post_run_interpretation_gate.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/balfrin_post_run_interpretation_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
-- Implementation summary:
-  - Added `scripts/summarize_balfrin_post_run_interpretation_gate.py`, composing the Balfrin contract, single-job sufficiency, stability-frontier proxy, GIS / COG readiness, and physical-credibility boundary summaries into measured, inconclusive, and blocked post-run states.
-  - Added focused regressions for measured, inconclusive, and blocked override states plus CLI JSON/text smoke coverage.
-  - Documented the gate boundary in the Balfrin sufficiency note and added a dedicated gate overview document.
-- Checks run:
-  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_post_run_interpretation_gate.py tests/test_balfrin_post_run_interpretation_gate.py`
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_post_run_interpretation_gate tests.test_balfrin_single_release_zone_pilot_contract`
-  - `git diff --check`
-  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
-  - `scripts/git-hooks/pre-commit`
-  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
-  - `git status --short`
-- Result/status: completed.
-- Boundaries: no operational use, physical-probability, annual-frequency, risk, exposure, vulnerability, or distributed-execution claims were authorized.
-- Next task: `TB-100`
-
 ### TB-099: Add Balfrin Post-Run Interpretation Gate
 
 - Date: 2026-05-16
