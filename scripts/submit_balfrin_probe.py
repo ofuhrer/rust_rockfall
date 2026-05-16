@@ -558,7 +558,7 @@ def _build_scheduler_submission_report(
             "message": error_message,
         },
         "recovery_action": (
-            "regenerate the same submission package and retry submit with the same run root and run id"
+            "regenerate the same submission package and retry submit from the Balfrin SSH entry point with the same run root and run id"
         ),
         "escalation_boundary": (
             "scheduler failures are operational; they should not be reclassified as scientific outcomes"

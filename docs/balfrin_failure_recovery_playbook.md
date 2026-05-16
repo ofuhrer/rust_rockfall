@@ -20,6 +20,17 @@ Use the same `RUN_ROOT` and `RUN_ID` for submit, collect, and interpretation
 recovery. That keeps the artifacts deterministic and prevents accidental state
 splits.
 
+## Scheduler access note
+
+Observed on 2026-05-17 via
+`ssh -o BatchMode=yes -o ConnectTimeout=8 balfrin 'hostname; command -v sbatch || true; pwd'`:
+
+- the Balfrin SSH entry point reaches a login node with `/usr/bin/sbatch`;
+- the shell starts in `/users/olifu`.
+
+Use the same `RUN_ROOT` and `RUN_ID` when retrying the canonical submit from
+that SSH context.
+
 ## Taxonomy
 
 The canonical machine-readable taxonomy helper is
@@ -79,6 +90,7 @@ Trigger:
 Commands:
 
 ```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 balfrin
 PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
   "$RUN_MANIFEST" \
   --run-root "$RUN_ROOT" \
@@ -109,6 +121,8 @@ report to stdout with `status: scheduler_submission_failed`.
 Recovery rule:
 
 - Keep the exact same run root and run id.
+- If the local shell does not expose `sbatch`, retry from the Balfrin SSH
+  entry point before changing any identifiers or paths.
 - If `sbatch` fails again, capture the handoff archive from the run root before
   any cleanup or rerun.
 - If a job id was printed but the job later fails, inspect it with

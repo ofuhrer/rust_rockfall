@@ -15,6 +15,10 @@ default) and keeps the process read-only where possible.
   - `git`, `python3`, `cargo`, and `uv`.
   - Optional GIS review tooling: `qgis` (warn-only if missing).
 
+The Balfrin SSH entry point currently exposes `sbatch`, so the retry path for
+the canonical demo is to hop into `balfrin` first and then reuse the same run
+identifiers from that shell.
+
 ## Minimal Demo Boundary
 
 Use [`docs/balfrin_minimal_demo_vs_closure.md`](./balfrin_minimal_demo_vs_closure.md) as the short pointer for the demo boundary.
@@ -86,6 +90,16 @@ PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
 Record the `submitted_job_id` from the helper output. It is the value used for
 stop and resume handoff.
 
+If `sbatch` is not exposed in the current shell, open the Balfrin SSH entry
+point first and rerun the exact same submit command from that context:
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 balfrin
+```
+
+Keep the same `RUN_ROOT` and `RUN_ID` when moving between shells. Do not change
+either value during the retry.
+
 ### 2.4 Stop
 
 ```bash
@@ -112,7 +126,8 @@ PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
 
 Resume means rerun the same helper with the same `RUN_ROOT` and `RUN_ID` after
 the stopped job has been cleared. Do not change the command plan or scratch
-layout when resuming.
+layout when resuming. If the local shell cannot reach `sbatch`, resume from
+the Balfrin SSH context instead of changing the identifiers.
 
 ### 2.6 Collect
 
