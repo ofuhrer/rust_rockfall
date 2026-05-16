@@ -62,7 +62,7 @@ Expected work:
         )
         self.assertIn("known_environment_issues", report)
         self.assertIn("generated_roots_to_avoid", report)
-        self.assertIn("pre_push_fallback", report)
+        self.assertEqual(report["push_policy"]["repository_pre_push_hook"], "not_installed")
         self.assertTrue(report["read_only"])
         self.assertEqual(report["live_checks_status"], "skipped")
         self.assertIn("docs/agent_work_log.md", ROOT.joinpath("AGENTS.md").read_text())

@@ -126,11 +126,10 @@ KNOWN_ENVIRONMENT_ISSUES = [
         "instruction": f"use `{PYTHON_INVOCATION}` instead of plain `python` or `python3`",
     },
     {
-        "issue": "repository pre-push hook can fail on an unrelated parquet rlib build issue",
+        "issue": "no repository pre-push hook is installed",
         "instruction": (
-            "after focused checks, git diff --check, check_repo_consistency.py, and "
-            "scripts/git-hooks/pre-commit pass, report the failure and use "
-            "`git push --no-verify origin main` if a push was requested"
+            "run task-specific checks, git diff --check, check_repo_consistency.py, "
+            "and scripts/git-hooks/pre-commit before committing or pushing"
         ),
     },
     {
@@ -138,16 +137,6 @@ KNOWN_ENVIRONMENT_ISSUES = [
         "instruction": "check placeholder roots before committing and remove unintended generated files",
     },
 ]
-
-PRE_PUSH_FALLBACK = {
-    "known_issue": "unrelated parquet rlib failure in the repository pre-push Rust build chain",
-    "allowed_fallback": "git push --no-verify origin main",
-    "condition": (
-        "only after focused task checks, git diff --check, "
-        "scripts/check_repo_consistency.py, and scripts/git-hooks/pre-commit pass"
-    ),
-}
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -280,7 +269,14 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True) -> dict
         "known_environment_issues": KNOWN_ENVIRONMENT_ISSUES,
         "generated_roots_to_avoid": GENERATED_ROOTS_TO_AVOID,
         "existing_generated_placeholder_paths": scan_existing_placeholder_paths(),
-        "pre_push_fallback": PRE_PUSH_FALLBACK,
+        "push_policy": {
+            "repository_pre_push_hook": "not_installed",
+            "instruction": (
+                "run task-specific checks, git diff --check, "
+                "scripts/check_repo_consistency.py, and scripts/git-hooks/pre-commit "
+                "before committing or pushing"
+            ),
+        },
         "read_only": True,
         "recommended_first_commands": recommended_first_commands(task_id),
         "live_checks": {},
@@ -370,7 +366,7 @@ def render_text(report: dict[str, Any]) -> str:
         lines.append("live_checks:")
         for name, result in report["live_checks"].items():
             lines.append(f"- {name}: {result.get('status')}")
-    lines.append(f"pre_push_fallback: {report['pre_push_fallback']['allowed_fallback']}")
+    lines.append(f"push_policy: {report['push_policy']['repository_pre_push_hook']}")
     return "\n".join(lines)
 
 

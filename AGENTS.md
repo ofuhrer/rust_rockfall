@@ -173,11 +173,9 @@ inspection:
    before rerunning a changed query.
 6. Use `PYENV_VERSION=system` with `uv run` when local pyenv shims point at a
    missing interpreter.
-7. The repository pre-push hook may fail on the known unrelated parquet rlib
-   build issue. If focused checks, `git diff --check`,
-   `scripts/check_repo_consistency.py`, and `scripts/git-hooks/pre-commit`
-   pass, report the hook failure explicitly and use `git push --no-verify`
-   when the user requested a push.
+7. There is no repository pre-push hook. Run task-specific checks,
+   `git diff --check`, `scripts/check_repo_consistency.py`, and
+   `scripts/git-hooks/pre-commit` before committing or pushing.
 
 ## Hard Boundaries
 
@@ -292,8 +290,8 @@ Before committing:
 
 Before pushing:
 
-- Re-run the full local test chain, or run `scripts/git-hooks/pre-push` directly.
-- Do a more thorough consistency pass:
+- Confirm the task-specific checks listed in the prompt or backlog have passed.
+- Do a final consistency pass:
   - review the staged or committed diff with `git show --stat --oneline HEAD` and targeted `git show` sections;
   - verify `README.md`, `AGENTS.md`, and relevant files in `docs/` agree on scope, commands, limitations, and validation status;
   - verify public dataset metadata includes source, DOI or URL, license, local path, and download/preprocessing status;

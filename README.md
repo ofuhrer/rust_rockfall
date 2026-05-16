@@ -293,16 +293,7 @@ Optional hook templates are stored under `scripts/git-hooks/`. Install them with
 scripts/install_git_hooks.sh
 ```
 
-The `pre-commit` hook runs `cargo fmt --check` and YAML syntax checks. The `pre-push` hook runs the full local chain:
-
-```bash
-cargo fmt --check \
-  && cargo clippy --all-targets --all-features -- -D warnings \
-  && cargo test \
-  && cargo run -- verify --all \
-  && cargo run -- validate --all \
-  && .venv/bin/python -m unittest discover -s tests -p 'test_*.py' \
-  && .venv/bin/python scripts/check_repo_consistency.py
-```
-
-CI remains the source of truth; the hooks are a local guardrail.
+The `pre-commit` hook runs `cargo fmt --check` and YAML syntax checks. There
+is no repository `pre-push` hook; run task-specific tests and repository
+consistency checks before committing or pushing. CI remains the source of truth
+for full regression coverage.

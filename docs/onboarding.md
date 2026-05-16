@@ -136,15 +136,13 @@ Install the local hook templates after cloning or when `.git/hooks` is missing:
 scripts/install_git_hooks.sh
 ```
 
-The hooks select Python `>= 3.9`, preferring `RUST_ROCKFALL_PYTHON` and then
-`.venv/bin/python`, and run the Rust/Python checks through the same path used by
-local commits and pushes.
+The hook selects Python `>= 3.9`, preferring `RUST_ROCKFALL_PYTHON` and then
+`.venv/bin/python`, and runs the lightweight local commit checks.
 
-Run the hook chain directly before handoff:
+Run the hook directly before handoff:
 
 ```bash
 scripts/git-hooks/pre-commit
-scripts/git-hooks/pre-push
 ```
 
 ## Basic Onboarding Checks
@@ -160,12 +158,6 @@ cargo run -- validate --all
 python -m unittest discover -s tests -p 'test_*.py'
 .venv/bin/python scripts/check_repo_consistency.py
 scripts/git-hooks/pre-commit
-```
-
-Before pushing, run:
-
-```bash
-scripts/git-hooks/pre-push
 ```
 
 `cargo run -- verify --all` and `cargo run -- validate --all` write ignored
