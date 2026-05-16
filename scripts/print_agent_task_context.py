@@ -144,6 +144,10 @@ KNOWN_ENVIRONMENT_ISSUES = [
         "issue": "tests for second-site fixtures can create stray placeholder paths",
         "instruction": "check placeholder roots before committing and remove unintended generated files",
     },
+    {
+        "issue": "long autonomous worker output can hide failures and waste context",
+        "instruction": "redirect large JSON/logs/diffs to /tmp, summarize status, and preserve the final relevant error block",
+    },
 ]
 
 def parse_args() -> argparse.Namespace:
@@ -339,6 +343,19 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
                 "scripts/check_repo_consistency.py, and scripts/git-hooks/pre-commit "
                 "before committing or pushing"
             ),
+        },
+        "sequential_orchestration_policy": {
+            "instruction": (
+                "execute one active TB task at a time on main; after each worker, "
+                "verify clean worktree, successful fast-forward, and completed-task removal"
+            ),
+            "stop_conditions": [
+                "worker failure",
+                "dirty worktree",
+                "failed git pull --ff-only",
+                "completed task still present in docs/task_backlog.md",
+                "backlog refill needed",
+            ],
         },
         "read_only": True,
         "recommended_first_commands": recommended_first_commands(task_id),

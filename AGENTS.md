@@ -34,6 +34,23 @@ helper only for orchestrator/review work.
 Use `PYENV_VERSION=system uv run python ...`; avoid plain `python` or `python3`
 because local pyenv shims can point at unavailable interpreters.
 
+## Sequential Orchestration
+
+When looping over backlog tasks, treat each task as one transaction:
+
+1. Pull `origin/main` and require a clean worktree.
+2. Select only the lowest-numbered active `TB-xxx` task.
+3. Launch exactly one worker for that task; do not pre-generate later prompts.
+4. After the worker exits, verify that `main` fast-forwards, the worktree is
+   clean, and the completed task was removed from `docs/task_backlog.md`.
+5. Stop on any worker failure, dirty worktree, failed pull, or stale completed
+   task.
+
+Run workers directly on `main`; do not create branches or worktrees for normal
+TB execution. Keep worker output visible enough to diagnose failures, but route
+large JSON, diffs, and logs to `/tmp` and summarize the result. Preserve the
+final relevant error block on failure.
+
 ## Work Rules
 
 - Prefer executable progress over process artifacts: implemented behavior,
@@ -50,6 +67,8 @@ because local pyenv shims can point at unavailable interpreters.
   source-tile ids, and provenance; never commit large swisstopo raw products.
 - Append completed TB entries to the bottom of `docs/agent_work_log.md` using
   its template; do not insert entries near older related work.
+- Remove the completed task from `docs/task_backlog.md`; never leave stale
+  active tasks for the next worker.
 
 ## Required Checks
 

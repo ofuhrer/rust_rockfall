@@ -36,31 +36,13 @@ physics, output, versioning, HPC, or review policy.
 - Prefer structured parsers and serializers over ad hoc text handling.
 - Prefer clear numerical code over premature optimization.
 
-Before handoff, run these when a Rust toolchain is available:
-
-```bash
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-cargo run -- verify --all
-cargo run -- validate --all
-python3 scripts/check_repo_consistency.py
-```
-
-Repository Python scripts should normally run through the project-local `uv`
-environment described in `docs/onboarding.md`. The repository Python tool
-dependencies are declared in `pyproject.toml`, so plain `uv run python ...`
-from the repository root should install/import PyYAML and the other tool
-packages without adding `--with` flags. If direct `python3` uses an older or
-incompatible system interpreter, use:
-
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
-```
-
-and record that substitution in the final response or commit notes.
-
-If the toolchain is unavailable, state that clearly and still validate any changed JSON/TOML/Markdown with available local tools.
+Before handoff, run the focused checks named by the task. Use
+`PYENV_VERSION=system uv run python ...` for repository Python helpers and avoid
+plain `python`/`python3`, which can resolve through unavailable local shims.
+Broader Rust or Python suites are appropriate for broad runtime changes, but
+they are not a substitute for the task-specific checks in `docs/task_backlog.md`.
+If a required toolchain is unavailable, state that clearly and still validate
+changed JSON/TOML/Markdown with available local tools.
 
 ## HPC-Readiness Constraints
 
@@ -86,27 +68,15 @@ If the toolchain is unavailable, state that clearly and still validate any chang
 
 Before committing:
 
-- Run the full local test chain:
-
-  ```bash
-  cargo fmt --check \
-    && cargo clippy --all-targets --all-features -- -D warnings \
-    && cargo test \
-    && cargo run -- verify --all \
-    && cargo run -- validate --all \
-    && python3 -m unittest discover -s tests -p 'test_*.py' \
-    && python3 scripts/check_repo_consistency.py
-  ```
-
-  If system `python3` is incompatible, run the Python unittest and consistency
-  checks through the project-local `uv` environment and record the exact
-  command used.
-
-- Do a quick consistency pass:
-  - inspect `git status -sb`;
-  - confirm generated outputs under `verification/results/`, `validation/results/`, `target/`, and downloaded raw data are not staged;
-  - scan changed docs and CLI examples for stale command names or paths;
-  - confirm new or changed features are covered by focused tests and listed in the relevant V&V docs when applicable.
+- Run the focused task checks, then `git diff --check`,
+  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
+  and `scripts/git-hooks/pre-commit`.
+- Inspect `git status --short --branch`.
+- Confirm generated outputs under `verification/results/`,
+  `validation/results/`, `hazard/results/`, `target/`, and downloaded raw data
+  are not staged.
+- Confirm new or changed features are covered by focused tests and listed in
+  relevant V&V docs when applicable.
 
 Before pushing:
 

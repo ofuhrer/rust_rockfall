@@ -14,6 +14,11 @@ file's template. Record durable decisions in `docs/decision_log.md`.
 Progress rule: each task should produce executable or measured progress, not
 only labels, validators, or roadmap/status churn.
 
+Orchestrator rule: execute active tasks sequentially by numeric order. Launch
+one worker, verify clean `main` and task removal after it finishes, then continue
+to the next task. Stop on any failure or dirty worktree; do not pre-generate
+later prompts.
+
 ## Active Tasks
 
 _Active TB tasks remain below._
@@ -451,6 +456,10 @@ rg -n "^### TB-xxx:" docs/task_backlog.md
 Read only the selected task and its `Inspect first` files unless the task
 explicitly requires broader context. Use `--detail full` on the task-context
 helper only for orchestrator/review work.
+
+Keep worker prompts compact: include the selected task body and essential
+pitfalls only. Redirect large JSON, diffs, and logs to `/tmp`, summarize the
+result, and preserve the final relevant error block when a command fails.
 
 Before commit, run the task-specific checks, `git diff --check`, repository
 consistency, `scripts/git-hooks/pre-commit`, and the placeholder-artifact scan.
