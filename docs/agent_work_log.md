@@ -1262,7 +1262,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-092: Generate Large Single-Zone Tschamut Case Plan
 
 - Date: 2026-05-16
-- Commit: `db5ba5d`
+- Commit: `ab39b62`
 - Objective: add a deterministic dry-run case plan for the Balfrin single-release-zone pilot that records the frozen public source-zone/scenario inputs, validation output mode, and ignored output roots without authorizing execution.
 - Files changed: `scripts/plan_balfrin_single_release_zone_case_dry_run.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_balfrin_single_release_zone_case_plan_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1278,7 +1278,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-093: Emit Balfrin Submission Package For The Pilot
 
 - Date: 2026-05-16
-- Commit: `e789739`
+- Commit: `fd36f53`
 - Objective: extend the Balfrin probe driver so generate-only runs emit a reproducible submission package with the SBATCH script, command plan, package report, and collection instructions for the single-release-zone pilot.
 - Files changed: scripts/submit_balfrin_probe.py, tests/test_balfrin_probe_driver.py, docs/balfrin_probe_slurm_driver.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary:
@@ -1296,7 +1296,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-094: Capture Balfrin Pilot Metrics Contract
 
 - Date: 2026-05-16
-- Commit: `cad35a4`
+- Commit: `51cd741`
 - Objective: define and test the Balfrin pilot metrics contract so completed runs can report the required runtime, memory, volume, family-count, conditional-curve, and restartability evidence or be reported as blocked.
 - Files changed: `scripts/collect_balfrin_probe_metrics.py`, `scripts/summarize_balfrin_single_job_execution.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_single_job_execution.py`, `tests/fixtures/balfrin_probe_metrics_contract/`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1313,7 +1313,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-095: Define Conditional Gridpoint Curve Pilot Product
 
 - Date: 2026-05-16
-- Commit: `4909647`
+- Commit: `ad7cc56`
 - Objective: make the single-release-zone pilot's gridpoint conditional intensity-exceedance curve product explicit, auditable, and tied to GIS output layers.
 - Files changed: scripts/build_hazard_layers.py, tests/test_hazard_layers.py, docs/hazard_layers.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary:

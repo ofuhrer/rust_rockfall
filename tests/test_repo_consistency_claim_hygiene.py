@@ -78,6 +78,42 @@ class HazardClaimHygieneTests(unittest.TestCase):
         self.assertRegex(backlog_text, r"(?m)^### TB-\d{3} \(P\d+\):", msg="fixture should contain bad priority heading")
         self.assertRegex(work_log_text, r"Commit:\s*pending", msg="fixture should contain stale commit placeholder")
 
+    def test_task_hygiene_detects_unreachable_work_log_commits(self) -> None:
+        work_log_text = """### TB-010: Good
+
+- Date: 2026-05-16
+- Commit: `abc1234`
+- Objective: x
+- Files changed: x
+- Implementation summary: x
+- Checks run: x
+- Result/status: completed.
+- Boundaries: x
+- Next task: `TB-011`
+
+### TB-011: Bad
+
+- Date: 2026-05-16
+- Commit: `def5678`
+- Objective: x
+- Files changed: x
+- Implementation summary: x
+- Checks run: x
+- Result/status: completed.
+- Boundaries: x
+- Next task: backlog refill needed
+"""
+
+        errors = check_repo_consistency._find_unreachable_work_log_commits(
+            work_log_text,
+            is_ancestor=lambda commit_hash: commit_hash == "abc1234",
+        )
+
+        self.assertEqual(
+            errors,
+            ["docs/agent_work_log.md TB-011 commit def5678 is not reachable from HEAD"],
+        )
+
     def test_python_tool_dependency_metadata_is_consistent(self) -> None:
         self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
 

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from typing import Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -2056,6 +2057,8 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
     if re.search(r"(?mi)^- Next task:\s*none\b", work_log_text):
         errors.append("docs/agent_work_log.md should say 'backlog refill needed' instead of 'Next task: none'")
 
+    errors.extend(_find_unreachable_work_log_commits(work_log_text))
+
     for task_id, block in _extract_tb_blocks(work_log_text):
         for field in (
             "Date",
@@ -2072,6 +2075,35 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
                 errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
 
     return errors
+
+
+def _find_unreachable_work_log_commits(
+    work_log_text: str,
+    is_ancestor: Callable[[str], bool] | None = None,
+) -> list[str]:
+    checker = is_ancestor or _git_commit_is_ancestor_of_head
+    errors: list[str] = []
+    for task_id, block in _extract_tb_blocks(work_log_text):
+        match = re.search(r"(?mi)^- Commit:\s*`([0-9a-f]{7,40})`", block)
+        if not match:
+            continue
+        commit_hash = match.group(1)
+        if not checker(commit_hash):
+            errors.append(
+                f"docs/agent_work_log.md TB-{task_id:03d} commit {commit_hash} is not reachable from HEAD"
+            )
+    return errors
+
+
+def _git_commit_is_ancestor_of_head(commit_hash: str) -> bool:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit_hash, "HEAD"],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return result.returncode == 0
 
 
 def _section_between(text: str, start_heading: str, end_heading: str) -> str:
