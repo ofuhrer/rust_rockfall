@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-090: Generate Second-Site Conditional Case Skeleton
-
-Goal: Produce a blocked, inspectable second-site case skeleton from the current Chant Sura contract without authorizing execution.
-
-Capability gap reduced: Portable multi-site workflow realism and reproducibility.
-
-Why this outranks alternatives: A case skeleton exposes exactly which real public-context and source/scenario fields remain missing before any second-site run can be valid.
-
-Inspect first:
-
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A dry-run case skeleton generator or command-plan step that emits a non-executable case draft to a temporary/ignored location.
-- The skeleton clearly marks synthetic fixture fields, deferred public-context fields, and execution blockers.
-- Tests verify the skeleton cannot be mistaken for an authorized run case.
-
-Definition of done:
-
-- The skeleton is generated and audited in dry-run mode, focused tests pass, and TB-090 is removed from this backlog.
-
-Boundaries: Do not run validation or hazard generation for Chant Sura, do not claim public-context readiness, and do not commit generated private artifacts.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
