@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-066: Reconcile Canonical Diagnostic Interpretation With Current Product Paths
-
-Goal: the canonical diagnostic interpretation exists, but its blocker language can lag behind product improvements such as native reduced output and COG export. Reduces: pilot closure realism and user-facing interpretation coherence.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- diagnostic interpretation separates scientific blockers from workflow blockers already mitigated by alternate paths;
-- reduced output and COG export readiness appear as mitigations, while standard-root and old `summary_only` blockers remain accurately named;
-- no change to `inconclusive_conditional_diagnostic` unless supported by measured closure evidence.
-
-Definition of done:
-
-- JSON/text interpretation includes current product-path statuses and mitigations;
-- focused tests pin the blocker/mitigation split;
-- gate report references the updated interpretation.
-
-Boundaries: no acceptance claim, no no-go reclassification, no new simulation,
-no operational semantics.
-
 ### TB-067: Export Spatial Stability And Confidence Layers
 
 Goal: after TB-059 has a compact stability-zone summary, expose those classifications as GIS-ready diagnostic products. Reduces: scientific interpretability and uncertainty-product usability.

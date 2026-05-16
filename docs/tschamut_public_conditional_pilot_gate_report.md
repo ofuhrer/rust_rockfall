@@ -33,6 +33,8 @@ Current synthesized status:
   - `spatial_uncertainty_support_nodata_dominates_closure`
   - `max_kinetic_energy_closure_limiting`
   - `max_jump_height_closure_limiting`
+- scientific blockers remain separated from workflow mitigations in the helper
+  output
 - spatial decomposition:
   - `max_kinetic_energy` remains overall nodata/support-dominated, but the
     selected high-uncertainty cells are shared-support magnitude only
@@ -45,6 +47,16 @@ Current synthesized status:
 - workflow/product blockers:
   - `summary_only_not_rebuildable`
   - `standard_gis_roots_cog_blocked`
+- workflow mitigations:
+  - native reduced output is surfaced as `rebuildable_reduced_output`
+  - the COG export proof path is surfaced separately with its current
+    readiness status
+- product-path statuses:
+  - legacy summary-only: `summary_only_not_rebuildable`
+  - native reduced output: `rebuildable_reduced_output`
+  - standard GIS root: `gis_package_ready_cog_blocked`
+  - converted package readiness: current status is reported separately in the
+    helper output
 - portability blocker:
   - `public_context_inputs_deferred`
 - physical credibility:
@@ -61,10 +73,10 @@ Current synthesized status:
     shared-support magnitude only, while the full-grid decomposition remains
     mixed
 
-This canonical interpretation remains non-operational. The reduced-output and
-COG proof paths are command-plan-addressable, but neither changes the current
-`inconclusive` diagnostic status or the `false` scale-up / operational
-boundaries.
+This canonical interpretation remains non-operational. The reduced-output path
+is command-plan-addressable and the COG export path is surfaced as a separate
+mitigation channel, but neither changes the current `inconclusive`
+diagnostic status or the `false` scale-up / operational boundaries.
 
 The validation-output blocker is now narrower: `summary_only` remains
 non-rebuildable, while the native `rebuildable_reduced_output` case is
@@ -143,6 +155,13 @@ Workflow/product blockers are still explicit:
 - `summary_only_not_rebuildable`
 - `standard_gis_roots_cog_blocked`
 - `public_context_inputs_deferred`
+
+Workflow mitigations are also explicit:
+
+- native reduced output is command-plan-addressable and reported as
+  `rebuildable_reduced_output`
+- the COG export proof path is reported separately with its current readiness
+  status
 
 The helper does not change the interpretation. It only makes the measured
 delta between accepted-diagnostic requirements, deferred status, and no-go

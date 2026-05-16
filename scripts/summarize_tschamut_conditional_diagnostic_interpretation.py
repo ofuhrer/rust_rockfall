@@ -208,7 +208,17 @@ def _build_current_report() -> dict[str, Any]:
         "scientific_closure_blockers": scientific_closure_blockers(
             {"current_blockers": current_blockers, "closure_status": closure_status}
         ),
+        "scientific_blockers": dominant_scientific_blockers(
+            {
+                "closure_status": closure_status,
+                "spatial_uncertainty_interpretation": spatial_summary,
+                "criteria_matrix": criteria_matrix,
+            }
+        ),
         "workflow_product_blockers": workflow_product_blockers(output_profile_status, gis_cog_status),
+        "workflow_blockers": workflow_product_blockers(output_profile_status, gis_cog_status),
+        "product_path_statuses": product_path_statuses(output_profile_status, gis_cog_status),
+        "workflow_mitigations": workflow_mitigations(output_profile_status, gis_cog_status),
         "portability_blockers": portability_blockers(portability_status),
         "physical_credibility_blockers": physical_credibility_blockers(physical),
         "output_profile_status": output_profile_status,
@@ -466,6 +476,41 @@ def workflow_product_blockers(output_profile_status: dict[str, Any], gis_cog_sta
     return blockers
 
 
+def product_path_statuses(output_profile_status: dict[str, Any], gis_cog_status: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "legacy_summary_only_status": output_profile_status.get("legacy_summary_only_status", "unknown"),
+        "native_rebuildable_reduced_status": output_profile_status.get("native_rebuildable_reduced_status", "unknown"),
+        "standard_gis_root_status": gis_cog_status.get("standard_package_status", "unknown"),
+        "converted_package_readiness_status": gis_cog_status.get("converted_package_readiness_status", "unknown"),
+        "any_converted_package_ready": gis_cog_status.get("any_converted_package_ready", False),
+        "command_plan_addressable": {
+            "native_rebuildable_reduced_output": output_profile_status.get("command_plan_addressable", False),
+            "gis_cog_package_conversion": gis_cog_status.get("command_plan_addressable", False),
+        },
+    }
+
+
+def workflow_mitigations(output_profile_status: dict[str, Any], gis_cog_status: dict[str, Any]) -> list[dict[str, Any]]:
+    reduced_status = output_profile_status.get("native_rebuildable_reduced_status", "unknown")
+    cog_status = gis_cog_status.get("converted_package_readiness_status", "unknown")
+    return [
+        {
+            "path": "native_rebuildable_reduced_output",
+            "status": reduced_status,
+            "mitigation_state": "ready" if reduced_status == "rebuildable_reduced_output" else "deferred",
+            "mitigates": ["summary_only_not_rebuildable"],
+            "command_plan_addressable": output_profile_status.get("command_plan_addressable", False),
+        },
+        {
+            "path": "converted_gis_cog_package",
+            "status": cog_status,
+            "mitigation_state": "ready" if cog_status == "converted_package_ready" else "deferred",
+            "mitigates": ["standard_gis_roots_cog_blocked"],
+            "command_plan_addressable": gis_cog_status.get("command_plan_addressable", False),
+        },
+    ]
+
+
 def portability_blockers(portability_status: dict[str, Any]) -> list[str]:
     blockers = []
     if portability_status.get("portability_preflight_status") == "deferred_public_context_inputs":
@@ -531,7 +576,7 @@ def recommended_next_decision(
     if closure.get("closure_status") == "inconclusive":
         return (
             "Retain the conditional diagnostic interpretation as inconclusive; "
-            "use the command-plan-addressable reduced-output and COG proof paths for workflow work, "
+            "treat the native reduced-output and COG export paths as mitigations for workflow work, "
             "but do not claim acceptance, no-go, scale-up, or operational readiness."
         )
     if portability_status.get("portability_preflight_status") == "deferred_public_context_inputs":
@@ -551,13 +596,22 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"closure_status: {report['closure_status']}",
         f"same_scale_readiness_status: {report['same_scale_readiness_status']}",
         f"spatial_uncertainty_status: {report['spatial_uncertainty_status']}",
-        "dominant_scientific_blockers:",
+        "scientific_blockers:",
     ]
-    for blocker in report.get("dominant_scientific_blockers", []):
+    for blocker in report.get("scientific_blockers", report.get("dominant_scientific_blockers", [])):
         lines.append(f"  - {blocker}")
-    lines.append("workflow_product_blockers:")
-    for blocker in report.get("workflow_product_blockers", []):
+    if report.get("scientific_closure_blockers"):
+        lines.append("scientific_closure_blockers:")
+        for blocker in report.get("scientific_closure_blockers", []):
+            lines.append(f"  - {blocker}")
+    lines.append("workflow_blockers:")
+    for blocker in report.get("workflow_blockers", report.get("workflow_product_blockers", [])):
         lines.append(f"  - {blocker}")
+    lines.append("product_path_statuses:")
+    lines.append(f"  - {json.dumps(report.get('product_path_statuses', {}), sort_keys=True)}")
+    lines.append("workflow_mitigations:")
+    for mitigation in report.get("workflow_mitigations", []):
+        lines.append(f"  - {json.dumps(mitigation, sort_keys=True)}")
     lines.append("portability_blockers:")
     for blocker in report.get("portability_blockers", []):
         lines.append(f"  - {blocker}")

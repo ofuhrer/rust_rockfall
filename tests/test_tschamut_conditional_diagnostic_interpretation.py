@@ -21,9 +21,45 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
                 "velocity_exceedance_5mps_deferrable",
             ],
             "scientific_closure_blockers": [],
+            "scientific_blockers": [
+                "closure_status_inconclusive",
+                "spatial_uncertainty_support_nodata_dominates_closure",
+                "max_kinetic_energy_closure_limiting",
+                "max_jump_height_closure_limiting",
+                "velocity_exceedance_5mps_deferrable",
+            ],
             "workflow_product_blockers": [
                 "summary_only_not_rebuildable",
                 "standard_gis_roots_cog_blocked",
+            ],
+            "workflow_blockers": [
+                "summary_only_not_rebuildable",
+                "standard_gis_roots_cog_blocked",
+            ],
+            "product_path_statuses": {
+                "legacy_summary_only_status": "summary_only_not_rebuildable",
+                "native_rebuildable_reduced_status": "rebuildable_reduced_output",
+                "standard_gis_root_status": "gis_package_ready_cog_blocked",
+                "converted_package_readiness_status": "converted_package_ready",
+                "any_converted_package_ready": True,
+                "command_plan_addressable": {
+                    "native_rebuildable_reduced_output": True,
+                    "gis_cog_package_conversion": True,
+                },
+            },
+            "workflow_mitigations": [
+                {
+                    "path": "native_rebuildable_reduced_output",
+                    "status": "rebuildable_reduced_output",
+                    "mitigates": ["summary_only_not_rebuildable"],
+                    "command_plan_addressable": True,
+                },
+                {
+                    "path": "converted_gis_cog_package",
+                    "status": "converted_package_ready",
+                    "mitigates": ["standard_gis_roots_cog_blocked"],
+                    "command_plan_addressable": True,
+                },
             ],
             "portability_blockers": ["public_context_inputs_deferred"],
             "physical_credibility_blockers": ["physical_credibility_not_established"],
@@ -85,6 +121,11 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "same_scale_readiness_status",
             "spatial_uncertainty_status",
             "dominant_scientific_blockers",
+            "scientific_blockers",
+            "workflow_product_blockers",
+            "workflow_blockers",
+            "product_path_statuses",
+            "workflow_mitigations",
             "output_profile_status",
             "gis_cog_status",
             "runtime_scaling_status",
@@ -120,8 +161,20 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("max_kinetic_energy_closure_limiting", blockers)
         self.assertIn("max_jump_height_closure_limiting", blockers)
         self.assertIn("velocity_exceedance_5mps_deferrable", blockers)
+        self.assertEqual(report["scientific_blockers"], blockers)
         self.assertIn("summary_only_not_rebuildable", report["workflow_product_blockers"])
         self.assertIn("standard_gis_roots_cog_blocked", report["workflow_product_blockers"])
+        self.assertEqual(report["workflow_blockers"], report["workflow_product_blockers"])
+        self.assertEqual(report["product_path_statuses"]["legacy_summary_only_status"], "summary_only_not_rebuildable")
+        self.assertEqual(report["product_path_statuses"]["native_rebuildable_reduced_status"], "rebuildable_reduced_output")
+        self.assertEqual(report["product_path_statuses"]["standard_gis_root_status"], "gis_package_ready_cog_blocked")
+        self.assertEqual(report["product_path_statuses"]["converted_package_readiness_status"], "converted_package_ready")
+        self.assertTrue(report["product_path_statuses"]["any_converted_package_ready"])
+        self.assertTrue(report["product_path_statuses"]["command_plan_addressable"]["native_rebuildable_reduced_output"])
+        self.assertTrue(report["product_path_statuses"]["command_plan_addressable"]["gis_cog_package_conversion"])
+        mitigation_paths = {item["path"] for item in report["workflow_mitigations"]}
+        self.assertIn("native_rebuildable_reduced_output", mitigation_paths)
+        self.assertIn("converted_gis_cog_package", mitigation_paths)
         self.assertIn("public_context_inputs_deferred", report["portability_blockers"])
         self.assertIn("physical_credibility_not_established", report["physical_credibility_blockers"])
         self.assertEqual(report["output_profile_status"]["target_summary_only"], "summary_only_not_rebuildable")
@@ -161,12 +214,14 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         text = summary.render_text_report(summary.build_report(self._fixture_override()))
 
         self.assertIn("interpretation_status: inconclusive_conditional_diagnostic", text)
-        self.assertIn("dominant_scientific_blockers:", text)
+        self.assertIn("scientific_blockers:", text)
         self.assertIn("max_kinetic_energy_closure_limiting", text)
-        self.assertIn("workflow_product_blockers:", text)
+        self.assertIn("workflow_blockers:", text)
         self.assertIn("summary_only_not_rebuildable", text)
         self.assertIn("legacy_summary_only_status", text)
         self.assertIn("native_rebuildable_reduced_status", text)
+        self.assertIn("product_path_statuses:", text)
+        self.assertIn("workflow_mitigations:", text)
         self.assertIn("portability_blockers:", text)
         self.assertIn("physical_credibility_blockers:", text)
         self.assertIn("stability_zone_summary", text)

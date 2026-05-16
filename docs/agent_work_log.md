@@ -931,3 +931,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no calibration fitting, no annual-frequency model, no operational, risk, exposure, or vulnerability claim was introduced, and claim boundaries remain unchanged.
 - Next task: `TB-066`
+
+### TB-066: Reconcile Canonical Diagnostic Interpretation With Current Product Paths
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: reconcile the canonical diagnostic interpretation with the current reduced-output and COG-export product paths so workflow mitigations are separated from scientific blockers without changing the diagnostic status.
+- Files changed: docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_tschamut_conditional_diagnostic_interpretation.py
+- Implementation summary: split the interpretation output into explicit scientific blockers, workflow blockers, product-path statuses, and workflow mitigations; kept `inconclusive_conditional_diagnostic` unchanged; surfaced the native reduced-output path and the COG export path as separate mitigations while preserving the `summary_only_not_rebuildable` and `standard_gis_roots_cog_blocked` blocker names; updated the gate report to reference the new interpretation structure.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_conditional_diagnostic_interpretation`; `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_tschamut_conditional_diagnostic_interpretation.py tests/test_tschamut_conditional_diagnostic_interpretation.py`
+- Result/status: completed.
+- Boundaries: no acceptance claim, no no-go reclassification, no new simulation, and no operational semantics were introduced.
+- Next task: backlog refill needed; see `docs/task_backlog.md`.
