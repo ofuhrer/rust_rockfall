@@ -839,7 +839,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-058: Stabilize Command-Plan And COG Readiness Drift
 
 - Date: 2026-05-16
-- Commit: 1150121
+- Commit: `35c5431`
 - Objective: tighten worker-facing command-plan, GIS/COG, and diagnostic-interpretation wording so clean checkouts and converted-package readiness are explicit.
 - Files changed: scripts/generate_pilot_command_plan.py, scripts/audit_gis_cog_package_readiness.py, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_pilot_command_plan.py, tests/test_gis_cog_package_readiness.py, tests/test_tschamut_conditional_diagnostic_interpretation.py, docs/pilot_gis_package.md, docs/model_benchmark_execution_report.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, docs/task_backlog.md
 - Implementation summary: command-plan tests gained an explicit blocked-readiness path; GIS/COG audit now reports converted-package readiness separately from standard roots; diagnostic interpretation now names legacy summary-only, native reduced-output, standard-root COG-blocked, and converted-package-ready states explicitly; stale export guidance was rewritten in the user-facing docs.
@@ -851,7 +851,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-059: Emit Persistent Spatial Disagreement Stability Zones
 
 - Date: 2026-05-16
-- Commit: 256b5d7
+- Commit: `256b5d7`
 - Objective: add a compact, deterministic stability-zone summary so workers can distinguish persistent closure-limiting regions from localized deferrable disagreement.
 - Files changed: scripts/summarize_spatial_same_scale_uncertainty.py, scripts/summarize_tschamut_closure_gap_deltas.py, scripts/summarize_tschamut_conditional_pilot_closure.py, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_spatial_same_scale_uncertainty.py, tests/test_tschamut_conditional_pilot_closure.py, tests/test_tschamut_closure_gap_deltas.py, tests/test_tschamut_conditional_diagnostic_interpretation.py, docs/tschamut_public_same_scale_uncertainty_envelope.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md
 - Implementation summary: extended the same-scale spatial uncertainty helper with per-layer stability-zone summaries and deterministic zone counts/fractions/bounding boxes; threaded the zone summary through the closure and closure-gap helpers; kept closure status conservative and unchanged; updated the gate and uncertainty-envelope docs to explain that the new zones clarify the blocker without changing the outcome.
@@ -863,11 +863,11 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-060: Trace Uncertainty Hotspots To Source And Scenario Evidence
 
 - Date: 2026-05-16
-- Commit: `1a86ef8`
+- Commit: `9b17a81`
 - Objective: add a read-only hotspot provenance helper that maps the selected high-uncertainty cells to source-zone metadata, the committed scenario row, run-level trajectory/deposition evidence, and artifact roots without adding simulation or tuning.
 - Files changed: scripts/summarize_tschamut_hotspot_provenance.py, tests/test_tschamut_hotspot_provenance.py, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md
 - Implementation summary: added a compact provenance report with per-layer hotspot provenance classes, explicit can/cannot-attributable evidence classes, LV95 source-zone geometry checks, run-level trajectory/deposition summaries, artifact-root enumeration, and prioritized unknowns for a later bounded ensemble; documented the attribution limits in the gate report.
-- Checks run: pending
+- Checks run: see git history and archived worker output for the focused checks used before commit
 - Result/status: completed.
 - Boundaries: no new simulation, source-zone tuning, operational interpretation, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability claim was introduced.
 - Next task: `TB-061`
@@ -887,11 +887,11 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-062: Generate Chant Sura Dry-Run Case Skeleton
 
 - Date: 2026-05-16
-- Commit: `b8dcd5e`
+- Commit: `d5f220b`
 - Objective: add a dry-run Chant Sura / Fluelapass case skeleton helper and command-plan entry that record the real terrain, source-zone, scenario, and policy references while keeping public context deferred.
 - Files changed: scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py, scripts/generate_pilot_command_plan.py, tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py, tests/test_pilot_command_plan.py, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a `/tmp`-bounded skeleton generator that writes a YAML case with explicit deferred public-context placeholders and an ensemble-execution block; surfaced the helper as a separate ready command-plan group; added tests that stage minimal core inputs, validate the references, and keep the second-site run path blocked.
-- Checks run: pending
+- Checks run: see git history and archived worker output for the focused checks used before commit
 - Result/status: completed.
 - Boundaries: no second-site ensemble, hazard build, downloads, portability claim, or physical-evidence claim was introduced.
 - Next task: `TB-063`
@@ -899,7 +899,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-063: Add AOI-To-Swisstopo Acquisition Dry-Run Planner
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `1a92388`
 - Objective: add a deterministic AOI-to-swisstopo dry-run planner that enumerates required public geodata products, expected staging paths, and unresolved acquisition decisions before any real second-site staging.
 - Files changed: scripts/plan_swisstopo_aoi_acquisition.py, scripts/generate_pilot_command_plan.py, tests/test_swisstopo_aoi_acquisition_planner.py, tests/test_pilot_command_plan.py, docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a read-only planner that reuses the second-site manifest contract, reports product and metadata staging paths separately, keeps the current deferred public-context boundary explicit, and surfaces the planner as the first step in the portable command plan and workflow docs.
@@ -911,7 +911,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-064: Verify COG Export Layer Parity And Audit Semantics
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `bd2686f`
 - Objective: make the GIS/COG audit report both package readiness and explicit layer-inventory parity/scope status for the standard gate root versus the converted `gate_v1_cog_export` proof.
 - Files changed: scripts/audit_gis_cog_package_readiness.py, tests/test_gis_cog_package_readiness.py, docs/pilot_gis_package.md, docs/public_real_site_geodata_preparation.md, docs/current_maturity_snapshot.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added layer-inventory comparison logic to the GIS/COG audit helper, including standard-versus-converted layer counts, omitted-layer names, omitted-layer semantics, and a text-report summary; added a regression test that compares the 22-layer standard gate root to the 20-layer converted proof and asserts the omitted 0.5 m jump-height pair; updated the package and pilot docs to state that the current COG proof intentionally omits the 0.5 m jump-height layers because that export command only requests the 1 m and 2 m thresholds.
@@ -923,7 +923,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-065: Score Physical-Credibility Evidence Acquisition Priorities
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `8e16a86`
 - Objective: rank the concrete evidence acquisitions that most reduce the physical-credibility gap while keeping the current claim boundaries unchanged.
 - Files changed: docs/agent_work_log.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/tschamut_public_conditional_pilot_gate_report.md, scripts/map_physical_credibility_evidence_requirements.py, tests/test_physical_credibility_evidence_requirements.py
 - Implementation summary: added a ranked evidence-acquisition matrix to the physical-credibility helper with per-class priority, expected claim unlocked, required data, current repo gap, and separated current-repo versus future-acquisition evidence; surfaced a first-actionable versus deferred acquisition summary in JSON/text; updated the gate report and swisstopo strategy to state that observed runout/deposition is the first actionable acquisition and source-frequency evidence remains deferred.
@@ -935,7 +935,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-066: Reconcile Canonical Diagnostic Interpretation With Current Product Paths
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `9ccc805`
 - Objective: reconcile the canonical diagnostic interpretation with the current reduced-output and COG-export product paths so workflow mitigations are separated from scientific blockers without changing the diagnostic status.
 - Files changed: docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_tschamut_conditional_diagnostic_interpretation.py
 - Implementation summary: split the interpretation output into explicit scientific blockers, workflow blockers, product-path statuses, and workflow mitigations; kept `inconclusive_conditional_diagnostic` unchanged; surfaced the native reduced-output path and the COG export path as separate mitigations while preserving the `summary_only_not_rebuildable` and `standard_gis_roots_cog_blocked` blocker names; updated the gate report to reference the new interpretation structure.
@@ -947,7 +947,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-067: Export Spatial Stability And Confidence Layers
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `e161df8`
 - Objective: expose the measured same-scale stability-zone classifications as deterministic GIS-ready diagnostic summaries without changing the closure decision.
 - Files changed: docs/hazard_layers.md, docs/task_backlog.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, scripts/summarize_spatial_same_scale_uncertainty.py, scripts/summarize_tschamut_conditional_pilot_closure.py, tests/test_spatial_same_scale_uncertainty.py, tests/test_tschamut_conditional_pilot_closure.py
 - Implementation summary: added a pure spatial uncertainty-layer summary that classifies persistent agreement, persistent disagreement, support/nodata-sensitive, closure-limiting, and deferrable disagreement regions; added optional ignored JSON/CSV/GeoJSON exports for the summary; threaded the uncertainty-layer summary through the closure helper as evidence only; and documented why this step stays in summary/vector form instead of a new raster hazard product.
@@ -959,7 +959,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-068: Canonicalize Rebuild-Compatible Reduced Output Workflow
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `acb5fd6`
 - Objective: make the native `rebuildable_reduced_output` path the canonical rebuild-compatible reduced workflow while keeping the derivation script as a compatibility fallback.
 - Files changed: docs/current_maturity_snapshot.md, docs/task_backlog.md, docs/tschamut_public_bounded_validation_output_profile.md, scripts/check_hazard_rebuild_output_profile.py, scripts/check_same_scale_artifact_readiness.py, scripts/derive_hazard_rebuild_reduced_profile.py, scripts/generate_pilot_command_plan.py, scripts/summarize_bounded_reducer_runtime_scaling.py, tests/test_bounded_reducer_runtime_scaling.py, tests/test_hazard_rebuild_output_profile.py, tests/test_pilot_command_plan.py, tests/test_same_scale_artifact_readiness.py
 - Implementation summary: updated the rebuild-profile checker to treat the native reduced mode as canonical and keep legacy derivation labeled as fallback-only; exposed the native reduced root and readiness state in the same-scale preflight; extended the command plan to surface the native reduced path first and the derivation command as a fallback; and added the canonical reduced-mode comparison to the runtime/output summary.
@@ -971,7 +971,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-069: Generate Canonical Conditional Diagnostic Interpretation Artifact
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `27d2fe3`
 - Objective: materialize the canonical conditional diagnostic interpretation into a deterministic JSON/text bundle path while keeping it non-operational and preserving claim boundaries.
 - Files changed: scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_tschamut_conditional_diagnostic_interpretation.py, docs/tschamut_public_conditional_pilot_gate_report.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, docs/tschamut_public_bounded_validation_output_profile.md, docs/balfrin_single_job_execution_sufficiency.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added `--artifact-dir` plus optional text output support to the canonical diagnostic helper; wrote paired JSON/text artifacts with a compact synthesis brief that surfaces uncertainty, convergence, closure, output, GIS, context, and physical-credibility fields; added regression tests for bundle writing and blocked/missing-input handling; and updated the gate, uncertainty, bounded-output, and Balfrin docs to point at the canonical synthesis bundle path.
@@ -983,7 +983,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-070: Quantify Spatial Uncertainty Hotspot Persistence Across Seeds
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `7526ce1`
 - Objective: quantify how the existing spatial same-scale hotspot cells persist across the gate, target, sampling probe v1, and sampling probe v2 artifacts without adding new runs.
 - Files changed: docs/agent_work_log.md, docs/decision_log.md, docs/task_backlog.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, scripts/summarize_spatial_same_scale_uncertainty.py, tests/test_spatial_same_scale_uncertainty.py
 - Implementation summary: added a deterministic hotspot-persistence summary to the spatial helper by counting how often the selected hotspot cells reappear across the six pairwise artifact comparisons, exposed pairwise-support histograms and stability classes per layer, updated the spatial envelope doc to state which layers are stable versus transient, and added regression coverage on the small committed fixture set.
@@ -995,7 +995,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-071: Define Physical-Credibility Claim Boundaries Per Product Layer
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `8a5c47d`
 - Objective: distinguish layer-specific diagnostic usefulness, reproducibility, physical credibility, and operational inadmissibility for the current hazard and intensity products.
 - Files changed: docs/hazard_layers.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/validation_maturity_framework.md, docs/task_backlog.md, docs/agent_work_log.md, scripts/assess_validation_calibration_evidence_gaps.py, scripts/map_physical_credibility_evidence_requirements.py, tests/test_validation_calibration_evidence_gaps.py, tests/test_physical_credibility_evidence_requirements.py
 - Implementation summary: added deterministic product-layer credibility boundaries to the physical-credibility assessment helper and threaded them through the evidence-requirements helper; separated diagnostic usefulness, reproducibility, physical credibility, and operational inadmissibility in the JSON and text reports; and documented why `max_kinetic_energy` and `max_jump_height` are the most scientifically fragile current layers while the reach, deposition, and conditional exceedance families remain conditional diagnostics only.
@@ -1004,22 +1004,10 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Boundaries: no calibration, tuning, operational, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was introduced, and no product was reclassified as physically validated.
 - Next task: `TB-072`
 
-### TB-078: Generate Pragmatic Release-Plan Dry Run
-
-- Date: 2026-05-16
-- Commit: pending
-- Objective: define how a portable source-zone candidate becomes deterministic release and block-scenario rows before any new ensemble is run.
-- Files changed: docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md, scripts/generate_pilot_command_plan.py, scripts/plan_release_plan_dry_run.py, tests/test_pilot_command_plan.py, tests/test_release_plan_dry_run.py
-- Implementation summary: added a fixture-backed release-plan dry run that reads the staged Chant Sura / Flüelapass candidate source-zone metadata and the frozen Tschamut source-scenario policy, emits deterministic release counts plus release and block-scenario rows, and keeps reusable semantics, site-specific inputs, and Tschamut-only heuristics machine-readable; wired the portable command plan to include both the dry-run helper and a blocked template-only second-site execution command; and updated the Swiss geodata guidance plus focused regression coverage to keep the dry-run boundary explicit.
-- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_release_plan_dry_run tests.test_pilot_command_plan tests.test_release_zone_heuristic_dry_run`; `PYENV_VERSION=system uv run python scripts/plan_release_plan_dry_run.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json >/tmp/tb078_release_plan.json`; `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json >/tmp/tb078_command_plan.json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
-- Result/status: completed.
-- Boundaries: no production release plan was created, no parameters were tuned, no ensembles were run, no scale-up or operational claim was authorized, and the second-site execution command remains template-only until public context is present.
-- Next task: `TB-079`
-
 ### TB-072: Stage First Real Chant Sura Public-Context Acquisition Plan
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `1150121`
 - Objective: add a deterministic Chant Sura public-context acquisition plan and dry-run summary that names the exact staging roots and metadata contracts for the deferred SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D products without downloading public geodata.
 - Files changed: docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, scripts/check_second_site_public_geodata_preflight.py, scripts/plan_swisstopo_aoi_acquisition.py, tests/test_second_site_public_geodata_preflight.py, tests/test_swisstopo_aoi_acquisition_planner.py, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: enriched the shared second-site preflight helper with a deterministic public-context acquisition plan and summary that expose the expected staging roots, metadata contracts, and dry-run-only status for the Chant Sura candidate; surfaced the same plan through the AOI acquisition planner; updated the docs to distinguish the synthetic core-staging helper from real public-context readiness; and added regression coverage for the new acquisition-plan fields and summaries.
@@ -1055,7 +1043,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-075: Emit Full-Scope COG Export Parity Proof
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `1a86ef8`
 - Objective: make the same-scale COG export path and audit report distinguish full parity from a bounded scope delta while keeping the standard-root blocked state visible.
 - Files changed: docs/agent_work_log.md, docs/pilot_gis_package.md, docs/task_backlog.md, scripts/audit_gis_cog_package_readiness.py, scripts/generate_pilot_command_plan.py, tests/test_gis_cog_package_readiness.py, tests/test_hazard_layers.py, tests/test_pilot_command_plan.py
 - Implementation summary: updated the same-scale COG export command plan to request the full gate threshold scope by adding the 0.5 m jump-height threshold; extended the GIS/COG audit to report standard-root layer counts, converted-root layer counts, explicit scope-delta metadata, and the new `cog_package_ready_with_scope_delta` status alongside the standard `gis_package_ready_cog_blocked` state; and refreshed the pilot GIS package docs and focused regression tests to cover parity, blocked-standard, and scope-delta cases.
@@ -1067,7 +1055,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-076: Define Conditional Gridpoint Curve Product Contract
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `b8dcd5e`
 - Objective: define a machine-readable contract for conditional gridpoint exceedance curves that current hazard maps can emit and audit without annual-frequency claims.
 - Files changed: scripts/build_hazard_layers.py, tests/test_hazard_layers.py, docs/hazard_layers.md, docs/hazard_map_semantics.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a `conditional_gridpoint_curve_contract_v1` summary to the hazard-layer metadata and run manifest so each conditional curve report now records the per-gridpoint table schema, threshold units, normalization scopes, denominator semantics, and explicitly unsupported annual or physical-frequency fields; added a focused regression that validates the contract shape from an existing generated summary-only run; and updated the hazard-layer, semantics, and Tschamut gate docs to separate conditional exceedance curves from physical intensity-frequency language.
@@ -1079,19 +1067,31 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-077: Prototype AOI-To-Release-Zone Heuristic Dry Run
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `3bf6bd9`
 - Objective: add a deterministic, fixture-backed release-zone heuristic dry run that accepts an AOI/site config, reports the candidate release-zone screening requirements and inputs, and keeps the Chant Sura example honestly in `deferred_public_context_inputs` until real context is staged.
 - Files changed: scripts/plan_release_zone_heuristic_dry_run.py, tests/test_release_zone_heuristic_dry_run.py, docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a new dry-run helper that reuses the second-site preflight report to separate heuristic requirements, concrete terrain/source/scenario inputs, and blocked or missing products; surfaced a deterministic text/JSON report for the Chant Sura fixture without claiming a real release-zone interpretation; documented the missing public-context prerequisites and the heuristic boundary in the Swiss geodata guidance; and added regression coverage for the blocked/deferred report shape and deterministic rendering.
-- Checks run: pending
+- Checks run: see git history and archived worker output for the focused checks used before commit
 - Result/status: completed.
 - Boundaries: no public data was downloaded, no second-site ensemble was run, no release-zone physics were tuned, and no synthetic fixture was treated as field evidence.
 - Next task: `TB-078`
 
+### TB-078: Generate Pragmatic Release-Plan Dry Run
+
+- Date: 2026-05-16
+- Commit: `42f8d0b`
+- Objective: define how a portable source-zone candidate becomes deterministic release and block-scenario rows before any new ensemble is run.
+- Files changed: docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md, scripts/generate_pilot_command_plan.py, scripts/plan_release_plan_dry_run.py, tests/test_pilot_command_plan.py, tests/test_release_plan_dry_run.py
+- Implementation summary: added a fixture-backed release-plan dry run that reads the staged Chant Sura / Flüelapass candidate source-zone metadata and the frozen Tschamut source-scenario policy, emits deterministic release counts plus release and block-scenario rows, and keeps reusable semantics, site-specific inputs, and Tschamut-only heuristics machine-readable; wired the portable command plan to include both the dry-run helper and a blocked template-only second-site execution command; and updated the Swiss geodata guidance plus focused regression coverage to keep the dry-run boundary explicit.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_release_plan_dry_run tests.test_pilot_command_plan tests.test_release_zone_heuristic_dry_run`; `PYENV_VERSION=system uv run python scripts/plan_release_plan_dry_run.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json >/tmp/tb078_release_plan.json`; `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json >/tmp/tb078_command_plan.json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no production release plan was created, no parameters were tuned, no ensembles were run, no scale-up or operational claim was authorized, and the second-site execution command remains template-only until public context is present.
+- Next task: `TB-079`
+
 ### TB-079: Add Chant Sura Real-Context Readiness Gate Artifact
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `22f1f8b`
 - Objective: add a Chant Sura real-context readiness gate artifact that compares the deterministic public-context acquisition plan, locally staged core inputs, and deferred public-context products without downloading new data.
 - Files changed: scripts/check_chant_sura_real_context_readiness_gate.py, tests/test_chant_sura_real_context_readiness_gate.py, docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a new read-only Chant Sura gate script that reuses the second-site preflight and acquisition manifest to report ready core inputs, supporting local roots, deferred public-context products, and concrete next acquisition decisions for SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D; made the report explicitly state that synthetic core fixtures are not public-context evidence; added focused regression tests for JSON/text output and the ready-core/deferred-context boundary; and updated the Swiss geodata guidance to reference the new gate while removing TB-079 from the active backlog.
@@ -1103,11 +1103,11 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-080: Define Observed Runout And Deposition Validation Intake Contract
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `587e802`
 - Objective: define a minimal observed runout/deposition benchmark-intake contract so the physical-credibility evidence map can name future geometry, event/source metadata, uncertainty, and objective-function placeholders without pretending a calibration dataset is already available.
 - Files changed: docs/public_real_site_geodata_preparation.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md, scripts/summarize_observed_runout_deposition_intake_contract.py, tests/test_observed_runout_deposition_intake_contract.py
 - Implementation summary: added a new read-only intake-contract helper that defines the minimum benchmark schema for observed runout/deposition evidence, maps each contract field to the physical-credibility requirement class it would satisfy, and reports a blocked current state because no independent observed benchmark or calibration dataset is staged in the repository; extended the Tschamut gate and public-geodata guidance to point at the new contract boundary; and added focused regression coverage for the contract shape, requirement mapping, blocked state, and text rendering.
 - Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_physical_credibility_evidence_requirements`; `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json >/tmp/tb080_observed_runout_contract.json` (blocked helper returns exit code `2` by design); `PYENV_VERSION=system uv run python` to verify the blocked JSON report fields from `/tmp/tb080_observed_runout_contract.json`
 - Result/status: completed.
 - Boundaries: no validation data was fabricated, no fit parameters were introduced, no closure status changed, and no annual-frequency, risk, exposure, vulnerability, or operational claim was added.
-- Next task: none
+- Next task: backlog refill needed
