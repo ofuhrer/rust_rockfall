@@ -1111,3 +1111,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no validation data was fabricated, no fit parameters were introduced, no closure status changed, and no annual-frequency, risk, exposure, vulnerability, or operational claim was added.
 - Next task: backlog refill needed
+
+### TB-081: Harden Bounded Next-Ensemble Feasibility Probe
+
+- Date: 2026-05-16
+- Commit: `69603e1`
+- Objective: harden the bounded next-ensemble feasibility probe so it reports a deferred planning state against the current reduced-output fixture instead of crashing on missing optional metadata from stale full-case assumptions.
+- Files changed: scripts/summarize_bounded_next_ensemble_feasibility_probe.py, tests/test_bounded_next_ensemble_feasibility_probe.py, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added explicit optional-metadata handling to the bounded next-ensemble feasibility helper so missing probabilistic metadata and hazard-probability provenance yield a stable deferred planning status with null optional fields instead of `KeyError`; updated the focused regression test to assert the reduced fixture’s missing optional metadata path and the resulting deferred output shape; and removed TB-081 from the active backlog.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_bounded_next_ensemble_feasibility_probe.py tests/test_bounded_next_ensemble_feasibility_probe.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_next_ensemble_feasibility_probe`; `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short --branch`
+- Result/status: completed.
+- Boundaries: no new ensemble was run, no scale-up was authorized, no physics or tuning was changed, and no closure interpretation was reinterpreted.
+- Next task: `TB-082`
