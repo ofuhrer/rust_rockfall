@@ -2046,3 +2046,21 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no release-zone replacement, threshold tuning, or physical release-probability claims were introduced.
 - Next task: `TB-124`
+
+### TB-124: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
+
+- Date: 2026-05-17
+- Commit: `cf1cffe`
+- Objective: produce a deterministic Balfrin block-scenario sensitivity plan that keeps pragmatic block-size coverage separate from physical frequency claims.
+- Files changed: `scripts/plan_pragmatic_release_plan.py`, `tests/test_plan_pragmatic_release_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only Balfrin block-scenario sensitivity planner that reads the frozen Tschamut source-policy record and committed scenario table, then emits deterministic block-size bins, weighting semantics, reference-table provenance, and explicit non-frequency labels.
+  - Kept the report boundary explicit: sampling weights are identified as conditional coverage weights, the frozen scenario table is treated as a reference record, and the same-scale uncertainty note is linked as a non-operational reference only.
+  - Added focused regressions for deterministic generation from the committed inputs, blocked behavior when frozen inputs are missing, and stable text rendering.
+  - Removed TB-124 from the active backlog after the plan helper and tests were added.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_pragmatic_release_plan.py tests/test_plan_pragmatic_release_plan.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_pragmatic_release_plan -v`
+- Result/status: completed
+- Boundaries: no block-size distributions were fit, no annual frequencies or physical probabilities were inferred, and the already measured Balfrin demo was not changed.
+- Next task: `TB-125`
