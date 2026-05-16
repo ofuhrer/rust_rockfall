@@ -1735,3 +1735,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the contract remains a read-only demonstration artifact; no Balfrin job was run, readiness checks were not weakened, and no operational, distributed, scale-up, or physical-probability claims were introduced.
 - Next task: `TB-116`
+
+### TB-116 blocked report: Execute And Collect Balfrin Single-Release-Zone Demo
+
+- Date: 2026-05-17
+- Commit: `98f5c4c`
+- Objective: run the canonical Balfrin single-release-zone demo end-to-end or classify the exact blocked execution state with measurable evidence.
+- Files changed: `docs/balfrin_single_release_zone_execution_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified the frozen Balfrin contract, the read-only dry-run plan, and the generated submission package path are all valid.
+  - Attempted live submission against the public conditional pilot freeze and recorded the exact orchestration failure class: `scheduler_submission_failed` because `sbatch` is not installed or exposed on this node.
+  - Collected the probe metrics summary from the generated scratch root and captured the missing live-run fields so the report stays machine-readable without pretending the run executed.
+  - Added a blocked-execution addendum to the historical Balfrin execution report and left a minimal follow-up task to harden scheduler-block classification.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_balfrin_single_release_zone_case_dry_run.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /private/tmp/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --submit --run-root /private/tmp/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /private/tmp/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1`
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /private/tmp/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --output-json /tmp/balfrin_probe_metrics.json`
+- Result/status: implemented_blocked_report.
+- Boundaries: no measured Balfrin run root was produced, no scheduler job started, and no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was introduced.
+- Next task: `TB-128`
