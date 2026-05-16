@@ -1147,3 +1147,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no real benchmark data was created or claimed, no calibration or parameter fitting was introduced, no operational or physical-probability boundary moved, and the generated pack remains a template/non-evidence artifact only.
 - Next task: `TB-084`
+
+### TB-084: Resolve COG Export Layer-Scope Delta
+
+- Date: 2026-05-16
+- Commit: `e77dcce`
+- Objective: make the same-scale COG export proof explicit about whether it is full parity with the standard 22-layer GIS package or intentionally bounded with a machine-readable omitted-layer list.
+- Files changed: docs/task_backlog.md, scripts/audit_gis_cog_package_readiness.py, scripts/generate_pilot_command_plan.py, tests/test_gis_cog_package_readiness.py, tests/test_pilot_command_plan.py, docs/agent_work_log.md
+- Implementation summary: added a structured `cog_scope` object to the GIS/COG readiness audit output so converted packages now report an explicit `full_scope`, `bounded_scope`, `expanded_scope`, or `inventory_mismatch` status alongside the omitted/extra layer names; exposed the same intended scope in the portable command plan metadata for the same-scale COG export command with the 22-layer reference inventory and 0.5 m jump-height layer requirements; and extended the focused regressions to pin the bounded-scope audit shape and the export command's explicit scope intent.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness tests.test_pilot_command_plan`; `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json >/tmp/tb084_command_plan.json`; `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --artifact-root hazard/results/tschamut_public_pilot/gate_v1 --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export --format json >/tmp/tb084_audit.json`; `git diff --check`
+- Result/status: completed.
+- Boundaries: no generated rasters were committed, no manual QGIS acceptance was performed, and no operational GIS, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was introduced.
+- Next task: `TB-085`
