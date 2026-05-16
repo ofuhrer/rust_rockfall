@@ -36,8 +36,9 @@ Current and future GIS products must be distinguished explicitly:
 - Future production COG/package: deferred work for a verified COG writer,
   tiling/overview/compression policy, standardized styles, optional QGZ or
   GeoPackage bundles, publication manifests, and an approval workflow.
-  `hazard_exports.cog: true` and `--export-cog` are reserved but fail
-  explicitly today.
+  Standard same-scale roots may remain COG-blocked; `hazard_exports.cog: true`
+  and `--export-cog` now describe a valid package-level export path that writes
+  to an ignored converted root unless explicitly staged.
 
 ## Required Diagnostic Review Contents
 
@@ -245,9 +246,9 @@ contract:
   checks pixel scale, tiepoint, nodata, EPSG metadata, manifest affine
   transform, vertical datum, non-COG status, non-annual probability semantics,
   and SHA-256 checksum recording.
-- `tests/test_hazard_layers.py::HazardLayerTests.test_cog_export_is_explicitly_deferred`
-  verifies `--export-cog` fails with an explicit deferred-implementation error
-  instead of silently writing a non-COG product.
+- `tests/test_hazard_layers.py` coverage for the package-level export path now
+  distinguishes standard COG-blocked roots from ignored converted-package
+  exports, rather than treating `--export-cog` as universally deferred.
 - `tests/test_hazard_layers.py::HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries`
   verifies the pilot package manifest records GeoTIFF outputs, CSV/ASCII parity
   files, source-zone and terrain metadata sidecars, visual QA status, and
@@ -265,13 +266,14 @@ contract:
   claims.
 
 These checks prove value/metadata parity for the tiny fixture path and enforce
-the current unsupported COG and package boundary. The standalone validator can
-also check local real-pilot generated package inventories when ignored outputs
-exist, and the visual-QA validator can record an explicit `pass`, `no-go`, or
-`inconclusive` manual-review classification. These checks do not themselves
-prove QGIS styling quality, QGZ packaging, Cloud-Optimized GeoTIFF conformance,
-production tiling, Swiss pilot scientific validity, operational approval, or
-risk-map validity.
+the current package boundary. Standard same-scale roots can remain COG-blocked
+while the package-level export path writes a separate ignored converted root.
+The standalone validator can also check local real-pilot generated package
+inventories when ignored outputs exist, and the visual-QA validator can record
+an explicit `pass`, `no-go`, or `inconclusive` manual-review classification.
+These checks do not themselves prove QGIS styling quality, QGZ packaging,
+Cloud-Optimized GeoTIFF conformance, production tiling, Swiss pilot scientific
+validity, operational approval, or risk-map validity.
 
 ## Deferred Production Work
 
@@ -284,3 +286,7 @@ The local pilot package does not yet define:
 - tiled raster products;
 - production-scale package manifests;
 - publication or operational approval workflow.
+
+The current `--export-cog` path is package-level and ignored by default. It is
+valid for generated proof/export roots, but those converted roots remain
+generated and ignored unless a future task explicitly stages them.

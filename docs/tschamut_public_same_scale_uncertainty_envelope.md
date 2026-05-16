@@ -90,6 +90,9 @@ portability, and physical-credibility summaries. That keeps the measured
 uncertainty evidence inside the diagnostic boundary without turning it into an
 acceptance claim.
 
+For the measured closure-gap delta between closure-limiting and deferrable
+layers, see `scripts/summarize_tschamut_closure_gap_deltas.py`.
+
 Compact mask summaries are also available from
 `scripts/summarize_spatial_same_scale_uncertainty.py --mask-output-dir <ignored-root>`.
 Those summaries preserve the same layer-specific counts, extents, and closure

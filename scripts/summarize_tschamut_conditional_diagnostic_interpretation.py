@@ -331,9 +331,13 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
 
 def summarize_output_profile_status(output_profile: dict[str, Any]) -> dict[str, Any]:
     classifications = output_profile.get("profile_classifications", {})
+    summary_only_status = classifications.get("target_summary_only", "unknown")
+    rebuildable_reduced_status = classifications.get("target_rebuildable_reduced", "unknown")
     return {
-        "target_summary_only": classifications.get("target_summary_only", "unknown"),
-        "target_rebuildable_reduced": classifications.get("target_rebuildable_reduced", "unknown"),
+        "target_summary_only": summary_only_status,
+        "legacy_summary_only_status": summary_only_status,
+        "target_rebuildable_reduced": rebuildable_reduced_status,
+        "native_rebuildable_reduced_status": rebuildable_reduced_status,
         "rebuildable_reduced_profile": output_profile.get("rebuildable_reduced_profile", {}),
         "hazard_rebuild_output_profile_status": output_profile.get("hazard_rebuild_output_profile_status", "unknown"),
         "missing_summary_only_artifacts": output_profile.get("missing_summary_only_artifacts", {}),
@@ -349,6 +353,8 @@ def summarize_gis_cog_status(gis: dict[str, Any]) -> dict[str, Any]:
         "standard_package_status": gis.get("gis_cog_readiness_status", "unknown"),
         "readiness_status": gis.get("readiness_status", "unknown"),
         "converted_sample_status": gis.get("converted_sample_status", "not_provided"),
+        "converted_package_readiness_status": gis.get("converted_package_readiness_status", "not_provided"),
+        "any_converted_package_ready": gis.get("any_converted_package_ready", False),
         "converted_package_status": converted_package_status,
         "qgis_manual_qa_status": gis.get("qgis_manual_qa_status", "not_run"),
         "scientific_acceptance_status": gis.get("scientific_acceptance_status", "inconclusive"),
@@ -560,6 +566,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  - {blocker}")
     lines.extend(
         [
+            f"legacy_summary_only_status: {report['output_profile_status'].get('legacy_summary_only_status')}",
+            f"native_rebuildable_reduced_status: {report['output_profile_status'].get('native_rebuildable_reduced_status')}",
+            f"standard_gis_root_status: {report['gis_cog_status'].get('standard_package_status')}",
+            f"converted_package_readiness_status: {report['gis_cog_status'].get('converted_package_readiness_status')}",
+            f"any_converted_package_ready: {str(report['gis_cog_status'].get('any_converted_package_ready', False)).lower()}",
             f"output_profile_status: {json.dumps(report['output_profile_status'], sort_keys=True)}",
             f"gis_cog_status: {json.dumps(report['gis_cog_status'], sort_keys=True)}",
             f"runtime_scaling_status: {json.dumps(report['runtime_scaling_status'], sort_keys=True)}",

@@ -16,35 +16,6 @@ only labels, validators, or roadmap/status churn.
 
 ## Active Tasks
 
-### TB-058: Stabilize Command-Plan And COG Readiness Drift
-
-Goal: post-TB-057 reviews found red or fragile worker-facing surfaces before any new scientific task starts. Reduces: makes the executable queue reliable in fresh checkouts and prevents workers from following stale COG/export guidance.
-
-Inspect first:
-
-- `tests/test_pilot_command_plan.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `docs/pilot_gis_package.md`
-- `docs/model_benchmark_execution_report.md`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-
-Deliverables:
-
-- command-plan tests use fixtures or explicit skip/block behavior instead of assuming ignored Tschamut artifacts exist;
-- COG docs distinguish standard non-COG roots from the now-valid `--export-cog` path;
-- GIS/COG audit exposes an explicit converted-package readiness summary such as `converted_package_readiness_status` or `any_converted_package_ready`;
-- diagnostic interpretation distinguishes old `summary_only` blockers from native rebuildable reduced output and standard-root COG blockers from converted-package readiness.
-
-Definition of done:
-
-- focused command-plan, GIS/COG, and diagnostic-interpretation tests pass in a way that does not rely on ignored generated artifacts;
-- `print_agent_task_context.py --format json` and the same-scale command plan point workers at current helpers;
-- no placeholder artifacts remain after the test run.
-
-Boundaries: no scientific reclassification, no new simulation, no COG package
-manual QA, no operational or scale-up claim.
-
 ### TB-059: Emit Persistent Spatial Disagreement Stability Zones
 
 Goal: TB-052 and TB-053 decomposed closure-limiting uncertainty, but workers still need a compact spatial product that distinguishes persistent closure-limiting regions from localized deferrable disagreement. Reduces: scientific interpretability and uncertainty understanding.

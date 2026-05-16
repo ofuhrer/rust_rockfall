@@ -580,6 +580,14 @@ package-level `--export-cog` builder step, and the converted-package audit as
 explicit workflow steps, so the ignored COG path can be reproduced without
 relying on prose instructions.
 
+The canonical diagnostic helper now reports the legacy and native output
+statuses separately (`legacy_summary_only_status: summary_only_not_rebuildable`
+and `native_rebuildable_reduced_status: rebuildable_reduced_output`) and it
+keeps the GIS boundary explicit as
+`standard_gis_root_status: gis_package_ready_cog_blocked` with
+`converted_package_readiness_status: converted_package_ready` when an ignored
+converted export root is audited.
+
 ## Validation And Calibration Evidence Gaps
 
 `scripts/assess_validation_calibration_evidence_gaps.py` now summarizes the

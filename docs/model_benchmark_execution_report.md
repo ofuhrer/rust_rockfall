@@ -206,7 +206,7 @@ Current GeoTIFF behavior:
 | NODATA | Preserved in TIFF tags and manifest metadata | Empty cells remain distinguishable from zero-valued cells |
 | Weighted labels | Weighted/unweighted layer names and map-package semantics remain in manifests | Probability semantics stay outside implicit raster styling |
 | Checksums | GeoTIFF outputs are listed with artifact identity in manifests | External review can audit file identity |
-| COG | Explicitly deferred; `--export-cog` fails rather than writing a non-COG file | Cloud/distribution packaging remains future work |
+| COG | Standard roots remain COG-blocked; `--export-cog` now writes an ignored package-level export path when explicitly requested | Cloud/distribution packaging remains future work |
 
 Fresh local smoke check for this review package generated 11 GeoTIFF outputs
 from `validation/cases/probabilistic_phase1_smoke.yaml`, including unweighted,

@@ -94,6 +94,24 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         self.assertEqual(report["converted_sample"]["status"], "cog_conversion_sample_ready")
         self.assertTrue(report["converted_sample"]["metadata"]["sample_raster_cog_layout"])
 
+    def test_converted_package_readiness_summary_surfaces_ready_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            standard_root = Path(tmp) / "gate_v1"
+            converted_root = Path(tmp) / "gate_v1_cog_export"
+            self._write_manifests(standard_root, artifact_id="validation_tschamut_public_conditional_gate_v1")
+            self._write_manifests(converted_root, artifact_id="validation_tschamut_public_conditional_gate_v1")
+            report = audit.build_gis_cog_readiness_report(
+                artifact_roots=[standard_root],
+                converted_package_roots=[converted_root],
+                raster_metadata_provider=self._fake_cog_metadata,
+            )
+
+        self.assertEqual(report["gis_cog_readiness_status"], "gis_package_ready")
+        self.assertEqual(report["converted_package_readiness_status"], "converted_package_ready")
+        self.assertTrue(report["any_converted_package_ready"])
+        self.assertEqual(report["converted_package_status"]["validation_tschamut_public_conditional_gate_v1"], "cog_package_ready")
+        self.assertIn("Converted package readiness: converted_package_ready", audit.render_text_report(report))
+
     def _write_manifests(self, root: Path, *, artifact_id: str) -> None:
         root.mkdir(parents=True, exist_ok=True)
         raster_path = root / f"{artifact_id}_reach_probability.tif"

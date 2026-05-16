@@ -835,3 +835,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Boundaries: historical scientific/operational boundaries preserved as
   recorded in the archive.
 - Next task: see `docs/task_backlog.md` for the active queue.
+
+### TB-058: Stabilize Command-Plan And COG Readiness Drift
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: tighten worker-facing command-plan, GIS/COG, and diagnostic-interpretation wording so clean checkouts and converted-package readiness are explicit.
+- Files changed: scripts/generate_pilot_command_plan.py, scripts/audit_gis_cog_package_readiness.py, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_pilot_command_plan.py, tests/test_gis_cog_package_readiness.py, tests/test_tschamut_conditional_diagnostic_interpretation.py, docs/pilot_gis_package.md, docs/model_benchmark_execution_report.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, docs/task_backlog.md
+- Implementation summary: command-plan tests gained an explicit blocked-readiness path; GIS/COG audit now reports converted-package readiness separately from standard roots; diagnostic interpretation now names legacy summary-only, native reduced-output, standard-root COG-blocked, and converted-package-ready states explicitly; stale export guidance was rewritten in the user-facing docs.
+- Checks run: py_compile, unit tests, helper JSON emits, command-plan/audit/diagnostic helper runs, rg stale-guidance search, git diff --check, repo consistency, pre-commit.
+- Result/status: completed.
+- Boundaries: no new simulation, ensemble, COG manual QA, or operational/scale-up claim was introduced.
+- Next task: `TB-059`

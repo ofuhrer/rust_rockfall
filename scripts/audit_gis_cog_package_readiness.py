@@ -147,6 +147,7 @@ def build_gis_cog_readiness_report(
     else:
         gis_status = "gis_package_ready"
 
+    converted_summary = summarize_converted_package_readiness(converted_packages)
     report = {
         "schema_version": SCHEMA_VERSION,
         "gis_cog_readiness_status": gis_status,
@@ -165,6 +166,8 @@ def build_gis_cog_readiness_report(
         "converted_package_status": {
             artifact["artifact_id"]: artifact["cog_package_status"] for artifact in converted_packages
         },
+        "converted_package_readiness_status": converted_summary["converted_package_readiness_status"],
+        "any_converted_package_ready": converted_summary["any_converted_package_ready"],
         "converted_packages": converted_packages,
         "raster_layer_count": {artifact["artifact_id"]: artifact["raster_layer_count"] for artifact in artifacts},
         "crs_or_epsg": {artifact["artifact_id"]: artifact["crs_or_epsg"] for artifact in artifacts},
@@ -270,6 +273,30 @@ def audit_converted_sample(
         "exists": True,
         "metadata": enriched_metadata,
         "blockers": blockers,
+    }
+
+
+def summarize_converted_package_readiness(converted_packages: list[dict[str, Any]]) -> dict[str, Any]:
+    if not converted_packages:
+        return {
+            "converted_package_readiness_status": "not_provided",
+            "any_converted_package_ready": False,
+        }
+    statuses = [package.get("cog_package_status") for package in converted_packages]
+    any_ready = any(status == "cog_package_ready" for status in statuses)
+    if any(status == "blocked_missing_inputs" for status in statuses):
+        readiness_status = "blocked_missing_inputs"
+    elif any(status == "metadata_only" for status in statuses):
+        readiness_status = "metadata_only"
+    elif all(status == "cog_package_ready" for status in statuses):
+        readiness_status = "converted_package_ready"
+    elif any(status in {"cog_package_ready", "cog_package_poc_ready"} for status in statuses):
+        readiness_status = "converted_package_poc_ready"
+    else:
+        readiness_status = "converted_package_poc_ready"
+    return {
+        "converted_package_readiness_status": readiness_status,
+        "any_converted_package_ready": any_ready,
     }
 
 
@@ -636,6 +663,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"GIS/COG readiness: {report['gis_cog_readiness_status']}",
         f"Converted sample: {report['converted_sample_status']}",
+        f"Converted package readiness: {report.get('converted_package_readiness_status')}",
+        f"Any converted package ready: {str(report.get('any_converted_package_ready', False)).lower()}",
         f"Artifacts audited: {report['artifacts_audited']}",
         f"QGIS manual QA: {report['qgis_manual_qa_status']}",
         f"Scientific acceptance: {report['scientific_acceptance_status']}",

@@ -30,6 +30,9 @@ class PilotCommandPlanTest(unittest.TestCase):
     def _readiness_ready(self) -> dict[str, object]:
         return {"readiness_status": "ready"}
 
+    def _readiness_blocked(self) -> dict[str, object]:
+        return {"readiness_status": "blocked_missing_inputs"}
+
     def _output_profile_measured(self) -> dict[str, object]:
         return {
             "hazard_rebuild_output_profile_status": "measured",
@@ -155,6 +158,41 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("scripts/audit_gis_cog_package_readiness.py", converted_audit_command["command"])
         self.assertIn("--converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export", converted_audit_command["command"])
         self.assertTrue(converted_audit_command["read_only"])
+
+    def test_tschamut_plan_remains_structured_when_readiness_is_blocked(self) -> None:
+        with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_blocked()), patch.object(
+            MODULE.OUTPUT_PROFILE,
+            "build_report",
+            return_value=self._output_profile_measured(),
+        ), patch.object(MODULE.PORTABILITY, "build_report", return_value=self._second_site_deferred()), patch.object(
+            MODULE.CONTRACT,
+            "build_report",
+            return_value=self._contract_measured(),
+        ):
+            report = MODULE.build_report("tschamut_same_scale", SECOND_SITE_CONFIG)
+
+        self.assertEqual(report["tschamut_readiness_status"], "blocked_missing_inputs")
+        self.assertEqual(
+            [group["id"] for group in report["command_groups"]],
+            [
+                "readiness_checks",
+                "case_generation",
+                "validation_runs",
+                "hazard_builds",
+                "gis_cog_package_conversion",
+                "convergence_comparisons",
+                "output_profile_checks",
+                "rebuildable_reduced_output",
+                "context_inspection",
+                "hazard_context_overlap",
+                "uncertainty_summary",
+            ],
+        )
+        self.assertIn("tschamut_package_cog_export", report["command_ids"])
+        self.assertIn("tschamut_reduced_profile_validation", report["command_ids"])
+        self.assertIn("tschamut_converted_package_audit", report["command_ids"])
+        self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
+        self.assertEqual(report["blocked_template_commands"], [])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
         report = self._fixture_report("chant_sura_fluelapass")

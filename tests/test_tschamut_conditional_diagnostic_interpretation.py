@@ -29,11 +29,15 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "physical_credibility_blockers": ["physical_credibility_not_established"],
             "output_profile_status": {
                 "target_summary_only": "summary_only_not_rebuildable",
+                "legacy_summary_only_status": "summary_only_not_rebuildable",
                 "target_rebuildable_reduced": "rebuildable_reduced_output",
+                "native_rebuildable_reduced_status": "rebuildable_reduced_output",
                 "command_plan_addressable": True,
             },
             "gis_cog_status": {
                 "standard_package_status": "gis_package_ready_cog_blocked",
+                "converted_package_readiness_status": "converted_package_ready",
+                "any_converted_package_ready": True,
             },
             "runtime_scaling_status": {
                 "reducer_scaling_status": "measured_existing_artifacts",
@@ -115,8 +119,12 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("physical_credibility_not_established", report["physical_credibility_blockers"])
         self.assertEqual(report["output_profile_status"]["target_summary_only"], "summary_only_not_rebuildable")
         self.assertEqual(report["output_profile_status"]["target_rebuildable_reduced"], "rebuildable_reduced_output")
+        self.assertEqual(report["output_profile_status"]["legacy_summary_only_status"], "summary_only_not_rebuildable")
+        self.assertEqual(report["output_profile_status"]["native_rebuildable_reduced_status"], "rebuildable_reduced_output")
         self.assertTrue(report["output_profile_status"]["command_plan_addressable"])
         self.assertEqual(report["gis_cog_status"]["standard_package_status"], "gis_package_ready_cog_blocked")
+        self.assertEqual(report["gis_cog_status"]["converted_package_readiness_status"], "converted_package_ready")
+        self.assertTrue(report["gis_cog_status"]["any_converted_package_ready"])
         self.assertEqual(report["runtime_scaling_status"]["reducer_scaling_status"], "measured_existing_artifacts")
         self.assertTrue(report["runtime_scaling_status"]["local_single_job_sufficient_for_next_step"])
         self.assertFalse(report["runtime_scaling_status"]["distributed_execution_authorized"])
@@ -142,8 +150,11 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("max_kinetic_energy_closure_limiting", text)
         self.assertIn("workflow_product_blockers:", text)
         self.assertIn("summary_only_not_rebuildable", text)
+        self.assertIn("legacy_summary_only_status", text)
+        self.assertIn("native_rebuildable_reduced_status", text)
         self.assertIn("portability_blockers:", text)
         self.assertIn("physical_credibility_blockers:", text)
+        self.assertIn("converted_package_readiness_status", text)
         self.assertIn("scale_up_authorized: false", text)
         self.assertIn("operational_claims_allowed: false", text)
 
