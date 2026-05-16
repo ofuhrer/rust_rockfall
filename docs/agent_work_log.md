@@ -5907,3 +5907,25 @@ Planning only; these milestones do not implement roadmap item content yet.
   package audits as `cog_package_ready` with tiled, overviewed, compressed
   GeoTIFFs and `cloud_optimized: true` metadata; the standard same-scale roots
   remain truthfully `gis_package_ready_cog_blocked`.
+
+### Post-TB-057 Backlog Refill
+
+- Date: 2026-05-16
+- Scope: refilled the active backlog after TB-057 using the post-TB-056 and
+  post-TB-057 review findings plus current measured helper status.
+- Measured state used:
+  `readiness_status=ready`,
+  `closure_status=inconclusive`,
+  `spatial_uncertainty_status=measured_existing_artifacts`,
+  `spatial_interpretation=nodata_support_dominated`,
+  `closure_gap_status=measured_gaps_remain`,
+  `hazard_rebuild_output_profile_status=measured`,
+  `gis_cog_readiness_status=gis_package_ready_cog_blocked`,
+  converted package status `cog_package_ready`,
+  second-site `readiness_status=deferred_public_context_inputs`, and
+  `physical_credibility_requirements_status=mapped_current_gaps`.
+- Result: added TB-058 through TB-066 in priority order, with immediate focus
+  on command-plan/COG drift, spatial uncertainty interpretation, bounded
+  next-ensemble feasibility, second-site dry-run portability, AOI acquisition
+  planning, COG export parity, physical-credibility evidence priorities, and
+  canonical diagnostic interpretation alignment.
