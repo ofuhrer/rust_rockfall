@@ -204,11 +204,12 @@ objective are:
     compare Balfrin results to same-scale uncertainty only after measured
     Balfrin results exist. TB-102 did not execute the Balfrin pilot: it
     produced a blocked execution report because the Balfrin readiness helper
-    rejects
+    originally rejected
     `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
     with `pilot manifest validation failed: schema_version must be public_real_site_conditional_pilot_run_v1`.
-    That contract/readiness-schema
-    mismatch is now the clearest immediate blocker to a real Balfrin demo run.
+    TB-115 freezes the canonical Balfrin demonstration contract and teaches
+    the readiness helper to accept that contract schema without weakening the
+    non-operational boundary.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public
@@ -243,8 +244,8 @@ Over-procedural areas to avoid:
 
 Current high-value work after TB-114:
 
-- repair the contract/readiness-schema mismatch that blocked TB-102 so the
-  minimal Balfrin demonstration contract can pass the Balfrin readiness gate;
+- keep the frozen Balfrin demonstration contract and readiness gate aligned so
+  the minimal demo remains reproducible and bounded without claiming closure;
 - execute the Balfrin single-release-zone pilot from the corrected contract and
   generated submission package, then collect the required metrics bundle;
 - run the Balfrin post-run interpretation gate on measured evidence and update

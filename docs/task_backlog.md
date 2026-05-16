@@ -24,54 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-115: Freeze Canonical Balfrin Demonstration Contract
-
-Goal: Define one bounded reproducible Balfrin demonstration workflow and make
-its selected run manifest pass the same readiness gate that would be used before
-execution.
-
-Capability gap reduced: Balfrin execution realism, reproducibility, and
-demonstration scope control.
-
-Why this outranks alternatives: TB-102 showed the pilot cannot be executed from
-the current minimal contract because the readiness helper rejects its schema.
-No measured Balfrin run should be attempted until there is one canonical
-demonstration contract covering the release zone, scenario family, ensemble
-size, reduced-output mode, GIS package mode, uncertainty interpretation path,
-and readiness-compatible run manifest.
-
-Inspect first:
-
-- `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
-- `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
-- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
-- `docs/balfrin_single_release_zone_execution_report.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A frozen demonstration manifest or generated run manifest for one release
-  zone, one deterministic scenario family, one bounded ensemble size, one
-  native reduced-output mode, one GIS/COG package mode, and one uncertainty
-  interpretation path.
-- A canonical command sequence, ignored-root structure, expected runtime/output
-  footprint, and explicit demonstration boundaries.
-- Focused tests or smoke checks proving the readiness gate no longer fails on
-  `schema_version` and that minimal-demo success remains distinct from
-  scientific closure.
-
-Definition of done:
-
-- the canonical Balfrin demonstration run manifest is readiness-compatible,
-  reproducible, and bounded; focused checks pass; TB-115 is removed from this
-  backlog.
-
-Boundaries: Do not run the Balfrin job, do not weaken readiness checks just to
-pass the contract, and do not authorize operational, distributed, scale-up, or
-physical-probability claims.
-
 ### TB-116: Execute And Collect Balfrin Single-Release-Zone Demo
 
 Goal: Run the canonical Balfrin demonstration workflow end-to-end for one

@@ -256,6 +256,25 @@ class BalfrinReadinessTests(unittest.TestCase):
             qgis_check = next(check for check in report["checks"] if check["name"] == "tool.qgis")
             self.assertEqual(qgis_check["status"], "warn")
 
+    def test_ready_report_accepts_the_frozen_balfrin_contract_schema(self) -> None:
+        report = checker.collect_readiness_report(
+            repo_root=ROOT,
+            run_manifest_path=ROOT / "validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml",
+            tool_probe=_fake_tool_probe_factory(qgis_available=False),
+            git_probe=_fake_git_probe,
+        )
+
+        self.assertEqual(report["status"], checker.STATUS_READY)
+        self.assertTrue(any(check["name"] == "run_manifest.schema_version" and check["status"] == "pass" for check in report["checks"]))
+        self.assertTrue(any(check["name"] == "balfrin_contract.summary" and check["status"] == "pass" for check in report["checks"]))
+        self.assertTrue(any(check["name"] == "balfrin_case_plan.status" and check["status"] == "pass" for check in report["checks"]))
+        self.assertFalse(
+            any(
+                "schema_version must be public_real_site_conditional_pilot_run_v1" in check["message"]
+                for check in report["checks"]
+            )
+        )
+
     def test_ready_report_blocks_missing_scenario_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

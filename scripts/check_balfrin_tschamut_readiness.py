@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -22,6 +23,14 @@ default_run_manifest = ROOT / "validation/pilot_runs/tschamut_public_conditional
 
 STATUS_READY = "ready_for_balfrin_target_gate"
 STATUS_BLOCKED = "blocked_for_balfrin_readiness"
+CONDITIONAL_PILOT_SCHEMA_VERSION = "public_real_site_conditional_pilot_run_v1"
+BALFRIN_CONTRACT_SCHEMA_VERSION = "balfrin_single_release_zone_pilot_contract_v1"
+EXPECTED_BALFRIN_COMMAND_IDS = (
+    "summarize_contract_json",
+    "summarize_contract_text",
+    "dry_run_case_plan",
+    "post_run_gate_preview",
+)
 
 
 def _to_repo_path(repo_root: Path, value: str) -> Path:
@@ -36,6 +45,14 @@ def _first_strict_mapping(value: Any, context: str) -> dict[str, Any]:
         raise ValueError(f"{context} must be a YAML mapping")
     return value
 
+
+def _load_module(path: Path, module_name: str) -> Any:
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _add_check(
@@ -510,6 +527,198 @@ def _collect_claim_scope_checks(checks: list[dict[str, Any]], run_manifest: dict
             )
 
 
+def _collect_balfrin_contract_checks(
+    repo_root: Path,
+    checks: list[dict[str, Any]],
+    contract_report: dict[str, Any],
+    dry_run_report: dict[str, Any],
+) -> None:
+    contract_path = contract_report.get("contract_path")
+    minimal_demo_status = contract_report.get("minimal_demo_status")
+    contract_status = contract_report.get("contract_status")
+    if minimal_demo_status == "ready" and contract_status == "ready_for_balfrin_single_release_zone_pilot":
+        _add_check(
+            checks,
+            name="balfrin_contract.summary",
+            status="pass",
+            required=True,
+            message="frozen Balfrin minimal demonstration contract is ready",
+            path=contract_path,
+        )
+    else:
+        _add_check(
+            checks,
+            name="balfrin_contract.summary",
+            status="fail",
+            required=True,
+            message=(
+                "Balfrin contract summary is not ready: "
+                f"contract_status={contract_status}, minimal_demo_status={minimal_demo_status}"
+            ),
+            path=contract_path,
+        )
+
+    release_zone_scope = contract_report.get("release_zone_scope", {})
+    for key, expected in (
+        ("release_zone_count", 1),
+        ("release_cell_count", 10),
+        ("trajectory_count_target", 1000),
+        ("trajectories_per_release_cell", 100),
+        ("block_scenario_count", 3),
+    ):
+        value = release_zone_scope.get(key)
+        _add_check(
+            checks,
+            name=f"balfrin_contract.release_zone_scope.{key}",
+            status="pass" if value == expected else "fail",
+            required=True,
+            message=f"{key} must be {expected}",
+            path=contract_path,
+        )
+
+    validation_output = contract_report.get("validation_output", {})
+    _add_check(
+        checks,
+        name="balfrin_contract.validation_output",
+        status=(
+            "pass"
+            if validation_output.get("validation_output_mode") == "rebuildable_reduced_output"
+            and validation_output.get("conditional_curve_export") == "summary-only"
+            and validation_output.get("grid_csv_export") == "none"
+            and validation_output.get("pilot_gis_package") is True
+            and validation_output.get("export_geotiff") is True
+            else "fail"
+        ),
+        required=True,
+        message="Balfrin contract uses the frozen reduced-output and GIS package mode",
+        path=contract_path,
+    )
+
+    minimal_demo_contract = contract_report.get("minimal_demo_contract", {})
+    non_goals = set(minimal_demo_contract.get("non_goals", []))
+    _add_check(
+        checks,
+        name="balfrin_contract.non_goals.scientific_closure",
+        status="pass" if "scientific_closure" in non_goals else "fail",
+        required=True,
+        message="minimal demo keeps scientific closure out of scope",
+        path=contract_path,
+    )
+
+    claim_boundaries = minimal_demo_contract.get("claim_boundaries", {})
+    for field in (
+        "operational_claims_allowed",
+        "annual_frequency_claims_allowed",
+        "physical_probability_claims_allowed",
+        "risk_exposure_vulnerability_claims_allowed",
+        "scale_up_authorized",
+        "distributed_execution_authorized",
+    ):
+        _add_check(
+            checks,
+            name=f"balfrin_contract.claim_boundaries.{field}",
+            status="pass" if claim_boundaries.get(field) is False else "fail",
+            required=True,
+            message=f"{field} must remain false",
+            path=contract_path,
+        )
+
+    command_ids = [command.get("command_id") for command in minimal_demo_contract.get("commands", [])]
+    _add_check(
+        checks,
+        name="balfrin_contract.command_sequence",
+        status="pass" if tuple(command_ids) == EXPECTED_BALFRIN_COMMAND_IDS else "fail",
+        required=True,
+        message="command sequence is frozen and read-only",
+        path=contract_path,
+    )
+
+    _add_check(
+        checks,
+        name="balfrin_case_plan.status",
+        status=(
+            "pass"
+            if dry_run_report.get("case_plan_status") == "ready"
+            and dry_run_report.get("case_execution_status") == "blocked_template_only"
+            else "fail"
+        ),
+        required=True,
+        message="Balfrin dry-run plan remains read-only and blocked from execution",
+        path=contract_path,
+    )
+    _add_check(
+        checks,
+        name="balfrin_case_plan.boundary",
+        status=(
+            "pass"
+            if dry_run_report.get("read_only") is True and dry_run_report.get("operational_claims_allowed") is False
+            else "fail"
+        ),
+        required=True,
+        message="dry-run plan preserves the non-operational boundary",
+        path=contract_path,
+    )
+    _add_check(
+        checks,
+        name="balfrin_case_plan.validation_output_mode",
+        status=(
+            "pass"
+            if dry_run_report.get("validation_output", {}).get("validation_output_mode")
+            == "rebuildable_reduced_output"
+            else "fail"
+        ),
+        required=True,
+        message="case plan keeps rebuildable reduced output frozen",
+        path=contract_path,
+    )
+    _add_check(
+        checks,
+        name="balfrin_case_plan.ignored_roots",
+        status=(
+            "pass"
+            if isinstance(dry_run_report.get("ignored_output_roots"), list)
+            and {"validation/results/", "hazard/results/", "target/"}.issubset(
+                set(dry_run_report.get("ignored_output_roots", []))
+            )
+            else "fail"
+        ),
+        required=True,
+        message="dry-run plan keeps generated products in ignored roots",
+        path=contract_path,
+    )
+
+    planned_roots = dry_run_report.get("planned_case_output_roots", [])
+    if isinstance(planned_roots, list) and len(planned_roots) == 2 and all(isinstance(path, str) for path in planned_roots):
+        writable = all(_is_writable_dir(_to_repo_path(repo_root, path)) for path in planned_roots)
+        _add_check(
+            checks,
+            name="balfrin_case_plan.output_roots",
+            status="pass" if writable else "fail",
+            required=True,
+            message="planned Balfrin output roots are writable",
+            path=planned_roots[0],
+        )
+    else:
+        _add_check(
+            checks,
+            name="balfrin_case_plan.output_roots",
+            status="fail",
+            required=True,
+            message="Balfrin case plan does not declare the expected output roots",
+            path=contract_path,
+        )
+
+    selection_rule = dry_run_report.get("deterministic_generation_evidence", {}).get("selection_rule", "")
+    _add_check(
+        checks,
+        name="balfrin_case_plan.selection_rule",
+        status="pass" if "no simulation execution" in str(selection_rule) else "fail",
+        required=True,
+        message="case plan explicitly stays dry-run only",
+        path=contract_path,
+    )
+
+
 def collect_readiness_report(
     *,
     repo_root: Path,
@@ -645,154 +854,208 @@ def collect_readiness_report(
         }
 
     run_manifest = _read_yaml(run_manifest_path)
-
-    if validator_module is None:
-        import importlib.util
-        validator_path = ROOT / "scripts" / "validate_public_real_site_conditional_pilot_run.py"
-        spec = importlib.util.spec_from_file_location("validate_public_real_site_conditional_pilot_run", validator_path)
-        assert spec is not None
-        if spec.loader is None:
-            raise RuntimeError("Unable to load pilot run validator script")
-        validator_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(validator_module)
-
-    try:
-        validator_module.validate_pilot_run(run_manifest, run_manifest_path)
+    schema_version = run_manifest.get("schema_version")
+    if schema_version == CONDITIONAL_PILOT_SCHEMA_VERSION:
         _add_check(
             checks,
-            name="pilot_run_manifest",
+            name="run_manifest.schema_version",
             status="pass",
             required=True,
-            message="run manifest validated by existing pilot contract validator",
+            message=f"schema_version is {CONDITIONAL_PILOT_SCHEMA_VERSION}",
             path=str(run_manifest_path),
         )
-    except Exception as exc:  # noqa: BLE001 - preserve validator context for diagnostics.
-        _add_check(
-            checks,
-            name="pilot_run_manifest",
-            status="fail",
-            required=True,
-            message=f"pilot manifest validation failed: {exc}",
-            path=str(run_manifest_path),
-        )
-        return {
-            "script": "balfrin_tschamut_readiness",
-            "status": STATUS_BLOCKED,
-            "repo_path": str(repo_root),
-            "target_run_manifest": str(run_manifest_path),
-            "branch": current_branch,
-            "commit": current_commit,
-            "checks": checks,
-        }
+        if validator_module is None:
+            validator_path = ROOT / "scripts" / "validate_public_real_site_conditional_pilot_run.py"
+            validator_module = _load_module(validator_path, "validate_public_real_site_conditional_pilot_run")
 
-    if run_manifest.get("run_status") == "template_not_run":
-        _add_check(
-            checks,
-            name="run_manifest.status",
-            status="fail",
-            required=True,
-            message="template run manifest is not usable for readiness command prerequisites",
-            path=str(run_manifest_path),
-        )
-        return {
-            "script": "balfrin_tschamut_readiness",
-            "status": STATUS_BLOCKED,
-            "repo_path": str(repo_root),
-            "target_run_manifest": str(run_manifest_path),
-            "branch": current_branch,
-            "commit": current_commit,
-            "checks": checks,
-        }
-
-    _collect_claim_scope_checks(checks, run_manifest)
-    _collect_root_checks(repo_root, checks, run_manifest)
-
-    input_freeze = _first_strict_mapping(run_manifest.get("input_freeze"), "input_freeze")
-    geodata_manifest_raw = input_freeze.get("geodata_manifest_path")
-    if not isinstance(geodata_manifest_raw, str) or not geodata_manifest_raw:
-        _add_check(
-            checks,
-            name="input_freeze.geodata_manifest_path",
-            status="fail",
-            required=True,
-            message="input_freeze.geodata_manifest_path missing",
-            path=None,
-        )
-    else:
-        geodata_manifest_path = _to_repo_path(repo_root, geodata_manifest_raw)
-        if geodata_manifest_path.exists():
+        try:
+            validator_module.validate_pilot_run(run_manifest, run_manifest_path)
             _add_check(
                 checks,
-                name="input_freeze.geodata_manifest_path",
+                name="pilot_run_manifest",
                 status="pass",
                 required=True,
-                message="geodata manifest exists",
-                path=str(geodata_manifest_path),
+                message="run manifest validated by existing pilot contract validator",
+                path=str(run_manifest_path),
             )
-            _collect_processed_inputs_checks(repo_root, checks, geodata_manifest_path)
-        else:
+        except Exception as exc:  # noqa: BLE001 - preserve validator context for diagnostics.
+            _add_check(
+                checks,
+                name="pilot_run_manifest",
+                status="fail",
+                required=True,
+                message=f"pilot manifest validation failed: {exc}",
+                path=str(run_manifest_path),
+            )
+            return {
+                "script": "balfrin_tschamut_readiness",
+                "status": STATUS_BLOCKED,
+                "repo_path": str(repo_root),
+                "target_run_manifest": str(run_manifest_path),
+                "branch": current_branch,
+                "commit": current_commit,
+                "checks": checks,
+            }
+
+        if run_manifest.get("run_status") == "template_not_run":
+            _add_check(
+                checks,
+                name="run_manifest.status",
+                status="fail",
+                required=True,
+                message="template run manifest is not usable for readiness command prerequisites",
+                path=str(run_manifest_path),
+            )
+            return {
+                "script": "balfrin_tschamut_readiness",
+                "status": STATUS_BLOCKED,
+                "repo_path": str(repo_root),
+                "target_run_manifest": str(run_manifest_path),
+                "branch": current_branch,
+                "commit": current_commit,
+                "checks": checks,
+            }
+
+        _collect_claim_scope_checks(checks, run_manifest)
+        _collect_root_checks(repo_root, checks, run_manifest)
+
+        input_freeze = _first_strict_mapping(run_manifest.get("input_freeze"), "input_freeze")
+        geodata_manifest_raw = input_freeze.get("geodata_manifest_path")
+        if not isinstance(geodata_manifest_raw, str) or not geodata_manifest_raw:
             _add_check(
                 checks,
                 name="input_freeze.geodata_manifest_path",
                 status="fail",
                 required=True,
-                message="geodata manifest path missing",
-                path=str(geodata_manifest_path),
-            )
-
-    for key in ("terrain_metadata_path", "source_zone_metadata_path", "scenario_table_path", "source_scenario_policy_path"):
-        raw = input_freeze.get(key)
-        if not isinstance(raw, str):
-            _add_check(
-                checks,
-                name=f"input_freeze.{key}",
-                status="warn",
-                required=False,
-                message=f"{key} missing in manifest",
+                message="input_freeze.geodata_manifest_path missing",
                 path=None,
             )
-            continue
-        path = _to_repo_path(repo_root, raw)
-        if path.exists():
+        else:
+            geodata_manifest_path = _to_repo_path(repo_root, geodata_manifest_raw)
+            if geodata_manifest_path.exists():
+                _add_check(
+                    checks,
+                    name="input_freeze.geodata_manifest_path",
+                    status="pass",
+                    required=True,
+                    message="geodata manifest exists",
+                    path=str(geodata_manifest_path),
+                )
+                _collect_processed_inputs_checks(repo_root, checks, geodata_manifest_path)
+            else:
+                _add_check(
+                    checks,
+                    name="input_freeze.geodata_manifest_path",
+                    status="fail",
+                    required=True,
+                    message="geodata manifest path missing",
+                    path=str(geodata_manifest_path),
+                )
+
+        for key in ("terrain_metadata_path", "source_zone_metadata_path", "scenario_table_path", "source_scenario_policy_path"):
+            raw = input_freeze.get(key)
+            if not isinstance(raw, str):
+                _add_check(
+                    checks,
+                    name=f"input_freeze.{key}",
+                    status="warn",
+                    required=False,
+                    message=f"{key} missing in manifest",
+                    path=None,
+                )
+                continue
+            path = _to_repo_path(repo_root, raw)
+            if path.exists():
+                _add_check(
+                    checks,
+                    name=f"input_freeze.{key}",
+                    status="pass",
+                    required=True,
+                    message=f"{key} exists",
+                    path=str(path),
+                )
+            else:
+                _add_check(
+                    checks,
+                    name=f"input_freeze.{key}",
+                    status="fail",
+                    required=True,
+                    message=f"{key} missing",
+                    path=str(path),
+                )
+
+        try:
+            command_plan = validator_module.build_command_plan(run_manifest)
             _add_check(
                 checks,
-                name=f"input_freeze.{key}",
+                name="command_plan",
                 status="pass",
                 required=True,
-                message=f"{key} exists",
-                path=str(path),
+                message="command-plan built without execution",
+                path=None,
             )
-        else:
+            _collect_command_plan_checks(repo_root, checks, command_plan)
+        except Exception as exc:  # noqa: BLE001 - this check reports parser/runtime details.
             _add_check(
                 checks,
-                name=f"input_freeze.{key}",
+                name="command_plan",
                 status="fail",
                 required=True,
-                message=f"{key} missing",
-                path=str(path),
+                message=f"command-plan build failed: {exc}",
+                path=None,
             )
-
-    try:
-        command_plan = validator_module.build_command_plan(run_manifest)
+            command_plan = None
+    elif schema_version == BALFRIN_CONTRACT_SCHEMA_VERSION:
         _add_check(
             checks,
-            name="command_plan",
+            name="run_manifest.schema_version",
             status="pass",
             required=True,
-            message="command-plan built without execution",
-            path=None,
+            message=f"schema_version is {BALFRIN_CONTRACT_SCHEMA_VERSION}",
+            path=str(run_manifest_path),
         )
-        _collect_command_plan_checks(repo_root, checks, command_plan)
-    except Exception as exc:  # noqa: BLE001 - this check reports parser/runtime details.
+        contract_module = _load_module(
+            ROOT / "scripts" / "summarize_balfrin_single_release_zone_pilot_contract.py",
+            "summarize_balfrin_single_release_zone_pilot_contract",
+        )
+        plan_module = _load_module(
+            ROOT / "scripts" / "plan_balfrin_single_release_zone_case_dry_run.py",
+            "plan_balfrin_single_release_zone_case_dry_run",
+        )
+        contract_report = contract_module.build_report(run_manifest_path)
+        dry_run_report = plan_module.build_report(contract_path=run_manifest_path)
+        _collect_balfrin_contract_checks(repo_root, checks, contract_report, dry_run_report)
+        command_plan = {
+            "schema_version": dry_run_report["schema_version"],
+            "case_plan_status": dry_run_report["case_plan_status"],
+            "case_execution_status": dry_run_report["case_execution_status"],
+            "commands": contract_report["minimal_demo_contract"]["commands"],
+            "planned_case_output_roots": dry_run_report["planned_case_output_roots"],
+            "ignored_output_roots": dry_run_report["ignored_output_roots"],
+            "blocked_case_execution_template": dry_run_report["blocked_case_execution_template"],
+            "deterministic_generation_evidence": dry_run_report["deterministic_generation_evidence"],
+        }
+    else:
         _add_check(
             checks,
-            name="command_plan",
+            name="run_manifest.schema_version",
             status="fail",
             required=True,
-            message=f"command-plan build failed: {exc}",
-            path=None,
+            message=(
+                "unsupported schema_version; expected "
+                f"{CONDITIONAL_PILOT_SCHEMA_VERSION} or {BALFRIN_CONTRACT_SCHEMA_VERSION}"
+            ),
+            path=str(run_manifest_path),
         )
-        command_plan = None
+        return {
+            "script": "balfrin_tschamut_readiness",
+            "status": STATUS_BLOCKED,
+            "repo_path": str(repo_root),
+            "target_run_manifest": str(run_manifest_path),
+            "branch": current_branch,
+            "commit": current_commit,
+            "checks": checks,
+        }
 
     blockers = [entry for entry in checks if entry["required"] and entry["status"] == "fail"]
     status = STATUS_READY if not blockers else STATUS_BLOCKED

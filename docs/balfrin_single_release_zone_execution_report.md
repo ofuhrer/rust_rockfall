@@ -65,6 +65,6 @@ checkout.
 
 ## Next action
 
-The readiness path must be taught to recognize the Balfrin contract schema, or a
-contract-aware wrapper must be added, before TB-102 can produce measured
-evidence.
+TB-115 later teaches the readiness path to recognize the Balfrin contract
+schema through a contract-aware branch. This report preserves the original
+TB-102 failure class for historical context.
