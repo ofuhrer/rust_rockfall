@@ -254,6 +254,12 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, but
 it does not download anything and it does not convert the deferred public
 context into readiness.
 
+The Chant Sura real-context readiness gate,
+`scripts/check_chant_sura_real_context_readiness_gate.py`, adds the next
+layer: it compares the acquisition plan with the locally staged core files and
+the deferred public-context products, and it keeps the synthetic core fixtures
+explicitly out of the public-context evidence bucket.
+
 `scripts/map_physical_credibility_evidence_requirements.py` now maps the
 project's validation gap into concrete evidence requirements. It keeps the
 distinction explicit between:

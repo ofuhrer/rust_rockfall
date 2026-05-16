@@ -18,37 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-079: Add Chant Sura Real-Context Readiness Gate Artifact
-
-Goal: Move Chant Sura from synthetic core-input staging toward real
-public-context readiness by adding an explicit gate artifact for acquisition
-decisions.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A readiness-gate report that compares the deterministic acquisition plan,
-  local staged files, and deferred public-context products for Chant Sura.
-- Concrete next acquisition decisions for SWISSIMAGE, swissTLM3D,
-  swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D without
-  downloading them.
-- A clear indication that synthetic core inputs are not public-context evidence.
-
-Definition of done:
-
-- The gate report has JSON/text output and tests covering ready core inputs plus
-  deferred real-context products.
-
-Boundaries: Do not perform downloads, run second-site hazard maps, or claim
-  second-site validation/calibration readiness.
-
 ### TB-080: Define Observed Runout And Deposition Validation Intake Contract
 
 Goal: Turn the physical-credibility evidence map into a concrete future data

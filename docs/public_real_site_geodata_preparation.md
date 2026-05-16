@@ -235,6 +235,13 @@ swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
 context as deferred until real products are staged. No downloads occur during
 that summary pass.
 
+The Chant Sura real-context readiness gate,
+`scripts/check_chant_sura_real_context_readiness_gate.py`, layers on top of
+that summary. It compares the deterministic acquisition plan with the locally
+staged core inputs and supporting roots, then keeps the deferred public-context
+products explicit so synthetic terrain, source-zone, and scenario fixtures are
+never mistaken for public-context evidence.
+
 The AOI-to-swisstopo dry-run planner,
 `scripts/plan_swisstopo_aoi_acquisition.py`, is the first step before any real
 staging. It reads the small AOI/site config and emits the required public
