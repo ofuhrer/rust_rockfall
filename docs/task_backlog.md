@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-096: Plan Terrain-Driven Release-Zone Candidate Generation
-
-Goal: Produce a deterministic dry-run release-zone candidate generator contract from public terrain and context inputs.
-
-Capability gap reduced: Automated release-zone identification from public geodata.
-
-Why this outranks alternatives: Swiss-wide automation cannot rely on hand-written release polygons; it needs a pragmatic reproducible heuristic before large ensembles can scale beyond Tschamut.
-
-Inspect first:
-
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A dry-run heuristic contract naming terrain derivatives, slope/roughness/corridor inputs, context exclusions, output geometry schema, and required provenance.
-- Tests covering a blocked Chant Sura public-context path and a tiny synthetic AOI fixture.
-- Clear labels separating candidate generation from validated release-zone evidence.
-
-Definition of done:
-
-- The heuristic contract emits JSON/text, focused tests pass, and TB-096 is removed from this backlog.
-
-Boundaries: Do not generate production release zones, do not tune thresholds against Tschamut outcomes, and do not treat heuristic candidates as physical evidence.
-
 ### TB-097: Plan Pragmatic Block-Scenario Generation
 
 Goal: Define a deterministic block-scenario generation dry run that maps release-zone candidates to a small, pragmatic scenario table.

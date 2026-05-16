@@ -46,6 +46,27 @@ class ReleaseZoneHeuristicDryRunTests(unittest.TestCase):
         self.assertEqual(report["candidate_release_zone_interpretation"], "not_claimed")
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
+        self.assertEqual(
+            report["release_zone_candidate_generation_contract"]["candidate_generation_label"],
+            "heuristic_candidate_generation_only",
+        )
+        self.assertEqual(
+            report["release_zone_candidate_generation_contract"]["validated_release_zone_evidence_status"],
+            "not_claimed",
+        )
+        self.assertEqual(report["release_zone_candidate_generation_contract"]["output_geometry_schema"]["crs"], "EPSG:2056")
+        self.assertEqual(
+            report["release_zone_candidate_generation_contract"]["screening_inputs"][0]["input_id"],
+            "terrain_crop",
+        )
+        self.assertEqual(
+            report["release_zone_candidate_generation_contract"]["terrain_derivatives"][0]["derivative_id"],
+            "slope",
+        )
+        self.assertEqual(
+            report["release_zone_candidate_generation_contract"]["context_exclusions"][0]["category"],
+            "swisstlm3d_context",
+        )
         self.assertEqual(report["heuristic_summary"]["deferred_public_context_inputs_status"], "deferred_public_context_inputs")
 
         requirement_rows = {entry["requirement_id"]: entry for entry in report["heuristic_requirements"]}
@@ -90,6 +111,7 @@ class ReleaseZoneHeuristicDryRunTests(unittest.TestCase):
             ],
         )
         self.assertIn("no candidate release-zone set is claimed", report["blocked_reason"])
+        self.assertEqual(report["evidence_labels"][1]["status"], "not_claimed")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
@@ -109,10 +131,37 @@ class ReleaseZoneHeuristicDryRunTests(unittest.TestCase):
         text_report = planner.render_text_report(report)
         self.assertEqual(text_report, planner.render_text_report(report))
         self.assertIn("schema_version: release_zone_heuristic_dry_run_v1", text_report)
+        self.assertIn("release_zone_candidate_generation_contract:", text_report)
         self.assertIn("heuristic_requirements:", text_report)
         self.assertIn("blocked_missing_products:", text_report)
         self.assertIn("deferred_public_context_inputs:", text_report)
         self.assertIn("heuristic_assumptions:", text_report)
+        self.assertIn("evidence_labels:", text_report)
+
+    def test_minimal_synthetic_aoi_fixture_emits_candidate_generation_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._minimal_synthetic_aoi_config_path(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+
+            report = planner.build_report(config_path, repo_root=repo_root)
+
+        contract = report["release_zone_candidate_generation_contract"]
+        self.assertEqual(report["candidate_site_id"], "minimal_synthetic_aoi_v1")
+        self.assertEqual(report["candidate_site_name"], "Minimal Synthetic AOI")
+        self.assertEqual(contract["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
+        self.assertEqual(contract["candidate_generation_label"], "heuristic_candidate_generation_only")
+        self.assertEqual(contract["validated_release_zone_evidence_label"], "not_claimed")
+        self.assertEqual(contract["terrain_derivatives"][1]["derivative_id"], "roughness")
+        self.assertEqual(contract["output_geometry_schema"]["label"], "candidate_generation_only")
+        self.assertEqual(contract["required_provenance"][0]["field"], "source_product_name")
+        self.assertEqual(contract["screening_inputs"][2]["category"], "swisstlm3d_context")
+        self.assertEqual(report["evidence_labels"][0]["label_id"], "candidate_generation_only")
+        self.assertIn("candidate_generation_only", planner.render_text_report(report))
 
     def _write_site_config(self, root: Path) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
@@ -120,6 +169,13 @@ class ReleaseZoneHeuristicDryRunTests(unittest.TestCase):
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
         )
+        config_path = root / "site_config.yaml"
+        config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+        return config_path
+
+    def _minimal_synthetic_aoi_config_path(self, root: Path) -> Path:
+        config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/minimal_synthetic_aoi.yaml"
+        config_data = yaml.safe_load(config_source.read_text(encoding="utf-8"))
         config_path = root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path

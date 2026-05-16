@@ -1325,3 +1325,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no annual frequency, return-period, risk, exposure, vulnerability, physical-probability, or operational semantics were added.
 - Next task: `TB-096`
+
+### TB-096: Plan Terrain-Driven Release-Zone Candidate Generation
+
+- Date: 2026-05-16
+- Commit: `c571108`
+- Objective: produce a deterministic dry-run release-zone candidate contract from public terrain and context inputs while keeping candidate generation separate from validated release-zone evidence.
+- Files changed: `scripts/plan_release_zone_heuristic_dry_run.py`, `tests/test_release_zone_heuristic_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary: added a first-class release-zone candidate-generation contract covering terrain derivatives, slope/roughness/corridor screening inputs, context exclusions, output geometry schema, provenance requirements, and explicit evidence-boundary labels; kept the dry-run status tied to deferred public context rather than generating release zones; added focused regressions for the blocked Chant Sura public-context path and the tiny synthetic AOI fixture.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/plan_release_zone_heuristic_dry_run.py tests/test_release_zone_heuristic_dry_run.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_release_zone_heuristic_dry_run -v`
+- Result/status: completed.
+- Boundaries: no production release zones were generated, no thresholds were tuned against Tschamut outcomes, and no heuristic candidates were treated as physical evidence.
+- Next task: `TB-097`
