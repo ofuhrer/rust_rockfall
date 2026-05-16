@@ -24,6 +24,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "second_site_public_geodata_preflight_v1"
+PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_workflow_contract_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
@@ -107,6 +108,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         if isinstance(config.get("source_zone_scenario_contract"), dict)
         else {}
     )
+    fixture_profile = text_value(config.get("fixture_profile"))
     default_acquisition_manifest = (
         (site_config.parent if site_config is not None else ROOT / "tests/fixtures/second_site_public_geodata_preflight")
         / "chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -165,6 +167,14 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_command_template_count": len(acquisition_manifest.get("command_templates") or []),
         "public_context_acquisition_summary": build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
+        "public_geodata_workflow_contract": build_public_geodata_workflow_contract(
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            site_extent=site_extent,
+            paths=paths,
+            source_zone_scenario_contract=source_zone_scenario_contract,
+            fixture_profile=fixture_profile,
+        ),
         "acquisition_manifest_product_summaries": [
             {
                 "category": entry.get("category"),
@@ -338,6 +348,241 @@ def build_public_context_acquisition_summary(plan: list[dict[str, Any]]) -> dict
             entry["category"]: entry["metadata_contract"] for entry in plan
         },
     }
+
+
+def build_public_geodata_workflow_contract(
+    *,
+    candidate_site_id: str,
+    candidate_site_name: str,
+    site_extent: dict[str, Any],
+    paths: dict[str, Path],
+    source_zone_scenario_contract: dict[str, Any],
+    fixture_profile: str,
+) -> dict[str, Any]:
+    aoi_extent_ready = bool(
+        text_value(site_extent.get("crs"))
+        and all(k in site_extent and site_extent[k] not in (None, "") for k in ("xmin", "ymin", "xmax", "ymax"))
+    )
+    contract_status = "ready" if aoi_extent_ready and candidate_site_id else "blocked_missing_inputs"
+    if fixture_profile:
+        synthetic_fixture_status = "ready"
+    else:
+        synthetic_fixture_status = "not_applicable"
+
+    return {
+        "schema_version": PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION,
+        "public_geodata_contract_readiness_status": contract_status,
+        "synthetic_fixture_readiness_status": synthetic_fixture_status,
+        "synthetic_fixture_profile": fixture_profile or "none",
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "required_aoi_metadata": build_required_aoi_metadata(site_extent, source_zone_scenario_contract),
+        "crs_grid_assumptions": build_crs_grid_assumptions(site_extent),
+        "swisstopo_product_classes": build_swisstopo_product_classes(),
+        "cache_paths": build_cache_paths(candidate_site_id, paths),
+        "provenance_requirements": build_provenance_requirements(),
+        "deferred_optional_context": build_deferred_optional_context(paths),
+        "claim_boundaries": claim_boundaries(),
+    }
+
+
+def build_required_aoi_metadata(
+    site_extent: dict[str, Any],
+    source_zone_scenario_contract: dict[str, Any],
+) -> list[dict[str, Any]]:
+    extent_ready = bool(
+        text_value(site_extent.get("crs"))
+        and all(k in site_extent and site_extent[k] not in (None, "") for k in ("xmin", "ymin", "xmax", "ymax"))
+    )
+    return [
+        {
+            "field": "candidate_site_id",
+            "required": True,
+            "ready": True,
+            "purpose": "stable site identifier for reusable AOI bookkeeping",
+        },
+        {
+            "field": "candidate_site_name",
+            "required": True,
+            "ready": True,
+            "purpose": "human-readable site label for report output and cache paths",
+        },
+        {
+            "field": "site_extent.crs",
+            "required": True,
+            "ready": bool(text_value(site_extent.get("crs"))),
+            "purpose": "AOI CRS must be explicit before any Swiss preprocessing",
+        },
+        {
+            "field": "site_extent.xmin/ymin/xmax/ymax",
+            "required": True,
+            "ready": extent_ready,
+            "purpose": "AOI bounds must be finite and metre-based before crop planning",
+        },
+        {
+            "field": "source_zone_scenario_contract.source_zone_id_pattern",
+            "required": True,
+            "ready": bool(text_value(source_zone_scenario_contract.get("source_zone_id_pattern"))),
+            "purpose": "release/source-zone family must be explicit before release planning",
+        },
+        {
+            "field": "source_zone_scenario_contract.block_scenario_table",
+            "required": True,
+            "ready": bool(text_value(source_zone_scenario_contract.get("block_scenario_table"))),
+            "purpose": "block/scenario semantics must be fixed before hazard generation",
+        },
+    ]
+
+
+def build_crs_grid_assumptions(site_extent: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "assumption": "EPSG:2056 / LV95 horizontal coordinates",
+            "required": True,
+            "ready": bool(text_value(site_extent.get("crs")) == "EPSG:2056"),
+        },
+        {
+            "assumption": "LN02 vertical datum unless explicitly transformed",
+            "required": True,
+            "ready": True,
+        },
+        {
+            "assumption": "AOI bounds are finite metre coordinates",
+            "required": True,
+            "ready": bool(all(k in site_extent and site_extent[k] not in (None, "") for k in ("xmin", "ymin", "xmax", "ymax"))),
+        },
+        {
+            "assumption": "terrain crop extent and output grid are site-specific and must be recorded before preprocessing",
+            "required": True,
+            "ready": True,
+        },
+        {
+            "assumption": "resolution, nodata policy, and resampling method belong in terrain metadata, not implicit defaults",
+            "required": True,
+            "ready": True,
+        },
+    ]
+
+
+def build_swisstopo_product_classes() -> list[dict[str, Any]]:
+    return [
+        {
+            "class": "required_terrain",
+            "required": True,
+            "products": ["swissALTI3D"],
+            "workflow_role": "terrain foundation for Swiss AOI preprocessing",
+        },
+        {
+            "class": "required_metadata_records",
+            "required": True,
+            "products": ["terrain_metadata", "source_zone_metadata", "scenario_table", "source_scenario_policy"],
+            "workflow_role": "metadata records that freeze the site-specific contract",
+        },
+        {
+            "class": "deferred_optional_context",
+            "required": False,
+            "products": [
+                "SWISSIMAGE",
+                "swissTLM3D",
+                "swissSURFACE3D",
+                "swissSURFACE3D Raster",
+                "swissBUILDINGS3D",
+            ],
+            "workflow_role": "context layers that remain optional until a site-specific QA or context need exists",
+        },
+        {
+            "class": "optional_local_context",
+            "required": False,
+            "products": ["barrier_inventory", "validation_observations"],
+            "workflow_role": "site-specific QA or protection context, only when explicitly available",
+        },
+    ]
+
+
+def build_cache_paths(candidate_site_id: str, paths: dict[str, Path]) -> dict[str, str]:
+    return {
+        "raw_swisstopo_cache_root": str(ROOT / "data/raw/swisstopo" / candidate_site_id),
+        "processed_input_root": str(paths["processed_input_root"]),
+        "processed_context_root": str(paths["processed_context_root"]),
+        "validation_private_root": str(paths["validation_case_root"]),
+        "hazard_results_root": str(paths["hazard_results_root"]),
+    }
+
+
+def build_provenance_requirements() -> list[dict[str, Any]]:
+    return [
+        {
+            "field": "source_product_name",
+            "required": True,
+            "purpose": "identify the exact swisstopo product family used for the AOI",
+        },
+        {
+            "field": "product_version_or_date",
+            "required": True,
+            "purpose": "freeze the public product revision or delivery date when known",
+        },
+        {
+            "field": "tile_id_or_delivery_identifier",
+            "required": True,
+            "purpose": "link the AOI crop back to the specific swisstopo source tiles",
+        },
+        {
+            "field": "source_url_or_download_record",
+            "required": True,
+            "purpose": "record where the public geodata was acquired or documented",
+        },
+        {
+            "field": "raw_checksum",
+            "required": True,
+            "purpose": "prove the raw input was not silently altered",
+        },
+        {
+            "field": "processed_checksum",
+            "required": True,
+            "purpose": "track the cropped or converted output used by the workflow",
+        },
+        {
+            "field": "license_or_terms_reference",
+            "required": True,
+            "purpose": "keep reuse and redistribution claims bounded by the source terms",
+        },
+        {
+            "field": "preprocessing_command_and_timestamp",
+            "required": True,
+            "purpose": "make the crop or conversion step reproducible",
+        },
+    ]
+
+
+def build_deferred_optional_context(paths: dict[str, Path]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for category in (
+        "swissimage_context",
+        "swisstlm3d_context",
+        "swisssurface3d_context",
+        "swisssurface3d_raster_context",
+        "swissbuildings3d_context",
+    ):
+        expected_path = paths[category]
+        staging_root = expected_path.parent if expected_path.name == "metadata.json" else expected_path
+        entries.append(
+            {
+                "category": category,
+                "product": {
+                    "swissimage_context": "SWISSIMAGE",
+                    "swisstlm3d_context": "swissTLM3D",
+                    "swisssurface3d_context": "swissSURFACE3D",
+                    "swisssurface3d_raster_context": "swissSURFACE3D Raster",
+                    "swissbuildings3d_context": "swissBUILDINGS3D",
+                }[category],
+                "required": False,
+                "expected_staged_path": str(expected_path),
+                "expected_staging_root": str(staging_root),
+                "status": "deferred_optional_context",
+                "meaning": "context layers are intentionally deferred until the site-specific workflow asks for them",
+            }
+        )
+    return entries
 
 
 def build_expected_local_paths(requirements: list[dict[str, Any]]) -> dict[str, str]:
@@ -891,6 +1136,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     ]
     lines.extend(_render_entries(report["public_context_product_requirements"]))
     lines.append("")
+    lines.append("public_geodata_workflow_contract:")
+    lines.extend(_render_public_geodata_workflow_contract(report["public_geodata_workflow_contract"]))
+    lines.append("")
     lines.append("public_context_acquisition_summary:")
     if report.get("public_context_acquisition_summary"):
         for key, value in report["public_context_acquisition_summary"].items():
@@ -1009,6 +1257,46 @@ def _render_public_context_acquisition_plan(entries: list[dict[str, Any]]) -> li
         )
     if not lines:
         lines.append("- none")
+    return lines
+
+
+def _render_public_geodata_workflow_contract(contract: dict[str, Any]) -> list[str]:
+    lines = [
+        f"- schema_version: {contract['schema_version']}",
+        f"- public_geodata_contract_readiness_status: {contract['public_geodata_contract_readiness_status']}",
+        f"- synthetic_fixture_readiness_status: {contract['synthetic_fixture_readiness_status']}",
+        f"- synthetic_fixture_profile: {contract['synthetic_fixture_profile']}",
+        f"- candidate_site_id: {contract['candidate_site_id']}",
+        f"- candidate_site_name: {contract['candidate_site_name']}",
+        "- required_aoi_metadata:",
+    ]
+    for entry in contract["required_aoi_metadata"]:
+        lines.append(
+            f"  - {entry['field']}: required={str(entry['required']).lower()}, ready={str(entry['ready']).lower()}, purpose={entry['purpose']}"
+        )
+    lines.append("- crs_grid_assumptions:")
+    for entry in contract["crs_grid_assumptions"]:
+        lines.append(
+            f"  - {entry['assumption']}: required={str(entry['required']).lower()}, ready={str(entry['ready']).lower()}"
+        )
+    lines.append("- swisstopo_product_classes:")
+    for entry in contract["swisstopo_product_classes"]:
+        lines.append(
+            f"  - {entry['class']}: required={str(entry['required']).lower()}, products={', '.join(entry['products'])}, workflow_role={entry['workflow_role']}"
+        )
+    lines.append("- cache_paths:")
+    for key, value in contract["cache_paths"].items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- provenance_requirements:")
+    for entry in contract["provenance_requirements"]:
+        lines.append(f"  - {entry['field']}: required={str(entry['required']).lower()}, purpose={entry['purpose']}")
+    lines.append("- deferred_optional_context:")
+    for entry in contract["deferred_optional_context"]:
+        lines.append(
+            f"  - {entry['category']}: {entry['expected_staged_path']} ({entry['meaning']})"
+        )
+    lines.append("- claim_boundaries:")
+    lines.extend(f"  - {key}: {str(value).lower()}" for key, value in contract["claim_boundaries"].items())
     return lines
 
 

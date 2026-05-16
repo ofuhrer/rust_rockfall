@@ -247,12 +247,25 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The second-site preflight and AOI planner also emit a reusable
+`public_geodata_workflow_contract` summary. It names the required AOI
+metadata, CRS/grid assumptions, swisstopo product classes, cache paths,
+provenance requirements, and deferred optional context so later preprocessing
+and release planning can target one contract instead of inferring site rules
+from Tschamut-specific fixtures.
+
 The same manifest now drives a deterministic dry-run acquisition summary in
 the second-site preflight and the AOI acquisition planner. That summary names
 the expected staging roots and metadata contracts for SWISSIMAGE,
 swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, but
 it does not download anything and it does not convert the deferred public
 context into readiness.
+
+The tiny synthetic staging fixture under
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+is a local scaffolding helper only. It exercises the contract and staging
+paths without public downloads, but it is not public-geodata evidence and must
+not be read as readiness for real SWISSIMAGE or swissTLM3D content.
 
 The Chant Sura real-context readiness gate,
 `scripts/check_chant_sura_real_context_readiness_gate.py`, adds the next

@@ -56,6 +56,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
+        self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertEqual(
             report["deferred_public_context_categories"],
             [
@@ -118,6 +120,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
 
         text_report = planner.render_text_report(report)
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
+        self.assertIn("public_geodata_workflow_contract:", text_report)
+        self.assertIn("public_geodata_contract_readiness_status: ready", text_report)
         self.assertIn("required_public_geodata_products:", text_report)
         self.assertIn("public_context_acquisition_plan:", text_report)
         self.assertIn("unresolved_acquisition_decisions:", text_report)

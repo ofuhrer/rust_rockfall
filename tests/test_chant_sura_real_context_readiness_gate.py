@@ -41,6 +41,9 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(report["core_input_status"], "ready")
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertFalse(report["synthetic_core_inputs_are_public_context_evidence"])
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
+        self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
+        self.assertIn("swissALTI3D", report["public_geodata_workflow_contract"]["swisstopo_product_classes"][0]["products"])
 
         ready_core_inputs = {entry["category"]: entry for entry in report["local_core_inputs"]}
         self.assertEqual(
@@ -108,6 +111,7 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("real_context_readiness_gate_status: ready_for_real_context_acquisition", text_report)
         self.assertIn("local_core_inputs:", text_report)
         self.assertIn("deterministic_acquisition_plan:", text_report)
+        self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("next_acquisition_decisions:", text_report)
         self.assertIn("synthetic_core_inputs_are_public_context_evidence: false", text_report)
         self.assertIn("processed_context_root", text_report)

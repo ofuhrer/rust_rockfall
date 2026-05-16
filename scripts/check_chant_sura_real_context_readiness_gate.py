@@ -144,6 +144,7 @@ def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> 
             "next_acquisition_decisions": next_acquisition_decisions,
             "public_context_acquisition_summary": preflight_report["public_context_acquisition_summary"],
             "public_context_boundary_status": preflight_report["public_context_boundary_status"],
+            "public_geodata_workflow_contract": preflight_report["public_geodata_workflow_contract"],
             "source_zone_scenario_contract": preflight_report["source_zone_scenario_contract"],
             "synthetic_core_inputs_are_public_context_evidence": False,
             "synthetic_fixture_boundaries": preflight_report["synthetic_fixture_boundaries"],
@@ -307,8 +308,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"acquisition_manifest_status: {report['acquisition_manifest_status']}",
         f"acquisition_manifest_path: {report['acquisition_manifest_path']}",
         "",
-        "site_extent:",
+        "public_geodata_workflow_contract:",
     ]
+    lines.extend(PREFLIGHT._render_public_geodata_workflow_contract(report["public_geodata_workflow_contract"]))
+    lines.extend([
+        "",
+        "site_extent:",
+    ])
     site_extent = report["site_extent"]
     if isinstance(site_extent, dict):
         for key in ("crs", "xmin", "ymin", "xmax", "ymax"):

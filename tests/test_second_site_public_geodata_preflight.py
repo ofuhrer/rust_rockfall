@@ -44,6 +44,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["candidate_site_name"], "Placeholder Second Site")
         self.assertEqual(report["candidate_selection_rationale"], "site selection remains blocked or unspecified")
         self.assertEqual(report["site_extent_or_placeholder"]["crs"], "EPSG:2056")
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
+        self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
+        self.assertEqual(report["public_geodata_workflow_contract"]["required_aoi_metadata"][2]["field"], "site_extent.crs")
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
@@ -113,6 +116,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "missing_input_categories",
                 "missing_input_paths_or_patterns",
                 "metadata_requirements",
+                "public_geodata_workflow_contract",
                 "operational_claims_allowed",
                 "public_context_acquisition_plan",
                 "public_context_acquisition_summary",
@@ -165,6 +169,12 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(
             report["public_context_acquisition_plan"][0]["expected_staging_root"],
             str(root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"),
+        )
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
+        self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
+        self.assertEqual(
+            report["public_geodata_workflow_contract"]["cache_paths"]["raw_swisstopo_cache_root"],
+            str(root / "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1"),
         )
         self.assertEqual(report["public_context_acquisition_plan"][1]["metadata_contract"][0], "expected_staged_path")
         self.assertEqual(report["terrain_manifest_status"], "ready")
@@ -220,6 +230,31 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
         product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
         self.assertEqual(product_requirements["swisstlm3d_metadata"]["current_status"], "deferred_public_context")
+
+    def test_minimal_synthetic_aoi_fixture_reports_separate_fixture_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            staging.stage_minimal_inputs(
+                repo_root=root,
+                site_config=self._minimal_synthetic_aoi_config_path(),
+                fixture_root=ROOT
+                / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            original_root = preflight.ROOT
+            try:
+                preflight.ROOT = root
+                report = preflight.build_report(self._minimal_synthetic_aoi_config_path())
+            finally:
+                preflight.ROOT = original_root
+
+        contract = report["public_geodata_workflow_contract"]
+        self.assertEqual(contract["public_geodata_contract_readiness_status"], "ready")
+        self.assertEqual(contract["synthetic_fixture_readiness_status"], "ready")
+        self.assertEqual(contract["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
+        self.assertTrue(contract["cache_paths"]["processed_input_root"].endswith("minimal_synthetic_aoi_v1/input"))
+        self.assertTrue(contract["deferred_optional_context"][0]["expected_staged_path"].endswith("/context/swissimage"))
+        self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
+        self.assertIn("public_geodata_contract_readiness_status: ready", preflight.render_text_report(report))
 
     def test_missing_site_extent_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -294,6 +329,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
 
     def _candidate_example_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+
+    def _minimal_synthetic_aoi_config_path(self) -> Path:
+        return ROOT / "tests/fixtures/second_site_public_geodata_preflight/minimal_synthetic_aoi.yaml"
 
     def _build_report(
         self,

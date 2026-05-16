@@ -159,6 +159,18 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
         "public_context_acquisition_summary": PREFLIGHT.build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
+        "public_geodata_workflow_contract": PREFLIGHT.build_public_geodata_workflow_contract(
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            site_extent=site_extent,
+            paths=paths,
+            source_zone_scenario_contract=(
+                config.get("source_zone_scenario_contract")
+                if isinstance(config.get("source_zone_scenario_contract"), dict)
+                else {}
+            ),
+            fixture_profile=PREFLIGHT.text_value(config.get("fixture_profile")),
+        ),
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
         "expected_staging_paths": expected_staging_paths,
@@ -237,8 +249,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         f"acquisition_manifest_path: {report['acquisition_manifest_path']}",
         "",
-        "site_extent:",
+        "public_geodata_workflow_contract:",
     ]
+    lines.extend(PREFLIGHT._render_public_geodata_workflow_contract(report["public_geodata_workflow_contract"]))
+    lines.extend([
+        "",
+        "site_extent:",
+    ])
     site_extent = report["site_extent"]
     if isinstance(site_extent, dict):
         for key in ("crs", "xmin", "ymin", "xmax", "ymax"):

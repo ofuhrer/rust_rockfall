@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-088: Define Minimal Swiss Public-Geodata Workflow Contract
-
-Goal: Specify the reusable public-geodata contract needed for any Swiss AOI before site-specific preprocessing, release planning, or hazard generation can proceed.
-
-Capability gap reduced: Swiss-wide portability realism.
-
-Why this outranks alternatives: Current second-site work is Chant Sura-specific; a minimal contract prevents new locations from inheriting Tschamut or Chant Sura assumptions.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A reusable contract summary for required AOI metadata, CRS/grid assumptions, swisstopo product classes, cache paths, provenance, and deferred optional context.
-- Tests cover at least the existing Chant Sura fixture and a minimal synthetic AOI fixture.
-- Docs distinguish public-geodata contract readiness from synthetic fixture readiness.
-
-Definition of done:
-
-- The contract can be emitted as JSON/text, focused tests pass, and TB-088 is removed from this backlog.
-
-Boundaries: Do not download public data, stage fake public-context evidence, or run a second-site hazard build.
-
 ### TB-089: Add AOI-To-Prepared-Pilot Dry-Run Orchestrator
 
 Goal: Chain existing AOI acquisition, public-context gate, release-zone dry-run, release-plan dry-run, and command-plan helpers into one dry-run workflow report.

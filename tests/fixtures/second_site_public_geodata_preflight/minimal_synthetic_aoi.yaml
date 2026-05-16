@@ -1,0 +1,10 @@
+schema_version: second_site_public_geodata_preflight_v1
+candidate_site_id: minimal_synthetic_aoi_v1
+candidate_site_name: Minimal Synthetic AOI
+fixture_profile: minimal_synthetic_aoi_v1
+site_extent:
+  crs: EPSG:2056
+  xmin: 2699000.0
+  ymin: 1179000.0
+  xmax: 2700000.0
+  ymax: 1180000.0

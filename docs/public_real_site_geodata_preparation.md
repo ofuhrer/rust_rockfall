@@ -228,12 +228,25 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The second-site preflight and AOI planner also emit a reusable
+`public_geodata_workflow_contract` summary. It names the required AOI
+metadata, CRS/grid assumptions, swisstopo product classes, cache paths,
+provenance requirements, and deferred optional context so later preprocessing
+and release planning can target one contract instead of inferring site rules
+from Tschamut-specific fixtures.
+
 The second-site preflight and AOI planner now surface a deterministic dry-run
 acquisition summary from that manifest. The summary names the expected staging
 roots and metadata contracts for SWISSIMAGE, swissTLM3D, swissSURFACE3D,
 swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
 context as deferred until real products are staged. No downloads occur during
 that summary pass.
+
+The tiny synthetic staging fixture under
+`tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
+is a local scaffolding helper only. It exercises the contract and staging
+paths without public downloads, but it is not public-geodata evidence and must
+not be read as readiness for real SWISSIMAGE or swissTLM3D content.
 
 Observed runout/deposition evidence remains a separate future intake contract,
 not a public-context geodata product. The repo now carries a blocked
