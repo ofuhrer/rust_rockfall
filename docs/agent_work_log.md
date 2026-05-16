@@ -1922,7 +1922,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-119 measured bundle: Build Canonical Balfrin Demonstration Evidence Bundle
 
 - Date: 2026-05-17
-- Commit: `86fa8cc`
+- Commit: `pending`
 - Objective: convert the measured Balfrin evidence set into one canonical
   bundle with explicit measured, fixture-backed, and blocked section
   provenance.
@@ -1956,7 +1956,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-120 blocked provenance: Classify Balfrin restartability and output-tier evidence by source
 
 - Date: 2026-05-17
-- Commit: `86fa8cc`
+- Commit: `pending`
 - Objective: make the Balfrin output-tier audit and restartability notes
   explicitly distinguish measured run-root evidence from fixture-backed
   contract evidence, then remove the TB-120 backlog entry without claiming a
@@ -2011,7 +2011,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-122: Resolve Balfrin GIS/COG Demonstration Scope Delta
 
 - Date: 2026-05-17
-- Commit: `pending`
+- Commit: `86fa8cc`
 - Objective: make the Balfrin demonstration GIS package unambiguous by exposing a top-level machine-readable COG scope classification in the measured evidence bundle while keeping the full-scope, scope-delta, and blocked-missing-package states explicit.
 - Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
