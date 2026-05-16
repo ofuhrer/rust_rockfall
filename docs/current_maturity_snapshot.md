@@ -10,11 +10,11 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. The current concrete milestone is a Balfrin-executable
-valley-scale Tschamut pilot for one release zone. That pilot should connect
-pragmatic release-zone and block-scenario generation, a large deterministic
-trajectory ensemble, uncertainty-aware conditional post-processing, GIS-readable
-hazard outputs, and explicit non-operational interpretation limits.
+primarily swisstopo. The current execution focus is the Balfrin
+single-release-zone pilot track: contract, case plan, generate-only submission
+package, metrics contract, post-run interpretation gate, and envelope helpers
+are in place as dry-run automation, while the remaining gap is the measured
+Balfrin execution itself and its post-run evidence.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -144,17 +144,12 @@ objective are:
     validation/calibration evidence. Native rebuildable reduced output,
     first-class COG export, the conditional gridpoint curve contract,
     clean-checkout test hardening, AOI acquisition planning, release-zone
-    dry-run planning, and release-plan dry-run planning now exist. The next
-    AOI-to-prepared-pilot workflow, harden bounded next-ensemble feasibility,
-    and make second-site case skeletons inspectable without authorizing
-    execution. Those dry-run pieces now exist. The next high-value gap is to
-    turn them into a Balfrin single-release-zone pilot track: freeze the pilot
-    contract, generate the large deterministic case plan, emit a generate-only
-    SLURM submission package, define post-run metrics collection, audit the
-    conditional gridpoint curve product, and estimate the Swiss-wide
-    runtime/storage envelope from measured evidence. The near-term achievable
-    product remains an automated conditional diagnostic hazard-map workflow;
-    true physical intensity-frequency curves remain deferred until the
+    dry-run planning, release-plan dry-run planning, the Balfrin pilot
+    contract, submission package, metrics contract, and post-run gate now
+    distinguish completed dry-run automation from the remaining execution gap.
+    The next measurable execution phase is to run the Balfrin
+    single-release-zone pilot and collect its measured post-run evidence; true
+    physical intensity-frequency curves remain deferred until the
     physical-probability layer exists.
 11. Observed runout/deposition validation intake is now specified but not
     populated. The contract records the required independent benchmark
@@ -197,9 +192,8 @@ Underrepresented high-value work after TB-080:
   evidence and extracting persistent conditional-hazard confidence regions;
 - combining same-scale uncertainty, runtime, and output-size evidence into a
   bounded ensemble-stability frontier before any additional probe is run;
-- defining a minimal Swiss public-geodata workflow contract and chaining the
-  existing AOI, real-context, release-zone, release-plan, and command-plan
-  helpers into one dry-run AOI-to-prepared-pilot report;
+- executing the Balfrin single-release-zone pilot and consolidating its
+  measured post-run evidence into the compact maturity snapshot;
 - generating blocked second-site case skeletons that expose missing real public
   context without allowing a synthetic fixture to masquerade as executable
   evidence.

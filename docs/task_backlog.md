@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-100: Refill Maturity Snapshot For The Balfrin Pilot Track
-
-Goal: Update the compact maturity snapshot and command-context guidance so future workers see the Balfrin single-release-zone pilot track as the current execution focus.
-
-Capability gap reduced: Worker orientation for the next execution phase.
-
-Why this outranks alternatives: After the pilot contract, case plan, submission package, metrics contract, and post-run gate exist, the repo needs a concise source of truth to prevent workers from reverting to earlier same-scale-only assumptions.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/task_backlog.md`
-- `scripts/print_agent_task_context.py`
-- `docs/agent_work_log.md`
-
-Deliverables:
-
-- A compact maturity update that distinguishes completed dry-run automation from the remaining Balfrin execution gap.
-- Task-context helper adjustments only if future active tasks are not discoverable from compact context.
-- No new roadmap beyond the next measurable execution phase.
-
-Definition of done:
-
-- The snapshot reflects the new Balfrin pilot track, focused checks pass, and TB-100 is removed from this backlog.
-
-Boundaries: Documentation/helper context only; do not add new scientific claims, run simulations, or alter backlog protocol.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

@@ -25,6 +25,10 @@ CHANT_SURA_CONFIG = (
     "tests/fixtures/second_site_public_geodata_preflight/"
     "chant_sura_fluelapass_candidate.yaml"
 )
+CURRENT_EXECUTION_FOCUS = (
+    "Balfrin single-release-zone pilot track: dry-run automation is in place, "
+    "and measured Balfrin execution plus post-run evidence are the next step."
+)
 
 
 @dataclass(frozen=True)
@@ -323,6 +327,7 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
         ],
         "backlog_refill_needed": backlog_refill_needed,
         "backlog_note": "Backlog refill needed" if backlog_refill_needed else None,
+        "current_execution_focus": CURRENT_EXECUTION_FOCUS if backlog_refill_needed else None,
         "canonical_helpers": relevant_helpers(task, detail=detail),
         "known_environment_issues": KNOWN_ENVIRONMENT_ISSUES,
         "generated_roots_to_avoid": GENERATED_ROOTS_TO_AVOID,
@@ -411,6 +416,8 @@ def render_text(report: dict[str, Any]) -> str:
         lines.append(f"- {task['task_id']}: {task['title']}")
     if report.get("backlog_note"):
         lines.append(f"backlog_note: {report['backlog_note']}")
+    if report.get("current_execution_focus"):
+        lines.append(f"current_execution_focus: {report['current_execution_focus']}")
     lines.append("recommended_first_commands:")
     lines.extend(f"- {command}" for command in report["recommended_first_commands"])
     lines.append("canonical_helpers:")
