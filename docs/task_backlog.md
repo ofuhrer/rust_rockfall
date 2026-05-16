@@ -18,32 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-065: Score Physical-Credibility Evidence Acquisition Priorities
-
-Goal: TB-057 mapped missing evidence requirements, but it does not yet rank which concrete evidence acquisitions would most reduce the physical-credibility gap. Reduces: physical credibility boundaries and validation realism.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_chant_sura_holdout_evidence.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- ranked evidence-acquisition matrix for observed runout/deposition, release-zone evidence, block population, source-frequency evidence, calibration objective functions, independent holdout validation, and multi-site transfer evidence;
-- current repo evidence separated from future field/reference-data needs;
-- no change to claim boundaries.
-
-Definition of done:
-
-- helper emits JSON/text with priority, expected claim unlocked, required data, and current repo gap for each evidence class;
-- docs state which evidence class is first actionable and which remains deferred.
-
-Boundaries: no calibration fitting, no annual-frequency model, no operational,
-risk, exposure, or vulnerability claim.
-
 ### TB-066: Reconcile Canonical Diagnostic Interpretation With Current Product Paths
 
 Goal: the canonical diagnostic interpretation exists, but its blocker language can lag behind product improvements such as native reduced output and COG export. Reduces: pilot closure realism and user-facing interpretation coherence.

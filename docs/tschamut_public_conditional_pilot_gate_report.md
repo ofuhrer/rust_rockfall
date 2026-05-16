@@ -76,7 +76,12 @@ The read-only evidence-requirements helper is
 `scripts/map_physical_credibility_evidence_requirements.py`. It maps the
 current Tschamut diagnostic evidence, Chant Sura holdout evidence, and the
 swisstopo context stack into future acquisition classes without claiming
-calibration or physical credibility.
+calibration or physical credibility. The helper now ranks the acquisition
+classes so the first actionable evidence is observed runout/deposition, while
+source-frequency and temporal-frequency evidence remain the deferred tail.
+The intermediate ordering is release-zone evidence, independent holdout
+validation, calibration objective functions, multi-site transfer evidence, and
+block-population evidence.
 
 Current synthesized status:
 
@@ -90,8 +95,8 @@ The helper keeps the distinction explicit between:
 
 - current diagnostic runout / deposition evidence from Tschamut;
 - Chant Sura holdout validation evidence;
-- future block-population, source-frequency, and independent holdout
-  acquisition classes;
+- future acquisition classes ranked by gap reduction rather than claim
+  expansion;
 - swisstopo terrain / context inputs, which remain inputs and not validation
   evidence by themselves.
 

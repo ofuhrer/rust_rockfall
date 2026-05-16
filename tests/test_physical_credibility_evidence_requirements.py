@@ -16,12 +16,14 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "calibration_status",
             "validation_status",
             "evidence_requirement_categories",
+            "evidence_acquisition_matrix",
             "candidate_data_sources",
             "missing_acquisition_classes",
             "calibration_split_requirements",
             "holdout_validation_requirements",
             "source_frequency_requirements",
             "intensity_frequency_status",
+            "evidence_acquisition_summary",
             "claim_boundaries",
             "blocked_reason",
             "missing_inputs",
@@ -39,10 +41,25 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
         self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
+        self.assertEqual(report["evidence_acquisition_summary"]["first_actionable_category"], "observed_runout_deposition")
+        self.assertEqual(report["evidence_acquisition_summary"]["deferred_category"], "source_frequency_and_temporal_frequency_evidence")
+        self.assertEqual(
+            report["evidence_acquisition_summary"]["priority_order"],
+            [
+                "observed_runout_deposition",
+                "release_zone_evidence",
+                "independent_holdout_validation",
+                "calibration_data_and_objective_functions",
+                "multi_site_transfer_evidence",
+                "block_size_and_block_population_evidence",
+                "source_frequency_and_temporal_frequency_evidence",
+            ],
+        )
 
     def test_requirement_categories_and_candidate_sources_are_distinct(self) -> None:
         report = helper.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_requirement_categories"]}
+        matrix = {entry["category"]: entry for entry in report["evidence_acquisition_matrix"]}
         self.assertEqual(
             set(categories),
             {
@@ -59,6 +76,11 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertEqual(categories["observed_runout_deposition"]["current_repo_evidence_status"], "partial")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["current_repo_evidence_status"], "missing")
         self.assertEqual(categories["independent_holdout_validation"]["current_repo_evidence_status"], "partial")
+        self.assertEqual(matrix["observed_runout_deposition"]["priority"], 1)
+        self.assertEqual(matrix["observed_runout_deposition"]["current_repo_gap"], helper.EVIDENCE_ACQUISITION_PRIORITY_BLUEPRINTS[0]["current_repo_gap"])
+        self.assertTrue(matrix["observed_runout_deposition"]["required_data"])
+        self.assertTrue(matrix["observed_runout_deposition"]["current_repo_evidence"])
+        self.assertTrue(matrix["observed_runout_deposition"]["future_field_or_reference_data_needs"])
         self.assertTrue(categories["source_frequency_and_temporal_frequency_evidence"]["future_acquisition_classes"])
         self.assertIn(
             "independent_holdout_field_deposition_runout_benchmark",
@@ -87,6 +109,8 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertIn("block_size_and_block_population_evidence", text)
         self.assertIn("source_frequency_and_temporal_frequency_evidence", text)
         self.assertIn("independent_holdout_validation", text)
+        self.assertIn("evidence_acquisition_matrix", text)
+        self.assertIn("priority 1: observed_runout_deposition", text)
 
     def test_missing_inputs_return_blocked_status(self) -> None:
         report = helper.build_report({"missing_inputs": ["docs/missing.json"]})
@@ -96,6 +120,8 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertEqual(report["calibration_status"], "blocked_missing_inputs")
         self.assertEqual(report["validation_status"], "blocked_missing_inputs")
         self.assertEqual(report["intensity_frequency_status"], "blocked_missing_inputs")
+        self.assertEqual(report["evidence_acquisition_matrix"], [])
+        self.assertEqual(report["evidence_acquisition_summary"]["first_actionable_category"], None)
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 

@@ -39,6 +39,93 @@ REQUIRED_INPUT_PATHS = (
     ROOT / "docs/tschamut_public_conditional_pilot_gate_report.md",
 )
 
+EVIDENCE_ACQUISITION_PRIORITY_BLUEPRINTS = (
+    {
+        "category": "observed_runout_deposition",
+        "priority": 1,
+        "priority_label": "first_actionable",
+        "expected_claim_unlocked": "Stronger physical-credibility interpretation of observed runout and deposition against an independent benchmark.",
+        "required_data": [
+            "Independent holdout field or benchmark deposition/runout geometry with explicit spatial reference",
+            "Provenance, QA, and measurement metadata for the observed runout/deposition record",
+            "A separation note showing the evidence was not reused for model selection or calibration",
+        ],
+        "current_repo_gap": "Current repo evidence is diagnostic and holdout-adjacent, but it does not yet include an independent field or benchmark deposition/runout acquisition.",
+    },
+    {
+        "category": "release_zone_evidence",
+        "priority": 2,
+        "priority_label": "near_term_supporting",
+        "expected_claim_unlocked": "Testable release-zone provenance for site-specific physical interpretation.",
+        "required_data": [
+            "Site-specific release-zone geometry package with LV95 / CRS provenance",
+            "Field reconnaissance, mapping, or reference-data basis for the release-zone boundary",
+            "Documentation showing the release-zone package is distinct from the frozen conditional contract",
+        ],
+        "current_repo_gap": "The repo has manifest and policy scaffolding, but no site-specific field-derived release-zone package that can stand as physical evidence.",
+    },
+    {
+        "category": "independent_holdout_validation",
+        "priority": 3,
+        "priority_label": "validation_boundary",
+        "expected_claim_unlocked": "Independent validation credibility separated from model selection.",
+        "required_data": [
+            "Independent holdout benchmark dataset with explicit split rules",
+            "Scoring protocol separated from calibration and model-selection fixtures",
+            "Holdout benchmark provenance showing the evidence was not reused for tuning",
+        ],
+        "current_repo_gap": "The repo already has holdout fixtures and split metadata, but the holdout evidence remains contact/trajectory validation rather than a broader physical-credibility benchmark.",
+    },
+    {
+        "category": "calibration_data_and_objective_functions",
+        "priority": 4,
+        "priority_label": "calibration_ready_only",
+        "expected_claim_unlocked": "Calibration-readiness for parameter-fitting claims, if calibration is later authorized.",
+        "required_data": [
+            "Calibration dataset with explicit objective function and measurement targets",
+            "Parameter bounds and fit record",
+            "A reserved calibration split separated from the holdout benchmark",
+        ],
+        "current_repo_gap": "The repo contains model-selection and holdout fixtures, but no calibration dataset, objective function, or fit record.",
+    },
+    {
+        "category": "multi_site_transfer_evidence",
+        "priority": 5,
+        "priority_label": "transfer_generalization",
+        "expected_claim_unlocked": "Portable second-site generalization evidence across site-specific public inputs.",
+        "required_data": [
+            "Staged second-site public geodata package with matching terrain, source-zone, scenario, and context inputs",
+            "Independent second-site holdout benchmark",
+            "A site-specific portability record showing the second site is not just metadata-ready",
+        ],
+        "current_repo_gap": "The repo has a second-site candidate manifest and acquisition contract, but no staged real public-context package or independent second-site benchmark.",
+    },
+    {
+        "category": "block_size_and_block_population_evidence",
+        "priority": 6,
+        "priority_label": "physical_probability_bridge",
+        "expected_claim_unlocked": "Physical-probability semantics from block-size or block-population distributions, if that claim phase is authorized later.",
+        "required_data": [
+            "Block-size survey or photogrammetry census",
+            "Observed block-population counts or a defensible reference-data proxy",
+            "Documentation that ties the block-population record to a frequency interpretation",
+        ],
+        "current_repo_gap": "The repo has trajectory/contact proxies and split bookkeeping, but no block-population survey or frequency-bearing census.",
+    },
+    {
+        "category": "source_frequency_and_temporal_frequency_evidence",
+        "priority": 7,
+        "priority_label": "deferred_frequency_semantics",
+        "expected_claim_unlocked": "Source-frequency and annual-frequency semantics, if a physical-probability phase change is later authorized.",
+        "required_data": [
+            "Historical rockfall event catalogue",
+            "Repeat source-zone observations with temporal window and censoring rules",
+            "A source-occurrence record that can support frequency semantics instead of only conditional sampling",
+        ],
+        "current_repo_gap": "The repo only has conditional benchmarks and trajectory inventories; it does not stage source-occurrence or temporal-frequency data.",
+    },
+)
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -87,6 +174,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
 
     categories = build_evidence_requirement_categories(datasets, gap_report, holdout_report)
     candidate_sources = build_candidate_data_sources(categories)
+    acquisition_matrix = build_evidence_acquisition_matrix(categories)
     missing_acquisition_classes = sorted(
         {
             entry["class_name"]
@@ -102,12 +190,14 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "calibration_status": gap_report.get("calibration_status", "unknown"),
         "validation_status": gap_report.get("validation_status", "unknown"),
         "evidence_requirement_categories": categories,
+        "evidence_acquisition_matrix": acquisition_matrix,
         "candidate_data_sources": candidate_sources,
         "missing_acquisition_classes": missing_acquisition_classes,
         "calibration_split_requirements": calibration_split_requirements(holdout_report),
         "holdout_validation_requirements": holdout_validation_requirements(holdout_report),
         "source_frequency_requirements": source_frequency_requirements(datasets, gap_report),
         "intensity_frequency_status": "deferred_unsupported",
+        "evidence_acquisition_summary": evidence_acquisition_summary(acquisition_matrix),
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": None,
         "missing_inputs": [],
@@ -123,12 +213,18 @@ def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
         "calibration_status": "blocked_missing_inputs",
         "validation_status": "blocked_missing_inputs",
         "evidence_requirement_categories": [],
+        "evidence_acquisition_matrix": [],
         "candidate_data_sources": [],
         "missing_acquisition_classes": [],
         "calibration_split_requirements": [],
         "holdout_validation_requirements": [],
         "source_frequency_requirements": [],
         "intensity_frequency_status": "blocked_missing_inputs",
+        "evidence_acquisition_summary": {
+            "first_actionable_category": None,
+            "deferred_category": None,
+            "priority_order": [],
+        },
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": "required evidence inputs are missing",
         "missing_inputs": sorted(set(missing_inputs)),
@@ -618,6 +714,75 @@ def build_candidate_data_sources(categories: list[dict[str, Any]]) -> list[dict[
     return sources
 
 
+def build_evidence_acquisition_matrix(categories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    category_map = {str(entry.get("category") or ""): entry for entry in categories}
+    matrix: list[dict[str, Any]] = []
+    for blueprint in EVIDENCE_ACQUISITION_PRIORITY_BLUEPRINTS:
+        category = str(blueprint["category"])
+        category_entry = category_map.get(category, {})
+        matrix.append(
+            {
+                "category": category,
+                "priority": blueprint["priority"],
+                "priority_label": blueprint["priority_label"],
+                "expected_claim_unlocked": blueprint["expected_claim_unlocked"],
+                "required_data": list(blueprint["required_data"]),
+                "current_repo_gap": blueprint["current_repo_gap"],
+                "current_repo_evidence_status": category_entry.get("current_repo_evidence_status", "missing"),
+                "current_repo_evidence": summarize_current_repo_evidence(category_entry),
+                "future_field_or_reference_data_needs": summarize_future_acquisition_needs(category_entry),
+                "why_it_matters": str(category_entry.get("why_it_matters") or ""),
+            }
+        )
+    return matrix
+
+
+def evidence_acquisition_summary(matrix: list[dict[str, Any]]) -> dict[str, Any]:
+    if not matrix:
+        return {
+            "first_actionable_category": None,
+            "deferred_category": None,
+            "priority_order": [],
+        }
+    ordered = sorted(matrix, key=lambda entry: int(entry.get("priority", 999)))
+    first = ordered[0]
+    deferred = ordered[-1]
+    return {
+        "first_actionable_category": first.get("category"),
+        "deferred_category": deferred.get("category"),
+        "priority_order": [entry.get("category") for entry in ordered],
+    }
+
+
+def summarize_current_repo_evidence(category_entry: dict[str, Any]) -> list[str]:
+    summary: list[str] = []
+    for source in category_entry.get("current_repo_evidence_sources") or []:
+        label = str(source.get("label") or "").strip()
+        status = str(source.get("status") or "unknown").strip()
+        role = str(source.get("role") or "").strip()
+        reference = str(source.get("reference") or "").strip()
+        pieces = [piece for piece in (label, f"[{status}]" if status else "", role) if piece]
+        text = " ".join(pieces)
+        if reference:
+            text = f"{text} ({reference})"
+        summary.append(text)
+    return summary
+
+
+def summarize_future_acquisition_needs(category_entry: dict[str, Any]) -> list[str]:
+    summary: list[str] = []
+    for source in category_entry.get("future_acquisition_classes") or []:
+        label = str(source.get("label") or "").strip()
+        status = str(source.get("status") or "missing").strip()
+        class_name = str(source.get("class_name") or "").strip()
+        pieces = [piece for piece in (label, f"[{status}]" if status else "") if piece]
+        text = " ".join(pieces)
+        if class_name:
+            text = f"{text} ({class_name})"
+        summary.append(text)
+    return summary
+
+
 def calibration_split_requirements(holdout_report: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {
@@ -766,6 +931,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"validation_status: {report['validation_status']}",
         f"intensity_frequency_status: {report['intensity_frequency_status']}",
         "",
+        "evidence_acquisition_summary:",
+        f"- first_actionable_category: {report['evidence_acquisition_summary']['first_actionable_category']}",
+        f"- deferred_category: {report['evidence_acquisition_summary']['deferred_category']}",
+        f"- priority_order: {', '.join(report['evidence_acquisition_summary']['priority_order'])}",
+        "",
         "claim_boundaries:",
     ]
     for key, value in report["claim_boundaries"].items():
@@ -786,6 +956,25 @@ def render_text_report(report: dict[str, Any]) -> str:
             for source in entry["future_acquisition_classes"]:
                 lines.append(f"  - {source['label']} [{source['status']}]")
                 lines.append(f"    class_name: {source['class_name']}")
+
+    lines.append("")
+    lines.append("evidence_acquisition_matrix:")
+    for entry in report["evidence_acquisition_matrix"]:
+        lines.append(f"- priority {entry['priority']}: {entry['category']} ({entry['priority_label']})")
+        lines.append(f"  expected_claim_unlocked: {entry['expected_claim_unlocked']}")
+        lines.append(f"  current_repo_gap: {entry['current_repo_gap']}")
+        if entry.get("required_data"):
+            lines.append("  required_data:")
+            for item in entry["required_data"]:
+                lines.append(f"  - {item}")
+        if entry.get("current_repo_evidence"):
+            lines.append("  current_repo_evidence:")
+            for item in entry["current_repo_evidence"]:
+                lines.append(f"  - {item}")
+        if entry.get("future_field_or_reference_data_needs"):
+            lines.append("  future_field_or_reference_data_needs:")
+            for item in entry["future_field_or_reference_data_needs"]:
+                lines.append(f"  - {item}")
 
     lines.append("")
     lines.append("candidate_data_sources:")

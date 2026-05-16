@@ -256,6 +256,10 @@ distinction explicit between:
 
 That separation is deliberate: the public geodata strategy prepares inputs for
 hazard-map workflows, but it does not by itself establish physical credibility.
+The helper also ranks the evidence acquisitions so observed runout/deposition
+is the first actionable acquisition, while source-frequency and temporal-
+frequency evidence remain deferred because annual-frequency semantics stay out
+of scope.
 
 The second-site preflight now reports this boundary explicitly with
 `public_context_boundary_status`, per-product expected paths, metadata
