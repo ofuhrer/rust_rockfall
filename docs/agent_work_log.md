@@ -19,6 +19,10 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   `docs/agent_work_log_archive.md`.
 - Prefer concise entries. Link to generated helpers, docs, and commits rather
   than pasting long command transcripts.
+- Do not leave `Commit: pending` in a committed entry. If the hash is not
+  known yet, write the entry with `pending`, commit once, replace `pending`
+  with `git rev-parse --short HEAD`, amend the commit, and rerun repository
+  consistency before pushing.
 
 ## Entry Template
 
@@ -26,7 +30,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-XXX: Short Title
 
 - Date: YYYY-MM-DD
-- Commit: `<hash>`
+- Commit: `<hash>`; never leave `pending` in a pushed commit.
 - Objective: one sentence describing the task.
 - Files changed: concise comma-separated list or grouped paths.
 - Implementation summary: 2-4 bullets focused on what changed.
@@ -1246,7 +1250,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-091: Define Balfrin Single-Release-Zone Pilot Contract
 
 - Date: 2026-05-16
-- Commit: `pending`
+- Commit: `d71be8c`
 - Objective: Freeze a measurable one-release-zone Balfrin pilot contract with native reduced output, conditional GIS products, and explicit non-operational boundaries.
 - Files changed: `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`, `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`, `tests/test_balfrin_single_release_zone_pilot_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary: added a read-only Balfrin contract helper that reports the frozen release-zone scope, trajectory target, validation output mode, expected artifact families, hazard-layer products, Balfrin resource assumptions, and no-go boundaries; added a committed machine-readable contract record for the next single-release-zone pilot; and covered both the ready contract and a missing-input contract with focused regressions and CLI smoke checks.
