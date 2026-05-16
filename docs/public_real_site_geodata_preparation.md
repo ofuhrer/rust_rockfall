@@ -252,6 +252,16 @@ helper is intentionally not a release-zone interpretation: it stops at the dry
 run boundary and reports `deferred_public_context_inputs` when real context is
 absent.
 
+The next dry-run helper,
+`scripts/plan_release_plan_dry_run.py`, turns the same fixture-backed candidate
+source-zone record into deterministic release rows and block-scenario rows
+before any ensemble is authorized. Its report keeps three machine-readable
+sections separate: reusable semantics such as table shapes and probability
+language, site-specific inputs such as the candidate source-zone metadata and
+scenario rows, and Tschamut-only heuristics such as the frozen seed policy and
+reference block classes. The helper is still a dry run and does not authorize
+the future second-site execution template.
+
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
 Chant Sura / Flüelapass public-context acquisition separate from physical

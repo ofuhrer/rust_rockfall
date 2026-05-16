@@ -321,6 +321,14 @@ portable contract shape from the Tschamut-specific heuristics that were used
 to freeze the current pilot. It is still metadata-only and does not imply that
 the Chant Sura candidate is ready for a run.
 
+The release-plan dry-run helper
+`scripts/plan_release_plan_dry_run.py` extends that boundary one step further
+by turning the staged candidate source-zone record into deterministic release
+rows and block-scenario rows. It keeps reusable semantics, site-specific
+inputs, and Tschamut-only seed / block-class heuristics separate, and the
+portable command plan now carries a template-only second-site execution entry
+that remains blocked until public context is present.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

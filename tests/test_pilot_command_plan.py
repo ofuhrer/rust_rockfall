@@ -225,10 +225,13 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "readiness_checks",
                 "multisite_source_scenario_contract",
                 "second_site_case_generation",
+                "second_site_release_plan",
                 "second_site_portability",
             ],
         )
         self.assertIn("second_site_case_skeleton_dry_run", report["command_ids"])
+        self.assertIn("second_site_release_plan_dry_run", report["command_ids"])
+        self.assertIn("second_site_release_plan_execution_template", report["command_ids"])
         self.assertIn("second_site_aoi_acquisition_dry_run_planner", report["command_ids"])
         self.assertIn("second_site_acquisition_manifest_review", report["command_ids"])
         self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
@@ -239,6 +242,7 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "second_site_benchmark_preparation_template",
                 "second_site_geodata_manifest_validation",
                 "second_site_hazard_build_template",
+                "second_site_release_plan_execution_template",
                 "second_site_run_freeze_validation",
                 "second_site_validation_template",
             },
@@ -275,6 +279,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(len(report["command_group_keys"]), len(set(report["command_group_keys"])))
         self.assertIn("tschamut_same_scale::readiness_checks", report["command_group_keys"])
         self.assertIn("chant_sura_fluelapass::readiness_checks", report["command_group_keys"])
+        self.assertIn("chant_sura_fluelapass::second_site_release_plan", report["command_group_keys"])
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", report["command_group_keys"])
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
 

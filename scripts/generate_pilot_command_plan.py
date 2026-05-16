@@ -958,6 +958,73 @@ def build_second_site_plan(
         ),
         command_entry(
             site="chant_sura_fluelapass",
+            group="second_site_release_plan",
+            command_id="second_site_release_plan_dry_run",
+            description="Derive deterministic release and block-scenario rows for the Chant Sura / Fluelapass candidate source-zone record.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "plan_release_plan_dry_run.py"),
+                    "--site-config",
+                    rel(site_config),
+                    "--repo-root",
+                    rel(ROOT),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml",
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv",
+                "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+            ],
+            expected_outputs=["JSON deterministic release-plan dry-run report"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
+            group="second_site_release_plan",
+            command_id="second_site_release_plan_execution_template",
+            description="Template the future second-site release-plan execution path without authorizing it before public context is present.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/generate_second_site_release_plan.py",
+                    "--site-config",
+                    rel(site_config),
+                    "--output-root",
+                    "validation/private/<site_id>",
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context",
+                "validation/private/chant_sura_fluelapass_portability_example_v1",
+                "hazard/results/chant_sura_fluelapass_portability_example_v1",
+            ],
+            expected_outputs=[
+                "validation/private/<site_id>/release_plan_case.yaml",
+                "validation/private/<site_id>/release_plan_manifest.json",
+            ],
+            blocked_reason=blocked_reason,
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=[f"validation/private/{candidate_site_id}"],
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
             group="second_site_portability",
             command_id="second_site_geodata_manifest_validation",
             description="Validate the staged second-site geodata manifest before any porting step.",
@@ -1211,6 +1278,7 @@ GROUP_DESCRIPTIONS = {
     "hazard_context_overlap": "Measure hazard/context proximity on the staged envelope.",
     "uncertainty_summary": "Compose the same-scale uncertainty envelope summary.",
     "second_site_case_generation": "Generate a dry-run Chant Sura / Flüelapass case skeleton.",
+    "second_site_release_plan": "Dry-run the deterministic release and block-scenario row plan.",
     "second_site_portability": "Template portability steps for Chant Sura / Flüelapass.",
     "multisite_source_scenario_contract": "Audit portable versus site-specific source/scenario fields.",
 }
@@ -1236,6 +1304,7 @@ def ordered_group_ids(site: str) -> list[str]:
             "readiness_checks",
             "multisite_source_scenario_contract",
             "second_site_case_generation",
+            "second_site_release_plan",
             "second_site_portability",
         ]
     return list(GROUP_DESCRIPTIONS)

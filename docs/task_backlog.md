@@ -18,37 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-078: Generate Pragmatic Release-Plan Dry Run
-
-Goal: Define how a portable source-zone candidate becomes deterministic release
-and block-scenario rows before any new ensemble is run.
-
-Inspect first:
-
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/generate_pilot_command_plan.py`
-- `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A fixture-backed release-plan dry run that emits deterministic release counts,
-  seed policy, block-scenario classes, and site-specific fields for a candidate
-  source-zone record.
-- A machine-readable distinction between reusable semantics, site-specific
-  inputs, and Tschamut-only heuristics.
-- A command-plan entry that remains blocked/template-only for real second-site
-  execution until public context is present.
-
-Definition of done:
-
-- Focused tests verify deterministic dry-run output and that no second-site
-  simulation command is authorized.
-
-Boundaries: Do not create a production release plan, tune parameters, run
-  ensembles, or authorize scale-up.
-
 ### TB-079: Add Chant Sura Real-Context Readiness Gate Artifact
 
 Goal: Move Chant Sura from synthetic core-input staging toward real
