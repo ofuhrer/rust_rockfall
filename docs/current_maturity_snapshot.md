@@ -10,14 +10,16 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. The first concrete milestone is a valley-scale Tschamut
-pilot that produces conditional grid-cell intensity-exceedance hazard-map
-products with documented uncertainty, provenance, performance, and
-non-operational interpretation limits.
+primarily swisstopo. The current concrete milestone is a Balfrin-executable
+valley-scale Tschamut pilot for one release zone. That pilot should connect
+pragmatic release-zone and block-scenario generation, a large deterministic
+trajectory ensemble, uncertainty-aware conditional post-processing, GIS-readable
+hazard outputs, and explicit non-operational interpretation limits.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
-toward larger release-zone ensembles. True physical or annual
+toward larger release-zone ensembles and eventually many Swiss AOIs. True
+physical or annual
 intensity-frequency products remain deferred until source occurrence rates,
 block-population frequencies, uncertainty propagation, and validation or
 calibration evidence exist.
@@ -139,12 +141,17 @@ objective are:
     first-class COG export, the conditional gridpoint curve contract,
     clean-checkout test hardening, AOI acquisition planning, release-zone
     dry-run planning, and release-plan dry-run planning now exist. The next
-    useful automation work is to connect those pieces into a dry-run
     AOI-to-prepared-pilot workflow, harden bounded next-ensemble feasibility,
     and make second-site case skeletons inspectable without authorizing
-    execution. The near-term achievable product remains an automated
-    conditional diagnostic hazard-map workflow; true intensity-frequency curves
-    remain deferred until the physical-probability layer exists.
+    execution. Those dry-run pieces now exist. The next high-value gap is to
+    turn them into a Balfrin single-release-zone pilot track: freeze the pilot
+    contract, generate the large deterministic case plan, emit a generate-only
+    SLURM submission package, define post-run metrics collection, audit the
+    conditional gridpoint curve product, and estimate the Swiss-wide
+    runtime/storage envelope from measured evidence. The near-term achievable
+    product remains an automated conditional diagnostic hazard-map workflow;
+    true physical intensity-frequency curves remain deferred until the
+    physical-probability layer exists.
 11. Observed runout/deposition validation intake is now specified but not
     populated. The contract records the required independent benchmark
     manifest, geometry, provenance, and objective-function placeholders. The
