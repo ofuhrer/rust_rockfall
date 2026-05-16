@@ -297,6 +297,14 @@ scenario rows, and Tschamut-only heuristics such as the frozen seed policy and
 reference block classes. The helper is still a dry run and does not authorize
 the future second-site execution template.
 
+The same helper now also emits a scenario-generation contract block that makes
+the dry-run boundary explicit: block-size bins and conditional weights are
+listed separately from portable semantics, release rows are linked to
+deterministic release-cell ids, required metadata is enumerated, and
+unsupported physical-frequency fields are called out as out of scope. If
+terrain or source-zone evidence is missing, the helper stays blocked rather
+than synthesizing a scenario table from incomplete inputs.
+
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
 Chant Sura / Flüelapass public-context acquisition separate from physical

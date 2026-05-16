@@ -27,8 +27,15 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "release_plan_dry_run_v1"
+SCENARIO_GENERATION_CONTRACT_SCHEMA_VERSION = "release_plan_generation_contract_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 TSCHAMUT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS = [
+    "annual_frequency",
+    "physical_probability",
+    "return_period",
+    "source_frequency",
+]
 
 
 def _load_preflight_module():
@@ -104,7 +111,17 @@ def build_report(site_config: Path, repo_root: Path | None = None) -> dict[str, 
         "reusable_semantics": build_reusable_semantics(preflight_report),
         "site_specific_inputs": build_site_specific_inputs(preflight_report, source_zone_record, scenario_rows, paths),
         "tschamut_only_heuristics": build_tschamut_only_heuristics(tschamut_policy),
-        "deterministic_release_rows": build_release_rows(source_zone_record),
+        "scenario_generation_contract": build_scenario_generation_contract(
+            preflight_report=preflight_report,
+            source_zone_record=source_zone_record,
+            scenario_rows=scenario_rows,
+            tschamut_policy=tschamut_policy,
+            paths=paths,
+        ),
+        "deterministic_release_rows": build_release_rows(
+            source_zone_record,
+            release_cells=build_release_cells(tschamut_policy),
+        ),
         "deterministic_block_scenario_rows": build_block_scenario_rows(scenario_rows),
         "machine_readable_distinction": {
             "reusable_semantics": [
@@ -125,6 +142,11 @@ def build_report(site_config: Path, repo_root: Path | None = None) -> dict[str, 
                 "reference_block_scenario_classes",
                 "release_cell_id_prefix",
                 "requested_release_cell_count",
+            ],
+            "scenario_generation_contract": [
+                "portable_semantics",
+                "tschamut_specific_heuristics",
+                "blocked_evidence",
             ],
         },
         "claim_boundaries": preflight_report["claim_boundaries"],
@@ -160,6 +182,8 @@ def build_report(site_config: Path, repo_root: Path | None = None) -> dict[str, 
 
 
 def release_plan_status(preflight_report: dict[str, Any]) -> str:
+    if preflight_report.get("terrain_manifest_status") != "ready" or preflight_report.get("source_zone_manifest_status") != "ready":
+        return "blocked_missing_source_zone_or_terrain_evidence"
     if preflight_report["core_input_status"] != "ready":
         return "blocked_missing_inputs"
     if preflight_report["public_context_boundary_status"] != "ready":
@@ -256,13 +280,171 @@ def build_tschamut_only_heuristics(tschamut_policy: dict[str, Any]) -> dict[str,
     }
 
 
-def build_release_rows(source_zone_record: dict[str, Any]) -> list[dict[str, Any]]:
+def build_scenario_generation_contract(
+    *,
+    preflight_report: dict[str, Any],
+    source_zone_record: dict[str, Any],
+    scenario_rows: list[dict[str, str]],
+    tschamut_policy: dict[str, Any],
+    paths: dict[str, Path],
+) -> dict[str, Any]:
+    source_zone_policy = tschamut_policy.get("source_zone_policy", {}) if isinstance(tschamut_policy.get("source_zone_policy"), dict) else {}
+    release_sampling = source_zone_policy.get("release_sampling", {}) if isinstance(source_zone_policy.get("release_sampling"), dict) else {}
+    scenarios = build_block_size_bins(tschamut_policy)
+    release_cells = build_release_cells(tschamut_policy)
     release_points = source_zone_record.get("release_points") or []
+
+    return {
+        "schema_version": SCENARIO_GENERATION_CONTRACT_SCHEMA_VERSION,
+        "contract_status": release_plan_status(preflight_report),
+        "portable_semantics": {
+            "release_point_table_shape": "one row per release point",
+            "block_scenario_table_shape": "CSV table with one row per block / scenario record",
+            "release_cell_linkage": {
+                "linkage_rule": "release-point rows are linked to policy release cells by stable ordinal order",
+                "release_row_id_field": "release_row_id",
+                "release_point_id_field": "release_point_id",
+                "release_cell_id_field": "release_cell_id",
+                "release_point_count": len(release_points),
+                "release_cell_count": len(release_cells),
+            },
+            "required_metadata": {
+                "source_zone_metadata_fields": [
+                    "zone_id",
+                    "title",
+                    "source_dataset",
+                    "source_url",
+                    "license",
+                    "coordinate_reference_system",
+                    "geometry",
+                    "release_points",
+                    "provenance",
+                ],
+                "scenario_table_fields": [
+                    "scenario_id",
+                    "source_zone_id",
+                    "block_family",
+                    "relative_weight",
+                    "probability_semantics",
+                    "release_point_id",
+                ],
+                "source_scenario_policy_fields": [
+                    "source_zone_policy.release_sampling",
+                    "block_scenario_policy.scenarios",
+                    "claim_boundary.unsupported_current_claims",
+                ],
+            },
+            "scenario_probability_semantics": text_value((tschamut_policy.get("source_zone_policy", {}) or {}).get("release_sampling", {}).get("sampling_weight_semantics"))
+            or "conditional_sampling_only",
+            "unsupported_physical_frequency_fields": list(UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS),
+        },
+        "tschamut_specific_heuristics": {
+            "release_sampling_seed_policy": {
+                "mode": text_value(release_sampling.get("mode")) or "deterministic_grid",
+                "seed_policy": text_value(release_sampling.get("seed_policy")) or "fixed_integer_recorded_before_simulation",
+                "seed": release_sampling.get("seed"),
+                "release_cell_id_prefix": text_value(release_sampling.get("release_cell_id_prefix")) or "tschamut_public_release_cell",
+                "requested_release_cell_count": release_sampling.get("requested_release_cell_count"),
+            },
+            "block_size_bins": scenarios,
+            "conditional_sampling_weights": build_conditional_sampling_weights(scenario_rows, scenarios),
+        },
+        "blocked_evidence": {
+            "terrain_manifest_status": preflight_report.get("terrain_manifest_status"),
+            "source_zone_manifest_status": preflight_report.get("source_zone_manifest_status"),
+            "blocked_reason": preflight_report.get("blocked_reason"),
+            "missing_input_categories": preflight_report.get("missing_input_categories", []),
+            "missing_input_paths_or_patterns": preflight_report.get("missing_input_paths_or_patterns", []),
+            "source_zone_metadata_path": str(paths["source_zone_metadata"]),
+            "terrain_metadata_path": str(paths["terrain_metadata"]),
+        },
+    }
+
+
+def build_block_size_bins(tschamut_policy: dict[str, Any]) -> list[dict[str, Any]]:
+    block_policy = tschamut_policy.get("block_scenario_policy", {}) if isinstance(tschamut_policy.get("block_scenario_policy"), dict) else {}
+    scenarios = block_policy.get("scenarios", []) if isinstance(block_policy.get("scenarios"), list) else []
+    bins: list[dict[str, Any]] = []
+    for index, scenario in enumerate(scenarios, start=1):
+        if not isinstance(scenario, dict):
+            continue
+        bins.append(
+            {
+                "bin_index": index,
+                "block_scenario_id": text_value(scenario.get("block_scenario_id")),
+                "block_size_class": text_value(scenario.get("block_size_class")),
+                "block_shape_class": text_value(scenario.get("block_shape_class")),
+                "block_radius_m": scenario.get("block_radius_m"),
+                "block_mass_kg": scenario.get("block_mass_kg"),
+                "conditional_sampling_weight": scenario.get("sampling_weight"),
+                "derivation_basis": text_value(scenario.get("derivation_basis")),
+                "label": "tschamut_specific_heuristic",
+            }
+        )
+    return bins
+
+
+def build_release_cells(tschamut_policy: dict[str, Any]) -> list[dict[str, Any]]:
+    release_sampling = (
+        tschamut_policy.get("source_zone_policy", {}).get("release_sampling", {})
+        if isinstance(tschamut_policy.get("source_zone_policy"), dict)
+        else {}
+    )
+    cells = release_sampling.get("release_cells", []) if isinstance(release_sampling.get("release_cells"), list) else []
+    release_cells: list[dict[str, Any]] = []
+    for index, cell in enumerate(cells, start=1):
+        if not isinstance(cell, dict):
+            continue
+        release_cells.append(
+            {
+                "release_cell_order": index,
+                "release_cell_id": text_value(cell.get("release_cell_id")),
+                "center_lv95_m": cell.get("center_lv95_m"),
+                "sampling_weight": cell.get("sampling_weight"),
+            }
+        )
+    return release_cells
+
+
+def build_conditional_sampling_weights(
+    scenario_rows: list[dict[str, str]],
+    policy_bins: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    scenario_weight_by_id = {
+        text_value(row.get("scenario_id")): row for row in scenario_rows if text_value(row.get("scenario_id"))
+    }
+    total_weight = sum(float(bin_row.get("conditional_sampling_weight") or 0.0) for bin_row in policy_bins)
+    weights: list[dict[str, Any]] = []
+    for bin_row in policy_bins:
+        weight = float(bin_row.get("conditional_sampling_weight") or 0.0)
+        normalized_share = round(weight / total_weight, 6) if total_weight else None
+        scenario_id = text_value(bin_row.get("block_scenario_id"))
+        weights.append(
+            {
+                "block_scenario_id": scenario_id,
+                "block_size_class": text_value(bin_row.get("block_size_class")),
+                "conditional_sampling_weight": weight,
+                "normalized_share": normalized_share,
+                "scenario_table_row_present": scenario_id in scenario_weight_by_id,
+                "scenario_probability_semantics": text_value(
+                    scenario_weight_by_id.get(scenario_id, {}).get("probability_semantics")
+                )
+                or "normalized within a block family; no annual frequency claim",
+                "label": "tschamut_specific_heuristic",
+            }
+        )
+    return weights
+
+
+def build_release_rows(source_zone_record: dict[str, Any], release_cells: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    release_points = source_zone_record.get("release_points") or []
+    release_cells = release_cells or []
     rows: list[dict[str, Any]] = []
     source_zone_id = text_value(source_zone_record.get("zone_id"))
     for index, release_point in enumerate(release_points, start=1):
         if not isinstance(release_point, dict):
             continue
+        release_cell = release_cells[(index - 1) % len(release_cells)] if release_cells else {}
         release_point_id = text_value(release_point.get("release_point_id")) or f"{source_zone_id}_release_point_{index:03d}"
         rows.append(
             {
@@ -270,6 +452,10 @@ def build_release_rows(source_zone_record: dict[str, Any]) -> list[dict[str, Any
                 "release_point_id": release_point_id,
                 "source_zone_id": source_zone_id,
                 "release_order": index,
+                "release_cell_id": text_value(release_cell.get("release_cell_id")) if release_cell else "",
+                "release_cell_order": release_cell.get("release_cell_order"),
+                "release_cell_center_lv95_m": release_cell.get("center_lv95_m"),
+                "release_cell_sampling_weight": release_cell.get("sampling_weight"),
                 "x": release_point.get("x"),
                 "y": release_point.get("y"),
                 "z_offset_m": release_point.get("z_offset_m"),
@@ -355,6 +541,10 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("deterministic_block_scenario_rows:")
     lines.extend(render_rows(report["deterministic_block_scenario_rows"]))
+
+    lines.append("")
+    lines.append("scenario_generation_contract:")
+    lines.extend(render_nested_dict(report["scenario_generation_contract"]))
 
     lines.append("")
     lines.append("machine_readable_distinction:")

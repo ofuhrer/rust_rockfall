@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-097: Plan Pragmatic Block-Scenario Generation
-
-Goal: Define a deterministic block-scenario generation dry run that maps release-zone candidates to a small, pragmatic scenario table.
-
-Capability gap reduced: Automated scenario generation for reproducible conditional ensembles.
-
-Why this outranks alternatives: Release zones alone do not produce a hazard map; the workflow needs a repeatable block/scenario plan whose uncertainty is explicit and bounded.
-
-Inspect first:
-
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A dry-run scenario-generation contract that names block-size bins, conditional sampling weights, release-cell linkage, required metadata, and unsupported physical-frequency fields.
-- Tests proving Tschamut-specific heuristics are labelled separately from portable scenario semantics.
-- A blocked path for missing source-zone or terrain evidence.
-
-Definition of done:
-
-- The scenario dry run emits JSON/text, focused tests pass, and TB-097 is removed from this backlog.
-
-Boundaries: Do not estimate annual source frequencies, do not calibrate block distributions, and do not change current physics parameters.
-
 ### TB-098: Estimate Swiss-Wide Runtime And Storage Envelope
 
 Goal: Convert the measured Tschamut/Balfrin pilot evidence into a conservative runtime and storage envelope for scaling to many Swiss AOIs.

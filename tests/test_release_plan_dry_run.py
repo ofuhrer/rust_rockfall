@@ -10,7 +10,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_release_plan_dry_run.py"
-PREFLIGHT_SCRIPT_PATH = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 
 
@@ -24,7 +23,6 @@ def _load_module(path: Path, name: str):
 
 
 planner = _load_module(SCRIPT_PATH, "plan_release_plan_dry_run")
-preflight = _load_module(PREFLIGHT_SCRIPT_PATH, "check_second_site_public_geodata_preflight_for_release_plan_test")
 staging = _load_module(STAGING_SCRIPT_PATH, "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_release_plan_test")
 
 
@@ -42,6 +40,7 @@ class ReleasePlanDryRunTests(unittest.TestCase):
             report = planner.build_report(config_path, repo_root=repo_root)
 
         self.assertEqual(report["release_plan_dry_run_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["scenario_generation_contract"]["contract_status"], "deferred_public_context_inputs")
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
         self.assertEqual(report["release_plan_summary"]["release_point_count"], 1)
@@ -50,7 +49,26 @@ class ReleasePlanDryRunTests(unittest.TestCase):
         self.assertEqual(report["release_plan_summary"]["release_sampling_seed_policy"]["seed"], 34014)
         self.assertEqual(report["release_plan_summary"]["release_sampling_seed_policy"]["seed_policy"], "fixed_integer_recorded_before_simulation")
         self.assertEqual(report["deterministic_release_rows"][0]["release_point_id"], "chant_sura_fluelapass_fixture_release_001")
+        self.assertEqual(report["deterministic_release_rows"][0]["release_cell_id"], "tschamut_public_release_cell_000")
         self.assertEqual(report["deterministic_block_scenario_rows"][0]["scenario_id"], "chant_sura_fluelapass_fixture_scenario_001")
+
+        contract = report["scenario_generation_contract"]
+        portable = contract["portable_semantics"]
+        heuristics = contract["tschamut_specific_heuristics"]
+        blocked = contract["blocked_evidence"]
+
+        self.assertEqual(portable["release_point_table_shape"], "one row per release point")
+        self.assertEqual(portable["block_scenario_table_shape"], "CSV table with one row per block / scenario record")
+        self.assertEqual(portable["release_cell_linkage"]["release_cell_id_field"], "release_cell_id")
+        self.assertEqual(portable["release_cell_linkage"]["release_point_count"], 1)
+        self.assertEqual(portable["release_cell_linkage"]["release_cell_count"], 10)
+        self.assertEqual(portable["scenario_probability_semantics"], "conditional_sampling_only")
+        self.assertIn("annual_frequency", portable["unsupported_physical_frequency_fields"])
+        self.assertEqual(heuristics["release_sampling_seed_policy"]["release_cell_id_prefix"], "tschamut_public_release_cell")
+        self.assertEqual(heuristics["block_size_bins"][0]["block_size_class"], "tschamut_selected_rows_small")
+        self.assertEqual(heuristics["conditional_sampling_weights"][0]["normalized_share"], 0.3)
+        self.assertEqual(blocked["terrain_manifest_status"], "ready")
+        self.assertEqual(blocked["source_zone_manifest_status"], "ready")
 
         reusable = report["reusable_semantics"]
         self.assertEqual(reusable["release_point_table_shape"], "one row per release point")
@@ -73,12 +91,27 @@ class ReleasePlanDryRunTests(unittest.TestCase):
         self.assertIn("release_point_table_shape", distinction["reusable_semantics"])
         self.assertIn("source_zone_record", distinction["site_specific_inputs"])
         self.assertIn("reference_block_scenario_classes", distinction["tschamut_only_heuristics"])
+        self.assertIn("portable_semantics", distinction["scenario_generation_contract"])
 
         blocked_template = report["blocked_second_site_execution_template"]
         self.assertEqual(blocked_template["status"], "template_only")
         self.assertIn("generate_second_site_release_plan.py", blocked_template["command"])
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
+
+    def test_missing_source_zone_or_terrain_evidence_blocks_release_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+
+            report = planner.build_report(config_path, repo_root=repo_root)
+
+        self.assertEqual(report["release_plan_dry_run_status"], "blocked_missing_source_zone_or_terrain_evidence")
+        self.assertEqual(report["scenario_generation_contract"]["contract_status"], "blocked_missing_source_zone_or_terrain_evidence")
+        self.assertEqual(report["scenario_generation_contract"]["blocked_evidence"]["terrain_manifest_status"], "blocked_missing_inputs")
+        self.assertEqual(report["scenario_generation_contract"]["blocked_evidence"]["source_zone_manifest_status"], "blocked_missing_inputs")
+        self.assertIn("terrain", report["scenario_generation_contract"]["blocked_evidence"]["blocked_reason"])
+        self.assertIn("source_zone_metadata", report["scenario_generation_contract"]["blocked_evidence"]["missing_input_categories"])
 
     def test_text_output_remains_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -96,6 +129,7 @@ class ReleasePlanDryRunTests(unittest.TestCase):
         self.assertEqual(text_report, planner.render_text_report(report))
         self.assertIn("schema_version: release_plan_dry_run_v1", text_report)
         self.assertIn("release_plan_summary:", text_report)
+        self.assertIn("scenario_generation_contract:", text_report)
         self.assertIn("tschamut_only_heuristics:", text_report)
         self.assertIn("deterministic_release_rows:", text_report)
         self.assertIn("deterministic_block_scenario_rows:", text_report)
