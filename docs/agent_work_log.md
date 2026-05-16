@@ -1195,3 +1195,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no operational hazard zone, regulatory class, risk/exposure product, or new simulation output was created; the regions remain interpretive aids only.
 - Next task: `TB-088`
+
+### TB-088: Define Minimal Swiss Public-Geodata Workflow Contract
+
+- Date: 2026-05-16
+- Commit: `012f507`
+- Objective: define a reusable public-geodata contract for any Swiss AOI so later preprocessing, release planning, and hazard generation can target one contract instead of inheriting Chant Sura or Tschamut assumptions.
+- Files changed: docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, scripts/check_chant_sura_real_context_readiness_gate.py, scripts/check_second_site_public_geodata_preflight.py, scripts/plan_swisstopo_aoi_acquisition.py, tests/fixtures/second_site_public_geodata_preflight/minimal_synthetic_aoi.yaml, tests/test_chant_sura_real_context_readiness_gate.py, tests/test_second_site_public_geodata_preflight.py, tests/test_swisstopo_aoi_acquisition_planner.py, docs/agent_work_log.md
+- Implementation summary: added a reusable `public_geodata_workflow_contract` summary to the second-site preflight, AOI acquisition planner, and Chant Sura real-context gate so the reports now name required AOI metadata, CRS/grid assumptions, swisstopo product classes, cache paths, provenance requirements, and deferred optional context; added a tiny synthetic AOI fixture and focused regressions covering both the Chant Sura example and the synthetic fixture to keep contract readiness separate from synthetic-fixture readiness; and updated the public real-site preparation and swisstopo strategy docs plus the active backlog to describe the new contract boundary explicitly.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_swisstopo_aoi_acquisition_planner tests.test_chant_sura_real_context_readiness_gate -v`; `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py scripts/plan_swisstopo_aoi_acquisition.py scripts/check_chant_sura_real_context_readiness_gate.py tests/test_second_site_public_geodata_preflight.py tests/test_swisstopo_aoi_acquisition_planner.py tests/test_chant_sura_real_context_readiness_gate.py`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short`
+- Result/status: completed.
+- Boundaries: no public data was downloaded, no fake public-context evidence was staged, and no second-site hazard build or operational claim was introduced.
+- Next task: `TB-089`
