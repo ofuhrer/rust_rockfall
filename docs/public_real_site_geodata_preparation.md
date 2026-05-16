@@ -235,6 +235,15 @@ swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
 context as deferred until real products are staged. No downloads occur during
 that summary pass.
 
+Observed runout/deposition evidence remains a separate future intake contract,
+not a public-context geodata product. The repo now carries a blocked
+read-only contract summary at
+`scripts/summarize_observed_runout_deposition_intake_contract.py` so future
+benchmark intake can name the required geometry, event/source metadata,
+uncertainty, and objective placeholders without implying that a calibration
+dataset is already available. The current repository state is still blocked on
+independent benchmark evidence.
+
 The Chant Sura real-context readiness gate,
 `scripts/check_chant_sura_real_context_readiness_gate.py`, layers on top of
 that summary. It compares the deterministic acquisition plan with the locally

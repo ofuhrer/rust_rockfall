@@ -116,6 +116,15 @@ conditional summaries rather than physical credibility. The conditional
 intensity-exceedance family is useful for threshold QA and convergence review,
 but it remains physically unestablished and operationally inadmissible.
 
+The observed runout/deposition intake contract is now spelled out in
+`scripts/summarize_observed_runout_deposition_intake_contract.py`. It defines
+the minimal geometry, event/source metadata, uncertainty, and objective
+placeholder fields needed for a future benchmark intake, and it maps those
+fields back to the physical-credibility requirement classes. The current
+report remains `blocked_missing_inputs` because no independent observed
+runout/deposition benchmark dataset or calibration dataset is staged in the
+repository.
+
 The helper keeps the distinction explicit between:
 
 - current diagnostic runout / deposition evidence from Tschamut;
@@ -128,6 +137,7 @@ The helper keeps the distinction explicit between:
 The current claim boundaries stay blocked:
 
 - `physical_probability_claims_allowed`: `false`
+- `calibration_claims_allowed`: `false`
 - `annual_frequency_claims_allowed`: `false`
 - `risk_exposure_vulnerability_claims_allowed`: `false`
 - `operational_claims_allowed`: `false`

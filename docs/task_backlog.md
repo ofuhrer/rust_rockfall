@@ -18,38 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-080: Define Observed Runout And Deposition Validation Intake Contract
-
-Goal: Turn the physical-credibility evidence map into a concrete future data
-intake contract for observed runout/deposition evidence.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_chant_sura_holdout_evidence.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A minimal schema/report for observed runout/deposition benchmark intake,
-  including geometry, event/source metadata, uncertainty fields, and objective
-  function placeholders.
-- Explicit mapping from each field to the physical-credibility requirement it
-  would satisfy.
-- A blocked/current-state report showing that no such calibration dataset is
-  currently available in the repo.
-
-Definition of done:
-
-- Focused tests validate the intake contract and current blocked status.
-- Documentation states that calibration, physical probability, and operational
-  claims remain unsupported until real evidence is acquired.
-
-Boundaries: Do not fabricate validation data, fit parameters, change closure
-  status, or introduce annual-frequency/risk/exposure/vulnerability semantics.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
