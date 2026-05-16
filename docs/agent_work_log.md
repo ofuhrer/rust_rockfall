@@ -1207,3 +1207,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no public data was downloaded, no fake public-context evidence was staged, and no second-site hazard build or operational claim was introduced.
 - Next task: `TB-089`
+
+### TB-089: Add AOI-To-Prepared-Pilot Dry-Run Orchestrator
+
+- Date: 2026-05-16
+- Commit: `dfada3a`
+- Objective: compose the existing AOI acquisition, public-context gate, release-zone dry run, release-plan dry run, and portable command-plan helpers into one deterministic Chant Sura workflow report.
+- Files changed: scripts/plan_aoi_to_prepared_pilot_dry_run.py, tests/test_aoi_to_prepared_pilot_dry_run.py, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a read-only orchestrator that loads the existing helper reports, orders the workflow steps, carries forward blockers and expected inputs, and aggregates generated versus ignored output roots; added regression coverage for both the staged-temp Chant Sura path and a stubbed composition path so the orchestrator stays pure and deterministic; and removed TB-089 from the active backlog once the workflow report was in place.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_to_prepared_pilot_dry_run.py tests/test_aoi_to_prepared_pilot_dry_run.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_swisstopo_aoi_acquisition_planner tests.test_release_zone_heuristic_dry_run tests.test_release_plan_dry_run tests.test_pilot_command_plan`; `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --format json > /tmp/tb089_aoi_to_prepared_pilot_dry_run.json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short`
+- Result/status: completed.
+- Boundaries: no data downloads, no ensemble runs, and no operational or probability claims were introduced; the real repo-root invocation still reports the candidate as blocked/deferred where core or public-context inputs are absent.
+- Next task: `TB-090`
