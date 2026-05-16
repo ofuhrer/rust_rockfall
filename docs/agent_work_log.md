@@ -1657,3 +1657,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the delta report compares evidence only; it does not reclassify Tschamut closure, tune physics, or claim physical validation.
 - Next task: `TB-112`
+
+### TB-112: Define Balfrin Operational Failure Taxonomy
+
+- Date: 2026-05-16
+- Commit: `a16f971`
+- Objective: Formalize Balfrin run failure classes and recovery semantics for readiness, scheduler, runtime, partial-output, metrics, GIS/export, and scientific-state failures.
+- Files changed: `scripts/summarize_balfrin_failure_taxonomy.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/check_repo_consistency.py`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/balfrin_failure_recovery_playbook.md`, `docs/task_backlog.md`, `tests/test_balfrin_failure_taxonomy.py`, `tests/test_balfrin_evidence_bundle.py`
+- Implementation summary:
+  - Added a read-only machine-readable Balfrin failure taxonomy helper with canonical classes, commands, recovery actions, and escalation boundaries for the operational and scientific failure states covered by the task.
+  - Wired the taxonomy into the canonical Balfrin evidence bundle so the post-run bundle now carries a structured failure-taxonomy report alongside the existing readiness, metrics, GIS, and interpretation evidence.
+  - Added focused regression coverage for catalog output plus representative readiness, scheduler, runtime, partial-output, metrics, GIS/export, and scientific-state classifications, and verified the bundle keeps scope-limited states distinct from real blockers.
+  - Updated the Balfrin runbook and recovery playbook to point operators at the helper, and removed TB-112 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_failure_taxonomy.py scripts/summarize_balfrin_evidence_bundle.py scripts/check_repo_consistency.py tests/test_balfrin_failure_taxonomy.py tests/test_balfrin_evidence_bundle.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_failure_taxonomy tests.test_balfrin_evidence_bundle -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: the taxonomy labels operational recovery cases and explicit scope limits only; it does not alter scientific interpretation criteria or authorize operational hazard claims.
+- Next task: `TB-113`
