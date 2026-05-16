@@ -1135,3 +1135,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no benchmark data was fabricated, no calibration parameters were fit, no physical-probability claim was added, and no operational boundary was changed.
 - Next task: `TB-083`
+
+### TB-083: Add Observed Runout Intake Readiness Pack Generator
+
+- Date: 2026-05-16
+- Commit: `3484683`
+- Objective: make the observed runout/deposition contract actionable by generating a dry-run readiness pack for future real benchmark data.
+- Files changed: scripts/summarize_observed_runout_deposition_intake_contract.py, tests/test_observed_runout_deposition_intake_contract.py, docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/current_maturity_snapshot.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a caller-provided `--output-root` path to the observed runout/deposition intake helper so it can emit a template manifest, required geometry inventory, provenance checklist, and validation summary into a temporary readiness-pack directory; marked the generated pack explicitly as `template_non_evidence`; kept the existing contract/readiness split intact so the report still remains blocked for missing benchmark inputs; added regression coverage for the written pack structure and CLI success path; and updated the Swiss geodata guidance, maturity snapshot, and backlog so the pack generator is recorded as implemented rather than future work.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -q`; `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --output-root /tmp/tb083_readiness_pack --format text`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short --branch`
+- Result/status: completed.
+- Boundaries: no real benchmark data was created or claimed, no calibration or parameter fitting was introduced, no operational or physical-probability boundary moved, and the generated pack remains a template/non-evidence artifact only.
+- Next task: `TB-084`
