@@ -32,6 +32,8 @@ class AgentTaskContextTest(unittest.TestCase):
 
 ### TB-999: Example Task
 
+Priority: P0
+
 Inspect first:
 
 - `docs/example.md`
@@ -47,6 +49,7 @@ Expected work:
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0].task_id, "TB-999")
         self.assertEqual(tasks[0].title, "Example Task")
+        self.assertEqual(tasks[0].priority, "P0")
         self.assertEqual(tasks[0].inspect_first, ["docs/example.md", "scripts/example.py"])
 
     def test_report_contains_required_json_fields_without_live_checks(self) -> None:
@@ -74,6 +77,21 @@ Expected work:
 
         self.assertEqual(report["agent_task_context_status"], "ready")
         self.assertEqual(report["selected_task"]["task_id"], current_task_id)
+        self.assertEqual(report["detail"], "compact")
+        self.assertIn("inspect_first", report["selected_task"])
+        other_tasks = [task for task in report["active_tasks"] if task["task_id"] != current_task_id]
+        self.assertTrue(other_tasks)
+        self.assertNotIn("inspect_first", other_tasks[0])
+        self.assertLess(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
+
+    def test_full_detail_keeps_all_task_details_and_helpers(self) -> None:
+        current_task_id = self.current_active_task_id()
+
+        report = agent_context.build_report(current_task_id, run_checks=False, detail="full")
+
+        self.assertEqual(report["detail"], "full")
+        self.assertEqual(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
+        self.assertTrue(all("inspect_first" in task for task in report["active_tasks"]))
 
     def test_missing_task_is_explicitly_blocked(self) -> None:
         report = agent_context.build_report("TB-000", run_checks=False)
@@ -112,6 +130,7 @@ Expected work:
         task = agent_context.ActiveTask(
             task_id="TB-999",
             title="Example Chant Sura Task",
+            priority="P0",
             inspect_first=[],
             text="Chant Sura public-context staging boundary",
         )

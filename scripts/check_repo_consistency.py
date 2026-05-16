@@ -1297,14 +1297,19 @@ def check_balfrin_target_gate_reproduction() -> list[str]:
         if term not in target_doc:
             errors.append(f"docs/tschamut_public_scalable_conditional_target_gate.md omits {term!r}")
 
+    maturity = (ROOT / "docs/current_maturity_snapshot.md").read_text()
     for term in (
         "Status: authoritative executable task backlog.",
+    ):
+        if term not in backlog:
+            errors.append(f"docs/task_backlog.md omits {term!r}")
+    for term in (
         "Balfrin target-gate reproduction",
         "The selected Tschamut target-scale evidence remains `inconclusive`.",
         "selected-domain runs remain blocked",
     ):
-        if term not in backlog:
-            errors.append(f"docs/task_backlog.md omits {term!r}")
+        if term not in maturity:
+            errors.append(f"docs/current_maturity_snapshot.md omits {term!r}")
     return errors
 
 
@@ -1937,14 +1942,20 @@ def check_roadmap_target_authority() -> list[str]:
         errors.append("docs/task_backlog.md must contain the authoritative executable task backlog marker")
     for term in (
         "Worker rule:",
-        "Project Objective",
-        "Capability Gap Analysis",
-        "Backlog Quality Assessment",
         "decision_log.md",
         "agent_work_log.md",
+        "docs/current_maturity_snapshot.md",
     ):
         if term not in backlog_text:
             errors.append(f"docs/task_backlog.md omits {term!r}")
+    maturity_text = (ROOT / "docs/current_maturity_snapshot.md").read_text()
+    for term in (
+        "Project Objective",
+        "Capability Gap Analysis",
+        "Backlog Quality Assessment",
+    ):
+        if term not in maturity_text:
+            errors.append(f"docs/current_maturity_snapshot.md omits {term!r}")
 
     legacy_text = legacy_targets.read_text()
     if "Status: legacy pointer." not in legacy_text or "Current executable tasks have moved to `task_backlog.md`." not in legacy_text:
@@ -2181,7 +2192,12 @@ def check_hazard_layer_metadata() -> list[str]:
 
     docs = "\n".join(
         path.read_text()
-        for path in (ROOT / "README.md", ROOT / "docs/hazard_layers.md", ROOT / "hazard/README.md")
+        for path in (
+            ROOT / "README.md",
+            ROOT / "docs/project_overview.md",
+            ROOT / "docs/hazard_layers.md",
+            ROOT / "hazard/README.md",
+        )
         if path.exists()
     )
     for term in (

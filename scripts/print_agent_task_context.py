@@ -31,16 +31,20 @@ CHANT_SURA_CONFIG = (
 class ActiveTask:
     task_id: str
     title: str
+    priority: str | None
     inspect_first: list[str]
     text: str
 
-    @property
-    def summary(self) -> dict[str, Any]:
-        return {
+    def summary(self, *, include_details: bool = True) -> dict[str, Any]:
+        summary: dict[str, Any] = {
             "task_id": self.task_id,
             "title": self.title,
-            "inspect_first": self.inspect_first,
         }
+        if self.priority:
+            summary["priority"] = self.priority
+        if include_details:
+            summary["inspect_first"] = self.inspect_first
+        return summary
 
 
 CANONICAL_HELPERS = [
@@ -143,6 +147,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task", help="task id to focus, for example TB-041")
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument(
+        "--detail",
+        choices=("compact", "full"),
+        default="compact",
+        help="compact is worker-oriented; full includes all active task details and all helpers",
+    )
+    parser.add_argument(
         "--no-live-checks",
         action="store_true",
         help="summarize canonical commands without running read-only checks",
@@ -171,11 +181,17 @@ def parse_active_tasks(backlog_text: str) -> list[ActiveTask]:
             ActiveTask(
                 task_id=heading.group(1),
                 title=heading.group(2).strip(),
+                priority=parse_priority(section),
                 inspect_first=parse_inspect_first(section),
                 text=section,
             )
         )
     return tasks
+
+
+def parse_priority(section: str) -> str | None:
+    match = re.search(r"^Priority:\s*(P\d+)\s*$", section, re.MULTILINE)
+    return match.group(1) if match else None
 
 
 def parse_inspect_first(section: str) -> list[str]:
@@ -244,7 +260,45 @@ def should_run_chant_sura_preflight(task: ActiveTask | None, tasks: list[ActiveT
     return any(term.lower() in haystack.lower() for term in terms)
 
 
-def build_report(task_id: str | None = None, *, run_checks: bool = True) -> dict[str, Any]:
+def relevant_helpers(task: ActiveTask | None, *, detail: str) -> list[dict[str, str]]:
+    if detail == "full" or task is None:
+        return CANONICAL_HELPERS
+
+    haystack = " ".join([task.title, task.text, *task.inspect_first]).lower()
+    selected: list[dict[str, str]] = []
+
+    def add_by_path(path: str) -> None:
+        helper = next((candidate for candidate in CANONICAL_HELPERS if candidate["path"] == path), None)
+        if helper and helper not in selected:
+            selected.append(helper)
+
+    for helper in CANONICAL_HELPERS:
+        if helper["path"].lower() in haystack:
+            selected.append(helper)
+
+    keyword_paths = [
+        (("same-scale", "tschamut", "readiness"), "scripts/check_same_scale_artifact_readiness.py"),
+        (("command", "plan"), "scripts/generate_pilot_command_plan.py"),
+        (("closure",), "scripts/summarize_tschamut_conditional_pilot_closure.py"),
+        (("rebuild", "reduced", "output"), "scripts/check_hazard_rebuild_output_profile.py"),
+        (("spatial", "uncertainty", "hotspot", "stability"), "scripts/summarize_spatial_same_scale_uncertainty.py"),
+        (("cog", "gis", "geotiff"), "scripts/audit_gis_cog_package_readiness.py"),
+        (("cog", "conversion", "package"), "scripts/convert_same_scale_package_to_cog.py"),
+        (("runtime", "scaling", "ensemble feasibility"), "scripts/summarize_bounded_reducer_runtime_scaling.py"),
+        (("chant sura", "second-site", "flüelapass", "aoi"), "scripts/check_second_site_public_geodata_preflight.py"),
+        (("source", "scenario", "multisite"), "scripts/audit_multisite_source_scenario_contract.py"),
+        (("physical", "credibility", "calibration", "validation"), "scripts/assess_validation_calibration_evidence_gaps.py"),
+    ]
+    for terms, path in keyword_paths:
+        if any(term in haystack for term in terms):
+            add_by_path(path)
+
+    if not selected:
+        add_by_path("scripts/generate_pilot_command_plan.py")
+    return selected
+
+
+def build_report(task_id: str | None = None, *, run_checks: bool = True, detail: str = "compact") -> dict[str, Any]:
     backlog_text = read_backlog()
     active_tasks = parse_active_tasks(backlog_text)
     task = next((candidate for candidate in active_tasks if candidate.task_id == task_id), None) if task_id else None
@@ -261,11 +315,15 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True) -> dict
         "running_from_repo_root": Path.cwd().resolve() == ROOT.resolve(),
         "python_invocation": PYTHON_INVOCATION,
         "requested_task_id": task_id,
-        "selected_task": task.summary if task else None,
-        "active_tasks": [candidate.summary for candidate in active_tasks],
+        "detail": detail,
+        "selected_task": task.summary(include_details=True) if task else None,
+        "active_tasks": [
+            candidate.summary(include_details=(detail == "full" or candidate == task))
+            for candidate in active_tasks
+        ],
         "backlog_refill_needed": backlog_refill_needed,
         "backlog_note": "Backlog refill needed" if backlog_refill_needed else None,
-        "canonical_helpers": CANONICAL_HELPERS,
+        "canonical_helpers": relevant_helpers(task, detail=detail),
         "known_environment_issues": KNOWN_ENVIRONMENT_ISSUES,
         "generated_roots_to_avoid": GENERATED_ROOTS_TO_AVOID,
         "existing_generated_placeholder_paths": scan_existing_placeholder_paths(),
@@ -372,7 +430,7 @@ def render_text(report: dict[str, Any]) -> str:
 
 def main() -> int:
     args = parse_args()
-    report = build_report(args.task, run_checks=not args.no_live_checks)
+    report = build_report(args.task, run_checks=not args.no_live_checks, detail=args.detail)
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
