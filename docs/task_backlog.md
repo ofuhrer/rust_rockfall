@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-107: Write Balfrin Demonstration Failure-Recovery Playbook
-
-Goal: Provide deterministic operator-facing recovery procedures for Balfrin demo failures across readiness, scheduler, partial-output, metrics, GIS/export, and interpretation states.
-
-Capability gap reduced: Operational execution resilience.
-
-Why this outranks alternatives: A management demonstration needs predefined recovery paths rather than live improvisation.
-
-Inspect first:
-
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-
-Deliverables:
-
-- A concrete failure-recovery playbook keyed to machine-readable failure classes and exact commands.
-- A small taxonomy table distinguishing infrastructure, orchestration, artifact, metrics, GIS, and scientific-state failures.
-- Smoke checks for any helper output used by the playbook.
-
-Definition of done:
-
-- The playbook is command-specific and non-generic, focused checks pass, and TB-107 is removed from this backlog.
-
-Boundaries: Do not run jobs or broaden operational claims; keep recovery procedures tied to current Balfrin single-release-zone demo scope.
-
 ### TB-108: Audit Post-Balfrin Output Tier Sufficiency
 
 Goal: Determine whether the measured `rebuildable_reduced_output` tier is sufficient for the Balfrin demo and future bounded runs.

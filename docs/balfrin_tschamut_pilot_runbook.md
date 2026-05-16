@@ -189,6 +189,9 @@ Do not commit these generated artifacts if they appear in a run root:
 - `balfrin_probe_full_time.txt`
 - `balfrin_hazard_stage_time.txt`
 
+For deterministic failure-class recovery paths keyed to the current Balfrin
+demo scope, see [`docs/balfrin_failure_recovery_playbook.md`](./balfrin_failure_recovery_playbook.md).
+
 ## 3) Read-only readiness check
 
 Use the dedicated readiness gate before touching compute:
