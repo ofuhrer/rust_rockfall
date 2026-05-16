@@ -875,7 +875,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-061: Define A Bounded Next-Ensemble Feasibility Probe
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `aa3afa7`
 - Objective: add a read-only feasibility report and deferred command-plan template for the smallest bounded same-scale probe that could still clarify the remaining closure question without authorizing scale-up.
 - Files changed: scripts/summarize_bounded_next_ensemble_feasibility_probe.py, scripts/generate_pilot_command_plan.py, tests/test_bounded_next_ensemble_feasibility_probe.py, tests/test_pilot_command_plan.py, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
 - Implementation summary: added a JSON/text helper that composes closure-gap, rebuildable-reduced-output, runtime-scaling, and single-job-sufficiency evidence into a bounded next-probe report; added a deferred native `rebuildable_reduced_output` command-plan template; updated the gate report to publish the proposed probe scope, boundedness proof, and explicit no-go conditions.
