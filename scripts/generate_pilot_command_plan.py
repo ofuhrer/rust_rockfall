@@ -40,6 +40,7 @@ CASE_GENERATION = _load_module("pilot_command_plan_case_generation", "generate_t
 CONTRACT = _load_module("pilot_command_plan_contract_audit", "audit_multisite_source_scenario_contract.py")
 OUTPUT_PROFILE = _load_module("pilot_command_plan_output_profile", "check_hazard_rebuild_output_profile.py")
 REDUCED_PROFILE = _load_module("pilot_command_plan_reduced_profile", "derive_hazard_rebuild_reduced_profile.py")
+REDUCED_VALIDATION_CASE = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -481,6 +482,18 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
     scratch_map_manifest = scratch_hazard_root / "tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_map_package_manifest.json"
     scratch_pilot_manifest = scratch_hazard_root / "tschamut_public_scalable_conditional_target_gate_v1_rebuildable_reduced_pilot_gis_package_manifest.json"
 
+    native_validation_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "CARGO_TARGET_DIR=/tmp/rust-rockfall-target",
+            "cargo",
+            "run",
+            "--",
+            "validate",
+            "--case",
+            rel(REDUCED_VALIDATION_CASE),
+        ]
+    )
     derivation_command = command_string(
         [
             "PYENV_VERSION=system",
@@ -549,8 +562,29 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
         command_entry(
             site="tschamut_same_scale",
             group="rebuildable_reduced_output",
+            command_id="tschamut_reduced_profile_validation",
+            description="Run the frozen Tschamut target validation case with the native rebuildable-reduced output mode.",
+            command=native_validation_command,
+            expected_inputs=[
+                rel(REDUCED_VALIDATION_CASE),
+            ],
+            expected_outputs=[
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_deposition.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory_metadata.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_metrics.json"),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=[rel(reduced_root)],
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="rebuildable_reduced_output",
             command_id="tschamut_reduced_profile_derivation",
-            description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts.",
+            description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts as a legacy proof path.",
             command=derivation_command,
             expected_inputs=[
                 rel(REDUCED_PROFILE.DEFAULT_SOURCE_ROOT),
@@ -1016,7 +1050,7 @@ GROUP_DESCRIPTIONS = {
     "gis_cog_package_conversion": "Audit and convert same-scale GIS packages to COG-ready ignored outputs.",
     "convergence_comparisons": "Compare gate and target hazard manifests cell-wise.",
     "output_profile_checks": "Summarize bounded validation-output pressure.",
-    "rebuildable_reduced_output": "Derive and proof the hazard-rebuild-compatible reduced target profile.",
+    "rebuildable_reduced_output": "Run, derive, and proof the hazard-rebuild-compatible reduced target profile.",
     "context_inspection": "Inspect staged public context layers.",
     "hazard_context_overlap": "Measure hazard/context proximity on the staged envelope.",
     "uncertainty_summary": "Compose the same-scale uncertainty envelope summary.",

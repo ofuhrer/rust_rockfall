@@ -66,6 +66,10 @@ COG proof paths are command-plan-addressable, but neither changes the current
 `inconclusive` diagnostic status or the `false` scale-up / operational
 boundaries.
 
+The validation-output blocker is now narrower: `summary_only` remains
+non-rebuildable, while the native `rebuildable_reduced_output` case is
+standardized and command-plan-addressable as a direct builder-facing path.
+
 ## Closure-Gap Deltas
 
 The measured closure-gap helper is

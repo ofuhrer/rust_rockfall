@@ -1519,6 +1519,20 @@ fn validation_output_mode_is_summary_only(case: &BenchmarkCase) -> bool {
     case.outputs.validation_output_mode == Some(ValidationOutputMode::SummaryOnly)
 }
 
+fn validation_output_mode_is_rebuildable_reduced_output(case: &BenchmarkCase) -> bool {
+    case.outputs.validation_output_mode == Some(ValidationOutputMode::RebuildableReducedOutput)
+}
+
+fn validation_output_mode_writes_builder_facing_outputs(case: &BenchmarkCase) -> bool {
+    validation_output_mode_is_rebuildable_reduced_output(case)
+        || !validation_output_mode_is_summary_only(case)
+}
+
+fn validation_output_mode_writes_debug_outputs(case: &BenchmarkCase) -> bool {
+    !validation_output_mode_is_summary_only(case)
+        && !validation_output_mode_is_rebuildable_reduced_output(case)
+}
+
 fn sha256_file(path: &Path) -> Result<String, ValidationError> {
     let mut file = File::open(path)?;
     let mut digest = Sha256::new();
@@ -1538,7 +1552,7 @@ fn warn_large_debug_outputs(
     expected_files: usize,
     warnings: &mut Vec<String>,
 ) {
-    if validation_output_mode_is_summary_only(case) {
+    if !validation_output_mode_writes_debug_outputs(case) {
         return;
     }
     if expected_files < OUTPUT_FILE_WARNING_THRESHOLD {
@@ -1992,7 +2006,7 @@ fn compute_ensemble_metrics(context: EnsembleMetricContext<'_>) -> Result<(), Va
     }
     if case.observations.is_none() {
         warn_large_debug_outputs(case, ensemble_size, warnings);
-        if !validation_output_mode_is_summary_only(case) {
+        if validation_output_mode_writes_debug_outputs(case) {
             if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
                 let output_started = Instant::now();
                 output_entries.push(write_ensemble_trajectory_dir(dir, &ensemble.trajectories)?);
@@ -2213,7 +2227,7 @@ fn compute_validation_ensemble_metrics(
             output_entries.push(exposure_output);
         }
     }
-    if !validation_output_mode_is_summary_only(case) {
+    if validation_output_mode_writes_debug_outputs(case) {
         if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
             let output_started = Instant::now();
             output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);
@@ -2412,7 +2426,7 @@ fn compute_release_zone_metrics(
             output_entries.push(exposure_output);
         }
     }
-    if !validation_output_mode_is_summary_only(case) {
+    if validation_output_mode_writes_debug_outputs(case) {
         if let Some(dir) = &case.outputs.ensemble_trajectories_dir {
             let output_started = Instant::now();
             output_entries.push(write_ensemble_trajectory_dir(dir, &runs)?);

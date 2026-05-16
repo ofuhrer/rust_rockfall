@@ -187,19 +187,35 @@ into an ignored local reduction root:
 
 Measured reduced profile size:
 
-- reduced validation-root file count: `6`
-- reduced validation-root byte count: `1202927`
-- reduced validation outputs only: `5` files, `1192379` bytes
+- reduced validation-root file count: `18`
+- reduced validation-root byte count: `3959200`
+- reduced validation outputs only: `6` files, `3959200` bytes
 - compared with current target summary-only: `6` files, `1286207` bytes
 - compared with the full target output: `2005` files, `571368823` bytes
 - checker classification: `rebuildable_reduced_output`
 
-The canonical command-plan path now exposes both the derivation command and
-the scratch hazard-rebuild proof command through
+The canonical command-plan path now exposes the native reduced validation
+command, the derivation command, and the scratch hazard-rebuild proof command
+through
 `scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
 under the `tschamut_same_scale::rebuildable_reduced_output` group. That keeps
 the reduced-output workflow reproducible without implying that
 `summary_only` itself is rebuildable.
+
+Native reduced validation case:
+
+- case path:
+  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
+- validation output mode:
+  `rebuildable_reduced_output`
+- builder-facing output families:
+  `trajectory`, `ensemble_deposition`, `impact_events_csv`,
+  `trajectory_metadata`, `diagnostics`
+- standard output-family omissions:
+  `ensemble_trajectories`, `ensemble_impact_events`,
+  `impact_events_json`
+- checker classification:
+  `rebuildable_reduced_output`
 
 Hazard-rebuild proof:
 
@@ -211,6 +227,11 @@ Hazard-rebuild proof:
 - proof output root bytes: `78431962`
 - map-package manifest present: `True`
 - pilot-GIS manifest present: `True`
+
+The direct reduced validation mode now feeds the same builder-facing reduced
+profile without requiring the full-output derivation step first. It writes to
+the ignored reduced root and produces the same manifest classification that
+the checker expects for `rebuildable_reduced_output`.
 
 The canonical diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`,

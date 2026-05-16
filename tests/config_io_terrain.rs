@@ -1977,6 +1977,124 @@ outputs:
 }
 
 #[test]
+fn validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs() {
+    let case_path = temp_path("validation_output_mode_rebuildable_reduced.yaml");
+    let diagnostics = temp_path("validation_output_mode_rebuildable_reduced.json");
+    let manifest = temp_path("validation_output_mode_rebuildable_reduced_manifest.json");
+    let trajectory = temp_path("validation_output_mode_rebuildable_reduced_trajectory.csv");
+    let deposition = temp_path("validation_output_mode_rebuildable_reduced_deposition.csv");
+    let impact_csv = temp_path("validation_output_mode_rebuildable_reduced_impacts.csv");
+    let metadata = temp_path("validation_output_mode_rebuildable_reduced_trajectory_metadata.csv");
+    let impact_json = temp_path("validation_output_mode_rebuildable_reduced_impacts.json");
+    let ensemble_dir = temp_path("validation_output_mode_rebuildable_reduced_trajectories");
+    let ensemble_impacts_dir = temp_path("validation_output_mode_rebuildable_reduced_impacts_dir");
+    let ensemble_impacts_parquet =
+        temp_path("validation_output_mode_rebuildable_reduced_impacts.parquet");
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: validation_output_mode_rebuildable_reduced
+title: Validation output mode rebuildable-reduced
+level: 3
+description: Temporary case that emits only the builder-facing validation outputs needed for hazard rebuilding.
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 1.0]
+  velocity: [1.0, 0.0, -0.2]
+  perturbation: {{ position_uniform_m: 0.01, velocity_uniform_mps: 0.01 }}
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.3
+  tangential_restitution: 0.8
+  friction_coefficient: 0.4
+simulation: {{ dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }}
+random: {{ seed: 123, ensemble_size: 3, ensemble_workers: 2 }}
+validation_scope:
+  type: synthetic-regression
+observations:
+  release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
+  deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+expected:
+  metrics: [ensemble_mean_runout_m]
+outputs:
+  diagnostics_json: {}
+  manifest_json: {}
+  validation_output_mode: rebuildable_reduced_output
+  trajectory_csv: {}
+  ensemble_deposition_csv: {}
+  impact_events_csv: {}
+  trajectory_metadata_csv: {}
+  ensemble_trajectories_dir: {}
+  ensemble_impact_events_dir: {}
+  ensemble_impact_events_parquet: {}
+  impact_events_json: {}
+"#,
+            diagnostics.display(),
+            manifest.display(),
+            trajectory.display(),
+            deposition.display(),
+            impact_csv.display(),
+            metadata.display(),
+            ensemble_dir.display(),
+            ensemble_impacts_dir.display(),
+            ensemble_impacts_parquet.display(),
+            impact_json.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert!(diagnostics.exists());
+    assert!(manifest.exists());
+    assert!(trajectory.exists());
+    assert!(deposition.exists());
+    assert!(impact_csv.exists());
+    assert!(metadata.exists());
+    assert!(!impact_json.exists());
+    assert!(!ensemble_dir.exists());
+    assert!(!ensemble_impacts_dir.exists());
+    assert!(!ensemble_impacts_parquet.exists());
+
+    let manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    assert_eq!(
+        manifest_json["validation_output_mode"],
+        "rebuildable_reduced_output"
+    );
+    assert_eq!(manifest_json["outputs"].as_array().unwrap().len(), 6);
+    let output_kinds: Vec<String> = manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["kind"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        output_kinds,
+        vec![
+            "trajectory".to_string(),
+            "impact_events_csv".to_string(),
+            "ensemble_deposition".to_string(),
+            "ensemble_stop_state".to_string(),
+            "trajectory_metadata".to_string(),
+            "diagnostics".to_string(),
+        ]
+    );
+    assert_eq!(manifest_json["performance"]["output_file_count"], 6);
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(manifest).unwrap();
+    fs::remove_file(trajectory).unwrap();
+    fs::remove_file(deposition).unwrap();
+    fs::remove_file(impact_csv).unwrap();
+    fs::remove_file(metadata).unwrap();
+}
+
+#[test]
 fn terrain_class_impact_sidecar_records_per_impact_context() {
     let case_path = temp_path("terrain_class_impact_sidecar_case.yaml");
     let diagnostics = temp_path("terrain_class_impact_sidecar_metrics.json");

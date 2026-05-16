@@ -173,9 +173,8 @@ Underrepresented high-value work:
 - translating spatial uncertainty masks into closure-gap deltas that identify
   what evidence would move the pilot toward deferred, no-go, or accepted
   diagnostic status;
-- turning the rebuildable reduced-output proof from a derivation command into
-  a normal generation/output mode before any larger validation-output run is
-  attempted;
+- turning the rebuildable reduced-output proof into a normal generation/output
+  mode before any larger validation-output run is attempted;
 - moving Chant Sura / Flüelapass from synthetic core staging toward a concrete
   public-context acquisition decision without pretending that context products
   are already real validation evidence;
@@ -186,13 +185,11 @@ Underrepresented high-value work:
 
 Current priority order:
 
-P0. TB-054 makes rebuildable reduced output a standard generation path because
-    validation output size remains the measured scalability bottleneck.
-P1. TB-055 advances Chant Sura public-context realism without starting a
+P0. TB-055 advances Chant Sura public-context realism without starting a
     second-site ensemble.
-P2. TB-056 promotes COG export from package-copy proof to a reusable export
+P1. TB-056 promotes COG export from package-copy proof to a reusable export
     option for GIS-ready products.
-P3. TB-057 makes physical-credibility evidence requirements executable and
+P2. TB-057 makes physical-credibility evidence requirements executable and
     site-aware without adding calibration or operational claims.
 
 ## Backlog Protocol
@@ -233,52 +230,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-### TB-054: Add A Standard Rebuildable Reduced Validation Output Mode
-
-Priority: P2.
-
-Why now: TB-042 and TB-049 proved and command-plan-addressed the
-`rebuildable_reduced_output` contract, but it is still derived after the fact
-from a full output root. The scalable path needs the validation workflow to
-write this profile directly.
-
-Capability gap reduced: rebuild-compatible scalable execution and output
-volume control.
-
-Why higher priority than alternatives: validation output size is the measured
-runtime/scaling bottleneck, and a direct reduced-output mode is prerequisite
-for any responsibly larger same-scale run.
-
-Inspect first:
-
-- Rust validation output writer and output-mode handling under `src/`
-- `scripts/derive_hazard_rebuild_reduced_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_hazard_rebuild_output_profile.py`
-- `tests/test_hazard_rebuild_reduced_profile.py`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-
-Expected measurable outputs:
-
-- a standard `rebuildable_reduced_output` validation output mode, or the
-  narrowest equivalent workflow path, that writes the trajectory, deposition,
-  impact-event, metadata, and diagnostics artifacts required by
-  `build_hazard_layers.py`;
-- manifest fields that classify the output mode distinctly from
-  non-rebuildable `summary_only`;
-- tests proving the generated reduced output is classified as rebuildable
-  without relying on a full-output source root.
-
-Definition of done:
-
-- a fixture or bounded local run produces a reduced output root that
-  `scripts/check_hazard_rebuild_output_profile.py` classifies as
-  `rebuildable_reduced_output`;
-- no large generated outputs are committed;
-- no larger ensemble, physics tuning, distributed execution, scale-up, or
-  operational claim is introduced.
 
 ### TB-055: Decide And Stage Chant Sura Public-Context Acquisition Boundaries
 

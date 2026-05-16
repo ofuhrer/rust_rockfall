@@ -100,7 +100,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
     timing.trajectory_count += 1;
     timing.impact_event_count += result.impact_events.len();
     trajectory_metadata.insert_single_result(case, &result, &config.block, shape_metadata.as_ref());
-    if !validation_output_mode_is_summary_only(case) {
+    if validation_output_mode_writes_builder_facing_outputs(case) {
         if let Some(path) = &case.outputs.trajectory_csv {
             let output_started = Instant::now();
             write_trajectory_csv_with_id(path, default_single_trajectory_id(), &result.samples)?;
@@ -121,25 +121,32 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
                 &result.impact_events,
             )?;
             timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+            let impact_events_kind = if validation_output_mode_is_rebuildable_reduced_output(case) {
+                "impact_events_csv"
+            } else {
+                "impact_events"
+            };
             output_entries.push(file_output_manifest(
                 path,
-                "impact_events",
+                impact_events_kind,
                 "csv",
                 Some(result.impact_events.len()),
                 None,
             )?);
         }
-        if let Some(path) = &case.outputs.impact_events_json {
-            let output_started = Instant::now();
-            io::write_impact_events_json(path, &result.impact_events)?;
-            timing.output_write_seconds += output_started.elapsed().as_secs_f64();
-            output_entries.push(file_output_manifest(
-                path,
-                "impact_events",
-                "json",
-                Some(result.impact_events.len()),
-                None,
-            )?);
+        if validation_output_mode_writes_debug_outputs(case) {
+            if let Some(path) = &case.outputs.impact_events_json {
+                let output_started = Instant::now();
+                io::write_impact_events_json(path, &result.impact_events)?;
+                timing.output_write_seconds += output_started.elapsed().as_secs_f64();
+                output_entries.push(file_output_manifest(
+                    path,
+                    "impact_events",
+                    "json",
+                    Some(result.impact_events.len()),
+                    None,
+                )?);
+            }
         }
     }
 

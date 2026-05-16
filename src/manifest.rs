@@ -13,6 +13,7 @@ pub const TERRAIN_MATERIAL_EXPOSURE_SUMMARY_SCHEMA_VERSION: &str =
 #[serde(rename_all = "snake_case")]
 pub enum ValidationOutputMode {
     SummaryOnly,
+    RebuildableReducedOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

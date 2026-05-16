@@ -70,8 +70,21 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_standard_package_audit", report["command_ids"])
         self.assertIn("tschamut_package_cog_conversion", report["command_ids"])
         self.assertIn("tschamut_converted_package_audit", report["command_ids"])
+        self.assertIn("tschamut_reduced_profile_validation", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_derivation", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_hazard_rebuild", report["command_ids"])
+        native_reduced_command = next(
+            command for command in report["commands"] if command["id"] == "tschamut_reduced_profile_validation"
+        )
+        self.assertIn(
+            "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+            native_reduced_command["command"],
+        )
+        self.assertIn(
+            "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+            native_reduced_command["expected_inputs"],
+        )
+        self.assertTrue(native_reduced_command["may_produce_ignored_outputs"])
         self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "measured")
         self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
