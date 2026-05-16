@@ -123,6 +123,22 @@ The Balfrin post-run interpretation gate,
 acceptance layer for a conditional diagnostic artifact. It keeps operational
 and physical-probability claims false even when the artifact is accepted.
 
+## Canonical Balfrin Evidence Bundle
+
+For management-facing review, use the canonical Balfrin evidence bundle helper:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py \
+  --artifact-dir validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1
+```
+
+The helper materializes `balfrin_evidence_bundle_v1.json` and
+`balfrin_evidence_bundle_v1.txt` in that directory. It assembles the single-job
+evidence, probe metrics, GIS / COG readiness, restartability, and post-run
+interpretation checks into one read-only review artifact. When evidence is
+missing, it reports `blocked_missing_inputs` instead of fabricating a stronger
+claim.
+
 ## Scientific Blockers
 
 - `conditional_hazard_convergence_not_accepted` from `conditional_convergence_protocol`: current_classification remains inconclusive in the convergence protocol

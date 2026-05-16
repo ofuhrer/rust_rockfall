@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-105: Build Canonical Balfrin Evidence Bundle
-
-Goal: Assemble measured Balfrin readiness, metrics, outputs, GIS/COG status, restartability, and interpretation checks into one canonical evidence bundle and report.
-
-Capability gap reduced: Demonstration coherence and reviewability.
-
-Why this outranks alternatives: A successful run is not convincing unless the evidence is presented as one auditable artifact rather than scattered helper outputs.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_single_job_execution.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A read-only evidence-bundle helper that emits JSON/text from measured or fixture evidence.
-- Tests for complete, incomplete, and claim-boundary-preserving bundles.
-- Documentation of the canonical bundle path for management-facing review.
-
-Definition of done:
-
-- The evidence bundle helper emits JSON/text, focused tests pass, and TB-105 is removed from this backlog.
-
-Boundaries: Prefer measured Balfrin evidence when available; if evidence is absent, emit blocked status rather than fabricating results or weakening claims.
-
 ### TB-106: Demonstrate Balfrin Restartability Recovery
 
 Goal: Prove deterministic recovery from a deliberate partial Balfrin run state or equivalent controlled fixture without corrupting outputs or changing numerical artifacts.

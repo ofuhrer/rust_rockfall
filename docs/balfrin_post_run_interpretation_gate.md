@@ -40,3 +40,7 @@ PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpreta
 The evidence bundle should contain the ready/inconclusive/blocked statuses for
 the required checks. When required inputs are missing, the helper returns a
 blocked post-run gate instead of guessing.
+
+For a management-facing review bundle that feeds this gate, use
+`scripts/summarize_balfrin_evidence_bundle.py` with
+`--artifact-dir validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1`.
