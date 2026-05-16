@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Audit whether existing validation outputs can support hazard rebuilding.
 
-This helper is read-only. It compares the current summary-only profile against
-full-output bounded probes and reports the smallest validation artifact set that
-`scripts/build_hazard_layers.py` can consume for hazard rebuilds.
+This helper is read-only. It compares the legacy summary-only profile against
+full-output bounded probes and the canonical native rebuildable reduced
+profile, then reports the smallest validation artifact set that
+``scripts/build_hazard_layers.py`` can consume for hazard rebuilds.
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ DEFAULT_PROFILE_SPECS = (
     },
     {
         "profile_id": "target_rebuildable_reduced",
-        "label": "derived_rebuildable_reduced_output",
+        "label": "native_rebuildable_reduced_output",
         "root": ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
         "manifest": ROOT
         / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json",
@@ -264,9 +265,11 @@ def build_contract() -> dict[str, Any]:
             "diagnostics_json",
         ],
         "hazard_rebuild_compatibility_note": (
+            "The native rebuildable_reduced_output profile is the canonical hazard-rebuild-compatible reduced mode. "
             "A reduced profile is hazard-rebuild compatible only if it keeps the builder-facing "
             "trajectory, deposition, impact-event, and diagnostics families. "
-            "trajectory_metadata and ensemble_stop_state are optional overhead."
+            "trajectory_metadata and ensemble_stop_state are optional overhead. "
+            "The legacy derivation script remains a compatibility and proof fallback."
         ),
     }
 
@@ -314,7 +317,10 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
         "operational_claims_allowed": False,
         "required_hazard_rebuild_artifacts": build_contract(),
         "profiles": [asdict(profile) for profile in profiles],
-        "profile_classifications": {profile.profile_id: profile.classification for profile in profiles},
+        "profile_classifications": {
+            **{profile.profile_id: profile.classification for profile in profiles},
+            "native_rebuildable_reduced_output": reduced.classification if reduced else "blocked_missing_inputs",
+        },
         "missing_summary_only_artifacts": missing_summary_artifacts,
         "file_byte_pressure": {
             "target_summary_only": {
@@ -336,9 +342,20 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
             "output_kinds": list(reduced.output_kinds) if reduced else [],
             "validation_output_mode": "rebuildable_reduced_output" if reduced else None,
         },
+        "native_rebuildable_reduced_profile": {
+            "profile_id": reduced.profile_id if reduced else None,
+            "label": reduced.label if reduced else None,
+            "classification": reduced.classification if reduced else "blocked_missing_inputs",
+            "file_count": reduced_file_count,
+            "byte_count": reduced_byte_count,
+            "output_kinds": list(reduced.output_kinds) if reduced else [],
+            "validation_output_mode": "rebuildable_reduced_output" if reduced else None,
+            "status": "canonical_native_rebuildable_reduced_output",
+        },
         "rebuildable_reduced_profile": {
             "status": "specified",
             "classification": "rebuildable_reduced_output",
+            "canonical_path": "native_rebuildable_reduced_output",
             "retained_output_kinds": [
                 "trajectory",
                 "ensemble_deposition",
@@ -359,7 +376,10 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
         "builder_contract_notes": (
             "The current target summary-only profile is not rebuildable because it drops the trajectory "
             "and impact-event families that build_hazard_layers.py reads directly. "
-            "Full bounded probes retain the needed families and are hazard-rebuild-ready."
+            "The native rebuildable_reduced_output profile keeps the builder-facing families and is the canonical "
+            "rebuild-compatible reduced mode. "
+            "The legacy derivation path is retained only as a compatibility and proof fallback, while full bounded "
+            "probes remain hazard-rebuild-ready."
         ),
     }
 
@@ -400,14 +420,21 @@ def format_text(report: dict[str, Any]) -> str:
         "summary_only_missing_artifacts\t"
         + ", ".join(report["missing_summary_only_artifacts"]["required_builder_artifacts"])
     )
-    reduced = report.get("reduced_profile") or {}
+    reduced = report.get("native_rebuildable_reduced_profile") or report.get("reduced_profile") or {}
     lines.append(
-        "reduced_profile\t"
+        "native_rebuildable_reduced_profile\t"
         + str(reduced.get("profile_id"))
         + "\t"
         + str(reduced.get("classification"))
         + f"\tfiles={reduced.get('file_count')}"
         + f"\tbytes={reduced.get('byte_count')}"
+    )
+    legacy = report.get("rebuildable_reduced_profile") or {}
+    lines.append(
+        "rebuildable_reduced_profile\t"
+        + str(legacy.get("status"))
+        + "\t"
+        + str(legacy.get("canonical_path"))
     )
     lines.append(f"scale_up_authorized\t{str(report['scale_up_authorized']).lower()}")
     lines.append(f"operational_claims_allowed\t{str(report['operational_claims_allowed']).lower()}")
@@ -465,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
                 },
                 {
                     "profile_id": "target_rebuildable_reduced",
-                    "label": "derived_rebuildable_reduced_output",
+                    "label": "native_rebuildable_reduced_output",
                     "root": DEFAULT_PROFILE_SPECS[3]["root"],
                     "manifest": DEFAULT_PROFILE_SPECS[3]["manifest"],
                 },

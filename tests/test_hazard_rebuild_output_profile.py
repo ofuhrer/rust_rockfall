@@ -90,7 +90,7 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             manifest_payload["validation_output_mode"] = "rebuildable_reduced_output"
             manifest_path.write_text(json.dumps(manifest_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-            profile = classify_profile(manifest_path, root, "target_rebuildable_reduced", "derived_reduced")
+            profile = classify_profile(manifest_path, root, "target_rebuildable_reduced", "native_reduced")
 
             self.assertEqual(profile.classification, "rebuildable_reduced_output")
             self.assertEqual(profile.missing_output_groups, tuple())
@@ -169,7 +169,7 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
                     },
                     {
                         "profile_id": "target_rebuildable_reduced",
-                        "label": "derived_rebuildable_reduced_output",
+                        "label": "native_rebuildable_reduced_output",
                         "root": reduced_root,
                         "manifest": reduced_manifest,
                     },
@@ -180,8 +180,10 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             self.assertFalse(report["operational_claims_allowed"])
             self.assertIn("required_hazard_rebuild_artifacts", report)
             self.assertIn("rebuildable_reduced_profile", report)
+            self.assertIn("native_rebuildable_reduced_profile", report)
             self.assertEqual(report["profile_classifications"]["target_summary_only"], "summary_only_not_rebuildable")
             self.assertEqual(report["profile_classifications"]["sampling_sensitivity_v1_full"], "hazard_rebuild_ready")
+            self.assertEqual(report["profile_classifications"]["native_rebuildable_reduced_output"], "rebuildable_reduced_output")
             self.assertEqual(report["reduced_profile"]["classification"], "rebuildable_reduced_output")
             self.assertEqual(report["rebuildable_reduced_profile"]["classification"], "rebuildable_reduced_output")
 

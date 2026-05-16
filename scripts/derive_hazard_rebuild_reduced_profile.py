@@ -4,7 +4,10 @@
 This helper is intentionally narrow: it copies a small set of builder-facing
 artifacts from a full validation output root into an ignored reduced root,
 then emits a reduced manifest that records the reduced-output classification.
-It does not run validation or build hazard layers itself.
+The native ``rebuildable_reduced_output`` mode is the canonical path; this
+helper remains a compatibility and proof fallback that reproduces the same
+builder-facing reduced root from the full validation artifacts. It does not run
+validation or build hazard layers itself.
 """
 
 from __future__ import annotations
@@ -115,9 +118,11 @@ def build_reduced_manifest(
         "status": "rebuildable_reduced_output",
         "profile": "rebuildable_reduced_output",
         "validation_output_mode": "rebuildable_reduced_output",
+        "derivation_role": "legacy_compatibility_fallback",
         "reduced_from": str(source_manifest.get("_path") or DEFAULT_SOURCE_MANIFEST),
         "notes": [
             "Derived from the full target probe by copying only builder-facing validation artifacts.",
+            "This is a compatibility and proof fallback for the canonical native rebuildable_reduced_output mode.",
             "This is a local proof artifact, not a new physics configuration.",
         ],
     }

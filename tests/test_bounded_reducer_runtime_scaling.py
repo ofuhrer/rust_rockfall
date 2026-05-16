@@ -31,10 +31,13 @@ class BoundedReducerRuntimeScalingTests(unittest.TestCase):
             self.assertEqual(report["bottleneck_classification"], "validation_output_size")
             self.assertEqual(report["hazard_layer_counts"]["gate_v1"], 2)
             self.assertEqual(report["reducer_worker_counts"]["gate_v1"], 2)
+            self.assertEqual(report["validation_roots"][2]["artifact_id"], "target_rebuildable_reduced")
+            self.assertEqual(report["artifacts_measured"][2]["validation_output_mode"], "rebuildable_reduced_output")
             self.assertEqual(report["reducer_worker_counts"]["sampling_sensitivity_v1_full"], None)
             self.assertTrue(report["artifacts_measured"][0]["map_package_manifest_present"])
             self.assertTrue(report["artifacts_measured"][0]["pilot_gis_manifest_present"])
             self.assertEqual(report["comparison_pairs"][0]["label"], "gate_vs_target")
+            self.assertEqual(report["comparison_pairs"][1]["label"], "target_full_vs_native_rebuildable_reduced")
             self.assertGreater(report["comparison_pairs"][0]["validation_file_count_delta"], 0)
             self.assertEqual(report["bottleneck_classification"], "validation_output_size")
 
@@ -65,17 +68,22 @@ class BoundedReducerRuntimeScalingTests(unittest.TestCase):
 
     def _write_artifacts(self, root: Path):
         specs = []
-        for artifact_id, validation_files, validation_bytes, validation_wall, hazard_files, hazard_bytes, hazard_wall, reducer_workers in [
-            ("gate_v1", 3, 1000, 1.0, 4, 4000, 2.0, 2),
-            ("target_gate_v1", 5, 5000, 3.0, 6, 6000, 4.0, 2),
-            ("sampling_sensitivity_v1_full", 4, 4500, 2.5, 5, 5500, 3.5, None),
-            ("sampling_sensitivity_v2_full", 4, 4700, 2.2, 5, 5200, 3.8, 2),
+        for item in [
+            ("gate_v1", 3, 1000, 1.0, 4, 4000, 2.0, 2, None),
+            ("target_gate_v1", 5, 5000, 3.0, 6, 6000, 4.0, 2, None),
+            ("target_rebuildable_reduced", 2, 1500, 1.5, 3, 2500, 2.2, 2, "rebuildable_reduced_output"),
+            ("sampling_sensitivity_v1_full", 4, 4500, 2.5, 5, 5500, 3.5, None, None),
+            ("sampling_sensitivity_v2_full", 4, 4700, 2.2, 5, 5200, 3.8, 2, None),
         ]:
+            artifact_id, validation_files, validation_bytes, validation_wall, hazard_files, hazard_bytes, hazard_wall, reducer_workers, validation_mode = item
             validation_root = root / "validation" / artifact_id
             hazard_root = root / "hazard" / artifact_id
             validation_manifest = validation_root / f"{artifact_id}_validation_manifest.json"
             hazard_manifest = hazard_root / f"{artifact_id}_hazard_manifest.json"
-            self._write_manifest(validation_manifest, self._validation_manifest(artifact_id, validation_files, validation_bytes, validation_wall))
+            self._write_manifest(
+                validation_manifest,
+                self._validation_manifest(artifact_id, validation_files, validation_bytes, validation_wall, validation_mode),
+            )
             self._write_manifest(hazard_manifest, self._hazard_manifest(artifact_id, hazard_files, hazard_bytes, hazard_wall, reducer_workers))
             # file-system footprints
             for i in range(validation_files):
@@ -100,7 +108,14 @@ class BoundedReducerRuntimeScalingTests(unittest.TestCase):
             )
         return tuple(specs)
 
-    def _validation_manifest(self, artifact_id: str, file_count: int, total_bytes: int, wall_seconds: float) -> dict:
+    def _validation_manifest(
+        self,
+        artifact_id: str,
+        file_count: int,
+        total_bytes: int,
+        wall_seconds: float,
+        validation_mode: str | None = None,
+    ) -> dict:
         return {
             "schema_version": "run_manifest_v1",
             "case_id": artifact_id,
@@ -109,6 +124,7 @@ class BoundedReducerRuntimeScalingTests(unittest.TestCase):
                 "output_file_count": file_count,
                 "output_bytes": total_bytes,
             },
+            **({"validation_output_mode": validation_mode} if validation_mode is not None else {}),
             "outputs": [],
         }
 

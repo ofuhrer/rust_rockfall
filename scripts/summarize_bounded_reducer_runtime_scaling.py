@@ -43,6 +43,7 @@ class ArtifactSpec:
     validation_manifest: Path
     hazard_root: Path
     hazard_manifest: Path
+    hazard_manifest_optional: bool = False
 
 
 DEFAULT_ARTIFACTS = (
@@ -59,6 +60,16 @@ DEFAULT_ARTIFACTS = (
         ROOT / "validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json",
         ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
         ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json",
+    ),
+    ArtifactSpec(
+        "target_rebuildable_reduced",
+        ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
+        ROOT
+        / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json",
+        ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
+        ROOT
+        / "hazard/results/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json",
+        True,
     ),
     ArtifactSpec(
         "sampling_sensitivity_v1_full",
@@ -113,8 +124,11 @@ def build_report(artifact_specs: tuple[ArtifactSpec, ...], *, allow_missing: boo
     missing_paths = [
         str(path)
         for spec in artifact_specs
-        for path in (spec.validation_manifest, spec.hazard_manifest)
-        if not path.exists()
+        for path in (
+            spec.validation_manifest,
+            spec.hazard_manifest,
+        )
+        if not path.exists() and not (path == spec.hazard_manifest and spec.hazard_manifest_optional)
     ]
     if missing_paths:
         if not allow_missing:
@@ -153,7 +167,8 @@ def build_report(artifact_specs: tuple[ArtifactSpec, ...], *, allow_missing: boo
 
     comparison_pairs = [
         compare_artifacts(artifacts[0], artifacts[1], label="gate_vs_target"),
-        compare_artifacts(artifacts[2], artifacts[3], label="sampling_probe_v1_vs_v2"),
+        compare_artifacts(artifacts[1], artifacts[2], label="target_full_vs_native_rebuildable_reduced"),
+        compare_artifacts(artifacts[3], artifacts[4], label="sampling_probe_v1_vs_v2"),
     ]
     overall = classify_bottleneck(artifacts, comparison_pairs)
     readiness_status = "ready"
@@ -214,7 +229,7 @@ def build_report(artifact_specs: tuple[ArtifactSpec, ...], *, allow_missing: boo
 
 def summarize_artifact(spec: ArtifactSpec) -> dict[str, Any]:
     validation_manifest = load_json(spec.validation_manifest)
-    hazard_manifest = load_json(spec.hazard_manifest)
+    hazard_manifest = load_json(spec.hazard_manifest) if spec.hazard_manifest.exists() else {}
 
     validation_root = summarize_root(spec.validation_root)
     hazard_root = summarize_root(spec.hazard_root)
@@ -237,6 +252,7 @@ def summarize_artifact(spec: ArtifactSpec) -> dict[str, Any]:
         "validation_output_bytes": validation_manifest.get("performance", {}).get("output_bytes"),
         "hazard_output_file_count": hazard_manifest.get("performance", {}).get("output_file_count"),
         "hazard_output_bytes": hazard_manifest.get("performance", {}).get("output_bytes"),
+        "validation_output_mode": validation_manifest.get("validation_output_mode"),
         "hazard_layer_count": len(hazard_manifest.get("cellwise_layers") or []),
         "reducer_worker_count": reducer_execution.get("worker_count"),
         "reducer_chunk_count": reducer_execution.get("chunk_count"),
@@ -274,11 +290,12 @@ def classify_bottleneck(artifacts: list[dict[str, Any]], comparison_pairs: list[
         f"target validation output remains the dominant volume pressure ({target['validation_output_file_count']} files / {target['validation_output_bytes']} bytes vs gate {gate['validation_output_file_count']} files / {gate['validation_output_bytes']} bytes)",
         f"target validation runtime is the slowest observed stage in the measured same-scale set ({target['validation_runtime_seconds']} s vs gate {gate['validation_runtime_seconds']} s)",
         f"hazard reducer worker count remains fixed at {target['reducer_worker_count']} for the measured target and gate artifacts",
-        f"bounded probe validation output stays near the same order of magnitude ({artifacts[2]['validation_output_bytes']} and {artifacts[3]['validation_output_bytes']} bytes)",
+        f"native rebuildable_reduced_output trims target validation output to {artifacts[2]['validation_output_file_count']} files / {artifacts[2]['validation_output_bytes']} bytes while staying on the canonical reduced path",
+        f"bounded probe validation output stays near the same order of magnitude ({artifacts[3]['validation_output_bytes']} and {artifacts[4]['validation_output_bytes']} bytes)",
     ]
     if comparison_pairs:
         findings.append(
-            f"paired comparisons remain bounded without evidence that a distributed reducer is required: {comparison_pairs[0]['label']} and {comparison_pairs[1]['label']}"
+            f"paired comparisons remain bounded without evidence that a distributed reducer is required: {comparison_pairs[0]['label']}, {comparison_pairs[1]['label']}, and {comparison_pairs[2]['label']}"
         )
     return {
         "bottleneck_classification": dominant,
@@ -345,7 +362,7 @@ def render_text(report: dict[str, Any]) -> str:
     ]
     for artifact in report["artifacts_measured"]:
         lines.append(
-            f"- {artifact['artifact_id']}: v={artifact['validation_root']['file_count']} files/{artifact['validation_root']['total_bytes']} bytes, "
+            f"- {artifact['artifact_id']}: mode={artifact['validation_output_mode']}, v={artifact['validation_root']['file_count']} files/{artifact['validation_root']['total_bytes']} bytes, "
             f"h={artifact['hazard_root']['file_count']} files/{artifact['hazard_root']['total_bytes']} bytes, "
             f"validation_runtime={artifact['validation_runtime_seconds']}, hazard_runtime={artifact['hazard_runtime_seconds']}, "
             f"reducer_workers={artifact['reducer_worker_count']}, hazard_layers={artifact['hazard_layer_count']}, "
@@ -381,7 +398,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             "## Artifacts",
             *[
-                f"- `{artifact['artifact_id']}`: validation `{artifact['validation_root']['file_count']}` files / `{artifact['validation_root']['total_bytes']}` bytes, hazard `{artifact['hazard_root']['file_count']}` files / `{artifact['hazard_root']['total_bytes']}` bytes, "
+                f"- `{artifact['artifact_id']}`: mode `{artifact['validation_output_mode']}`, validation `{artifact['validation_root']['file_count']}` files / `{artifact['validation_root']['total_bytes']}` bytes, hazard `{artifact['hazard_root']['file_count']}` files / `{artifact['hazard_root']['total_bytes']}` bytes, "
                 f"validation runtime `{artifact['validation_runtime_seconds']}` s, hazard runtime `{artifact['hazard_runtime_seconds']}` s, reducer workers `{artifact['reducer_worker_count']}`, hazard layers `{artifact['hazard_layer_count']}`, "
                 f"map package manifest present `{artifact['map_package_manifest_present']}`, pilot GIS manifest present `{artifact['pilot_gis_manifest_present']}`"
                 for artifact in report["artifacts_measured"]

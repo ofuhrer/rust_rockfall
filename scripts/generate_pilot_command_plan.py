@@ -112,6 +112,9 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "tschamut_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
             "target_rebuildable_reduced"
         ),
+        "tschamut_native_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
+            "native_rebuildable_reduced_output"
+        ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
         "public_context_boundary_status": second_site_report["public_context_boundary_status"],
         "deferred_public_context_categories": second_site_report["deferred_public_context_categories"],
@@ -476,6 +479,9 @@ def build_tschamut_site_plan(
         "rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
             "target_rebuildable_reduced"
         ),
+        "native_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
+            "native_rebuildable_reduced_output"
+        ),
     }
 
 
@@ -568,7 +574,7 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             site="tschamut_same_scale",
             group="rebuildable_reduced_output",
             command_id="tschamut_reduced_profile_validation",
-            description="Run the frozen Tschamut target validation case with the native rebuildable-reduced output mode.",
+            description="Run the frozen Tschamut target validation case with the native rebuildable_reduced_output mode.",
             command=native_validation_command,
             expected_inputs=[
                 rel(REDUCED_VALIDATION_CASE),
@@ -610,8 +616,29 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
         command_entry(
             site="tschamut_same_scale",
             group="rebuildable_reduced_output",
+            command_id="tschamut_reduced_profile_hazard_rebuild",
+            description="Rebuild hazard layers from the canonical reduced-output root into a scratch proof directory only.",
+            command=rebuild_command,
+            expected_inputs=[
+                rel(reduced_case),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_trajectory.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_deposition.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_metrics.json"),
+            ],
+            expected_outputs=[
+                rel(scratch_hazard_root),
+                rel(scratch_map_manifest),
+                rel(scratch_pilot_manifest),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="rebuildable_reduced_output",
             command_id="tschamut_reduced_profile_derivation",
-            description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts as a legacy proof path.",
+            description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts as a legacy compatibility and proof fallback.",
             command=derivation_command,
             expected_inputs=[
                 rel(REDUCED_PROFILE.DEFAULT_SOURCE_ROOT),
@@ -628,27 +655,6 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[rel(reduced_root)],
-        ),
-        command_entry(
-            site="tschamut_same_scale",
-            group="rebuildable_reduced_output",
-            command_id="tschamut_reduced_profile_hazard_rebuild",
-            description="Rebuild hazard layers from the derived reduced-output root into a scratch proof directory only.",
-            command=rebuild_command,
-            expected_inputs=[
-                rel(reduced_case),
-                rel(reduced_root / "validation_tschamut_public_target_gate_v1_trajectory.csv"),
-                rel(reduced_root / "validation_tschamut_public_target_gate_v1_deposition.csv"),
-                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
-                rel(reduced_root / "validation_tschamut_public_target_gate_v1_metrics.json"),
-            ],
-            expected_outputs=[
-                rel(scratch_hazard_root),
-                rel(scratch_map_manifest),
-                rel(scratch_pilot_manifest),
-            ],
-            read_only=False,
-            may_produce_ignored_outputs=False,
         ),
     ]
 
@@ -1198,7 +1204,7 @@ GROUP_DESCRIPTIONS = {
     "gis_cog_package_conversion": "Audit and convert same-scale GIS packages to COG-ready ignored outputs.",
     "convergence_comparisons": "Compare gate and target hazard manifests cell-wise.",
     "output_profile_checks": "Summarize bounded validation-output pressure.",
-    "rebuildable_reduced_output": "Run, derive, and proof the hazard-rebuild-compatible reduced target profile.",
+    "rebuildable_reduced_output": "Run the native hazard-rebuild-compatible reduced target profile; keep derivation as fallback only.",
     "context_inspection": "Inspect staged public context layers.",
     "hazard_context_overlap": "Measure hazard/context proximity on the staged envelope.",
     "uncertainty_summary": "Compose the same-scale uncertainty envelope summary.",

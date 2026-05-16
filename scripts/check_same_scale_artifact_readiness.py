@@ -55,6 +55,12 @@ TARGET_SUMMARY_ONLY_ROOT = ROOT / "validation/private/tschamut_public_pilot/targ
 TARGET_SUMMARY_ONLY_CASE = TARGET_SUMMARY_ONLY_ROOT / "tschamut_public_target_gate_summary_only_case.yaml"
 TARGET_SUMMARY_ONLY_MANIFEST = TARGET_SUMMARY_ONLY_ROOT / "validation_tschamut_public_target_gate_v1_summary_only_manifest.json"
 
+TARGET_REBUILDABLE_REDUCED_ROOT = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced"
+TARGET_REBUILDABLE_REDUCED_CASE = ROOT / "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+TARGET_REBUILDABLE_REDUCED_MANIFEST = (
+    TARGET_REBUILDABLE_REDUCED_ROOT / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json"
+)
+
 CONTEXT_ROOT = ROOT / "data/processed/swisstopo/tschamut_public_pilot/context"
 CONTEXT_SWISSTLM3D_ROOT = CONTEXT_ROOT / "swisstlm3d"
 CONTEXT_SWISSTLM3D_METADATA = CONTEXT_SWISSTLM3D_ROOT / "metadata.json"
@@ -154,6 +160,11 @@ def build_readiness_report() -> dict[str, Any]:
         manifest_path=TARGET_SUMMARY_ONLY_MANIFEST,
         case_path=TARGET_SUMMARY_ONLY_CASE,
     )
+    target_rebuildable_reduced = check_rebuildable_reduced_validation_root(
+        root=TARGET_REBUILDABLE_REDUCED_ROOT,
+        manifest_path=TARGET_REBUILDABLE_REDUCED_MANIFEST,
+        case_path=TARGET_REBUILDABLE_REDUCED_CASE,
+    )
     context = check_context_root(root=CONTEXT_ROOT)
     swisstlm3d = check_swisstlm3d_context(path=CONTEXT_SWISSTLM3D_METADATA)
 
@@ -163,6 +174,7 @@ def build_readiness_report() -> dict[str, Any]:
         target_validation,
         target_hazard,
         target_summary_only,
+        target_rebuildable_reduced,
         context,
         swisstlm3d,
     )
@@ -173,13 +185,16 @@ def build_readiness_report() -> dict[str, Any]:
             *target_validation.missing_paths,
             *target_hazard.missing_paths,
             *target_summary_only.missing_paths,
+            *target_rebuildable_reduced.missing_paths,
             *context.missing_paths,
             *swisstlm3d.missing_paths,
         }
     )
 
     convergence_ready = bool(gate_hazard.ready and target_hazard.ready and CONVERGENCE_SCRIPT.exists())
-    output_profile_ready = bool(target_validation.ready and target_summary_only.ready and OUTPUT_PROFILE_SCRIPT.exists())
+    output_profile_ready = bool(
+        target_validation.ready and target_summary_only.ready and target_rebuildable_reduced.ready and OUTPUT_PROFILE_SCRIPT.exists()
+    )
     hazard_context_overlap_ready = bool(target_hazard.ready and context.ready and swisstlm3d.ready and OVERLAP_SCRIPT.exists())
 
     readiness_status = "ready" if not missing_paths else "blocked_missing_inputs"
@@ -195,6 +210,7 @@ def build_readiness_report() -> dict[str, Any]:
         "target_validation_ready": target_validation.ready,
         "target_hazard_ready": target_hazard.ready,
         "target_summary_only_ready": target_summary_only.ready,
+        "target_rebuildable_reduced_ready": target_rebuildable_reduced.ready,
         "context_ready": context.ready,
         "swisstlm3d_ready": swisstlm3d.ready,
         "convergence_ready": convergence_ready,
@@ -207,6 +223,7 @@ def build_readiness_report() -> dict[str, Any]:
             target_validation=target_validation,
             target_hazard=target_hazard,
             target_summary_only=target_summary_only,
+            target_rebuildable_reduced=target_rebuildable_reduced,
             context=context,
             swisstlm3d=swisstlm3d,
             convergence_ready=convergence_ready,
@@ -220,6 +237,7 @@ def build_readiness_report() -> dict[str, Any]:
             "target_validation": target_validation.summary,
             "target_hazard": target_hazard.summary,
             "target_summary_only": target_summary_only.summary,
+            "target_rebuildable_reduced": target_rebuildable_reduced.summary,
             "context": context.summary,
             "swisstlm3d": swisstlm3d.summary,
             "target_convergence_inputs": {
@@ -231,10 +249,14 @@ def build_readiness_report() -> dict[str, Any]:
                 "target_validation": target_validation.summary,
                 "target_hazard": target_hazard.summary,
                 "target_summary_only": target_summary_only.summary,
+                "target_rebuildable_reduced": target_rebuildable_reduced.summary,
                 "context": context.summary,
                 "swisstlm3d": swisstlm3d.summary,
             },
         },
+        "target_rebuildable_reduced_root": str(TARGET_REBUILDABLE_REDUCED_ROOT),
+        "target_rebuildable_reduced_case": str(TARGET_REBUILDABLE_REDUCED_CASE),
+        "target_rebuildable_reduced_manifest": str(TARGET_REBUILDABLE_REDUCED_MANIFEST),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
         "blocked_reason": blocked_reason,
@@ -271,6 +293,24 @@ def check_summary_only_validation_root(*, root: Path, manifest_path: Path, case_
         notes.append("validation_output_mode is not summary_only")
         missing_paths.append(str(manifest_path))
     ready = check.ready and manifest_path.exists() and manifest_data.get("validation_output_mode") == "summary_only"
+    return ArtifactCheck(
+        path=root,
+        ready=bool(ready and not missing_paths),
+        summary=dict(check.summary),
+        missing_paths=sorted(set(missing_paths)),
+        notes=notes,
+    )
+
+
+def check_rebuildable_reduced_validation_root(*, root: Path, manifest_path: Path, case_path: Path) -> ArtifactCheck:
+    check = check_validation_root(root=root, manifest_path=manifest_path, case_path=case_path)
+    missing_paths = list(check.missing_paths)
+    notes = list(check.notes)
+    manifest_data = load_json(manifest_path) if manifest_path.exists() else {}
+    if manifest_path.exists() and manifest_data.get("validation_output_mode") != "rebuildable_reduced_output":
+        notes.append("validation_output_mode is not rebuildable_reduced_output")
+        missing_paths.append(str(manifest_path))
+    ready = check.ready and manifest_path.exists() and manifest_data.get("validation_output_mode") == "rebuildable_reduced_output"
     return ArtifactCheck(
         path=root,
         ready=bool(ready and not missing_paths),
@@ -375,6 +415,7 @@ def build_regeneration_commands(
     target_validation: ArtifactCheck,
     target_hazard: ArtifactCheck,
     target_summary_only: ArtifactCheck,
+    target_rebuildable_reduced: ArtifactCheck,
     context: ArtifactCheck,
     swisstlm3d: ArtifactCheck,
     convergence_ready: bool,
@@ -430,6 +471,11 @@ def build_regeneration_commands(
             "category": "target_summary_only_validation",
             "status": readiness_label(target_summary_only.ready),
             "command": cargo_validate_command(TARGET_SUMMARY_ONLY_CASE),
+        },
+        {
+            "category": "target_rebuildable_reduced_validation",
+            "status": readiness_label(target_rebuildable_reduced.ready),
+            "command": cargo_validate_command(TARGET_REBUILDABLE_REDUCED_CASE),
         },
         {
             "category": "context_inspector",
@@ -532,6 +578,7 @@ def build_regeneration_commands(
                 and target_validation.ready
                 and target_hazard.ready
                 and target_summary_only.ready
+                and target_rebuildable_reduced.ready
                 and context.ready
                 and swisstlm3d.ready
             ),
@@ -673,6 +720,8 @@ def collect_checked_paths(*checks: ArtifactCheck) -> list[str]:
             str(TARGET_HAZARD_MANIFEST),
             str(TARGET_SUMMARY_ONLY_CASE),
             str(TARGET_SUMMARY_ONLY_MANIFEST),
+            str(TARGET_REBUILDABLE_REDUCED_CASE),
+            str(TARGET_REBUILDABLE_REDUCED_MANIFEST),
             str(CONTEXT_SWISSTLM3D_METADATA),
             str(CONTEXT_SWISSTLM3D_RAW_ARCHIVE),
             str(CONTEXT_ROOT),
@@ -743,6 +792,7 @@ def check_results_to_text(report: dict[str, Any]) -> str:
         ("target_validation_ready", "target validation"),
         ("target_hazard_ready", "target hazard"),
         ("target_summary_only_ready", "target summary-only validation"),
+        ("target_rebuildable_reduced_ready", "target rebuildable reduced validation"),
         ("context_ready", "public context"),
         ("swisstlm3d_ready", "swissTLM3D archive"),
         ("convergence_ready", "convergence diagnostic"),

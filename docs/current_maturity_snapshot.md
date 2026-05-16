@@ -68,7 +68,7 @@ objective are:
    uncertainty is localized rather than diffuse, but `max_kinetic_energy` and
    `max_jump_height` remain support/nodata sensitive enough that the closure
    matrix treats both dominant layers as closure-limiting.
-3. Output volume is measured and now has a native rebuildable reduced
+3. Output volume is measured and now has a canonical native rebuildable reduced
    execution mode.
    Target validation output remains the dominant measured pressure at
    `2716` files / `764598283` bytes and `272.573375917` seconds in the
@@ -76,9 +76,10 @@ objective are:
    remains non-rebuildable. The native `rebuildable_reduced_output` mode now
    writes the builder-facing trajectory, deposition, impact-event, diagnostics,
    trajectory-metadata, and stop-state artifacts directly and is exposed in the
-   same-scale command plan. The remaining workflow gap is making downstream
-   synthesis and tests consistently distinguish the old non-rebuildable
-   `summary_only` profile from the valid native reduced mode.
+   same-scale command plan. The legacy derivation helper remains available only
+   as a compatibility and proof fallback. The remaining workflow gap is making
+   downstream synthesis and tests consistently distinguish the old
+   non-rebuildable `summary_only` profile from the valid native reduced mode.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow

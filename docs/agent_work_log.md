@@ -955,3 +955,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no tuning, no new ensemble, no hazard reclassification, no operational claim, and no physical-probability claim were introduced.
 - Next task: `TB-068`
+
+### TB-068: Canonicalize Rebuild-Compatible Reduced Output Workflow
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: make the native `rebuildable_reduced_output` path the canonical rebuild-compatible reduced workflow while keeping the derivation script as a compatibility fallback.
+- Files changed: docs/current_maturity_snapshot.md, docs/task_backlog.md, docs/tschamut_public_bounded_validation_output_profile.md, scripts/check_hazard_rebuild_output_profile.py, scripts/check_same_scale_artifact_readiness.py, scripts/derive_hazard_rebuild_reduced_profile.py, scripts/generate_pilot_command_plan.py, scripts/summarize_bounded_reducer_runtime_scaling.py, tests/test_bounded_reducer_runtime_scaling.py, tests/test_hazard_rebuild_output_profile.py, tests/test_pilot_command_plan.py, tests/test_same_scale_artifact_readiness.py
+- Implementation summary: updated the rebuild-profile checker to treat the native reduced mode as canonical and keep legacy derivation labeled as fallback-only; exposed the native reduced root and readiness state in the same-scale preflight; extended the command plan to surface the native reduced path first and the derivation command as a fallback; and added the canonical reduced-mode comparison to the runtime/output summary.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_same_scale_artifact_readiness tests.test_pilot_command_plan tests.test_bounded_reducer_runtime_scaling`; `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`; `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json`; `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`; `PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no tuning, no ensemble increase, no distributed execution, and no operational claims were introduced.
+- Next task: `TB-069`

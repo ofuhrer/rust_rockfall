@@ -16,37 +16,7 @@ only labels, validators, or roadmap/status churn.
 
 ## Active Tasks
 
-_Backlog refill needed: no active TB tasks remain._
-
-### TB-068: Canonicalize Rebuild-Compatible Reduced Output Workflow
-
-Goal: native `rebuildable_reduced_output` exists, but older derivation/proof language can still make the scalable path look secondary. Reduces: runtime/output workflow fragmentation.
-
-Inspect first:
-
-- `scripts/derive_hazard_rebuild_reduced_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `scripts/check_same_scale_artifact_readiness.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-
-Deliverables:
-
-- command plans, readiness checks, scaling summaries, and rebuild checks treat native `rebuildable_reduced_output` as the canonical rebuild-compatible path;
-- legacy derivation remains documented only as a compatibility/proof fallback;
-- explicit distinction remains between legacy `summary_only_not_rebuildable` and native `rebuildable_reduced_output`;
-- measured output/runtime comparison against current full-output workflows is visible from the relevant helper or docs.
-
-Definition of done:
-
-- command plans default to rebuild-compatible reduced outputs where scientifically safe;
-- runtime/output summaries consume or reference the canonical mode;
-- readiness helper exposes rebuild-compatible reduced roots explicitly;
-- docs no longer describe rebuildability as experimental.
-
-Boundaries: no tuning, no ensemble increase, no distributed execution, no
-operational claims.
+_Active TB tasks remain below._
 
 ### TB-069: Generate Canonical Conditional Diagnostic Interpretation Artifact
 

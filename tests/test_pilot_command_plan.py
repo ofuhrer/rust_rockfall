@@ -38,6 +38,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             "hazard_rebuild_output_profile_status": "measured",
             "profile_classifications": {
                 "target_rebuildable_reduced": "rebuildable_reduced_output",
+                "native_rebuildable_reduced_output": "rebuildable_reduced_output",
             },
         }
 
@@ -136,6 +137,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertTrue(native_reduced_command["may_produce_ignored_outputs"])
         self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "measured")
         self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
+        self.assertEqual(report["tschamut_native_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", report["ignored_output_paths"])
         self.assertIn(

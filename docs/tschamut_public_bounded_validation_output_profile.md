@@ -171,10 +171,12 @@ Interpretation:
 
 ## Rebuildable Reduced Profile
 
-A concrete reduced profile is now derived from the current full target root
-into an ignored local reduction root:
+The canonical rebuild-compatible reduced profile is the native
+`rebuildable_reduced_output` mode. The legacy derivation helper can still
+reproduce the same reduced root from the full target artifacts as a
+compatibility and proof fallback:
 
-- derivation command:
+- compatibility derivation command:
   `PYENV_VERSION=system uv run python scripts/derive_hazard_rebuild_reduced_profile.py --format json`
 - reduced root:
   `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`
@@ -195,8 +197,8 @@ Measured reduced profile size:
 - checker classification: `rebuildable_reduced_output`
 
 The canonical command-plan path now exposes the native reduced validation
-command, the derivation command, and the scratch hazard-rebuild proof command
-through
+command, the scratch hazard-rebuild proof command, and the legacy
+compatibility derivation command through
 `scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
 under the `tschamut_same_scale::rebuildable_reduced_output` group. That keeps
 the reduced-output workflow reproducible without implying that
@@ -231,7 +233,8 @@ Hazard-rebuild proof:
 The direct reduced validation mode now feeds the same builder-facing reduced
 profile without requiring the full-output derivation step first. It writes to
 the ignored reduced root and produces the same manifest classification that
-the checker expects for `rebuildable_reduced_output`.
+the checker expects for `rebuildable_reduced_output`. The derivation script
+remains available only as a compatibility and proof fallback.
 
 The canonical diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`,

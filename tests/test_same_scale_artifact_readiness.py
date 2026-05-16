@@ -32,6 +32,7 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
         self.assertTrue(report["target_validation_ready"])
         self.assertTrue(report["target_hazard_ready"])
         self.assertTrue(report["target_summary_only_ready"])
+        self.assertTrue(report["target_rebuildable_reduced_ready"])
         self.assertTrue(report["context_ready"])
         self.assertTrue(report["swisstlm3d_ready"])
         self.assertTrue(report["convergence_ready"])
@@ -65,6 +66,10 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
                 "scale_up_authorized",
                 "swisstlm3d_ready",
                 "target_hazard_ready",
+                "target_rebuildable_reduced_case",
+                "target_rebuildable_reduced_manifest",
+                "target_rebuildable_reduced_ready",
+                "target_rebuildable_reduced_root",
                 "target_summary_only_ready",
                 "target_validation_ready",
             },
@@ -111,6 +116,7 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
         target_validation_root = root / "validation/private/tschamut_public_pilot/target_gate_v1"
         target_hazard_root = root / "hazard/results/tschamut_public_pilot/target_gate_v1"
         target_summary_only_root = root / "validation/private/tschamut_public_pilot/target_gate_v1_summary_only"
+        target_rebuildable_reduced_root = root / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced"
         context_root = root / "data/processed/swisstopo/tschamut_public_pilot/context"
         swisstlm3d_root = context_root / "swisstlm3d"
         raw_archive = root / "data/raw/swisstopo/swisstlm3d/swisstlm3d_2021-04_2056_5728.shp.zip"
@@ -122,6 +128,7 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
             target_validation_root,
             target_hazard_root,
             target_summary_only_root,
+            target_rebuildable_reduced_root,
             context_root / "swisssurface3d_raster",
             context_root / "swissimage",
             context_root / "swissbuildings3d",
@@ -142,6 +149,14 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
         self._write_manifest(
             target_summary_only_root / "validation_tschamut_public_target_gate_v1_summary_only_manifest.json",
             validation_output_mode="summary_only",
+        )
+        self._write_case(
+            target_rebuildable_reduced_root / "tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+            "validation_tschamut_public_target_gate_v1_rebuildable_reduced",
+        )
+        self._write_manifest(
+            target_rebuildable_reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json",
+            validation_output_mode="rebuildable_reduced_output",
         )
 
         gate_grid_a = gate_hazard_root / "reach_probability.asc"
@@ -208,6 +223,13 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
             "TARGET_SUMMARY_ONLY_ROOT": target_summary_only_root,
             "TARGET_SUMMARY_ONLY_CASE": target_summary_only_root / "tschamut_public_target_gate_summary_only_case.yaml",
             "TARGET_SUMMARY_ONLY_MANIFEST": target_summary_only_root / "validation_tschamut_public_target_gate_v1_summary_only_manifest.json",
+            "TARGET_REBUILDABLE_REDUCED_ROOT": target_rebuildable_reduced_root,
+            "TARGET_REBUILDABLE_REDUCED_CASE": (
+                target_rebuildable_reduced_root / "tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+            ),
+            "TARGET_REBUILDABLE_REDUCED_MANIFEST": (
+                target_rebuildable_reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json"
+            ),
             "CONTEXT_ROOT": context_root,
             "CONTEXT_SWISSTLM3D_ROOT": swisstlm3d_root,
             "CONTEXT_SWISSTLM3D_METADATA": (
