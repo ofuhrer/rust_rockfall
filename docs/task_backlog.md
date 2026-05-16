@@ -24,7 +24,40 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-117: Execute And Collect Balfrin Single-Release-Zone Demo
+### TB-117: Restore Balfrin Scheduler Access For Demo Submission
+
+Goal: Expose or restore `sbatch` on the node used for the canonical Balfrin
+demo so the single-release-zone submission helper can reach the scheduler.
+
+Capability gap reduced: Missing scheduler access for the canonical Balfrin
+demo submission path.
+
+Why this outranks alternatives: TB-117 now has a precise operational block,
+and no later synthesis task can produce measured Balfrin evidence until the
+submission path can actually start a job.
+
+Inspect first:
+
+- `docs/balfrin_failure_recovery_playbook.md`
+- `docs/balfrin_tschamut_pilot_runbook.md`
+- `scripts/submit_balfrin_probe.py`
+
+Deliverables:
+
+- A concise scheduler-access or recovery report showing whether `sbatch` is
+  available for the canonical Balfrin demo path, or the concrete operator step
+  that restores it.
+- A retryable submission note that preserves the same run root and run id once
+  scheduler access is available again.
+
+Definition of done:
+
+- The canonical Balfrin demo submission can reach a scheduler-enabled node, or
+  the external unblock is documented clearly enough for the next execution pass.
+
+Boundaries: Do not expand the ensemble, simulation model, or claim boundaries.
+
+### TB-118: Execute And Collect Balfrin Single-Release-Zone Demo
 
 Goal: Run the canonical Balfrin demonstration workflow end-to-end for one
 release zone, one bounded deterministic ensemble, one native reduced-output
@@ -66,7 +99,7 @@ Boundaries: Use bounded deterministic ensembles and native rebuildable reduced
 output only; do not run distributed/MPI/GPU jobs, large production ensembles, or
 operational/physical-frequency products.
 
-### TB-118: Build Canonical Balfrin Demonstration Evidence Bundle
+### TB-119: Build Canonical Balfrin Demonstration Evidence Bundle
 
 Goal: Convert the measured Balfrin run root into one canonical evidence bundle
 for readiness, metrics, outputs, GIS/COG status, restartability, failure
@@ -104,7 +137,7 @@ Definition of done:
 Boundaries: Do not fabricate missing metrics, do not commit large generated
 outputs, and do not broaden claim boundaries.
 
-### TB-119: Demonstrate Measured Balfrin Restartability And Recovery
+### TB-120: Demonstrate Measured Balfrin Restartability And Recovery
 
 Goal: Interrupt and recover the canonical Balfrin demonstration or classify why
 a live interruption/recovery proof remains blocked, using measured run evidence
@@ -140,13 +173,13 @@ Deliverables:
 Definition of done:
 
 - The reports no longer imply fixture-backed evidence is a live Balfrin
-  measurement; focused checks pass and TB-119 is removed.
+  measurement; focused checks pass and TB-120 is removed.
 
 Boundaries: Do not create artificial interruption evidence, do not rerun large
 ensembles unless explicitly required by the runbook, and do not classify
 `summary_only` as rebuildable.
 
-### TB-120: Generate Canonical Balfrin Conditional Diagnostic Interpretation
+### TB-121: Generate Canonical Balfrin Conditional Diagnostic Interpretation
 
 Goal: Produce one coherent measured Balfrin interpretation that combines
 uncertainty, convergence, scaling, GIS readiness, portability, closure
@@ -185,7 +218,7 @@ Definition of done:
 Boundaries: Do not tune physics, change acceptance thresholds, or claim physical
 validation from conditional diagnostic agreement.
 
-### TB-121: Resolve Balfrin GIS/COG Demonstration Scope Delta
+### TB-122: Resolve Balfrin GIS/COG Demonstration Scope Delta
 
 Goal: Make the Balfrin demonstration GIS package either full-scope COG-ready or
 explicitly encode the intended scope delta in the measured evidence bundle.
@@ -219,7 +252,7 @@ Definition of done:
 Boundaries: Do not commit generated rasters, do not require manual QGIS QA, and
 do not convert GIS readiness into operational approval.
 
-### TB-122: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
+### TB-123: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
 
 Goal: Produce deterministic terrain-driven release-zone candidate metrics for
 the Balfrin/Tschamut AOI without using them as field-validated release zones.
@@ -254,7 +287,7 @@ Definition of done:
 Boundaries: Do not replace the frozen pilot release zone, tune thresholds to
 match outcomes, or claim physical release probability.
 
-### TB-123: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
+### TB-124: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
 
 Goal: Produce a deterministic block-scenario sensitivity plan for the Balfrin
 demo that separates pragmatic scenario coverage from physical frequency claims.
@@ -288,7 +321,7 @@ Definition of done:
 Boundaries: Do not fit block-size distributions, infer annual frequencies, or
 change the already measured Balfrin demo unless a later task authorizes it.
 
-### TB-124: Prototype AOI-To-Demonstration Preparation Path
+### TB-125: Prototype AOI-To-Demonstration Preparation Path
 
 Goal: Given AOI extents or a release polygon, prepare the deterministic inputs
 needed for a demonstration workflow without running an ensemble.
@@ -323,7 +356,7 @@ Definition of done:
 Boundaries: Do not run ensembles, download public context, or claim release-zone
 validity from the dry-run scaffold.
 
-### TB-125: Define Second-Site Real-Context Trigger From Balfrin Evidence
+### TB-126: Define Second-Site Real-Context Trigger From Balfrin Evidence
 
 Goal: Convert the Chant Sura / Fluelapass defer decision into a concrete
 measured trigger for when real public-context staging should proceed.
@@ -361,7 +394,7 @@ Boundaries: Do not download real public context, do not run a second-site
 ensemble, and do not override the existing defer decision without measured
 Balfrin evidence.
 
-### TB-126: Measure Practical Balfrin Ensemble Frontier
+### TB-127: Measure Practical Balfrin Ensemble Frontier
 
 Goal: Estimate the smallest useful next Balfrin ensemble by comparing runtime,
 output growth, rebuildability cost, and uncertainty/stability changes across
@@ -398,7 +431,7 @@ Definition of done:
 Boundaries: Do not run a large production ensemble, tune physics, or authorize
 Swiss-wide execution.
 
-### TB-127: Update Swiss-Wide Envelope From Measured Balfrin Demo
+### TB-128: Update Swiss-Wide Envelope From Measured Balfrin Demo
 
 Goal: Recompute the Swiss-wide runtime, storage, file-count, memory, and
 job-count planning envelope from measured Balfrin demo evidence.
@@ -432,7 +465,7 @@ Definition of done:
 Boundaries: Do not authorize Swiss-wide execution, distributed execution, or
 production ensembles; this is a planning envelope only.
 
-### TB-128: Map Balfrin Demo Evidence To Physical-Credibility Gaps
+### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 Goal: Map the measured Balfrin demo outputs to the existing physical
 credibility, validation, and calibration evidence requirements.
@@ -467,40 +500,6 @@ Definition of done:
 
 Boundaries: Do not introduce calibration, fitting, return periods, risk,
 exposure, vulnerability, or physical-probability claims.
-
-### TB-129: Restore Balfrin Scheduler Access For Demo Submission
-
-Goal: Expose or restore `sbatch` on the node used for the canonical Balfrin
-demo so the single-release-zone submission helper can reach the scheduler.
-
-Capability gap reduced: Missing scheduler access for the canonical Balfrin
-demo submission path.
-
-Why this outranks alternatives: TB-117 now has a precise operational block,
-and no later synthesis task can produce measured Balfrin evidence until the
-submission path can actually start a job.
-
-Inspect first:
-
-- `docs/balfrin_failure_recovery_playbook.md`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `scripts/submit_balfrin_probe.py`
-
-Deliverables:
-
-- A concise scheduler-access or recovery report showing whether `sbatch` is
-  available for the canonical Balfrin demo path, or the concrete operator step
-  that restores it.
-- A retryable submission note that preserves the same run root and run id once
-  scheduler access is available again.
-
-Definition of done:
-
-- The canonical Balfrin demo submission can reach a scheduler-enabled node, or
-  the external unblock is documented clearly enough for the next execution pass.
-
-Boundaries: Do not expand the ensemble, simulation model, or claim boundaries.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
