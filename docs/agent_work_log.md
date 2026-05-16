@@ -1595,3 +1595,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new output modes were introduced, `summary_only` was not called rebuildable, and the audit keeps operational, scale-up, and physical-probability boundaries false.
 - Next task: `TB-109`
+
+### TB-109: Check Balfrin GIS/COG Demonstration Parity
+
+- Date: 2026-05-16
+- Commit: `c9f93d7`
+- Objective: Emit a Balfrin GIS/COG parity report that makes package usability, COG readiness, curve linkage, manifest consistency, and any scope delta explicit.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a dedicated Balfrin GIS/COG parity report to the evidence-bundle summarizer so the bundle now surfaces layer counts, COG metadata, curve linkage, manifest consistency, and scope-delta status in one machine-readable object.
+  - Wired the parity report into the bundle text rendering and blocked-input path so the emitted report stays explicit when evidence is missing.
+  - Added focused regression coverage for ready, blocked-missing-inputs, and bounded-scope package states using fixture-style evidence dictionaries rather than live GIS artifacts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_gis_cog_package_readiness tests.test_same_scale_cog_package_conversion`
+  - `PYENV_VERSION=system uv run python - <<'PY' ... bundle.build_bundle_report(...) ... PY` smoke emission to `/tmp/tb-109_parity_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: the parity report stays read-only, does not commit generated rasters, does not require manual QGIS QA, and keeps operational, scale-up, and physical-probability claims false.
+- Next task: `TB-110`
