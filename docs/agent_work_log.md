@@ -1683,7 +1683,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-113: Update Balfrin Runtime And Scaling Frontier
 
 - Date: 2026-05-16
-- Commit: `pending`
+- Commit: `6252600`
 - Objective: refine the Swiss-wide planning envelope with measured Balfrin runtime, storage, file-count, memory, and job-count evidence while preserving conservative no-go labeling and a blocked fallback when measurements are absent.
 - Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/task_backlog.md`, `docs/decision_log.md`, `docs/agent_work_log.md`
 - Implementation summary:
