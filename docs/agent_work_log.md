@@ -1339,3 +1339,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no production release zones were generated, no thresholds were tuned against Tschamut outcomes, and no heuristic candidates were treated as physical evidence.
 - Next task: `TB-097`
+
+### TB-097: Plan Pragmatic Block-Scenario Generation
+
+- Date: 2026-05-16
+- Commit: `bebe942`
+- Objective: define a deterministic block-scenario generation dry run that maps release-zone candidates to a small, pragmatic scenario table while keeping Tschamut-only heuristics separate from portable semantics.
+- Files changed: `scripts/plan_release_plan_dry_run.py`, `tests/test_release_plan_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a scenario-generation contract block to the release-plan dry run with portable semantics, explicit block-size bins, conditional sampling weights, release-cell linkage, required metadata, and unsupported physical-frequency fields.
+  - Split the Tschamut-specific heuristics into a separate labeled section, wired deterministic release rows to policy release-cell ids, and added a blocked path for missing terrain or source-zone evidence.
+  - Extended the focused regression coverage for the contract shape, the portable-versus-heuristic distinction, the blocked branch, and the text output rendering.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_release_plan_dry_run.py tests/test_release_plan_dry_run.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_plan_dry_run tests.test_multisite_source_scenario_contract`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no annual source frequencies were estimated, no block distributions were calibrated, and no physics parameters or operational claims were changed.
+- Next task: `TB-098`
