@@ -5819,3 +5819,28 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Result: direct reduced validation now writes the builder-facing trajectory,
   deposition, impact-event, trajectory-metadata, and diagnostics families
   directly; `summary_only` remains non-rebuildable.
+
+### TB-055
+
+- Date: 2026-05-16
+- Scope: made the Chant Sura / Flüelapass public-context acquisition boundary
+  explicit and machine-readable, while keeping the synthetic core fixtures
+  separated from real public-context readiness.
+- Files touched:
+  `scripts/check_second_site_public_geodata_preflight.py`,
+  `scripts/generate_pilot_command_plan.py`,
+  `tests/test_second_site_public_geodata_preflight.py`,
+  `tests/test_pilot_command_plan.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py scripts/generate_pilot_command_plan.py tests/test_second_site_public_geodata_preflight.py tests/test_pilot_command_plan.py`
+  `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_pilot_command_plan`
+  `PYENV_VERSION=system uv run python scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py --format json`
+  `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+- Result: `public_context_boundary_status=deferred_public_context_inputs`;
+  the report now lists product-level local paths, metadata requirements,
+  synthetic-fixture boundaries, and blocked second-site command templates.

@@ -240,6 +240,14 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+The second-site preflight now reports this boundary explicitly with
+`public_context_boundary_status`, per-product expected paths, metadata
+requirements, synthetic-fixture boundaries, and blocked second-site command
+templates. Synthetic core fixtures can satisfy terrain, source-zone, scenario,
+and policy readiness, but they must not satisfy public-context readiness for
+SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, or
+swissBUILDINGS3D.
+
 The canonical conditional diagnostic interpretation helper
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
 uses this portability boundary only as a blocker boundary. It does not turn

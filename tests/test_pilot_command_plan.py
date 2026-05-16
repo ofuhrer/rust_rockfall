@@ -110,6 +110,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         report = MODULE.build_report("chant_sura_fluelapass", SECOND_SITE_CONFIG)
 
         self.assertEqual(report["second_site_portability_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
+        self.assertIn("swissimage_context", report["deferred_public_context_categories"])
+        self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertEqual(
             [group["id"] for group in report["command_groups"]],
             [
@@ -131,6 +135,8 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "second_site_validation_template",
             },
         )
+        self.assertTrue(report["blocked_second_site_commands"])
+        self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
         self.assertFalse(contract_plan["read_only"])

@@ -230,6 +230,15 @@ the candidate source-zone and scenario contract, but it is not physical
 validation evidence and it does not imply that the deferred public-context
 products have been staged.
 
+`scripts/check_second_site_public_geodata_preflight.py` now makes the
+Chant Sura public-context boundary explicit and machine-readable. Its report
+separates the staged synthetic core fixtures from the deferred public-context
+products, lists the expected local paths and metadata requirements for
+SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and
+swissBUILDINGS3D, and records the blocked second-site command templates so the
+candidate stays honestly at `deferred_public_context_inputs` until real public
+context is staged.
+
 A tiny staging helper,
 `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`, copies the
 synthetic core fixture set from

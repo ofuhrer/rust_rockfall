@@ -183,13 +183,13 @@ Underrepresented high-value work:
 - mapping the missing physical-credibility evidence into concrete field or
   reference data requirements rather than broad calibration language.
 
+## Active Tasks
+
 Current priority order:
 
-P0. TB-055 advances Chant Sura public-context realism without starting a
-    second-site ensemble.
-P1. TB-056 promotes COG export from package-copy proof to a reusable export
+P0. TB-056 promotes COG export from package-copy proof to a reusable export
     option for GIS-ready products.
-P2. TB-057 makes physical-credibility evidence requirements executable and
+P1. TB-057 makes physical-credibility evidence requirements executable and
     site-aware without adding calibration or operational claims.
 
 ## Backlog Protocol
@@ -230,48 +230,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-### TB-055: Decide And Stage Chant Sura Public-Context Acquisition Boundaries
-
-Priority: P3.
-
-Why now: Chant Sura / Flüelapass has concrete candidate, acquisition, and
-synthetic core-input fixtures, but public context remains deferred. The next
-portability step is to decide exactly which real swisstopo context products
-would move the preflight forward and how they would be recognized locally.
-
-Capability gap reduced: Swiss-wide public-geodata portability realism.
-
-Why higher priority than alternatives: second-site ensembles are not useful
-until the repo can distinguish missing real public context from synthetic core
-fixtures with product-level precision.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Expected measurable outputs:
-
-- a read-only acquisition-boundary report or preflight extension that lists the
-  exact public-context product families, expected local paths, CRS/date
-  metadata expectations, and which missing item keeps the site at
-  `deferred_public_context_inputs`;
-- tests proving synthetic core fixtures remain separate from real public
-  context readiness;
-- command-plan or docs updates that keep second-site ensemble commands blocked.
-
-Definition of done:
-
-- the Chant Sura preflight reports product-level public-context blockers with
-  concrete local path expectations;
-- no downloads, second-site ensemble, hazard build, calibration, portability
-  acceptance, scale-up, or operational claim is introduced.
 
 ### TB-056: Add A COG-Ready Export Option For Same-Scale GIS Packages
 

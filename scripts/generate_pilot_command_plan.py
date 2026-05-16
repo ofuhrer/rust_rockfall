@@ -113,6 +113,11 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
             "target_rebuildable_reduced"
         ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
+        "public_context_boundary_status": second_site_report["public_context_boundary_status"],
+        "deferred_public_context_categories": second_site_report["deferred_public_context_categories"],
+        "public_context_product_requirements": second_site_report["public_context_product_requirements"],
+        "blocked_second_site_commands": second_site_report["blocked_second_site_commands"],
+        "claim_boundaries": second_site_report["claim_boundaries"],
         "supported_sites_or_modes": ["all", "tschamut_same_scale", "chant_sura_fluelapass"],
         "read_only": True,
         "scale_up_authorized": False,
@@ -982,6 +987,11 @@ def build_second_site_plan(
         "commands": commands,
         "ignored_output_paths": ignored_output_paths,
         "portability_status": second_site_report["portability_preflight_status"],
+        "public_context_boundary_status": second_site_report["public_context_boundary_status"],
+        "deferred_public_context_categories": second_site_report["deferred_public_context_categories"],
+        "public_context_product_requirements": second_site_report["public_context_product_requirements"],
+        "blocked_second_site_commands": second_site_report["blocked_second_site_commands"],
+        "claim_boundaries": second_site_report["claim_boundaries"],
         "blocked_reason": blocked_reason,
         "contract_audit_status": contract_report["source_scenario_contract_audit_status"],
     }

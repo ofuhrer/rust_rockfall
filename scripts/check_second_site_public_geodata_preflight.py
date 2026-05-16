@@ -34,6 +34,38 @@ DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissbuildings3d_context",
 }
 
+PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS = {
+    "swissimage_context": [
+        "expected_staged_path",
+        "site-specific product record or download reference when staged",
+    ],
+    "swisstlm3d_context": [
+        "expected_staged_path",
+        "archive or delivery reference when staged",
+    ],
+    "swisstlm3d_metadata": [
+        "metadata.json",
+        "source_product",
+        "staged_asset_present",
+    ],
+    "swisssurface3d_context": [
+        "expected_staged_path",
+        "site-specific product record when staged",
+    ],
+    "swisssurface3d_raster_context": [
+        "expected_staged_path",
+        "site-specific product record when staged",
+    ],
+    "swissbuildings3d_context": [
+        "expected_staged_path",
+        "site-specific product record when staged",
+    ],
+    "barrier_inventory": [
+        "expected_staged_path",
+        "only if a site policy explicitly references barriers or nets",
+    ],
+}
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -113,6 +145,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "site_extent_or_placeholder": site_extent if site_extent else "placeholder_extent_missing",
         "core_input_status": core_input_status,
         "deferred_public_context_status": deferred_context_status,
+        "public_context_boundary_status": build_public_context_boundary_status(missing_required, deferred_required),
         "terrain_manifest_status": terrain_manifest_status,
         "source_zone_manifest_status": source_zone_manifest_status,
         "scenario_manifest_status": scenario_manifest_status,
@@ -139,6 +172,12 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "required_metadata_records": [req for req in requirements if req["kind"] == "metadata_record"],
         "required_case_generation_inputs": [req for req in requirements if req["kind"] == "case_generation_input"],
         "expected_artifact_roots": [req for req in requirements if req["kind"] == "artifact_root"],
+        "public_context_product_requirements": build_public_context_product_requirements(acquisition_manifest, requirements),
+        "expected_local_paths": build_expected_local_paths(requirements),
+        "metadata_requirements": build_metadata_requirements(site_extent, requirements),
+        "synthetic_fixture_boundaries": synthetic_fixture_boundaries(),
+        "blocked_second_site_commands": build_blocked_second_site_commands(acquisition_manifest),
+        "claim_boundaries": claim_boundaries(),
         "missing_input_categories": [req["category"] for req in missing_required],
         "missing_input_paths_or_patterns": [req["path_or_pattern"] for req in missing_required],
         "deferred_public_context_categories": [req["category"] for req in deferred_required],
@@ -165,6 +204,130 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "operational_claims_allowed": False,
     }
     return report
+
+
+def build_public_context_boundary_status(missing_required: list[dict[str, Any]], deferred_required: list[dict[str, Any]]) -> str:
+    if missing_required:
+        return "blocked_missing_inputs"
+    if deferred_required:
+        return "deferred_public_context_inputs"
+    return "ready"
+
+
+def build_public_context_product_requirements(
+    acquisition_manifest: dict[str, Any],
+    requirements: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    requirement_by_category = {req["category"]: req for req in requirements}
+    products: list[dict[str, Any]] = []
+    for entry in acquisition_manifest.get("expected_products") or []:
+        if not isinstance(entry, dict):
+            continue
+        category = text_value(entry.get("category"))
+        requirement = requirement_by_category.get(category)
+        expected_path = text_value(entry.get("expected_staged_path")) or (requirement or {}).get("path_or_pattern", "")
+        notes = text_value(entry.get("notes"))
+        resolved_path = resolve_repo_path(expected_path) if expected_path else None
+        if resolved_path is not None and resolved_path.exists():
+            current_status = "ready"
+        elif category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
+            current_status = "deferred_public_context"
+        elif bool(entry.get("required")):
+            current_status = "blocked_missing_inputs"
+        else:
+            current_status = text_value(entry.get("status")) or "optional"
+        products.append(
+            {
+                "category": category,
+                "product": text_value(entry.get("product")),
+                "required": bool(entry.get("required")),
+                "current_status": current_status,
+                "expected_local_path": expected_path,
+                "expected_staged_path": expected_path,
+                "staged": is_staged_path(resolved_path) if resolved_path is not None else False,
+                "synthetic_fixture_allowed": False if category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES else bool(entry.get("required")),
+                "metadata_requirements": PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS.get(category, ["expected_staged_path"]),
+                "source_reference": text_value(entry.get("source_reference")),
+                "notes": notes,
+            }
+        )
+    return products
+
+
+def build_expected_local_paths(requirements: list[dict[str, Any]]) -> dict[str, str]:
+    return {
+        req["category"]: req["path_or_pattern"]
+        for req in requirements
+        if req["kind"] in {"public_geodata_product", "metadata_record", "case_generation_input", "artifact_root"}
+    }
+
+
+def is_staged_path(path: Path) -> bool:
+    return path.is_file() or (path.is_dir() and any(path.iterdir()))
+
+
+def build_metadata_requirements(site_extent: dict[str, Any], requirements: list[dict[str, Any]]) -> dict[str, list[str]]:
+    metadata: dict[str, list[str]] = {
+        "site_extent_definition": ["crs", "xmin", "ymin", "xmax", "ymax"],
+        "terrain_metadata": ["crs", "vertical_datum", "crop_provenance", "checksum"],
+        "source_zone_metadata": ["source_zone_id or equivalent site-specific release-zone identifier"],
+        "scenario_table": ["scenario_id", "probability", "site-specific scenario rows"],
+        "source_scenario_policy": ["policy_id or equivalent site-specific policy identifier", "site-specific policy content"],
+        "swisstlm3d_metadata": ["metadata.json", "source_product", "staged_asset_present"],
+    }
+    if site_extent:
+        metadata["site_extent_definition"].append("declared candidate extent")
+    for req in requirements:
+        if req["category"] in PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS:
+            metadata[req["category"]] = list(PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS[req["category"]])
+    return metadata
+
+
+def synthetic_fixture_boundaries() -> list[dict[str, Any]]:
+    return [
+        {
+            "scope": "core_fixture",
+            "allowed": True,
+            "meaning": "Tiny synthetic fixtures may satisfy terrain, source-zone, scenario, and policy core readiness only.",
+        },
+        {
+            "scope": "public_context",
+            "allowed": False,
+            "meaning": "Synthetic fixtures must not satisfy SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, or swissBUILDINGS3D readiness.",
+        },
+        {
+            "scope": "physical_evidence",
+            "allowed": False,
+            "meaning": "Synthetic fixture data are not real swisstopo public-context evidence and must not be treated as validation evidence.",
+        },
+    ]
+
+
+def build_blocked_second_site_commands(acquisition_manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    commands: list[dict[str, Any]] = []
+    for entry in acquisition_manifest.get("command_templates") or []:
+        if not isinstance(entry, dict):
+            continue
+        commands.append(
+            {
+                "id": text_value(entry.get("id")),
+                "command": text_value(entry.get("command")),
+                "blocked_status": "template_only",
+                "expected_outputs": entry.get("expected_outputs") or [],
+            }
+        )
+    return commands
+
+
+def claim_boundaries() -> dict[str, bool]:
+    return {
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "annual_frequency_claims_allowed": False,
+        "physical_probability_claims_allowed": False,
+        "risk_exposure_vulnerability_claims_allowed": False,
+        "distributed_execution_authorized": False,
+    }
 
 
 def load_site_config(path: Path) -> dict[str, Any]:
@@ -614,6 +777,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"second_site_manifest_status: {report['second_site_manifest_status']}",
         f"portability_preflight_status: {report['portability_preflight_status']}",
         f"readiness_status: {report['readiness_status']}",
+        f"public_context_boundary_status: {report['public_context_boundary_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
@@ -628,8 +792,35 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
         "",
-        "acquisition_manifest_product_summaries:",
+        "public_context_product_requirements:",
     ]
+    lines.extend(_render_entries(report["public_context_product_requirements"]))
+    lines.append("")
+    lines.append("expected_local_paths:")
+    if report.get("expected_local_paths"):
+        lines.extend(f"- {key}: {value}" for key, value in report["expected_local_paths"].items())
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("metadata_requirements:")
+    if report.get("metadata_requirements"):
+        for key, value in report["metadata_requirements"].items():
+            lines.append(f"- {key}: {', '.join(value)}")
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("synthetic_fixture_boundaries:")
+    lines.extend(f"- {item['scope']}: {item['meaning']}" for item in report["synthetic_fixture_boundaries"])
+    lines.append("")
+    lines.append("blocked_second_site_commands:")
+    lines.extend(
+        f"- {item['id']}: {item['blocked_status']} ({item['command']})" for item in report["blocked_second_site_commands"]
+    )
+    lines.append("")
+    lines.append("claim_boundaries:")
+    lines.extend(f"- {key}: {str(value).lower()}" for key, value in report["claim_boundaries"].items())
+    lines.append("")
+    lines.append("acquisition_manifest_product_summaries:")
     lines.extend(_render_entries(report["acquisition_manifest_product_summaries"]))
     lines.append("")
     lines.append("required_public_geodata_products:")

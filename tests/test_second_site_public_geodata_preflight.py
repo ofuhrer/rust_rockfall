@@ -47,12 +47,16 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
+        self.assertEqual(report["public_context_boundary_status"], "ready")
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
         self.assertGreaterEqual(report["acquisition_manifest_category_count"], 10)
         self.assertIn("Review acquisition manifest at", "\n".join(report["acquisition_or_staging_checklist"]))
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
         self.assertEqual(report["missing_input_categories"], [])
         self.assertEqual(report["missing_input_paths_or_patterns"], [])
         self.assertEqual(report["core_input_status"], "ready")
@@ -60,6 +64,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["deferred_public_context_categories"], [])
         self.assertEqual(report["deferred_public_context_paths_or_patterns"], [])
         self.assertEqual(report["deferred_public_context_references"], {})
+        self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
+        self.assertEqual(report["synthetic_fixture_boundaries"][1]["allowed"], False)
 
         required_products = {entry["category"]: entry for entry in report["required_public_geodata_products"]}
         self.assertEqual(required_products["terrain_crop"]["status"], "ready")
@@ -83,19 +89,25 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "acquisition_manifest_product_summaries",
                 "acquisition_manifest_status",
                 "assumptions_not_yet_generalized",
+                "blocked_second_site_commands",
                 "core_input_status",
                 "blocked_reason",
                 "candidate_site_id",
                 "candidate_site_name",
                 "candidate_selection_rationale",
+                "claim_boundaries",
                 "deferred_public_context_categories",
                 "deferred_public_context_paths_or_patterns",
                 "deferred_public_context_references",
                 "deferred_public_context_status",
+                "expected_local_paths",
                 "expected_artifact_roots",
                 "missing_input_categories",
                 "missing_input_paths_or_patterns",
+                "metadata_requirements",
                 "operational_claims_allowed",
+                "public_context_boundary_status",
+                "public_context_product_requirements",
                 "portability_preflight_status",
                 "readiness_status",
                 "second_site_manifest_status",
@@ -109,6 +121,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "source_zone_scenario_contract",
                 "site_extent_or_placeholder",
                 "site_specific_required_inputs",
+                "synthetic_fixture_boundaries",
                 "terrain_manifest_status",
             },
         )
@@ -139,6 +152,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
+        self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
         self.assertIn("source_zone_scenario_contract", report)
         self.assertIn("source_zone_id_pattern", report["source_zone_scenario_contract"])
         self.assertIn("Candidate selection rationale", "\n".join(report["acquisition_or_staging_checklist"]))
@@ -157,6 +171,15 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         )
         self.assertEqual(report["missing_input_categories"], [])
         self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
+        product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
+        self.assertFalse(product_requirements["swissimage_context"]["synthetic_fixture_allowed"])
+        self.assertFalse(product_requirements["swissimage_context"]["staged"])
+        self.assertTrue(
+            report["expected_local_paths"]["swissimage_context"].endswith(
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
+            ),
+        )
+        self.assertIn("metadata.json", report["metadata_requirements"]["swisstlm3d_metadata"])
 
     def test_missing_context_metadata_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -164,12 +187,15 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             report = self._build_report(root, site_config=self._fixture_config_path(), omit=["swisstlm3d_metadata"])
 
         self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
         self.assertIn("swisstlm3d_context", report["deferred_public_context_categories"])
         self.assertIn(
             str(root / "data/processed/swisstopo/placeholder_second_site_v1/context/swisstlm3d/metadata.json"),
             report["deferred_public_context_paths_or_patterns"],
         )
         self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
+        product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
+        self.assertEqual(product_requirements["swisstlm3d_metadata"]["current_status"], "deferred_public_context")
 
     def test_missing_site_extent_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -187,9 +213,12 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
 
         text = preflight.render_text_report(report)
         self.assertIn("portability_preflight_status: deferred_public_context_inputs", text)
+        self.assertIn("public_context_boundary_status: deferred_public_context_inputs", text)
         self.assertIn("validate_public_real_site_conditional_pilot_run.py", text)
         self.assertIn("acquisition_manifest_status:", text)
+        self.assertIn("public_context_product_requirements:", text)
         self.assertIn("deferred_public_context_categories:", text)
+        self.assertIn("blocked_second_site_commands:", text)
         self.assertIn("second_site_manifest_status: staged_placeholder_manifest", text)
         self.assertIn("public-context products are intentionally deferred", text)
 
@@ -210,6 +239,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 preflight.ROOT = original_root
 
         self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
@@ -232,6 +262,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertNotIn("hazard_results_root", report["deferred_public_context_categories"])
         self.assertNotIn("processed_input_root", report["deferred_public_context_categories"])
         self.assertNotIn("processed_context_root", report["deferred_public_context_categories"])
+        self.assertTrue(report["synthetic_fixture_boundaries"][0]["allowed"])
 
     def _fixture_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml"
