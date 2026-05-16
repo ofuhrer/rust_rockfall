@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import io
+import json
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
 
 from scripts import summarize_tschamut_conditional_diagnostic_interpretation as summary
 
@@ -9,6 +14,8 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
     def _fixture_report(self) -> dict[str, object]:
         return {
             "schema_version": "tschamut_conditional_diagnostic_interpretation_v1",
+            "sampling_uncertainty_status": "sampling_uncertainty_measured",
+            "target_convergence_interpretation": "inconclusive",
             "interpretation_status": "inconclusive_conditional_diagnostic",
             "closure_status": "inconclusive",
             "same_scale_readiness_status": "ready",
@@ -84,6 +91,33 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
                 "portability_preflight_status": "deferred_public_context_inputs",
             },
             "physical_credibility_status": "not_established",
+            "synthesis_brief": {
+                "same_scale_readiness_status": "ready",
+                "sampling_uncertainty_status": "sampling_uncertainty_measured",
+                "target_convergence_interpretation": "inconclusive",
+                "closure_status": "inconclusive",
+                "output_profile_status": {
+                    "target_summary_only": "summary_only_not_rebuildable",
+                    "legacy_summary_only_status": "summary_only_not_rebuildable",
+                    "target_rebuildable_reduced": "rebuildable_reduced_output",
+                    "native_rebuildable_reduced_status": "rebuildable_reduced_output",
+                    "command_plan_addressable": True,
+                },
+                "gis_cog_status": {
+                    "standard_package_status": "gis_package_ready_cog_blocked",
+                    "converted_package_readiness_status": "converted_package_ready",
+                    "any_converted_package_ready": True,
+                },
+                "runtime_scaling_status": {
+                    "reducer_scaling_status": "measured_existing_artifacts",
+                    "local_single_job_sufficient_for_next_step": True,
+                    "distributed_execution_authorized": False,
+                },
+                "portability_status": {
+                    "portability_preflight_status": "deferred_public_context_inputs",
+                },
+                "physical_credibility_status": "not_established",
+            },
             "claim_boundaries": {
                 "scale_up_authorized": False,
                 "operational_claims_allowed": False,
@@ -132,18 +166,23 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "portability_status",
             "physical_credibility_status",
             "claim_boundaries",
+            "sampling_uncertainty_status",
+            "target_convergence_interpretation",
             "recommended_next_decision",
             "scale_up_authorized",
             "operational_claims_allowed",
             "annual_frequency_claims_allowed",
             "risk_exposure_vulnerability_claims_allowed",
             "distributed_execution_authorized",
+            "synthesis_brief",
             "current_evidence",
             "evidence_sources",
         }
         self.assertTrue(expected_keys.issubset(report.keys()))
         self.assertEqual(report["closure_status"], "inconclusive")
         self.assertEqual(report["interpretation_status"], "inconclusive_conditional_diagnostic")
+        self.assertEqual(report["sampling_uncertainty_status"], "sampling_uncertainty_measured")
+        self.assertEqual(report["target_convergence_interpretation"], "inconclusive")
         self.assertEqual(report["same_scale_readiness_status"], "ready")
         self.assertEqual(report["spatial_uncertainty_status"], "measured_existing_artifacts")
         self.assertFalse(report["scale_up_authorized"])
@@ -151,6 +190,9 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertFalse(report["annual_frequency_claims_allowed"])
         self.assertFalse(report["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["distributed_execution_authorized"])
+        self.assertEqual(report["synthesis_brief"]["closure_status"], "inconclusive")
+        self.assertEqual(report["synthesis_brief"]["sampling_uncertainty_status"], "sampling_uncertainty_measured")
+        self.assertEqual(report["synthesis_brief"]["target_convergence_interpretation"], "inconclusive")
 
     def test_closure_and_blocker_summary_remains_conservative(self) -> None:
         report = summary.build_report(self._fixture_override())
@@ -214,12 +256,15 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         text = summary.render_text_report(summary.build_report(self._fixture_override()))
 
         self.assertIn("interpretation_status: inconclusive_conditional_diagnostic", text)
+        self.assertIn("sampling_uncertainty_status: sampling_uncertainty_measured", text)
+        self.assertIn("target_convergence_interpretation: inconclusive", text)
         self.assertIn("scientific_blockers:", text)
         self.assertIn("max_kinetic_energy_closure_limiting", text)
         self.assertIn("workflow_blockers:", text)
         self.assertIn("summary_only_not_rebuildable", text)
         self.assertIn("legacy_summary_only_status", text)
         self.assertIn("native_rebuildable_reduced_status", text)
+        self.assertIn("synthesis_brief:", text)
         self.assertIn("product_path_statuses:", text)
         self.assertIn("workflow_mitigations:", text)
         self.assertIn("portability_blockers:", text)
@@ -228,6 +273,64 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("converted_package_readiness_status", text)
         self.assertIn("scale_up_authorized: false", text)
         self.assertIn("operational_claims_allowed: false", text)
+
+    def test_artifact_dir_writes_canonical_json_and_text_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            override_path = tmp / "evidence.json"
+            override_path.write_text(json.dumps(self._fixture_override()), encoding="utf-8")
+            artifact_dir = tmp / "validation/private/tschamut_public_pilot/diagnostic_interpretation_v1"
+
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = summary.main(
+                    [
+                        "--artifact-dir",
+                        str(artifact_dir),
+                        "--evidence-json",
+                        str(override_path),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            json_path = artifact_dir / "tschamut_conditional_diagnostic_interpretation_v1.json"
+            text_path = artifact_dir / "tschamut_conditional_diagnostic_interpretation_v1.txt"
+            self.assertTrue(json_path.exists())
+            self.assertTrue(text_path.exists())
+            json_report = json.loads(json_path.read_text(encoding="utf-8"))
+            text_report = text_path.read_text(encoding="utf-8")
+            self.assertEqual(json_report["interpretation_status"], "inconclusive_conditional_diagnostic")
+            self.assertEqual(json_report["synthesis_brief"]["closure_status"], "inconclusive")
+            self.assertIn("target_convergence_interpretation: inconclusive", text_report)
+            self.assertIn("synthesis_brief:", text_report)
+
+    def test_artifact_dir_writes_blocked_bundle_for_missing_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            override_path = tmp / "blocked.json"
+            override_path.write_text(json.dumps({"missing_inputs": ["docs/missing.json"]}), encoding="utf-8")
+            artifact_dir = tmp / "validation/private/tschamut_public_pilot/diagnostic_interpretation_v1"
+
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = summary.main(
+                    [
+                        "--artifact-dir",
+                        str(artifact_dir),
+                        "--evidence-json",
+                        str(override_path),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 2)
+            json_path = artifact_dir / "tschamut_conditional_diagnostic_interpretation_v1.json"
+            text_path = artifact_dir / "tschamut_conditional_diagnostic_interpretation_v1.txt"
+            self.assertTrue(json_path.exists())
+            self.assertTrue(text_path.exists())
+            blocked_report = json.loads(json_path.read_text(encoding="utf-8"))
+            self.assertEqual(blocked_report["interpretation_status"], "blocked_missing_inputs")
+            self.assertEqual(blocked_report["synthesis_brief"]["closure_status"], "blocked_missing_inputs")
+            self.assertIn("blocked_missing_inputs", text_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":  # pragma: no cover

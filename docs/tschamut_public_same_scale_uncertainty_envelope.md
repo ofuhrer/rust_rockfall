@@ -128,6 +128,8 @@ uses this envelope alongside closure, reduced-output, GIS/COG, runtime,
 portability, and physical-credibility summaries. That keeps the measured
 uncertainty evidence inside the diagnostic boundary without turning it into an
 acceptance claim.
+For a materialized synthesis bundle, treat `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
+on that helper as the primary entrypoint.
 
 For the measured closure-gap delta between closure-limiting and deferrable
 layers, see `scripts/summarize_tschamut_closure_gap_deltas.py`.

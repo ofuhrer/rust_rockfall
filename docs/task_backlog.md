@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-069: Generate Canonical Conditional Diagnostic Interpretation Artifact
-
-Goal: TB-051 created an interpretation helper, but the repo still needs a durable generated artifact path suitable for downstream reviews and release notes. Reduces: interpretability fragmentation and pilot closure ambiguity.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- one canonical measured pilot interpretation artifact combining uncertainty, convergence, closure status, runtime/output limits, GIS readiness, context limitations, and physical credibility boundaries;
-- JSON/text output path suitable for future synthesis tooling, without committing large generated artifacts;
-- docs point to the artifact/helper as the primary synthesis entrypoint.
-
-Definition of done:
-
-- canonical interpretation helper emits deterministic synthesis output to an explicit path when requested;
-- interpretation clearly distinguishes workflow credibility, physical credibility, and operational non-readiness;
-- focused tests cover the artifact-writing path and blocked/missing-input behavior.
-
-Boundaries: no operational semantics, no reclassification unless directly
-supported by measured evidence, no physical validation claims.
-
 ### TB-070: Quantify Spatial Uncertainty Hotspot Persistence Across Seeds
 
 Goal: uncertainty hotspots are spatially identified, but persistence across the existing gate/target/probe artifacts is not yet quantified directly. Reduces: uncertainty interpretation ambiguity.

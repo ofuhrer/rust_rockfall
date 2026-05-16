@@ -70,6 +70,12 @@
 - `reducer_merge_state_status`: `generated`
 - `worker_counts_compared`: `[1, 2]`
 
+The canonical conditional diagnostic interpretation helper,
+`scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
+preferred synthesis entrypoint when the current single-job evidence needs to
+be bundled into JSON and text artifacts. Use `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
+to materialize that bundle without changing the execution boundary.
+
 ## Scientific Blockers
 
 - `conditional_hazard_convergence_not_accepted` from `conditional_convergence_protocol`: current_classification remains inconclusive in the convergence protocol

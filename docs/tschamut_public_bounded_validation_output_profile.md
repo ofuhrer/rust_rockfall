@@ -242,6 +242,9 @@ consumes this reduced-output evidence together with closure, GIS/COG, runtime,
 portability, and physical-credibility summaries. It does not relabel
 `summary_only` as rebuildable; it keeps the reduced-output contract distinct
 from the current non-rebuildable summary-only profile.
+When downstream synthesis needs a durable artifact, materialize it with
+`--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
+on the same helper instead of copying the large validation roots.
 
 Ignored-root inventory from `audit_local_artifacts.py`:
 

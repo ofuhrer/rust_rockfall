@@ -57,6 +57,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument(
+        "--text-output",
+        type=Path,
+        default=None,
+        help="optional text artifact path; writes the canonical plain-text report there",
+    )
+    parser.add_argument(
+        "--artifact-dir",
+        type=Path,
+        default=None,
+        help="optional directory for the canonical JSON and text artifact bundle",
+    )
+    parser.add_argument(
         "--evidence-json",
         type=Path,
         default=None,
@@ -70,9 +82,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"tschamut diagnostic interpretation error: {exc}", file=sys.stderr)
         return 2
 
-    if args.json_output is not None:
-        args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    materialize_artifacts(
+        report,
+        json_output=args.json_output,
+        text_output=args.text_output,
+        artifact_dir=args.artifact_dir,
+    )
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
@@ -183,9 +198,21 @@ def _build_current_report() -> dict[str, Any]:
     gis_cog_status = summarize_gis_cog_status(gis)
     runtime_status = summarize_runtime_status(reducer)
     portability_status = summarize_portability_status(portability_report, contract_report)
+    synthesis_brief = build_synthesis_brief(
+        readiness=readiness,
+        uncertainty=uncertainty,
+        closure_status=closure_status,
+        output_profile_status=output_profile_status,
+        gis_cog_status=gis_cog_status,
+        runtime_status=runtime_status,
+        portability_status=portability_status,
+        physical_status=physical,
+    )
 
     report = {
         "schema_version": SCHEMA_VERSION,
+        "sampling_uncertainty_status": uncertainty.get("sampling_uncertainty_status", "unknown"),
+        "target_convergence_interpretation": uncertainty.get("target_convergence_interpretation", "unknown"),
         "interpretation_status": derive_interpretation_status(
             closure={"closure_status": closure_status},
             output_profile_status=output_profile_status,
@@ -226,6 +253,7 @@ def _build_current_report() -> dict[str, Any]:
         "runtime_scaling_status": runtime_status,
         "portability_status": portability_status,
         "physical_credibility_status": physical.get("physical_credibility_status", "unknown"),
+        "synthesis_brief": synthesis_brief,
         "claim_boundaries": claim_boundaries,
         "recommended_next_decision": recommended_next_decision(
             closure={"closure_status": closure_status},
@@ -313,6 +341,8 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "interpretation_status": "blocked_missing_inputs",
         "closure_status": "blocked_missing_inputs",
+        "sampling_uncertainty_status": "blocked_missing_inputs",
+        "target_convergence_interpretation": "blocked_missing_inputs",
         "same_scale_readiness_status": "blocked_missing_inputs",
         "spatial_uncertainty_status": "blocked_missing_inputs",
         "dominant_scientific_blockers": [],
@@ -325,6 +355,16 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "runtime_scaling_status": {"status": "blocked_missing_inputs"},
         "portability_status": {"status": "blocked_missing_inputs"},
         "physical_credibility_status": "blocked_missing_inputs",
+        "synthesis_brief": {
+            "sampling_uncertainty_status": "blocked_missing_inputs",
+            "target_convergence_interpretation": "blocked_missing_inputs",
+            "closure_status": "blocked_missing_inputs",
+            "output_profile_status": {"status": "blocked_missing_inputs"},
+            "gis_cog_status": {"status": "blocked_missing_inputs"},
+            "runtime_scaling_status": {"status": "blocked_missing_inputs"},
+            "portability_status": {"status": "blocked_missing_inputs"},
+            "physical_credibility_status": "blocked_missing_inputs",
+        },
         "claim_boundaries": claim_boundaries,
         "recommended_next_decision": reason,
         "current_evidence": {"missing_inputs": list(missing_inputs)},
@@ -337,6 +377,55 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "blocked_reason": reason,
         "missing_inputs": list(missing_inputs),
     }
+
+
+def build_synthesis_brief(
+    *,
+    readiness: dict[str, Any],
+    uncertainty: dict[str, Any],
+    closure_status: str,
+    output_profile_status: dict[str, Any],
+    gis_cog_status: dict[str, Any],
+    runtime_status: dict[str, Any],
+    portability_status: dict[str, Any],
+    physical_status: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "same_scale_readiness_status": readiness.get("readiness_status", "unknown"),
+        "sampling_uncertainty_status": uncertainty.get("sampling_uncertainty_status", "unknown"),
+        "target_convergence_interpretation": uncertainty.get("target_convergence_interpretation", "unknown"),
+        "closure_status": closure_status,
+        "output_profile_status": output_profile_status,
+        "gis_cog_status": gis_cog_status,
+        "runtime_scaling_status": runtime_status,
+        "portability_status": portability_status,
+        "physical_credibility_status": physical_status.get("physical_credibility_status", "unknown"),
+    }
+
+
+def materialize_artifacts(
+    report: dict[str, Any],
+    *,
+    json_output: Path | None = None,
+    text_output: Path | None = None,
+    artifact_dir: Path | None = None,
+) -> dict[str, Path]:
+    written: dict[str, Path] = {}
+    if artifact_dir is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        if json_output is None:
+            json_output = artifact_dir / f"{SCHEMA_VERSION}.json"
+        if text_output is None:
+            text_output = artifact_dir / f"{SCHEMA_VERSION}.txt"
+    if json_output is not None:
+        json_output.parent.mkdir(parents=True, exist_ok=True)
+        json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written["json_output"] = json_output
+    if text_output is not None:
+        text_output.parent.mkdir(parents=True, exist_ok=True)
+        text_output.write_text(render_text_report(report) + "\n", encoding="utf-8")
+        written["text_output"] = text_output
+    return written
 
 
 def summarize_output_profile_status(output_profile: dict[str, Any]) -> dict[str, Any]:
@@ -594,8 +683,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"interpretation_status: {report['interpretation_status']}",
         f"closure_status: {report['closure_status']}",
+        f"sampling_uncertainty_status: {report.get('sampling_uncertainty_status', 'unknown')}",
+        f"target_convergence_interpretation: {report.get('target_convergence_interpretation', 'unknown')}",
         f"same_scale_readiness_status: {report['same_scale_readiness_status']}",
         f"spatial_uncertainty_status: {report['spatial_uncertainty_status']}",
+        "synthesis_brief:",
+        f"  - {json.dumps(report.get('synthesis_brief', {}), sort_keys=True)}",
         "scientific_blockers:",
     ]
     for blocker in report.get("scientific_blockers", report.get("dominant_scientific_blockers", [])):

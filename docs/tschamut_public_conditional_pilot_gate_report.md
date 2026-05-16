@@ -23,6 +23,9 @@ The canonical measured interpretation helper is
 It composes the current closure, spatial uncertainty, reduced-output, GIS/COG,
 runtime/scaling, portability, and physical-credibility evidence into one
 reportable diagnostic artifact.
+When a materialized bundle is needed, use `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
+to write the canonical JSON and text outputs for downstream synthesis
+tooling.
 
 Current synthesized status:
 
