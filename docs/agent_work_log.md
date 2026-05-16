@@ -1465,3 +1465,21 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: blocked.
 - Boundaries: no Balfrin execution artifacts were generated or committed, and no operational, annual-frequency, risk, exposure, vulnerability, distributed-execution, or physical-probability claims were introduced.
 - Next task: `TB-103`
+
+### TB-103: Harden Balfrin Demonstration Runbook
+
+- Date: 2026-05-16
+- Commit: `c38bb1a`
+- Objective: make the Balfrin demo execution procedure operationally reproducible with exact start, stop, resume, collect, verify, cleanup, and failure-handoff steps.
+- Files changed: `docs/balfrin_tschamut_pilot_runbook.md`, `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_probe_driver.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a command-driven Balfrin runbook sequence with explicit preflight, generate-only, submit, stop, resume, collect, post-run gate, cleanup, and failure-handoff commands.
+  - Extended the generated Balfrin submission package output with an operator sequence and exact do-not-commit roots/artifacts so the helper output now mirrors the runbook guidance.
+  - Added regression coverage for the new helper output and removed TB-103 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py scripts/collect_balfrin_probe_metrics.py scripts/summarize_balfrin_post_run_interpretation_gate.py tests/test_balfrin_probe_driver.py tests/test_balfrin_post_run_interpretation_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_post_run_interpretation_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /tmp/tb103_balfrin_probe --run-id tb103_smoke --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+- Result/status: completed.
+- Boundaries: no Balfrin jobs were submitted, no claim boundaries were broadened, and no generated probe artifacts were committed.
+- Next task: `TB-104`
