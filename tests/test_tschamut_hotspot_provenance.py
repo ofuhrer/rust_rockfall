@@ -74,6 +74,7 @@ class TschamutHotspotProvenanceTests(unittest.TestCase):
                 "schema_version": "spatial_same_scale_uncertainty_v1",
                 "selected_layers": [
                     "max_kinetic_energy",
+                    "max_jump_height",
                     "velocity_exceedance_5mps",
                 ],
                 "artifacts_measured": [
@@ -96,6 +97,22 @@ class TschamutHotspotProvenanceTests(unittest.TestCase):
                                 "support_flags_by_artifact": {"artifact_a": True, "artifact_b": True},
                                 "valid_flags_by_artifact": {"artifact_a": True, "artifact_b": True},
                                 "values_by_artifact": {"artifact_a": 1.0, "artifact_b": 3.0},
+                            }
+                        ],
+                    },
+                    "max_jump_height": {
+                        "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
+                        "mask_evidence": {"closure_role": "closure_limiting"},
+                        "top_high_uncertainty_cells": [
+                            {
+                                "row": 3,
+                                "col": 4,
+                                "x_center": 14.0,
+                                "y_center": 7.0,
+                                "range": 0.7,
+                                "support_flags_by_artifact": {"artifact_a": False, "artifact_b": True},
+                                "valid_flags_by_artifact": {"artifact_a": True, "artifact_b": True},
+                                "values_by_artifact": {"artifact_a": 0.2, "artifact_b": 0.9},
                             }
                         ],
                     },
@@ -141,29 +158,56 @@ class TschamutHotspotProvenanceTests(unittest.TestCase):
             self.assertEqual(report["source_zone_evidence"]["source_zone_id"], "source_zone_a")
             self.assertEqual(report["scenario_evidence"]["row_count"], 1)
             self.assertEqual(report["trajectory_deposition_evidence"]["trajectory_metadata_row_count"], 2)
+            self.assertEqual(report["hotspot_attribution_summary"]["schema_version"], summary.SCHEMA_VERSION)
+            self.assertEqual(report["hotspot_attribution_summary"]["summary_status"], "measured_existing_artifacts")
             self.assertEqual(report["layer_provenance_summaries"]["max_kinetic_energy"]["source_zone_attribution_class"], "outside_source_zone_polygon")
+            self.assertEqual(report["layer_provenance_summaries"]["max_jump_height"]["source_zone_attribution_class"], "outside_source_zone_polygon")
             self.assertEqual(report["layer_provenance_summaries"]["max_kinetic_energy"]["scenario_attribution_class"], "single_scenario_row_only")
+            self.assertEqual(report["layer_provenance_summaries"]["max_jump_height"]["scenario_attribution_class"], "single_scenario_row_only")
             self.assertEqual(
                 report["layer_provenance_summaries"]["max_kinetic_energy"]["trajectory_deposition_attribution_class"],
+                "run_level_traceable_without_cell_lineage",
+            )
+            self.assertEqual(
+                report["layer_provenance_summaries"]["max_jump_height"]["trajectory_deposition_attribution_class"],
                 "run_level_traceable_without_cell_lineage",
             )
             self.assertEqual(
                 report["layer_provenance_summaries"]["max_kinetic_energy"]["hotspot_provenance_class"],
                 "closure_limiting_outside_source_zone_polygon_single_scenario_row_only_run_level_traceable_without_cell_lineage",
             )
+            self.assertEqual(
+                report["layer_provenance_summaries"]["max_jump_height"]["hotspot_provenance_class"],
+                "closure_limiting_outside_source_zone_polygon_single_scenario_row_only_run_level_traceable_without_cell_lineage",
+            )
             self.assertTrue(
                 report["layer_provenance_summaries"]["max_kinetic_energy"]["hotspot_support_summary"]["all_hotspots_outside_source_zone_polygon"]
+            )
+            self.assertTrue(
+                report["layer_provenance_summaries"]["max_jump_height"]["hotspot_support_summary"]["all_hotspots_outside_source_zone_polygon"]
             )
             self.assertGreater(
                 report["layer_provenance_summaries"]["max_kinetic_energy"]["top_high_uncertainty_cells"][0]["distance_to_source_zone_m"],
                 0.0,
             )
+            attribution = {item["layer_key"]: item for item in report["hotspot_attribution_summary"]["layer_summaries"]}
+            self.assertEqual(attribution["max_kinetic_energy"]["shared_support_magnitude_hotspot_fraction"], 1.0)
+            self.assertEqual(attribution["max_kinetic_energy"]["support_nodata_sensitive_hotspot_fraction"], 0.0)
+            self.assertEqual(attribution["max_kinetic_energy"]["source_zone_outside_hotspot_fraction"], 1.0)
+            self.assertEqual(attribution["max_kinetic_energy"]["release_scenario_identifier_coverage_fraction"], 1.0)
+            self.assertEqual(attribution["max_kinetic_energy"]["unknown_attribution_fraction"], 1.0)
+            self.assertEqual(attribution["max_jump_height"]["shared_support_magnitude_hotspot_fraction"], 0.0)
+            self.assertEqual(attribution["max_jump_height"]["support_nodata_sensitive_hotspot_fraction"], 1.0)
+            self.assertEqual(attribution["max_jump_height"]["source_zone_outside_hotspot_fraction"], 1.0)
+            self.assertEqual(attribution["max_jump_height"]["unknown_attribution_fraction"], 1.0)
             self.assertEqual(report["prioritized_unknowns"][0]["layer_key"], "max_kinetic_energy")
             self.assertEqual(report["prioritized_unknowns"][1]["layer_key"], "velocity_exceedance_5mps")
             self.assertTrue(
                 any(root_entry["root_type"] == "input_root" for root_entry in report["artifact_roots"])
             )
-            self.assertIn("source_zone_a", summary.render_text_report(report))
+            rendered = summary.render_text_report(report)
+            self.assertIn("source_zone_a", rendered)
+            self.assertIn("attribution counts=", rendered)
 
     def test_missing_inputs_override_reports_blocked_status(self) -> None:
         report = summary.build_report({"missing_inputs": ["docs/missing.json"]})

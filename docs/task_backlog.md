@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-085: Attribute Closure-Limiting Hotspots To Source And Scenario Evidence
-
-Goal: Trace dominant uncertainty hotspots back to available source-zone, release, scenario, and support/nodata evidence without running new simulations.
-
-Capability gap reduced: Scientific interpretability of closure-limiting uncertainty.
-
-Why this outranks alternatives: The repo knows where hotspots are; the next scientific value is explaining whether they align with source/scenario structure or data-support limits.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- JSON/text hotspot attribution for `max_kinetic_energy` and `max_jump_height`.
-- Counts or fractions for hotspots associated with shared-support magnitude, support/nodata sensitivity, source-zone proximity, release/scenario identifiers when available, and unknown attribution.
-- Closure output references the attribution without changing closure status.
-
-Definition of done:
-
-- Focused tests pin the attribution schema and conservative interpretation, helper outputs are stable, and TB-085 is removed from this backlog.
-
-Boundaries: Do not change physics, tune parameters, run new validation, or convert attribution into acceptance/no-go status.
-
 ### TB-086: Summarize Same-Scale Ensemble Stability Frontier
 
 Goal: Combine existing uncertainty, runtime, and output-size measurements into a bounded stability frontier for deciding whether another small probe would be informative.

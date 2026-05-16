@@ -160,6 +160,15 @@ on that helper as the primary entrypoint.
 For the measured closure-gap delta between closure-limiting and deferrable
 layers, see `scripts/summarize_tschamut_closure_gap_deltas.py`.
 
+For hotspot provenance back to the committed source-zone and scenario
+evidence, see `scripts/summarize_tschamut_hotspot_provenance.py`. Its
+measured summary keeps the same closure-limiting hotspots in the
+source-zone/scenario boundary: the selected cells remain outside the source
+polygon, `max_kinetic_energy` is fully shared-support magnitude, and
+`max_jump_height` is the layer with the strongest support/nodata sensitivity.
+That attribution is interpretive evidence only; it does not change the
+existing `inconclusive` closure status.
+
 Compact mask summaries are also available from
 `scripts/summarize_spatial_same_scale_uncertainty.py --mask-output-dir <ignored-root>`.
 Those summaries preserve the same layer-specific counts, extents, and closure

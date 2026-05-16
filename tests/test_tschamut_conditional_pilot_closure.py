@@ -12,6 +12,7 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertEqual(report["readiness_status"], "ready")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
+        self.assertEqual(report["current_evidence"]["hotspot_provenance"]["hotspot_provenance_status"], "measured_existing_artifacts")
 
     def test_criteria_matrix_shape_and_required_statuses(self) -> None:
         report = summary.build_closure_report(self._evidence_override())
@@ -98,6 +99,7 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertIn("stability=deferrable_localized", text)
         self.assertIn("closure-role-change=no_change", text)
         self.assertIn("uncertainty layer summary:", text)
+        self.assertIn("hotspot provenance:", text)
         self.assertIn("confidence=closure_limiting_disagreement", text)
 
     def _evidence_override(self) -> dict[str, object]:
@@ -347,6 +349,62 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
             },
             "contract_audit": {
                 "source_scenario_contract_audit_status": "blocked_missing_inputs",
+            },
+            "hotspot_provenance": {
+                "hotspot_provenance_status": "measured_existing_artifacts",
+                "source_zone_evidence": {"source_zone_id": "source_zone_a"},
+                "scenario_evidence": {"scenario_ids": ["scenario_a"]},
+                "layer_provenance_summaries": [
+                    {
+                        "layer_key": "max_kinetic_energy",
+                        "hotspot_provenance_class": "closure_limiting_outside_source_zone_polygon_single_scenario_row_only_run_level_traceable_without_cell_lineage",
+                        "source_zone_attribution_class": "outside_source_zone_polygon",
+                        "scenario_attribution_class": "single_scenario_row_only",
+                        "trajectory_deposition_attribution_class": "run_level_traceable_without_cell_lineage",
+                        "hotspot_cell_count": 1,
+                    },
+                    {
+                        "layer_key": "max_jump_height",
+                        "hotspot_provenance_class": "closure_limiting_outside_source_zone_polygon_single_scenario_row_only_run_level_traceable_without_cell_lineage",
+                        "source_zone_attribution_class": "outside_source_zone_polygon",
+                        "scenario_attribution_class": "single_scenario_row_only",
+                        "trajectory_deposition_attribution_class": "run_level_traceable_without_cell_lineage",
+                        "hotspot_cell_count": 1,
+                    },
+                    {
+                        "layer_key": "velocity_exceedance_5mps",
+                        "hotspot_provenance_class": "deferrable_outside_source_zone_polygon_single_scenario_row_only_run_level_traceable_without_cell_lineage",
+                        "source_zone_attribution_class": "outside_source_zone_polygon",
+                        "scenario_attribution_class": "single_scenario_row_only",
+                        "trajectory_deposition_attribution_class": "run_level_traceable_without_cell_lineage",
+                        "hotspot_cell_count": 1,
+                    },
+                ],
+                "hotspot_attribution_summary": {
+                    "layer_summaries": [
+                        {
+                            "layer_key": "max_kinetic_energy",
+                            "shared_support_magnitude_hotspot_fraction": 1.0,
+                            "support_nodata_sensitive_hotspot_fraction": 0.0,
+                            "source_zone_outside_hotspot_fraction": 1.0,
+                            "unknown_attribution_fraction": 1.0,
+                        },
+                        {
+                            "layer_key": "max_jump_height",
+                            "shared_support_magnitude_hotspot_fraction": 0.0,
+                            "support_nodata_sensitive_hotspot_fraction": 1.0,
+                            "source_zone_outside_hotspot_fraction": 1.0,
+                            "unknown_attribution_fraction": 1.0,
+                        },
+                        {
+                            "layer_key": "velocity_exceedance_5mps",
+                            "shared_support_magnitude_hotspot_fraction": 1.0,
+                            "support_nodata_sensitive_hotspot_fraction": 0.0,
+                            "source_zone_outside_hotspot_fraction": 1.0,
+                            "unknown_attribution_fraction": 1.0,
+                        },
+                    ]
+                },
             },
         }
 

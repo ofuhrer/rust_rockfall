@@ -116,6 +116,7 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
     context_scope = evidence["context_scope"]
     portability = evidence["portability"]
     contract_audit = evidence["contract_audit"]
+    hotspot_provenance = evidence["hotspot_provenance"]
 
     criteria_matrix = build_criteria_matrix(
         readiness=readiness,
@@ -149,6 +150,7 @@ def build_closure_report(evidence_override: dict[str, Any] | None = None) -> dic
             "context_scope": summarize_context_scope(context_scope),
             "portability": summarize_portability(portability),
             "contract_audit": summarize_contract_audit(contract_audit),
+            "hotspot_provenance": summarize_hotspot_provenance(hotspot_provenance),
         },
         "current_blockers": current_blockers(
             output_profile,
@@ -185,6 +187,7 @@ def gather_current_evidence() -> dict[str, Any]:
     )
     portability = PORTABILITY.build_report(DEFAULT_CANDIDATE_SITE_CONFIG, site_id=None)
     contract_audit = CONTRACT.build_report(DEFAULT_CANDIDATE_SITE_CONFIG)
+    hotspot_provenance = build_hotspot_provenance_report()
     return {
         "readiness": readiness,
         "sampling_uncertainty": uncertainty,
@@ -195,7 +198,16 @@ def gather_current_evidence() -> dict[str, Any]:
         "context_scope": context_scope,
         "portability": portability,
         "contract_audit": contract_audit,
+        "hotspot_provenance": hotspot_provenance,
     }
+
+
+def build_hotspot_provenance_report() -> dict[str, Any]:
+    hotspot_provenance = _load_module(
+        "tschamut_closure_hotspot_provenance_runtime",
+        "summarize_tschamut_hotspot_provenance.py",
+    )
+    return hotspot_provenance.build_report()
 
 
 def evidence_sources() -> list[str]:
@@ -698,6 +710,49 @@ def summarize_contract_audit(contract_audit: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_hotspot_provenance(hotspot_provenance: dict[str, Any]) -> dict[str, Any]:
+    raw_layer_summaries = hotspot_provenance.get("layer_provenance_summaries", [])
+    if isinstance(raw_layer_summaries, dict):
+        layer_items = list(raw_layer_summaries.values())
+    elif isinstance(raw_layer_summaries, list):
+        layer_items = list(raw_layer_summaries)
+    else:
+        layer_items = []
+    layer_summaries = []
+    for item in layer_items:
+        attribution = next(
+            (
+                layer
+                for layer in hotspot_provenance.get("hotspot_attribution_summary", {}).get("layer_summaries", [])
+                if layer.get("layer_key") == item.get("layer_key")
+            ),
+            {},
+        )
+        layer_summaries.append(
+            {
+                "layer_key": item.get("layer_key"),
+                "hotspot_provenance_class": item.get("hotspot_provenance_class"),
+                "source_zone_attribution_class": item.get("source_zone_attribution_class"),
+                "scenario_attribution_class": item.get("scenario_attribution_class"),
+                "trajectory_deposition_attribution_class": item.get("trajectory_deposition_attribution_class"),
+                "hotspot_cell_count": item.get("hotspot_cell_count"),
+                "shared_support_magnitude_hotspot_fraction": attribution.get("shared_support_magnitude_hotspot_fraction"),
+                "support_nodata_sensitive_hotspot_fraction": attribution.get("support_nodata_sensitive_hotspot_fraction"),
+                "source_zone_outside_hotspot_fraction": attribution.get("source_zone_outside_hotspot_fraction"),
+                "release_scenario_identifier_coverage_fraction": attribution.get(
+                    "release_scenario_identifier_coverage_fraction"
+                ),
+                "unknown_attribution_fraction": attribution.get("unknown_attribution_fraction"),
+            }
+        )
+    return {
+        "hotspot_provenance_status": hotspot_provenance.get("hotspot_provenance_status"),
+        "source_zone_id": hotspot_provenance.get("source_zone_evidence", {}).get("source_zone_id"),
+        "scenario_ids": hotspot_provenance.get("scenario_evidence", {}).get("scenario_ids", []),
+        "layer_summaries": layer_summaries,
+    }
+
+
 def current_blockers(
     output_profile: dict[str, Any],
     gis_cog: dict[str, Any],
@@ -853,6 +908,21 @@ def render_text_report(report: dict[str, Any]) -> str:
                     f"unstable={layer.get('unstable_region', {}).get('cell_count', 0)} | "
                     f"stable={layer.get('stable_region', {}).get('cell_count', 0)}"
                 )
+    hotspot_provenance = report.get("current_evidence", {}).get("hotspot_provenance") or {}
+    if hotspot_provenance:
+        lines.append("hotspot provenance:")
+        lines.append(
+            f"- source zone: {hotspot_provenance.get('source_zone_id')} | "
+            f"scenario_ids={', '.join(hotspot_provenance.get('scenario_ids', []))}"
+        )
+        for layer in hotspot_provenance.get("layer_summaries", []):
+            lines.append(
+                f"- {layer.get('layer_key')}: {layer.get('hotspot_provenance_class')} | "
+                f"shared_support={layer.get('shared_support_magnitude_hotspot_fraction', 0.0):.6g} | "
+                f"support_nodata={layer.get('support_nodata_sensitive_hotspot_fraction', 0.0):.6g} | "
+                f"source_zone_outside={layer.get('source_zone_outside_hotspot_fraction', 0.0):.6g} | "
+                f"unknown_lineage={layer.get('unknown_attribution_fraction', 0.0):.6g}"
+            )
     lines.append(
         "scale_up_authorized=false operational_claims_allowed=false"
     )

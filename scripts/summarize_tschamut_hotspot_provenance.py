@@ -134,6 +134,11 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         artifact_roots=artifact_roots,
         closure_gap_report=closure_gap_report,
     )
+    hotspot_attribution_summary = summarize_hotspot_attribution(
+        source_zone_summary=source_zone_summary,
+        scenario_summary=scenario_summary,
+        layer_summaries=layer_summaries,
+    )
 
     attribution_limits = summarize_attribution_limits(
         source_zone_summary=source_zone_summary,
@@ -153,6 +158,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "trajectory_deposition_evidence": trajectory_deposition_summary,
         "artifact_roots": artifact_roots,
         "layer_provenance_summaries": layer_summaries,
+        "hotspot_attribution_summary": hotspot_attribution_summary,
         "attribution_limits": attribution_limits,
         "prioritized_unknowns": prioritized_unknowns,
         "hotspot_provenance_classes": {
@@ -406,6 +412,70 @@ def build_layer_provenance_summaries(
     return summaries
 
 
+def summarize_hotspot_attribution(
+    *,
+    source_zone_summary: dict[str, Any],
+    scenario_summary: dict[str, Any],
+    layer_summaries: dict[str, Any],
+) -> dict[str, Any]:
+    layer_entries: list[dict[str, Any]] = []
+    for layer_key in sorted(layer_summaries):
+        summary = layer_summaries[layer_key]
+        cells = list(summary.get("top_high_uncertainty_cells") or [])
+        cell_count = len(cells)
+        shared_support_magnitude_count = sum(
+            1 for cell in cells if cell.get("support_nodata_sensitivity_class") == "shared_support_magnitude"
+        )
+        support_nodata_sensitive_count = sum(
+            1 for cell in cells if cell.get("support_nodata_sensitivity_class") == "support_nodata_sensitive"
+        )
+        source_zone_overlap_count = sum(1 for cell in cells if bool(cell.get("inside_source_zone_polygon")))
+        source_zone_outside_count = cell_count - source_zone_overlap_count
+        distances = [
+            float(cell.get("distance_to_source_zone_m"))
+            for cell in cells
+            if cell.get("distance_to_source_zone_m") is not None
+        ]
+        trajectory_lineage_unknown_count = cell_count
+        layer_entries.append(
+            {
+                "layer_key": layer_key,
+                "hotspot_cell_count": cell_count,
+                "shared_support_magnitude_hotspot_count": shared_support_magnitude_count,
+                "shared_support_magnitude_hotspot_fraction": shared_support_magnitude_count / cell_count if cell_count else 0.0,
+                "support_nodata_sensitive_hotspot_count": support_nodata_sensitive_count,
+                "support_nodata_sensitive_hotspot_fraction": support_nodata_sensitive_count / cell_count if cell_count else 0.0,
+                "source_zone_overlap_hotspot_count": source_zone_overlap_count,
+                "source_zone_overlap_hotspot_fraction": source_zone_overlap_count / cell_count if cell_count else 0.0,
+                "source_zone_outside_hotspot_count": source_zone_outside_count,
+                "source_zone_outside_hotspot_fraction": source_zone_outside_count / cell_count if cell_count else 0.0,
+                "trajectory_lineage_unknown_hotspot_count": trajectory_lineage_unknown_count,
+                "trajectory_lineage_unknown_hotspot_fraction": trajectory_lineage_unknown_count / cell_count if cell_count else 0.0,
+                "minimum_source_zone_distance_m": min(distances) if distances else None,
+                "maximum_source_zone_distance_m": max(distances) if distances else None,
+                "source_zone_id": source_zone_summary.get("source_zone_id"),
+                "release_sampling_mode": (source_zone_summary.get("release_sampling_policy") or {}).get("mode"),
+                "release_cell_id_prefix": (source_zone_summary.get("release_sampling_policy") or {}).get("release_cell_id_prefix"),
+                "scenario_ids": list(scenario_summary.get("scenario_ids", [])),
+                "block_scenario_ids": [
+                    row.get("block_scenario_id")
+                    for row in scenario_summary.get("rows", [])
+                    if isinstance(row, dict) and row.get("block_scenario_id")
+                ],
+                "scenario_row_count": scenario_summary.get("row_count", 0),
+                "release_scenario_identifier_coverage_fraction": 1.0 if source_zone_summary.get("source_zone_id") and scenario_summary.get("row_count", 0) else 0.0,
+                "unknown_attribution_fraction": trajectory_lineage_unknown_count / cell_count if cell_count else 0.0,
+                "attribution_class": "source_zone_and_scenario_committed_cell_lineage_unknown",
+            }
+        )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "summary_status": "measured_existing_artifacts",
+        "layer_summaries": layer_entries,
+        "blocked_reason": "",
+    }
+
+
 def summarize_hotspot_cell(cell: dict[str, Any], polygon: list[tuple[float, float]]) -> dict[str, Any]:
     x_center = float(cell.get("x_center") or 0.0)
     y_center = float(cell.get("y_center") or 0.0)
@@ -413,6 +483,9 @@ def summarize_hotspot_cell(cell: dict[str, Any], polygon: list[tuple[float, floa
     values_by_artifact = dict(cell.get("values_by_artifact") or {})
     support_flags_by_artifact = dict(cell.get("support_flags_by_artifact") or {})
     valid_flags_by_artifact = dict(cell.get("valid_flags_by_artifact") or {})
+    valid_values = [bool(value) for value in valid_flags_by_artifact.values()]
+    support_values = [bool(value) for value in support_flags_by_artifact.values()]
+    support_nodata_sensitive = (not all(valid_values)) or (all(valid_values) and len(set(support_values)) > 1)
     return {
         "row": int(cell.get("row") or 0),
         "col": int(cell.get("col") or 0),
@@ -425,6 +498,7 @@ def summarize_hotspot_cell(cell: dict[str, Any], polygon: list[tuple[float, floa
         "source_zone_relation_class": relation["source_zone_relation_class"],
         "distance_to_source_zone_m": relation["distance_to_source_zone_m"],
         "inside_source_zone_polygon": relation["inside_source_zone_polygon"],
+        "support_nodata_sensitivity_class": "support_nodata_sensitive" if support_nodata_sensitive else "shared_support_magnitude",
     }
 
 
@@ -716,6 +790,12 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "trajectory_deposition_evidence": {},
         "artifact_roots": [],
         "layer_provenance_summaries": {},
+        "hotspot_attribution_summary": {
+            "schema_version": SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "blocked_reason": reason,
+        },
         "attribution_limits": {
             "can_attribute": [],
             "cannot_attribute": [],
@@ -771,6 +851,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     )
     for layer_key in report.get("selected_layers", []):
         summary = report["layer_provenance_summaries"][layer_key]
+        attribution = report.get("hotspot_attribution_summary", {}).get("layer_summaries", [])
+        attribution_summary = next((item for item in attribution if item.get("layer_key") == layer_key), {})
         lines.append(
             f"- {layer_key}: {summary['hotspot_provenance_class']} | "
             f"cells={summary['hotspot_cell_count']} | "
@@ -783,6 +865,24 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"outside_source_zone={summary['hotspot_support_summary']['all_hotspots_outside_source_zone_polygon']} | "
             f"min_distance_m={summary['hotspot_support_summary']['minimum_source_zone_distance_m']}"
         )
+        if attribution_summary:
+            lines.append(
+                "  attribution counts="
+                f"shared_support={attribution_summary.get('shared_support_magnitude_hotspot_count', 0)}/"
+                f"{attribution_summary.get('hotspot_cell_count', 0)}, "
+                f"support_nodata={attribution_summary.get('support_nodata_sensitive_hotspot_count', 0)}/"
+                f"{attribution_summary.get('hotspot_cell_count', 0)}, "
+                f"source_zone_outside={attribution_summary.get('source_zone_outside_hotspot_count', 0)}/"
+                f"{attribution_summary.get('hotspot_cell_count', 0)}, "
+                f"unknown_lineage={attribution_summary.get('trajectory_lineage_unknown_hotspot_count', 0)}/"
+                f"{attribution_summary.get('hotspot_cell_count', 0)}"
+            )
+            lines.append(
+                "  attribution distances="
+                f"min_m={attribution_summary.get('minimum_source_zone_distance_m')} | "
+                f"max_m={attribution_summary.get('maximum_source_zone_distance_m')} | "
+                f"scenario_ids={', '.join(attribution_summary.get('scenario_ids', []))}"
+            )
     lines.append("attribution_limits:")
     for item in report.get("attribution_limits", {}).get("can_attribute", []):
         lines.append(f"  can: {item}")
