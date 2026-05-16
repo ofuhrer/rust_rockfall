@@ -143,6 +143,32 @@ The helper does not change the interpretation. It only makes the measured
 delta between accepted-diagnostic requirements, deferred status, and no-go
 status visible in one reportable artifact.
 
+## Hotspot Provenance
+
+The read-only hotspot provenance helper is
+`scripts/summarize_tschamut_hotspot_provenance.py`. It combines the selected
+high-uncertainty cells with the committed source-zone metadata, the single
+scenario-table row, the run-level trajectory/deposition outputs, and the
+artifact roots that generated the measured hotspot layers.
+
+The current interpretation is intentionally narrow:
+
+- the hotspot cells can be located spatially and compared against the source
+  polygon, but they are not directly attributable to a specific trajectory_id;
+- the committed scenario table contains a single row, so the current artifacts
+  do not separate hotspot behavior into multiple scenario families;
+- run-level trajectory and deposition evidence is present, but there is no
+  committed cell-level lineage table that maps a hotspot cell to a particular
+  member file;
+- the report can identify which artifacts support the hotspot claim, but it
+  does not justify operational, annual-frequency, physical-probability, or
+  risk interpretations.
+
+The helper therefore keeps the attribution boundary explicit: source-zone
+identity, scenario identity, run-level trajectory/deposition support, and
+artifact-root provenance are visible; cell-to-trajectory causality and any
+new ensemble conclusions remain unknown.
+
 ## Frozen Inputs
 
 The selected gate freezes the share-safe upstream inputs that are available in

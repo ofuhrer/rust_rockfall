@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-060: Trace Uncertainty Hotspots To Source And Scenario Evidence
-
-Goal: the dominant hotspots are known spatially, but the repo does not yet explain whether the high-uncertainty cells align with particular source-zone, release, scenario, or trajectory families. Reduces: scientific interpretability and pilot closure realism.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `data/processed/swisstopo/tschamut_public_pilot/input/`
-- `validation/private/tschamut_public_pilot/*`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- read-only hotspot provenance report mapping selected high-uncertainty cells to available source-zone metadata, scenario rows, trajectory/deposition evidence, and artifact roots;
-- explicit classification of what can and cannot be attributed from current artifacts;
-- prioritized unknowns for any later bounded ensemble.
-
-Definition of done:
-
-- helper emits JSON/text with per-layer hotspot provenance classes;
-- tests use small fixtures and do not require ignored full artifacts;
-- docs record the interpretation limits.
-
-Boundaries: no new simulation, no source-zone tuning, no physical-probability
-claim, no operational interpretation.
-
 ### TB-061: Define A Bounded Next-Ensemble Feasibility Probe
 
 Goal: closure remains inconclusive, but any additional ensemble should be justified by expected information gain and bounded output cost. Reduces: uncertainty characterization and scalable execution planning.
