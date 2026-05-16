@@ -161,3 +161,82 @@ This blocked report does not claim measured Balfrin execution, operational
 readiness, annual frequency, physical probability, risk, exposure,
 vulnerability, or distributed execution. It only records the exact
 orchestration failure class for the current checkout and environment.
+
+## TB-117 attempt
+
+Status: blocked execution report, not measured Balfrin evidence.
+
+This addendum records the TB-117 attempt to execute and collect the canonical
+Balfrin single-release-zone demo. The contract summary and dry-run planner
+remained available, but the canonical submit path could not start a scheduler
+job on this node, so no measured run root was produced.
+
+### Attempted commands
+
+```bash
+PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py \
+  validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml \
+  --format json
+```
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml \
+  --run-root /private/tmp/balfrin_tb117_probe_gate \
+  --run-id tschamut_public_balfrin_single_release_zone_v1 \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16 \
+  --generate-only
+```
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml \
+  --run-root /private/tmp/balfrin_tb117_probe_gate \
+  --run-id tschamut_public_balfrin_single_release_zone_v1 \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16 \
+  --submit
+```
+
+```bash
+PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py \
+  --run-root /private/tmp/balfrin_tb117_probe_gate \
+  --output-json /tmp/balfrin_tb117_probe_gate_metrics.json
+```
+
+### Exact failure class
+
+- Failure class: `scheduler_submission_failed`
+- Blocking message: `sbatch` is not installed or exposed on this node, so
+  `submit_balfrin_probe.py --submit` returns a structured scheduler report
+- Effect: the run root remains scratch-only and the metrics collector reports
+  `blocked_missing_inputs` because no live outputs exist
+
+### Execution outcome
+
+- Readiness status: `ready_for_balfrin_target_gate`
+- Submission status: `scheduler_submission_failed`
+- Submission report path:
+  `/private/tmp/balfrin_tb117_probe_gate/balfrin_submission_report.json`
+- Metrics status: `blocked_missing_inputs`
+- Run root: not measured
+- Balfrin job execution: not started
+
+### Boundary note
+
+This blocked report does not claim operational readiness, scale-up, annual
+frequency, physical probability, risk, exposure, vulnerability, or
+distributed execution. It records the scheduler-access failure class only and
+keeps the demo boundary non-operational.
+
+### Next action
+
+TB-129 should restore or expose scheduler access for the canonical Balfrin
+demo submission path before dependent synthesis work resumes.

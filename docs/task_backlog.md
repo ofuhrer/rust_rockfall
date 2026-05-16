@@ -467,6 +467,40 @@ Definition of done:
 
 Boundaries: Do not introduce calibration, fitting, return periods, risk,
 exposure, vulnerability, or physical-probability claims.
+
+### TB-129: Restore Balfrin Scheduler Access For Demo Submission
+
+Goal: Expose or restore `sbatch` on the node used for the canonical Balfrin
+demo so the single-release-zone submission helper can reach the scheduler.
+
+Capability gap reduced: Missing scheduler access for the canonical Balfrin
+demo submission path.
+
+Why this outranks alternatives: TB-117 now has a precise operational block,
+and no later synthesis task can produce measured Balfrin evidence until the
+submission path can actually start a job.
+
+Inspect first:
+
+- `docs/balfrin_failure_recovery_playbook.md`
+- `docs/balfrin_tschamut_pilot_runbook.md`
+- `scripts/submit_balfrin_probe.py`
+
+Deliverables:
+
+- A concise scheduler-access or recovery report showing whether `sbatch` is
+  available for the canonical Balfrin demo path, or the concrete operator step
+  that restores it.
+- A retryable submission note that preserves the same run root and run id once
+  scheduler access is available again.
+
+Definition of done:
+
+- The canonical Balfrin demo submission can reach a scheduler-enabled node, or
+  the external unblock is documented clearly enough for the next execution pass.
+
+Boundaries: Do not expand the ensemble, simulation model, or claim boundaries.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

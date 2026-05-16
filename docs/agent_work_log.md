@@ -1787,3 +1787,31 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   distributed execution, annual frequency, physical probability, risk,
   exposure, or vulnerability.
 - Next task: `TB-117`
+
+### TB-117 blocked report: Execute And Collect Balfrin Single-Release-Zone Demo
+
+- Date: 2026-05-17
+- Commit: `c0bfe612d5593eb22497994f5aa9670fc073e78e`
+- Objective: run the canonical Balfrin single-release-zone demo end-to-end or
+  classify the exact blocked execution state with measurable evidence.
+- Files changed: `docs/balfrin_single_release_zone_execution_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified the frozen Balfrin contract and the read-only dry-run planner, then
+    attempted the canonical submit path against the scheduler-enabled manifest
+    flow.
+  - Recorded the exact operational failure class when `sbatch` was not exposed
+    on this node: `scheduler_submission_failed`.
+  - Collected the metrics summary from the generated scratch root so the report
+    stays machine-readable without pretending a live run executed.
+  - Added a blocked-execution addendum to the historical Balfrin execution
+    report and left a minimal scheduler-access unblock task in the backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /private/tmp/balfrin_tb117_probe_gate --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --submit --run-root /private/tmp/balfrin_tb117_probe_gate --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /private/tmp/balfrin_tb117_probe_gate --output-json /tmp/balfrin_tb117_probe_gate_metrics.json`
+- Result/status: implemented_blocked_report
+- Boundaries: no measured Balfrin run root was produced, no scheduler job
+  started, and no operational, annual-frequency, physical-probability, risk,
+  exposure, vulnerability, or distributed-execution claim was introduced.
+- Next task: `TB-129`
