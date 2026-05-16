@@ -11,14 +11,18 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
 primarily swisstopo. The current execution focus is the Balfrin
-single-release-zone pilot track. That track now has a frozen pilot contract, a
-deterministic large-case dry-run plan, a generate-only SLURM submission package,
-a metrics-collection contract, a conditional gridpoint-curve product contract,
-a post-run interpretation gate, and a conservative Swiss-wide runtime/storage
-envelope helper. These are execution scaffolds and interpretation gates, not a
-completed measured Balfrin pilot. The remaining near-term gap is the measured
-Balfrin execution itself and the post-run evidence bundle needed to decide
-whether that run is a usable conditional diagnostic artifact.
+single-release-zone pilot track. That track now has a minimal demonstration
+contract, a deterministic large-case dry-run plan, a generate-only SLURM
+submission package, a metrics-collection contract, a conditional
+gridpoint-curve product contract, a post-run interpretation gate, a canonical
+evidence-bundle helper, fixture-backed restartability and output-tier reports,
+a failure taxonomy/playbook, a runtime/scaling frontier helper, and a
+second-site acquisition defer decision. These are execution scaffolds,
+fixture-backed demonstrations, blocked-state reports, and interpretation
+gates. They are not a completed measured Balfrin pilot. The largest near-term
+gap remains the actual Balfrin single-release-zone execution, followed by the
+post-run evidence bundle needed to decide whether that run is a usable
+conditional diagnostic artifact.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -84,8 +88,8 @@ objective are:
    provenance now ties disagreement back to source/scenario/support evidence
    without changing the closure outcome. The closure matrix still treats both
    dominant layers as closure-limiting.
-3. Output volume is measured and now has a canonical native rebuildable reduced
-   execution mode. Target validation output remains the dominant measured
+3. Output volume is measured for the same-scale Tschamut set and now has a
+   canonical native rebuildable reduced execution mode. Target validation output remains the dominant measured
    pressure at
    `2716` files / `764598283` bytes and `272.573375917` seconds in the
    same-scale set. Target-side `summary_only` output reduced substantially but
@@ -95,11 +99,14 @@ objective are:
    same-scale and Balfrin planning paths. The legacy derivation helper remains
    available only as a compatibility and proof fallback. The current execution
    scaffolding assumes native reduced output for the next Balfrin pilot;
-   `scripts/summarize_balfrin_output_tier_audit.py` now records the measured
-   reduced-output family counts, output bytes, restartability metadata, and
-   conditional curve counts from an actual Balfrin run, and the measured tier
-   is classified as sufficient for the current demo boundary without changing
-   the no-scale-up boundary.
+   `scripts/summarize_balfrin_output_tier_audit.py` can classify a collected
+   Balfrin run root, and its current regression evidence uses the synthetic
+   `tests/fixtures/balfrin_probe_metrics_contract/complete_run_root` fixture.
+   That fixture-backed audit reports `audit_status=measured`,
+   `rebuildability_status=sufficient`, `571377719` validation bytes,
+   `16613900` hazard-output bytes, `2005` validation files, `46` hazard-output
+   files, and `729600` conditional-curve rows. This proves the audit contract
+   and expected reduced-output shape, but it is not a live Balfrin measurement.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
@@ -123,18 +130,19 @@ objective are:
    readiness from `deferred_public_context_inputs`. No second-site ensemble or
    hazard build is authorized, and the synthetic inputs must not be represented
    as real swisstopo evidence.
-7. Scaling direction is measured for the current same-scale set. The
-   single-job Balfrin path remains sufficient for the next single-release-zone
-   pilot, distributed execution stays deferred, and the dominant bottleneck is
-   validation output size rather than hazard-reducer parallelism. The Balfrin
+7. Scaling direction is measured for the current same-scale set, but the
+   Balfrin pilot track is still pre-execution. The single-job Balfrin path is
+   the intended near-term execution boundary; distributed execution stays
+   deferred, and prior same-scale evidence says validation output size is the
+   dominant pressure rather than hazard-reducer parallelism. The Balfrin
    submission package can be generated without submitting a job, and the
    metrics contract defines the wall-time, memory, output-volume,
    reduced-family, conditional-curve, and restartability evidence required
-   after execution. The read-only Swiss-wide envelope helper projects runtime,
-   storage, file-count, and job-count bands from measured coefficients; for a
-   26-AOI Swiss-wide planning case it reports
-   `no_go_extrapolated_beyond_measured_evidence` and keeps
-   `scale_up_authorized=false`.
+   after execution. The post-run gate currently reports
+   `blocked_missing_inputs` when no post-run evidence bundle is supplied. The
+   Swiss-wide envelope helper has a blocked-report path for missing measured
+   Balfrin evidence and a conservative no-go path for extrapolated planning
+   cases; it does not authorize Swiss-wide execution.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
@@ -144,10 +152,11 @@ objective are:
    package-level export path without changing the committed roots. The
    conditional gridpoint curve product is now auditable from the hazard
    manifest and documentation: per-cell threshold semantics, denominator
-   semantics, and non-annual/non-physical flags are explicit. The remaining GIS
-   workflow gap is export-scope parity: the proof path is ready, but workers
-   still need an explicit full-layer-scope COG command or a machine-readable
-   scope-delta classification when thresholds are intentionally omitted.
+   semantics, and non-annual/non-physical flags are explicit. The current
+   converted package audits as `cog_package_ready_with_scope_delta` when the
+   ignored `gate_v1_cog_export` root is supplied. That is useful demonstration
+   evidence, but it is still scope-limited relative to the standard same-scale
+   package roots.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
@@ -185,7 +194,28 @@ objective are:
     summary files without claiming real evidence. Benchmark-intake readiness is
     now conceptually separate from calibration readiness, but actual benchmark
     data and objective-function evaluation remain absent.
-12. Backlog and worker-context hygiene have improved materially. The active
+12. Balfrin demonstration evidence is better organized, but not all TB-101
+    through TB-114 work represents completed execution. TB-101, TB-103, TB-105,
+    TB-107, TB-110, TB-112, and TB-113 strengthened contracts, runbooks,
+    report generators, claim checks, failure taxonomy, and scaling helpers.
+    TB-106 and TB-108 are fixture-backed demonstrations, not live Balfrin
+    interruption or output-tier measurements. TB-109 records GIS/COG parity
+    semantics but still exposes a converted-package scope delta. TB-111 can
+    compare Balfrin results to same-scale uncertainty only after measured
+    Balfrin results exist. TB-102 did not execute the Balfrin pilot: it
+    produced a blocked execution report because the Balfrin readiness helper
+    rejects
+    `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
+    with `pilot manifest validation failed: schema_version must be public_real_site_conditional_pilot_run_v1`.
+    That contract/readiness-schema
+    mismatch is now the clearest immediate blocker to a real Balfrin demo run.
+13. Second-site realism remains deliberately deferred. TB-114 added
+    `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
+    recorded a defer recommendation for real Chant Sura / Fluelapass public
+    context. The decision pack lists the required products, cache/output roots,
+    readiness impact, and reproduction commands, but no public context was
+    downloaded and no second-site ensemble or hazard build was run.
+14. Backlog and worker-context hygiene have improved materially. The active
     backlog is currently empty and `print_agent_task_context.py` reports
     `backlog_refill_needed=true` plus the Balfrin single-release-zone execution
     focus. The work log is chronological, archived history is separated, and
@@ -211,18 +241,21 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-100:
+Current high-value work after TB-114:
 
-- execute the Balfrin single-release-zone pilot from the frozen contract and
+- repair the contract/readiness-schema mismatch that blocked TB-102 so the
+  minimal Balfrin demonstration contract can pass the Balfrin readiness gate;
+- execute the Balfrin single-release-zone pilot from the corrected contract and
   generated submission package, then collect the required metrics bundle;
 - run the Balfrin post-run interpretation gate on measured evidence and update
   this snapshot with the measured state;
 - keep the pilot non-operational even if the post-run gate accepts a
   conditional diagnostic artifact;
-- use measured Balfrin evidence to decide whether the next task should be
-  stability/convergence follow-up, output-pressure mitigation, GIS/COG parity,
-  or another bounded execution probe;
-- stage real public context for Chant Sura / Fluelapass before any
-  second-site hazard execution;
+- convert fixture-backed Balfrin restartability and output-tier reports into
+  measured reports only after a real run root exists;
+- resolve or explicitly preserve the COG converted-package scope delta before
+  using the GIS package as demonstration evidence;
+- stage real public context for Chant Sura / Fluelapass before any second-site
+  hazard execution, or keep the documented defer decision active;
 - keep physical credibility work tied to independent observed
   runout/deposition evidence rather than adding more empty validators.

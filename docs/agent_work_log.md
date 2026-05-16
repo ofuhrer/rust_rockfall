@@ -1702,10 +1702,10 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Boundaries: the frontier stays read-only and conservative; it does not authorize Swiss-wide execution, distributed execution, or any operational hazard claim.
 - Next task: `TB-114`
 
-### TB-114 Prepare Second-Site Real-Context Acquisition Decision
+### TB-114: Prepare Second-Site Real-Context Acquisition Decision
 
 - Date: 2026-05-16
-- Commit: not recorded yet
+- Commit: `355e698`
 - Objective: decide whether the Chant Sura / Flüelapass public-context bundle should be staged next or explicitly deferred, and make the boundary explicit in a share-safe decision pack.
 - Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/decision_log.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary: added a dedicated decision pack that records the current defer recommendation, the required public-context products, the cache/output roots, the current blocked/deferred helper statuses, and exact commands to reproduce the boundary without downloading public context; linked that pack from the public real-site preparation and swisstopo strategy docs so the decision is easy to find; recorded the durable defer decision in the decision log; and removed TB-114 from the active backlog.
