@@ -521,7 +521,8 @@ ignored reduced root and exposes the scratch-only hazard-rebuild proof command
 without reclassifying `summary_only` as rebuildable.
 
 A concrete reduced-root proof now exists under
-`validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`
+the fixture-backed direct reduced case
+`tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
 with `validation_output_mode: rebuildable_reduced_output`. It keeps the
 builder-facing trajectory, deposition, impact-event, diagnostics, and
 trajectory-metadata families, omits the bulk ensemble directories, and

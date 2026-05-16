@@ -5803,7 +5803,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `tests/config_io_terrain.rs`,
   `scripts/generate_pilot_command_plan.py`,
   `tests/test_pilot_command_plan.py`,
-  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml`,
+  `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`,
   `docs/tschamut_public_bounded_validation_output_profile.md`,
   `docs/tschamut_public_conditional_pilot_gate_report.md`,
   `docs/task_backlog.md`,
@@ -5815,7 +5815,7 @@ Planning only; these milestones do not implement roadmap item content yet.
   `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_hazard_rebuild_reduced_profile tests.test_pilot_command_plan`
   `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`
   `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
-  `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
+  `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
 - Result: direct reduced validation now writes the builder-facing trajectory,
   deposition, impact-event, trajectory-metadata, and diagnostics families
   directly; `summary_only` remains non-rebuildable.

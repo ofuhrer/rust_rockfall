@@ -259,6 +259,7 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True) -> dict
     backlog_text = read_backlog()
     active_tasks = parse_active_tasks(backlog_text)
     task = next((candidate for candidate in active_tasks if candidate.task_id == task_id), None) if task_id else None
+    backlog_refill_needed = not active_tasks
 
     status = "ready"
     if task_id and task is None:
@@ -273,6 +274,8 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True) -> dict
         "requested_task_id": task_id,
         "selected_task": task.summary if task else None,
         "active_tasks": [candidate.summary for candidate in active_tasks],
+        "backlog_refill_needed": backlog_refill_needed,
+        "backlog_note": "Backlog refill needed" if backlog_refill_needed else None,
         "canonical_helpers": CANONICAL_HELPERS,
         "known_environment_issues": KNOWN_ENVIRONMENT_ISSUES,
         "generated_roots_to_avoid": GENERATED_ROOTS_TO_AVOID,
@@ -352,6 +355,8 @@ def render_text(report: dict[str, Any]) -> str:
     lines.append("active_tasks:")
     for task in report["active_tasks"]:
         lines.append(f"- {task['task_id']}: {task['title']}")
+    if report.get("backlog_note"):
+        lines.append(f"backlog_note: {report['backlog_note']}")
     lines.append("recommended_first_commands:")
     lines.extend(f"- {command}" for command in report["recommended_first_commands"])
     lines.append("canonical_helpers:")

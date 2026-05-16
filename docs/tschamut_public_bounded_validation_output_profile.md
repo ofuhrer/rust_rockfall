@@ -205,7 +205,7 @@ the reduced-output workflow reproducible without implying that
 Native reduced validation case:
 
 - case path:
-  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
+  `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
 - validation output mode:
   `rebuildable_reduced_output`
 - builder-facing output families:

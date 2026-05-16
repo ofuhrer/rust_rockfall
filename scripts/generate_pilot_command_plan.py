@@ -40,7 +40,7 @@ CASE_GENERATION = _load_module("pilot_command_plan_case_generation", "generate_t
 CONTRACT = _load_module("pilot_command_plan_contract_audit", "audit_multisite_source_scenario_contract.py")
 OUTPUT_PROFILE = _load_module("pilot_command_plan_output_profile", "check_hazard_rebuild_output_profile.py")
 REDUCED_PROFILE = _load_module("pilot_command_plan_reduced_profile", "derive_hazard_rebuild_reduced_profile.py")
-REDUCED_VALIDATION_CASE = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+REDUCED_VALIDATION_CASE = ROOT / "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
 
 
 def main(argv: list[str] | None = None) -> int:
