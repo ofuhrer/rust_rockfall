@@ -1638,3 +1638,22 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the audit only rejects overclaiming and false boundary flags; it does not change any scientific boundary, authorize operational use, or introduce new claim classes.
 - Next task: `TB-111`
+
+### TB-111: Compare Balfrin Results Against Same-Scale Uncertainty
+
+- Date: 2026-05-16
+- Commit: `3efed2a`
+- Objective: Compare the measured Balfrin evidence against same-scale uncertainty, stability frontier, closure-gap deltas, and hotspot provenance without changing scientific boundaries.
+- Files changed: `scripts/summarize_balfrin_scientific_delta_report.py`, `tests/test_balfrin_scientific_delta_report.py`, `docs/balfrin_minimal_demo_vs_closure.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only Balfrin scientific delta helper that composes the post-run gate with same-scale uncertainty, stability frontier, closure-gap, and hotspot provenance evidence.
+  - The report now classifies measured, inconclusive, and blocked evidence states, and its JSON/text output keeps operational, probabilistic, annual-frequency, risk, exposure, vulnerability, scale-up, and distributed-execution boundaries false.
+  - Added focused tests for measured, inconclusive, and missing-input override states plus a CLI JSON/text smoke path.
+  - Removed TB-111 from the active backlog and added a doc reference to the new helper.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scientific_delta_report.py tests/test_balfrin_scientific_delta_report.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scientific_delta_report tests.test_balfrin_post_run_interpretation_gate tests.test_same_scale_stability_frontier tests.test_tschamut_closure_gap_deltas tests.test_spatial_same_scale_uncertainty tests.test_tschamut_hotspot_provenance`
+  - `git diff --check`
+- Result/status: completed.
+- Boundaries: the delta report compares evidence only; it does not reclassify Tschamut closure, tune physics, or claim physical validation.
+- Next task: `TB-112`
