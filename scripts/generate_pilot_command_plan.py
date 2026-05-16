@@ -821,6 +821,32 @@ def build_second_site_plan(
         command_entry(
             site="chant_sura_fluelapass",
             group="readiness_checks",
+            command_id="second_site_aoi_acquisition_dry_run_planner",
+            description="Plan the swisstopo acquisition contract from the candidate AOI before any real staging.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "plan_swisstopo_aoi_acquisition.py"),
+                    "--site-config",
+                    rel(site_config),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            ],
+            expected_outputs=["JSON AOI-to-swisstopo acquisition dry-run plan"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
+            group="readiness_checks",
             command_id="second_site_acquisition_manifest_review",
             description="Review the committed Chant Sura / Flüelapass public-geodata acquisition manifest and staging contract.",
             command=command_string(

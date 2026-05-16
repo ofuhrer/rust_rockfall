@@ -190,9 +190,12 @@ conditional diagnostic workflow.
 
 1. Select one small Alpine slope or valley domain with a clearly bounded source
    zone and runout corridor.
-2. Copy the public real-site preparation manifest template to an ignored pilot
-   directory and fill in the domain, source-tile inventory, local paths, and
-   preprocessing plan before any simulation work.
+2. Before any staging, run the AOI-to-swisstopo dry-run planner against the
+   candidate site config to list required public products, expected staging
+   paths, and unresolved acquisition decisions, then copy the public real-site
+   preparation manifest template to an ignored pilot directory and fill in the
+   domain, source-tile inventory, local paths, and preprocessing plan before
+   any simulation work.
 3. Obtain the required swissALTI3D 2 m tiles manually or through a documented
    swisstopo download process. Use 0.5 m only when the pilot question requires
    it and storage is acceptable.

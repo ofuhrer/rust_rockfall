@@ -223,6 +223,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             ],
         )
         self.assertIn("second_site_case_skeleton_dry_run", report["command_ids"])
+        self.assertIn("second_site_aoi_acquisition_dry_run_planner", report["command_ids"])
         self.assertIn("second_site_acquisition_manifest_review", report["command_ids"])
         self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
         self.assertIn("hazard/results/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
@@ -238,6 +239,16 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertTrue(report["blocked_second_site_commands"])
         self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
+        planner_command = next(
+            command for command in report["commands"] if command["id"] == "second_site_aoi_acquisition_dry_run_planner"
+        )
+        self.assertFalse(planner_command["blocked_reason"])
+        self.assertTrue(planner_command["read_only"])
+        self.assertIn("plan_swisstopo_aoi_acquisition.py", planner_command["command"])
+        self.assertIn(
+            "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            planner_command["expected_inputs"],
+        )
         dry_run_command = next(command for command in report["commands"] if command["id"] == "second_site_case_skeleton_dry_run")
         self.assertFalse(dry_run_command["blocked_reason"])
         self.assertFalse(dry_run_command["read_only"])

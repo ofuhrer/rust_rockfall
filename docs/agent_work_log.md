@@ -895,3 +895,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no second-site ensemble, hazard build, downloads, portability claim, or physical-evidence claim was introduced.
 - Next task: `TB-063`
+
+### TB-063: Add AOI-To-Swisstopo Acquisition Dry-Run Planner
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: add a deterministic AOI-to-swisstopo dry-run planner that enumerates required public geodata products, expected staging paths, and unresolved acquisition decisions before any real second-site staging.
+- Files changed: scripts/plan_swisstopo_aoi_acquisition.py, scripts/generate_pilot_command_plan.py, tests/test_swisstopo_aoi_acquisition_planner.py, tests/test_pilot_command_plan.py, docs/public_real_site_geodata_preparation.md, docs/swisstopo_data_strategy.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a read-only planner that reuses the second-site manifest contract, reports product and metadata staging paths separately, keeps the current deferred public-context boundary explicit, and surfaces the planner as the first step in the portable command plan and workflow docs.
+- Checks run: focused unittest suite for the new planner plus second-site command-plan and preflight/skeleton coverage; `PYENV_VERSION=system uv run python -m py_compile scripts/plan_swisstopo_aoi_acquisition.py scripts/generate_pilot_command_plan.py tests/test_swisstopo_aoi_acquisition_planner.py tests/test_pilot_command_plan.py`
+- Result/status: completed.
+- Boundaries: no downloads, no generated public-context artifacts, no claim that products are locally staged unless files exist, and no operational/scale-up/annual-frequency/risk/exposure/vulnerability/physical-probability claim was introduced.
+- Next task: `TB-064`

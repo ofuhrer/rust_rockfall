@@ -18,31 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-063: Add AOI-To-Swisstopo Acquisition Dry-Run Planner
-
-Goal: the desired future user workflow begins with a geographic region, but the repo still lacks a dry-run step that maps an AOI to required public geodata products and expected staging paths. Reduces: Swiss-wide public-geodata portability and user workflow automation.
-
-Inspect first:
-
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- Chant Sura acquisition manifest under `tests/fixtures/second_site_public_geodata_preflight/`
-
-Deliverables:
-
-- helper accepting a small AOI/site config and emitting required swisstopo product categories, expected staging paths, and unresolved acquisition decisions;
-- Chant Sura fixture coverage showing the planner matches the current deferred context boundary;
-- no downloads or generated public-context artifacts.
-
-Definition of done:
-
-- JSON/text output is deterministic and fixture-backed;
-- preflight or command-plan docs point to the dry-run planner as the first step before real staging.
-
-Boundaries: no network fetches, no tile downloading, no claim that products
-are locally staged unless files exist.
-
 ### TB-064: Verify COG Export Layer Parity And Audit Semantics
 
 Goal: `--export-cog` is proven, but reviews noted possible confusion between standard roots with 22 layers and exported COG roots with a different declared raster count. Reduces: GIS/output usability.

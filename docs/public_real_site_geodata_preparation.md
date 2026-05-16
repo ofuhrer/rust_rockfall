@@ -223,6 +223,13 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The AOI-to-swisstopo dry-run planner,
+`scripts/plan_swisstopo_aoi_acquisition.py`, is the first step before any real
+staging. It reads the small AOI/site config and emits the required public
+swisstopo product categories, expected staging paths, and unresolved
+acquisition decisions so the future staging choice stays explicit before
+downloads or copies are attempted.
+
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
 Chant Sura / Flüelapass public-context acquisition separate from physical
