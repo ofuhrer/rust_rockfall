@@ -66,6 +66,45 @@ COG proof paths are command-plan-addressable, but neither changes the current
 `inconclusive` diagnostic status or the `false` scale-up / operational
 boundaries.
 
+## Closure-Gap Deltas
+
+The measured closure-gap helper is
+`scripts/summarize_tschamut_closure_gap_deltas.py`. It turns the canonical
+diagnostic evidence into a compact delta report so the current pilot can be
+read as "measured gaps remain" rather than as a vague status repeat.
+
+Current gap reading:
+
+- closure gap status: `measured_gaps_remain`
+- current closure status: `inconclusive`
+- current interpretation status: `inconclusive_conditional_diagnostic`
+- closure-limiting layers:
+  - `max_kinetic_energy`
+  - `max_jump_height`
+- deferrable layer:
+  - `velocity_exceedance_5mps`
+
+The deltas stay conservative:
+
+- `max_kinetic_energy` remains closure-limiting even though its selected
+  high-uncertainty cells are shared-support magnitude dominated; the broader
+  layer still carries material support/nodata disagreement.
+- `max_jump_height` remains closure-limiting because support/nodata
+  sensitivity is still material, even though the selected cells are more
+  mixed than kinetic energy.
+- `velocity_exceedance_5mps` remains deferrable and provides the measured
+  contrast that keeps the current evidence closer to deferred than to no-go.
+
+Workflow/product blockers are still explicit:
+
+- `summary_only_not_rebuildable`
+- `standard_gis_roots_cog_blocked`
+- `public_context_inputs_deferred`
+
+The helper does not change the interpretation. It only makes the measured
+delta between accepted-diagnostic requirements, deferred status, and no-go
+status visible in one reportable artifact.
+
 ## Frozen Inputs
 
 The selected gate freezes the share-safe upstream inputs that are available in

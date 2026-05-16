@@ -31,6 +31,48 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-053 Closure Gap Deltas
+
+- Milestone id: TB-053.
+- Roadmap item: Quantify closure-gap deltas from spatial uncertainty masks.
+- Hypothesis/objective: The measured spatial decomposition can be translated
+  into a concise delta report that shows why the pilot remains
+  `inconclusive_conditional_diagnostic` and why the current evidence is closer
+  to deferred than to no-go.
+- Files intended to change: `scripts/summarize_tschamut_closure_gap_deltas.py`,
+  `tests/test_tschamut_closure_gap_deltas.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/tschamut_public_same_scale_uncertainty_envelope.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a read-only closure-gap delta helper that
+  composes the canonical diagnostic interpretation with the measured
+  spatial decomposition. The report now lists closure-limiting and
+  deferrable layers, compares kinetic energy and jump height against the
+  deferrable velocity layer, and keeps the current evidence conservative:
+  `closure_gap_status=measured_gaps_remain`, `closure_status=inconclusive`,
+  and `interpretation_status=inconclusive_conditional_diagnostic`.
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_tschamut_closure_gap_deltas.py scripts/summarize_tschamut_conditional_pilot_closure.py scripts/summarize_tschamut_conditional_diagnostic_interpretation.py scripts/summarize_spatial_same_scale_uncertainty.py tests/test_tschamut_closure_gap_deltas.py tests/test_tschamut_conditional_pilot_closure.py tests/test_tschamut_conditional_diagnostic_interpretation.py tests/test_spatial_same_scale_uncertainty.py`
+  passed.
+  `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas tests.test_tschamut_conditional_pilot_closure tests.test_tschamut_conditional_diagnostic_interpretation tests.test_spatial_same_scale_uncertainty`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format text`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_diagnostic_interpretation.py --format json`
+  passed.
+  `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`
+  passed.
+- Reviewer notes: The helper is descriptive only. It introduces no new
+  acceptance criteria, no ensemble, no physics changes, and no operational
+  or scale-up claims.
+- Decision: completed.
+- Next proposed milestone: TB-054.
+
 ### TB-052 Support And Nodata Uncertainty Decomposition
 
 - Milestone id: TB-052.

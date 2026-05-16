@@ -72,6 +72,13 @@ small same-scale corridor, while `max_jump_height` remains the layer most
 affected by nodata/support differences. This does not change the existing
 `inconclusive` convergence interpretation.
 
+For the decision delta between the closure-limiting layers and the deferrable
+velocity layer, see
+`scripts/summarize_tschamut_closure_gap_deltas.py`. That helper reuses the
+same measured spatial evidence to show which fields keep the pilot
+inconclusive, which ones are deferrable, and why the current evidence is
+closer to deferred than to no-go.
+
 The conditional closure helper now reads this spatial concentration directly,
 so the same evidence can be treated as closure-limiting, deferrable, or
 unresolved rather than only as a scalar envelope.

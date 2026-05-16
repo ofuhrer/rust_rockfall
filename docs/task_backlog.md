@@ -186,15 +186,13 @@ Underrepresented high-value work:
 
 Current priority order:
 
-P0. TB-053 converts spatial uncertainty masks into closure-gap deltas so the
-    inconclusive pilot can move toward a precise defer/no-go/accepted decision.
-P1. TB-054 makes rebuildable reduced output a standard generation path because
+P0. TB-054 makes rebuildable reduced output a standard generation path because
     validation output size remains the measured scalability bottleneck.
-P2. TB-055 advances Chant Sura public-context realism without starting a
+P1. TB-055 advances Chant Sura public-context realism without starting a
     second-site ensemble.
-P3. TB-056 promotes COG export from package-copy proof to a reusable export
+P2. TB-056 promotes COG export from package-copy proof to a reusable export
     option for GIS-ready products.
-P4. TB-057 makes physical-credibility evidence requirements executable and
+P3. TB-057 makes physical-credibility evidence requirements executable and
     site-aware without adding calibration or operational claims.
 
 ## Backlog Protocol
@@ -235,47 +233,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-### TB-053: Quantify Closure-Gap Deltas From Spatial Uncertainty Masks
-
-Priority: P1.
-
-Why now: the pilot has closure criteria and a canonical interpretation report,
-but it still lacks a compact "what changed, and what would have to change"
-analysis that turns uncertainty masks into measurable closure-gap deltas.
-
-Capability gap reduced: pilot closure readiness and scientific
-interpretability.
-
-Why higher priority than alternatives: it gives the next scientific decision a
-measured target, while avoiding another status-only restatement of
-`inconclusive`.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Expected measurable outputs:
-
-- a read-only closure-gap helper or extension that reports the current
-  blocker values, the measured deltas between deferrable and closure-limiting
-  spatial layers, and explicit evidence still required for accepted
-  diagnostic, no-go, or deferred classification;
-- JSON/text output suitable for future worker prompts;
-- tests covering accepted/deferred/no-go gap summaries on small synthetic
-  evidence payloads.
-
-Definition of done:
-
-- the helper identifies which measured fields keep the current pilot
-  `inconclusive_conditional_diagnostic`;
-- it distinguishes scientific blockers from workflow/product blockers;
-- it introduces no new acceptance criteria, no new ensemble, no physics
-  changes, and no operational or scale-up claims.
 
 ### TB-054: Add A Standard Rebuildable Reduced Validation Output Mode
 
