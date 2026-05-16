@@ -1530,3 +1530,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the bundle remains read-only and preserves non-operational, non-probabilistic, non-scale-up, and distributed-execution boundaries; the live repo evidence currently resolves to an `incomplete` bundle rather than a stronger claim.
 - Next task: `TB-106`
+
+### TB-106: Demonstrate Balfrin Restartability Recovery
+
+- Date: 2026-05-16
+- Commit: `0095d4777ab2ffda5b4c11383b85018f429fbe89`
+- Objective: Provide a fixture-backed Balfrin restartability recovery report that classifies a controlled partial-state resume without corrupting outputs or altering numerical artifacts.
+- Files changed: `scripts/summarize_balfrin_restartability_recovery.py`, `tests/test_balfrin_restartability_recovery.py`, `tests/fixtures/balfrin_restartability_recovery/fixture_v1.json`, `docs/balfrin_restartability_recovery_report.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a read-only restartability recovery summarizer that classifies evidence as `measured`, `fixture_proven`, or `blocked_missing_inputs` and keeps explicit limits in the output.
+  - Added a controlled partial-state fixture covering resume commands, reused and executed chunks, numerical stability, and artifact hygiene, plus a matching markdown report for repository review.
+  - Added focused classification tests for fixture-backed, measured-override, blocked, and CLI artifact-writing paths.
+  - Removed TB-106 from the active backlog once the implementation was committed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest discover -s tests -p 'test_balfrin_*.py'`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: fixture-backed recovery evidence only; no live interruption, distributed execution, physics, sampling, or output-profile claims were introduced.
+- Next task: `TB-107`
