@@ -135,13 +135,22 @@ objective are:
     control; a site-level orchestrator that chains those steps; and, most
     importantly, physical frequency semantics from source occurrence rates,
     block-population frequencies, uncertainty propagation, and
-    validation/calibration evidence. Native rebuildable reduced output and
-    first-class COG export now exist, so the next useful automation work is to
-    harden clean-checkout tests, define the conditional gridpoint curve
-    contract, and add dry-run AOI/release-zone/release-plan gates. The near-term
-    achievable product remains an automated conditional diagnostic hazard-map
-    workflow; true intensity-frequency curves remain deferred until the
-    physical-probability layer exists.
+    validation/calibration evidence. Native rebuildable reduced output,
+    first-class COG export, the conditional gridpoint curve contract,
+    clean-checkout test hardening, AOI acquisition planning, release-zone
+    dry-run planning, and release-plan dry-run planning now exist. The next
+    useful automation work is to connect those pieces into a dry-run
+    AOI-to-prepared-pilot workflow, harden bounded next-ensemble feasibility,
+    and make second-site case skeletons inspectable without authorizing
+    execution. The near-term achievable product remains an automated
+    conditional diagnostic hazard-map workflow; true intensity-frequency curves
+    remain deferred until the physical-probability layer exists.
+11. Observed runout/deposition validation intake is now specified but not
+    populated. The contract records the required independent benchmark
+    manifest, geometry, provenance, and objective-function placeholders. The
+    remaining boundary work is to keep benchmark-intake readiness separate from
+    calibration readiness, then make the intake requirements executable as a
+    dry-run readiness pack for future real evidence.
 
 ## Backlog Quality Assessment
 
@@ -161,18 +170,23 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Underrepresented high-value work:
+Underrepresented high-value work after TB-080:
 
-- making both Python and Rust tests pass in clean checkouts so reproducibility
-  does not depend on ignored local Tschamut or Chant Sura artifacts;
+- hardening the bounded next-ensemble feasibility helper so it reports a
+  conservative planning status on reduced-output fixtures instead of assuming
+  full probabilistic case metadata;
+- separating observed benchmark intake readiness from calibration readiness,
+  then emitting a dry-run readiness pack for future independent
+  runout/deposition evidence;
 - proving full-scope COG export parity, or explicitly labelling bounded proof
   packages when their layer scope differs from the standard roots;
-- defining the conditional gridpoint intensity-exceedance curve contract that
-  current outputs can support while physical frequency remains blocked;
-- turning AOI, release-zone, and release-plan automation into dry-run helpers
-  that can execute before any public-data download or second-site ensemble;
-- moving Chant Sura / Flüelapass from synthetic core staging toward a
-  real-context readiness gate without pretending public context products have
-  been acquired;
-- converting the physical-credibility evidence map into concrete observed
-  runout/deposition intake requirements for future validation datasets.
+- tracing closure-limiting uncertainty hotspots to source/scenario/support
+  evidence and extracting persistent conditional-hazard confidence regions;
+- combining same-scale uncertainty, runtime, and output-size evidence into a
+  bounded ensemble-stability frontier before any additional probe is run;
+- defining a minimal Swiss public-geodata workflow contract and chaining the
+  existing AOI, real-context, release-zone, release-plan, and command-plan
+  helpers into one dry-run AOI-to-prepared-pilot report;
+- generating blocked second-site case skeletons that expose missing real public
+  context without allowing a synthetic fixture to masquerade as executable
+  evidence.
