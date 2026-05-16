@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-093: Emit Balfrin Submission Package For The Pilot
-
-Goal: Build a generate-only Balfrin submission package for the large single-release-zone pilot that includes the command plan, SLURM script, expected outputs, and collection instructions.
-
-Capability gap reduced: Reproducible HPC execution packaging.
-
-Why this outranks alternatives: Balfrin execution should be a reproducible artifact, not an ad hoc command pasted from local notes.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/validate_balfrin_tschamut_readiness_record.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`
-
-Deliverables:
-
-- A generate-only submission command or helper mode for the large single-zone pilot.
-- A validation report that records partition, time, CPU, scratch paths, repository commit, input checks, and generated/ignored output roots.
-- Tests for generated script content and no-submit behavior.
-
-Definition of done:
-
-- The submission package can be generated without contacting SLURM, focused tests pass, and TB-093 is removed from this backlog.
-
-Boundaries: Do not submit to Balfrin from the task, do not add distributed/MPI execution, and do not bypass readiness checks.
-
 ### TB-094: Capture Balfrin Pilot Metrics Contract
 
 Goal: Define and test the metrics collection contract for a completed Balfrin single-release-zone pilot run.

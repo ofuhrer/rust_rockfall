@@ -29,7 +29,8 @@ execution reproducible and metadata-friendly on Balfrin.
   - No files are written.
 
 - `--generate-only`
-  - Writes the command-plan JSON and SBATCH script into a deterministic run root.
+  - Writes the command-plan JSON, SBATCH script, submission package report, and
+    collection instructions into a deterministic run root.
   - Does not submit a job.
 
 - `--submit`
@@ -52,6 +53,8 @@ Generated run files:
 
 - `command_plan.json`
 - `probe.sbatch`
+- `balfrin_submission_package.json`
+- `balfrin_submission_package.md`
 - `balfrin_probe_full_time.txt`
 - `balfrin_hazard_stage_time.txt`
 - `balfrin_probe_summary.json`
@@ -276,3 +279,13 @@ python3 scripts/submit_balfrin_probe.py \
 python3 scripts/collect_balfrin_probe_metrics.py \
   --run-root /scratch/rust_rockfall/probes/tschamut_mid_scale_grid_probe_420x450_v1/abcd1234
 ```
+
+The generate-only package report also records:
+
+- the requested SLURM partition, wall-time, node, task, and CPU settings,
+- repository branch and commit,
+- readiness-check input status and blocking checks,
+- generated package roots under the run directory,
+- ignored Balfrin output roots from the resolved command plan,
+- expected package outputs,
+- collection commands for the metrics helper and `--collect` mode.

@@ -29,6 +29,8 @@ DEFAULT_SBATCH_TIME = "00:30:00"
 DEFAULT_NODES = 1
 DEFAULT_NTASKS = 1
 DEFAULT_CPUS_PER_TASK = 16
+PACKAGE_SCHEMA_VERSION = "balfrin_submission_package_v1"
+PACKAGE_BASENAME = "balfrin_submission_package"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -89,7 +91,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--generate-only",
         action="store_true",
-        help="Generate command plan and sbatch script, but do not submit.",
+        help="Generate the submission package artifacts and sbatch script, but do not submit.",
     )
     parser.add_argument(
         "--submit",
@@ -164,6 +166,19 @@ def _load_collect_script() -> Any:
     return module
 
 
+def _load_readiness_checker() -> Any:
+    checker_path = ROOT / "scripts" / "check_balfrin_tschamut_readiness.py"
+    spec = importlib.util.spec_from_file_location(
+        "check_balfrin_tschamut_readiness",
+        checker_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load readiness checker module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
 def _read_command_plan(probe_manifest: Path) -> tuple[dict[str, Any], str]:
     module = _load_plan_validator()
     manifest = module.read_yaml(probe_manifest)
@@ -190,6 +205,209 @@ def _timestamp_run_id() -> str:
 def _default_run_root(probe_id: str, run_id: str) -> Path:
     scratch_root = Path(os.environ.get("SCRATCH", "/scratch")).resolve()
     return scratch_root / "rust_rockfall" / "probes" / _safe_fragment(probe_id) / _safe_fragment(run_id)
+
+
+def _git_info(repo_root: Path) -> dict[str, str | None]:
+    info: dict[str, str | None] = {"branch": None, "commit": None}
+    try:
+        info["branch"] = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        info["commit"] = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return info
+    return info
+
+
+def _to_repo_path(value: str, *, repo_root: Path) -> Path:
+    path = Path(str(value).strip().replace("\\", "/"))
+    if path.is_absolute():
+        return path
+    return (repo_root / path).resolve()
+
+
+def _collect_output_roots(command_plan: dict[str, Any], *, repo_root: Path) -> list[str]:
+    commands = command_plan.get("commands")
+    if not isinstance(commands, list):
+        return []
+
+    root_paths: set[Path] = set()
+    root_flags = {
+        "--output-dir",
+    }
+    dir_flags = {
+        "--ensemble-trajectories-dir",
+        "--ensemble-impact-events-dir",
+    }
+    file_flags = {
+        "--diagnostics",
+        "--trajectory",
+        "--deposition",
+        "--map-package-manifest-json",
+        "--pilot-gis-package-manifest-json",
+    }
+
+    for entry in commands:
+        if not isinstance(entry, dict):
+            continue
+        command = entry.get("command")
+        if not isinstance(command, list):
+            continue
+        tokens = [str(token) for token in command]
+        for idx, token in enumerate(tokens):
+            if token not in root_flags | dir_flags | file_flags:
+                continue
+            if idx + 1 >= len(tokens):
+                continue
+            resolved = _to_repo_path(tokens[idx + 1], repo_root=repo_root)
+            if token in root_flags:
+                root_paths.add(resolved)
+            else:
+                root_paths.add(resolved.parent)
+
+    return sorted(str(path) for path in root_paths)
+
+
+def _build_expected_outputs(run_root: Path) -> list[str]:
+    return [
+        str(run_root / "command_plan.json"),
+        str(run_root / "probe.sbatch"),
+        str(run_root / f"{PACKAGE_BASENAME}.json"),
+        str(run_root / f"{PACKAGE_BASENAME}.md"),
+        str(run_root / "logs"),
+    ]
+
+
+def _build_collection_instructions(run_root: Path) -> list[str]:
+    return [
+        f"PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root {run_root}",
+        f"PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root {run_root}",
+    ]
+
+
+def _build_submission_package_report(
+    *,
+    run_root: Path,
+    probe_manifest: Path,
+    command_plan: dict[str, Any],
+    partition: str,
+    time_budget: str,
+    nodes: int,
+    ntasks: int,
+    cpus_per_task: int,
+) -> dict[str, Any]:
+    repo_root = ROOT.resolve()
+    readiness_module = _load_readiness_checker()
+    readiness_report = readiness_module.collect_readiness_report(
+        repo_root=repo_root,
+        run_manifest_path=probe_manifest.resolve(),
+    )
+    git_info = _git_info(repo_root)
+    output_roots = _collect_output_roots(command_plan, repo_root=repo_root)
+    generated_output_roots = [str(run_root.resolve()), str((run_root / "logs").resolve())]
+
+    return {
+        "schema_version": PACKAGE_SCHEMA_VERSION,
+        "package_mode": "generate-only",
+        "probe_manifest": str(probe_manifest.resolve()),
+        "run_root": str(run_root.resolve()),
+        "repository": {
+            "repo_root": str(repo_root),
+            "branch": git_info.get("branch") or readiness_report.get("branch"),
+            "commit": git_info.get("commit") or readiness_report.get("commit"),
+        },
+        "slurm": {
+            "partition": partition,
+            "time": time_budget,
+            "nodes": nodes,
+            "ntasks": ntasks,
+            "cpus_per_task": cpus_per_task,
+        },
+        "scratch_paths": {
+            "scratch_root": str(Path(os.environ.get("SCRATCH", "/scratch")).resolve()),
+            "uv_cache_dir": str(Path(os.environ.get("UV_CACHE_DIR", "/scratch/.cache/uv")).resolve()),
+            "cargo_target_dir": str(Path(os.environ.get("CARGO_TARGET_DIR", "/scratch/rust_rockfall/target")).resolve()),
+        },
+        "input_checks": {
+            "status": readiness_report.get("status"),
+            "blocking_checks": readiness_report.get("blocking_checks", []),
+            "checks": readiness_report.get("checks", []),
+        },
+        "command_plan_path": str(run_root / "command_plan.json"),
+        "sbatch_script_path": str(run_root / "probe.sbatch"),
+        "generated_output_roots": generated_output_roots,
+        "ignored_output_roots": output_roots,
+        "expected_outputs": _build_expected_outputs(run_root),
+        "collection_instructions": _build_collection_instructions(run_root),
+    }
+
+
+def _build_submission_package_markdown(package: dict[str, Any]) -> str:
+    lines = [
+        "# Balfrin Submission Package",
+        "",
+        f"- Schema: `{package['schema_version']}`",
+        f"- Mode: `{package['package_mode']}`",
+        f"- Probe manifest: `{package['probe_manifest']}`",
+        f"- Run root: `{package['run_root']}`",
+        "",
+        "## SLURM",
+        "",
+        f"- Partition: `{package['slurm']['partition']}`",
+        f"- Time: `{package['slurm']['time']}`",
+        f"- Nodes: `{package['slurm']['nodes']}`",
+        f"- Ntasks: `{package['slurm']['ntasks']}`",
+        f"- Cpus per task: `{package['slurm']['cpus_per_task']}`",
+        "",
+        "## Repository",
+        "",
+        f"- Repo root: `{package['repository']['repo_root']}`",
+        f"- Branch: `{package['repository']['branch']}`",
+        f"- Commit: `{package['repository']['commit']}`",
+        "",
+        "## Input Checks",
+        "",
+        f"- Status: `{package['input_checks']['status']}`",
+        f"- Blocking checks: `{len(package['input_checks']['blocking_checks'])}`",
+        "",
+        "## Output Roots",
+        "",
+        "- Generated roots:",
+    ]
+    for root in package["generated_output_roots"]:
+        lines.append(f"  - `{root}`")
+    lines.append("- Ignored roots:")
+    for root in package["ignored_output_roots"]:
+        lines.append(f"  - `{root}`")
+    lines.extend(
+        [
+            "",
+            "## Expected Outputs",
+            "",
+        ]
+    )
+    for output in package["expected_outputs"]:
+        lines.append(f"- `{output}`")
+    lines.extend(
+        [
+            "",
+            "## Collection Instructions",
+            "",
+        ]
+    )
+    for instruction in package["collection_instructions"]:
+        lines.append(f"```bash\n{instruction}\n```")
+    return "\n".join(lines)
 
 
 def _resolve_run_id(args: argparse.Namespace, manifest_run_id: str, *, is_dry_run: bool) -> str:
@@ -374,6 +592,20 @@ def _write_outputs(
 
     command_plan_path = run_root / "command_plan.json"
     command_plan_path.write_text(json.dumps(command_plan, indent=2), encoding="utf-8")
+    package = _build_submission_package_report(
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        command_plan=command_plan,
+        partition=partition,
+        time_budget=time_budget,
+        nodes=nodes,
+        ntasks=ntasks,
+        cpus_per_task=cpus_per_task,
+    )
+    package_path = run_root / f"{PACKAGE_BASENAME}.json"
+    package_path.write_text(json.dumps(package, indent=2), encoding="utf-8")
+    package_md_path = run_root / f"{PACKAGE_BASENAME}.md"
+    package_md_path.write_text(_build_submission_package_markdown(package) + "\n", encoding="utf-8")
     return command_plan_path, sbatch_path
 
 

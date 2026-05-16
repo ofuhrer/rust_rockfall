@@ -1274,3 +1274,21 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no validation run, no physics tuning, no block-parameter tuning, no distributed execution, and no generated private cases were introduced.
 - Next task: `TB-093`
+
+### TB-093: Emit Balfrin Submission Package For The Pilot
+
+- Date: 2026-05-16
+- Commit: `e789739`
+- Objective: extend the Balfrin probe driver so generate-only runs emit a reproducible submission package with the SBATCH script, command plan, package report, and collection instructions for the single-release-zone pilot.
+- Files changed: scripts/submit_balfrin_probe.py, tests/test_balfrin_probe_driver.py, docs/balfrin_probe_slurm_driver.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary:
+  - Extended `--generate-only` to write a package JSON and markdown companion alongside the existing command plan and SBATCH script.
+  - Recorded the requested SLURM settings, repository branch/commit, readiness input checks, generated package roots, ignored Balfrin output roots, expected outputs, and collection commands in the package report.
+  - Added focused tests for the package-report helper, generate-only no-submit behavior, and the generated script/package content, then smoke-tested the generate-only path against the selected Balfrin run-freeze manifest.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py tests/test_balfrin_probe_driver.py scripts/check_balfrin_tschamut_readiness.py scripts/collect_balfrin_probe_metrics.py scripts/validate_balfrin_tschamut_readiness_record.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver -v`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /tmp/tb093_balfrin_package --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+- Result/status: completed.
+- Boundaries: no SLURM submission was made, no distributed/MPI execution was added, and the package report keeps the pilot framed as a research-diagnostic conditional workflow.
+- Next task: `TB-094`

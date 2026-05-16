@@ -139,6 +139,147 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertIn("run_root=", out1)
         self.assertIn("probe.sbatch", out1)
 
+    def test_submission_package_report_collects_expected_roots(self) -> None:
+        fake_readiness = type(
+            "_Readiness",
+            (),
+            {
+                "collect_readiness_report": staticmethod(
+                    lambda **_kwargs: {
+                        "status": "ready_for_balfrin_target_gate",
+                        "branch": "main",
+                        "commit": "abc123",
+                        "blocking_checks": [],
+                        "checks": [{"name": "tool.rustc", "status": "pass", "required": True, "message": "ok", "path": None}],
+                    }
+                )
+            },
+        )()
+        command_plan = {
+            "commands": [
+                {
+                    "name": "build_conditional_hazard_layers",
+                    "command": [
+                        "python3",
+                        "scripts/build_hazard_layers.py",
+                        "--output-dir",
+                        "hazard/results/tschamut_public_pilot/target_gate_v1",
+                        "--diagnostics",
+                        "validation/private/tschamut_public_pilot/target_gate_v1/metrics.json",
+                        "--trajectory",
+                        "validation/private/tschamut_public_pilot/target_gate_v1/trajectory.csv",
+                        "--ensemble-trajectories-dir",
+                        "validation/private/tschamut_public_pilot/target_gate_v1/trajectories",
+                        "--deposition",
+                        "validation/private/tschamut_public_pilot/target_gate_v1/deposition.csv",
+                        "--ensemble-impact-events-dir",
+                        "validation/private/tschamut_public_pilot/target_gate_v1/impacts",
+                        "--map-package-manifest-json",
+                        "hazard/results/tschamut_public_pilot/target_gate_v1/map_package_manifest.json",
+                        "--pilot-gis-package-manifest-json",
+                        "hazard/results/tschamut_public_pilot/target_gate_v1/pilot_gis_package_manifest.json",
+                    ],
+                }
+            ]
+        }
+        run_root = Path("/scratch/rust_rockfall/probes/scale-test/001")
+        with patch.object(submit_driver, "_load_readiness_checker", return_value=fake_readiness):
+            with patch.object(submit_driver, "_git_info", return_value={"branch": "main", "commit": "abc123"}):
+                package = submit_driver._build_submission_package_report(
+                    run_root=run_root,
+                    probe_manifest=Path("validation/pilot_runs/probe.yaml"),
+                    command_plan=command_plan,
+                    partition="postproc",
+                    time_budget="00:30:00",
+                    nodes=1,
+                    ntasks=1,
+                    cpus_per_task=16,
+                )
+
+        self.assertEqual(package["schema_version"], "balfrin_submission_package_v1")
+        self.assertEqual(package["repository"]["commit"], "abc123")
+        self.assertEqual(package["generated_output_roots"], [str(run_root.resolve()), str((run_root / "logs").resolve())])
+        self.assertEqual(
+            package["ignored_output_roots"],
+            [
+                str((ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1").resolve()),
+                str((ROOT / "validation/private/tschamut_public_pilot/target_gate_v1").resolve()),
+            ],
+        )
+        self.assertIn(
+            f"PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root {run_root}",
+            package["collection_instructions"],
+        )
+        self.assertIn(str(run_root / "probe.sbatch"), package["expected_outputs"])
+
+    def test_generate_only_writes_submission_package_without_submitting(self) -> None:
+        fake_plan = ({"run_id": "probe_fixed", "commands": []}, "probe_fixed")
+        fake_package = {
+            "schema_version": "balfrin_submission_package_v1",
+            "package_mode": "generate-only",
+            "probe_manifest": "validation/pilot_runs/probe.yaml",
+            "run_root": "/scratch/rust_rockfall/probes/scale-test/001",
+            "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
+            "slurm": {
+                "partition": "postproc",
+                "time": "00:30:00",
+                "nodes": 1,
+                "ntasks": 1,
+                "cpus_per_task": 16,
+            },
+            "scratch_paths": {
+                "scratch_root": "/scratch",
+                "uv_cache_dir": "/scratch/.cache/uv",
+                "cargo_target_dir": "/scratch/rust_rockfall/target",
+            },
+            "input_checks": {"status": "ready", "blocking_checks": [], "checks": []},
+            "command_plan_path": "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
+            "sbatch_script_path": "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
+            "generated_output_roots": ["/scratch/rust_rockfall/probes/scale-test/001"],
+            "ignored_output_roots": [],
+            "expected_outputs": [
+                "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
+                "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_submission_package.json",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_submission_package.md",
+                "/scratch/rust_rockfall/probes/scale-test/001/logs",
+            ],
+            "collection_instructions": [],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = Path(tmpdir) / "manifest.yaml"
+            self._write_manifest(manifest)
+            run_root = Path(tmpdir) / "run-root"
+
+            with patch.object(submit_driver, "_read_command_plan", return_value=fake_plan), patch.object(
+                submit_driver,
+                "_build_submission_package_report",
+                return_value=fake_package,
+            ), patch.object(submit_driver.subprocess, "run") as run_mock:
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    submit_driver.main(
+                        [
+                            str(manifest),
+                            "--generate-only",
+                            "--run-root",
+                            str(run_root),
+                            "--partition",
+                            "postproc",
+                        ]
+                    )
+
+                run_mock.assert_not_called()
+                self.assertTrue((run_root / "command_plan.json").exists())
+                self.assertTrue((run_root / "probe.sbatch").exists())
+                self.assertTrue((run_root / "balfrin_submission_package.json").exists())
+                self.assertTrue((run_root / "balfrin_submission_package.md").exists())
+                self.assertEqual(
+                    json.loads((run_root / "balfrin_submission_package.json").read_text(encoding="utf-8")),
+                    fake_package,
+                )
+                self.assertIn("run_root=", buf.getvalue())
+
     def test_collect_probe_metrics_parses_synthetic_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_root = Path(tmpdir) / "run"
