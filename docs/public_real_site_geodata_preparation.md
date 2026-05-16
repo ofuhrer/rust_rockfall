@@ -174,7 +174,7 @@ GeoTIFF to a scratch output path under `/tmp`, verifies the result with
 layout.
 
 That proof now extends to an ignored same-scale package-level result at
-`hazard/results/tschamut_public_pilot/gate_v1_cog_poc`. The converted root
+`hazard/results/tschamut_public_pilot/gate_v1_cog_export`. The converted root
 audits as `cog_package_ready` with `cloud_optimized: true` metadata, while the
 committed same-scale outputs still truthfully report
 `gis_package_ready_cog_blocked`.
@@ -184,9 +184,10 @@ converted package roots while keeping the current committed packages marked as
 COG-blocked.
 
 The portable command plan now exposes the canonical package-level conversion
-path directly, including the standard audit command, the ignored
-`gate_v1_cog_poc` conversion command, and the converted-package audit command,
-so future workers can recover the proof without scraping prose notes.
+path directly, including the standard audit command, the `--export-cog`
+builder path to the ignored `gate_v1_cog_export` package, and the
+converted-package audit command, so future workers can recover the proof
+without scraping prose notes.
 
 ## Second-Site Portability Preflight
 

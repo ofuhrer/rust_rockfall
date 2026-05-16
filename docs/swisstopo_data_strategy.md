@@ -317,13 +317,13 @@ A bounded proof-of-concept conversion path now exists in
 only to `/tmp`, converts with `gdal_translate -of COG -co BLOCKSIZE=256 -co
 COMPRESS=ZSTD`, and verifies a tiled COG layout with overviews via
 `gdalinfo`. That scratch proof is now extended to an ignored same-scale
-package-level result at `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`,
+package-level result at `hazard/results/tschamut_public_pilot/gate_v1_cog_export`,
 which audits as `cog_package_ready` with `cloud_optimized: true` metadata.
 The committed same-scale outputs remain unchanged and should still audit as
 `gis_package_ready_cog_blocked` until regenerated with a COG-ready layout.
 
 The canonical portable command plan now names the package-level conversion
-step explicitly, pairing `scripts/convert_same_scale_package_to_cog.py` with
+step explicitly, pairing `scripts/build_hazard_layers.py --export-cog` with
 the standard and converted-package GIS/COG audits. The prototype script stays
 documented as a sample-only proof path; the command plan is the canonical
 workflow surface for the ignored package conversion.

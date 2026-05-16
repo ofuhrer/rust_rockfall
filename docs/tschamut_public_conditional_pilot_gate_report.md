@@ -536,14 +536,14 @@ to `/tmp`, and the GIS/COG audit can distinguish that converted sample as
 remain `gis_package_ready_cog_blocked` until regenerated.
 
 That sample proof has now been extended to an ignored same-scale package root
-at `hazard/results/tschamut_public_pilot/gate_v1_cog_poc`, which the GIS/COG
-audit reports as `cog_package_ready` with `cloud_optimized: true` metadata.
-This keeps the standard roots truthfully blocked while proving the package-
-level COG path on an ignored copy.
+at `hazard/results/tschamut_public_pilot/gate_v1_cog_export`, which the
+GIS/COG audit reports as `cog_package_ready` with `cloud_optimized: true`
+metadata. This keeps the standard roots truthfully blocked while proving the
+package-level COG path on an ignored copy.
 
 The same-scale portable command plan now surfaces the standard GIS audit, the
-package-level conversion command, and the converted-package audit as explicit
-read-only workflow steps, so the ignored COG path can be reproduced without
+package-level `--export-cog` builder step, and the converted-package audit as
+explicit workflow steps, so the ignored COG path can be reproduced without
 relying on prose instructions.
 
 ## Validation And Calibration Evidence Gaps

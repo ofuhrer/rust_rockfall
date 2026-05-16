@@ -123,7 +123,7 @@ objective are:
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
    overviews, and `cloud_optimized: false` metadata, not by missing package
-   manifests. The ignored `gate_v1_cog_poc` package now audits as
+   manifests. The ignored `gate_v1_cog_export` package now audits as
    COG-ready, proving the package-level path without changing the committed
    roots. The remaining GIS workflow gap is turning that proof into a normal
    export option when the standard package path is ready to change.
@@ -178,8 +178,8 @@ Underrepresented high-value work:
 - moving Chant Sura / Flüelapass from synthetic core staging toward a concrete
   public-context acquisition decision without pretending that context products
   are already real validation evidence;
-- turning the package-level COG proof into an export option that can produce
-  COG-ready packages directly, while keeping manual QGIS acceptance deferred;
+- keeping the package-level COG export path reproducible on regenerated
+  packages while keeping manual QGIS acceptance deferred;
 - mapping the missing physical-credibility evidence into concrete field or
   reference data requirements rather than broad calibration language.
 
@@ -187,9 +187,7 @@ Underrepresented high-value work:
 
 Current priority order:
 
-P0. TB-056 promotes COG export from package-copy proof to a reusable export
-    option for GIS-ready products.
-P1. TB-057 makes physical-credibility evidence requirements executable and
+P0. TB-057 makes physical-credibility evidence requirements executable and
     site-aware without adding calibration or operational claims.
 
 ## Backlog Protocol
@@ -230,48 +228,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-### TB-056: Add A COG-Ready Export Option For Same-Scale GIS Packages
-
-Priority: P4.
-
-Why now: the package-level COG conversion command works on an ignored copy, but
-the normal GIS export path still writes standard roots that audit
-`gis_package_ready_cog_blocked`.
-
-Capability gap reduced: GIS/output usability and reproducible package
-delivery.
-
-Why higher priority than alternatives: GIS-ready products are a first-pilot
-milestone, but this can wait behind the scientific and output-profile blockers
-because the package-copy proof already exists.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_same_scale_cog_package_conversion.py`
-- `tests/test_gis_cog_package_readiness.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Expected measurable outputs:
-
-- a bounded COG-ready export flag, command-plan option, or post-export package
-  step that produces a GIS package whose manifests and declared rasters audit
-  as COG-ready without mutating the source standard roots;
-- tests using small fixtures or mocked GDAL where appropriate;
-- an ignored proof run only if local raster artifacts are available.
-
-Definition of done:
-
-- the export path can produce or declare a COG-ready ignored same-scale package
-  through a standard command;
-- standard roots remain honestly reported if not regenerated;
-- no generated rasters are committed and no manual QGIS, operational, scale-up,
-  annual-frequency, risk, exposure, or vulnerability claim is introduced.
 
 ### TB-057: Map Physical Credibility Data Requirements To Concrete Evidence Sources
 

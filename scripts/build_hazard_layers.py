@@ -18,6 +18,7 @@ import math
 import socket
 import struct
 import time
+import sys
 from io import TextIOBase
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -27,6 +28,8 @@ from typing import Any, Iterator
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 NODATA = -9999.0
 SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS = 0.05
 INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT = 32
@@ -2448,7 +2451,12 @@ def main_with_args(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--export-cog",
         action="store_true",
-        help="reserved for future Cloud-Optimized GeoTIFF export; currently fails rather than writing non-COG TIFFs",
+        help="post-export the written GIS package to a separate Cloud-Optimized GeoTIFF package root",
+    )
+    parser.add_argument(
+        "--cog-package-output-root",
+        type=Path,
+        help="optional output root for the post-export COG-ready GIS package; defaults to <output-dir>_cog_poc",
     )
     parser.add_argument(
         "--pilot-gis-package",
@@ -2969,6 +2977,19 @@ def main_with_args(argv: list[str] | None = None) -> int:
     )
     manifest["performance"]["manifest_write_seconds"] = time.perf_counter() - manifest_start
 
+    if raster_export_config.cog:
+        if map_package_state is None or pilot_gis_package_config is None:
+            raise SystemExit("--export-cog requires both map-package metadata and --pilot-gis-package")
+        cog_package_output_root = args.cog_package_output_root or output_dir.parent / f"{output_dir.name}_cog_poc"
+        if cog_package_output_root == output_dir:
+            raise SystemExit("--cog-package-output-root must differ from --output-dir")
+        cog_package_report = export_cog_package(output_dir, cog_package_output_root, overwrite=True)
+        if cog_package_report.get("status") not in {"cog_package_ready", "cog_package_poc_ready"}:
+            raise SystemExit(
+                f"COG post-export failed for {output_dir}: {cog_package_report.get('error') or cog_package_report.get('status')}"
+            )
+        print(f"wrote COG-ready GIS package to {cog_package_output_root}")
+
     print(f"wrote hazard layers to {output_dir}")
     return 0
 
@@ -3086,14 +3107,10 @@ def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -
         raise SystemExit("hazard_exports must be a mapping")
     geotiff = bool(raw.get("geotiff", False)) or bool(args.export_geotiff) or bool(args.export_cog)
     cog = bool(raw.get("cog", False)) or bool(args.export_cog)
-    if cog:
-        raise SystemExit(
-            "COG export is not implemented in Phase 2A without a verified COG writer; use --export-geotiff"
-        )
     compression = str(raw.get("geotiff_compression") or raw.get("compression") or "none")
-    if compression not in {"none", "uncompressed"}:
+    if compression not in {"none", "uncompressed"} and not cog:
         raise SystemExit(
-            "Phase 2A GeoTIFF export uses an uncompressed stdlib writer; compressed/COG export is deferred"
+            "Phase 2A GeoTIFF export uses an uncompressed stdlib writer; compressed GeoTIFF export requires --export-cog"
         )
     compression = "none"
     grid_csv_export = str(args.grid_csv_export or raw.get("grid_csv_export") or "full")
@@ -3101,10 +3118,16 @@ def parse_raster_export_config(case: dict[str, Any], args: argparse.Namespace) -
         raise SystemExit("hazard_exports.grid_csv_export must be full or none")
     return RasterExportConfig(
         geotiff=geotiff,
-        cog=False,
+        cog=cog,
         compression=compression,
         grid_csv_export=grid_csv_export,
     )
+
+
+def export_cog_package(source_root: Path, output_root: Path, *, overwrite: bool = True) -> dict[str, Any]:
+    from scripts.convert_same_scale_package_to_cog import convert_same_scale_package_to_cog
+
+    return convert_same_scale_package_to_cog(source_root, output_root, overwrite=overwrite)
 
 
 def parse_conditional_curve_export(

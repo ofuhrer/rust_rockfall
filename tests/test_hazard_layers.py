@@ -400,7 +400,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(status, 0)
 
             metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
-            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
             self.assertTrue(metadata["hazard_only"])
             self.assertFalse(metadata["risk_modeling_included"])
             self.assertEqual(metadata["inputs"]["trajectory_count"], 2)
@@ -532,7 +532,7 @@ class HazardLayerTests(unittest.TestCase):
             )
 
             self.assertEqual(status, 0)
-            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
             terrain = manifest["terrain"]
             self.assertEqual(terrain["metadata_path"], str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"))
             self.assertEqual(terrain["crs"], "CH1903+ / LV95")
@@ -575,7 +575,7 @@ class HazardLayerTests(unittest.TestCase):
                 0,
             )
 
-            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
             self.assertEqual(manifest["raster_exports"]["grid_csv_export"], "full")
             self.assertTrue(any(output["format"] == "csv_grid" for output in manifest["outputs"]))
 
@@ -793,23 +793,65 @@ class HazardLayerTests(unittest.TestCase):
                     ]
                 )
 
-    def test_cog_export_is_explicitly_deferred(self) -> None:
+    def test_cog_export_runs_a_post_export_package_step(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(SystemExit, "COG export is not implemented"):
-                hazard.main_with_args(
-                    [
-                        "--case",
-                        str(FIXTURE / "plane_case.yaml"),
-                        "--diagnostics",
-                        str(FIXTURE / "diagnostics.json"),
-                        "--output-dir",
-                        str(Path(tmp) / "hazard"),
-                        "--cell-size",
-                        "1.0",
-                        "--no-plots",
-                        "--export-cog",
-                    ]
+            work = Path(tmp)
+            case_path, source_zone_metadata_path, scenario_table_path, map_manifest_json = self._weighted_map_package_case(
+                work, "phase1_zone_a_weighted"
+            )
+            output_dir = work / "hazard"
+            cog_output_root = work / "hazard_cog"
+            pilot_manifest_json = work / "hazard_pilot_package.json"
+            with patch.object(
+                hazard,
+                "export_cog_package",
+                return_value={
+                    "status": "cog_package_ready",
+                    "output_root": str(cog_output_root),
+                    "all_declared_geotiffs_cog_ready": True,
+                },
+            ) as export_mock:
+                self.assertEqual(
+                    hazard.main_with_args(
+                        [
+                            "--case",
+                            str(case_path),
+                            "--diagnostics",
+                            str(FIXTURE / "diagnostics.json"),
+                            "--output-dir",
+                            str(output_dir),
+                            "--cell-size",
+                            "1.0",
+                            "--no-plots",
+                            "--export-geotiff",
+                            "--pilot-gis-package",
+                            "--map-product-id",
+                            "phase1_zone_a_weighted",
+                            "--probability-mode",
+                            "sampling_weighted_conditional",
+                            "--normalization-scope",
+                            "conditioned_on_filter",
+                            "--source-zone-metadata-path",
+                            str(source_zone_metadata_path),
+                            "--scenario-table-path",
+                            str(scenario_table_path),
+                            "--map-package-manifest-json",
+                            str(map_manifest_json),
+                            "--pilot-gis-package-manifest-json",
+                            str(pilot_manifest_json),
+                            "--export-cog",
+                            "--cog-package-output-root",
+                            str(cog_output_root),
+                        ]
+                    ),
+                    0,
                 )
+
+            export_mock.assert_called_once_with(output_dir, cog_output_root, overwrite=True)
+            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            self.assertTrue(manifest["raster_exports"]["cog"])
+            self.assertTrue(map_manifest_json.exists())
+            self.assertTrue(pilot_manifest_json.exists())
 
     def test_plotted_mode_preserves_report_outputs_without_changing_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

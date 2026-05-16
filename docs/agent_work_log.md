@@ -5844,3 +5844,34 @@ Planning only; these milestones do not implement roadmap item content yet.
 - Result: `public_context_boundary_status=deferred_public_context_inputs`;
   the report now lists product-level local paths, metadata requirements,
   synthetic-fixture boundaries, and blocked second-site command templates.
+
+- TB-056: Added a first-class COG-ready export path to
+  `scripts/build_hazard_layers.py` via `--export-cog` and
+  `--cog-package-output-root`, then exposed the canonical same-scale export
+  command in `scripts/generate_pilot_command_plan.py` as
+  `tschamut_package_cog_export`. The bounded proof ran the gate validation
+  builder to `/tmp/tb056_cog_export_staging` and the ignored converted package
+  at `hazard/results/tschamut_public_pilot/gate_v1_cog_export`, which audits
+  as `cog_package_ready` with `cloud_optimized: true` metadata while the
+  standard roots remain `gis_package_ready_cog_blocked`.
+- Files touched:
+  `scripts/build_hazard_layers.py`,
+  `scripts/generate_pilot_command_plan.py`,
+  `tests/test_hazard_layers.py`,
+  `tests/test_pilot_command_plan.py`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Checks run:
+  `PYENV_VERSION=system uv run python -m py_compile scripts/build_hazard_layers.py scripts/generate_pilot_command_plan.py tests/test_hazard_layers.py tests/test_pilot_command_plan.py`,
+  `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_cog_export_runs_a_post_export_package_step tests.test_pilot_command_plan.PilotCommandPlanTest.test_tschamut_plan_json_has_stable_groups`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json`,
+  `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`,
+  `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml --output-dir /tmp/tb056_cog_export_staging --grid-xmin 2696376.0 --grid-ymin 1167384.0 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2.0 --map-product-id tschamut_public_conditional_gate_v1 --probability-mode sampling_weighted_conditional --normalization-scope conditioned_on_filter --source-zone-metadata-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml --scenario-table-path data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv --map-package-manifest-json /tmp/tb056_cog_export_staging/tschamut_public_conditional_gate_v1_map_package_manifest.json --export-geotiff --pilot-gis-package --pilot-gis-package-manifest-json /tmp/tb056_cog_export_staging/tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json --pilot-gis-qa-status not-run --pilot-gis-qa-note 'Manual GIS/QGIS inspection has not been run for this generated package.' --reducer-workers 2 --no-plots --conditional-curve-export summary-only --grid-csv-export none --diagnostics validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_metrics.json --trajectory validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectory.csv --ensemble-trajectories-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_trajectories --deposition validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_deposition.csv --ensemble-impact-events-dir validation/private/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_impacts --kinetic-energy-exceedance-j 1000.0 --kinetic-energy-exceedance-j 10000.0 --jump-height-exceedance-m 1.0 --jump-height-exceedance-m 2.0 --export-cog --cog-package-output-root hazard/results/tschamut_public_pilot/gate_v1_cog_export`,
+  `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export`
+- Result: the ignored `hazard/results/tschamut_public_pilot/gate_v1_cog_export`
+  package audits as `cog_package_ready` with tiled, overviewed, compressed
+  GeoTIFFs and `cloud_optimized: true` metadata; the standard same-scale roots
+  remain truthfully `gis_package_ready_cog_blocked`.

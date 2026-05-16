@@ -68,8 +68,8 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_target_hazard_build", report["command_ids"])
         self.assertIn("tschamut_output_profile_summary", report["command_ids"])
         self.assertIn("tschamut_standard_package_audit", report["command_ids"])
-        self.assertIn("tschamut_package_cog_conversion", report["command_ids"])
         self.assertIn("tschamut_converted_package_audit", report["command_ids"])
+        self.assertIn("tschamut_package_cog_export", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_validation", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_derivation", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_hazard_rebuild", report["command_ids"])
@@ -95,15 +95,20 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertEqual(report["blocked_template_commands"], [])
 
-        conversion_command = next(command for command in report["commands"] if command["id"] == "tschamut_package_cog_conversion")
-        self.assertIn("scripts/convert_same_scale_package_to_cog.py", conversion_command["command"])
-        self.assertIn("--output-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc", conversion_command["command"])
-        self.assertTrue(conversion_command["may_produce_ignored_outputs"])
-        self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", conversion_command["ignored_output_paths"])
+        export_command = next(command for command in report["commands"] if command["id"] == "tschamut_package_cog_export")
+        self.assertIn("scripts/build_hazard_layers.py", export_command["command"])
+        self.assertIn("--export-cog", export_command["command"])
+        self.assertIn(
+            "--cog-package-output-root hazard/results/tschamut_public_pilot/gate_v1_cog_export",
+            export_command["command"],
+        )
+        self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_export", export_command["expected_outputs"])
+        self.assertTrue(export_command["may_produce_ignored_outputs"])
+        self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_export", export_command["ignored_output_paths"])
 
         converted_audit_command = next(command for command in report["commands"] if command["id"] == "tschamut_converted_package_audit")
         self.assertIn("scripts/audit_gis_cog_package_readiness.py", converted_audit_command["command"])
-        self.assertIn("--converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_poc", converted_audit_command["command"])
+        self.assertIn("--converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export", converted_audit_command["command"])
         self.assertTrue(converted_audit_command["read_only"])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
