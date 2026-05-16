@@ -2,6 +2,7 @@
 
 - Status: `fixture_proven`
 - Scope: controlled recovery evidence only; this does not claim a live interrupted Balfrin run was exercised on balfrin.
+- Provenance: fixture-backed partial-state recovery evidence, not a live Balfrin interruption/recovery measurement.
 - Pilot id: `tschamut_public_pilot`
 - Run id: `tschamut_public_balfrin_restartability_recovery_v1`
 
@@ -62,3 +63,10 @@ PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --ru
 - No distributed execution authorization is implied.
 - No physics, sampling, or output-profile changes are introduced by this report.
 
+## Live Interruption Status
+
+- Status: `blocked_missing_inputs`
+- Reason: no fresh live Balfrin interruption/resume experiment was run for this report.
+- Live interruption job id: not recorded
+- Live resume job id: not recorded
+- This note is separate from the fixture-backed recovery evidence above.

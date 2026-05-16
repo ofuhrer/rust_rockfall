@@ -99,10 +99,11 @@ objective are:
    same-scale and Balfrin planning paths. The legacy derivation helper remains
    available only as a compatibility and proof fallback. The current execution
    scaffolding assumes native reduced output for the next Balfrin pilot;
-   `scripts/summarize_balfrin_output_tier_audit.py` can classify a collected
-   Balfrin run root, and its current regression evidence uses the synthetic
+   `scripts/summarize_balfrin_output_tier_audit.py` now classifies collected
+   Balfrin evidence provenance as measured, fixture-backed, or blocked, and its
+   current regression evidence uses the synthetic
    `tests/fixtures/balfrin_probe_metrics_contract/complete_run_root` fixture.
-   That fixture-backed audit reports `audit_status=measured`,
+   That fixture-backed audit reports `audit_status=fixture_backed`,
    `rebuildability_status=sufficient`, `571377719` validation bytes,
    `16613900` hazard-output bytes, `2005` validation files, `46` hazard-output
    files, and `729600` conditional-curve rows. This proves the audit contract
@@ -195,7 +196,7 @@ objective are:
     now conceptually separate from calibration readiness, but actual benchmark
     data and objective-function evaluation remain absent.
 12. Balfrin demonstration evidence is better organized, but not all TB-101
-    through TB-114 work represents completed execution. TB-101, TB-103, TB-105,
+    through TB-120 work represents completed execution. TB-101, TB-103, TB-105,
     TB-107, TB-110, TB-112, and TB-113 strengthened contracts, runbooks,
     report generators, claim checks, failure taxonomy, and scaling helpers.
     TB-106 and TB-108 are fixture-backed demonstrations, not live Balfrin
@@ -209,7 +210,10 @@ objective are:
     with `pilot manifest validation failed: schema_version must be public_real_site_conditional_pilot_run_v1`.
     TB-115 freezes the canonical Balfrin demonstration contract and teaches
     the readiness helper to accept that contract schema without weakening the
-    non-operational boundary.
+    non-operational boundary. TB-120 keeps restartability recovery honest by
+    classifying fixture-backed evidence as fixture-backed rather than live
+    measured output-tier evidence until a fresh live interruption/resume proof
+    exists.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Summarize whether the measured Balfrin output tier is sufficient.
+"""Summarize whether the Balfrin output tier is sufficient.
 
 This helper is read-only. It consumes the existing Balfrin probe metrics
 collector output, reports the measured output families, file counts, bytes,
-and conditional-curve availability, and classifies whether the measured
-``rebuildable_reduced_output`` tier is sufficient, insufficient, or blocked by
-missing measured evidence.
+and conditional-curve availability, and classifies whether the
+``rebuildable_reduced_output`` tier is sufficient, insufficient, or blocked
+while preserving whether the source evidence is measured, fixture-backed, or
+missing.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from scripts import collect_balfrin_probe_metrics as probe_metrics  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_output_tier_audit_v1"
 OUTPUT_TIER = "rebuildable_reduced_output"
+FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
 REQUIRED_FAMILY_COUNTS = {
     "map_package_manifest": 1,
     "pilot_gis_package_manifest": 1,
@@ -124,6 +126,34 @@ def _curve_availability(metrics: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _source_paths(metrics: dict[str, Any]) -> list[str]:
+    paths: list[str] = []
+    for key in ("run_root", "output_root", "hazard_manifest_path", "probe_manifest_path", "command_plan_path"):
+        value = metrics.get(key)
+        if isinstance(value, str) and value:
+            paths.append(value)
+    return paths
+
+
+def _is_fixture_path(path: str) -> bool:
+    candidate = Path(path)
+    for marker in FIXTURE_PATH_MARKERS:
+        marker_length = len(marker)
+        for index in range(len(candidate.parts) - marker_length + 1):
+            if tuple(candidate.parts[index : index + marker_length]) == marker:
+                return True
+    return False
+
+
+def _audit_provenance(metrics: dict[str, Any]) -> tuple[str, list[str]]:
+    paths = _source_paths(metrics)
+    if metrics.get("metrics_contract_status") != "complete":
+        return "blocked_missing_inputs", paths
+    if any(_is_fixture_path(path) for path in paths):
+        return "fixture_backed", paths
+    return "measured", paths
+
+
 def _output_sizes(metrics: dict[str, Any]) -> dict[str, dict[str, int | None]]:
     return {
         "validation_output": {
@@ -217,6 +247,7 @@ def build_report(evidence: dict[str, Any] | None = None) -> dict[str, Any]:
     metrics = dict(evidence or {})
     family_counts = _family_counts(metrics)
     curve = _curve_availability(metrics)
+    provenance_status, source_paths = _audit_provenance(metrics)
     audit_status, rebuildability_classification, blockers = classify_rebuildability(
         metrics=metrics,
         family_counts=family_counts,
@@ -236,7 +267,8 @@ def build_report(evidence: dict[str, Any] | None = None) -> dict[str, Any]:
 
     report = {
         "schema_version": SCHEMA_VERSION,
-        "audit_status": "measured" if audit_status != "blocked_missing_measured_output" else "blocked_missing_inputs",
+        "audit_status": provenance_status,
+        "evidence_provenance_status": provenance_status,
         "output_tier": OUTPUT_TIER,
         "rebuildability_status": audit_status,
         "rebuildability_classification": rebuildability_classification,
@@ -257,6 +289,11 @@ def build_report(evidence: dict[str, Any] | None = None) -> dict[str, Any]:
             "output_root": metrics.get("output_root"),
             "hazard_manifest_path": metrics.get("hazard_manifest_path"),
             "probe_metrics_path": metrics.get("probe_manifest_path"),
+            "command_plan_path": metrics.get("command_plan_path"),
+        },
+        "source_provenance": {
+            "status": provenance_status,
+            "paths": source_paths,
         },
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -275,6 +312,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "Balfrin Output-Tier Audit",
         f"schema_version: {report['schema_version']}",
         f"output_tier: {report['output_tier']}",
+        f"evidence_provenance_status: {report['evidence_provenance_status']}",
         f"rebuildability_status: {report['rebuildability_status']}",
         f"rebuildability_classification: {report['rebuildability_classification']}",
         f"audit_status: {report['audit_status']}",
@@ -293,8 +331,13 @@ def render_text_report(report: dict[str, Any]) -> str:
             "curve_availability:",
             f"  available: {report['curve_availability']['available']}",
             f"  row_count: {report['curve_availability']['row_count']}",
+            "source_provenance:",
+            f"  status: {report['source_provenance']['status']}",
         ]
     )
+    if report["source_provenance"]["paths"]:
+        lines.append("  paths:")
+        lines.extend(f"    - {path}" for path in report["source_provenance"]["paths"])
     if report["blocked_reasons"]:
         lines.append("blocked_reasons:")
         lines.extend(f"  - {reason}" for reason in report["blocked_reasons"])

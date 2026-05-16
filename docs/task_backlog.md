@@ -24,48 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-120: Demonstrate Measured Balfrin Restartability And Recovery
-
-Goal: Interrupt and recover the canonical Balfrin demonstration or classify why
-a live interruption/recovery proof remains blocked, using measured run evidence
-where available.
-
-Capability gap reduced: Rebuild-compatible execution realism and recovery
-confidence.
-
-Why this outranks alternatives: TB-106 and TB-108 are useful fixture-backed
-proofs, but they are not live Balfrin interruption/output evidence. The
-demonstration needs this distinction closed or explicitly preserved.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_output_tier_audit.py`
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `tests/fixtures/balfrin_probe_metrics_contract/complete_run_root`
-- `docs/balfrin_restartability_recovery_report.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Interrupted-run and resumed-run evidence when feasible, including manifest
-  continuity, output continuity, restartability timing, and deterministic
-  recovery checks.
-- Measured output-tier sufficiency and restartability/recovery reports from the
-  real run root, or explicit blocked reports if live interruption/recovery is
-  not available.
-- Updated tests that preserve fixture-backed behavior while proving measured
-  evidence is classified separately.
-
-Definition of done:
-
-- The reports no longer imply fixture-backed evidence is a live Balfrin
-  measurement; focused checks pass and TB-120 is removed.
-
-Boundaries: Do not create artificial interruption evidence, do not rerun large
-ensembles unless explicitly required by the runbook, and do not classify
-`summary_only` as rebuildable.
-
 ### TB-121: Generate Canonical Balfrin Conditional Diagnostic Interpretation
 
 Goal: Produce one coherent measured Balfrin interpretation that combines

@@ -1952,3 +1952,43 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   not widen operational, annual-frequency, physical-probability, risk,
   exposure, vulnerability, scale-up, or distributed-execution claims.
 - Next task: `TB-120`
+
+### TB-120 blocked provenance: Classify Balfrin restartability and output-tier evidence by source
+
+- Date: 2026-05-17
+- Commit: `pending`
+- Objective: make the Balfrin output-tier audit and restartability notes
+  explicitly distinguish measured run-root evidence from fixture-backed
+  contract evidence, then remove the TB-120 backlog entry without claiming a
+  live interruption/recovery proof that was not performed.
+- Files changed: `scripts/summarize_balfrin_output_tier_audit.py`,
+  `tests/test_balfrin_output_tier_audit.py`,
+  `docs/balfrin_restartability_recovery_report.md`,
+  `docs/current_maturity_snapshot.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the Balfrin output-tier audit helper so it now classifies
+    evidence provenance as `measured`, `fixture_backed`, or
+    `blocked_missing_inputs`, using the collected source paths rather than
+    assuming every complete metrics payload is a live measurement.
+  - Kept the rebuildability classification and required-family checks intact so
+    the fixture-backed contract remains sufficient while no longer being
+    mislabeled as live output evidence.
+  - Updated the focused regression tests to pin both the fixture-backed and
+    measured provenance paths, plus the blocked path, so downstream callers
+    can distinguish live run-root evidence from fixture evidence.
+  - Clarified the restartability recovery note and maturity snapshot so they
+    state plainly that the current recovery artifact is fixture-backed and
+    that a live interruption/resume proof still does not exist in this
+    checkout.
+  - Removed TB-120 from the active backlog after the provenance boundary was
+    made explicit.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_output_tier_audit.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_output_tier_audit`
+- Result/status: implemented_blocked_report
+- Boundaries: no live interruption or recovery job was created, no artificial
+  interruption evidence was fabricated, and no operational, annual-frequency,
+  physical-probability, risk, exposure, vulnerability, scale-up, or
+  distributed-execution claim was introduced.

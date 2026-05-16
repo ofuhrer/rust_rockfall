@@ -26,11 +26,13 @@ MODULE = load_module()
 
 
 class BalfrinOutputTierAuditTests(unittest.TestCase):
-    def test_complete_metrics_classify_as_sufficient(self) -> None:
+    def test_complete_fixture_metrics_classify_as_fixture_backed_and_sufficient(self) -> None:
         report = MODULE.build_report(self.complete_metrics())
 
         self.assertEqual(report["schema_version"], "balfrin_output_tier_audit_v1")
-        self.assertEqual(report["audit_status"], "measured")
+        self.assertEqual(report["audit_status"], "fixture_backed")
+        self.assertEqual(report["evidence_provenance_status"], "fixture_backed")
+        self.assertEqual(report["source_provenance"]["status"], "fixture_backed")
         self.assertEqual(report["rebuildability_status"], "sufficient")
         self.assertEqual(report["rebuildability_classification"], "rebuildable_reduced_output")
         self.assertEqual(report["required_family_counts"], {
@@ -46,6 +48,28 @@ class BalfrinOutputTierAuditTests(unittest.TestCase):
         self.assertEqual(report["curve_availability"]["row_count"], 729600)
         self.assertIn("preserves the required manifest and chunk families", report["omitted_output_implications"][0])
         self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
+
+    def test_non_fixture_source_paths_classify_as_measured(self) -> None:
+        evidence = self.complete_metrics()
+        evidence.update(
+            {
+                "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
+                "output_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3/output",
+                "hazard_manifest_path": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3/output/validation_balfrin_probe_manifest.json",
+                "probe_manifest_path": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3/probe_manifest.yaml",
+                "command_plan_path": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3/command_plan.json",
+            }
+        )
+
+        report = MODULE.build_report(evidence)
+
+        self.assertEqual(report["audit_status"], "measured")
+        self.assertEqual(report["evidence_provenance_status"], "measured")
+        self.assertEqual(report["source_provenance"]["status"], "measured")
+        self.assertIn(
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
+            report["source_provenance"]["paths"][0],
+        )
 
     def test_missing_required_family_classifies_as_insufficient(self) -> None:
         evidence = self.complete_metrics()
@@ -76,6 +100,7 @@ class BalfrinOutputTierAuditTests(unittest.TestCase):
         report = MODULE.build_report(evidence)
 
         self.assertEqual(report["audit_status"], "blocked_missing_inputs")
+        self.assertEqual(report["evidence_provenance_status"], "blocked_missing_inputs")
         self.assertEqual(report["rebuildability_status"], "blocked_missing_measured_output")
         self.assertEqual(report["rebuildability_classification"], "blocked_missing_measured_output")
         self.assertIn("validation_output.file_count", report["blocked_reasons"])
@@ -93,6 +118,7 @@ class BalfrinOutputTierAuditTests(unittest.TestCase):
             text = buffer.getvalue()
             self.assertIn("Balfrin Output-Tier Audit", text)
             self.assertIn("rebuildability_classification: rebuildable_reduced_output", text)
+            self.assertIn("evidence_provenance_status:", text)
 
             buffer = io.StringIO()
             with redirect_stdout(buffer):
