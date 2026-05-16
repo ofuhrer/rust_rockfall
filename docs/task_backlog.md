@@ -18,37 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-076: Define Conditional Gridpoint Curve Product Contract
-
-Goal: Specify and exercise the conditional gridpoint intensity-exceedance curve
-contract that current hazard maps can support without annual frequency claims.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `docs/hazard_layers.md`
-- `docs/hazard_map_semantics.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A small machine-readable contract or helper report describing per-gridpoint
-  conditional exceedance curves, their threshold units, normalization scope,
-  and unsupported physical-frequency fields.
-- A tiny fixture or existing-output summary proving the curve schema can be
-  emitted or audited without new simulations.
-- Documentation that cleanly separates conditional exceedance curves from
-  physical intensity-frequency curves.
-
-Definition of done:
-
-- A focused test validates the conditional curve contract shape.
-- The report/docs state that annual or physical frequency remains unsupported.
-
-Boundaries: Do not implement annual-frequency modelling, return periods,
-  source occurrence rates, risk, exposure, vulnerability, or operational use.
-
 ### TB-077: Prototype AOI-To-Release-Zone Heuristic Dry Run
 
 Goal: Start closing the automation gap between "user provides a region" and a

@@ -47,6 +47,44 @@ TRAJECTORY_MERGE_STATE_SCHEMA_VERSION = "trajectory_merge_state_v1"
 TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION = "trajectory_generation_state_v1"
 CHUNK_REDUCTION_MAX_ATTEMPTS = 3
 CHUNK_CLAIM_TTL_SECONDS = 60 * 60
+CONDITIONAL_CURVE_CONTRACT_SCHEMA_VERSION = "conditional_gridpoint_curve_contract_v1"
+CONDITIONAL_CURVE_TABLE_COLUMNS = (
+    "row",
+    "col",
+    "x_center_m",
+    "y_center_m",
+    "intensity_measure",
+    "threshold",
+    "threshold_units",
+    "layer_name",
+    "probability_mode",
+    "normalization_scope",
+    "numerator",
+    "denominator",
+    "conditional_fraction",
+    "standard_error",
+    "weighted",
+    "annualized",
+)
+CONDITIONAL_CURVE_THRESHOLD_UNITS = {
+    "kinetic_energy": "J",
+    "jump_height": "m",
+    "velocity": "m/s",
+}
+CONDITIONAL_CURVE_DENOMINATOR_BY_PROBABILITY_MODE = {
+    "unweighted_diagnostic": "supplied_trajectory_count",
+    "sampling_weighted_conditional": "filtered_sampling_weight_sum",
+}
+CONDITIONAL_CURVE_NORMALIZATION_SCOPES_BY_MODE = {
+    "unweighted_diagnostic": ("supplied_trajectory_count",),
+    "sampling_weighted_conditional": ("conditioned_on_filter", "conditioned_on_scenario"),
+}
+CONDITIONAL_CURVE_UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS = (
+    "annual_frequency_per_year",
+    "return_period_years",
+    "source_occurrence_rate_per_year",
+    "physical_probability",
+)
 
 
 @dataclass(frozen=True)
@@ -5704,15 +5742,45 @@ def summarize_conditional_curve_rows(
     rows: list[ConditionalCurveRow],
     export_config: ConditionalCurveExportConfig,
 ) -> dict[str, Any]:
+    contract = summarize_conditional_curve_contract(rows, export_config)
     if not rows:
-        return {"enabled": False, "row_count": 0, **export_config.as_metadata()}
+        return {"enabled": False, "row_count": 0, "contract": contract, **export_config.as_metadata()}
     return {
         "enabled": True,
         "schema_version": "conditional_intensity_exceedance_curves_v1",
         "row_count": len(rows),
         "intensity_measures": sorted({row.intensity_measure for row in rows}),
         "probability_modes": sorted({row.probability_mode for row in rows}),
+        "contract": contract,
         **export_config.as_metadata(),
+    }
+
+
+def summarize_conditional_curve_contract(
+    rows: list[ConditionalCurveRow],
+    export_config: ConditionalCurveExportConfig,
+) -> dict[str, Any]:
+    observed_probability_modes = sorted({row.probability_mode for row in rows})
+    observed_normalization_scopes = sorted({row.normalization_scope for row in rows})
+    return {
+        "schema_version": CONDITIONAL_CURVE_CONTRACT_SCHEMA_VERSION,
+        "scope": "per_gridpoint",
+        "product": "conditional_intensity_exceedance_curves",
+        "table_columns": list(CONDITIONAL_CURVE_TABLE_COLUMNS),
+        "threshold_units": dict(CONDITIONAL_CURVE_THRESHOLD_UNITS),
+        "supported_probability_modes": sorted(CONDITIONAL_CURVE_DENOMINATOR_BY_PROBABILITY_MODE),
+        "normalization_scope_by_probability_mode": {
+            mode: list(scopes) for mode, scopes in CONDITIONAL_CURVE_NORMALIZATION_SCOPES_BY_MODE.items()
+        },
+        "denominator_by_probability_mode": dict(CONDITIONAL_CURVE_DENOMINATOR_BY_PROBABILITY_MODE),
+        "observed_probability_modes": observed_probability_modes,
+        "observed_normalization_scopes": observed_normalization_scopes,
+        "table_row_count": len(rows),
+        "table_written": export_config.write_table,
+        "annualized": False,
+        "annual_frequency_supported": False,
+        "physical_frequency_supported": False,
+        "unsupported_physical_frequency_fields": list(CONDITIONAL_CURVE_UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS),
     }
 
 
@@ -6433,6 +6501,7 @@ def update_conditional_execution_manifest(
                 curves.get("enabled") and not conditional_curve_export.write_table
             ),
         },
+        "curve_contract": curves.get("contract"),
         "raster_exports": {
             "grid_csv_export": raster_export_config.grid_csv_export,
             "grid_csv_written": raster_export_config.grid_csv_export == "full",

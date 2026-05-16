@@ -313,6 +313,11 @@ validation and hazard artifacts:
   `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`;
 - conditional curve table:
   `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_conditional_intensity_exceedance_curves.csv`;
+- conditional curve contract summary:
+  `conditional_gridpoint_curve_contract_v1` embedded in the hazard metadata
+  and run manifest, recording the per-gridpoint table columns, threshold
+  units, normalization scopes, and unsupported annual or physical-frequency
+  fields;
 - map-package manifest:
   `hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json`;
 - pilot GIS package manifest:

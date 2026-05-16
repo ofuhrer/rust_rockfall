@@ -1105,6 +1105,61 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(curves["mode"], "summary-only")
             self.assertFalse(curves["csv_table_written"])
             self.assertGreater(curves["row_count"], 0)
+            contract = curves["contract"]
+            self.assertEqual(contract["schema_version"], "conditional_gridpoint_curve_contract_v1")
+            self.assertEqual(contract["scope"], "per_gridpoint")
+            self.assertEqual(contract["product"], "conditional_intensity_exceedance_curves")
+            self.assertEqual(
+                contract["table_columns"],
+                [
+                    "row",
+                    "col",
+                    "x_center_m",
+                    "y_center_m",
+                    "intensity_measure",
+                    "threshold",
+                    "threshold_units",
+                    "layer_name",
+                    "probability_mode",
+                    "normalization_scope",
+                    "numerator",
+                    "denominator",
+                    "conditional_fraction",
+                    "standard_error",
+                    "weighted",
+                    "annualized",
+                ],
+            )
+            self.assertEqual(
+                contract["threshold_units"],
+                {"kinetic_energy": "J", "jump_height": "m", "velocity": "m/s"},
+            )
+            self.assertEqual(
+                contract["normalization_scope_by_probability_mode"],
+                {
+                    "unweighted_diagnostic": ["supplied_trajectory_count"],
+                    "sampling_weighted_conditional": ["conditioned_on_filter", "conditioned_on_scenario"],
+                },
+            )
+            self.assertEqual(
+                contract["denominator_by_probability_mode"],
+                {
+                    "unweighted_diagnostic": "supplied_trajectory_count",
+                    "sampling_weighted_conditional": "filtered_sampling_weight_sum",
+                },
+            )
+            self.assertFalse(contract["annualized"])
+            self.assertFalse(contract["annual_frequency_supported"])
+            self.assertFalse(contract["physical_frequency_supported"])
+            self.assertEqual(
+                contract["unsupported_physical_frequency_fields"],
+                [
+                    "annual_frequency_per_year",
+                    "return_period_years",
+                    "source_occurrence_rate_per_year",
+                    "physical_probability",
+                ],
+            )
             self.assertFalse(
                 any(output["kind"] == "conditional_intensity_exceedance_curves" for output in manifest["outputs"])
             )
@@ -1121,6 +1176,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertFalse(execution["conditional_curve_export"]["csv_table_written"])
             self.assertTrue(execution["conditional_curve_export"]["table_suppressed_for_output_budget"])
             self.assertEqual(execution["conditional_curve_export"]["row_count"], curves["row_count"])
+            self.assertEqual(execution["curve_contract"], contract)
             self.assertEqual(execution["reducer"]["mode"], "serial")
             self.assertEqual(execution["reducer"]["merge_order"], "single_serial_accumulator")
             self.assertGreater(execution["grid_cell_count"], 0)

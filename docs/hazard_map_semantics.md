@@ -105,6 +105,10 @@ intensity-exceedance products when they are conditioned on the supplied
 trajectory set, metadata filter, or sampling-weighted scenario set. Reserve
 intensity-frequency wording for future `physical_probability` or
 `annual_frequency` products with explicit frequency semantics.
+The current conditional gridpoint curve contract records the per-cell table
+columns, threshold units, normalization scope, and unsupported annual or
+physical frequency fields, but it still describes a conditional exceedance
+summary rather than a physical intensity-frequency curve.
 The current design gate for those future semantics is
 `docs/physical_source_frequency_design_gate.md`; its decision is deferred, so
 annual and physical labels remain unsupported for current products.

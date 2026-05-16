@@ -1051,3 +1051,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no generated rasters were committed, no manual QGIS acceptance was required, and no operational GIS claim was introduced.
 - Next task: `TB-076`
+
+### TB-076: Define Conditional Gridpoint Curve Product Contract
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: define a machine-readable contract for conditional gridpoint exceedance curves that current hazard maps can emit and audit without annual-frequency claims.
+- Files changed: scripts/build_hazard_layers.py, tests/test_hazard_layers.py, docs/hazard_layers.md, docs/hazard_map_semantics.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a `conditional_gridpoint_curve_contract_v1` summary to the hazard-layer metadata and run manifest so each conditional curve report now records the per-gridpoint table schema, threshold units, normalization scopes, denominator semantics, and explicitly unsupported annual or physical-frequency fields; added a focused regression that validates the contract shape from an existing generated summary-only run; and updated the hazard-layer, semantics, and Tschamut gate docs to separate conditional exceedance curves from physical intensity-frequency language.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_conditional_curve_summary_only_suppresses_large_curve_table tests.test_hazard_layers.HazardLayerTests.test_map_package_metadata_labels_weighted_outputs_without_changing_layers tests.test_hazard_layers.HazardLayerTests.test_phase1_smoke_example_runs_validation_and_labelled_hazard_package`
+- Result/status: completed.
+- Boundaries: no annual-frequency modelling, return periods, source occurrence rates, risk, exposure, vulnerability, operational use, or physical-probability claim was introduced.
+- Next task: `TB-077`

@@ -195,6 +195,14 @@ For current unweighted layers the denominator is the supplied trajectory count.
 For sampling-weighted layers the denominator is the filtered sampling-weight
 sum. This table is a conditional intensity-exceedance product, not an annual
 intensity-frequency or return-period product.
+The builder also records a machine-readable
+`conditional_gridpoint_curve_contract_v1` helper summary in the metadata and
+run manifest. It enumerates the per-gridpoint schema columns, threshold units,
+supported normalization scopes, and unsupported physical-frequency fields
+(`annual_frequency_per_year`, `return_period_years`,
+`source_occurrence_rate_per_year`, and `physical_probability`).
+The helper is audit metadata only; it does not introduce annual-frequency or
+physical-frequency semantics.
 
 To add simple convergence diagnostics for trajectory-level probability layers,
 enable probability standard-error rasters:
