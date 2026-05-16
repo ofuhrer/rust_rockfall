@@ -44,3 +44,6 @@ blocked post-run gate instead of guessing.
 For a management-facing review bundle that feeds this gate, use
 `scripts/summarize_balfrin_evidence_bundle.py` with
 `--artifact-dir validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1`.
+The bundle helper now records measured, fixture-backed, and blocked section
+provenance explicitly so the gate can consume the measured evidence without
+collapsing it into a fixture-backed proxy.

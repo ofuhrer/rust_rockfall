@@ -137,6 +137,9 @@ The helper materializes `balfrin_evidence_bundle_v1.json` and
 evidence, probe metrics, GIS / COG readiness, restartability, and post-run
 interpretation checks into one read-only review artifact, and it now carries a
 machine-readable failure taxonomy report for operational recovery handoff.
+Its bundle summary also records measured, fixture-backed, and blocked section
+counts so the canonical review path can distinguish live Balfrin evidence from
+fixture-only or blocked sections.
 When evidence is missing, it reports `blocked_missing_inputs` instead of
 fabricating a stronger claim.
 

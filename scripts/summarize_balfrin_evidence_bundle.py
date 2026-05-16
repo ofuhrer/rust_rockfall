@@ -4,8 +4,8 @@
 This helper is read-only. It assembles the measured Balfrin readiness,
 metrics, outputs, restartability, GIS / COG status, and post-run
 interpretation checks into one auditable JSON or text bundle. It preserves
-claim boundaries explicitly and returns ``blocked_missing_inputs`` rather than
-guessing when required evidence is absent.
+claim boundaries explicitly and reports measured, fixture-backed, and blocked
+sections rather than guessing when required evidence is absent.
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ GIS_COG_PARITY_SCHEMA_VERSION = "balfrin_gis_cog_parity_report_v1"
 CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
+FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -148,11 +149,19 @@ def build_bundle_report(
 ) -> dict[str, Any]:
     source_paths = source_paths or {}
     gis_cog_parity_report = build_gis_cog_parity_report(single_job_summary=single_job_summary, gis_report=gis_report)
+    section_provenance_profile = build_section_provenance_profile(
+        single_job_summary=single_job_summary,
+        probe_metrics=probe_metrics,
+        post_run_report=post_run_report,
+        gis_report=gis_report,
+        source_paths=source_paths,
+    )
     bundle_status, bundle_blockers = derive_bundle_status(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
         post_run_report=post_run_report,
         gis_report=gis_report,
+        section_provenance_profile=section_provenance_profile,
     )
     claim_boundaries = claim_boundaries_from(post_run_report)
     report = {
@@ -161,10 +170,12 @@ def build_bundle_report(
         "run_id": str(single_job_summary.get("run_id") or DEFAULT_RUN_ID),
         "canonical_bundle_path": str(canonical_bundle_path),
         "bundle_status": bundle_status,
+        "bundle_provenance_status": bundle_status,
         "bundle_summary": {
             "status": bundle_status,
             "summary": summarize_bundle(bundle_status, single_job_summary, post_run_report, gis_report),
             "blockers": bundle_blockers,
+            "section_counts": section_provenance_counts(section_provenance_profile),
         },
         "single_job_execution_summary": single_job_summary,
         "probe_metrics": probe_metrics,
@@ -177,6 +188,7 @@ def build_bundle_report(
         ),
         "gis_cog_readiness_report": gis_report,
         "gis_cog_parity_report": gis_cog_parity_report,
+        "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": claim_boundaries,
         "source_paths": source_paths,
         "evidence_sources": evidence_sources(source_paths),
@@ -191,16 +203,56 @@ def blocked_report(
     reason: str,
     canonical_bundle_path: Path = CANONICAL_BUNDLE_DIR,
 ) -> dict[str, Any]:
+    section_provenance_profile = [
+        {
+            "section": "single_job_execution_summary",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+        {
+            "section": "probe_metrics",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+        {
+            "section": "post_run_interpretation_gate_report",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+        {
+            "section": "failure_taxonomy_report",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+        {
+            "section": "gis_cog_readiness_report",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+        {
+            "section": "gis_cog_parity_report",
+            "status": "blocked_missing_inputs",
+            "evidence_type": "blocked",
+            "source_paths": [],
+        },
+    ]
     return {
         "schema_version": SCHEMA_VERSION,
         "pilot_id": DEFAULT_PILOT_ID,
         "run_id": DEFAULT_RUN_ID,
         "canonical_bundle_path": str(canonical_bundle_path),
         "bundle_status": "blocked_missing_inputs",
+        "bundle_provenance_status": "blocked_missing_inputs",
         "bundle_summary": {
             "status": "blocked_missing_inputs",
             "summary": reason,
             "blockers": list(missing_inputs),
+            "section_counts": section_provenance_counts(section_provenance_profile),
         },
         "single_job_execution_summary": {
             "schema_version": "balfrin_single_job_execution_sufficiency_v1",
@@ -222,6 +274,7 @@ def blocked_report(
             "scale_up_authorized": False,
         },
         "gis_cog_parity_report": build_gis_cog_parity_report(),
+        "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": post_run_gate.claim_boundaries(),
         "source_paths": {},
         "evidence_sources": evidence_sources({}),
@@ -234,6 +287,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "Balfrin Evidence Bundle",
         f"schema_version: {report['schema_version']}",
         f"bundle_status: {report['bundle_status']}",
+        f"bundle_provenance_status: {report.get('bundle_provenance_status', report['bundle_status'])}",
         f"canonical_bundle_path: {report['canonical_bundle_path']}",
         "bundle_summary:",
         f"  status: {report['bundle_summary']['status']}",
@@ -243,6 +297,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     if blockers:
         lines.append("  blockers:")
         lines.extend(f"    - {blocker}" for blocker in blockers)
+    section_counts = report["bundle_summary"].get("section_counts") or {}
+    if section_counts:
+        lines.append("  section_counts:")
+        for key in ("measured", "fixture_backed", "blocked_missing_inputs"):
+            if key in section_counts:
+                lines.append(f"    {key}: {section_counts[key]}")
     lines.extend(
         [
             "single_job_execution_summary:",
@@ -282,6 +342,15 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  scope_delta: {parity_report.get('scope_delta', {})}",
             ]
         )
+    section_provenance_profile = report.get("section_provenance_profile") or []
+    if section_provenance_profile:
+        lines.append("section_provenance_profile:")
+        for section in section_provenance_profile:
+            lines.append(
+                f"  - {section.get('section', 'unknown')}: "
+                f"{section.get('evidence_type', 'unknown')} | "
+                f"{section.get('status', 'unknown')}"
+            )
     if report.get("missing_inputs"):
         lines.append("missing_inputs:")
         lines.extend(f"  - {item}" for item in report["missing_inputs"])
@@ -428,6 +497,139 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_section_provenance_profile(
+    *,
+    single_job_summary: dict[str, Any],
+    probe_metrics: dict[str, Any],
+    post_run_report: dict[str, Any],
+    gis_report: dict[str, Any],
+    source_paths: dict[str, Any],
+) -> list[dict[str, Any]]:
+    failure_report = build_failure_taxonomy_report(
+        single_job_summary=single_job_summary,
+        probe_metrics=probe_metrics,
+        post_run_report=post_run_report,
+        gis_report=gis_report,
+    )
+    parity_report = build_gis_cog_parity_report(single_job_summary=single_job_summary, gis_report=gis_report)
+    sections = [
+        (
+            "single_job_execution_summary",
+            single_job_summary,
+            collect_source_paths(source_paths, "single_job_record_paths"),
+        ),
+        ("probe_metrics", probe_metrics, collect_probe_metric_paths(probe_metrics)),
+        (
+            "post_run_interpretation_gate_report",
+            post_run_report,
+            [source_paths.get("post_run_contract_path")],
+        ),
+        (
+            "failure_taxonomy_report",
+            failure_report,
+            [source_paths.get("post_run_contract_path")],
+        ),
+        ("gis_cog_readiness_report", gis_report, collect_source_paths(source_paths, "gis_artifact_roots")),
+        (
+            "gis_cog_parity_report",
+            parity_report,
+            collect_source_paths(source_paths, "gis_artifact_roots"),
+        ),
+    ]
+    profile: list[dict[str, Any]] = []
+    for section_name, section_payload, section_paths in sections:
+        normalized_paths = [path for path in section_paths if isinstance(path, str) and path]
+        profile.append(
+            {
+                "section": section_name,
+                "status": section_status(section_name, section_payload),
+                "evidence_type": classify_evidence_type(section_name, section_payload, normalized_paths),
+                "source_paths": normalized_paths,
+            }
+        )
+    return profile
+
+
+def collect_source_paths(source_paths: dict[str, Any], key: str) -> list[str]:
+    value = source_paths.get(key)
+    if isinstance(value, dict):
+        collected: list[str] = []
+        for item in value.values():
+            if isinstance(item, str) and item:
+                collected.append(item)
+            elif isinstance(item, list):
+                collected.extend(str(entry) for entry in item if isinstance(entry, str) and entry)
+        return collected
+    if isinstance(value, list):
+        return [str(item) for item in value if isinstance(item, str) and item]
+    if isinstance(value, str) and value:
+        return [value]
+    return []
+
+
+def collect_probe_metric_paths(probe_metrics: dict[str, Any]) -> list[str]:
+    paths: list[str] = []
+    for key in ("run_root", "probe_manifest_path", "command_plan_path", "hazard_manifest_path", "output_root"):
+        value = probe_metrics.get(key)
+        if isinstance(value, str) and value:
+            paths.append(value)
+    return paths
+
+
+def section_status(section_name: str, section_payload: dict[str, Any]) -> str:
+    if section_name == "single_job_execution_summary":
+        status = str(
+            section_payload.get("metrics_contract", {}).get("status")
+            or section_payload.get("decision")
+            or section_payload.get("status")
+            or ""
+        ).strip()
+    elif section_name == "failure_taxonomy_report":
+        status = str(section_payload.get("taxonomy_status") or section_payload.get("status") or "").strip()
+    elif section_name == "gis_cog_parity_report":
+        status = str(section_payload.get("parity_status") or section_payload.get("status") or "").strip()
+    else:
+        status = str(
+            section_payload.get("status")
+            or section_payload.get("interpretation_status")
+            or section_payload.get("gis_cog_readiness_status")
+            or ""
+        ).strip()
+    return status or "blocked_missing_inputs"
+
+
+def classify_evidence_type(section_name: str, section_payload: dict[str, Any], source_paths: list[str]) -> str:
+    status = section_status(section_name, section_payload)
+    if status.startswith("blocked") or status == "missing":
+        return "blocked"
+    if any(is_fixture_path(path) for path in source_paths):
+        return "fixture_backed"
+    return "measured"
+
+
+def is_fixture_path(path: str) -> bool:
+    candidate = Path(path)
+    for marker in FIXTURE_PATH_MARKERS:
+        marker_length = len(marker)
+        for index in range(len(candidate.parts) - marker_length + 1):
+            if tuple(candidate.parts[index : index + marker_length]) == marker:
+                return True
+    return False
+
+
+def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"measured": 0, "fixture_backed": 0, "blocked_missing_inputs": 0}
+    for section in profile:
+        evidence_type = str(section.get("evidence_type") or "blocked")
+        if evidence_type == "measured":
+            counts["measured"] += 1
+        elif evidence_type == "fixture_backed":
+            counts["fixture_backed"] += 1
+        else:
+            counts["blocked_missing_inputs"] += 1
+    return counts
+
+
 def build_post_run_evidence(
     *,
     single_job_summary: dict[str, Any],
@@ -490,6 +692,7 @@ def derive_bundle_status(
     probe_metrics: dict[str, Any],
     post_run_report: dict[str, Any],
     gis_report: dict[str, Any],
+    section_provenance_profile: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[str]]:
     blockers: list[str] = []
     if probe_metrics.get("status") == "blocked_missing_inputs":
@@ -503,16 +706,12 @@ def derive_bundle_status(
     if blockers:
         return "blocked_missing_inputs", blockers
 
-    complete = (
-        probe_metrics.get("status") == "complete"
-        and single_job_summary.get("metrics_contract", {}).get("status") == "complete"
-        and single_job_summary.get("single_job_sufficient_for_next_step") is True
-        and post_run_report.get("interpretation_status") == "measured_conditional_diagnostic"
-        and post_run_report.get("artifact_acceptance_status") == "accepted_conditional_diagnostic"
-        and gis_report.get("gis_cog_readiness_status") in {"gis_package_ready", "cog_package_ready"}
-        and claim_boundary_bools(post_run_report)
-    )
-    return ("complete" if complete else "incomplete"), blockers
+    profile = section_provenance_profile or []
+    has_fixture_sections = any(section.get("evidence_type") == "fixture_backed" for section in profile)
+    has_measured_sections = any(section.get("evidence_type") == "measured" for section in profile)
+    if has_fixture_sections and not has_measured_sections:
+        return "fixture_backed", blockers
+    return "measured", blockers
 
 
 def claim_boundary_bools(post_run_report: dict[str, Any]) -> bool:
@@ -540,8 +739,13 @@ def summarize_bundle(
 ) -> str:
     if bundle_status == "blocked_missing_inputs":
         return "Balfrin evidence is blocked because one or more required source sections are absent."
-    if bundle_status == "complete":
-        return "Balfrin readiness, metrics, outputs, GIS / COG status, restartability, and interpretation checks are all present and measurably aligned."
+    if bundle_status == "measured":
+        return (
+            "Balfrin readiness, metrics, outputs, GIS / COG status, restartability, "
+            "and interpretation checks are measured and bundled with claim boundaries intact."
+        )
+    if bundle_status == "fixture_backed":
+        return "Balfrin evidence is fixture-backed rather than measured; the bundle keeps that distinction explicit."
     return (
         "Balfrin evidence is present, but one or more sections remain inconclusive or scope-limited; "
         "the bundle keeps the diagnostic boundaries explicit."

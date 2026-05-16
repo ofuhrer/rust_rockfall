@@ -1918,3 +1918,37 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   claim operational readiness, annual frequency, physical probability, risk,
   exposure, vulnerability, scale-up, or distributed execution.
 - Next task: `TB-119`
+
+### TB-119 measured bundle: Build Canonical Balfrin Demonstration Evidence Bundle
+
+- Date: 2026-05-17
+- Commit: `pending`
+- Objective: convert the measured Balfrin evidence set into one canonical
+  bundle with explicit measured, fixture-backed, and blocked section
+  provenance.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`,
+  `tests/test_balfrin_evidence_bundle.py`,
+  `docs/balfrin_post_run_interpretation_gate.md`,
+  `docs/balfrin_single_job_execution_sufficiency.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the Balfrin evidence-bundle helper so the canonical report now
+    exposes `bundle_provenance_status`, section provenance profiles, and
+    measured / fixture-backed / blocked section counts.
+  - Kept the live Balfrin path measured while preserving the existing
+    conditional-diagnostic boundaries from the post-run gate and failure
+    taxonomy helpers.
+  - Added focused tests that exercise the measured live report, an explicit
+    fixture-backed override, and the blocked path so the bundle stays honest
+    about evidence provenance.
+  - Updated the Balfrin gate and sufficiency docs to point at the canonical
+    bundle helper and call out the new provenance split.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --artifact-dir /tmp/balfrin_bundle_check --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle`
+- Result/status: implemented_measured
+- Boundaries: this records the measured Balfrin evidence bundle only; it does
+  not widen operational, annual-frequency, physical-probability, risk,
+  exposure, vulnerability, scale-up, or distributed-execution claims.
+- Next task: `TB-120`

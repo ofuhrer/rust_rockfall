@@ -26,7 +26,7 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             tmp.write("\n")
         return Path(tmp.name)
 
-    def test_complete_bundle_is_reported_as_complete_and_preserves_boundaries(self) -> None:
+    def test_complete_bundle_is_reported_as_measured_and_preserves_boundaries(self) -> None:
         report = bundle.build_report({"bundle_report": self.complete_bundle_report()})
 
         self.assertEqual(report["schema_version"], "balfrin_evidence_bundle_v1")
@@ -143,6 +143,113 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(parity["scope_delta"]["converted_package_layer_inventory_status"], "scope_reduced")
         self.assertEqual(parity["layer_counts"]["converted"]["validation_balfrin_probe"], 20)
         self.assertEqual(parity["curve_linkage"]["status"], "linked")
+
+    def test_current_report_is_measured_and_tracks_section_provenance(self) -> None:
+        report = bundle.build_current_report()
+
+        self.assertEqual(report["bundle_status"], "measured")
+        self.assertEqual(report["bundle_provenance_status"], "measured")
+        self.assertEqual(
+            report["bundle_summary"]["section_counts"],
+            {"measured": 6, "fixture_backed": 0, "blocked_missing_inputs": 0},
+        )
+        self.assertTrue(all(section["evidence_type"] == "measured" for section in report["section_provenance_profile"]))
+        self.assertIn("section_provenance_profile:", bundle.render_text_report(report))
+        self.assertIn("bundle_provenance_status: measured", bundle.render_text_report(report))
+
+    def test_fixture_backed_override_stays_fixture_backed(self) -> None:
+        fixture_path = "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"
+        report = bundle.build_report(
+            {
+                "single_job_execution_summary": {
+                    "metrics_contract": {
+                        "status": "complete",
+                        "mandatory_metrics": {
+                            "wall_time_seconds": {"value": 10.0},
+                            "memory_peak_mb": {"value": 12.0},
+                            "validation_output": {"file_count": 2, "bytes": 10},
+                            "hazard_output": {"file_count": 2, "bytes": 10},
+                            "reduced_output_family_counts": {"validation_output_mode": "summary_only"},
+                            "conditional_curve_row_count": 1,
+                            "restartability_metadata": {
+                                "trajectory_plan_id": "fixture-trajectory-plan",
+                                "reducer_plan_id": "fixture-reducer-plan",
+                            },
+                        },
+                    },
+                    "decision": "defer",
+                    "single_job_sufficient_for_next_step": True,
+                    "record_paths": {"repeatability_record": fixture_path},
+                    "submission_report": {"submitted_job_id": "fixture-job-1", "status": "submitted"},
+                    "runtime_report": {"status": "complete"},
+                    "validation_output_blocker_status": "clear",
+                },
+                "probe_metrics": {
+                    "status": "complete",
+                    "metrics_contract_status": "complete",
+                    "metrics_contract_missing_metrics": [],
+                    "log_audit": {"error_like_line_count": 0},
+                    "run_root": fixture_path,
+                    "probe_manifest_path": fixture_path,
+                    "command_plan_path": fixture_path,
+                    "hazard_manifest_path": fixture_path,
+                    "output_root": fixture_path,
+                },
+                "post_run_interpretation_gate_report": {
+                    "interpretation_status": "measured_conditional_diagnostic",
+                    "artifact_acceptance_status": "accepted_conditional_diagnostic",
+                    "readiness_check": {"status": "ready"},
+                    "convergence_stability_check": {"status": "measured"},
+                    "output_check": {"status": "measured"},
+                    "gis_cog_check": {"status": "gis_package_ready"},
+                    "physical_credibility_check": {"status": "not_established"},
+                    "claim_boundaries": {
+                        "operational_claims_allowed": False,
+                        "physical_probability_claims_allowed": False,
+                        "annual_frequency_claims_allowed": False,
+                        "risk_exposure_vulnerability_claims_allowed": False,
+                        "scale_up_authorized": False,
+                        "distributed_execution_authorized": False,
+                    },
+                },
+                "gis_cog_readiness_report": {
+                    "gis_cog_readiness_status": "gis_package_ready",
+                    "artifact_roots": [fixture_path],
+                    "hazard_manifest_paths": {"fixture": fixture_path},
+                    "map_package_manifest_paths": {"fixture": fixture_path},
+                    "pilot_gis_package_manifest_paths": {"fixture": fixture_path},
+                    "standard_package_readiness_status": "gis_package_ready",
+                    "converted_package_readiness_status": "gis_package_ready",
+                    "converted_package_layer_inventory_status": "scope_reduced",
+                    "converted_package_scope_deltas": {"fixture": {"status": "scope_delta"}},
+                    "standard_package_layer_counts": {},
+                    "converted_package_layer_counts": {},
+                    "cog_readiness_indicators": {},
+                },
+                "source_paths": {
+                    "single_job_record_paths": {
+                        "repeatability_record": fixture_path,
+                    },
+                    "post_run_contract_path": fixture_path,
+                    "gis_artifact_roots": [fixture_path],
+                },
+            }
+        )
+
+        self.assertEqual(report["bundle_status"], "fixture_backed")
+        self.assertEqual(report["bundle_provenance_status"], "fixture_backed")
+        self.assertTrue(all(section["evidence_type"] == "fixture_backed" for section in report["section_provenance_profile"]))
+        self.assertEqual(report["bundle_summary"]["section_counts"]["fixture_backed"], 6)
+        self.assertIn("fixture-backed rather than measured", report["bundle_summary"]["summary"])
+
+    def test_blocked_override_marks_sections_blocked(self) -> None:
+        report = bundle.build_report({"missing_inputs": ["probe_metrics"]})
+
+        self.assertEqual(report["bundle_status"], "blocked_missing_inputs")
+        self.assertEqual(report["bundle_provenance_status"], "blocked_missing_inputs")
+        self.assertEqual(report["bundle_summary"]["section_counts"]["blocked_missing_inputs"], 6)
+        self.assertTrue(all(section["evidence_type"] == "blocked" for section in report["section_provenance_profile"]))
+        self.assertIn("required evidence inputs are missing", bundle.render_text_report(report))
 
     def complete_bundle_report(self) -> dict[str, object]:
         return {

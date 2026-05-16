@@ -24,44 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-119: Build Canonical Balfrin Demonstration Evidence Bundle
-
-Goal: Convert the measured Balfrin run root into one canonical evidence bundle
-for readiness, metrics, outputs, GIS/COG status, restartability, failure
-taxonomy, uncertainty summary, runtime summary, GIS-ready outputs, and
-post-run interpretation.
-
-Capability gap reduced: Reproducible demonstration evidence and auditability.
-
-Why this outranks alternatives: Management-facing and scientific review should
-consume one coherent measured bundle, not scattered helper outputs or
-fixture-backed reports.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `scripts/summarize_balfrin_failure_taxonomy.py`
-- `docs/balfrin_post_run_interpretation_gate.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A canonical measured evidence-bundle JSON/text path or an explicit
-  `blocked_missing_measured_run` report if TB-116 did not produce a run root.
-- Tests or smoke checks showing the bundle distinguishes measured, fixture, and
-  blocked sections.
-
-Definition of done:
-
-- The bundle helper reports a measured bundle from the Balfrin run evidence, or
-  the task records a blocked outcome without pretending the fixture-backed
-  bundle is measured.
-
-Boundaries: Do not fabricate missing metrics, do not commit large generated
-outputs, and do not broaden claim boundaries.
-
 ### TB-120: Demonstrate Measured Balfrin Restartability And Recovery
 
 Goal: Interrupt and recover the canonical Balfrin demonstration or classify why
