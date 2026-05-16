@@ -23,35 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-102: Execute And Collect The Balfrin Single-Release-Zone Pilot
-
-Goal: Produce the first measured Balfrin execution evidence for the frozen single-release-zone pilot and collect the required metrics bundle.
-
-Capability gap reduced: Demonstration evidence, runtime boundedness, and artifact completeness.
-
-Why this outranks alternatives: The current dominant gap is empirical; the repository is ready as scaffolding but not yet measured for this pilot.
-
-Inspect first:
-
-- `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A measured Balfrin run record or a blocked execution report with exact failure class.
-- Collected metrics for wall time, memory, output file counts, output bytes, reduced-output family counts, conditional-curve counts, and restartability metadata.
-- No generated validation or hazard outputs committed.
-
-Definition of done:
-
-- Measured evidence or an actionable blocked report is committed, focused checks pass, and TB-102 is removed from this backlog.
-
-Boundaries: Do not use `git push --no-verify`, do not commit generated artifacts, do not introduce distributed/MPI execution, and do not make operational or physical-probability claims.
-
 ### TB-103: Harden Balfrin Demonstration Runbook
 
 Goal: Make the Balfrin demo execution procedure operationally reproducible with exact start, stop, resume, collect, verify, and cleanup steps.
