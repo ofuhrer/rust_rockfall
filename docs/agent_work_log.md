@@ -1922,7 +1922,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-119 measured bundle: Build Canonical Balfrin Demonstration Evidence Bundle
 
 - Date: 2026-05-17
-- Commit: `pending`
+- Commit: `86fa8cc`
 - Objective: convert the measured Balfrin evidence set into one canonical
   bundle with explicit measured, fixture-backed, and blocked section
   provenance.
