@@ -18,8 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 ### TB-058: Stabilize Command-Plan And COG Readiness Drift
 
-Priority: P0
-
 Goal: post-TB-057 reviews found red or fragile worker-facing surfaces before any new scientific task starts. Reduces: makes the executable queue reliable in fresh checkouts and prevents workers from following stale COG/export guidance.
 
 Inspect first:
@@ -49,8 +47,6 @@ manual QA, no operational or scale-up claim.
 
 ### TB-059: Emit Persistent Spatial Disagreement Stability Zones
 
-Priority: P1
-
 Goal: TB-052 and TB-053 decomposed closure-limiting uncertainty, but workers still need a compact spatial product that distinguishes persistent closure-limiting regions from localized deferrable disagreement. Reduces: scientific interpretability and uncertainty understanding.
 
 Inspect first:
@@ -76,8 +72,6 @@ Boundaries: no tuning, no physics change, no new ensemble, no accepted/no-go
 status change unless directly justified by existing measured evidence.
 
 ### TB-060: Trace Uncertainty Hotspots To Source And Scenario Evidence
-
-Priority: P2
 
 Goal: the dominant hotspots are known spatially, but the repo does not yet explain whether the high-uncertainty cells align with particular source-zone, release, scenario, or trajectory families. Reduces: scientific interpretability and pilot closure realism.
 
@@ -106,8 +100,6 @@ claim, no operational interpretation.
 
 ### TB-061: Define A Bounded Next-Ensemble Feasibility Probe
 
-Priority: P3
-
 Goal: closure remains inconclusive, but any additional ensemble should be justified by expected information gain and bounded output cost. Reduces: uncertainty characterization and scalable execution planning.
 
 Inspect first:
@@ -135,8 +127,6 @@ scale-up or distributed execution.
 
 ### TB-062: Generate Chant Sura Dry-Run Case Skeleton
 
-Priority: P4
-
 Goal: Chant Sura core synthetic staging is ready and public context is deferred, but there is no concrete second-site case-generation skeleton showing what would run once real public context exists. Reduces: Swiss-wide portability and second-site realism.
 
 Inspect first:
@@ -163,8 +153,6 @@ portability or physical-evidence claim.
 
 ### TB-063: Add AOI-To-Swisstopo Acquisition Dry-Run Planner
 
-Priority: P5
-
 Goal: the desired future user workflow begins with a geographic region, but the repo still lacks a dry-run step that maps an AOI to required public geodata products and expected staging paths. Reduces: Swiss-wide public-geodata portability and user workflow automation.
 
 Inspect first:
@@ -189,8 +177,6 @@ Boundaries: no network fetches, no tile downloading, no claim that products
 are locally staged unless files exist.
 
 ### TB-064: Verify COG Export Layer Parity And Audit Semantics
-
-Priority: P6
 
 Goal: `--export-cog` is proven, but reviews noted possible confusion between standard roots with 22 layers and exported COG roots with a different declared raster count. Reduces: GIS/output usability.
 
@@ -219,8 +205,6 @@ operational product claim.
 
 ### TB-065: Score Physical-Credibility Evidence Acquisition Priorities
 
-Priority: P7
-
 Goal: TB-057 mapped missing evidence requirements, but it does not yet rank which concrete evidence acquisitions would most reduce the physical-credibility gap. Reduces: physical credibility boundaries and validation realism.
 
 Inspect first:
@@ -246,8 +230,6 @@ Boundaries: no calibration fitting, no annual-frequency model, no operational,
 risk, exposure, or vulnerability claim.
 
 ### TB-066: Reconcile Canonical Diagnostic Interpretation With Current Product Paths
-
-Priority: P8
 
 Goal: the canonical diagnostic interpretation exists, but its blocker language can lag behind product improvements such as native reduced output and COG export. Reduces: pilot closure realism and user-facing interpretation coherence.
 
@@ -287,8 +269,6 @@ every active task:
 
 ```markdown
 ### TB-XXX: Short Description
-
-Priority: Pn
 
 Goal: One sentence describing why the task matters and what gap it reduces.
 
