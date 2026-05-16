@@ -218,9 +218,11 @@ class PilotCommandPlanTest(unittest.TestCase):
             [
                 "readiness_checks",
                 "multisite_source_scenario_contract",
+                "second_site_case_generation",
                 "second_site_portability",
             ],
         )
+        self.assertIn("second_site_case_skeleton_dry_run", report["command_ids"])
         self.assertIn("second_site_acquisition_manifest_review", report["command_ids"])
         self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
         self.assertIn("hazard/results/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
@@ -236,6 +238,11 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertTrue(report["blocked_second_site_commands"])
         self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
+        dry_run_command = next(command for command in report["commands"] if command["id"] == "second_site_case_skeleton_dry_run")
+        self.assertFalse(dry_run_command["blocked_reason"])
+        self.assertFalse(dry_run_command["read_only"])
+        self.assertFalse(dry_run_command["may_produce_ignored_outputs"])
+        self.assertIn("/tmp/tb062_chant_sura_fluelapass_case_skeleton/chant_sura_fluelapass_dry_run_case_skeleton.yaml", dry_run_command["expected_outputs"])
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
         self.assertFalse(contract_plan["read_only"])

@@ -894,6 +894,36 @@ def build_second_site_plan(
         ),
         command_entry(
             site="chant_sura_fluelapass",
+            group="second_site_case_generation",
+            command_id="second_site_case_skeleton_dry_run",
+            description="Generate a Chant Sura / Fluelapass dry-run case skeleton into /tmp without authorizing ensemble execution.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_chant_sura_fluelapass_dry_run_case_skeleton.py"),
+                    "--site-config",
+                    rel(site_config),
+                    "--output-root",
+                    "/tmp/tb062_chant_sura_fluelapass_case_skeleton",
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            ],
+            expected_outputs=[
+                "/tmp/tb062_chant_sura_fluelapass_case_skeleton/chant_sura_fluelapass_dry_run_case_skeleton.yaml"
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
             group="second_site_portability",
             command_id="second_site_geodata_manifest_validation",
             description="Validate the staged second-site geodata manifest before any porting step.",
@@ -1146,6 +1176,7 @@ GROUP_DESCRIPTIONS = {
     "context_inspection": "Inspect staged public context layers.",
     "hazard_context_overlap": "Measure hazard/context proximity on the staged envelope.",
     "uncertainty_summary": "Compose the same-scale uncertainty envelope summary.",
+    "second_site_case_generation": "Generate a dry-run Chant Sura / Flüelapass case skeleton.",
     "second_site_portability": "Template portability steps for Chant Sura / Flüelapass.",
     "multisite_source_scenario_contract": "Audit portable versus site-specific source/scenario fields.",
 }
@@ -1170,6 +1201,7 @@ def ordered_group_ids(site: str) -> list[str]:
         return [
             "readiness_checks",
             "multisite_source_scenario_contract",
+            "second_site_case_generation",
             "second_site_portability",
         ]
     return list(GROUP_DESCRIPTIONS)

@@ -18,32 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-062: Generate Chant Sura Dry-Run Case Skeleton
-
-Goal: Chant Sura core synthetic staging is ready and public context is deferred, but there is no concrete second-site case-generation skeleton showing what would run once real public context exists. Reduces: Swiss-wide portability and second-site realism.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- dry-run case-generation helper or command-plan entry that writes only to `/tmp` or ignored paths;
-- case skeleton includes terrain/source-zone/scenario/policy references and explicit deferred public-context placeholders;
-- preflight remains `deferred_public_context_inputs`.
-
-Definition of done:
-
-- focused tests prove the dry-run skeleton is generated, validates references, and blocks ensemble execution;
-- command plan surfaces the dry-run without adding real second-site run commands.
-
-Boundaries: no second-site ensemble, no hazard build, no downloads, no
-portability or physical-evidence claim.
-
 ### TB-063: Add AOI-To-Swisstopo Acquisition Dry-Run Planner
 
 Goal: the desired future user workflow begins with a geographic region, but the repo still lacks a dry-run step that maps an AOI to required public geodata products and expected staging paths. Reduces: Swiss-wide public-geodata portability and user workflow automation.
