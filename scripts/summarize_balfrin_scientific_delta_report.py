@@ -47,6 +47,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument("--text-output", type=Path, default=None)
+    parser.add_argument(
+        "--artifact-dir",
+        type=Path,
+        default=None,
+        help="optional directory for the canonical JSON and text interpretation artifact",
+    )
     parser.add_argument(
         "--evidence-json",
         type=Path,
@@ -61,9 +68,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"balfrin scientific delta report error: {exc}", file=sys.stderr)
         return 2
 
-    if args.json_output is not None:
-        args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    materialize_artifacts(
+        report,
+        json_output=args.json_output,
+        text_output=args.text_output,
+        artifact_dir=args.artifact_dir,
+    )
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
@@ -142,6 +152,15 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         hotspot_provenance_report=hotspot_provenance_report,
         report_status=report_status,
     )
+    canonical_interpretation = build_canonical_interpretation(
+        post_run_report=post_run_report,
+        same_scale_uncertainty_report=same_scale_uncertainty_report,
+        same_scale_stability_frontier_report=same_scale_stability_frontier_report,
+        closure_gap_deltas_report=closure_gap_deltas_report,
+        hotspot_provenance_report=hotspot_provenance_report,
+        report_status=report_status,
+        scientific_delta_summary=scientific_delta_summary,
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -152,6 +171,9 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "closure_gap_deltas_report": closure_gap_deltas_report,
         "hotspot_provenance_report": hotspot_provenance_report,
         "scientific_delta_summary": scientific_delta_summary,
+        "canonical_interpretation": canonical_interpretation,
+        "machine_readable_blockers": canonical_interpretation.get("blockers", {}),
+        "machine_readable_boundaries": canonical_interpretation.get("boundaries", {}),
         "claim_boundaries": claim_boundaries(post_run_report),
         "measurement_commands": {
             "post_run_interpretation_gate": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json",
@@ -168,6 +190,225 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "distributed_execution_authorized": False,
         "physical_probability_claims_allowed": False,
     }
+
+
+def build_canonical_interpretation(
+    *,
+    post_run_report: dict[str, Any],
+    same_scale_uncertainty_report: dict[str, Any],
+    same_scale_stability_frontier_report: dict[str, Any],
+    closure_gap_deltas_report: dict[str, Any],
+    hotspot_provenance_report: dict[str, Any],
+    report_status: str,
+    scientific_delta_summary: dict[str, Any],
+) -> dict[str, Any]:
+    interpretation_status = str(post_run_report.get("interpretation_status") or "unknown")
+    closure_status = str(closure_gap_deltas_report.get("current_closure_status") or "unknown")
+    closure_gap_status = str(closure_gap_deltas_report.get("closure_gap_status") or "unknown")
+    interpretation_delta = derive_interpretation_delta(
+        report_status=report_status,
+        closure_gap_status=closure_gap_status,
+        current_closure_status=closure_status,
+        current_interpretation_status=interpretation_status,
+    )
+    blockers = build_machine_readable_blockers(
+        post_run_report=post_run_report,
+        same_scale_uncertainty_report=same_scale_uncertainty_report,
+        same_scale_stability_frontier_report=same_scale_stability_frontier_report,
+        closure_gap_deltas_report=closure_gap_deltas_report,
+        hotspot_provenance_report=hotspot_provenance_report,
+        scientific_delta_summary=scientific_delta_summary,
+    )
+    boundaries = build_machine_readable_boundaries(
+        post_run_report=post_run_report,
+        same_scale_stability_frontier_report=same_scale_stability_frontier_report,
+    )
+    return {
+        "schema_version": "balfrin_scientific_delta_interpretation_v1",
+        "interpretation_delta": interpretation_delta,
+        "closure_semantics": {
+            "current_closure_status": closure_status,
+            "current_interpretation_status": interpretation_status,
+            "closure_gap_status": closure_gap_status,
+        },
+        "blockers": blockers,
+        "boundaries": boundaries,
+        "summary": {
+            "status": interpretation_delta["status"],
+            "summary": interpretation_delta["summary"],
+            "closure_limiting_layers": list(scientific_delta_summary.get("same_scale_focus", {}).get("closure_limiting_layers", [])),
+            "deferrable_layers": list(scientific_delta_summary.get("same_scale_focus", {}).get("deferrable_layers", [])),
+        },
+    }
+
+
+def derive_interpretation_delta(
+    *,
+    report_status: str,
+    closure_gap_status: str,
+    current_closure_status: str,
+    current_interpretation_status: str,
+) -> dict[str, Any]:
+    if report_status == "blocked_missing_inputs":
+        return {
+            "status": "blocked_missing_inputs",
+            "current_closure_status": current_closure_status,
+            "current_interpretation_status": current_interpretation_status,
+            "closure_gap_status": closure_gap_status,
+            "summary": "Measured Balfrin evidence is incomplete, so no diagnostic delta can be stated.",
+        }
+    if report_status == "measured_existing_artifacts":
+        return {
+            "status": "leaves_current_inconclusive_interpretation_unchanged",
+            "current_closure_status": current_closure_status,
+            "current_interpretation_status": current_interpretation_status,
+            "closure_gap_status": closure_gap_status,
+            "summary": "Measured Balfrin evidence remains bounded and does not reclassify the current inconclusive diagnostic interpretation.",
+        }
+    return {
+        "status": "weakens_current_inconclusive_interpretation",
+        "current_closure_status": current_closure_status,
+        "current_interpretation_status": current_interpretation_status,
+        "closure_gap_status": closure_gap_status,
+        "summary": "The measured Balfrin evidence narrows the diagnostic boundary but still leaves closure inconclusive.",
+    }
+
+
+def build_machine_readable_blockers(
+    *,
+    post_run_report: dict[str, Any],
+    same_scale_uncertainty_report: dict[str, Any],
+    same_scale_stability_frontier_report: dict[str, Any],
+    closure_gap_deltas_report: dict[str, Any],
+    hotspot_provenance_report: dict[str, Any],
+    scientific_delta_summary: dict[str, Any],
+) -> dict[str, Any]:
+    focus = dict(scientific_delta_summary.get("same_scale_focus") or {})
+    blocker_deltas = list(closure_gap_deltas_report.get("workflow_product_blocker_deltas", []))
+    blocker_index = {
+        str(item.get("blocker_key") or ""): dict(item)
+        for item in blocker_deltas
+        if item.get("blocker_key")
+    }
+    portability_blocker = blocker_index.get("public_context_inputs_deferred", {})
+    runtime_blocker = blocker_index.get("runtime_scaling_sufficient", {})
+    output_blocker = blocker_index.get("summary_only_not_rebuildable", {})
+    gis_blocker = blocker_index.get("standard_gis_roots_cog_blocked", {})
+    return {
+        "closure_limiting_layers": {
+            "status": "closure_limiting",
+            "layer_keys": list(focus.get("closure_limiting_layers", [])),
+            "deferrable_layer_keys": list(focus.get("deferrable_layers", [])),
+            "same_scale_interpretation": str(same_scale_uncertainty_report.get("spatial_interpretation") or "unknown"),
+            "closure_gap_status": str(closure_gap_deltas_report.get("closure_gap_status") or "unknown"),
+            "current_closure_status": str(closure_gap_deltas_report.get("current_closure_status") or "unknown"),
+        },
+        "gis_product_scope": {
+            "status": gis_product_scope_status(blocker_index),
+            "blocker_keys": [key for key in ("summary_only_not_rebuildable", "standard_gis_roots_cog_blocked") if key in blocker_index],
+            "blockers": [blocker_index[key] for key in ("summary_only_not_rebuildable", "standard_gis_roots_cog_blocked") if key in blocker_index],
+            "standard_package_status": str(gis_blocker.get("current_status") or "unknown"),
+            "output_reuse_status": str(output_blocker.get("blocker_state") or "unknown"),
+        },
+        "runtime_output_sufficiency": {
+            "status": runtime_output_sufficiency_status(blocker_index),
+            "blocker_keys": [key for key in ("runtime_scaling_sufficient", "summary_only_not_rebuildable") if key in blocker_index],
+            "runtime": runtime_blocker,
+            "output": output_blocker,
+            "same_scale_stability_frontier_status": str(same_scale_stability_frontier_report.get("frontier_status") or "unknown"),
+        },
+        "portability_status": {
+            "status": portability_status(blocker_index),
+            "blocker_key": "public_context_inputs_deferred" if "public_context_inputs_deferred" in blocker_index else "",
+            "blocker": portability_blocker,
+            "missing_input_categories": list(portability_blocker.get("delta_to_public_context_ready", []))
+            if isinstance(portability_blocker.get("delta_to_public_context_ready", []), list)
+            else [],
+        },
+        "physical_credibility_limits": {
+            "status": physical_credibility_status(post_run_report),
+            "required_physical_credibility": dict(post_run_report.get("required_physical_credibility") or {}),
+            "claim_boundaries": dict(post_run_report.get("claim_boundaries") or {}),
+            "hotspot_attribution_limits": dict(hotspot_provenance_report.get("attribution_limits") or {}),
+        },
+    }
+
+
+def build_machine_readable_boundaries(
+    *,
+    post_run_report: dict[str, Any],
+    same_scale_stability_frontier_report: dict[str, Any],
+) -> dict[str, Any]:
+    claim_boundaries = dict(post_run_report.get("claim_boundaries") or {})
+    if not claim_boundaries:
+        claim_boundaries = POST_RUN.claim_boundaries()
+    claim_boundaries.setdefault("operational_claims_allowed", False)
+    claim_boundaries.setdefault("physical_probability_claims_allowed", False)
+    claim_boundaries.setdefault("annual_frequency_claims_allowed", False)
+    claim_boundaries.setdefault("risk_exposure_vulnerability_claims_allowed", False)
+    claim_boundaries.setdefault("scale_up_authorized", False)
+    claim_boundaries.setdefault("distributed_execution_authorized", False)
+    return {
+        "claim_boundaries": claim_boundaries,
+        "same_scale_stability_frontier_status": str(same_scale_stability_frontier_report.get("frontier_status") or "unknown"),
+        "notes": list(claim_boundaries.get("notes", [])),
+    }
+
+
+def gis_product_scope_status(blocker_index: dict[str, dict[str, Any]]) -> str:
+    if "standard_gis_roots_cog_blocked" in blocker_index:
+        return "gis_product_scope_blocked"
+    if "summary_only_not_rebuildable" in blocker_index:
+        return "output_reuse_blocked"
+    return "unknown"
+
+
+def runtime_output_sufficiency_status(blocker_index: dict[str, dict[str, Any]]) -> str:
+    if "runtime_scaling_sufficient" in blocker_index and "summary_only_not_rebuildable" in blocker_index:
+        return "bounded_runtime_sufficient_output_blocked"
+    if "runtime_scaling_sufficient" in blocker_index:
+        return "runtime_sufficient"
+    if "summary_only_not_rebuildable" in blocker_index:
+        return "output_blocked"
+    return "unknown"
+
+
+def portability_status(blocker_index: dict[str, dict[str, Any]]) -> str:
+    if "public_context_inputs_deferred" in blocker_index:
+        return str(blocker_index["public_context_inputs_deferred"].get("blocker_state") or "public_context_inputs_deferred")
+    return "unknown"
+
+
+def physical_credibility_status(post_run_report: dict[str, Any]) -> str:
+    physical = dict(post_run_report.get("required_physical_credibility") or {})
+    if physical:
+        return str(physical.get("status") or physical.get("evidence_status") or "not_established")
+    return "not_established"
+
+
+def materialize_artifacts(
+    report: dict[str, Any],
+    *,
+    json_output: Path | None = None,
+    text_output: Path | None = None,
+    artifact_dir: Path | None = None,
+) -> dict[str, Path]:
+    written: dict[str, Path] = {}
+    if artifact_dir is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        if json_output is None:
+            json_output = artifact_dir / f"{SCHEMA_VERSION}.json"
+        if text_output is None:
+            text_output = artifact_dir / f"{SCHEMA_VERSION}.txt"
+    if json_output is not None:
+        json_output.parent.mkdir(parents=True, exist_ok=True)
+        json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written["json_output"] = json_output
+    if text_output is not None:
+        text_output.parent.mkdir(parents=True, exist_ok=True)
+        text_output.write_text(render_text_report(report) + "\n", encoding="utf-8")
+        written["text_output"] = text_output
+    return written
 
 
 def section_or_build(
@@ -377,6 +618,79 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "comparisons": [],
             "same_scale_focus": {},
         },
+        "canonical_interpretation": {
+            "schema_version": "balfrin_scientific_delta_interpretation_v1",
+            "interpretation_delta": {
+                "status": "blocked_missing_inputs",
+                "current_closure_status": "blocked_missing_inputs",
+                "current_interpretation_status": "blocked_missing_inputs",
+                "closure_gap_status": "blocked_missing_inputs",
+                "summary": "Measured Balfrin evidence is incomplete, so no diagnostic delta can be stated.",
+            },
+            "closure_semantics": {
+                "current_closure_status": "blocked_missing_inputs",
+                "current_interpretation_status": "blocked_missing_inputs",
+                "closure_gap_status": "blocked_missing_inputs",
+            },
+            "blockers": {
+                "closure_limiting_layers": {
+                    "status": "blocked_missing_inputs",
+                    "layer_keys": [],
+                    "deferrable_layer_keys": [],
+                },
+                "gis_product_scope": {
+                    "status": "blocked_missing_inputs",
+                    "blocker_keys": [],
+                    "blockers": [],
+                },
+                "runtime_output_sufficiency": {
+                    "status": "blocked_missing_inputs",
+                    "blocker_keys": [],
+                    "runtime": {},
+                    "output": {},
+                },
+                "portability_status": {
+                    "status": "blocked_missing_inputs",
+                    "blocker_key": "",
+                    "blocker": {},
+                    "missing_input_categories": [],
+                },
+                "physical_credibility_limits": {
+                    "status": "blocked_missing_inputs",
+                    "required_physical_credibility": {},
+                    "claim_boundaries": POST_RUN.claim_boundaries(),
+                    "hotspot_attribution_limits": {},
+                },
+            },
+            "boundaries": {
+                "claim_boundaries": POST_RUN.claim_boundaries(),
+                "same_scale_stability_frontier_status": "blocked_missing_inputs",
+                "notes": [],
+            },
+            "summary": {
+                "status": "blocked_missing_inputs",
+                "summary": "Measured Balfrin evidence is incomplete, so no diagnostic delta can be stated.",
+                "closure_limiting_layers": [],
+                "deferrable_layers": [],
+            },
+        },
+        "machine_readable_blockers": {
+            "closure_limiting_layers": {"status": "blocked_missing_inputs", "layer_keys": [], "deferrable_layer_keys": []},
+            "gis_product_scope": {"status": "blocked_missing_inputs", "blocker_keys": [], "blockers": []},
+            "runtime_output_sufficiency": {"status": "blocked_missing_inputs", "blocker_keys": [], "runtime": {}, "output": {}},
+            "portability_status": {"status": "blocked_missing_inputs", "blocker_key": "", "blocker": {}, "missing_input_categories": []},
+            "physical_credibility_limits": {
+                "status": "blocked_missing_inputs",
+                "required_physical_credibility": {},
+                "claim_boundaries": POST_RUN.claim_boundaries(),
+                "hotspot_attribution_limits": {},
+            },
+        },
+        "machine_readable_boundaries": {
+            "claim_boundaries": POST_RUN.claim_boundaries(),
+            "same_scale_stability_frontier_status": "blocked_missing_inputs",
+            "notes": [],
+        },
         "claim_boundaries": POST_RUN.claim_boundaries(),
         "measurement_commands": {
             "post_run_interpretation_gate": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json",
@@ -430,6 +744,14 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"- deferrable_layers: {', '.join(focus.get('deferrable_layers', []))}")
     if focus.get("hotspot_classes"):
         lines.append(f"- hotspot_classes: {json.dumps(focus['hotspot_classes'], sort_keys=True)}")
+    lines.extend(["", "## Canonical Interpretation"])
+    canonical = report.get("canonical_interpretation", {})
+    interpretation_delta = canonical.get("interpretation_delta", {})
+    lines.append(f"- interpretation_delta: {interpretation_delta.get('status', 'unknown')}")
+    lines.append(f"- interpretation_summary: {interpretation_delta.get('summary', 'unknown')}")
+    lines.append(f"- closure_semantics: {json.dumps(canonical.get('closure_semantics', {}), sort_keys=True)}")
+    lines.append(f"- machine_readable_blockers: {json.dumps(report.get('machine_readable_blockers', {}), sort_keys=True)}")
+    lines.append(f"- machine_readable_boundaries: {json.dumps(report.get('machine_readable_boundaries', {}), sort_keys=True)}")
     if report.get("missing_inputs"):
         lines.extend(["", "## Missing Inputs", ""])
         for item in report["missing_inputs"]:

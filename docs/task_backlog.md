@@ -24,45 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-121: Generate Canonical Balfrin Conditional Diagnostic Interpretation
-
-Goal: Produce one coherent measured Balfrin interpretation that combines
-uncertainty, convergence, scaling, GIS readiness, portability, closure
-semantics, and physical-credibility boundaries.
-
-Capability gap reduced: Scientific interpretability and uncertainty-aware
-demonstration meaning.
-
-Why this outranks alternatives: A successful run is not automatically a
-credible diagnostic result; it must be interpreted against the known
-closure-limiting uncertainty evidence.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scientific_delta_report.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- A canonical measured interpretation artifact that states whether the run
-  supports, weakens, or leaves unchanged the current inconclusive diagnostic
-  interpretation.
-- Machine-readable blocker and boundary fields for closure-limiting layers,
-  GIS/product scope, runtime/output sufficiency, portability status, and
-  physical-credibility limits.
-
-Definition of done:
-
-- The scientific delta helper consumes measured Balfrin evidence and reports a
-  bounded interpretation without changing closure criteria by assertion.
-
-Boundaries: Do not tune physics, change acceptance thresholds, or claim physical
-validation from conditional diagnostic agreement.
-
 ### TB-122: Resolve Balfrin GIS/COG Demonstration Scope Delta
 
 Goal: Make the Balfrin demonstration GIS package either full-scope COG-ready or
