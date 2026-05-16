@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-124: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
-
-Goal: Produce a deterministic block-scenario sensitivity plan for the Balfrin
-demo that separates pragmatic scenario coverage from physical frequency claims.
-
-Capability gap reduced: Scenario generation reproducibility and uncertainty
-interpretation.
-
-Why this outranks alternatives: Block mass/radius and scenario weighting remain
-major uncertainty drivers; the next demo should expose scenario coverage
-explicitly instead of hiding it inside a frozen table.
-
-Inspect first:
-
-- `scripts/plan_pragmatic_release_plan.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`
-- `validation/policies/`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- A deterministic scenario-plan report with block-size bins, weighting
-  semantics, source-policy provenance, and explicit non-frequency labels.
-- Tests for deterministic generation and blocked/missing-input behavior.
-
-Definition of done:
-
-- The scenario plan can be regenerated from public/frozen inputs and clearly
-  distinguishes sampling weights from physical occurrence frequencies.
-
-Boundaries: Do not fit block-size distributions, infer annual frequencies, or
-change the already measured Balfrin demo unless a later task authorizes it.
-
 ### TB-125: Prototype AOI-To-Demonstration Preparation Path
 
 Goal: Given AOI extents or a release polygon, prepare the deterministic inputs
