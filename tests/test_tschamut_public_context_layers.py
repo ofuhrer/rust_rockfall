@@ -113,6 +113,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["roads_or_transport_relevance"]["classification"], "unresolved")
         self.assertEqual(report["final_classification"], "limiting")
 
+    @unittest.skipUnless(shutil.which("ogrinfo"), "ogrinfo is unavailable")
     def test_vector_layer_count_on_tiny_geojson_fixture_detects_intersection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -157,7 +158,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
 
             bbox = {"xmin": -1.0, "ymin": -1.0, "xmax": 11.0, "ymax": 11.0}
             roads_result = inspector.query_vector_layer_count(
-                ogrinfo=shutil.which("ogrinfo") or "/opt/homebrew/bin/ogrinfo",
+                ogrinfo=shutil.which("ogrinfo"),
                 datasource_path=str(roads),
                 layer_name="roads",
                 bbox=bbox,
@@ -165,7 +166,7 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
                 member_path="roads.geojson",
             )
             barriers_result = inspector.query_vector_layer_count(
-                ogrinfo=shutil.which("ogrinfo") or "/opt/homebrew/bin/ogrinfo",
+                ogrinfo=shutil.which("ogrinfo"),
                 datasource_path=str(empty),
                 layer_name="barriers",
                 bbox=bbox,
@@ -225,7 +226,11 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
                     "nearest_feature_distance_m": 0.0 if counts[layer_name] > 0 else None,
                 }
 
-            with mock.patch.object(inspector, "query_swisstlm3d_layer_count", side_effect=fake_query):
+            with mock.patch.object(inspector.shutil, "which", return_value="/usr/bin/ogrinfo"), mock.patch.object(
+                inspector,
+                "query_swisstlm3d_layer_count",
+                side_effect=fake_query,
+            ):
                 report = inspector.inspect_swisstlm3d_corridor_relevance(
                     context_root=context_root,
                     selected_extent_or_corridor={

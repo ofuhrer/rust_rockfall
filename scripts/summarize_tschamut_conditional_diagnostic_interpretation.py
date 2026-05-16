@@ -96,6 +96,8 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     if evidence_override and evidence_override.get("missing_inputs"):
         missing_inputs = [str(item) for item in evidence_override.get("missing_inputs", [])]
         return blocked_report(missing_inputs, reason="required evidence inputs are missing")
+    if evidence_override and isinstance(evidence_override.get("diagnostic_interpretation_report"), dict):
+        return dict(evidence_override["diagnostic_interpretation_report"])
 
     return _build_current_report()
 
@@ -111,7 +113,7 @@ def _build_current_report() -> dict[str, Any]:
     gis = CLOSURE.summarize_gis_cog(
         GIS.build_gis_cog_readiness_report(converted_package_roots=[DEFAULT_CO_G_PACKAGE_ROOT])
     )
-    reducer = CLOSURE.summarize_reducer_scaling(REDUCER.build_report(REDUCER.DEFAULT_ARTIFACTS))
+    reducer = CLOSURE.summarize_reducer_scaling(REDUCER.build_report(REDUCER.DEFAULT_ARTIFACTS, allow_missing=True))
     physical = PHYSICAL.build_report()
     context_scope = CLOSURE.summarize_context_scope(_build_context_scope())
     portability_report = PORTABILITY.build_report(DEFAULT_SECOND_SITE_CONFIG, site_id=None)

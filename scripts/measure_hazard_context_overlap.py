@@ -138,12 +138,17 @@ def build_summary(
     top_cell_count: int = DEFAULT_TOP_CELL_COUNT,
     buffer_radii_m: list[float] | tuple[float, ...] = DEFAULT_BUFFER_RADII_M,
 ) -> dict[str, Any]:
-    context_metadata_path = require_existing_path(context_metadata_path, "context_metadata_path")
-    scope_record_path = require_existing_path(scope_record_path, "scope_record_path")
     if not hazard_manifest_path.exists():
-        context_metadata = read_json(context_metadata_path)
-        selected_extent = load_selected_extent(scope_record_path, context_metadata_path)
-        archive_path = resolve_archive_path(context_metadata, root=ROOT)
+        context_metadata = read_json(context_metadata_path) if context_metadata_path.exists() else {}
+        selected_extent = (
+            load_selected_extent(scope_record_path, context_metadata_path)
+            if scope_record_path.exists() and context_metadata_path.exists()
+            else {}
+        )
+        try:
+            archive_path = resolve_archive_path(context_metadata, root=ROOT)
+        except HazardContextOverlapError:
+            archive_path = context_metadata_path.parent
         return build_blocked_report(
             hazard_manifest_path=hazard_manifest_path,
             context_metadata_path=context_metadata_path,
@@ -156,6 +161,8 @@ def build_summary(
             target_layer_entries=[],
         )
 
+    context_metadata_path = require_existing_path(context_metadata_path, "context_metadata_path")
+    scope_record_path = require_existing_path(scope_record_path, "scope_record_path")
     hazard_manifest_path = require_existing_path(hazard_manifest_path, "hazard_manifest_path")
 
     hazard_manifest = read_json(hazard_manifest_path)

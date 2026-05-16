@@ -1985,11 +1985,26 @@ fn validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outpu
     let deposition = temp_path("validation_output_mode_rebuildable_reduced_deposition.csv");
     let impact_csv = temp_path("validation_output_mode_rebuildable_reduced_impacts.csv");
     let metadata = temp_path("validation_output_mode_rebuildable_reduced_trajectory_metadata.csv");
+    let releases = temp_path("validation_output_mode_rebuildable_reduced_releases.csv");
+    let depositions =
+        temp_path("validation_output_mode_rebuildable_reduced_observed_deposition.csv");
     let impact_json = temp_path("validation_output_mode_rebuildable_reduced_impacts.json");
     let ensemble_dir = temp_path("validation_output_mode_rebuildable_reduced_trajectories");
     let ensemble_impacts_dir = temp_path("validation_output_mode_rebuildable_reduced_impacts_dir");
     let ensemble_impacts_parquet =
         temp_path("validation_output_mode_rebuildable_reduced_impacts.parquet");
+    fs::write(
+        &releases,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,mass_kg,radius_m\n\
+         obs_001,synthetic,0.0,0.0,1.0,1.0,0.0,-0.2,10.0,0.5\n",
+    )
+    .unwrap();
+    fs::write(
+        &depositions,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,release_x_m,release_y_m,release_z_m,observed_runout_m,mass_kg,radius_m\n\
+         obs_001,synthetic,0.5,0.0,0.5,0.0,0.0,1.0,0.5,10.0,0.5\n",
+    )
+    .unwrap();
     fs::write(
         &case_path,
         format!(
@@ -2015,8 +2030,8 @@ random: {{ seed: 123, ensemble_size: 3, ensemble_workers: 2 }}
 validation_scope:
   type: synthetic-regression
 observations:
-  release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
-  deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+  release_points_csv: {}
+  deposition_points_csv: {}
 expected:
   metrics: [ensemble_mean_runout_m]
 outputs:
@@ -2032,6 +2047,8 @@ outputs:
   ensemble_impact_events_parquet: {}
   impact_events_json: {}
 "#,
+            releases.display(),
+            depositions.display(),
             diagnostics.display(),
             manifest.display(),
             trajectory.display(),
@@ -2092,6 +2109,8 @@ outputs:
     fs::remove_file(deposition).unwrap();
     fs::remove_file(impact_csv).unwrap();
     fs::remove_file(metadata).unwrap();
+    fs::remove_file(releases).unwrap();
+    fs::remove_file(depositions).unwrap();
 }
 
 #[test]

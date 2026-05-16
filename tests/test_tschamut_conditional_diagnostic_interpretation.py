@@ -6,8 +6,66 @@ from scripts import summarize_tschamut_conditional_diagnostic_interpretation as 
 
 
 class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
+    def _fixture_report(self) -> dict[str, object]:
+        return {
+            "schema_version": "tschamut_conditional_diagnostic_interpretation_v1",
+            "interpretation_status": "inconclusive_conditional_diagnostic",
+            "closure_status": "inconclusive",
+            "same_scale_readiness_status": "ready",
+            "spatial_uncertainty_status": "measured_existing_artifacts",
+            "dominant_scientific_blockers": [
+                "closure_status_inconclusive",
+                "spatial_uncertainty_support_nodata_dominates_closure",
+                "max_kinetic_energy_closure_limiting",
+                "max_jump_height_closure_limiting",
+                "velocity_exceedance_5mps_deferrable",
+            ],
+            "scientific_closure_blockers": [],
+            "workflow_product_blockers": [
+                "summary_only_not_rebuildable",
+                "standard_gis_roots_cog_blocked",
+            ],
+            "portability_blockers": ["public_context_inputs_deferred"],
+            "physical_credibility_blockers": ["physical_credibility_not_established"],
+            "output_profile_status": {
+                "target_summary_only": "summary_only_not_rebuildable",
+                "target_rebuildable_reduced": "rebuildable_reduced_output",
+                "command_plan_addressable": True,
+            },
+            "gis_cog_status": {
+                "standard_package_status": "gis_package_ready_cog_blocked",
+            },
+            "runtime_scaling_status": {
+                "reducer_scaling_status": "measured_existing_artifacts",
+                "local_single_job_sufficient_for_next_step": True,
+                "distributed_execution_authorized": False,
+            },
+            "portability_status": {
+                "portability_preflight_status": "deferred_public_context_inputs",
+            },
+            "physical_credibility_status": "not_established",
+            "claim_boundaries": {
+                "scale_up_authorized": False,
+                "operational_claims_allowed": False,
+                "annual_frequency_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+                "distributed_execution_authorized": False,
+            },
+            "recommended_next_decision": "Retain the conditional diagnostic interpretation as inconclusive.",
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "distributed_execution_authorized": False,
+            "current_evidence": {},
+            "evidence_sources": [],
+        }
+
+    def _fixture_override(self) -> dict[str, object]:
+        return {"diagnostic_interpretation_report": self._fixture_report()}
+
     def test_json_shape_includes_required_fields(self) -> None:
-        report = summary.build_report()
+        report = summary.build_report(self._fixture_override())
 
         expected_keys = {
             "schema_version",
@@ -43,7 +101,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertFalse(report["distributed_execution_authorized"])
 
     def test_closure_and_blocker_summary_remains_conservative(self) -> None:
-        report = summary.build_report()
+        report = summary.build_report(self._fixture_override())
 
         blockers = report["dominant_scientific_blockers"]
         self.assertIn("closure_status_inconclusive", blockers)
@@ -77,7 +135,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
 
     def test_text_output_mentions_dominant_and_workflow_blockers(self) -> None:
-        text = summary.render_text_report(summary.build_report())
+        text = summary.render_text_report(summary.build_report(self._fixture_override()))
 
         self.assertIn("interpretation_status: inconclusive_conditional_diagnostic", text)
         self.assertIn("dominant_scientific_blockers:", text)

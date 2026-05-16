@@ -400,7 +400,7 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(status, 0)
 
             metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
-            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertTrue(metadata["hazard_only"])
             self.assertFalse(metadata["risk_modeling_included"])
             self.assertEqual(metadata["inputs"]["trajectory_count"], 2)
@@ -532,7 +532,7 @@ class HazardLayerTests(unittest.TestCase):
             )
 
             self.assertEqual(status, 0)
-            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
             terrain = manifest["terrain"]
             self.assertEqual(terrain["metadata_path"], str(SWISS_PILOT / "swissalti3d_pilot_metadata.yaml"))
             self.assertEqual(terrain["crs"], "CH1903+ / LV95")
@@ -575,7 +575,7 @@ class HazardLayerTests(unittest.TestCase):
                 0,
             )
 
-            manifest = json.loads((output_dir / "hazard_fixture_weighted_manifest.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
             self.assertEqual(manifest["raster_exports"]["grid_csv_export"], "full")
             self.assertTrue(any(output["format"] == "csv_grid" for output in manifest["outputs"]))
 

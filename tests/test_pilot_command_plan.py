@@ -5,6 +5,7 @@ import io
 import json
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 import unittest
 
 
@@ -26,8 +27,52 @@ MODULE = load_module()
 
 
 class PilotCommandPlanTest(unittest.TestCase):
+    def _readiness_ready(self) -> dict[str, object]:
+        return {"readiness_status": "ready"}
+
+    def _output_profile_measured(self) -> dict[str, object]:
+        return {
+            "hazard_rebuild_output_profile_status": "measured",
+            "profile_classifications": {
+                "target_rebuildable_reduced": "rebuildable_reduced_output",
+            },
+        }
+
+    def _second_site_deferred(self) -> dict[str, object]:
+        return {
+            "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+            "candidate_site_name": "Chant Sura / Fluelapass",
+            "portability_preflight_status": "deferred_public_context_inputs",
+            "public_context_boundary_status": "deferred_public_context_inputs",
+            "deferred_public_context_categories": ["swissimage_context", "swisstlm3d_context"],
+            "public_context_product_requirements": [],
+            "blocked_second_site_commands": [
+                {"command_id": "second_site_benchmark_preparation_template", "blocked_status": "template_only"}
+            ],
+            "blocked_reason": "deferred_public_context_inputs",
+            "claim_boundaries": {
+                "scale_up_authorized": False,
+                "operational_claims_allowed": False,
+            },
+        }
+
+    def _contract_measured(self) -> dict[str, object]:
+        return {"source_scenario_contract_audit_status": "measured"}
+
+    def _fixture_report(self, site: str) -> dict[str, object]:
+        with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_ready()), patch.object(
+            MODULE.OUTPUT_PROFILE,
+            "build_report",
+            return_value=self._output_profile_measured(),
+        ), patch.object(MODULE.PORTABILITY, "build_report", return_value=self._second_site_deferred()), patch.object(
+            MODULE.CONTRACT,
+            "build_report",
+            return_value=self._contract_measured(),
+        ):
+            return MODULE.build_report(site, SECOND_SITE_CONFIG)
+
     def test_tschamut_plan_json_has_stable_groups(self) -> None:
-        report = MODULE.build_report("tschamut_same_scale", SECOND_SITE_CONFIG)
+        report = self._fixture_report("tschamut_same_scale")
 
         self.assertEqual(report["command_plan_status"], "ready")
         self.assertTrue(report["read_only"])
@@ -112,7 +157,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertTrue(converted_audit_command["read_only"])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
-        report = MODULE.build_report("chant_sura_fluelapass", SECOND_SITE_CONFIG)
+        report = self._fixture_report("chant_sura_fluelapass")
 
         self.assertEqual(report["second_site_portability_status"], "deferred_public_context_inputs")
         self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
@@ -151,7 +196,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
 
     def test_all_site_group_keys_are_unique_when_group_ids_repeat(self) -> None:
-        report = MODULE.build_report("all", SECOND_SITE_CONFIG)
+        report = self._fixture_report("all")
 
         self.assertGreater(report["command_group_ids"].count("readiness_checks"), 1)
         self.assertEqual(len(report["command_group_keys"]), len(set(report["command_group_keys"])))
@@ -162,7 +207,15 @@ class PilotCommandPlanTest(unittest.TestCase):
 
     def test_text_output_smoke(self) -> None:
         buffer = io.StringIO()
-        with redirect_stdout(buffer):
+        with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_ready()), patch.object(
+            MODULE.OUTPUT_PROFILE,
+            "build_report",
+            return_value=self._output_profile_measured(),
+        ), patch.object(MODULE.PORTABILITY, "build_report", return_value=self._second_site_deferred()), patch.object(
+            MODULE.CONTRACT,
+            "build_report",
+            return_value=self._contract_measured(),
+        ), redirect_stdout(buffer):
             exit_code = MODULE.main(["--site", "tschamut_same_scale", "--format", "text"])
 
         self.assertEqual(exit_code, 0)

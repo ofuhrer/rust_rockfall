@@ -200,7 +200,6 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
     def test_missing_site_extent_blocks_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._build_inputs(root, config_path=self._fixture_config_path())
             report = self._build_report(root, site_config=self._fixture_config_path(), omit_site_extent=True)
 
         self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
