@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-095: Define Conditional Gridpoint Curve Pilot Product
-
-Goal: Make the single-release-zone pilot's gridpoint conditional intensity-exceedance curve product explicit, auditable, and tied to GIS output layers.
-
-Capability gap reduced: Hazard-map product interpretability.
-
-Why this outranks alternatives: The user-facing goal is a hazard map with per-gridpoint intensity-frequency-like curves, but the current safe product is conditional exceedance curves without annual frequency.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `docs/hazard_layers.md`
-- `docs/hazard_map_semantics.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A product summary or audit that identifies the per-gridpoint conditional curve schema, thresholds, units, denominator semantics, and corresponding GIS layers.
-- Tests proving annual/physical-frequency fields remain absent or explicitly unsupported.
-- Command-plan or diagnostic integration if needed to make the product discoverable for the Balfrin pilot.
-
-Definition of done:
-
-- The conditional curve product can be audited from existing outputs or fixtures, focused tests pass, and TB-095 is removed from this backlog.
-
-Boundaries: Do not create annual frequency, return-period, risk, exposure, vulnerability, or operational semantics.
-
 ### TB-096: Plan Terrain-Driven Release-Zone Candidate Generation
 
 Goal: Produce a deterministic dry-run release-zone candidate generator contract from public terrain and context inputs.

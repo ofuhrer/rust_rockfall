@@ -1309,3 +1309,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no Balfrin job was run, no performance was inferred from missing artifacts, and no distributed-execution authorization was introduced.
 - Next task: `TB-095`
+
+### TB-095: Define Conditional Gridpoint Curve Pilot Product
+
+- Date: 2026-05-16
+- Commit: `4909647`
+- Objective: make the single-release-zone pilot's gridpoint conditional intensity-exceedance curve product explicit, auditable, and tied to GIS output layers.
+- Files changed: scripts/build_hazard_layers.py, tests/test_hazard_layers.py, docs/hazard_layers.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary:
+  - Added an audit snapshot to the hazard-layer documentation that spells out the per-gridpoint curve schema, threshold units, denominator semantics, and the hazard-manifest GIS layer tie-out.
+  - Expanded the Tschamut conditional pilot gate report with a focused product audit that points to the recorded curve contract, current threshold layers, and the existing non-annual/non-physical boundary.
+  - Tightened the hazard-layer regression so the recorded curve contract is asserted alongside the manifest `cellwise_layers` mapping and the annual/physical flags remain false or unsupported.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_exceedance_layers_are_additive_and_manifested tests.test_hazard_layers.HazardLayerTests.test_conditional_curve_summary_only_suppresses_large_curve_table tests.test_hazard_layers.HazardLayerTests.test_map_package_metadata_rejects_annual_frequency_and_source_mismatch`
+- Result/status: completed.
+- Boundaries: no annual frequency, return-period, risk, exposure, vulnerability, physical-probability, or operational semantics were added.
+- Next task: `TB-096`

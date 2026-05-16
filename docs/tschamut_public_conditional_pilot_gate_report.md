@@ -355,6 +355,46 @@ Artifact checksums recorded in the run-freeze:
 | DEM sensitivity summary | `85c1ba97f012167ab29f2772b5893aa84fc21cc483bd7d5c7f3f12a155701fa6` |
 | Scaling summary | `87ebec392e5142ff5aae698e1f4e7b335dd9a7b56bab8f74e41efced302a7388` |
 
+## Conditional Curve Product Audit
+
+The single-release-zone pilot curve product is auditable from the recorded
+manifest and metadata outputs. The relevant contract is
+`conditional_gridpoint_curve_contract_v1`, which is embedded in both the
+hazard metadata and the run manifest. Its current per-gridpoint schema is the
+tidy curve table with:
+
+- row and column indices plus cell-center coordinates;
+- intensity-measure label, threshold value, and threshold units;
+- layer name, probability mode, normalization scope, numerator, denominator,
+  conditional fraction, standard error, weighted flag, and `annualized`
+  marker.
+
+The current gate thresholds are the recorded geometric-intensity layers in the
+hazard outputs:
+
+- `kinetic_energy_exceedance_1000j` and `kinetic_energy_exceedance_10000j`;
+- `jump_height_exceedance_0p5m`, `jump_height_exceedance_1m`, and
+  `jump_height_exceedance_2m`;
+- `velocity_exceedance_5mps` and `velocity_exceedance_10mps`.
+
+The denominator semantics remain conditional, not annual:
+
+- `unweighted_diagnostic` rows use the supplied trajectory count;
+- `sampling_weighted_conditional` rows use the filtered sampling-weight sum;
+- the helper explicitly records the unsupported physical-frequency fields
+  `annual_frequency_per_year`, `return_period_years`,
+  `source_occurrence_rate_per_year`, and `physical_probability` as absent from
+  the current contract.
+
+The GIS tie-out is the manifest layer inventory:
+
+- raster layers appear in the hazard manifest `layers` and `cellwise_layers`
+  sections;
+- the curve CSV is a diagnostic companion table for those layers, not a
+  separate annual-frequency product;
+- the pilot GIS package manifest links the GeoTIFF, CSV/ASCII parity files,
+  hazard metadata, and the curve table together for local review.
+
 Runtime and output-volume evidence:
 
 - validation manifest wall time: `4.508` s (from scaling summary);

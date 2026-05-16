@@ -999,6 +999,14 @@ class HazardLayerTests(unittest.TestCase):
                 metadata["conditional_intensity_exceedance_curves"]["row_count"],
                 len(curve_rows),
             )
+            self.assertEqual(
+                metadata["conditional_intensity_exceedance_curves"]["contract"]["scope"],
+                "per_gridpoint",
+            )
+            self.assertEqual(
+                metadata["conditional_intensity_exceedance_curves"]["contract"]["threshold_units"],
+                {"kinetic_energy": "J", "jump_height": "m", "velocity": "m/s"},
+            )
             self.assertTrue(
                 any(output["kind"] == "conditional_intensity_exceedance_curves" for output in manifest["outputs"])
             )
@@ -1007,8 +1015,20 @@ class HazardLayerTests(unittest.TestCase):
                 manifest["hazard_statistics"]["generated_layer_names"],
             )
             self.assertTrue(
+                any(
+                    layer["layer_name"] == "kinetic_energy_exceedance_10j" and layer["thresholds"] == [10.0]
+                    for layer in manifest["cellwise_layers"]
+                )
+            )
+            self.assertTrue(
                 any(layer["key"] == "velocity_exceedance_1p5mps" for layer in manifest["layers"])
             )
+            self.assertEqual(
+                manifest["conditional_execution"]["curve_contract"],
+                metadata["conditional_intensity_exceedance_curves"]["contract"],
+            )
+            self.assertFalse(manifest["conditional_execution"]["annualized"])
+            self.assertFalse(manifest["conditional_execution"]["physical_probability"])
 
     def test_probability_standard_error_layers_are_opt_in_and_binomial(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

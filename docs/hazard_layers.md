@@ -204,6 +204,20 @@ supported normalization scopes, and unsupported physical-frequency fields
 The helper is audit metadata only; it does not introduce annual-frequency or
 physical-frequency semantics.
 
+Pilot audit snapshot:
+
+- schema: `conditional_gridpoint_curve_contract_v1`;
+- per-row fields: `row`, `col`, `x_center_m`, `y_center_m`,
+  `intensity_measure`, `threshold`, `threshold_units`, `layer_name`,
+  `probability_mode`, `normalization_scope`, `numerator`, `denominator`,
+  `conditional_fraction`, `standard_error`, `weighted`, and `annualized`;
+- threshold units: kinetic energy `J`, jump height `m`, velocity `m/s`;
+- denominators: supplied trajectory count for `unweighted_diagnostic`, and
+  filtered sampling-weight sum for `sampling_weighted_conditional`;
+- corresponding GIS layers: the threshold rasters recorded in the hazard
+  manifest `cellwise_layers` and `layers` sections, plus the optional CSV,
+  ESRI ASCII, and GeoTIFF exports for those same grid cells.
+
 To add simple convergence diagnostics for trajectory-level probability layers,
 enable probability standard-error rasters:
 
