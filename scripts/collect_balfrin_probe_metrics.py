@@ -123,6 +123,182 @@ def _count_decision_manifests(directory: Path) -> dict[str, int]:
     return counts
 
 
+def _count_output_families(outputs: list[Any]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in outputs:
+        if not isinstance(entry, dict):
+            continue
+        kind = entry.get("kind")
+        if not isinstance(kind, str) or not kind:
+            continue
+        counts[kind] = counts.get(kind, 0) + 1
+    return counts
+
+
+def _first_present(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _missing_metrics(metrics: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+    if metrics.get("wall_time_seconds") is None:
+        missing.append("wall_time_seconds")
+    if metrics.get("memory_peak_mb") is None:
+        missing.append("memory_peak_mb")
+
+    validation_output = metrics.get("validation_output") if isinstance(metrics.get("validation_output"), dict) else {}
+    hazard_output = metrics.get("hazard_output") if isinstance(metrics.get("hazard_output"), dict) else {}
+    restartability = (
+        metrics.get("restartability_metadata")
+        if isinstance(metrics.get("restartability_metadata"), dict)
+        else {}
+    )
+
+    if validation_output.get("file_count") is None:
+        missing.append("validation_output.file_count")
+    if validation_output.get("bytes") is None:
+        missing.append("validation_output.bytes")
+    if hazard_output.get("file_count") is None:
+        missing.append("hazard_output.file_count")
+    if hazard_output.get("bytes") is None:
+        missing.append("hazard_output.bytes")
+    if metrics.get("conditional_curve_row_count") is None:
+        missing.append("conditional_curve_row_count")
+    if not metrics.get("reduced_output_family_counts"):
+        missing.append("reduced_output_family_counts")
+    if restartability.get("trajectory_plan_id") is None:
+        missing.append("restartability_metadata.trajectory_plan_id")
+    if restartability.get("reducer_plan_id") is None:
+        missing.append("restartability_metadata.reducer_plan_id")
+    if not restartability.get("trajectory_decision_counts"):
+        missing.append("restartability_metadata.trajectory_decision_counts")
+    if not restartability.get("reducer_decision_counts"):
+        missing.append("restartability_metadata.reducer_decision_counts")
+    return missing
+
+
+def _build_metrics_contract(
+    *,
+    performance: dict[str, Any],
+    conditional_execution: dict[str, Any],
+    outputs: list[Any],
+    scaling_summary: dict[str, Any],
+    probe_metrics: dict[str, Any] | None,
+    trajectory_plan_id: str | None,
+    reducer_plan_id: str | None,
+    trajectory_decision_counts: dict[str, int],
+    reducer_decision_counts: dict[str, int],
+) -> dict[str, Any]:
+    output_budget = conditional_execution.get("output_budget", {}) if isinstance(conditional_execution, dict) else {}
+    conditional_curve_export = (
+        conditional_execution.get("conditional_curve_export", {}) if isinstance(conditional_execution, dict) else {}
+    )
+    restartability_probe = probe_metrics.get("restartability", {}) if isinstance(probe_metrics, dict) else {}
+    validation_output = {
+        "file_count": _safe_int(
+            _first_present(
+                performance.get("validation_output_file_count"),
+                restartability_probe.get("validation_output_file_count"),
+                output_budget.get("validation_output_file_count"),
+            )
+        ),
+        "bytes": _safe_int(
+            _first_present(
+                performance.get("validation_output_bytes"),
+                restartability_probe.get("validation_output_bytes"),
+                output_budget.get("validation_output_bytes"),
+            )
+        ),
+    }
+    hazard_output = {
+        "file_count": _safe_int(
+            _first_present(
+                performance.get("hazard_output_file_count"),
+                restartability_probe.get("hazard_output_file_count"),
+                output_budget.get("hazard_output_file_count"),
+            )
+        ),
+        "bytes": _safe_int(
+            _first_present(
+                performance.get("hazard_output_bytes"),
+                restartability_probe.get("hazard_output_bytes"),
+                output_budget.get("hazard_output_bytes"),
+            )
+        ),
+    }
+    restartability_metadata = {
+        "trajectory_plan_id": _first_present(
+            trajectory_plan_id,
+            restartability_probe.get("trajectory_plan_id"),
+        ),
+        "reducer_plan_id": _first_present(
+            reducer_plan_id,
+            restartability_probe.get("reducer_plan_id"),
+        ),
+        "trajectory_decision_counts": _first_present(
+            trajectory_decision_counts,
+            restartability_probe.get("trajectory_decision_counts"),
+        ),
+        "reducer_decision_counts": _first_present(
+            reducer_decision_counts,
+            restartability_probe.get("reducer_decision_counts"),
+        ),
+    }
+    metrics = {
+        "wall_time_seconds": _safe_float(
+            _first_present(
+                performance.get("total_wall_seconds"),
+                restartability_probe.get("wall_time_seconds"),
+            )
+        ),
+        "memory_peak_mb": _safe_float(
+            _first_present(
+                performance.get("memory_peak_mb"),
+                probe_metrics.get("memory_peak_mb") if isinstance(probe_metrics, dict) else None,
+                restartability_probe.get("memory_peak_mb"),
+            )
+        ),
+        "validation_output": validation_output,
+        "hazard_output": hazard_output,
+        "reduced_output_family_counts": (
+            probe_metrics.get("reduced_output_family_counts")
+            if isinstance(probe_metrics, dict) and isinstance(probe_metrics.get("reduced_output_family_counts"), dict)
+            else _count_output_families(outputs)
+        ),
+        "conditional_curve_row_count": _safe_int(
+            _first_present(
+                conditional_curve_export.get("row_count"),
+                restartability_probe.get("conditional_curve_row_count"),
+                output_budget.get("conditional_curve_row_count"),
+            )
+        ),
+        "restartability_metadata": restartability_metadata,
+        "output_write_kind_seconds": (
+            scaling_summary.get("output_write_kind_seconds", {})
+            if isinstance(scaling_summary, dict)
+            else {}
+        ),
+        "output_write_kind_bytes": (
+            scaling_summary.get("output_write_kind_bytes", {})
+            if isinstance(scaling_summary, dict)
+            else {}
+        ),
+    }
+    missing = _missing_metrics(metrics)
+    return {
+        "status": "complete" if not missing else "blocked_missing_inputs",
+        "blocked_reason": "" if not missing else "missing metrics: " + ", ".join(missing),
+        "missing_metrics": missing,
+        "source_paths": {
+            "probe_metrics": str((Path("balfrin_probe_metrics.json")).as_posix()) if probe_metrics else None,
+        },
+        **metrics,
+    }
+
+
 _LOG_AUDIT_PATTERN = re.compile(
     r"\b(?:warn\w*|error\w*|fatal\w*|exception\w*|traceback\w*)\b",
     re.IGNORECASE,
@@ -213,6 +389,7 @@ def collect_run_metrics(
 
     output_manifest = _find_hazard_manifest(output_root)
     manifest = _load_json(output_manifest) if output_manifest else None
+    probe_metrics = _load_json(run_root / "balfrin_probe_metrics.json")
     performance = manifest.get("performance", {}) if isinstance(manifest, dict) else {}
     conditional_execution = manifest.get("conditional_execution", {}) if isinstance(manifest, dict) else {}
     output_budget = conditional_execution.get("output_budget", {}) if isinstance(conditional_execution, dict) else {}
@@ -230,6 +407,20 @@ def collect_run_metrics(
     if isinstance(reducer_execution, dict) and isinstance(reducer_execution.get("trajectory_execution_plan_id"), str):
         reducer_plan_id = reducer_plan_id or reducer_execution.get("trajectory_execution_plan_id")
 
+    trajectory_decision_counts = _count_decision_manifests(output_root / "trajectory_chunks")
+    reducer_decision_counts = _count_decision_manifests(output_root / "chunks")
+    metrics_contract = _build_metrics_contract(
+        performance=performance,
+        conditional_execution=conditional_execution,
+        outputs=manifest.get("outputs", []) if isinstance(manifest, dict) else [],
+        scaling_summary=scaling_summary,
+        probe_metrics=probe_metrics,
+        trajectory_plan_id=trajectory_plan_id,
+        reducer_plan_id=reducer_plan_id,
+        trajectory_decision_counts=trajectory_decision_counts,
+        reducer_decision_counts=reducer_decision_counts,
+    )
+
     result = {
         "schema_version": "balfrin_probe_metrics_v1",
         "run_root": str(run_root),
@@ -238,13 +429,18 @@ def collect_run_metrics(
         "output_root": str(output_root),
         "hazard_manifest_path": str(output_manifest) if output_manifest else None,
         "git_commit": manifest.get("git_hash") if isinstance(manifest, dict) else None,
-        "total_wall_seconds": _safe_float(
-            (
-                performance.get("total_wall_seconds")
-                if isinstance(performance, dict)
-                else None
-            )
-        ),
+        "total_wall_seconds": metrics_contract["wall_time_seconds"],
+        "memory_peak_mb": metrics_contract["memory_peak_mb"],
+        "validation_output_file_count": metrics_contract["validation_output"]["file_count"],
+        "validation_output_bytes": metrics_contract["validation_output"]["bytes"],
+        "hazard_output_file_count": metrics_contract["hazard_output"]["file_count"],
+        "hazard_output_bytes": metrics_contract["hazard_output"]["bytes"],
+        "conditional_curve_row_count": metrics_contract["conditional_curve_row_count"],
+        "reduced_output_family_counts": metrics_contract["reduced_output_family_counts"],
+        "metrics_contract_status": metrics_contract["status"],
+        "metrics_contract_blocked_reason": metrics_contract["blocked_reason"],
+        "metrics_contract_missing_metrics": metrics_contract["missing_metrics"],
+        "metrics_contract": metrics_contract,
         "output_bytes": _safe_int(
             (
                 performance.get("output_bytes")
@@ -264,20 +460,12 @@ def collect_run_metrics(
         "output_write_seconds": _safe_float(
             performance.get("output_write_seconds") if isinstance(performance, dict) else None
         ),
-        "output_write_kind_seconds": (
-            scaling_summary.get("output_write_kind_seconds", {})
-            if isinstance(scaling_summary, dict)
-            else {}
-        ),
-        "output_write_kind_bytes": (
-            scaling_summary.get("output_write_kind_bytes", {})
-            if isinstance(scaling_summary, dict)
-            else {}
-        ),
+        "output_write_kind_seconds": metrics_contract["output_write_kind_seconds"],
+        "output_write_kind_bytes": metrics_contract["output_write_kind_bytes"],
         "trajectory_plan_id": trajectory_plan_id,
         "reducer_plan_id": reducer_plan_id,
-        "trajectory_decision_counts": _count_decision_manifests(output_root / "trajectory_chunks"),
-        "reducer_decision_counts": _count_decision_manifests(output_root / "chunks"),
+        "trajectory_decision_counts": trajectory_decision_counts,
+        "reducer_decision_counts": reducer_decision_counts,
         "log_audit": _log_audit_summary(run_root / "logs"),
     }
     return result

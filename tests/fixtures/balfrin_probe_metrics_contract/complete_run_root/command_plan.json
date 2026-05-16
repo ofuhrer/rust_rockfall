@@ -1,0 +1,15 @@
+{
+  "input": "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root/probe_manifest.yaml",
+  "commands": [
+    {
+      "name": "build_conditional_hazard_layers",
+      "command": [
+        "python3",
+        "scripts/build_hazard_layers.py",
+        "--output-dir",
+        "output"
+      ],
+      "cwd": "."
+    }
+  ]
+}

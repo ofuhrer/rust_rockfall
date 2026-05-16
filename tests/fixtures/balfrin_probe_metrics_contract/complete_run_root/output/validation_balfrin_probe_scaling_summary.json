@@ -1,0 +1,12 @@
+{
+  "performance": {
+    "output_write_kind_seconds": {
+      "geotiff": 0.4,
+      "manifest_json": 0.1
+    },
+    "output_write_kind_bytes": {
+      "geotiff": 1200,
+      "manifest_json": 3400
+    }
+  }
+}

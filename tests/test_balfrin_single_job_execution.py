@@ -51,6 +51,9 @@ class BalfrinSingleJobExecutionSummaryTests(unittest.TestCase):
         self.assertEqual(summary["memory_evidence"]["current_gap_memory_peak_mb"], 409.22)
         self.assertEqual(summary["output_size_evidence"]["current_gap_output_file_count"], 191)
         self.assertEqual(summary["output_size_evidence"]["current_gap_output_bytes"], 267527120)
+        self.assertEqual(summary["metrics_contract"]["status"], "complete")
+        self.assertEqual(summary["metrics_contract"]["missing_mandatory_metrics"], [])
+        self.assertEqual(summary["metrics_contract"]["mandatory_metrics"]["memory_peak_mb"]["value"], 409.22)
         blocker_names = {entry["name"] for entry in summary["scientific_blockers"]}
         self.assertIn("validation_debug_output_budget_retained", blocker_names)
         self.assertIn("forest_obstacle_context_limiting", blocker_names)
@@ -77,6 +80,7 @@ class BalfrinSingleJobExecutionSummaryTests(unittest.TestCase):
             "output_size_evidence",
             "restartability_evidence",
             "reducer_state_evidence",
+            "metrics_contract",
             "scientific_blockers",
             "execution_blockers",
             "required_inputs",

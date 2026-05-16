@@ -281,143 +281,52 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 self.assertIn("run_root=", buf.getvalue())
 
     def test_collect_probe_metrics_parses_synthetic_outputs(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            run_root = Path(tmpdir) / "run"
-            output_root = run_root / "hazard_output"
-            command_plan_path = run_root / "command_plan.json"
-            logs_root = run_root / "logs"
-            (output_root / "trajectory_chunks").mkdir(parents=True, exist_ok=True)
-            (output_root / "chunks").mkdir(parents=True, exist_ok=True)
-            logs_root.mkdir(parents=True, exist_ok=True)
+        complete_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+        summary = collect_driver.collect_run_metrics(complete_root)
 
-            _make_json_file(
-                command_plan_path,
-                {
-                    "commands": [
-                        {
-                            "name": "build_conditional_hazard_layers",
-                            "command": [
-                                "python3",
-                                "build_hazard_layers.py",
-                                "--output-dir",
-                                "hazard_output",
-                            ],
-                            "cwd": str(run_root),
-                        }
-                    ]
-                },
-            )
-
-            _make_json_file(
-                output_root / "validation_probe_manifest.json",
-                {
-                    "performance": {
-                        "total_wall_seconds": 12.34,
-                        "output_bytes": 4321,
-                        "output_file_count": 7,
-                        "output_write_seconds": 3.21,
-                    },
-                    "conditional_execution": {
-                        "output_budget": {"output_bytes": 4321, "output_file_count": 7},
-                        "trajectory_generation": {"plan_id": "trajectory_plan_a"},
-                        "reducer": {"trajectory_execution_plan_id": "reducer_plan_a"},
-                    },
-                    "git_hash": "abc123",
-                },
-            )
-            _make_json_file(
-                output_root / "validation_probe_scaling_summary.json",
-                {
-                    "performance": {
-                        "output_write_kind_seconds": {"geotiff": 0.4, "esri_ascii_grid": 0.1},
-                        "output_write_kind_bytes": {"geotiff": 1000, "esri_ascii_grid": 2000},
-                    }
-                },
-            )
-
-            _make_json_file(
-                output_root / "trajectory_chunks" / "chunk_0000_manifest.json",
-                {"orchestration_decision": "reused_completed_state"},
-            )
-            _make_json_file(
-                output_root / "trajectory_chunks" / "chunk_0001_manifest.json",
-                {"orchestration_decision": "executed"},
-            )
-            _make_json_file(
-                output_root / "chunks" / "chunk_0000_manifest.json",
-                {"orchestration_decision": "executed"},
-            )
-
-            _make_json_file(
-                output_root / "probe_execution_plan_v1.json",
-                {"plan_id": "reducer_plan_file_a"},
-            )
-            _make_json_file(
-                output_root / "probe_trajectory_execution_plan_v1.json",
-                {"plan_id": "trajectory_plan_file_a"},
-            )
-            (logs_root / "slurm-123.out").write_text(
-                "\n".join(
-                    [
-                        "starting job",
-                        "warning: terrain metadata missing",
-                        "ERROR: job failed to open output file",
-                        "all done",
-                    ]
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            (logs_root / "nested").mkdir(parents=True, exist_ok=True)
-            (logs_root / "nested" / "worker.log").write_text(
-                "\n".join(
-                    [
-                        "warn: retrying chunk write",
-                        "traceback: example stack",
-                        "informational line",
-                    ]
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-
-            summary = collect_driver.collect_run_metrics(run_root)
-            missing_log_summary = collect_driver.collect_run_metrics(run_root / "missing")
-
-        self.assertEqual(summary["output_root"], str(output_root.resolve()))
-        self.assertEqual(summary["output_bytes"], 4321)
-        self.assertEqual(summary["output_file_count"], 7)
-        self.assertEqual(summary["output_write_seconds"], 3.21)
-        self.assertEqual(summary["total_wall_seconds"], 12.34)
-        self.assertEqual(summary["trajectory_plan_id"], "trajectory_plan_file_a")
-        self.assertEqual(summary["reducer_plan_id"], "reducer_plan_file_a")
+        self.assertEqual(summary["output_root"], str((complete_root / "output").resolve()))
+        self.assertEqual(summary["metrics_contract_status"], "complete")
+        self.assertEqual(summary["metrics_contract_missing_metrics"], [])
+        self.assertEqual(summary["memory_peak_mb"], 409.22)
+        self.assertEqual(summary["validation_output_file_count"], 2005)
+        self.assertEqual(summary["validation_output_bytes"], 571377719)
+        self.assertEqual(summary["hazard_output_file_count"], 46)
+        self.assertEqual(summary["hazard_output_bytes"], 16613900)
+        self.assertEqual(summary["conditional_curve_row_count"], 729600)
+        self.assertEqual(summary["reduced_output_family_counts"]["map_package_manifest"], 1)
+        self.assertEqual(summary["reduced_output_family_counts"]["pilot_gis_package_manifest"], 1)
+        self.assertEqual(summary["reduced_output_family_counts"]["trajectory_chunk_manifest"], 2)
+        self.assertEqual(summary["reduced_output_family_counts"]["reducer_chunk_manifest"], 2)
+        self.assertEqual(summary["trajectory_plan_id"], "validation_tschamut_public_target_gate_v1__trajectory_execution_plan__fixture")
+        self.assertEqual(summary["reducer_plan_id"], "validation_tschamut_public_target_gate_v1__trajectory_execution_plan__fixture")
         self.assertEqual(
             summary["trajectory_decision_counts"],
-            {"reused_completed_state": 1, "executed": 1},
+            {"executed": 2},
         )
-        self.assertEqual(summary["reducer_decision_counts"], {"executed": 1})
+        self.assertEqual(summary["reducer_decision_counts"], {"executed": 2})
         self.assertEqual(summary["output_write_kind_seconds"]["geotiff"], 0.4)
+        self.assertEqual(summary["output_write_kind_bytes"]["manifest_json"], 3400)
         self.assertEqual(
             summary["log_audit"],
             {
-                "logs_root": str(logs_root.resolve()),
+                "logs_root": str((complete_root / "logs").resolve()),
                 "file_count": 2,
                 "matched_line_count": 4,
                 "warning_like_line_count": 2,
                 "error_like_line_count": 2,
                 "affected_log_paths": [
-                    str((logs_root / "nested" / "worker.log").resolve()),
-                    str((logs_root / "slurm-123.out").resolve()),
+                    str((complete_root / "logs" / "nested" / "worker.log").resolve()),
+                    str((complete_root / "logs" / "slurm-123.out").resolve()),
                 ],
                 "files": [
                     {
-                        "path": str((logs_root / "nested" / "worker.log").resolve()),
+                        "path": str((complete_root / "logs" / "nested" / "worker.log").resolve()),
                         "matched_line_count": 2,
                         "warning_like_line_count": 1,
                         "error_like_line_count": 1,
                     },
                     {
-                        "path": str((logs_root / "slurm-123.out").resolve()),
+                        "path": str((complete_root / "logs" / "slurm-123.out").resolve()),
                         "matched_line_count": 2,
                         "warning_like_line_count": 1,
                         "error_like_line_count": 1,
@@ -425,16 +334,39 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 ],
             },
         )
+
+    def test_collect_probe_metrics_reports_blocked_incomplete_root(self) -> None:
+        incomplete_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/incomplete_run_root"
+        summary = collect_driver.collect_run_metrics(incomplete_root)
+
+        self.assertEqual(summary["metrics_contract_status"], "blocked_missing_inputs")
+        self.assertIn("memory_peak_mb", summary["metrics_contract_missing_metrics"])
+        self.assertIn("validation_output.file_count", summary["metrics_contract_missing_metrics"])
+        self.assertIn("hazard_output.file_count", summary["metrics_contract_missing_metrics"])
+        self.assertIn("conditional_curve_row_count", summary["metrics_contract_missing_metrics"])
+        self.assertIn("reduced_output_family_counts", summary["metrics_contract_missing_metrics"])
+        self.assertEqual(summary["reduced_output_family_counts"], {})
+        self.assertEqual(summary["trajectory_plan_id"], None)
+        self.assertEqual(summary["reducer_plan_id"], None)
+        self.assertEqual(summary["trajectory_decision_counts"], {})
+        self.assertEqual(summary["reducer_decision_counts"], {})
         self.assertEqual(
-            missing_log_summary["log_audit"],
+            summary["log_audit"],
             {
-                "logs_root": str((run_root / "missing" / "logs").resolve()),
-                "file_count": 0,
-                "matched_line_count": 0,
-                "warning_like_line_count": 0,
+                "logs_root": str((incomplete_root / "logs").resolve()),
+                "file_count": 1,
+                "matched_line_count": 1,
+                "warning_like_line_count": 1,
                 "error_like_line_count": 0,
-                "affected_log_paths": [],
-                "files": [],
+                "affected_log_paths": [str((incomplete_root / "logs" / "slurm-456.out").resolve())],
+                "files": [
+                    {
+                        "path": str((incomplete_root / "logs" / "slurm-456.out").resolve()),
+                        "matched_line_count": 1,
+                        "warning_like_line_count": 1,
+                        "error_like_line_count": 0,
+                    }
+                ],
             },
         )
 

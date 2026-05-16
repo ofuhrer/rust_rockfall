@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-094: Capture Balfrin Pilot Metrics Contract
-
-Goal: Define and test the metrics collection contract for a completed Balfrin single-release-zone pilot run.
-
-Capability gap reduced: Scalable execution evidence and reproducibility.
-
-Why this outranks alternatives: The pilot must prove feasibility with measured runtime, memory, file-count, byte-count, and hazard output metrics rather than qualitative success.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_single_job_execution.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`
-
-Deliverables:
-
-- A metrics schema or helper update that records wall time, memory, validation output volume, hazard output volume, reduced-output family counts, conditional curve counts, and restartability metadata.
-- Fixture-backed tests for complete and incomplete run roots.
-- Documentation of which metrics are mandatory before claiming Balfrin pilot feasibility.
-
-Definition of done:
-
-- Metrics can be collected or reported as blocked from fixtures, focused tests pass, and TB-094 is removed from this backlog.
-
-Boundaries: Do not run a Balfrin job, do not infer performance from missing artifacts, and do not authorize distributed execution.
-
 ### TB-095: Define Conditional Gridpoint Curve Pilot Product
 
 Goal: Make the single-release-zone pilot's gridpoint conditional intensity-exceedance curve product explicit, auditable, and tied to GIS output layers.

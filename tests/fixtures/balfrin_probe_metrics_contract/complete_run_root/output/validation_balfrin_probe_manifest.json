@@ -1,0 +1,58 @@
+{
+  "schema_version": "run_manifest_v1",
+  "git_hash": "61ab9c6",
+  "performance": {
+    "total_wall_seconds": 55.12473134789616,
+    "output_bytes": 16613900,
+    "output_file_count": 46,
+    "output_write_seconds": 3.1881142819765955,
+    "validation_output_file_count": 2005,
+    "validation_output_bytes": 571377719,
+    "hazard_output_file_count": 46,
+    "hazard_output_bytes": 16613900
+  },
+  "conditional_execution": {
+    "conditional_curve_export": {
+      "row_count": 729600
+    },
+    "output_budget": {
+      "output_bytes": 16613900,
+      "output_file_count": 46
+    },
+    "trajectory_generation": {
+      "plan_id": "validation_tschamut_public_target_gate_v1__trajectory_execution_plan__fixture",
+      "worker_count": 2
+    },
+    "reducer": {
+      "trajectory_execution_plan_id": "validation_tschamut_public_target_gate_v1__trajectory_execution_plan__fixture",
+      "merge_order": "sorted_chunk_id",
+      "merge_order_independent": true
+    }
+  },
+  "outputs": [
+    {
+      "kind": "map_package_manifest",
+      "path": "output/map_package_manifest.json"
+    },
+    {
+      "kind": "pilot_gis_package_manifest",
+      "path": "output/pilot_gis_package_manifest.json"
+    },
+    {
+      "kind": "trajectory_chunk_manifest",
+      "path": "output/trajectory_chunks/chunk_0000_manifest.json"
+    },
+    {
+      "kind": "trajectory_chunk_manifest",
+      "path": "output/trajectory_chunks/chunk_0001_manifest.json"
+    },
+    {
+      "kind": "reducer_chunk_manifest",
+      "path": "output/chunks/chunk_0000_manifest.json"
+    },
+    {
+      "kind": "reducer_chunk_manifest",
+      "path": "output/chunks/chunk_0001_manifest.json"
+    }
+  ]
+}

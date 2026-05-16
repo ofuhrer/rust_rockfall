@@ -70,6 +70,23 @@
 - `reducer_merge_state_status`: `generated`
 - `worker_counts_compared`: `[1, 2]`
 
+## Metrics Contract
+
+- `status`: `complete`
+- `missing_mandatory_metrics`: `[]`
+- Mandatory before claiming Balfrin pilot feasibility:
+  - wall time
+  - memory peak
+  - validation output file count
+  - validation output bytes
+  - hazard output file count
+  - hazard output bytes
+  - reduced-output family counts
+  - conditional curve row count
+  - restartability metadata
+- Restartability metadata must include stable trajectory and reducer plan IDs, plus the observed decision counts for completed chunks.
+- If any of those fields are absent, the collector should report the run as blocked rather than treating it as feasibility evidence.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to

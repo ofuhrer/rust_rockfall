@@ -132,6 +132,7 @@ def build_summary(
         dig(repeatability, "selected_gate_readiness_decision", "driver_ready_for_selected_gate_use")
     )
     repeat_runs = ensure_list(dig(repeatability, "repeat_runs"), "repeatability.repeat_runs")
+    first_repeat_run = repeat_runs[0] if repeat_runs else {}
     repeatability_assessment = ensure_mapping(
         dig(repeatability, "repeatability_assessment"), "repeatability.repeatability_assessment"
     )
@@ -279,6 +280,54 @@ def build_summary(
         "worker_counts_compared": dig(output_budget, "reducer_scaling", "worker_counts_compared"),
     }
 
+    metrics_contract = {
+        "status": "complete",
+        "mandatory_metrics": {
+            "wall_time_seconds": {
+                "value": dig(reproduction, "performance", "validation_total_wall_seconds"),
+                "source": "reproduction.performance.validation_total_wall_seconds",
+            },
+            "memory_peak_mb": {
+                "value": dig(current_gap, "run_evidence", "memory_peak_mb"),
+                "source": "current_gap.run_evidence.memory_peak_mb",
+            },
+            "validation_output": {
+                "file_count": dig(reproduction, "performance", "validation_output_file_count"),
+                "bytes": dig(reproduction, "performance", "validation_output_bytes"),
+            },
+            "hazard_output": {
+                "file_count": dig(reproduction, "performance", "hazard_output_file_count"),
+                "bytes": dig(reproduction, "performance", "hazard_output_bytes"),
+            },
+            "reduced_output_family_counts": {
+                "validation_output_mode": dig(reproduction, "validation_output", "validation_output_mode"),
+                "output_write_kind_seconds": dig(output_budget, "selected_dt04_output_evidence", "output_write_kind_seconds"),
+                "output_write_kind_bytes": dig(output_budget, "selected_dt04_output_evidence", "output_write_kind_bytes"),
+            },
+            "conditional_curve_row_count": dig(reproduction, "hazard_output_profile", "conditional_curve_row_count"),
+            "restartability_metadata": {
+                "trajectory_plan_id": dig(reproduction, "conditional_execution", "trajectory_generation", "plan_id"),
+                "reducer_plan_id": dig(reproduction, "conditional_execution", "reducer", "trajectory_execution_plan_id"),
+                "trajectory_decision_counts": first_repeat_run.get("trajectory_decision_counts"),
+                "reducer_decision_counts": first_repeat_run.get("reducer_decision_counts"),
+            },
+        },
+        "missing_mandatory_metrics": [],
+    }
+
+    if metrics_contract["mandatory_metrics"]["memory_peak_mb"]["value"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("memory_peak_mb")
+    if metrics_contract["mandatory_metrics"]["conditional_curve_row_count"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("conditional_curve_row_count")
+    if metrics_contract["mandatory_metrics"]["validation_output"]["file_count"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("validation_output.file_count")
+    if metrics_contract["mandatory_metrics"]["validation_output"]["bytes"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("validation_output.bytes")
+    if metrics_contract["mandatory_metrics"]["hazard_output"]["file_count"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("hazard_output.file_count")
+    if metrics_contract["mandatory_metrics"]["hazard_output"]["bytes"] is None:
+        metrics_contract["missing_mandatory_metrics"].append("hazard_output.bytes")
+
     convergence_blockers = ensure_list(
         dig(convergence, "assessment", "blocking_reasons"), "convergence.assessment.blocking_reasons"
     )
@@ -401,6 +450,7 @@ def build_summary(
         "output_size_evidence": output_size_evidence,
         "restartability_evidence": restartability_evidence,
         "reducer_state_evidence": reducer_state_evidence,
+        "metrics_contract": metrics_contract,
         "scientific_blockers": scientific_blockers,
         "execution_blockers": execution_blockers,
         "required_inputs": {
@@ -494,6 +544,17 @@ def render_markdown(summary: dict[str, Any]) -> str:
     lines.extend(["", "## Reducer State Evidence", ""])
     for key, value in summary["reducer_state_evidence"].items():
         lines.append(f"- `{key}`: `{value}`")
+    lines.extend(["", "## Metrics Contract", ""])
+    lines.append(f"- `status`: `{summary['metrics_contract']['status']}`")
+    if summary["metrics_contract"]["missing_mandatory_metrics"]:
+        lines.append("- `missing_mandatory_metrics`:")
+        for item in summary["metrics_contract"]["missing_mandatory_metrics"]:
+            lines.append(f"  - `{item}`")
+    else:
+        lines.append("- `missing_mandatory_metrics`: `[]`")
+    lines.append("- `mandatory_metrics`:")
+    for key, value in summary["metrics_contract"]["mandatory_metrics"].items():
+        lines.append(f"  - `{key}`: `{value}`")
     lines.extend(["", "## Scientific Blockers", ""])
     for blocker in summary["scientific_blockers"]:
         lines.append(

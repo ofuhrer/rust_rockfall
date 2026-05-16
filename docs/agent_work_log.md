@@ -1292,3 +1292,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no SLURM submission was made, no distributed/MPI execution was added, and the package report keeps the pilot framed as a research-diagnostic conditional workflow.
 - Next task: `TB-094`
+
+### TB-094: Capture Balfrin Pilot Metrics Contract
+
+- Date: 2026-05-16
+- Commit: `cad35a4`
+- Objective: define and test the Balfrin pilot metrics contract so completed runs can report the required runtime, memory, volume, family-count, conditional-curve, and restartability evidence or be reported as blocked.
+- Files changed: `scripts/collect_balfrin_probe_metrics.py`, `scripts/summarize_balfrin_single_job_execution.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_single_job_execution.py`, `tests/fixtures/balfrin_probe_metrics_contract/`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `metrics_contract` block to the Balfrin probe collector so complete run roots expose wall time, memory, validation output volume, hazard output volume, reduced-output family counts, conditional curve counts, and restartability metadata, while incomplete roots return a blocked status with missing metric names.
+  - Added fixture-backed regression coverage for a complete synthetic run root and an incomplete run root, including log-audit coverage and contract-status assertions.
+  - Updated the Balfrin single-job sufficiency summary and Markdown note to state which metrics are mandatory before claiming pilot feasibility.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/collect_balfrin_probe_metrics.py scripts/summarize_balfrin_single_job_execution.py tests/test_balfrin_probe_driver.py tests/test_balfrin_single_job_execution.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_single_job_execution`
+- Result/status: completed.
+- Boundaries: no Balfrin job was run, no performance was inferred from missing artifacts, and no distributed-execution authorization was introduced.
+- Next task: `TB-095`
