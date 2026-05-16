@@ -24,48 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-118: Execute And Collect Balfrin Single-Release-Zone Demo
-
-Goal: Run the canonical Balfrin demonstration workflow end-to-end for one
-release zone, one bounded deterministic ensemble, one native reduced-output
-workflow, and one GIS package path.
-
-Capability gap reduced: Balfrin demonstration realism and measured execution
-evidence.
-
-Why this outranks alternatives: The repository now has substantial Balfrin
-scaffolding, but the demonstration remains unmeasured. A real run is the next
-highest-value evidence-producing step after the readiness mismatch is fixed.
-
-Inspect first:
-
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_failure_recovery_playbook.md`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
-
-Deliverables:
-
-- A measured Balfrin run root or a clearly classified blocked execution report
-  using the outcome taxonomy in `docs/orchestration_strategy.md`.
-- Collected metrics JSON/manifest evidence for wall time, memory, output bytes,
-  file counts, reduced-output families, conditional curves, uncertainty
-  products, GIS package outputs, closure interpretation summary, and
-  restartability evidence.
-
-Definition of done:
-
-- The task status is `implemented_measured` only if a real Balfrin run root and
-  collected metrics exist; otherwise it must leave or add the smallest unblock
-  task before dependent synthesis work.
-
-Boundaries: Use bounded deterministic ensembles and native rebuildable reduced
-output only; do not run distributed/MPI/GPU jobs, large production ensembles, or
-operational/physical-frequency products.
-
 ### TB-119: Build Canonical Balfrin Demonstration Evidence Bundle
 
 Goal: Convert the measured Balfrin run root into one canonical evidence bundle

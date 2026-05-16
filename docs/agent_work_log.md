@@ -1858,7 +1858,8 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   - Verified Balfrin readiness on the remote checkout, generated the frozen
     submission package, and submitted the single-node SLURM job to `postproc`.
   - Watched the live run reach `Compiling rust_rockfall v0.6.1` on `nid001226`
-    before it stalled and was canceled after `00:08:09` of runtime.
+    before the earlier worker self-canceled it in an orchestration error after
+    `00:08:09` of runtime; that was not a real Balfrin stall.
   - Collected the partial metrics summary from the same run root, which records
     partial output evidence but still reports
     `metrics_contract_status: blocked_missing_inputs`.
@@ -1878,3 +1879,42 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   hazard readiness, annual frequency, physical probability, risk, exposure,
   vulnerability, or distributed-execution claim.
 - Next task: `TB-118`
+
+### TB-118 measured run: Execute And Collect Balfrin Single-Release-Zone Demo
+
+- Date: 2026-05-17
+- Commit: `489c209ca1dc4bb1f621783668c9fe87ccd651dc`
+- Objective: run the canonical Balfrin single-release-zone demo end-to-end and
+  collect measured evidence from the live Balfrin scratch root.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Submitted the frozen Balfrin single-release-zone probe to Balfrin using
+    the canonical conditional pilot gate manifest and a fresh scratch root:
+    `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`.
+  - Confirmed the SLURM job completed successfully on `nid001226` with exit
+    code `0`, and the run produced hazard-layer GeoTIFFs, ASCII grids, map
+    package manifests, and GIS package manifests under the measured output
+    roots.
+  - Collected the run metrics summary from the live scratch root; the summary
+    records `total_wall_seconds`, conditional-curve rows, reduced-output family
+    counts, output bytes, and restartability evidence, while the collector still
+    leaves some ancillary fields such as memory peak and split validation/hazard
+    file counts unset.
+  - Rendered a post-run interpretation summary from measured artifacts so the
+    closure boundary remains explicit: the diagnostic artifact is usable, while
+    operational, annual-frequency, physical-probability, risk, exposure, and
+    vulnerability claims remain out of scope.
+- Checks run:
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --submit --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3 --run-id tschamut_public_balfrin_single_release_zone_v3 --partition postproc --time 01:00:00 --nodes 1 --ntasks 1 --cpus-per-task 16'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'squeue -h -j 4326021 -o "%.18i %.9T %.50R"'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'sacct -j 4326021 --format=JobID,JobName%20,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,NodeList -P -n'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3 --output-json /tmp/balfrin_tb118_collect_metrics.json'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'sed -n "1,260p" /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3/balfrin_probe_summary.json'`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json --evidence-json /tmp/balfrin_tb118_post_run_evidence.json`
+- Result/status: implemented_measured
+- Boundaries: this records a live Balfrin diagnostic run only; it does not
+  claim operational readiness, annual frequency, physical probability, risk,
+  exposure, vulnerability, scale-up, or distributed execution.
+- Next task: `TB-119`
