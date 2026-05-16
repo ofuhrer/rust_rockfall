@@ -24,6 +24,10 @@ EXPECTED_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_depo
 EXPECTED_BENCHMARK_MANIFEST = EXPECTED_BENCHMARK_ROOT / "manifest.json"
 EXPECTED_BENCHMARK_GEOMETRY = EXPECTED_BENCHMARK_ROOT / "observed_runout_deposition.geojson"
 EXPECTED_CALIBRATION_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_calibration"
+EXPECTED_BENCHMARK_INPUTS = (
+    EXPECTED_BENCHMARK_MANIFEST,
+    EXPECTED_BENCHMARK_GEOMETRY,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -47,21 +51,23 @@ def build_report() -> dict[str, Any]:
     contract = build_contract()
     field_requirement_map = build_field_requirement_map()
     current_state = build_current_state()
-    missing_inputs = current_state["missing_inputs"]
+    benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "observed_runout_deposition_intake_status": "blocked_missing_inputs" if missing_inputs else "ready",
+        "observed_runout_deposition_intake_status": (
+            "blocked_missing_inputs" if benchmark_missing_inputs else "ready"
+        ),
         "benchmark_intake_contract": contract,
         "field_requirement_map": field_requirement_map,
         "current_repo_state": current_state,
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": (
             "no independent observed runout/deposition benchmark intake is staged in the repo"
-            if missing_inputs
+            if benchmark_missing_inputs
             else None
         ),
-        "missing_inputs": missing_inputs,
+        "missing_inputs": benchmark_missing_inputs,
         "current_state_summary": current_state_summary(current_state),
     }
 
@@ -295,12 +301,8 @@ def field_requirement(field_path: str, requirement_category: str, why_it_matters
 
 
 def build_current_state() -> dict[str, Any]:
-    benchmark_inputs = [
-        EXPECTED_BENCHMARK_MANIFEST,
-        EXPECTED_BENCHMARK_GEOMETRY,
-        EXPECTED_CALIBRATION_ROOT,
-    ]
-    missing_inputs = [str(path) for path in benchmark_inputs if not path.exists()]
+    benchmark_missing_inputs = [str(path) for path in EXPECTED_BENCHMARK_INPUTS if not path.exists()]
+    calibration_missing_inputs = [str(EXPECTED_CALIBRATION_ROOT)] if not EXPECTED_CALIBRATION_ROOT.exists() else []
     adjacent_diagnostic_materials = [
         {
             "path": str(ROOT / "data/processed/tschamut2014/observed_deposition.csv"),
@@ -314,15 +316,19 @@ def build_current_state() -> dict[str, Any]:
         },
     ]
     return {
-        "benchmark_intake_dataset_status": "absent" if missing_inputs else "present",
-        "calibration_dataset_status": "absent" if not EXPECTED_CALIBRATION_ROOT.exists() else "present",
+        "benchmark_intake_readiness_status": "blocked_missing_inputs" if benchmark_missing_inputs else "ready",
+        "calibration_readiness_status": "blocked_missing_inputs" if calibration_missing_inputs else "ready",
+        "benchmark_intake_dataset_status": "absent" if benchmark_missing_inputs else "present",
+        "calibration_dataset_status": "absent" if calibration_missing_inputs else "present",
         "required_inputs": [
             {"path": str(EXPECTED_BENCHMARK_MANIFEST), "exists": EXPECTED_BENCHMARK_MANIFEST.exists()},
             {"path": str(EXPECTED_BENCHMARK_GEOMETRY), "exists": EXPECTED_BENCHMARK_GEOMETRY.exists()},
             {"path": str(EXPECTED_CALIBRATION_ROOT), "exists": EXPECTED_CALIBRATION_ROOT.exists()},
         ],
         "adjacent_diagnostic_materials": adjacent_diagnostic_materials,
-        "missing_inputs": missing_inputs,
+        "benchmark_intake_missing_inputs": benchmark_missing_inputs,
+        "calibration_missing_inputs": calibration_missing_inputs,
+        "missing_inputs": benchmark_missing_inputs,
         "evidence_boundary": "diagnostic_only_until_independent_benchmark_is_staged",
     }
 
@@ -331,11 +337,11 @@ def current_state_summary(current_state: dict[str, Any]) -> list[dict[str, Any]]
     return [
         {
             "summary": "No independent observed runout/deposition benchmark intake is staged in the repo.",
-            "status": current_state["benchmark_intake_dataset_status"],
+            "status": current_state["benchmark_intake_readiness_status"],
         },
         {
             "summary": "No calibration dataset is available for objective fitting.",
-            "status": current_state["calibration_dataset_status"],
+            "status": current_state["calibration_readiness_status"],
         },
         {
             "summary": "Existing observed deposition files are diagnostic-only and not accepted as benchmark intake.",
@@ -378,9 +384,17 @@ def render_text_report(report: dict[str, Any]) -> str:
         )
     lines.append("")
     lines.append("current_repo_state:")
+    lines.append(f"- benchmark_intake_readiness_status: {current_state['benchmark_intake_readiness_status']}")
+    lines.append(f"- calibration_readiness_status: {current_state['calibration_readiness_status']}")
     lines.append(f"- benchmark_intake_dataset_status: {current_state['benchmark_intake_dataset_status']}")
     lines.append(f"- calibration_dataset_status: {current_state['calibration_dataset_status']}")
     lines.append(f"- evidence_boundary: {current_state['evidence_boundary']}")
+    lines.append("benchmark_intake_missing_inputs:")
+    for item in current_state["benchmark_intake_missing_inputs"]:
+        lines.append(f"- {item}")
+    lines.append("calibration_missing_inputs:")
+    for item in current_state["calibration_missing_inputs"]:
+        lines.append(f"- {item}")
     lines.append("current_state_summary:")
     for item in report["current_state_summary"]:
         lines.append(f"- {item['summary']} [{item['status']}]")

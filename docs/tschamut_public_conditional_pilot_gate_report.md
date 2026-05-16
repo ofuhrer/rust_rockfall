@@ -121,8 +121,11 @@ The observed runout/deposition intake contract is now spelled out in
 the minimal geometry, event/source metadata, uncertainty, and objective
 placeholder fields needed for a future benchmark intake, and it maps those
 fields back to the physical-credibility requirement classes. The current
-report remains `blocked_missing_inputs` because no independent observed
-runout/deposition benchmark dataset or calibration dataset is staged in the
+report now distinguishes benchmark intake readiness from calibration
+readiness. Benchmark intake readiness is driven only by the benchmark
+manifest and geometry inputs, while calibration readiness is reported
+separately. The current report remains `blocked_missing_inputs` because no
+independent observed runout/deposition benchmark dataset is staged in the
 repository.
 
 The helper keeps the distinction explicit between:

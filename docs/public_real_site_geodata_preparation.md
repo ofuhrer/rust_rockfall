@@ -241,8 +241,10 @@ read-only contract summary at
 `scripts/summarize_observed_runout_deposition_intake_contract.py` so future
 benchmark intake can name the required geometry, event/source metadata,
 uncertainty, and objective placeholders without implying that a calibration
-dataset is already available. The current repository state is still blocked on
-independent benchmark evidence.
+dataset is already available. That helper now separates benchmark intake
+readiness, which depends on the benchmark manifest and geometry only, from
+calibration readiness, which is reported independently. The current
+repository state is still blocked on independent benchmark evidence.
 
 The Chant Sura real-context readiness gate,
 `scripts/check_chant_sura_real_context_readiness_gate.py`, layers on top of

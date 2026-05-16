@@ -1123,3 +1123,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new ensemble was run, no scale-up was authorized, no physics or tuning was changed, and no closure interpretation was reinterpreted.
 - Next task: `TB-082`
+
+### TB-082: Split Benchmark Intake Readiness From Calibration Readiness
+
+- Date: 2026-05-16
+- Commit: TBD
+- Objective: split the observed runout/deposition intake contract so benchmark intake readiness depends only on the benchmark manifest and geometry requirements, while calibration dataset readiness is reported separately.
+- Files changed: docs/public_real_site_geodata_preparation.md, docs/task_backlog.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/agent_work_log.md, scripts/summarize_observed_runout_deposition_intake_contract.py, tests/test_observed_runout_deposition_intake_contract.py
+- Implementation summary: updated the observed runout/deposition intake helper so benchmark readiness is computed from the benchmark manifest and geometry inputs only, calibration readiness is emitted as a separate status channel, and the text/JSON report now names both readiness paths explicitly; extended the focused regression coverage with benchmark-present/calibration-absent and all-missing cases; and updated the Swiss geodata guidance plus the Tschamut gate report to describe the split contract.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract`; `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short --branch`
+- Result/status: completed.
+- Boundaries: no benchmark data was fabricated, no calibration parameters were fit, no physical-probability claim was added, and no operational boundary was changed.
+- Next task: TBD

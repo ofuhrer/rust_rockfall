@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-082: Split Benchmark Intake Readiness From Calibration Readiness
-
-Goal: Correct the observed runout/deposition intake contract so independent benchmark readiness is not blocked by absent calibration data.
-
-Capability gap reduced: Physical credibility boundary clarity and validation-realism staging.
-
-Why this outranks alternatives: The current status conflates two evidence classes and can misreport future valid benchmark intake as absent.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Benchmark intake readiness is computed from benchmark manifest and geometry requirements only.
-- Calibration dataset readiness is reported separately.
-- Tests cover benchmark-present/calibration-absent and all-missing states.
-
-Definition of done:
-
-- JSON/text output distinguishes benchmark intake from calibration readiness, focused tests pass, and TB-082 is removed from this backlog.
-
-Boundaries: Do not fabricate benchmark data, fit calibration parameters, add physical-probability claims, or change operational boundaries.
-
 ### TB-083: Add Observed Runout Intake Readiness Pack Generator
 
 Goal: Make the TB-080 observed runout/deposition contract actionable by generating a dry-run readiness pack for future real benchmark data.
