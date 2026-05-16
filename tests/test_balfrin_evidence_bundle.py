@@ -111,6 +111,8 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(parity["curve_linkage"]["conditional_curve_row_count"], 729600)
         self.assertEqual(parity["manifest_consistency"]["status"], "consistent")
         self.assertEqual(parity["scope_delta"]["status"], "parity_match")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_status"], "full_scope")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "parity_match")
 
     def test_gis_cog_parity_report_marks_missing_inputs_as_blocked(self) -> None:
         report = bundle.build_bundle_report(
@@ -126,6 +128,8 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(parity["parity_status"], "blocked_missing_inputs")
         self.assertEqual(parity["curve_linkage"]["status"], "blocked_missing_inputs")
         self.assertEqual(parity["manifest_consistency"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_status"], "blocked_missing_inputs")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "parity_match")
 
     def test_gis_cog_parity_report_marks_scope_delta_as_bounded_scope(self) -> None:
         report = bundle.build_bundle_report(
@@ -143,6 +147,12 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(parity["scope_delta"]["converted_package_layer_inventory_status"], "scope_reduced")
         self.assertEqual(parity["layer_counts"]["converted"]["validation_balfrin_probe"], 20)
         self.assertEqual(parity["curve_linkage"]["status"], "linked")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_status"], "bounded_scope")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "scope_delta")
+        self.assertEqual(
+            report["gis_cog_scope_report"]["converted_package_scope_deltas"]["validation_balfrin_probe"]["missing_layer_names"],
+            ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+        )
 
     def test_current_report_is_measured_and_tracks_section_provenance(self) -> None:
         report = bundle.build_current_report()
@@ -154,6 +164,8 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             {"measured": 6, "fixture_backed": 0, "blocked_missing_inputs": 0},
         )
         self.assertTrue(all(section["evidence_type"] == "measured" for section in report["section_provenance_profile"]))
+        self.assertEqual(report["gis_cog_scope_report"]["scope_status"], "full_scope")
+        self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "parity_match")
         self.assertIn("section_provenance_profile:", bundle.render_text_report(report))
         self.assertIn("bundle_provenance_status: measured", bundle.render_text_report(report))
 

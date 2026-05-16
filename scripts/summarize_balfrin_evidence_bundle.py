@@ -28,6 +28,7 @@ from scripts import summarize_balfrin_single_job_execution as single_job
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_evidence_bundle_v1"
 GIS_COG_PARITY_SCHEMA_VERSION = "balfrin_gis_cog_parity_report_v1"
+GIS_COG_SCOPE_SCHEMA_VERSION = "balfrin_gis_cog_scope_report_v1"
 CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
@@ -149,6 +150,10 @@ def build_bundle_report(
 ) -> dict[str, Any]:
     source_paths = source_paths or {}
     gis_cog_parity_report = build_gis_cog_parity_report(single_job_summary=single_job_summary, gis_report=gis_report)
+    gis_cog_scope_report = build_gis_cog_scope_report(
+        gis_cog_parity_report=gis_cog_parity_report,
+        gis_report=gis_report,
+    )
     section_provenance_profile = build_section_provenance_profile(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
@@ -188,6 +193,7 @@ def build_bundle_report(
         ),
         "gis_cog_readiness_report": gis_report,
         "gis_cog_parity_report": gis_cog_parity_report,
+        "gis_cog_scope_report": gis_cog_scope_report,
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": claim_boundaries,
         "source_paths": source_paths,
@@ -241,6 +247,7 @@ def blocked_report(
             "source_paths": [],
         },
     ]
+    gis_cog_parity_report = build_gis_cog_parity_report()
     return {
         "schema_version": SCHEMA_VERSION,
         "pilot_id": DEFAULT_PILOT_ID,
@@ -273,7 +280,11 @@ def blocked_report(
             "operational_claims_allowed": False,
             "scale_up_authorized": False,
         },
-        "gis_cog_parity_report": build_gis_cog_parity_report(),
+        "gis_cog_parity_report": gis_cog_parity_report,
+        "gis_cog_scope_report": build_gis_cog_scope_report(
+            gis_cog_parity_report=gis_cog_parity_report,
+            gis_report={"gis_cog_readiness_status": "blocked_missing_inputs", "blockers": {}},
+        ),
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": post_run_gate.claim_boundaries(),
         "source_paths": {},
@@ -340,6 +351,16 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  curve_linkage: {parity_report.get('curve_linkage', {})}",
                 f"  manifest_consistency: {parity_report.get('manifest_consistency', {})}",
                 f"  scope_delta: {parity_report.get('scope_delta', {})}",
+            ]
+        )
+    scope_report = report.get("gis_cog_scope_report")
+    if isinstance(scope_report, dict):
+        lines.extend(
+            [
+                "gis_cog_scope_report:",
+                f"  scope_status: {scope_report.get('scope_status', 'unknown')}",
+                f"  scope_delta_status: {scope_report.get('scope_delta_status', 'unknown')}",
+                f"  parity_status: {scope_report.get('parity_status', 'unknown')}",
             ]
         )
     section_provenance_profile = report.get("section_provenance_profile") or []
@@ -469,6 +490,39 @@ def build_gis_cog_parity_report(
             "single_job_summary": single_job_summary.get("record_paths", {}),
             "gis_artifact_roots": gis_report.get("artifact_roots", []),
         },
+    }
+
+
+def build_gis_cog_scope_report(
+    *,
+    gis_cog_parity_report: dict[str, Any],
+    gis_report: dict[str, Any],
+) -> dict[str, Any]:
+    parity_status = str(gis_cog_parity_report.get("parity_status") or "blocked_missing_inputs")
+    scope_delta = gis_cog_parity_report.get("scope_delta")
+    if not isinstance(scope_delta, dict):
+        scope_delta = {}
+    if parity_status == "blocked_missing_inputs":
+        scope_status = "blocked_missing_inputs"
+    elif parity_status == "bounded_scope":
+        scope_status = "bounded_scope"
+    elif parity_status == "ready":
+        scope_status = "full_scope"
+    else:
+        scope_status = "inconclusive"
+    return {
+        "schema_version": GIS_COG_SCOPE_SCHEMA_VERSION,
+        "scope_status": scope_status,
+        "status": scope_status,
+        "parity_status": parity_status,
+        "readiness_status": str(gis_report.get("gis_cog_readiness_status") or "blocked_missing_inputs"),
+        "scope_delta_status": str(scope_delta.get("status") or "parity_match"),
+        "converted_package_layer_inventory_status": str(
+            scope_delta.get("converted_package_layer_inventory_status") or "not_provided"
+        ),
+        "converted_package_scope_boundaries": scope_delta.get("converted_package_scope_boundaries") or {},
+        "converted_package_scope_deltas": scope_delta.get("converted_package_scope_deltas") or {},
+        "blockers": gis_report.get("blockers", {}),
     }
 
 

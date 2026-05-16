@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-122: Resolve Balfrin GIS/COG Demonstration Scope Delta
-
-Goal: Make the Balfrin demonstration GIS package either full-scope COG-ready or
-explicitly encode the intended scope delta in the measured evidence bundle.
-
-Capability gap reduced: GIS-readable product usability for the demonstration.
-
-Why this outranks alternatives: GIS polish is secondary to execution, but a
-management-facing Balfrin demonstration needs package scope and missing layers
-to be unambiguous.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/pilot_gis_package.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A full-scope COG export command for the measured Balfrin package or a
-  machine-readable scope-delta classification that the evidence bundle exposes.
-- Focused tests for full-scope, scope-delta, and blocked-missing-package cases.
-
-Definition of done:
-
-- Demonstration GIS/COG status is not ambiguous: the package is full-scope ready
-  or intentionally scope-limited with exact missing layer semantics.
-
-Boundaries: Do not commit generated rasters, do not require manual QGIS QA, and
-do not convert GIS readiness into operational approval.
-
 ### TB-123: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
 
 Goal: Produce deterministic terrain-driven release-zone candidate metrics for

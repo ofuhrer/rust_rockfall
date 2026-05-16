@@ -2007,3 +2007,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no physics tuning, acceptance-threshold changes, operational claims, or physical validation claims were introduced.
 - Next task: `TB-122`
+
+### TB-122: Resolve Balfrin GIS/COG Demonstration Scope Delta
+
+- Date: 2026-05-17
+- Commit: `pending`
+- Objective: make the Balfrin demonstration GIS package unambiguous by exposing a top-level machine-readable COG scope classification in the measured evidence bundle while keeping the full-scope, scope-delta, and blocked-missing-package states explicit.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a top-level `gis_cog_scope_report` to the Balfrin evidence bundle so downstream consumers can read `full_scope`, `bounded_scope`, or `blocked_missing_inputs` directly instead of inferring package scope from nested parity metadata.
+  - Kept the nested GIS/COG parity report intact and carried its missing-layer semantics through the new scope report so bounded-scope evidence still names the omitted layers explicitly.
+  - Extended the focused Balfrin evidence-bundle tests to cover the full-scope measured report, the intentional scope-delta case, and the blocked-missing-inputs case.
+  - Removed TB-122 from the active backlog after the evidence bundle made the demonstration scope classification explicit.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_gis_cog_package_readiness tests.test_same_scale_cog_package_conversion`
+- Result/status: completed
+- Boundaries: this records package-scope classification only; it does not commit generated rasters, require manual QGIS QA, or convert GIS readiness into operational approval.
+- Next task: `TB-123`
