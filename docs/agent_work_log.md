@@ -31,6 +31,38 @@ Planning only; these milestones do not implement roadmap item content yet.
 
 ## Entries
 
+### TB-057 Physical Credibility Evidence Requirements
+
+- Milestone id: TB-057.
+- Roadmap item: Map physical credibility data requirements to concrete
+  evidence sources.
+- Hypothesis/objective: The current `not_established` physical-credibility
+  boundary can be translated into a durable requirements matrix that names
+  future acquisition classes without turning diagnostic or holdout fixtures
+  into calibration evidence.
+- Files intended to change: `scripts/map_physical_credibility_evidence_requirements.py`,
+  `tests/test_physical_credibility_evidence_requirements.py`,
+  `docs/tschamut_public_conditional_pilot_gate_report.md`,
+  `docs/public_real_site_geodata_preparation.md`,
+  `docs/swisstopo_data_strategy.md`,
+  `docs/task_backlog.md`,
+  `docs/agent_work_log.md`
+- Implementation summary: Added a read-only physical-credibility evidence
+  requirements helper that maps Tschamut diagnostic evidence, Chant Sura
+  held-out validation evidence, and the swisstopo context stack into concrete
+  future acquisition classes. The report keeps the current boundaries
+  conservative: `physical_credibility_requirements_status=mapped_current_gaps`,
+  `current_physical_credibility_status=not_established`,
+  `calibration_status=missing`, `validation_status=partial`, and
+  `intensity_frequency_status=deferred_unsupported`.
+- Checks run: pending
+- Reviewer notes: The helper is descriptive only. It does not calibrate,
+  fit parameters, download geodata, run simulations, or authorize annual,
+  physical-probability, risk, exposure, vulnerability, scale-up, or
+  operational claims.
+- Decision: completed.
+- Next proposed milestone: backlog refill needed.
+
 ### TB-053 Closure Gap Deltas
 
 - Milestone id: TB-053.

@@ -240,6 +240,20 @@ That file keeps the second site metadata-only while spelling out the expected
 terrain crop, context layers, source-zone/scenario records, and ignored output
 roots that must exist before any second-site run is attempted.
 
+`scripts/map_physical_credibility_evidence_requirements.py` now maps the
+project's validation gap into concrete evidence requirements. It keeps the
+distinction explicit between:
+
+- swisstopo input geodata such as swissALTI3D, SWISSIMAGE, swissTLM3D,
+  swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, which are
+  workflow inputs and context layers; and
+- validation/calibration evidence such as independent holdout benchmarks,
+  block-population surveys, and source-frequency catalogues, which are not
+  satisfied by synthetic fixtures or terrain/context inputs alone.
+
+That separation is deliberate: the public geodata strategy prepares inputs for
+hazard-map workflows, but it does not by itself establish physical credibility.
+
 The second-site preflight now reports this boundary explicitly with
 `public_context_boundary_status`, per-product expected paths, metadata
 requirements, synthetic-fixture boundaries, and blocked second-site command

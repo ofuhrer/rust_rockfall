@@ -185,10 +185,7 @@ Underrepresented high-value work:
 
 ## Active Tasks
 
-Current priority order:
-
-P0. TB-057 makes physical-credibility evidence requirements executable and
-    site-aware without adding calibration or operational claims.
+Backlog refill needed. No active executable tasks remain.
 
 ## Backlog Protocol
 
@@ -228,52 +225,6 @@ active task queue; it keeps the queue executable.
 
 Do not keep completed tasks here. Use `agent_work_log.md` for execution
 history and `decision_log.md` for durable decisions.
-
-### TB-057: Map Physical Credibility Data Requirements To Concrete Evidence Sources
-
-Priority: P5.
-
-Why now: the physical-credibility gap assessment correctly reports
-`not_established`, `calibration_status=missing`, and `validation_status=partial`,
-but it does not yet map those gaps to concrete field/reference data products
-that future acquisition or collaborations could target.
-
-Capability gap reduced: validation realism and physical-credibility boundary
-clarity.
-
-Why higher priority than deferred calibration work: it defines required
-evidence sources without fitting parameters, expanding claims, or starting a
-calibration workflow prematurely.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_chant_sura_holdout_evidence.py`
-- `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`
-- `data/datasets.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Expected measurable outputs:
-
-- a read-only evidence-requirements matrix, preferably JSON/text, that maps
-  observed runout/deposition, release-zone evidence, block-size or
-  block-population evidence, terrain/context evidence, calibration splits, and
-  holdout validation needs to concrete candidate data sources or missing
-  acquisition classes;
-- tests proving the matrix keeps calibration, physical probability, and
-  operational claims blocked;
-- docs updated to separate "data required for future credibility" from current
-  diagnostic evidence.
-
-Definition of done:
-
-- the repo has a concrete, machine-readable list of physical-credibility data
-  requirements and current evidence gaps;
-- it does not tune parameters, create annual frequency semantics, validate
-  operational skill, or change the current `not_established` physical
-  credibility status.
 
 ## Deferred Backlog
 

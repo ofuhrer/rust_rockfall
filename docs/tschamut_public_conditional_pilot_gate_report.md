@@ -70,6 +70,40 @@ The validation-output blocker is now narrower: `summary_only` remains
 non-rebuildable, while the native `rebuildable_reduced_output` case is
 standardized and command-plan-addressable as a direct builder-facing path.
 
+## Physical-Credibility Evidence Requirements
+
+The read-only evidence-requirements helper is
+`scripts/map_physical_credibility_evidence_requirements.py`. It maps the
+current Tschamut diagnostic evidence, Chant Sura holdout evidence, and the
+swisstopo context stack into future acquisition classes without claiming
+calibration or physical credibility.
+
+Current synthesized status:
+
+- physical-credibility requirements status: `mapped_current_gaps`
+- current physical credibility status: `not_established`
+- calibration status: `missing`
+- validation status: `partial`
+- intensity-frequency status: `deferred_unsupported`
+
+The helper keeps the distinction explicit between:
+
+- current diagnostic runout / deposition evidence from Tschamut;
+- Chant Sura holdout validation evidence;
+- future block-population, source-frequency, and independent holdout
+  acquisition classes;
+- swisstopo terrain / context inputs, which remain inputs and not validation
+  evidence by themselves.
+
+The current claim boundaries stay blocked:
+
+- `physical_probability_claims_allowed`: `false`
+- `annual_frequency_claims_allowed`: `false`
+- `risk_exposure_vulnerability_claims_allowed`: `false`
+- `operational_claims_allowed`: `false`
+- `scale_up_authorized`: `false`
+- `distributed_execution_authorized`: `false`
+
 ## Closure-Gap Deltas
 
 The measured closure-gap helper is

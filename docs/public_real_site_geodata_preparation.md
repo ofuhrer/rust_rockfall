@@ -223,6 +223,14 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The public-credibility boundary is now also machine-readable via
+`scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
+Chant Sura / Flüelapass public-context acquisition separate from physical
+credibility evidence and points future acquisition work at concrete source
+classes such as block-population surveys, source-frequency catalogues, and
+independent holdout benchmarks rather than treating the synthetic staging
+fixtures as validation evidence.
+
 The same candidate also has a synthetic source-zone / scenario policy fixture
 at
 `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`.
