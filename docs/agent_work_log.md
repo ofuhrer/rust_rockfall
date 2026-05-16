@@ -1360,3 +1360,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no annual source frequencies were estimated, no block distributions were calibrated, and no physics parameters or operational claims were changed.
 - Next task: `TB-098`
+
+### TB-098: Estimate Swiss-Wide Runtime And Storage Envelope
+
+- Date: 2026-05-16
+- Commit: `2247fc8`
+- Objective: convert measured Tschamut/Balfrin runtime and output evidence into a conservative read-only runtime, storage, file-count, and job-count envelope for larger AOI/release-zone planning.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `scripts/estimate_swiss_wide_execution_envelope.py`, anchored to the bounded reducer/runtime summary, Balfrin single-job sufficiency record, and bounded next-ensemble feasibility evidence.
+  - Emitted low/nominal/high bands for runtime seconds, storage bytes, file counts, and job counts, with no-go labels when AOI, release-zone, trajectory, or job counts exceed measured support.
+  - Added focused projection tests for small, valley-scale, Swiss-wide, and measured-loader cases, and documented the helper as a planning aid that does not authorize scale-up.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py tests/test_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope tests.test_bounded_reducer_runtime_scaling`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --aoi-count 26 --release-zone-count 10 --trajectory-count 6 --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no Swiss-wide execution was authorized, no jobs were submitted, and extrapolated multi-AOI requests remain labeled as no-go planning cases rather than operational or scale-up evidence.
+- Next task: `TB-099`
