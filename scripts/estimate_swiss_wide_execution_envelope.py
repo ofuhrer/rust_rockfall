@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Estimate a Swiss-wide runtime and storage envelope from measured pilot evidence.
+"""Estimate a Swiss-wide runtime, storage, memory, and job-count envelope from measured pilot evidence.
 
 This helper is read-only. It combines the measured Tschamut same-scale
 runtime/output summaries with the Balfrin single-job sufficiency evidence and
-projects conservative runtime, storage, file-count, and job-count envelopes for
-configurable AOI/release-zone/trajectory counts.
+projects conservative runtime, storage, file-count, memory, and job-count
+envelopes for configurable AOI/release-zone/trajectory counts.
 
 The helper does not submit jobs, run simulations, or authorize distributed
 execution. When the requested counts exceed measured support, the report is
-explicitly labeled as a no-go extrapolation.
+explicitly labeled as a no-go extrapolation. When the measured Balfrin inputs
+are missing, the helper returns an explicit blocked report instead of
+fabricating projections.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ SCHEMA_VERSION = "swiss_wide_execution_envelope_v1"
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
-    "balfrin_single_job_sufficiency": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_job_execution.py --format json",
+    "balfrin_single_job_sufficiency": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_job_execution.py",
     "bounded_next_ensemble_feasibility_probe": "PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json",
 }
 
@@ -76,6 +78,9 @@ class MeasuredCoefficients:
     file_count_per_unit_low: float
     file_count_per_unit_nominal: float
     file_count_per_unit_high: float
+    memory_peak_mb_low: float
+    memory_peak_mb_nominal: float
+    memory_peak_mb_high: float
     measurement_notes: tuple[str, ...]
 
 
@@ -98,19 +103,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    try:
-        coefficients = load_measured_coefficients()
-        report = build_report(
-            ProjectionInputs(
-                aoi_count=args.aoi_count,
-                release_zone_count=args.release_zone_count,
-                trajectory_count=args.trajectory_count,
-            ),
-            coefficients=coefficients,
+    report = build_report_from_available_evidence(
+        ProjectionInputs(
+            aoi_count=args.aoi_count,
+            release_zone_count=args.release_zone_count,
+            trajectory_count=args.trajectory_count,
         )
-    except SwissWideExecutionEnvelopeError as exc:
-        print(f"Swiss-wide execution envelope error: {exc}", file=sys.stderr)
-        return 2
+    )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -120,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(render_text_report(report))
-    return 0
+    return 0 if report["projection_status"] == "measured_within_support" else 2
 
 
 @lru_cache(maxsize=1)
@@ -128,6 +127,9 @@ def load_measured_coefficients() -> MeasuredCoefficients:
     runtime_report = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
     single_job_summary = SINGLE_JOB.build_summary()
     feasibility_report = FEASIBILITY.build_report()
+    wall_time_evidence = dict(single_job_summary.get("wall_time_evidence") or {})
+    memory_evidence = dict(single_job_summary.get("memory_evidence") or {})
+    output_size_evidence = dict(single_job_summary.get("output_size_evidence") or {})
 
     reduced_artifact = find_artifact(runtime_report["artifacts_measured"], "target_rebuildable_reduced")
     if not reduced_artifact:
@@ -138,9 +140,22 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         raise SwissWideExecutionEnvelopeError("bounded next-ensemble feasibility evidence is missing")
 
     measured_units_per_job = 1 * 10 * 6
+    current_gap_memory_peak_mb = require_numeric_metric(
+        memory_evidence.get("current_gap_memory_peak_mb"),
+        "single_job_summary.memory_evidence.current_gap_memory_peak_mb",
+    )
+    reproduction_validation_memory_peak_mb = require_numeric_metric(
+        memory_evidence.get("reproduction_validation_memory_peak_bytes_on_darwin"),
+        "single_job_summary.memory_evidence.reproduction_validation_memory_peak_bytes_on_darwin",
+    ) / 1_000_000.0
+    reproduction_hazard_memory_peak_mb = require_numeric_metric(
+        memory_evidence.get("reproduction_hazard_memory_peak_bytes_on_darwin"),
+        "single_job_summary.memory_evidence.reproduction_hazard_memory_peak_bytes_on_darwin",
+    ) / 1_000_000.0
     measurement_notes = (
         "runtime coefficients are anchored to the measured same-scale reduced-output and Balfrin single-job summaries",
         "storage coefficients are anchored to the measured reduced-output, summary-only, and current-gap output summaries",
+        "memory frontier is anchored to the measured Balfrin current-gap peak and reproduction validation / hazard memory sidecars",
         "job-count capacity is anchored to the measured 10-release-zone by 6-trajectory pilot footprint",
     )
 
@@ -149,21 +164,62 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         measured_release_zone_count=10,
         measured_trajectory_count=6,
         measured_units_per_job=measured_units_per_job,
-        runtime_seconds_per_unit_low=float(reduced_artifact["validation_runtime_seconds"]) / measured_units_per_job,
-        runtime_seconds_per_unit_nominal=float(single_job_summary["wall_time_evidence"]["current_gap_runtime_seconds"])
+        runtime_seconds_per_unit_low=require_numeric_metric(
+            reduced_artifact.get("validation_runtime_seconds"),
+            "runtime_report.artifacts_measured.target_rebuildable_reduced.validation_runtime_seconds",
+        )
         / measured_units_per_job,
-        runtime_seconds_per_unit_high=float(single_job_summary["wall_time_evidence"]["reproduction_validation_wall_seconds"])
+        runtime_seconds_per_unit_nominal=require_numeric_metric(
+            wall_time_evidence.get("current_gap_runtime_seconds"),
+            "single_job_summary.wall_time_evidence.current_gap_runtime_seconds",
+        )
         / measured_units_per_job,
-        storage_bytes_per_unit_low=float(reduced_evidence["summary_only_output_bytes"]) / measured_units_per_job,
-        storage_bytes_per_unit_nominal=float(reduced_evidence["rebuildable_reduced_output_bytes"])
+        runtime_seconds_per_unit_high=require_numeric_metric(
+            wall_time_evidence.get("reproduction_validation_wall_seconds"),
+            "single_job_summary.wall_time_evidence.reproduction_validation_wall_seconds",
+        )
         / measured_units_per_job,
-        storage_bytes_per_unit_high=float(single_job_summary["output_size_evidence"]["current_gap_output_bytes"])
+        storage_bytes_per_unit_low=require_numeric_metric(
+            reduced_evidence.get("summary_only_output_bytes"),
+            "feasibility_report.measured_evidence.summary_only_output_bytes",
+        )
         / measured_units_per_job,
-        file_count_per_unit_low=float(reduced_evidence["summary_only_output_file_count"]) / measured_units_per_job,
-        file_count_per_unit_nominal=float(reduced_evidence["rebuildable_reduced_output_file_count"])
+        storage_bytes_per_unit_nominal=require_numeric_metric(
+            reduced_evidence.get("rebuildable_reduced_output_bytes"),
+            "feasibility_report.measured_evidence.rebuildable_reduced_output_bytes",
+        )
         / measured_units_per_job,
-        file_count_per_unit_high=float(single_job_summary["output_size_evidence"]["current_gap_output_file_count"])
+        storage_bytes_per_unit_high=require_numeric_metric(
+            output_size_evidence.get("current_gap_output_bytes"),
+            "single_job_summary.output_size_evidence.current_gap_output_bytes",
+        )
         / measured_units_per_job,
+        file_count_per_unit_low=require_numeric_metric(
+            reduced_evidence.get("summary_only_output_file_count"),
+            "feasibility_report.measured_evidence.summary_only_output_file_count",
+        )
+        / measured_units_per_job,
+        file_count_per_unit_nominal=require_numeric_metric(
+            reduced_evidence.get("rebuildable_reduced_output_file_count"),
+            "feasibility_report.measured_evidence.rebuildable_reduced_output_file_count",
+        )
+        / measured_units_per_job,
+        file_count_per_unit_high=require_numeric_metric(
+            output_size_evidence.get("current_gap_output_file_count"),
+            "single_job_summary.output_size_evidence.current_gap_output_file_count",
+        )
+        / measured_units_per_job,
+        memory_peak_mb_low=min(
+            current_gap_memory_peak_mb,
+            reproduction_validation_memory_peak_mb,
+            reproduction_hazard_memory_peak_mb,
+        ),
+        memory_peak_mb_nominal=current_gap_memory_peak_mb,
+        memory_peak_mb_high=max(
+            current_gap_memory_peak_mb,
+            reproduction_validation_memory_peak_mb,
+            reproduction_hazard_memory_peak_mb,
+        ),
         measurement_notes=measurement_notes,
     )
 
@@ -189,9 +245,16 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
     file_counts = build_integer_band(total_units, coefficients.file_count_per_unit_low,
                                      coefficients.file_count_per_unit_nominal,
                                      coefficients.file_count_per_unit_high)
+    memory_peak_mb = build_absolute_band(
+        coefficients.memory_peak_mb_low,
+        coefficients.memory_peak_mb_nominal,
+        coefficients.memory_peak_mb_high,
+        precision=3,
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "measurement_status": "measured_existing_artifacts",
         "projection_status": projection_status,
         "read_only": True,
         "scale_up_authorized": False,
@@ -215,10 +278,12 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
         "runtime_seconds": runtime_seconds,
         "storage_bytes": storage_bytes,
         "file_count": file_counts,
+        "memory_peak_mb": memory_peak_mb,
         "uncertainty_band": {
             "runtime_seconds": band_summary(runtime_seconds),
             "storage_bytes": band_summary(storage_bytes),
             "file_count": band_summary(file_counts),
+            "memory_peak_mb": band_summary(memory_peak_mb),
         },
         "no_go_labels": no_go_labels,
         "blocked_reason": build_blocked_reason(no_go_labels),
@@ -242,6 +307,66 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
                 "nominal": coefficients.file_count_per_unit_nominal,
                 "high": coefficients.file_count_per_unit_high,
             },
+            "memory_peak_mb": {
+                "low": coefficients.memory_peak_mb_low,
+                "nominal": coefficients.memory_peak_mb_nominal,
+                "high": coefficients.memory_peak_mb_high,
+            },
+        },
+    }
+
+
+def build_report_from_available_evidence(inputs: ProjectionInputs) -> dict[str, Any]:
+    try:
+        coefficients = load_measured_coefficients()
+    except SwissWideExecutionEnvelopeError as exc:
+        return build_blocked_report(inputs, blocked_reason=str(exc))
+    return build_report(inputs, coefficients=coefficients)
+
+
+def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> dict[str, Any]:
+    total_units = inputs.aoi_count * inputs.release_zone_count * inputs.trajectory_count
+    empty_band = {"low": None, "nominal": None, "high": None}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "measurement_status": "blocked_missing_inputs",
+        "projection_status": "blocked_missing_inputs",
+        "read_only": True,
+        "scale_up_authorized": False,
+        "distributed_execution_authorized": False,
+        "operational_claims_allowed": False,
+        "input": {
+            "aoi_count": inputs.aoi_count,
+            "release_zone_count": inputs.release_zone_count,
+            "trajectory_count": inputs.trajectory_count,
+            "total_units": total_units,
+        },
+        "measured_support": None,
+        "job_count": None,
+        "jobs_per_aoi": None,
+        "runtime_seconds": empty_band,
+        "storage_bytes": empty_band,
+        "file_count": empty_band,
+        "memory_peak_mb": empty_band,
+        "uncertainty_band": {
+            "runtime_seconds": band_summary(empty_band),
+            "storage_bytes": band_summary(empty_band),
+            "file_count": band_summary(empty_band),
+            "memory_peak_mb": band_summary(empty_band),
+        },
+        "no_go_labels": [],
+        "blocked_reason": blocked_reason,
+        "measurement_basis": {
+            "source_commands": MEASURED_SOURCE_COMMANDS,
+            "measurement_notes": [
+                "measured Balfrin evidence was unavailable, so the frontier cannot be projected",
+            ],
+        },
+        "per_unit_coefficients": {
+            "runtime_seconds": {"low": None, "nominal": None, "high": None},
+            "storage_bytes": {"low": None, "nominal": None, "high": None},
+            "file_count": {"low": None, "nominal": None, "high": None},
+            "memory_peak_mb": {"low": None, "nominal": None, "high": None},
         },
     }
 
@@ -296,6 +421,20 @@ def build_scalar_band(
     }
 
 
+def build_absolute_band(
+    low: float,
+    nominal: float,
+    high: float,
+    *,
+    precision: int,
+) -> dict[str, float]:
+    return {
+        "low": round(low, precision),
+        "nominal": round(nominal, precision),
+        "high": round(high, precision),
+    }
+
+
 def build_integer_band(
     total_units: int,
     low_per_unit: float,
@@ -313,13 +452,22 @@ def band_summary(band: dict[str, Any]) -> dict[str, Any]:
     low = band["low"]
     nominal = band["nominal"]
     high = band["high"]
+    nominal_minus_low = None
+    high_minus_nominal = None
+    high_to_low_ratio = None
+    if isinstance(low, (int, float)) and isinstance(nominal, (int, float)):
+        nominal_minus_low = nominal - low
+    if isinstance(nominal, (int, float)) and isinstance(high, (int, float)):
+        high_minus_nominal = high - nominal
+    if isinstance(low, (int, float)) and low:
+        high_to_low_ratio = (high / low) if isinstance(high, (int, float)) else None
     return {
         "low": low,
         "nominal": nominal,
         "high": high,
-        "nominal_minus_low": nominal - low,
-        "high_minus_nominal": high - nominal,
-        "high_to_low_ratio": (high / low) if isinstance(low, (int, float)) and low else None,
+        "nominal_minus_low": nominal_minus_low,
+        "high_minus_nominal": high_minus_nominal,
+        "high_to_low_ratio": high_to_low_ratio,
     }
 
 
@@ -334,8 +482,10 @@ def render_text_report(report: dict[str, Any]) -> str:
     runtime = report["runtime_seconds"]
     storage = report["storage_bytes"]
     files = report["file_count"]
+    memory = report["memory_peak_mb"]
     lines = [
         "Swiss-wide execution envelope",
+        f"measurement_status: {report['measurement_status']}",
         f"projection_status: {report['projection_status']}",
         f"blocked_reason: {report['blocked_reason']}",
         f"aoi_count: {report['input']['aoi_count']}",
@@ -356,6 +506,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  low: {files['low']}",
         f"  nominal: {files['nominal']}",
         f"  high: {files['high']}",
+        "memory_peak_mb:",
+        f"  low: {memory['low']}",
+        f"  nominal: {memory['nominal']}",
+        f"  high: {memory['high']}",
         f"no_go_labels: {', '.join(report['no_go_labels']) if report['no_go_labels'] else 'none'}",
         "measurement_basis:",
     ]
@@ -364,6 +518,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     for note in report["measurement_basis"]["measurement_notes"]:
         lines.append(f"  note: {note}")
     return "\n".join(lines)
+
+
+def require_numeric_metric(value: Any, label: str) -> float:
+    if value is None:
+        raise SwissWideExecutionEnvelopeError(f"measured Balfrin evidence is missing {label}")
+    return float(value)
 
 
 if __name__ == "__main__":

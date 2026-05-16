@@ -1679,3 +1679,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: the taxonomy labels operational recovery cases and explicit scope limits only; it does not alter scientific interpretation criteria or authorize operational hazard claims.
 - Next task: `TB-113`
+
+### TB-113: Update Balfrin Runtime And Scaling Frontier
+
+- Date: 2026-05-16
+- Commit: `pending`
+- Objective: refine the Swiss-wide planning envelope with measured Balfrin runtime, storage, file-count, memory, and job-count evidence while preserving conservative no-go labeling and a blocked fallback when measurements are absent.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/task_backlog.md`, `docs/decision_log.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Swiss-wide envelope helper to carry a measured memory band alongside runtime, storage, file-count, and job-count projections.
+  - Added an explicit blocked-report path for missing Balfrin evidence so the helper stays machine-readable instead of hard-failing when measurements are unavailable.
+  - Corrected the Balfrin source command metadata and added regression coverage for measured support, extrapolated no-go labels, and blocked missing-evidence behavior.
+  - Removed TB-113 from the active backlog and recorded the frontier-basis decision in the decision log.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: the frontier stays read-only and conservative; it does not authorize Swiss-wide execution, distributed execution, or any operational hazard claim.
+- Next task: `TB-114`

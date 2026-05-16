@@ -534,6 +534,13 @@ Detailed sources: `scripts/prepare_chant_sura_fluelapass_minimal_preflight_input
 `docs/swisstopo_data_strategy.md`,
 `docs/task_backlog.md`.
 
+### TB-113 Balfrin Runtime And Scaling Frontier
+
+Date: 2026-05-16
+Decision: anchor the Swiss-wide planning envelope to measured Balfrin runtime, storage, file-count, memory, and job-count evidence, and return a blocked report when those measured inputs are absent instead of fabricating projections.
+Rationale: this keeps the frontier conservative and machine-readable while preserving explicit no-go labels and the existing no-authorization boundary for Swiss-wide or distributed execution.
+Sources: `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_single_job_execution.py`, `scripts/summarize_bounded_reducer_runtime_scaling.py`, `docs/balfrin_single_job_execution_sufficiency.md`.
+
 ## Superseded Standalone Sources
 
 The following standalone files were consolidated or removed because they had

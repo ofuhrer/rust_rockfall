@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-113: Update Balfrin Runtime And Scaling Frontier
-
-Goal: Use measured Balfrin evidence to refine runtime, storage, file-count, memory, and job-count projections for bounded next-step planning.
-
-Capability gap reduced: Future scalability realism.
-
-Why this outranks alternatives: After the demo run, scaling guidance must be based on measured evidence rather than stale coefficients or wishful extrapolation.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_single_job_execution.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- Updated runtime/storage frontier using measured Balfrin metrics or a blocked report if measured metrics are absent.
-- Tests for measured, extrapolated no-go, and missing-evidence paths.
-
-Definition of done:
-
-- The frontier report reflects current measured support and explicit no-go labels, focused checks pass, and TB-113 is removed from this backlog.
-
-Boundaries: Do not authorize Swiss-wide execution or distributed execution; keep projections conservative and labeled.
-
 ### TB-114: Prepare Second-Site Real-Context Acquisition Decision
 
 Goal: Decide whether to stage real Chant Sura / Fluelapass public-context products next, or explicitly defer them with measured rationale after the Balfrin demo path is assessed.
