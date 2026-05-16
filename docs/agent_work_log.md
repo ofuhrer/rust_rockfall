@@ -1815,3 +1815,34 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   started, and no operational, annual-frequency, physical-probability, risk,
   exposure, vulnerability, or distributed-execution claim was introduced.
 - Next task: `TB-129`
+
+### TB-117 scheduler access report: Restore Balfrin Scheduler Access For Demo Submission
+
+- Date: 2026-05-17
+- Commit: `1ecc28c1215b60371fa6ec3f8272ce377d104cec`
+- Objective: document whether the canonical Balfrin demo path can reach `sbatch`
+  and preserve a retryable submission note that keeps the same run root and run
+  id.
+- Files changed: `docs/balfrin_failure_recovery_playbook.md`, `docs/balfrin_tschamut_pilot_runbook.md`, `scripts/submit_balfrin_probe.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified by SSH that `balfrin` reaches a login node exposing `/usr/bin/sbatch`.
+  - Recorded the Balfrin SSH entry point as the retry path in the failure
+    recovery playbook and the operational runbook, keeping `RUN_ROOT` and
+    `RUN_ID` unchanged across retries.
+  - Updated the submit helper's recovery text so the machine-readable failure
+    report points operators at the Balfrin SSH context instead of only saying to
+    retry later.
+  - Removed TB-117 from the active backlog after documenting the scheduler
+    access path.
+- Checks run:
+  - `ssh -o BatchMode=yes -o ConnectTimeout=8 balfrin 'hostname; command -v sbatch || true; pwd'`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /tmp/balfrin-tb117-check --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_blocked_report
+- Boundaries: this documents scheduler access and a retry path only; it does not
+  claim a measured Balfrin demo run, operational hazard readiness, annual
+  frequency, physical probability, risk, exposure, vulnerability, or
+  distributed execution.
+- Next task: `TB-118`
