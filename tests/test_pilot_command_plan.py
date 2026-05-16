@@ -163,6 +163,14 @@ class PilotCommandPlanTest(unittest.TestCase):
             "--cog-package-output-root hazard/results/tschamut_public_pilot/gate_v1_cog_export",
             export_command["command"],
         )
+        self.assertEqual(export_command["cog_scope_intent"]["status"], "full_scope")
+        self.assertEqual(export_command["cog_scope_intent"]["reference_layer_count"], 22)
+        self.assertIn("jump_height_exceedance_0p5m", export_command["cog_scope_intent"]["reference_layer_names"])
+        self.assertEqual(export_command["cog_scope_intent"]["omitted_layer_names"], [])
+        self.assertEqual(
+            export_command["cog_scope_intent"]["included_jump_height_layers_m"],
+            [0.5, 1.0, 2.0],
+        )
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_export", export_command["expected_outputs"])
         self.assertTrue(export_command["may_produce_ignored_outputs"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_export", export_command["ignored_output_paths"])

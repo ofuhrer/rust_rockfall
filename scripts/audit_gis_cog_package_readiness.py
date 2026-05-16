@@ -177,6 +177,9 @@ def build_gis_cog_readiness_report(
         "converted_package_readiness_status": converted_summary["converted_package_readiness_status"],
         "any_converted_package_ready": converted_summary["any_converted_package_ready"],
         "converted_package_layer_inventory_status": summarize_converted_package_layer_inventory(converted_packages),
+        "converted_package_scope_boundaries": {
+            artifact["artifact_id"]: artifact["cog_scope"] for artifact in converted_packages
+        },
         "converted_package_layer_counts": {
             artifact["artifact_id"]: artifact["converted_layer_count"] for artifact in converted_packages
         },
@@ -361,6 +364,17 @@ def compare_layer_inventory(
             "extra_layer_count": 0,
             "extra_layer_names": [],
             "extra_layer_semantics": [],
+            "cog_scope": {
+                "status": "no_standard_reference",
+                "reference_layer_count": None,
+                "reference_layer_names": [],
+                "exported_layer_count": len(converted_layer_names),
+                "exported_layer_names": converted_layer_names,
+                "omitted_layer_count": 0,
+                "omitted_layer_names": [],
+                "extra_layer_count": 0,
+                "extra_layer_names": [],
+            },
             "scope_delta": {
                 "status": "no_standard_reference",
                 "missing_layer_count": 0,
@@ -391,6 +405,14 @@ def compare_layer_inventory(
     else:
         layer_inventory_status = "parity_match"
         inventory_note = "converted package mirrors the standard root layer inventory"
+    if not missing_layer_names and not extra_layer_names:
+        cog_scope_status = "full_scope"
+    elif missing_layer_names and not extra_layer_names:
+        cog_scope_status = "bounded_scope"
+    elif extra_layer_names and not missing_layer_names:
+        cog_scope_status = "expanded_scope"
+    else:
+        cog_scope_status = "inventory_mismatch"
     return {
         **converted_artifact,
         "layer_inventory_status": layer_inventory_status,
@@ -402,6 +424,17 @@ def compare_layer_inventory(
         "extra_layer_count": len(extra_layer_names),
         "extra_layer_names": extra_layer_names,
         "extra_layer_semantics": [converted_layer_semantics_by_name[layer_name] for layer_name in extra_layer_names if layer_name in converted_layer_semantics_by_name],
+        "cog_scope": {
+            "status": cog_scope_status,
+            "reference_layer_count": len(standard_layer_names),
+            "reference_layer_names": standard_layer_names,
+            "exported_layer_count": len(converted_layer_names),
+            "exported_layer_names": converted_layer_names,
+            "omitted_layer_count": len(missing_layer_names),
+            "omitted_layer_names": missing_layer_names,
+            "extra_layer_count": len(extra_layer_names),
+            "extra_layer_names": extra_layer_names,
+        },
         "scope_delta": {
             "status": "parity_match" if not missing_layer_names and not extra_layer_names else "scope_delta",
             "missing_layer_count": len(missing_layer_names),
@@ -829,6 +862,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"  root: {package['artifact_root']}")
             lines.append(f"  status: {package['cog_package_status']}")
             lines.append(f"  layer inventory: {package.get('layer_inventory_status')}")
+            lines.append(f"  cog scope: {package.get('cog_scope')}")
             lines.append(
                 f"  standard/converted layer counts: {package.get('standard_layer_count')}/{package.get('converted_layer_count')}"
             )

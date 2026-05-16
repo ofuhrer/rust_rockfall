@@ -180,9 +180,14 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         self.assertEqual(report["converted_package_layer_inventory_status"], "scope_reduced")
         self.assertEqual(converted_package["layer_inventory_status"], "scope_reduced")
         self.assertEqual(converted_package["cog_package_status"], "cog_package_ready_with_scope_delta")
+        self.assertEqual(converted_package["cog_scope"]["status"], "bounded_scope")
         self.assertEqual(converted_package["standard_layer_count"], 22)
         self.assertEqual(converted_package["converted_layer_count"], 20)
         self.assertEqual(converted_package["scope_delta"]["status"], "scope_delta")
+        self.assertEqual(
+            converted_package["cog_scope"]["omitted_layer_names"],
+            ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+        )
         self.assertEqual(
             converted_package["missing_layer_names"],
             ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
@@ -193,11 +198,16 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         )
         self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready_with_scope_delta")
         self.assertEqual(
+            report["converted_package_scope_boundaries"]["validation_tschamut_public_conditional_gate_v1"]["status"],
+            "bounded_scope",
+        )
+        self.assertEqual(
             report["converted_package_scope_deltas"]["validation_tschamut_public_conditional_gate_v1"]["missing_layer_names"],
             ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
         )
         text = audit.render_text_report(report)
         self.assertIn("Converted package layer inventory: scope_reduced", text)
+        self.assertIn("cog scope:", text)
         self.assertIn("omitted layers: jump_height_exceedance_0p5m, weighted_jump_height_exceedance_0p5m", text)
 
     def _write_manifests(

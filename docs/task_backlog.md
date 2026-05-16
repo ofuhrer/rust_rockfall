@@ -18,35 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-084: Resolve COG Export Layer-Scope Delta
-
-Goal: Make the COG export proof either full-scope with the standard same-scale GIS package or explicitly bounded in machine-readable audit output.
-
-Capability gap reduced: GIS product usability and reproducible export semantics.
-
-Why this outranks alternatives: The export path works, but the converted proof currently differs from the standard 22-layer scope, which can mislead downstream GIS users.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_gis_cog_package_readiness.py`
-
-Deliverables:
-
-- Either a full-scope COG export command/audit path that includes the missing 0.5 m jump-height layers, or an explicit bounded-scope COG classification with the omitted layer list.
-- Command-plan metadata exposes the intended COG scope.
-- Tests cover the selected full-scope or bounded-scope behavior.
-
-Definition of done:
-
-- COG audit output no longer leaves the layer-scope delta ambiguous, focused tests pass, and TB-084 is removed from this backlog.
-
-Boundaries: Do not commit generated rasters, perform manual QGIS acceptance, or introduce operational GIS claims.
-
 ### TB-085: Attribute Closure-Limiting Hotspots To Source And Scenario Evidence
 
 Goal: Trace dominant uncertainty hotspots back to available source-zone, release, scenario, and support/nodata evidence without running new simulations.

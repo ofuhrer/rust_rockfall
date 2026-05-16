@@ -662,6 +662,13 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
 def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
     converted_root = Path("hazard/results/tschamut_public_pilot/gate_v1_cog_export")
     staging_root = Path("/tmp/tb056_cog_export_staging")
+    source_manifest = json.loads((ROOT / "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json").read_text(encoding="utf-8"))
+    source_layer_names = [entry["layer_name"] for entry in source_manifest.get("raster_outputs", [])]
+    source_0p5m_jump_height_layers = [
+        layer_name
+        for layer_name in source_layer_names
+        if layer_name in {"jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"}
+    ]
     commands = [
         command_entry(
             site="tschamut_same_scale",
@@ -777,6 +784,14 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
                 str(converted_root / "tschamut_public_conditional_gate_v1_map_package_manifest.json"),
                 str(converted_root / "tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json"),
             ],
+            cog_scope_intent={
+                "status": "full_scope",
+                "reference_layer_count": len(source_layer_names),
+                "reference_layer_names": source_layer_names,
+                "included_jump_height_layers_m": [0.5, 1.0, 2.0],
+                "omitted_layer_names": [],
+                "required_0p5m_jump_height_layers": source_0p5m_jump_height_layers,
+            },
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[str(converted_root)],
@@ -1219,6 +1234,7 @@ def command_entry(
     command: str,
     expected_inputs: list[str],
     expected_outputs: list[str],
+    cog_scope_intent: dict[str, Any] | None = None,
     read_only: bool,
     may_produce_ignored_outputs: bool,
     blocked_reason: str = "",
@@ -1232,6 +1248,7 @@ def command_entry(
         "command": command,
         "expected_inputs": expected_inputs,
         "expected_outputs": expected_outputs,
+        "cog_scope_intent": cog_scope_intent,
         "blocked_reason": blocked_reason,
         "read_only": read_only,
         "may_produce_ignored_outputs": may_produce_ignored_outputs,
