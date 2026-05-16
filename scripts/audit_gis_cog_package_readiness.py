@@ -128,6 +128,10 @@ def build_gis_cog_readiness_report(
     artifacts = [audit_artifact_root(root, provider) for root in roots]
     converted_sample = audit_converted_sample(converted_sample_path, provider)
     converted_packages = [audit_artifact_root(root, provider, verify_all_geotiffs=True) for root in converted_roots]
+    artifacts_by_id = {artifact["artifact_id"]: artifact for artifact in artifacts}
+    converted_packages = [
+        compare_layer_inventory(artifacts_by_id.get(package["artifact_id"]), package) for package in converted_packages
+    ]
 
     missing_any = any(
         artifact["manifest_completeness"]["map_package_manifest_missing_fields"]
@@ -168,6 +172,7 @@ def build_gis_cog_readiness_report(
         },
         "converted_package_readiness_status": converted_summary["converted_package_readiness_status"],
         "any_converted_package_ready": converted_summary["any_converted_package_ready"],
+        "converted_package_layer_inventory_status": summarize_converted_package_layer_inventory(converted_packages),
         "converted_packages": converted_packages,
         "raster_layer_count": {artifact["artifact_id"]: artifact["raster_layer_count"] for artifact in artifacts},
         "crs_or_epsg": {artifact["artifact_id"]: artifact["crs_or_epsg"] for artifact in artifacts},
@@ -300,6 +305,88 @@ def summarize_converted_package_readiness(converted_packages: list[dict[str, Any
     }
 
 
+def summarize_converted_package_layer_inventory(converted_packages: list[dict[str, Any]]) -> str:
+    if not converted_packages:
+        return "not_provided"
+    statuses = {package.get("layer_inventory_status") for package in converted_packages}
+    if statuses == {"parity_match"}:
+        return "parity_match"
+    if statuses == {"scope_reduced"}:
+        return "scope_reduced"
+    if statuses == {"scope_extended"}:
+        return "scope_extended"
+    if statuses == {"no_standard_reference"}:
+        return "no_standard_reference"
+    if "inventory_mismatch" in statuses:
+        return "inventory_mismatch"
+    if "scope_reduced" in statuses and "scope_extended" not in statuses and "inventory_mismatch" not in statuses:
+        return "scope_reduced"
+    if "scope_extended" in statuses and "scope_reduced" not in statuses and "inventory_mismatch" not in statuses:
+        return "scope_extended"
+    return "mixed"
+
+
+def compare_layer_inventory(
+    standard_artifact: dict[str, Any] | None,
+    converted_artifact: dict[str, Any],
+) -> dict[str, Any]:
+    converted_layer_names = list(converted_artifact.get("layer_names", []))
+    converted_layer_semantics = list(converted_artifact.get("layer_semantics", []))
+    converted_layer_semantics_by_name = {
+        str(entry.get("layer_name")): entry
+        for entry in converted_layer_semantics
+        if isinstance(entry, dict) and entry.get("layer_name")
+    }
+    if standard_artifact is None:
+        return {
+            **converted_artifact,
+            "layer_inventory_status": "no_standard_reference",
+            "standard_layer_count": None,
+            "converted_layer_count": len(converted_layer_names),
+            "missing_layer_count": 0,
+            "missing_layer_names": [],
+            "missing_layer_semantics": [],
+            "extra_layer_count": 0,
+            "extra_layer_names": [],
+            "extra_layer_semantics": [],
+            "inventory_note": "no standard-root reference was available for comparison",
+        }
+
+    standard_layer_names = list(standard_artifact.get("layer_names", []))
+    standard_layer_semantics = {
+        str(entry.get("layer_name")): entry
+        for entry in standard_artifact.get("layer_semantics", [])
+        if isinstance(entry, dict) and entry.get("layer_name")
+    }
+    missing_layer_names = [layer_name for layer_name in standard_layer_names if layer_name not in converted_layer_names]
+    extra_layer_names = [layer_name for layer_name in converted_layer_names if layer_name not in standard_layer_names]
+    if missing_layer_names and extra_layer_names:
+        layer_inventory_status = "inventory_mismatch"
+        inventory_note = "converted package is missing standard layers and also declares extra layers"
+    elif missing_layer_names:
+        layer_inventory_status = "scope_reduced"
+        inventory_note = "converted package omits standard layers that were not exported in the COG root"
+    elif extra_layer_names:
+        layer_inventory_status = "scope_extended"
+        inventory_note = "converted package declares layers that are not present in the standard root"
+    else:
+        layer_inventory_status = "parity_match"
+        inventory_note = "converted package mirrors the standard root layer inventory"
+    return {
+        **converted_artifact,
+        "layer_inventory_status": layer_inventory_status,
+        "standard_layer_count": len(standard_layer_names),
+        "converted_layer_count": len(converted_layer_names),
+        "missing_layer_count": len(missing_layer_names),
+        "missing_layer_names": missing_layer_names,
+        "missing_layer_semantics": [standard_layer_semantics[layer_name] for layer_name in missing_layer_names if layer_name in standard_layer_semantics],
+        "extra_layer_count": len(extra_layer_names),
+        "extra_layer_names": extra_layer_names,
+        "extra_layer_semantics": [converted_layer_semantics_by_name[layer_name] for layer_name in extra_layer_names if layer_name in converted_layer_semantics_by_name],
+        "inventory_note": inventory_note,
+    }
+
+
 def audit_artifact_root(
     root: Path,
     raster_metadata_provider: Callable[[Path], dict[str, Any] | None],
@@ -368,6 +455,8 @@ def audit_artifact_root(
     return {
         "artifact_id": artifact_id,
         "artifact_root": str(root),
+        "layer_names": [str(output.get("layer_name")) for output in raster_outputs if output.get("layer_name")],
+        "layer_semantics": list(map_manifest.get("layer_semantics", [])) if map_manifest else [],
         "cog_package_status": determine_package_status(
             blockers=blockers,
             missing_any=bool(missing_map_fields or missing_pilot_fields or missing_raster_outputs),
@@ -664,6 +753,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"GIS/COG readiness: {report['gis_cog_readiness_status']}",
         f"Converted sample: {report['converted_sample_status']}",
         f"Converted package readiness: {report.get('converted_package_readiness_status')}",
+        f"Converted package layer inventory: {report.get('converted_package_layer_inventory_status')}",
         f"Any converted package ready: {str(report.get('any_converted_package_ready', False)).lower()}",
         f"Artifacts audited: {report['artifacts_audited']}",
         f"QGIS manual QA: {report['qgis_manual_qa_status']}",
@@ -687,9 +777,26 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"* converted {package['artifact_id']}")
             lines.append(f"  root: {package['artifact_root']}")
             lines.append(f"  status: {package['cog_package_status']}")
+            lines.append(f"  layer inventory: {package.get('layer_inventory_status')}")
+            lines.append(
+                f"  standard/converted layer counts: {package.get('standard_layer_count')}/{package.get('converted_layer_count')}"
+            )
+            lines.append(f"  inventory note: {package.get('inventory_note')}")
             lines.append(f"  manifest completeness: {package['manifest_completeness']}")
             lines.append(f"  geotiff presence: {package['geotiff_presence']}")
             lines.append(f"  cog indicators: {package['cog_readiness_indicators']}")
+            if package.get("missing_layer_names"):
+                lines.append(f"  omitted layers: {', '.join(package['missing_layer_names'])}")
+                if package.get("missing_layer_semantics"):
+                    lines.append(
+                        "  omitted layer semantics: "
+                        + "; ".join(
+                            f"{entry.get('layer_name')}: {entry.get('numerator')} / {entry.get('denominator')}"
+                            for entry in package["missing_layer_semantics"]
+                        )
+                    )
+            if package.get("extra_layer_names"):
+                lines.append(f"  extra layers: {', '.join(package['extra_layer_names'])}")
             lines.append(f"  blockers: {package['blockers']}")
     if report.get("converted_sample"):
         lines.append("")

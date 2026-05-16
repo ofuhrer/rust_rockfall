@@ -907,3 +907,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no downloads, no generated public-context artifacts, no claim that products are locally staged unless files exist, and no operational/scale-up/annual-frequency/risk/exposure/vulnerability/physical-probability claim was introduced.
 - Next task: `TB-064`
+
+### TB-064: Verify COG Export Layer Parity And Audit Semantics
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: make the GIS/COG audit report both package readiness and explicit layer-inventory parity/scope status for the standard gate root versus the converted `gate_v1_cog_export` proof.
+- Files changed: scripts/audit_gis_cog_package_readiness.py, tests/test_gis_cog_package_readiness.py, docs/pilot_gis_package.md, docs/public_real_site_geodata_preparation.md, docs/current_maturity_snapshot.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added layer-inventory comparison logic to the GIS/COG audit helper, including standard-versus-converted layer counts, omitted-layer names, omitted-layer semantics, and a text-report summary; added a regression test that compares the 22-layer standard gate root to the 20-layer converted proof and asserts the omitted 0.5 m jump-height pair; updated the package and pilot docs to state that the current COG proof intentionally omits the 0.5 m jump-height layers because that export command only requests the 1 m and 2 m thresholds.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness tests.test_same_scale_cog_package_conversion`; `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --format json --artifact-root hazard/results/tschamut_public_pilot/gate_v1 --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no generated rasters were committed, no manual QGIS acceptance was claimed, and no operational, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was introduced.
+- Next task: `TB-065`

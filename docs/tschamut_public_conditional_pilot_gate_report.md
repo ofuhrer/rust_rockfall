@@ -645,6 +645,11 @@ at `hazard/results/tschamut_public_pilot/gate_v1_cog_export`, which the
 GIS/COG audit reports as `cog_package_ready` with `cloud_optimized: true`
 metadata. This keeps the standard roots truthfully blocked while proving the
 package-level COG path on an ignored copy.
+The converted proof is intentionally scope-reduced relative to the standard
+`gate_v1` root: it declares 20 raster layers and omits the 0.5 m jump-height
+pair (`jump_height_exceedance_0p5m` and
+`weighted_jump_height_exceedance_0p5m`) because the export command only
+requested the 1 m and 2 m jump-height thresholds.
 
 The same-scale portable command plan now surfaces the standard GIS audit, the
 package-level `--export-cog` builder step, and the converted-package audit as

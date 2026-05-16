@@ -40,6 +40,15 @@ Current and future GIS products must be distinguished explicitly:
   and `--export-cog` now describe a valid package-level export path that writes
   to an ignored converted root unless explicitly staged.
 
+The package-level COG path follows the requested export scope, not an
+implicit "all layers ever used by the same-scale root" rule. When a COG export
+is built from a command that only requests a subset of threshold families, the
+audit must report the omitted layers explicitly. The current
+`gate_v1_cog_export` proof exports 20 raster layers and intentionally omits
+`jump_height_exceedance_0p5m` and
+`weighted_jump_height_exceedance_0p5m` because that export recipe only
+requests the 1 m and 2 m jump-height thresholds.
+
 ## Required Diagnostic Review Contents
 
 A pilot GIS package should include:
@@ -244,11 +253,12 @@ contract:
 - `tests/test_hazard_layers.py::HazardLayerTests.test_geotiff_export_preserves_values_grid_and_crs_metadata`
   builds a tiny GeoTIFF fixture, verifies GeoTIFF values match the CSV grid, and
   checks pixel scale, tiepoint, nodata, EPSG metadata, manifest affine
-  transform, vertical datum, non-COG status, non-annual probability semantics,
-  and SHA-256 checksum recording.
+  transform, vertical datum, non-COG status, diagnostic non-annualized
+  semantics, and SHA-256 checksum recording.
 - `tests/test_hazard_layers.py` coverage for the package-level export path now
   distinguishes standard COG-blocked roots from ignored converted-package
-  exports, rather than treating `--export-cog` as universally deferred.
+  exports and now reports layer parity versus intentional scope reduction,
+  rather than treating `--export-cog` as universally deferred.
 - `tests/test_hazard_layers.py::HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries`
   verifies the pilot package manifest records GeoTIFF outputs, CSV/ASCII parity
   files, source-zone and terrain metadata sidecars, visual QA status, and

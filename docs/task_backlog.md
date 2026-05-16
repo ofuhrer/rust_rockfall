@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-064: Verify COG Export Layer Parity And Audit Semantics
-
-Goal: `--export-cog` is proven, but reviews noted possible confusion between standard roots with 22 layers and exported COG roots with a different declared raster count. Reduces: GIS/output usability.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_gis_cog_package_readiness.py`
-- `docs/pilot_gis_package.md`
-
-Deliverables:
-
-- audit summary comparing standard-root layer inventory to exported COG-root layer inventory;
-- explicit semantics for omitted/non-exported layers, if any;
-- test covering the `gate_v1_cog_export` expected scope without committing rasters.
-
-Definition of done:
-
-- `audit_gis_cog_package_readiness.py --converted-package-root ...` reports both package readiness and layer-parity/scope status;
-- docs state which layers are expected in COG exports and why.
-
-Boundaries: no generated rasters committed, no manual QGIS acceptance, no
-operational product claim.
-
 ### TB-065: Score Physical-Credibility Evidence Acquisition Priorities
 
 Goal: TB-057 mapped missing evidence requirements, but it does not yet rank which concrete evidence acquisitions would most reduce the physical-credibility gap. Reduces: physical credibility boundaries and validation realism.

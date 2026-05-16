@@ -178,6 +178,11 @@ That proof now extends to an ignored same-scale package-level result at
 audits as `cog_package_ready` with `cloud_optimized: true` metadata, while the
 committed same-scale outputs still truthfully report
 `gis_package_ready_cog_blocked`.
+The converted root is intentionally scope-reduced relative to the standard
+`gate_v1` inventory: it carries 20 raster layers and omits
+`jump_height_exceedance_0p5m` and
+`weighted_jump_height_exceedance_0p5m`, because the export command that
+produced it only requested the 1 m and 2 m jump-height thresholds.
 
 The GIS/COG audit now also accepts explicit converted-sample paths and ignored
 converted package roots while keeping the current committed packages marked as

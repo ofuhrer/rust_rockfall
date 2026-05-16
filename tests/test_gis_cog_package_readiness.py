@@ -8,6 +8,10 @@ from pathlib import Path
 from scripts import audit_gis_cog_package_readiness as audit
 
 
+ROOT = Path(__file__).resolve().parents[1]
+GATE_MAP_MANIFEST = ROOT / "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json"
+
+
 class GisCogPackageReadinessTest(unittest.TestCase):
     def test_ready_report_surfaces_required_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,16 +112,98 @@ class GisCogPackageReadinessTest(unittest.TestCase):
 
         self.assertEqual(report["gis_cog_readiness_status"], "gis_package_ready")
         self.assertEqual(report["converted_package_readiness_status"], "converted_package_ready")
+        self.assertEqual(report["converted_package_layer_inventory_status"], "parity_match")
         self.assertTrue(report["any_converted_package_ready"])
         self.assertEqual(report["converted_package_status"]["validation_tschamut_public_conditional_gate_v1"], "cog_package_ready")
         self.assertIn("Converted package readiness: converted_package_ready", audit.render_text_report(report))
 
-    def _write_manifests(self, root: Path, *, artifact_id: str) -> None:
+    def test_converted_gate_v1_cog_export_reports_intentional_scope_reduction(self) -> None:
+        source_manifest = json.loads(GATE_MAP_MANIFEST.read_text(encoding="utf-8"))
+        standard_layer_names = [entry["layer_name"] for entry in source_manifest["raster_outputs"]]
+        reduced_layer_names = [
+            layer_name
+            for layer_name in standard_layer_names
+            if layer_name not in {"jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"}
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            standard_root = Path(tmp) / "gate_v1"
+            converted_root = Path(tmp) / "gate_v1_cog_export"
+            self._write_manifests(
+                standard_root,
+                artifact_id="validation_tschamut_public_conditional_gate_v1",
+                layer_names=standard_layer_names,
+                layer_semantics=source_manifest["layer_semantics"],
+            )
+            self._write_manifests(
+                converted_root,
+                artifact_id="validation_tschamut_public_conditional_gate_v1",
+                layer_names=reduced_layer_names,
+                layer_semantics=[
+                    entry for entry in source_manifest["layer_semantics"] if entry["layer_name"] in reduced_layer_names
+                ],
+            )
+            report = audit.build_gis_cog_readiness_report(
+                artifact_roots=[standard_root],
+                converted_package_roots=[converted_root],
+                raster_metadata_provider=self._fake_cog_metadata,
+            )
+
+        converted_package = report["converted_packages"][0]
+        self.assertEqual(report["converted_package_layer_inventory_status"], "scope_reduced")
+        self.assertEqual(converted_package["layer_inventory_status"], "scope_reduced")
+        self.assertEqual(converted_package["standard_layer_count"], 22)
+        self.assertEqual(converted_package["converted_layer_count"], 20)
+        self.assertEqual(
+            converted_package["missing_layer_names"],
+            ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+        )
+        self.assertEqual(
+            [entry["layer_name"] for entry in converted_package["missing_layer_semantics"]],
+            ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+        )
+        text = audit.render_text_report(report)
+        self.assertIn("Converted package layer inventory: scope_reduced", text)
+        self.assertIn("omitted layers: jump_height_exceedance_0p5m, weighted_jump_height_exceedance_0p5m", text)
+
+    def _write_manifests(
+        self,
+        root: Path,
+        *,
+        artifact_id: str,
+        layer_names: list[str] | None = None,
+        layer_semantics: list[dict[str, object]] | None = None,
+        cloud_optimized: bool = True,
+    ) -> None:
         root.mkdir(parents=True, exist_ok=True)
-        raster_path = root / f"{artifact_id}_reach_probability.tif"
-        raster_path.write_bytes(b"not a real tif, only a tiny fixture placeholder")
-        second_raster_path = root / f"{artifact_id}_max_kinetic_energy.tif"
-        second_raster_path.write_bytes(b"not a real tif, only a tiny fixture placeholder")
+        layer_names = layer_names or ["reach_probability", "max_kinetic_energy"]
+        layer_semantics = layer_semantics or [
+            {
+                "layer_name": layer_name,
+                "units": "dimensionless",
+                "numerator": f"{layer_name} numerator",
+                "denominator": "trajectory count conditioned on source/scenario metadata",
+                "is_annualized": False,
+                "weighted": layer_name.startswith("weighted_"),
+            }
+            for layer_name in layer_names
+        ]
+        raster_outputs = []
+        for layer_name in layer_names:
+            raster_path = root / f"{artifact_id}_{layer_name}.tif"
+            raster_path.write_bytes(b"not a real tif, only a tiny fixture placeholder")
+            raster_outputs.append(
+                {
+                    "layer_name": layer_name,
+                    "path": str(raster_path),
+                    "format": "geotiff",
+                    "cloud_optimized": cloud_optimized,
+                    "annualized": False,
+                    "is_annualized": False,
+                    "sha256": "placeholder",
+                    "total_bytes": 1,
+                }
+            )
         map_manifest = {
             "schema_version": "map_package_manifest_v1",
             "map_product_id": artifact_id,
@@ -128,29 +214,8 @@ class GisCogPackageReadinessTest(unittest.TestCase):
             "source_zone_metadata_path": str(root.parent / "input" / "source_zone_metadata.yaml"),
             "scenario_table_path": str(root.parent / "input" / "scenario_table.csv"),
             "hazard_manifest_paths": [str(root / f"{artifact_id}_manifest.json")],
-            "raster_outputs": [
-                {
-                    "layer_name": "reach_probability",
-                    "path": str(raster_path),
-                    "format": "geotiff",
-                    "cloud_optimized": True,
-                    "annualized": False,
-                    "is_annualized": False,
-                    "sha256": "abc",
-                    "total_bytes": 1,
-                },
-                {
-                    "layer_name": "max_kinetic_energy",
-                    "path": str(second_raster_path),
-                    "format": "geotiff",
-                    "cloud_optimized": True,
-                    "annualized": False,
-                    "is_annualized": False,
-                    "sha256": "def",
-                    "total_bytes": 1,
-                },
-            ],
-            "layer_semantics": [],
+            "raster_outputs": raster_outputs,
+            "layer_semantics": layer_semantics,
             "limitations": ["Research diagnostic only; not operational."],
             "operational_status": "diagnostic",
         }
@@ -182,7 +247,7 @@ class GisCogPackageReadinessTest(unittest.TestCase):
             "parity_outputs": [],
             "conditional_intensity_exceedance_curve_outputs": [],
             "visual_qa": {"status": "not-run", "accepted_for_operational_use": False, "reviewed_artifacts": [], "note": "manual qa not run", "acceptance_scope": "local diagnostic GIS/QGIS review only"},
-            "raster_contract": {"cloud_optimized": True, "csv_ascii_parity_required": True, "geopackage_included": False, "geotiff_required": True, "qgis_project_included": False},
+            "raster_contract": {"cloud_optimized": cloud_optimized, "csv_ascii_parity_required": True, "geopackage_included": False, "geotiff_required": True, "qgis_project_included": False},
             "probability_claim_boundary": {"annualized": False, "operational": False, "risk": False},
             "limitations": ["Research diagnostic only; not operational."],
             "operational_status": "diagnostic",

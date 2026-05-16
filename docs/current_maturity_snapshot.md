@@ -107,9 +107,10 @@ objective are:
    manifests. The first-class `--export-cog` path now writes an ignored
    `gate_v1_cog_export` package that audits as COG-ready, proving the
    package-level export path without changing the committed roots. The
-   remaining GIS workflow gaps are parity/semantics checks for the exported
-   layer set and making reports expose both the standard-root status and the
-   converted-package status without ambiguity.
+   remaining GIS workflow gaps are now reduced to report wording and any
+   future export-scope changes, because the audit exposes both the standard
+   root layer inventory and the converted-package layer inventory, including
+   the intentionally omitted 0.5 m jump-height layers.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
