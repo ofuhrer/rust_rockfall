@@ -1758,3 +1758,32 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report.
 - Boundaries: no measured Balfrin run root was produced, no scheduler job started, and no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was introduced.
 - Next task: `TB-128`
+
+### TB-116: Harden Balfrin Scheduler-Block Classification
+
+- Date: 2026-05-17
+- Commit: `8a4b589c474990f06ceb33cf28f681646f8e3d19`
+- Objective: Make the Balfrin submit helper return a structured
+  `scheduler_submission_failed` report when `sbatch` is missing so the demo
+  path fails cleanly instead of surfacing an unclassified traceback.
+- Files changed: `scripts/submit_balfrin_probe.py`, `scripts/summarize_balfrin_failure_taxonomy.py`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_failure_taxonomy.py`, `docs/balfrin_failure_recovery_playbook.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a guarded submit branch that writes `balfrin_submission_report.json`
+    and prints the same JSON when `sbatch` is unavailable or unreachable.
+  - Classified the new scheduler failure status in the Balfrin failure
+    taxonomy so downstream summaries treat it as an observed operational block.
+  - Added focused regression coverage for the missing-`sbatch` path and for
+    taxonomy classification of `scheduler_submission_failed`.
+  - Updated the recovery playbook to point operators at the structured report
+    file and removed TB-116 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_failure_taxonomy`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_blocked_report
+- Boundaries: this records an operational scheduler classification only; it
+  does not claim a measured Balfrin run, operational hazard readiness,
+  distributed execution, annual frequency, physical probability, risk,
+  exposure, or vulnerability.
+- Next task: `TB-117`
