@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-086: Summarize Same-Scale Ensemble Stability Frontier
-
-Goal: Combine existing uncertainty, runtime, and output-size measurements into a bounded stability frontier for deciding whether another small probe would be informative.
-
-Capability gap reduced: Uncertainty characterization and scalable execution planning.
-
-Why this outranks alternatives: It uses existing artifacts to estimate marginal scientific value before spending runtime on another ensemble.
-
-Inspect first:
-
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A JSON/text frontier summary relating compared trajectory counts, runtime/output footprint, and measured uncertainty deltas.
-- A conservative recommendation class such as `additional_probe_informative`, `additional_probe_low_value`, or `blocked_pending_helper_contract`.
-- Tests use fixtures or mocked summaries and do not require a new ensemble.
-
-Definition of done:
-
-- Frontier helper output is deterministic, command-plan or docs reference it where appropriate, focused tests pass, and TB-086 is removed from this backlog.
-
-Boundaries: Do not run a new ensemble, authorize production scale-up, or change scientific closure criteria.
-
 ### TB-087: Extract Persistent Conditional Hazard Confidence Regions
 
 Goal: Derive stable and unstable conditional-hazard interpretation regions from existing same-scale uncertainty and hazard-layer evidence.

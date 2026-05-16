@@ -138,3 +138,9 @@ Continue using the single-job Balfrin SLURM driver for the next same-scale selec
   - the bounded sampling probes stay near the same order of magnitude without a distributed-reducer signal.
 
 The bounded same-scale measurement supports the existing conclusion: local single-job execution is still sufficient for the next same-scale step, and distributed execution remains unauthorized by the current evidence set.
+
+The combined stability-frontier helper,
+`scripts/summarize_same_scale_stability_frontier.py`,
+now folds the same-scale uncertainty, bounded runtime/output, bounded
+next-probe feasibility, and closure-gap evidence into one conservative
+recommendation for whether another small probe would still be informative.
