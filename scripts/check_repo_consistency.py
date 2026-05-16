@@ -2893,14 +2893,29 @@ INTENSITY_FREQUENCY_ALLOWLIST_TERMS = CLAIM_HYGIENE_ALLOWLIST_TERMS + (
     "prototype",
 )
 
+DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS = (
+    ("operational claim-boundary flag", r"\boperational_claims_allowed\b[^\n]{0,40}\btrue\b"),
+    ("physical-probability claim-boundary flag", r"\bphysical_probability_claims_allowed\b[^\n]{0,40}\btrue\b"),
+    ("annual frequency claim-boundary flag", r"\bannual_frequency_claims_allowed\b[^\n]{0,40}\btrue\b"),
+    (
+        "risk/exposure/vulnerability claim-boundary flag",
+        r"\brisk_exposure_vulnerability_claims_allowed\b[^\n]{0,40}\btrue\b",
+    ),
+    ("scale-up authorization flag", r"\bscale_up_authorized\b[^\n]{0,40}\btrue\b"),
+    (
+        "distributed execution authorization flag",
+        r"\bdistributed_execution_authorized\b[^\n]{0,40}\btrue\b",
+    ),
+)
+
 
 def check_hazard_claim_hygiene() -> list[str]:
     """Reject unsupported hazard-product claims in user-facing text.
 
     The check is intentionally narrow: it allows future, unsupported, disallowed,
-    and explicit boundary language, while flagging bare labels that could make a
-    current product look annualized, return-period based, operational, or risk
-    oriented.
+    and explicit boundary language, while flagging bare labels or true claim
+    boundary flags that could make a current product look annualized,
+    return-period based, operational, or risk oriented.
     """
 
     paths = [
@@ -2922,6 +2937,11 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/annual_physical_validation_calibration_review_gate.md",
         ROOT / "docs/validation_maturity_framework.md",
         ROOT / "docs/pilot_gis_package.md",
+        ROOT / "docs/balfrin_post_run_interpretation_gate.md",
+        ROOT / "docs/balfrin_minimal_demo_vs_closure.md",
+        ROOT / "docs/tschamut_public_conditional_pilot_gate_report.md",
+        ROOT / "scripts/summarize_balfrin_post_run_interpretation_gate.py",
+        ROOT / "scripts/summarize_tschamut_conditional_diagnostic_interpretation.py",
     ]
     errors: list[str] = []
     for path in paths:
@@ -2957,6 +2977,11 @@ def find_hazard_claim_hygiene_errors(text: str, label: str) -> list[str]:
             errors.append(
                 f"{label}:{index}: intensity-frequency must be reserved for future physical/annual products: {line.strip()}"
             )
+        for claim_label, pattern in DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS:
+            if re.search(pattern, line, re.IGNORECASE):
+                errors.append(
+                    f"{label}:{index}: unsupported demo claim-boundary flag {claim_label}: {line.strip()}"
+                )
     return errors
 
 

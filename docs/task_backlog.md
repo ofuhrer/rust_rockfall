@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-110: Audit Demo Claim Boundaries
-
-Goal: Machine-check that all Balfrin demo outputs preserve non-operational, non-annual, non-risk, non-exposure, non-vulnerability, and non-physical-probability boundaries.
-
-Capability gap reduced: Scientific integrity and external-facing interpretation safety.
-
-Why this outranks alternatives: As artifacts become demo-ready, accidental overclaiming becomes a higher risk than missing labels.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/check_repo_consistency.py`
-- `docs/hazard_map_semantics.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- A claim-boundary audit for demo reports/manifests/docs or an extension to existing consistency checks.
-- Tests proving forbidden claim language or flags are rejected in demo-facing artifacts.
-
-Definition of done:
-
-- Demo claim-boundary audit passes on current artifacts, focused negative tests pass, and TB-110 is removed from this backlog.
-
-Boundaries: Do not change claim boundaries to make checks pass; fix or flag artifacts that drift.
-
 ### TB-111: Compare Balfrin Results Against Same-Scale Uncertainty
 
 Goal: Explain what the measured Balfrin run changes, confirms, or fails to address relative to existing same-scale uncertainty, closure, stability, and hotspot evidence.

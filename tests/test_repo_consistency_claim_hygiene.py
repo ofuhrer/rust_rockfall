@@ -162,6 +162,9 @@ class HazardClaimHygieneTests(unittest.TestCase):
     def test_python_tool_dependency_metadata_is_consistent(self) -> None:
         self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
 
+    def test_demo_claim_boundary_audit_current_artifacts_are_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_hazard_claim_hygiene(), [])
+
     def test_rejects_bare_annual_current_product_claim(self) -> None:
         errors = check_repo_consistency.find_hazard_claim_hygiene_errors(
             "Current hazard layers report annual frequency for each cell.",
@@ -204,6 +207,22 @@ class HazardClaimHygieneTests(unittest.TestCase):
 
         self.assertTrue(errors)
         self.assertIn("risk-map claim", errors[0])
+
+    def test_rejects_true_demo_claim_boundary_flags(self) -> None:
+        text = """operational_claims_allowed: true
+physical_probability_claims_allowed: true
+annual_frequency_claims_allowed: true
+risk_exposure_vulnerability_claims_allowed: true
+scale_up_authorized: true
+distributed_execution_authorized: true
+The package is a risk map and an official hazard map.
+"""
+
+        errors = check_repo_consistency.find_hazard_claim_hygiene_errors(text, "demo.md")
+
+        self.assertTrue(errors)
+        self.assertTrue(any("claim-boundary flag" in error for error in errors))
+        self.assertTrue(any("risk-map claim" in error for error in errors))
 
 
 if __name__ == "__main__":
