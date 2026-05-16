@@ -145,6 +145,7 @@ def build_report() -> dict[str, Any]:
         "scale_up_authorized": False,
         "evidence_gap_categories": evidence_gap_categories,
         "claim_boundary_matrix": claim_boundary_matrix,
+        "product_layer_claim_boundaries": product_layer_claim_boundaries(),
         "site_reference_evidence": site_reference_evidence(
             datasets,
             tschamut_manifest,
@@ -616,6 +617,256 @@ def site_reference_evidence(
     ]
 
 
+def product_layer_claim_boundaries() -> list[dict[str, Any]]:
+    return [
+        {
+            "layer_key": "reach_probability",
+            "layer_label": "reach probability",
+            "layer_family": "trajectory-derived conditional summary",
+            "diagnostic_usefulness": {
+                "status": "present",
+                "summary": "Useful for closure review, spatial QA, and cellwise reach coverage checks.",
+            },
+            "reproducibility": {
+                "status": "present",
+                "summary": "Deterministic for a fixed trajectory set, denominator, and grid contract.",
+            },
+            "physical_credibility": {
+                "status": "not_established",
+                "summary": "A conditional reach fraction is not an independent physical-probability statement.",
+            },
+            "operational_inadmissibility": {
+                "status": "not_authorized",
+                "summary": "The current product is not an operational hazard map or acceptance artifact.",
+            },
+            "scientific_fragility": {
+                "level": "moderate",
+                "summary": "Sensitive to trajectory completeness and denominator choice, but not an extreme-value layer.",
+            },
+            "current_repo_basis": [
+                "Same-scale reach outputs and probability standard-error diagnostics are reproducible once the trajectory set is fixed.",
+                "The current denominator is the supplied trajectory count, not a physical occurrence frequency.",
+            ],
+            "evidence_classes_needed": [
+                {
+                    "class_name": "independent_holdout_reach_benchmark",
+                    "label": "Independent holdout reach benchmark",
+                    "status": "missing",
+                    "why": "Would test reach coverage against evidence held out from selection and diagnostics.",
+                },
+                {
+                    "class_name": "trajectory_denominator_provenance_audit",
+                    "label": "Trajectory denominator provenance audit",
+                    "status": "missing",
+                    "why": "Would document exactly which trajectories and filters define the reach denominator.",
+                },
+                {
+                    "class_name": "site_scale_reach_validation_dataset",
+                    "label": "Site-scale reach validation dataset",
+                    "status": "missing",
+                    "why": "Would strengthen the boundary with an independent site-scale benchmark.",
+                },
+            ],
+        },
+        {
+            "layer_key": "deposition_density",
+            "layer_label": "deposition density",
+            "layer_family": "ensemble deposition distribution",
+            "diagnostic_usefulness": {
+                "status": "present",
+                "summary": "Useful for deposition footprint QA and comparing where the ensemble comes to rest.",
+            },
+            "reproducibility": {
+                "status": "present",
+                "summary": "Deterministic for a fixed ensemble deposition CSV and grid contract.",
+            },
+            "physical_credibility": {
+                "status": "not_established",
+                "summary": "A deposition density is a conditional footprint summary, not a field-validated deposit model.",
+            },
+            "operational_inadmissibility": {
+                "status": "not_authorized",
+                "summary": "The current product is diagnostic only and not an operational hazard decision layer.",
+            },
+            "scientific_fragility": {
+                "level": "moderate",
+                "summary": "More stable than cellwise maxima, but still bound to the supplied deposition sample set.",
+            },
+            "current_repo_basis": [
+                "Validation already writes an ensemble deposition CSV, so the layer can be replayed deterministically.",
+                "The layer remains a supplied-sample density rather than an observed deposit inventory.",
+            ],
+            "evidence_classes_needed": [
+                {
+                    "class_name": "independent_holdout_deposition_benchmark",
+                    "label": "Independent holdout deposition benchmark",
+                    "status": "missing",
+                    "why": "Would compare final-position density against held-out deposition evidence.",
+                },
+                {
+                    "class_name": "georeferenced_deposition_point_inventory",
+                    "label": "Georeferenced deposition point inventory",
+                    "status": "missing",
+                    "why": "Would ground the density field in independent spatial observations.",
+                },
+                {
+                    "class_name": "trajectory_to_deposition_traceability_audit",
+                    "label": "Trajectory-to-deposition traceability audit",
+                    "status": "missing",
+                    "why": "Would separate reproducibility of the CSV inputs from claim strength.",
+                },
+            ],
+        },
+        {
+            "layer_key": "max_kinetic_energy",
+            "layer_label": "max kinetic energy",
+            "layer_family": "trajectory-derived extreme-value summary",
+            "diagnostic_usefulness": {
+                "status": "present",
+                "summary": "Useful for identifying high-energy cells and closure-limiting disagreement.",
+            },
+            "reproducibility": {
+                "status": "partial",
+                "summary": "Deterministic for the same trajectories, but most sensitive to ensemble membership and support/nodata variation.",
+            },
+            "physical_credibility": {
+                "status": "not_established",
+                "summary": "A cellwise maximum is an extreme-value diagnostic, not a validated energy envelope.",
+            },
+            "operational_inadmissibility": {
+                "status": "not_authorized",
+                "summary": "The layer remains non-operational and cannot be treated as an approved hazard metric.",
+            },
+            "scientific_fragility": {
+                "level": "highest",
+                "summary": "This is the most fragile layer because cellwise maxima amplify rare trajectories and support/nodata differences.",
+            },
+            "current_repo_basis": [
+                "The same-scale closure summaries repeatedly identify max kinetic energy as a dominant disagreement layer.",
+                "Current evidence shows the layer is reproducible but still support/nodata sensitive.",
+            ],
+            "evidence_classes_needed": [
+                {
+                    "class_name": "instrumented_impact_energy_benchmark",
+                    "label": "Instrumented impact-energy benchmark",
+                    "status": "missing",
+                    "why": "Would compare the maximum-energy envelope against independently measured impact energy.",
+                },
+                {
+                    "class_name": "independent_energy_holdout_dataset",
+                    "label": "Independent energy holdout dataset",
+                    "status": "missing",
+                    "why": "Would keep the energy benchmark separate from any selection or tuning evidence.",
+                },
+                {
+                    "class_name": "energy_measurement_provenance_record",
+                    "label": "Energy measurement provenance record",
+                    "status": "missing",
+                    "why": "Would document the measurement basis for any future energy credibility claim.",
+                },
+            ],
+        },
+        {
+            "layer_key": "max_jump_height",
+            "layer_label": "max jump height",
+            "layer_family": "trajectory-derived extreme-value summary",
+            "diagnostic_usefulness": {
+                "status": "present",
+                "summary": "Useful for locating cells where terrain clearance and obstacle interaction remain uncertain.",
+            },
+            "reproducibility": {
+                "status": "partial",
+                "summary": "Deterministic for fixed inputs, but sensitive to terrain support, nodata coverage, and block-radius assumptions.",
+            },
+            "physical_credibility": {
+                "status": "not_established",
+                "summary": "A cellwise maximum jump height remains an extreme-value diagnostic, not a validated clearance envelope.",
+            },
+            "operational_inadmissibility": {
+                "status": "not_authorized",
+                "summary": "The current product is diagnostic only and not an operational clearance or hazard approval layer.",
+            },
+            "scientific_fragility": {
+                "level": "high",
+                "summary": "This layer is fragile because terrain support/nodata differences and maximum reduction amplify small input changes.",
+            },
+            "current_repo_basis": [
+                "Current closure summaries treat max jump height as support/nodata sensitive and still unresolved.",
+                "The layer depends on terrain reference quality and block-radius handling as well as the trajectory set.",
+            ],
+            "evidence_classes_needed": [
+                {
+                    "class_name": "terrain_anchored_clearance_benchmark",
+                    "label": "Terrain-anchored clearance benchmark",
+                    "status": "missing",
+                    "why": "Would compare jump-height maxima against independent terrain-clearance observations.",
+                },
+                {
+                    "class_name": "independent_clearance_height_dataset",
+                    "label": "Independent clearance-height dataset",
+                    "status": "missing",
+                    "why": "Would keep the clearance benchmark separate from the current diagnostic set.",
+                },
+                {
+                    "class_name": "terrain_provenance_and_resolution_audit",
+                    "label": "Terrain provenance and resolution audit",
+                    "status": "missing",
+                    "why": "Would document the terrain inputs needed to interpret jump-height maxima credibly.",
+                },
+            ],
+        },
+        {
+            "layer_key": "conditional_intensity_exceedance_layers",
+            "layer_label": "conditional intensity-exceedance layers",
+            "layer_family": "trajectory-level threshold exceedance summary",
+            "diagnostic_usefulness": {
+                "status": "present",
+                "summary": "Useful for threshold QA, convergence checks, and conditional intensity interpretation.",
+            },
+            "reproducibility": {
+                "status": "present",
+                "summary": "Deterministic for fixed thresholds, denominators, and trajectory inputs.",
+            },
+            "physical_credibility": {
+                "status": "not_established",
+                "summary": "Threshold exceedance remains conditional and does not become a physical-probability or annual-frequency product here.",
+            },
+            "operational_inadmissibility": {
+                "status": "not_authorized",
+                "summary": "The current exceedance layers are conditional diagnostics, not operational or return-period products.",
+            },
+            "scientific_fragility": {
+                "level": "high",
+                "summary": "Threshold choice and denominator conditioning can move the layer even when the trajectory ensemble is unchanged.",
+            },
+            "current_repo_basis": [
+                "Current exceedance layers are written as conditional intensity-exceedance diagnostics with explicit thresholds.",
+                "The supporting curve table records the denominator and conditioning semantics for each threshold.",
+            ],
+            "evidence_classes_needed": [
+                {
+                    "class_name": "threshold_tagged_holdout_benchmark",
+                    "label": "Threshold-tagged holdout benchmark",
+                    "status": "missing",
+                    "why": "Would compare threshold crossings against held-out benchmark evidence.",
+                },
+                {
+                    "class_name": "reserved_threshold_scoring_protocol",
+                    "label": "Reserved threshold scoring protocol",
+                    "status": "missing",
+                    "why": "Would keep the exceedance score definition separate from selection and replay data.",
+                },
+                {
+                    "class_name": "conditional_denominator_provenance_audit",
+                    "label": "Conditional denominator provenance audit",
+                    "status": "missing",
+                    "why": "Would explain exactly which samples and filters define the current exceedance denominator.",
+                },
+            ],
+        },
+    ]
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
@@ -644,6 +895,24 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("site_reference_evidence:")
     for entry in report["site_reference_evidence"]:
         lines.append(f"- {entry['site']}: {entry['classification']} ({entry['role']})")
+    lines.append("")
+    lines.append("product_layer_claim_boundaries:")
+    for entry in report.get("product_layer_claim_boundaries", []):
+        diag = entry.get("diagnostic_usefulness", {})
+        repro = entry.get("reproducibility", {})
+        physical = entry.get("physical_credibility", {})
+        operational = entry.get("operational_inadmissibility", {})
+        fragility = entry.get("scientific_fragility", {})
+        lines.append(
+            f"- {entry['layer_key']}: diagnostic={diag.get('status', '')} reproducibility={repro.get('status', '')} "
+            f"physical={physical.get('status', '')} operational={operational.get('status', '')} "
+            f"fragility={fragility.get('level', '')}"
+        )
+        evidence_classes = ", ".join(
+            str(item.get("class_name") or "") for item in entry.get("evidence_classes_needed", [])
+        )
+        if evidence_classes:
+            lines.append(f"  evidence_classes_needed: {evidence_classes}")
     return "\n".join(lines)
 
 

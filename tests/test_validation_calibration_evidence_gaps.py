@@ -20,6 +20,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "scale_up_authorized",
             "evidence_gap_categories",
             "claim_boundary_matrix",
+            "product_layer_claim_boundaries",
             "site_reference_evidence",
             "required_evidence_for_physical_credibility",
             "current_evidence_sources",
@@ -32,6 +33,41 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
         self.assertFalse(report["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["scale_up_authorized"])
+
+    def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
+        report = assessment.build_report()
+        layers = {entry["layer_key"]: entry for entry in report["product_layer_claim_boundaries"]}
+        self.assertEqual(
+            list(layers),
+            [
+                "reach_probability",
+                "deposition_density",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "conditional_intensity_exceedance_layers",
+            ],
+        )
+        self.assertEqual(layers["reach_probability"]["diagnostic_usefulness"]["status"], "present")
+        self.assertEqual(layers["reach_probability"]["physical_credibility"]["status"], "not_established")
+        self.assertEqual(layers["deposition_density"]["reproducibility"]["status"], "present")
+        self.assertEqual(layers["max_kinetic_energy"]["scientific_fragility"]["level"], "highest")
+        self.assertEqual(layers["max_jump_height"]["scientific_fragility"]["level"], "high")
+        self.assertEqual(
+            layers["conditional_intensity_exceedance_layers"]["operational_inadmissibility"]["status"],
+            "not_authorized",
+        )
+        self.assertTrue(
+            any(
+                item["class_name"] == "instrumented_impact_energy_benchmark"
+                for item in layers["max_kinetic_energy"]["evidence_classes_needed"]
+            )
+        )
+        self.assertTrue(
+            any(
+                item["class_name"] == "threshold_tagged_holdout_benchmark"
+                for item in layers["conditional_intensity_exceedance_layers"]["evidence_classes_needed"]
+            )
+        )
 
     def test_categories_and_claim_boundaries_are_classified(self) -> None:
         report = assessment.build_report()

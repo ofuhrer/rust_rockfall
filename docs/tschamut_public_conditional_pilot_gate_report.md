@@ -106,6 +106,16 @@ Current synthesized status:
 - validation status: `partial`
 - intensity-frequency status: `deferred_unsupported`
 
+The physical-credibility helper now also emits deterministic layer-level
+boundaries. In that layer view, `max_kinetic_energy` and
+`max_jump_height` are the most scientifically fragile current layers because
+they are cellwise maxima that amplify rare trajectories, support/nodata
+differences, and terrain-dependent assumptions. `reach_probability` and
+`deposition_density` are more reproducible diagnostics, but they remain
+conditional summaries rather than physical credibility. The conditional
+intensity-exceedance family is useful for threshold QA and convergence review,
+but it remains physically unestablished and operationally inadmissible.
+
 The helper keeps the distinction explicit between:
 
 - current diagnostic runout / deposition evidence from Tschamut;

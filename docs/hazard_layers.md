@@ -377,6 +377,25 @@ rules in `docs/hazard_map_semantics.md`: trajectory-level weighted layers use
 filtered trajectory `sampling_weight`, while weighted significant-impact density
 remains an event-density distribution over filtered significant impact events.
 
+## Physical Credibility Boundaries by Layer
+
+The current raster families are useful diagnostics, but they do not all fail or
+strengthen for the same reasons. The scientifically fragile layers are the
+extreme-value summaries, especially `max_kinetic_energy` and
+`max_jump_height`, because cellwise maxima amplify rare trajectories and
+support/nodata differences. The exceedance family is also fragile because its
+meaning depends on the chosen threshold and denominator. `reach_probability`
+and `deposition_density` are more reproducible diagnostics, but they still
+remain conditional summaries rather than physical-credibility evidence.
+
+| Layer family | Diagnostic usefulness | Reproducibility | Physical credibility boundary | Operational admissibility | Evidence classes that would strengthen the boundary |
+| --- | --- | --- | --- | --- | --- |
+| `reach_probability` | Strong for closure review and spatial QA | Strong once the trajectory set and denominator are fixed | Not established; this is a conditional reach fraction, not an independent physical-probability statement | Not admissible as an operational hazard decision layer | Independent holdout reach benchmark; trajectory denominator provenance audit; site-scale reach validation dataset |
+| `deposition_density` | Strong for deposition-footprint QA | Strong once the ensemble deposition CSV is fixed | Not established; this is a conditional footprint density, not a field-validated deposit model | Not admissible as an operational hazard decision layer | Independent holdout deposition benchmark; georeferenced deposition point inventory; trajectory-to-deposition traceability audit |
+| `max_kinetic_energy` | Strong for locating high-energy cells | Partial because maxima amplify sample membership changes | Not established; this is an extreme-value diagnostic, not a validated energy envelope | Not admissible as an operational hazard metric | Instrumented impact-energy benchmark; independent energy holdout dataset; energy measurement provenance record |
+| `max_jump_height` | Strong for locating clearance-sensitive cells | Partial because maxima depend on terrain support, nodata coverage, and block-radius assumptions | Not established; this is an extreme-value diagnostic, not a validated clearance envelope | Not admissible as an operational clearance or hazard approval layer | Terrain-anchored clearance benchmark; independent clearance-height dataset; terrain provenance and resolution audit |
+| `conditional_intensity_exceedance_layers` | Strong for threshold QA and conditional intensity interpretation | Strong once thresholds, denominators, and trajectories are fixed | Not established; these remain conditional exceedance diagnostics, not physical-probability or annual-frequency products | Not admissible as an operational or return-period product | Threshold-tagged holdout benchmark; reserved threshold scoring protocol; conditional denominator provenance audit |
+
 ## Current Limitations
 
 The current validation runner writes one representative full trajectory plus an

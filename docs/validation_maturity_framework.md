@@ -39,6 +39,15 @@ Use product semantics and maturity labels together:
 - Current threshold-exceedance products should be called conditional
   intensity-exceedance products when the denominator is a supplied trajectory
   set or sampling-weighted scenario set.
+- `reach_probability` and `deposition_density` are reproducible diagnostics
+  over the supplied samples, but they are still conditional summaries and do
+  not establish physical credibility on their own.
+- `max_kinetic_energy` and `max_jump_height` are the most scientifically
+  fragile current layers because they are cellwise maxima that amplify rare
+  trajectories, terrain support differences, and nodata sensitivity.
+- Current threshold-exceedance layers are diagnostic conditional
+  intensity-exceedance layers, not annual-frequency, return-period, or
+  operational hazard products.
 - Reserve intensity-frequency wording for future products with explicit
   physical probability or annual source-frequency semantics.
 - Return-period labels require annual source-frequency contracts and are

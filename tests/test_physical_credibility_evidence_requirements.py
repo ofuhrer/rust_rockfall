@@ -23,6 +23,7 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "holdout_validation_requirements",
             "source_frequency_requirements",
             "intensity_frequency_status",
+            "layer_credibility_boundaries",
             "evidence_acquisition_summary",
             "claim_boundaries",
             "blocked_reason",
@@ -35,6 +36,16 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertEqual(report["calibration_status"], "missing")
         self.assertEqual(report["validation_status"], "partial")
         self.assertEqual(report["intensity_frequency_status"], "deferred_unsupported")
+        self.assertEqual(
+            [entry["layer_key"] for entry in report["layer_credibility_boundaries"]],
+            [
+                "reach_probability",
+                "deposition_density",
+                "max_kinetic_energy",
+                "max_jump_height",
+                "conditional_intensity_exceedance_layers",
+            ],
+        )
         self.assertFalse(report["claim_boundaries"]["annual_frequency_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["risk_exposure_vulnerability_claims_allowed"])
@@ -111,6 +122,8 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertIn("independent_holdout_validation", text)
         self.assertIn("evidence_acquisition_matrix", text)
         self.assertIn("priority 1: observed_runout_deposition", text)
+        self.assertIn("layer_credibility_boundaries", text)
+        self.assertIn("max_kinetic_energy", text)
 
     def test_missing_inputs_return_blocked_status(self) -> None:
         report = helper.build_report({"missing_inputs": ["docs/missing.json"]})
@@ -120,6 +133,7 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertEqual(report["calibration_status"], "blocked_missing_inputs")
         self.assertEqual(report["validation_status"], "blocked_missing_inputs")
         self.assertEqual(report["intensity_frequency_status"], "blocked_missing_inputs")
+        self.assertEqual(report["layer_credibility_boundaries"], [])
         self.assertEqual(report["evidence_acquisition_matrix"], [])
         self.assertEqual(report["evidence_acquisition_summary"]["first_actionable_category"], None)
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])

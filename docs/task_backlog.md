@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-071: Define Physical-Credibility Claim Boundaries Per Product Layer
-
-Goal: physical credibility is globally not established, but the repo does not yet distinguish credibility limitations per hazard/intensity product layer. Reduces: scientific ambiguity and future overclaim risk.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `docs/validation_maturity_framework.md`
-- `docs/hazard_layers.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- per-layer physical-credibility boundary assessment for reach probability, deposition density, max kinetic energy, max jump height, and exceedance layers;
-- explicit distinction between diagnostic usefulness, reproducibility, physical credibility, and operational inadmissibility;
-- evidence classes needed to strengthen each layer’s claim boundary.
-
-Definition of done:
-
-- helper emits deterministic layer-level credibility summaries;
-- docs explain which layers are most scientifically fragile and why;
-- no product is reclassified as physically validated.
-
-Boundaries: no calibration, no tuning, no operational claims, no
-annual-frequency semantics.
-
 ### TB-072: Stage First Real Chant Sura Public-Context Acquisition Plan
 
 Goal: Chant Sura portability remains synthetic/context-deferred, and the next realism step is a concrete dry-run acquisition plan for actual public-context products. Reduces: Swiss-wide portability uncertainty.

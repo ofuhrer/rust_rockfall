@@ -197,6 +197,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "holdout_validation_requirements": holdout_validation_requirements(holdout_report),
         "source_frequency_requirements": source_frequency_requirements(datasets, gap_report),
         "intensity_frequency_status": "deferred_unsupported",
+        "layer_credibility_boundaries": gap_report.get("product_layer_claim_boundaries", []),
         "evidence_acquisition_summary": evidence_acquisition_summary(acquisition_matrix),
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": None,
@@ -220,6 +221,7 @@ def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
         "holdout_validation_requirements": [],
         "source_frequency_requirements": [],
         "intensity_frequency_status": "blocked_missing_inputs",
+        "layer_credibility_boundaries": [],
         "evidence_acquisition_summary": {
             "first_actionable_category": None,
             "deferred_category": None,
@@ -1001,6 +1003,22 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("current_evidence_summary:")
     for item in report["current_evidence_summary"]:
         lines.append(f"- {item['summary']} [{item['status']}]")
+
+    lines.append("")
+    lines.append("layer_credibility_boundaries:")
+    for entry in report.get("layer_credibility_boundaries", []):
+        lines.append(
+            f"- {entry['layer_key']}: diagnostic={entry.get('diagnostic_usefulness', {}).get('status', '')} "
+            f"reproducibility={entry.get('reproducibility', {}).get('status', '')} "
+            f"physical={entry.get('physical_credibility', {}).get('status', '')} "
+            f"operational={entry.get('operational_inadmissibility', {}).get('status', '')} "
+            f"fragility={entry.get('scientific_fragility', {}).get('level', '')}"
+        )
+        evidence_classes = ", ".join(
+            str(item.get("class_name") or "") for item in entry.get("evidence_classes_needed", [])
+        )
+        if evidence_classes:
+            lines.append(f"  evidence_classes_needed: {evidence_classes}")
 
     if report.get("missing_inputs"):
         lines.append("")
