@@ -11,6 +11,7 @@ physics, output, versioning, HPC, or review-policy changes.
 - Durable decisions: `docs/decision_log.md`.
 - Completed TB history: `docs/agent_work_log.md`.
 - Current maturity snapshot: `docs/current_maturity_snapshot.md`.
+- Sequential orchestration strategy: `docs/orchestration_strategy.md`.
 - Detailed project background: `docs/project_overview.md`.
 
 When files conflict, preserve hard safety/claim boundaries first, then update
@@ -49,12 +50,16 @@ When looping over backlog tasks, treat each task as one transaction:
 Run workers directly on `main`; do not create branches or worktrees for normal
 TB execution. Keep worker output visible enough to diagnose failures, but route
 large JSON, diffs, and logs to `/tmp` and summarize the result. Preserve the
-final relevant error block on failure.
+final relevant error block on failure. Use `docs/orchestration_strategy.md` for
+the full file-backed monitoring pattern.
 
 ## Work Rules
 
 - Prefer executable progress over process artifacts: implemented behavior,
   measured analysis, reproducibility improvements, focused bug fixes, or tests.
+- Distinguish measured completion from fixture-backed proofs and blocked-state
+  reports. A blocked report is useful evidence, but it is not the same as
+  achieving the task's measured capability.
 - Keep edits scoped to the task and existing module boundaries.
 - Add or update focused tests for behavior, parser, CLI, output, and bug-fix
   changes.
@@ -67,6 +72,9 @@ final relevant error block on failure.
 - Finish with the compact structured report schema:
   `TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,
   `PUSH_STATUS`, `REMAINING_NEXT_TASK`, `BOUNDARY_NOTE`.
+  Use statuses such as `implemented_measured`, `implemented_fixture_backed`,
+  `implemented_blocked_report`, `blocked_unresolved`, or
+  `partial_needs_followup` when that distinction matters.
 - For dataset or validation-case changes, keep calibration, validation, and
   operational input data separate.
 - For Swiss geodata changes, preserve CRS, vertical datum, resolution, extent,

@@ -17,7 +17,8 @@ only labels, validators, or roadmap/status churn.
 Orchestrator rule: execute active tasks sequentially by numeric order. Launch
 one worker, verify clean `main` and task removal after it finishes, then continue
 to the next task. Stop on any failure or dirty worktree; do not pre-generate
-later prompts.
+later prompts. Full sequential-loop guidance lives in
+`docs/orchestration_strategy.md`.
 
 ## Active Tasks
 
@@ -54,7 +55,8 @@ Deliverables:
 
 Definition of done:
 
-- Focused checks pass and the task is removed from this backlog.
+- Focused checks pass, the capability outcome is explicit, and the task is
+  removed from this backlog only when the definition of done is genuinely met.
 
 Boundaries: No tuning, operational claims, scale-up authorization, or other
 phase changes unless the task explicitly allows them.
@@ -77,6 +79,12 @@ result, preserve the final relevant error block when a command fails, and
 finish with the compact structured report schema:
 `TASK`, `STATUS`, `SUMMARY`, `FILES_CHANGED`, `CHECKS_RUN`, `COMMIT`,
 `PUSH_STATUS`, `REMAINING_NEXT_TASK`, `BOUNDARY_NOTE`.
+
+For `STATUS`, distinguish `implemented_measured`,
+`implemented_fixture_backed`, `implemented_blocked_report`,
+`blocked_unresolved`, and `partial_needs_followup` when relevant. A blocked
+report or fixture-backed proof is not the same as measured execution; leave or
+add the smallest unblock task before dependent synthesis work.
 
 Before commit, run the task-specific checks, `git diff --check`, repository
 consistency, `scripts/git-hooks/pre-commit`, and the placeholder-artifact scan.

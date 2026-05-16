@@ -91,6 +91,13 @@ Before pushing:
 
 If a check is intentionally skipped, record the exact reason in the final response or commit notes.
 
+## Task Outcome Discipline
+
+For execution and measurement tasks, do not treat a blocked-state report or
+fixture-backed proof as equivalent to the requested measured capability. Use the
+taxonomy in `docs/orchestration_strategy.md`, and make the smallest follow-up
+unblock task visible before starting dependent synthesis work.
+
 ## Test Coverage Expectations
 
 - Every feature must have isolated tests that exercise its expected behavior directly.
