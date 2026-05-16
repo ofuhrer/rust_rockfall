@@ -23,6 +23,7 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "spatial_same_scale_uncertainty_v1"
 UNCERTAINTY_LAYER_SCHEMA_VERSION = "spatial_uncertainty_layer_summary_v1"
+CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION = "conditional_hazard_region_summary_v1"
 HOTSPOT_PERSISTENCE_SCHEMA_VERSION = "spatial_hotspot_persistence_v1"
 DEFAULT_HAZARD_LAYERS = (
     "max_kinetic_energy",
@@ -31,11 +32,20 @@ DEFAULT_HAZARD_LAYERS = (
 )
 UNCERTAINTY_REGION_KIND_ORDER = (
     "persistent_agreement",
-    "support_nodata_sensitive",
+    "stable_low_disagreement",
     "shared_support_magnitude",
+    "support_nodata_sensitive",
     "persistent_disagreement",
     "closure_limiting_disagreement",
     "deferrable_disagreement",
+)
+CONDITIONAL_REGION_KIND_ORDER = (
+    "persistent_agreement",
+    "stable_low_disagreement",
+    "shared_support_magnitude_sensitive",
+    "support_nodata_sensitive",
+    "stable_region",
+    "unstable_region",
 )
 DEFAULT_MANIFESTS = (
     ROOT / "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json",
@@ -159,6 +169,14 @@ def build_report(
         layer_key: summarize_layer(layer_key, artifacts, top_n=top_n, mask_output_dir=mask_output_dir)
         for layer_key in selected_layers
     }
+    conditional_hazard_region_summary = build_conditional_hazard_region_summary(
+        {
+            "spatial_uncertainty_status": "measured_existing_artifacts",
+            "selected_layers": list(selected_layers),
+            "layer_summaries": layer_summaries,
+            "blocked_reason": "",
+        }
+    )
     hotspot_persistence_summary = build_hotspot_persistence_summary(
         selected_layers=selected_layers,
         artifacts=artifacts,
@@ -185,6 +203,7 @@ def build_report(
         "schema_version": SCHEMA_VERSION,
         "spatial_uncertainty_status": "measured_existing_artifacts",
         "stability_zone_status": "measured_existing_artifacts",
+        "conditional_hazard_region_status": "measured_existing_artifacts",
         "readiness_status": "ready",
         "command_plan_status": "ready",
         "artifacts_measured": artifacts,
@@ -193,6 +212,7 @@ def build_report(
         "dominant_layers_by_mean_range": [item["layer_key"] for item in dominant_layers],
         "dominant_layer_summaries": dominant_layers,
         "uncertainty_layer_summary": uncertainty_layer_summary,
+        "conditional_hazard_region_summary": conditional_hazard_region_summary,
         "hotspot_persistence_summary": hotspot_persistence_summary,
         "defaults_changed": False,
         "physics_changed": False,
@@ -217,6 +237,7 @@ def blocked_report(
         "schema_version": SCHEMA_VERSION,
         "spatial_uncertainty_status": "blocked_missing_inputs",
         "stability_zone_status": "blocked_missing_inputs",
+        "conditional_hazard_region_status": "blocked_missing_inputs",
         "readiness_status": "blocked_missing_inputs",
         "command_plan_status": "ready",
         "artifacts_measured": [summarize_manifest_identity(item) for item in manifests if item.manifest_path.exists()],
@@ -236,6 +257,14 @@ def blocked_report(
         "mask_status": "blocked_missing_inputs",
         "uncertainty_layer_summary": {
             "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "region_products": [],
+            "stable_region_status": "blocked_missing_inputs",
+            "unstable_region_status": "blocked_missing_inputs",
+        },
+        "conditional_hazard_region_summary": {
+            "schema_version": CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION,
             "summary_status": "blocked_missing_inputs",
             "layer_summaries": [],
             "region_products": [],
@@ -338,6 +367,24 @@ def render_text(report: dict[str, Any]) -> str:
                 f"stable={layer['stable_region']['cell_count']} | "
                 f"unstable={layer['unstable_region']['cell_count']}"
             )
+    conditional_hazard_region_summary = report.get("conditional_hazard_region_summary") or {}
+    if conditional_hazard_region_summary:
+        lines.append(
+            "conditional hazard region summary: "
+            f"{conditional_hazard_region_summary.get('summary_status')} | "
+            f"stable={conditional_hazard_region_summary.get('stable_region_status')} | "
+            f"unstable={conditional_hazard_region_summary.get('unstable_region_status')}"
+        )
+        for layer in conditional_hazard_region_summary.get("layer_summaries", []):
+            lines.append(
+                f"- {layer['layer_key']}: "
+                f"persistent_agreement={layer['persistent_agreement']['cell_count']} | "
+                f"stable_low_disagreement={layer['stable_low_disagreement']['cell_count']} | "
+                f"shared_support_magnitude_sensitive={layer['shared_support_magnitude_sensitive']['cell_count']} | "
+                f"support_nodata_sensitive={layer['support_nodata_sensitive']['cell_count']} | "
+                f"stable_region={layer['stable_region']['cell_count']} | "
+                f"unstable_region={layer['unstable_region']['cell_count']}"
+            )
     hotspot_persistence_summary = report.get("hotspot_persistence_summary") or {}
     if hotspot_persistence_summary:
         lines.append(
@@ -396,6 +443,50 @@ def build_uncertainty_layer_summary(spatial_report: dict[str, Any]) -> dict[str,
     )
     return {
         "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+        "summary_status": spatial_report.get("spatial_uncertainty_status"),
+        "layer_summaries": layer_summaries,
+        "region_products": region_products,
+        "stable_region_status": "measured_existing_artifacts" if total_stable_cells >= 0 else "blocked_missing_inputs",
+        "unstable_region_status": "measured_existing_artifacts" if total_unstable_cells >= 0 else "blocked_missing_inputs",
+        "stable_region_cell_count": total_stable_cells,
+        "unstable_region_cell_count": total_unstable_cells,
+        "blocked_reason": spatial_report.get("blocked_reason", ""),
+    }
+
+
+def build_conditional_hazard_region_summary(spatial_report: dict[str, Any]) -> dict[str, Any]:
+    if spatial_report.get("spatial_uncertainty_status") != "measured_existing_artifacts":
+        return {
+            "schema_version": CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION,
+            "summary_status": spatial_report.get("spatial_uncertainty_status", "blocked_missing_inputs"),
+            "layer_summaries": [],
+            "region_products": [],
+            "stable_region_status": "blocked_missing_inputs",
+            "unstable_region_status": "blocked_missing_inputs",
+            "blocked_reason": spatial_report.get("blocked_reason", ""),
+        }
+
+    layer_summaries: list[dict[str, Any]] = []
+    region_products: list[dict[str, Any]] = []
+    total_stable_cells = 0
+    total_unstable_cells = 0
+    for layer_key in spatial_report.get("selected_layers", []):
+        layer = dict((spatial_report.get("layer_summaries") or {}).get(layer_key) or {})
+        region_summary = dict(layer.get("conditional_hazard_region_summary") or {})
+        layer_summaries.append(region_summary)
+        region_products.extend(region_summary.get("region_products", []))
+        total_stable_cells += int(region_summary.get("stable_region", {}).get("cell_count", 0))
+        total_unstable_cells += int(region_summary.get("unstable_region", {}).get("cell_count", 0))
+
+    layer_summaries.sort(key=lambda item: item.get("layer_key", ""))
+    region_products.sort(
+        key=lambda item: (
+            item["layer_key"],
+            CONDITIONAL_REGION_KIND_ORDER.index(item["region_kind"]) if item["region_kind"] in CONDITIONAL_REGION_KIND_ORDER else 99,
+        )
+    )
+    return {
+        "schema_version": CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION,
         "summary_status": spatial_report.get("spatial_uncertainty_status"),
         "layer_summaries": layer_summaries,
         "region_products": region_products,
@@ -839,6 +930,14 @@ def summarize_layer_grids(
     }
 
     support_nodata_cells = [cell for cell in cells if any(cell["valid_flags"]) and not all(cell["valid_flags"])]
+    stable_low_disagreement_cells = [
+        cell
+        for cell in cells
+        if all(cell["valid_flags"])
+        and all(cell["support_flags"])
+        and cell["range"] is not None
+        and 0.0 < cell["range"] < range_threshold
+    ]
     shared_support_magnitude_cells = [
         cell for cell in cells if cell["range"] is not None and cell["range"] >= range_threshold
     ]
@@ -865,6 +964,21 @@ def summarize_layer_grids(
         any_valid_count=any_valid_count,
         analysis_cell_count=analysis_cell_count,
         high_uncertainty_cells=selected_high_uncertainty,
+        nrows=nrows,
+        cellsize=cellsize,
+        xllcorner=xllcorner,
+        yllcorner=yllcorner,
+        closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+    )
+    conditional_hazard_region_summary = summarize_conditional_hazard_regions(
+        layer_key=layer_key,
+        persistent_agreement_cells=stable_shared_support_cells,
+        stable_low_disagreement_cells=stable_low_disagreement_cells,
+        shared_support_magnitude_sensitive_cells=high_uncertainty,
+        support_nodata_sensitive_cells=support_nodata_sensitive_cells,
+        any_valid_count=any_valid_count,
+        analysis_cell_count=analysis_cell_count,
+        high_uncertainty_cells=high_uncertainty,
         nrows=nrows,
         cellsize=cellsize,
         xllcorner=xllcorner,
@@ -967,6 +1081,7 @@ def summarize_layer_grids(
             for cell in selected_high_uncertainty
         ],
         "stability_zone_summary": stability_zone_summary,
+        "conditional_hazard_region_summary": conditional_hazard_region_summary,
         "mask_evidence": build_mask_evidence(
             layer_key=layer_key,
             layer_grids=layer_grids,
@@ -1212,6 +1327,110 @@ def summarize_stability_zones(
         "interpretation_note": (
             f"{layer_key} stability zones: {layer_stability_zone_class}; "
             f"dominant={dominant_zone_category}; high-uncertainty={dominant_high_uncertainty_zone_category}"
+        ),
+    }
+
+
+def conditional_region_confidence_class() -> str:
+    return "conditional_hazard_interpretive_aid"
+
+
+def summarize_conditional_hazard_regions(
+    *,
+    layer_key: str,
+    persistent_agreement_cells: list[dict[str, Any]],
+    stable_low_disagreement_cells: list[dict[str, Any]],
+    shared_support_magnitude_sensitive_cells: list[dict[str, Any]],
+    support_nodata_sensitive_cells: list[dict[str, Any]],
+    any_valid_count: int,
+    analysis_cell_count: int,
+    high_uncertainty_cells: list[dict[str, Any]],
+    nrows: int,
+    cellsize: float,
+    xllcorner: float,
+    yllcorner: float,
+    closure_role: str,
+) -> dict[str, Any]:
+    persistent_agreement = summarize_region(
+        layer_key=layer_key,
+        region_kind="persistent_agreement",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=len(persistent_agreement_cells),
+        cell_fraction=len(persistent_agreement_cells) / any_valid_count if any_valid_count else 0.0,
+        bbox=bbox_for_cells(persistent_agreement_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+    )
+    stable_low_disagreement = summarize_region(
+        layer_key=layer_key,
+        region_kind="stable_low_disagreement",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=len(stable_low_disagreement_cells),
+        cell_fraction=len(stable_low_disagreement_cells) / any_valid_count if any_valid_count else 0.0,
+        bbox=bbox_for_cells(stable_low_disagreement_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+    )
+    shared_support_magnitude_sensitive = summarize_region(
+        layer_key=layer_key,
+        region_kind="shared_support_magnitude_sensitive",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=len(shared_support_magnitude_sensitive_cells),
+        cell_fraction=len(shared_support_magnitude_sensitive_cells) / any_valid_count if any_valid_count else 0.0,
+        bbox=bbox_for_cells(shared_support_magnitude_sensitive_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+    )
+    support_nodata_sensitive = summarize_region(
+        layer_key=layer_key,
+        region_kind="support_nodata_sensitive",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=len(support_nodata_sensitive_cells),
+        cell_fraction=len(support_nodata_sensitive_cells) / any_valid_count if any_valid_count else 0.0,
+        bbox=bbox_for_cells(support_nodata_sensitive_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+    )
+    stable_region = summarize_region(
+        layer_key=layer_key,
+        region_kind="stable_region",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=persistent_agreement["cell_count"] + stable_low_disagreement["cell_count"],
+        cell_fraction=persistent_agreement["cell_fraction"] + stable_low_disagreement["cell_fraction"],
+        bbox=merge_bboxes(persistent_agreement["bbox"], stable_low_disagreement["bbox"]),
+    )
+    unstable_region = summarize_region(
+        layer_key=layer_key,
+        region_kind="unstable_region",
+        confidence_class=conditional_region_confidence_class(),
+        closure_role=closure_role,
+        cell_count=shared_support_magnitude_sensitive["cell_count"] + support_nodata_sensitive["cell_count"],
+        cell_fraction=shared_support_magnitude_sensitive["cell_fraction"] + support_nodata_sensitive["cell_fraction"],
+        bbox=merge_bboxes(shared_support_magnitude_sensitive["bbox"], support_nodata_sensitive["bbox"]),
+    )
+    return {
+        "region_status": "measured_existing_artifacts",
+        "layer_key": layer_key,
+        "closure_role": closure_role,
+        "analysis_cell_count": analysis_cell_count,
+        "evaluated_cell_count": any_valid_count,
+        "persistent_agreement": persistent_agreement,
+        "stable_low_disagreement": stable_low_disagreement,
+        "shared_support_magnitude_sensitive": shared_support_magnitude_sensitive,
+        "support_nodata_sensitive": support_nodata_sensitive,
+        "stable_region": stable_region,
+        "unstable_region": unstable_region,
+        "region_products": [
+            persistent_agreement,
+            stable_low_disagreement,
+            shared_support_magnitude_sensitive,
+            support_nodata_sensitive,
+            stable_region,
+            unstable_region,
+        ],
+        "stable_region_status": "measured_existing_artifacts",
+        "unstable_region_status": "measured_existing_artifacts",
+        "high_uncertainty_bbox": bbox_for_cells(high_uncertainty_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "interpretation_note": (
+            f"{layer_key} conditional-hazard regions: stable={stable_region['cell_count']}; "
+            f"unstable={unstable_region['cell_count']}; closure_role={closure_role}"
         ),
     }
 

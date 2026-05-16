@@ -23,6 +23,11 @@ The canonical measured interpretation helper is
 It composes the current closure, spatial uncertainty, reduced-output, GIS/COG,
 runtime/scaling, portability, and physical-credibility evidence into one
 reportable diagnostic artifact.
+It now also surfaces the derived conditional-hazard confidence regions as
+interpretive aids: `persistent_agreement`, `stable_low_disagreement`,
+`shared_support_magnitude_sensitive`, and `support_nodata_sensitive`. These
+regions are read-only summaries of the committed evidence and do not expand
+the acceptance boundary.
 When a materialized bundle is needed, use `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
 to write the canonical JSON and text outputs for downstream synthesis
 tooling.

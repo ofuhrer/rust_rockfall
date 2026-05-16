@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-087: Extract Persistent Conditional Hazard Confidence Regions
-
-Goal: Derive stable and unstable conditional-hazard interpretation regions from existing same-scale uncertainty and hazard-layer evidence.
-
-Capability gap reduced: Scientific interpretability and uncertainty-aware product reading.
-
-Why this outranks alternatives: It turns measured spatial uncertainty into user-facing confidence regions instead of another scalar status summary.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/build_hazard_layers.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- JSON/text summaries for persistent agreement, stable low-disagreement, shared-support magnitude-sensitive, and support/nodata-sensitive conditional hazard regions.
-- Optional small GeoJSON/vector-style summary artifacts only in temporary or ignored output locations.
-- Diagnostic interpretation names the regions as interpretive aids, not acceptance evidence.
-
-Definition of done:
-
-- Region extraction is deterministic on current artifacts or fixtures, focused tests pass, and TB-087 is removed from this backlog.
-
-Boundaries: Do not create operational hazard zones, regulatory classes, risk/exposure products, or new simulation outputs.
-
 ### TB-088: Define Minimal Swiss Public-Geodata Workflow Contract
 
 Goal: Specify the reusable public-geodata contract needed for any Swiss AOI before site-specific preprocessing, release planning, or hazard generation can proceed.

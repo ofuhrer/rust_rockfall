@@ -154,6 +154,11 @@ uses this envelope alongside closure, reduced-output, GIS/COG, runtime,
 portability, and physical-credibility summaries. That keeps the measured
 uncertainty evidence inside the diagnostic boundary without turning it into an
 acceptance claim.
+The same helper now also names the derived conditional-hazard confidence
+regions explicitly as `persistent_agreement`, `stable_low_disagreement`,
+`shared_support_magnitude_sensitive`, and `support_nodata_sensitive`. Those
+region names are interpretive aids only; they do not change the current
+closure or acceptance boundary.
 For a materialized synthesis bundle, treat `--artifact-dir validation/private/tschamut_public_pilot/diagnostic_interpretation_v1`
 on that helper as the primary entrypoint.
 

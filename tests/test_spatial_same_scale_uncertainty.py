@@ -33,6 +33,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             )
 
             self.assertEqual(report["spatial_uncertainty_status"], "measured_existing_artifacts")
+            self.assertEqual(report["conditional_hazard_region_status"], "measured_existing_artifacts")
             self.assertEqual(report["selected_layers"], list(summary_script.DEFAULT_HAZARD_LAYERS))
             self.assertFalse(report["scale_up_authorized"])
             self.assertFalse(report["operational_claims_allowed"])
@@ -76,6 +77,36 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["dominant_zone_category"],
                 "support_nodata_sensitive",
             )
+            conditional_summary = report["conditional_hazard_region_summary"]
+            self.assertEqual(conditional_summary["schema_version"], summary_script.CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION)
+            self.assertEqual(conditional_summary["summary_status"], "measured_existing_artifacts")
+            self.assertEqual(
+                [layer["layer_key"] for layer in conditional_summary["layer_summaries"]],
+                sorted(summary_script.DEFAULT_HAZARD_LAYERS),
+            )
+            self.assertEqual(
+                {
+                    region["region_kind"]
+                    for region in conditional_summary["layer_summaries"][0]["region_products"]
+                },
+                {
+                    "persistent_agreement",
+                    "stable_low_disagreement",
+                    "shared_support_magnitude_sensitive",
+                    "support_nodata_sensitive",
+                    "stable_region",
+                    "unstable_region",
+                },
+            )
+            for layer_summary in conditional_summary["layer_summaries"]:
+                self.assertEqual(
+                    layer_summary["stable_region"]["cell_count"],
+                    layer_summary["persistent_agreement"]["cell_count"] + layer_summary["stable_low_disagreement"]["cell_count"],
+                )
+                self.assertEqual(
+                    layer_summary["unstable_region"]["cell_count"],
+                    layer_summary["shared_support_magnitude_sensitive"]["cell_count"] + layer_summary["support_nodata_sensitive"]["cell_count"],
+                )
             self.assertGreater(
                 report["layer_summaries"]["max_kinetic_energy"]["stability_zone_summary"]["zone_counts"]["shared_support_magnitude"],
                 0,
@@ -123,6 +154,14 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn(
                 "support_nodata_sensitive",
                 {region["region_kind"] for region in report["uncertainty_layer_summary"]["region_products"]},
+            )
+            self.assertIn(
+                "stable_low_disagreement",
+                {region["region_kind"] for region in report["conditional_hazard_region_summary"]["region_products"]},
+            )
+            self.assertIn(
+                "shared_support_magnitude_sensitive",
+                {region["region_kind"] for region in report["conditional_hazard_region_summary"]["region_products"]},
             )
 
             hotspot_persistence = report["hotspot_persistence_summary"]
@@ -181,11 +220,12 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertTrue(csv_text.startswith("layer_key,region_kind,confidence_class,closure_role"))
             region_order = {
                 "persistent_agreement": 0,
-                "support_nodata_sensitive": 1,
+                "stable_low_disagreement": 1,
                 "shared_support_magnitude": 2,
-                "persistent_disagreement": 3,
-                "closure_limiting_disagreement": 4,
-                "deferrable_disagreement": 5,
+                "support_nodata_sensitive": 3,
+                "persistent_disagreement": 4,
+                "closure_limiting_disagreement": 5,
+                "deferrable_disagreement": 6,
             }
             self.assertEqual(
                 [
@@ -229,6 +269,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("support_nodata_sensitive", rendered)
             self.assertIn("persistent_agreement", rendered)
             self.assertIn("uncertainty layer summary:", rendered)
+            self.assertIn("conditional hazard region summary:", rendered)
             self.assertIn("hotspot persistence summary:", rendered)
             self.assertIn("stable_across_all_pairs", rendered)
             self.assertIn("confidence=", rendered)

@@ -123,6 +123,7 @@ def _build_current_report() -> dict[str, Any]:
     uncertainty = CLOSURE.summarize_uncertainty(UNCERTAINTY.build_sampling_uncertainty_summary())
     spatial_raw = _build_spatial_evidence()
     spatial_summary = CLOSURE.summarize_spatial_uncertainty(spatial_raw)
+    conditional_hazard_region_summary = spatial_raw.get("conditional_hazard_region_summary") or {}
     output_profile_report = OUTPUT_PROFILE.build_report(list(OUTPUT_PROFILE.DEFAULT_PROFILE_SPECS))
     output_profile_status = summarize_output_profile_status(output_profile_report)
     gis = CLOSURE.summarize_gis_cog(
@@ -255,6 +256,10 @@ def _build_current_report() -> dict[str, Any]:
         "physical_credibility_status": physical.get("physical_credibility_status", "unknown"),
         "synthesis_brief": synthesis_brief,
         "claim_boundaries": claim_boundaries,
+        "conditional_hazard_region_status": conditional_hazard_region_summary.get(
+            "summary_status", spatial_raw.get("spatial_uncertainty_status", "unknown")
+        ),
+        "conditional_hazard_region_summary": conditional_hazard_region_summary,
         "recommended_next_decision": recommended_next_decision(
             closure={"closure_status": closure_status},
             output_profile_status=output_profile_status,
@@ -273,6 +278,7 @@ def _build_current_report() -> dict[str, Any]:
                 "current_blockers": current_blockers,
                 "current_follow_up_blockers": follow_up_blockers,
                 "spatial_uncertainty_interpretation": spatial_summary,
+                "conditional_hazard_region_summary": conditional_hazard_region_summary,
             },
             "output_profile": output_profile_status,
             "gis_cog": gis_cog_status,
@@ -345,6 +351,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "target_convergence_interpretation": "blocked_missing_inputs",
         "same_scale_readiness_status": "blocked_missing_inputs",
         "spatial_uncertainty_status": "blocked_missing_inputs",
+        "conditional_hazard_region_status": "blocked_missing_inputs",
         "dominant_scientific_blockers": [],
         "scientific_closure_blockers": [],
         "workflow_product_blockers": [],
@@ -366,6 +373,14 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "physical_credibility_status": "blocked_missing_inputs",
         },
         "claim_boundaries": claim_boundaries,
+        "conditional_hazard_region_summary": {
+            "schema_version": "conditional_hazard_region_summary_v1",
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "region_products": [],
+            "stable_region_status": "blocked_missing_inputs",
+            "unstable_region_status": "blocked_missing_inputs",
+        },
         "recommended_next_decision": reason,
         "current_evidence": {"missing_inputs": list(missing_inputs)},
         "evidence_sources": [],
@@ -687,6 +702,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"target_convergence_interpretation: {report.get('target_convergence_interpretation', 'unknown')}",
         f"same_scale_readiness_status: {report['same_scale_readiness_status']}",
         f"spatial_uncertainty_status: {report['spatial_uncertainty_status']}",
+        f"conditional_hazard_region_status: {report.get('conditional_hazard_region_status', 'unknown')}",
         "synthesis_brief:",
         f"  - {json.dumps(report.get('synthesis_brief', {}), sort_keys=True)}",
         "scientific_blockers:",
@@ -718,6 +734,16 @@ def render_text_report(report: dict[str, Any]) -> str:
     )
     if stability_zone_summary:
         lines.append(f"stability_zone_summary: {json.dumps(stability_zone_summary, sort_keys=True)}")
+    conditional_hazard_region_summary = (
+        report.get("conditional_hazard_region_summary")
+        or report.get("current_evidence", {})
+        .get("closure", {})
+        .get("conditional_hazard_region_summary", {})
+    )
+    if conditional_hazard_region_summary:
+        lines.append(
+            f"conditional_hazard_region_summary: {json.dumps(conditional_hazard_region_summary, sort_keys=True)}"
+        )
     lines.extend(
         [
             f"legacy_summary_only_status: {report['output_profile_status'].get('legacy_summary_only_status')}",

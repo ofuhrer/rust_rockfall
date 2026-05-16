@@ -20,6 +20,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "closure_status": "inconclusive",
             "same_scale_readiness_status": "ready",
             "spatial_uncertainty_status": "measured_existing_artifacts",
+            "conditional_hazard_region_status": "measured_existing_artifacts",
             "dominant_scientific_blockers": [
                 "closure_status_inconclusive",
                 "spatial_uncertainty_support_nodata_dominates_closure",
@@ -125,6 +126,39 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
                 "risk_exposure_vulnerability_claims_allowed": False,
                 "distributed_execution_authorized": False,
             },
+            "conditional_hazard_region_summary": {
+                "schema_version": "conditional_hazard_region_summary_v1",
+                "summary_status": "measured_existing_artifacts",
+                "stable_region_status": "measured_existing_artifacts",
+                "unstable_region_status": "measured_existing_artifacts",
+                "layer_summaries": [
+                    {
+                        "layer_key": "max_jump_height",
+                        "persistent_agreement": {"cell_count": 2, "cell_fraction": 0.01, "region_kind": "persistent_agreement"},
+                        "stable_low_disagreement": {"cell_count": 10, "cell_fraction": 0.05, "region_kind": "stable_low_disagreement"},
+                        "shared_support_magnitude_sensitive": {"cell_count": 20, "cell_fraction": 0.1, "region_kind": "shared_support_magnitude_sensitive"},
+                        "support_nodata_sensitive": {"cell_count": 8, "cell_fraction": 0.04, "region_kind": "support_nodata_sensitive"},
+                        "stable_region": {"cell_count": 12, "cell_fraction": 0.06, "region_kind": "stable_region"},
+                        "unstable_region": {"cell_count": 28, "cell_fraction": 0.14, "region_kind": "unstable_region"},
+                        "region_products": [
+                            {"region_kind": "persistent_agreement"},
+                            {"region_kind": "stable_low_disagreement"},
+                            {"region_kind": "shared_support_magnitude_sensitive"},
+                            {"region_kind": "support_nodata_sensitive"},
+                            {"region_kind": "stable_region"},
+                            {"region_kind": "unstable_region"},
+                        ],
+                    }
+                ],
+                "region_products": [
+                    {"region_kind": "persistent_agreement"},
+                    {"region_kind": "stable_low_disagreement"},
+                    {"region_kind": "shared_support_magnitude_sensitive"},
+                    {"region_kind": "support_nodata_sensitive"},
+                    {"region_kind": "stable_region"},
+                    {"region_kind": "unstable_region"},
+                ],
+            },
             "recommended_next_decision": "Retain the conditional diagnostic interpretation as inconclusive.",
             "scale_up_authorized": False,
             "operational_claims_allowed": False,
@@ -136,7 +170,13 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
                     "stability_zone_summary": {
                         "stability_zone_status": "measured_existing_artifacts",
                         "overall_closure_role_change": "no_change",
-                    }
+                    },
+                    "conditional_hazard_region_summary": {
+                        "schema_version": "conditional_hazard_region_summary_v1",
+                        "summary_status": "measured_existing_artifacts",
+                        "stable_region_status": "measured_existing_artifacts",
+                        "unstable_region_status": "measured_existing_artifacts",
+                    },
                 }
             },
             "evidence_sources": [],
@@ -154,6 +194,8 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "closure_status",
             "same_scale_readiness_status",
             "spatial_uncertainty_status",
+            "conditional_hazard_region_status",
+            "conditional_hazard_region_summary",
             "dominant_scientific_blockers",
             "scientific_blockers",
             "workflow_product_blockers",
@@ -185,6 +227,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertEqual(report["target_convergence_interpretation"], "inconclusive")
         self.assertEqual(report["same_scale_readiness_status"], "ready")
         self.assertEqual(report["spatial_uncertainty_status"], "measured_existing_artifacts")
+        self.assertEqual(report["conditional_hazard_region_status"], "measured_existing_artifacts")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
         self.assertFalse(report["annual_frequency_claims_allowed"])
@@ -240,6 +283,14 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             report["current_evidence"]["closure"]["stability_zone_summary"]["overall_closure_role_change"],
             "no_change",
         )
+        self.assertEqual(
+            report["conditional_hazard_region_summary"]["summary_status"],
+            "measured_existing_artifacts",
+        )
+        self.assertEqual(
+            report["current_evidence"]["closure"]["conditional_hazard_region_summary"]["stable_region_status"],
+            "measured_existing_artifacts",
+        )
 
     def test_missing_evidence_override_reports_blocked_status(self) -> None:
         report = summary.build_report({"missing_inputs": ["docs/missing.json"]})
@@ -258,6 +309,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("interpretation_status: inconclusive_conditional_diagnostic", text)
         self.assertIn("sampling_uncertainty_status: sampling_uncertainty_measured", text)
         self.assertIn("target_convergence_interpretation: inconclusive", text)
+        self.assertIn("conditional_hazard_region_status: measured_existing_artifacts", text)
         self.assertIn("scientific_blockers:", text)
         self.assertIn("max_kinetic_energy_closure_limiting", text)
         self.assertIn("workflow_blockers:", text)
