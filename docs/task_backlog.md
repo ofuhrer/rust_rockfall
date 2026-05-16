@@ -24,43 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-116: Harden Balfrin Scheduler-Block Classification
-
-Goal: Make `submit_balfrin_probe.py` return a structured
-`scheduler_submission_failed` report when `sbatch` is unavailable so Balfrin
-demo attempts fail cleanly instead of surfacing an unclassified stack trace.
-
-Capability gap reduced: Clear orchestration failure classification for
-environments without SLURM.
-
-Why this outranks alternatives: TB-116 is blocked on scheduler availability;
-the next smallest repo-side unblock is a machine-readable report path that
-preserves the failure taxonomy and keeps downstream synthesis tasks honest.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/summarize_balfrin_failure_taxonomy.py`
-- `docs/balfrin_failure_recovery_playbook.md`
-- `docs/balfrin_single_release_zone_execution_report.md`
-
-Deliverables:
-
-- A guarded submit path that emits a structured scheduler-block report when
-  `sbatch` is missing or unreachable.
-- Focused regression coverage proving the missing-sbatch path is classified as
-  `scheduler_submission_failed`.
-
-Definition of done:
-
-- The submit helper no longer crashes unclassified on a missing `sbatch`
-  executable, and the blocked report can be consumed by the taxonomy and
-  recovery docs.
-
-Boundaries: Do not fake a successful Balfrin run, do not broaden the claim
-boundary, and do not introduce distributed execution or operational hazard
-claims.
-
 ### TB-117: Execute And Collect Balfrin Single-Release-Zone Demo
 
 Goal: Run the canonical Balfrin demonstration workflow end-to-end for one

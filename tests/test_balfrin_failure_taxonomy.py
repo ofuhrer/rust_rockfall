@@ -36,7 +36,7 @@ class BalfrinFailureTaxonomyTests(unittest.TestCase):
                     "blocking_checks": ["input_freeze.terrain_metadata_path"],
                 },
                 "submission_report": {
-                    "status": "failed",
+                    "status": "scheduler_submission_failed",
                     "submitted_job_id": "",
                 },
                 "runtime_report": {"status": "failed"},

@@ -31,6 +31,8 @@ DEFAULT_NTASKS = 1
 DEFAULT_CPUS_PER_TASK = 16
 PACKAGE_SCHEMA_VERSION = "balfrin_submission_package_v1"
 PACKAGE_BASENAME = "balfrin_submission_package"
+SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_scheduler_submission_report_v1"
+SUBMISSION_REPORT_BASENAME = "balfrin_submission_report"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -509,6 +511,80 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _build_scheduler_submission_report(
+    *,
+    run_root: Path,
+    run_id: str,
+    probe_manifest: Path,
+    command_plan_path: Path,
+    sbatch_path: Path,
+    partition: str,
+    time_budget: str,
+    nodes: int,
+    ntasks: int,
+    cpus_per_task: int,
+    submit_command: list[str],
+    stdout: str = "",
+    stderr: str = "",
+    returncode: int | None = None,
+    error: BaseException | None = None,
+) -> dict[str, Any]:
+    error_type = type(error).__name__ if error is not None else None
+    error_message = str(error).strip() if error is not None else ""
+    report: dict[str, Any] = {
+        "schema_version": SUBMISSION_REPORT_SCHEMA_VERSION,
+        "status": "scheduler_submission_failed",
+        "submission_status": "scheduler_submission_failed",
+        "failure_class": "scheduler_submission_failed",
+        "probe_manifest": str(probe_manifest.resolve()),
+        "run_root": str(run_root.resolve()),
+        "run_id": run_id,
+        "command_plan_path": str(command_plan_path.resolve()),
+        "sbatch_script_path": str(sbatch_path.resolve()),
+        "submit_command": submit_command,
+        "slurm": {
+            "partition": partition,
+            "time": time_budget,
+            "nodes": nodes,
+            "ntasks": ntasks,
+            "cpus_per_task": cpus_per_task,
+        },
+        "submitted_job_id": None,
+        "stdout": stdout.strip(),
+        "stderr": stderr.strip(),
+        "returncode": returncode,
+        "error": {
+            "type": error_type,
+            "message": error_message,
+        },
+        "recovery_action": (
+            "regenerate the same submission package and retry submit with the same run root and run id"
+        ),
+        "escalation_boundary": (
+            "scheduler failures are operational; they should not be reclassified as scientific outcomes"
+        ),
+        "source_helper": "scripts/submit_balfrin_probe.py",
+        "escalate_to": "scheduler or operator support",
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+        },
+    }
+    if error_message:
+        report["blocked_reason"] = error_message
+    return report
+
+
+def _write_submission_report(run_root: Path, report: dict[str, Any]) -> Path:
+    report_path = run_root / f"{SUBMISSION_REPORT_BASENAME}.json"
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report_path
+
+
 def _resolve_run_id(args: argparse.Namespace, manifest_run_id: str, *, is_dry_run: bool) -> str:
     if args.run_id:
         return _safe_fragment(args.run_id)
@@ -762,27 +838,63 @@ def main(argv: list[str] | None = None) -> int:
         cpus_per_task=args.cpus_per_task,
     )
 
+    submit_command = ["sbatch", "--parsable", str(sbatch_path)]
+
     if args.generate_only:
         print(f"run_root={run_root}")
         print(f"command_plan_path={command_plan_path}")
         print(f"sbatch_script_path={sbatch_path}")
         return 0
 
-    submit = subprocess.run(
-        ["sbatch", "--parsable", str(sbatch_path)],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=args.slurm_timeout,
-    )
+    try:
+        submit = subprocess.run(
+            submit_command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=args.slurm_timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        report = _build_scheduler_submission_report(
+            run_root=run_root,
+            run_id=run_id,
+            probe_manifest=args.probe_manifest,
+            command_plan_path=command_plan_path,
+            sbatch_path=sbatch_path,
+            partition=args.partition,
+            time_budget=args.time,
+            nodes=args.nodes,
+            ntasks=args.ntasks,
+            cpus_per_task=args.cpus_per_task,
+            submit_command=submit_command,
+            error=exc,
+        )
+        report_path = _write_submission_report(run_root, report)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        print(f"submission_report_path={report_path}", file=sys.stderr)
+        return 2
+
     if submit.returncode != 0:
-        if submit.stderr:
-            print(f"sbatch submission failed: {submit.stderr.strip()}", file=sys.stderr)
-        else:
-            print("sbatch submission failed", file=sys.stderr)
-        if submit.stdout:
-            print(submit.stdout.strip(), file=sys.stderr)
-        return submit.returncode
+        report = _build_scheduler_submission_report(
+            run_root=run_root,
+            run_id=run_id,
+            probe_manifest=args.probe_manifest,
+            command_plan_path=command_plan_path,
+            sbatch_path=sbatch_path,
+            partition=args.partition,
+            time_budget=args.time,
+            nodes=args.nodes,
+            ntasks=args.ntasks,
+            cpus_per_task=args.cpus_per_task,
+            submit_command=submit_command,
+            stdout=submit.stdout,
+            stderr=submit.stderr,
+            returncode=submit.returncode,
+        )
+        report_path = _write_submission_report(run_root, report)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        print(f"submission_report_path={report_path}", file=sys.stderr)
+        return 2
 
     print(f"submitted_job_id={submit.stdout.strip()}")
     return 0

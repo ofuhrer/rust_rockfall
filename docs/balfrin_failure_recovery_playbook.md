@@ -102,6 +102,10 @@ PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
   --submit
 ```
 
+If `sbatch` is missing or unreachable, the submit helper writes
+`$RUN_ROOT/balfrin_submission_report.json` and prints the same structured
+report to stdout with `status: scheduler_submission_failed`.
+
 Recovery rule:
 
 - Keep the exact same run root and run id.

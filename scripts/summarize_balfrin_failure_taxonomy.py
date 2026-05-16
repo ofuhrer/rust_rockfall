@@ -277,9 +277,14 @@ def classify_readiness(readiness: dict[str, Any]) -> str:
 
 
 def classify_scheduler(submission: dict[str, Any]) -> str:
-    status = str(submission.get("status") or submission.get("submission_status") or "").strip()
+    status = str(
+        submission.get("status")
+        or submission.get("submission_status")
+        or submission.get("failure_class")
+        or ""
+    ).strip()
     submitted_job_id = str(submission.get("submitted_job_id") or submission.get("job_id") or "").strip()
-    if status in {"failed", "blocked_missing_inputs", "error"}:
+    if status in {"failed", "blocked_missing_inputs", "error", "scheduler_submission_failed"}:
         return "observed"
     if submitted_job_id:
         return "clear"

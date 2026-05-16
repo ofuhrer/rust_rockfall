@@ -333,6 +333,78 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 self.assertIn("balfrin_probe_full_time.txt", markdown)
                 self.assertIn("run_root=", buf.getvalue())
 
+    def test_submit_reports_structured_failure_when_sbatch_is_missing(self) -> None:
+        fake_plan = ({"run_id": "probe_fixed", "commands": []}, "probe_fixed")
+        fake_package = {
+            "schema_version": "balfrin_submission_package_v1",
+            "package_mode": "generate-only",
+            "probe_manifest": "validation/pilot_runs/probe.yaml",
+            "run_root": "/tmp/balfrin/probe-fixed",
+            "run_id": "probe_fixed",
+            "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
+            "slurm": {
+                "partition": "postproc",
+                "time": "00:30:00",
+                "nodes": 1,
+                "ntasks": 1,
+                "cpus_per_task": 16,
+            },
+            "scratch_paths": {
+                "scratch_root": "/scratch",
+                "uv_cache_dir": "/scratch/.cache/uv",
+                "cargo_target_dir": "/scratch/rust_rockfall/target",
+            },
+            "input_checks": {"status": "ready", "blocking_checks": [], "checks": []},
+            "command_plan_path": "/tmp/balfrin/probe-fixed/command_plan.json",
+            "sbatch_script_path": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "generated_output_roots": ["/tmp/balfrin/probe-fixed"],
+            "ignored_output_roots": [],
+            "ignored_artifacts": [],
+            "operator_sequence": {},
+            "expected_outputs": ["/tmp/balfrin/probe-fixed/command_plan.json", "/tmp/balfrin/probe-fixed/probe.sbatch"],
+            "collection_instructions": [],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = Path(tmpdir) / "manifest.yaml"
+            self._write_manifest(manifest)
+            run_root = Path(tmpdir) / "run-root"
+
+            def _run_side_effect(*_args: object, **_kwargs: object):
+                raise FileNotFoundError(2, "No such file or directory", "sbatch")
+
+            with patch.object(submit_driver, "_read_command_plan", return_value=fake_plan), patch.object(
+                submit_driver,
+                "_build_submission_package_report",
+                return_value=fake_package,
+            ), patch.object(submit_driver.subprocess, "run", side_effect=_run_side_effect):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    exit_code = submit_driver.main(
+                        [
+                            str(manifest),
+                            "--submit",
+                            "--run-root",
+                            str(run_root),
+                            "--run-id",
+                            "probe_fixed",
+                            "--partition",
+                            "postproc",
+                        ]
+                    )
+
+            self.assertEqual(exit_code, 2)
+            report = json.loads(buf.getvalue())
+            self.assertEqual(report["status"], "scheduler_submission_failed")
+            self.assertEqual(report["submission_status"], "scheduler_submission_failed")
+            self.assertIsNone(report["submitted_job_id"])
+            self.assertEqual(report["error"]["type"], "FileNotFoundError")
+            self.assertIn("sbatch", report["submit_command"])
+            self.assertEqual(report["run_id"], "probe_fixed")
+            self.assertEqual(report["run_root"], str(run_root.resolve()))
+            report_path = run_root / "balfrin_submission_report.json"
+            self.assertTrue(report_path.exists())
+            self.assertEqual(json.loads(report_path.read_text(encoding="utf-8")), report)
+
     def test_collect_probe_metrics_parses_synthetic_outputs(self) -> None:
         complete_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
         summary = collect_driver.collect_run_metrics(complete_root)
