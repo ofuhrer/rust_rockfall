@@ -1039,3 +1039,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no simulator physics, reduced-output scientific meaning, summary-only rebuildability, operational, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was changed.
 - Next task: `TB-075`
+
+### TB-075: Emit Full-Scope COG Export Parity Proof
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: make the same-scale COG export path and audit report distinguish full parity from a bounded scope delta while keeping the standard-root blocked state visible.
+- Files changed: docs/agent_work_log.md, docs/pilot_gis_package.md, docs/task_backlog.md, scripts/audit_gis_cog_package_readiness.py, scripts/generate_pilot_command_plan.py, tests/test_gis_cog_package_readiness.py, tests/test_hazard_layers.py, tests/test_pilot_command_plan.py
+- Implementation summary: updated the same-scale COG export command plan to request the full gate threshold scope by adding the 0.5 m jump-height threshold; extended the GIS/COG audit to report standard-root layer counts, converted-root layer counts, explicit scope-delta metadata, and the new `cog_package_ready_with_scope_delta` status alongside the standard `gis_package_ready_cog_blocked` state; and refreshed the pilot GIS package docs and focused regression tests to cover parity, blocked-standard, and scope-delta cases.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness.GisCogPackageReadinessTest tests.test_pilot_command_plan.PilotCommandPlanTest tests.test_hazard_layers.HazardLayerTests.test_cog_export_runs_a_post_export_package_step`
+- Result/status: completed.
+- Boundaries: no generated rasters were committed, no manual QGIS acceptance was required, and no operational GIS claim was introduced.
+- Next task: `TB-076`

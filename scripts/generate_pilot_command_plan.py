@@ -693,7 +693,7 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
             site="tschamut_same_scale",
             group="gis_cog_package_conversion",
             command_id="tschamut_package_cog_export",
-            description="Build the gate package and post-export an ignored COG-ready same-scale package root.",
+            description="Build the gate package and post-export an ignored COG-ready same-scale package root with the full gate threshold scope.",
             command=command_string(
                 [
                     "PYENV_VERSION=system",
@@ -756,6 +756,8 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
                     "1000.0",
                     "--kinetic-energy-exceedance-j",
                     "10000.0",
+                    "--jump-height-exceedance-m",
+                    "0.5",
                     "--jump-height-exceedance-m",
                     "1.0",
                     "--jump-height-exceedance-m",

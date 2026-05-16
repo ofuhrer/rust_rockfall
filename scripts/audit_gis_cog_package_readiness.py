@@ -132,6 +132,7 @@ def build_gis_cog_readiness_report(
     converted_packages = [
         compare_layer_inventory(artifacts_by_id.get(package["artifact_id"]), package) for package in converted_packages
     ]
+    converted_packages = [normalize_converted_package_status(package) for package in converted_packages]
 
     missing_any = any(
         artifact["manifest_completeness"]["map_package_manifest_missing_fields"]
@@ -156,6 +157,9 @@ def build_gis_cog_readiness_report(
         "schema_version": SCHEMA_VERSION,
         "gis_cog_readiness_status": gis_status,
         "readiness_status": gis_status,
+        "standard_package_readiness_status": summarize_standard_package_readiness(artifacts),
+        "standard_package_layer_counts": {artifact["artifact_id"]: artifact["raster_layer_count"] for artifact in artifacts},
+        "standard_package_status": {artifact["artifact_id"]: artifact["cog_package_status"] for artifact in artifacts},
         "converted_sample_status": converted_sample["status"],
         "converted_sample_path": converted_sample["path"],
         "converted_sample": converted_sample,
@@ -173,6 +177,12 @@ def build_gis_cog_readiness_report(
         "converted_package_readiness_status": converted_summary["converted_package_readiness_status"],
         "any_converted_package_ready": converted_summary["any_converted_package_ready"],
         "converted_package_layer_inventory_status": summarize_converted_package_layer_inventory(converted_packages),
+        "converted_package_layer_counts": {
+            artifact["artifact_id"]: artifact["converted_layer_count"] for artifact in converted_packages
+        },
+        "converted_package_scope_deltas": {
+            artifact["artifact_id"]: artifact["scope_delta"] for artifact in converted_packages
+        },
         "converted_packages": converted_packages,
         "raster_layer_count": {artifact["artifact_id"]: artifact["raster_layer_count"] for artifact in artifacts},
         "crs_or_epsg": {artifact["artifact_id"]: artifact["crs_or_epsg"] for artifact in artifacts},
@@ -288,17 +298,19 @@ def summarize_converted_package_readiness(converted_packages: list[dict[str, Any
             "any_converted_package_ready": False,
         }
     statuses = [package.get("cog_package_status") for package in converted_packages]
-    any_ready = any(status == "cog_package_ready" for status in statuses)
+    any_ready = any(status in {"cog_package_ready", "cog_package_ready_with_scope_delta"} for status in statuses)
     if any(status == "blocked_missing_inputs" for status in statuses):
         readiness_status = "blocked_missing_inputs"
     elif any(status == "metadata_only" for status in statuses):
         readiness_status = "metadata_only"
     elif all(status == "cog_package_ready" for status in statuses):
-        readiness_status = "converted_package_ready"
-    elif any(status in {"cog_package_ready", "cog_package_poc_ready"} for status in statuses):
-        readiness_status = "converted_package_poc_ready"
+        readiness_status = "cog_package_ready"
+    elif all(status in {"cog_package_ready", "cog_package_ready_with_scope_delta"} for status in statuses):
+        readiness_status = "cog_package_ready_with_scope_delta"
+    elif any(status in {"cog_package_ready", "cog_package_ready_with_scope_delta", "cog_package_poc_ready"} for status in statuses):
+        readiness_status = "cog_package_poc_ready"
     else:
-        readiness_status = "converted_package_poc_ready"
+        readiness_status = "cog_package_poc_ready"
     return {
         "converted_package_readiness_status": readiness_status,
         "any_converted_package_ready": any_ready,
@@ -349,6 +361,13 @@ def compare_layer_inventory(
             "extra_layer_count": 0,
             "extra_layer_names": [],
             "extra_layer_semantics": [],
+            "scope_delta": {
+                "status": "no_standard_reference",
+                "missing_layer_count": 0,
+                "missing_layer_names": [],
+                "extra_layer_count": 0,
+                "extra_layer_names": [],
+            },
             "inventory_note": "no standard-root reference was available for comparison",
         }
 
@@ -383,8 +402,38 @@ def compare_layer_inventory(
         "extra_layer_count": len(extra_layer_names),
         "extra_layer_names": extra_layer_names,
         "extra_layer_semantics": [converted_layer_semantics_by_name[layer_name] for layer_name in extra_layer_names if layer_name in converted_layer_semantics_by_name],
+        "scope_delta": {
+            "status": "parity_match" if not missing_layer_names and not extra_layer_names else "scope_delta",
+            "missing_layer_count": len(missing_layer_names),
+            "missing_layer_names": missing_layer_names,
+            "extra_layer_count": len(extra_layer_names),
+            "extra_layer_names": extra_layer_names,
+        },
         "inventory_note": inventory_note,
     }
+
+
+def normalize_converted_package_status(package: dict[str, Any]) -> dict[str, Any]:
+    status = package.get("cog_package_status")
+    if status == "cog_package_ready" and package.get("layer_inventory_status") != "parity_match":
+        package = dict(package)
+        package["cog_package_status"] = "cog_package_ready_with_scope_delta"
+    return package
+
+
+def summarize_standard_package_readiness(artifacts: list[dict[str, Any]]) -> str:
+    if not artifacts:
+        return "not_provided"
+    statuses = [artifact.get("cog_package_status") for artifact in artifacts]
+    if any(status == "blocked_missing_inputs" for status in statuses):
+        return "blocked_missing_inputs"
+    if any(status == "metadata_only" for status in statuses):
+        return "metadata_only"
+    if all(status == "gis_package_ready" for status in statuses):
+        return "gis_package_ready"
+    if any(status == "gis_package_ready_cog_blocked" for status in statuses):
+        return "gis_package_ready_cog_blocked"
+    return "mixed"
 
 
 def audit_artifact_root(
@@ -751,6 +800,7 @@ def artifact_id_from_map_manifest(map_manifest: dict[str, Any], pilot_manifest: 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"GIS/COG readiness: {report['gis_cog_readiness_status']}",
+        f"Standard package readiness: {report.get('standard_package_readiness_status')}",
         f"Converted sample: {report['converted_sample_status']}",
         f"Converted package readiness: {report.get('converted_package_readiness_status')}",
         f"Converted package layer inventory: {report.get('converted_package_layer_inventory_status')}",
@@ -771,6 +821,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  geotiff presence: {artifact['geotiff_presence']}")
         lines.append(f"  cog indicators: {artifact['cog_readiness_indicators']}")
         lines.append(f"  blockers: {artifact['blockers']}")
+        lines.append(f"  layer count: {artifact['raster_layer_count']}")
     if report.get("converted_packages"):
         for package in report["converted_packages"]:
             lines.append("")
@@ -781,6 +832,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(
                 f"  standard/converted layer counts: {package.get('standard_layer_count')}/{package.get('converted_layer_count')}"
             )
+            lines.append(f"  scope delta: {package.get('scope_delta')}")
             lines.append(f"  inventory note: {package.get('inventory_note')}")
             lines.append(f"  manifest completeness: {package['manifest_completeness']}")
             lines.append(f"  geotiff presence: {package['geotiff_presence']}")

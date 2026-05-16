@@ -24,6 +24,7 @@ class GisCogPackageReadinessTest(unittest.TestCase):
 
         self.assertEqual(report["gis_cog_readiness_status"], "gis_package_ready")
         self.assertEqual(report["readiness_status"], "gis_package_ready")
+        self.assertEqual(report["standard_package_readiness_status"], "gis_package_ready")
         self.assertEqual(report["artifacts_audited"], 1)
         self.assertEqual(report["qgis_manual_qa_status"], "not_run")
         self.assertEqual(report["scientific_acceptance_status"], "inconclusive")
@@ -111,11 +112,37 @@ class GisCogPackageReadinessTest(unittest.TestCase):
             )
 
         self.assertEqual(report["gis_cog_readiness_status"], "gis_package_ready")
-        self.assertEqual(report["converted_package_readiness_status"], "converted_package_ready")
+        self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready")
         self.assertEqual(report["converted_package_layer_inventory_status"], "parity_match")
         self.assertTrue(report["any_converted_package_ready"])
         self.assertEqual(report["converted_package_status"]["validation_tschamut_public_conditional_gate_v1"], "cog_package_ready")
-        self.assertIn("Converted package readiness: converted_package_ready", audit.render_text_report(report))
+        self.assertIn("Converted package readiness: cog_package_ready", audit.render_text_report(report))
+
+    def test_standard_root_cog_blocked_state_remains_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            standard_root = Path(tmp) / "gate_v1"
+            converted_root = Path(tmp) / "gate_v1_cog_export"
+            self._write_manifests(
+                standard_root,
+                artifact_id="validation_tschamut_public_conditional_gate_v1",
+                cloud_optimized=False,
+            )
+            self._write_manifests(
+                converted_root,
+                artifact_id="validation_tschamut_public_conditional_gate_v1",
+            )
+            report = audit.build_gis_cog_readiness_report(
+                artifact_roots=[standard_root],
+                converted_package_roots=[converted_root],
+                raster_metadata_provider=self._fake_cog_metadata,
+            )
+
+        self.assertEqual(report["standard_package_readiness_status"], "gis_package_ready_cog_blocked")
+        self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready")
+        self.assertEqual(
+            report["standard_package_status"]["validation_tschamut_public_conditional_gate_v1"],
+            "gis_package_ready_cog_blocked",
+        )
 
     def test_converted_gate_v1_cog_export_reports_intentional_scope_reduction(self) -> None:
         source_manifest = json.loads(GATE_MAP_MANIFEST.read_text(encoding="utf-8"))
@@ -152,14 +179,21 @@ class GisCogPackageReadinessTest(unittest.TestCase):
         converted_package = report["converted_packages"][0]
         self.assertEqual(report["converted_package_layer_inventory_status"], "scope_reduced")
         self.assertEqual(converted_package["layer_inventory_status"], "scope_reduced")
+        self.assertEqual(converted_package["cog_package_status"], "cog_package_ready_with_scope_delta")
         self.assertEqual(converted_package["standard_layer_count"], 22)
         self.assertEqual(converted_package["converted_layer_count"], 20)
+        self.assertEqual(converted_package["scope_delta"]["status"], "scope_delta")
         self.assertEqual(
             converted_package["missing_layer_names"],
             ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
         )
         self.assertEqual(
             [entry["layer_name"] for entry in converted_package["missing_layer_semantics"]],
+            ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+        )
+        self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready_with_scope_delta")
+        self.assertEqual(
+            report["converted_package_scope_deltas"]["validation_tschamut_public_conditional_gate_v1"]["missing_layer_names"],
             ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
         )
         text = audit.render_text_report(report)

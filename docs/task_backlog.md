@@ -18,40 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-075: Emit Full-Scope COG Export Parity Proof
-
-Goal: Make the first-class COG export path prove the intended same-scale layer
-scope rather than only the smaller proof layer set.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_gis_cog_package_readiness.py`
-- `docs/pilot_gis_package.md`
-
-Deliverables:
-
-- A command-plan COG export path whose requested threshold layers match the
-  documented standard same-scale package scope, or an explicit machine-readable
-  statement of any intentionally omitted layers.
-- Audit output that reports standard-root layer counts, converted-root layer
-  counts, and parity status without hiding the standard roots'
-  `gis_package_ready_cog_blocked` state.
-- Focused tests for full-scope COG parity reporting.
-
-Definition of done:
-
-- The COG export helper/audit can distinguish `cog_package_ready` from
-  `cog_package_ready_with_scope_delta`.
-- The same-scale command plan contains the intended full-scope COG export
-  command or a documented bounded proof command with explicit scope delta.
-
-Boundaries: Do not commit generated rasters, require manual QGIS acceptance,
-  or introduce operational GIS claims.
-
 ### TB-076: Define Conditional Gridpoint Curve Product Contract
 
 Goal: Specify and exercise the conditional gridpoint intensity-exceedance curve

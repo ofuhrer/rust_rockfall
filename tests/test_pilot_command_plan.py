@@ -158,6 +158,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         export_command = next(command for command in report["commands"] if command["id"] == "tschamut_package_cog_export")
         self.assertIn("scripts/build_hazard_layers.py", export_command["command"])
         self.assertIn("--export-cog", export_command["command"])
+        self.assertIn("--jump-height-exceedance-m 0.5", export_command["command"])
         self.assertIn(
             "--cog-package-output-root hazard/results/tschamut_public_pilot/gate_v1_cog_export",
             export_command["command"],

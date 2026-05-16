@@ -43,11 +43,14 @@ Current and future GIS products must be distinguished explicitly:
 The package-level COG path follows the requested export scope, not an
 implicit "all layers ever used by the same-scale root" rule. When a COG export
 is built from a command that only requests a subset of threshold families, the
-audit must report the omitted layers explicitly. The current
-`gate_v1_cog_export` proof exports 20 raster layers and intentionally omits
-`jump_height_exceedance_0p5m` and
-`weighted_jump_height_exceedance_0p5m` because that export recipe only
-requests the 1 m and 2 m jump-height thresholds.
+audit must report the omitted layers explicitly. The current same-scale COG
+proof therefore has two acceptable forms:
+
+- full-scope COG export parity, where the converted root matches the standard
+  same-scale layer inventory;
+- bounded proof export with a machine-readable `scope_delta` that lists any
+  intentionally omitted layers and keeps the standard-root
+  `gis_package_ready_cog_blocked` state visible.
 
 ## Required Diagnostic Review Contents
 
@@ -299,4 +302,6 @@ The local pilot package does not yet define:
 
 The current `--export-cog` path is package-level and ignored by default. It is
 valid for generated proof/export roots, but those converted roots remain
-generated and ignored unless a future task explicitly stages them.
+generated and ignored unless a future task explicitly stages them. The same
+command-plan path may be used for full-scope parity proof or a bounded proof
+with explicit scope delta metadata.
