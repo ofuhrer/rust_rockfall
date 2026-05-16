@@ -1159,3 +1159,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no generated rasters were committed, no manual QGIS acceptance was performed, and no operational GIS, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was introduced.
 - Next task: `TB-085`
+
+### TB-085: Attribute Closure-Limiting Hotspots To Source And Scenario Evidence
+
+- Date: 2026-05-16
+- Commit: `c3ea7bf`
+- Objective: attribute the measured closure-limiting hotspots to committed source-zone, release, scenario, and support/nodata evidence without changing closure status or running new simulations.
+- Files changed: docs/task_backlog.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, scripts/summarize_tschamut_conditional_pilot_closure.py, scripts/summarize_tschamut_hotspot_provenance.py, tests/test_tschamut_conditional_pilot_closure.py, tests/test_tschamut_hotspot_provenance.py, docs/agent_work_log.md
+- Implementation summary: extended the hotspot provenance helper with explicit per-layer attribution counts and fractions for shared-support magnitude, support/nodata sensitivity, source-zone overlap/outside relation, scenario identifier coverage, and unknown cell-level lineage; surfaced the same hotspot provenance report inside the conditional closure summary so the closure output now references the attribution evidence without altering any closure decision; tightened the focused regressions to pin the new schema on both synthetic and committed artifacts; and updated the same-scale envelope narrative plus the active backlog to reflect completion.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_hotspot_provenance tests.test_tschamut_conditional_pilot_closure tests.test_tschamut_closure_gap_deltas -v`; `PYENV_VERSION=system uv run python scripts/summarize_tschamut_hotspot_provenance.py --format json >/tmp/tb085_hotspot_provenance.json`; `PYENV_VERSION=system uv run python scripts/summarize_tschamut_hotspot_provenance.py --format text >/tmp/tb085_hotspot_provenance.txt`; `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format json >/tmp/tb085_closure.json`; `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_pilot_closure.py --format text >/tmp/tb085_closure.txt`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`; `git status --short`
+- Result/status: completed.
+- Boundaries: no new simulation was run, no physics or tuning was changed, no validation or operational claim was introduced, and attribution remained interpretive evidence only.
+- Next task: `TB-086`
