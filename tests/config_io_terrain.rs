@@ -17,7 +17,7 @@ use rust_rockfall::{
         ChannelizedGully, ClampedDemGrid, DemGrid, GaussianBump, Paraboloid, Plane,
         SinusoidalRoughSlope, StepTerrain, TerracedSlope, Terrain, TerrainError, VShapedValley,
     },
-    validation::{load_case, run_case_file, CaseStatus, ScientificStatus},
+    validation::{load_case, run_case, run_case_file, CaseStatus, ScientificStatus},
     ContactModel, ContactParameterProvider, ContactParameters, ScarringSettings,
     SoilInteractionModel, Vec3,
 };
@@ -1722,12 +1722,7 @@ outputs:
         manifest_json["trajectory_metadata"]["schema_version"],
         "trajectory_metadata_table_v1"
     );
-    assert!(
-        manifest_json["trajectory_metadata"]["row_count"]
-            .as_u64()
-            .unwrap()
-            >= 3
-    );
+    assert_eq!(manifest_json["trajectory_metadata"]["row_count"], 3);
     assert_eq!(
         manifest_json["trajectory_metadata"]["total_sampling_weight"],
         3.0
@@ -1978,92 +1973,33 @@ outputs:
 
 #[test]
 fn validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs() {
-    let case_path = temp_path("validation_output_mode_rebuildable_reduced.yaml");
+    let case_path = Path::new(
+        "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+    );
     let diagnostics = temp_path("validation_output_mode_rebuildable_reduced.json");
     let manifest = temp_path("validation_output_mode_rebuildable_reduced_manifest.json");
     let trajectory = temp_path("validation_output_mode_rebuildable_reduced_trajectory.csv");
     let deposition = temp_path("validation_output_mode_rebuildable_reduced_deposition.csv");
     let impact_csv = temp_path("validation_output_mode_rebuildable_reduced_impacts.csv");
     let metadata = temp_path("validation_output_mode_rebuildable_reduced_trajectory_metadata.csv");
-    let releases = temp_path("validation_output_mode_rebuildable_reduced_releases.csv");
-    let depositions =
-        temp_path("validation_output_mode_rebuildable_reduced_observed_deposition.csv");
     let impact_json = temp_path("validation_output_mode_rebuildable_reduced_impacts.json");
     let ensemble_dir = temp_path("validation_output_mode_rebuildable_reduced_trajectories");
     let ensemble_impacts_dir = temp_path("validation_output_mode_rebuildable_reduced_impacts_dir");
     let ensemble_impacts_parquet =
         temp_path("validation_output_mode_rebuildable_reduced_impacts.parquet");
-    fs::write(
-        &releases,
-        "trajectory_id,experiment_id,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,mass_kg,radius_m\n\
-         obs_001,synthetic,0.0,0.0,1.0,1.0,0.0,-0.2,10.0,0.5\n",
-    )
-    .unwrap();
-    fs::write(
-        &depositions,
-        "trajectory_id,experiment_id,x_m,y_m,z_m,release_x_m,release_y_m,release_z_m,observed_runout_m,mass_kg,radius_m\n\
-         obs_001,synthetic,0.5,0.0,0.5,0.0,0.0,1.0,0.5,10.0,0.5\n",
-    )
-    .unwrap();
-    fs::write(
-        &case_path,
-        format!(
-            r#"case_id: validation_output_mode_rebuildable_reduced
-title: Validation output mode rebuildable-reduced
-level: 3
-description: Temporary case that emits only the builder-facing validation outputs needed for hazard rebuilding.
-terrain:
-  type: plane
-  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
-block: {{ mass: 10.0, radius: 0.5 }}
-release:
-  position: [0.0, 0.0, 1.0]
-  velocity: [1.0, 0.0, -0.2]
-  perturbation: {{ position_uniform_m: 0.01, velocity_uniform_mps: 0.01 }}
-parameters:
-  gravity: 9.81
-  normal_restitution: 0.3
-  tangential_restitution: 0.8
-  friction_coefficient: 0.4
-simulation: {{ dt: 0.005, t_max: 0.5, stop_velocity: 0.01 }}
-random: {{ seed: 123, ensemble_size: 3, ensemble_workers: 2 }}
-validation_scope:
-  type: synthetic-regression
-observations:
-  release_points_csv: {}
-  deposition_points_csv: {}
-expected:
-  metrics: [ensemble_mean_runout_m]
-outputs:
-  diagnostics_json: {}
-  manifest_json: {}
-  validation_output_mode: rebuildable_reduced_output
-  trajectory_csv: {}
-  ensemble_deposition_csv: {}
-  impact_events_csv: {}
-  trajectory_metadata_csv: {}
-  ensemble_trajectories_dir: {}
-  ensemble_impact_events_dir: {}
-  ensemble_impact_events_parquet: {}
-  impact_events_json: {}
-"#,
-            releases.display(),
-            depositions.display(),
-            diagnostics.display(),
-            manifest.display(),
-            trajectory.display(),
-            deposition.display(),
-            impact_csv.display(),
-            metadata.display(),
-            ensemble_dir.display(),
-            ensemble_impacts_dir.display(),
-            ensemble_impacts_parquet.display(),
-            impact_json.display()
-        ),
-    )
-    .unwrap();
+    let mut case = load_case(case_path).unwrap();
+    case.outputs.diagnostics_json = Some(diagnostics.clone());
+    case.outputs.manifest_json = Some(manifest.clone());
+    case.outputs.trajectory_csv = Some(trajectory.clone());
+    case.outputs.ensemble_deposition_csv = Some(deposition.clone());
+    case.outputs.trajectory_metadata_csv = Some(metadata.clone());
+    case.outputs.impact_events_csv = Some(impact_csv.clone());
+    case.outputs.impact_events_json = Some(impact_json.clone());
+    case.outputs.ensemble_trajectories_dir = Some(ensemble_dir.clone());
+    case.outputs.ensemble_impact_events_dir = Some(ensemble_impacts_dir.clone());
+    case.outputs.ensemble_impact_events_parquet = Some(ensemble_impacts_parquet.clone());
 
-    let report = run_case_file(&case_path).unwrap();
+    let report = run_case(&case).unwrap();
     assert_eq!(report.status, CaseStatus::Passed);
     assert!(diagnostics.exists());
     assert!(manifest.exists());
@@ -2101,16 +2037,31 @@ outputs:
         ]
     );
     assert_eq!(manifest_json["performance"]["output_file_count"], 6);
+    assert_eq!(
+        manifest_json["trajectory_metadata"]["schema_version"],
+        "trajectory_metadata_table_v1"
+    );
+    assert_eq!(manifest_json["trajectory_metadata"]["row_count"], 6);
+    assert_eq!(
+        manifest_json["stop_state_summary"]["schema_version"],
+        "stop_state_summary_v3"
+    );
+    assert_eq!(manifest_json["stop_state_summary"]["trajectory_count"], 3);
+    let stop_state_path = manifest_json["stop_state_summary"]["path"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(Path::new(&stop_state_path).exists());
+    assert_eq!(manifest_json["stop_state_summary"]["path"], stop_state_path);
 
-    fs::remove_file(case_path).unwrap();
     fs::remove_file(diagnostics).unwrap();
     fs::remove_file(manifest).unwrap();
     fs::remove_file(trajectory).unwrap();
     fs::remove_file(deposition).unwrap();
+    fs::remove_file(stop_state_path).unwrap();
     fs::remove_file(impact_csv).unwrap();
     fs::remove_file(metadata).unwrap();
-    fs::remove_file(releases).unwrap();
-    fs::remove_file(depositions).unwrap();
+    let _ = fs::remove_file(impact_json);
 }
 
 #[test]
