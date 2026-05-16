@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-108: Audit Post-Balfrin Output Tier Sufficiency
-
-Goal: Determine whether the measured `rebuildable_reduced_output` tier is sufficient for the Balfrin demo and future bounded runs.
-
-Capability gap reduced: Scalable execution realism and artifact sufficiency.
-
-Why this outranks alternatives: Output pressure is the dominant known bottleneck, and Balfrin evidence should decide whether current output tiers are enough.
-
-Inspect first:
-
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-
-Deliverables:
-
-- A post-run output-tier audit that reports rebuildability, required family counts, bytes, file counts, curve availability, and omitted-output implications.
-- Tests for sufficient, insufficient, and missing-measured-output states.
-
-Definition of done:
-
-- Output-tier sufficiency is classified with measured or blocked evidence, focused checks pass, and TB-108 is removed from this backlog.
-
-Boundaries: Do not add new output modes unless measured evidence proves the current tier is insufficient; do not call `summary_only` rebuildable.
-
 ### TB-109: Check Balfrin GIS/COG Demonstration Parity
 
 Goal: Verify that the Balfrin demonstration GIS package is usable, COG-ready where expected, and explicit about any layer-scope delta.

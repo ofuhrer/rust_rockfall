@@ -94,10 +94,12 @@ objective are:
    trajectory-metadata, and stop-state artifacts directly and is exposed in the
    same-scale and Balfrin planning paths. The legacy derivation helper remains
    available only as a compatibility and proof fallback. The current execution
-   scaffolding assumes native reduced output for the next Balfrin pilot; the
-   remaining evidence gap is collecting measured reduced-output family counts,
-   output bytes, restartability metadata, and conditional curve counts from an
-   actual Balfrin run.
+   scaffolding assumes native reduced output for the next Balfrin pilot;
+   `scripts/summarize_balfrin_output_tier_audit.py` now records the measured
+   reduced-output family counts, output bytes, restartability metadata, and
+   conditional curve counts from an actual Balfrin run, and the measured tier
+   is classified as sufficient for the current demo boundary without changing
+   the no-scale-up boundary.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
