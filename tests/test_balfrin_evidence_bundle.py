@@ -91,6 +91,57 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             self.assertIn("canonical_bundle_path:", text_report)
             self.assertIn("operational_claims_allowed: False", text_report)
 
+    def test_gis_cog_parity_report_marks_ready_package_as_ready(self) -> None:
+        report = bundle.build_bundle_report(
+            single_job_summary=self.single_job_summary(),
+            probe_metrics=self.probe_metrics(),
+            post_run_report=self.post_run_report(),
+            gis_report=self.ready_gis_report(),
+            source_paths={"single_job_record_paths": {}, "post_run_contract_path": "validation/pilot_runs/contract.yaml"},
+            canonical_bundle_path=Path("validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"),
+        )
+
+        parity = report["gis_cog_parity_report"]
+        self.assertEqual(parity["parity_status"], "ready")
+        self.assertEqual(parity["layer_counts"]["standard"]["validation_balfrin_probe"], 22)
+        self.assertEqual(parity["cog_metadata"]["standard_package_readiness_status"], "gis_package_ready_cog_blocked")
+        self.assertEqual(parity["curve_linkage"]["status"], "linked")
+        self.assertEqual(parity["curve_linkage"]["conditional_curve_row_count"], 729600)
+        self.assertEqual(parity["manifest_consistency"]["status"], "consistent")
+        self.assertEqual(parity["scope_delta"]["status"], "parity_match")
+
+    def test_gis_cog_parity_report_marks_missing_inputs_as_blocked(self) -> None:
+        report = bundle.build_bundle_report(
+            single_job_summary=self.single_job_summary(curve_row_count=None),
+            probe_metrics=self.probe_metrics(),
+            post_run_report=self.post_run_report(),
+            gis_report=self.blocked_gis_report(),
+            source_paths={"single_job_record_paths": {}, "post_run_contract_path": "validation/pilot_runs/contract.yaml"},
+            canonical_bundle_path=Path("validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"),
+        )
+
+        parity = report["gis_cog_parity_report"]
+        self.assertEqual(parity["parity_status"], "blocked_missing_inputs")
+        self.assertEqual(parity["curve_linkage"]["status"], "blocked_missing_inputs")
+        self.assertEqual(parity["manifest_consistency"]["status"], "blocked_missing_inputs")
+
+    def test_gis_cog_parity_report_marks_scope_delta_as_bounded_scope(self) -> None:
+        report = bundle.build_bundle_report(
+            single_job_summary=self.single_job_summary(),
+            probe_metrics=self.probe_metrics(),
+            post_run_report=self.post_run_report(),
+            gis_report=self.bounded_scope_gis_report(),
+            source_paths={"single_job_record_paths": {}, "post_run_contract_path": "validation/pilot_runs/contract.yaml"},
+            canonical_bundle_path=Path("validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"),
+        )
+
+        parity = report["gis_cog_parity_report"]
+        self.assertEqual(parity["parity_status"], "bounded_scope")
+        self.assertEqual(parity["scope_delta"]["status"], "scope_delta")
+        self.assertEqual(parity["scope_delta"]["converted_package_layer_inventory_status"], "scope_reduced")
+        self.assertEqual(parity["layer_counts"]["converted"]["validation_balfrin_probe"], 20)
+        self.assertEqual(parity["curve_linkage"]["status"], "linked")
+
     def complete_bundle_report(self) -> dict[str, object]:
         return {
             "schema_version": "balfrin_evidence_bundle_v1",
@@ -164,6 +215,161 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             "scale_up_authorized": False,
         }
         return report
+
+    def ready_gis_report(self) -> dict[str, object]:
+        artifact_id = "validation_balfrin_probe"
+        return {
+            "schema_version": "tschamut_gis_cog_package_readiness_v1",
+            "gis_cog_readiness_status": "gis_package_ready_cog_blocked",
+            "readiness_status": "gis_package_ready_cog_blocked",
+            "standard_package_readiness_status": "gis_package_ready_cog_blocked",
+            "standard_package_layer_counts": {artifact_id: 22},
+            "standard_package_status": {artifact_id: "gis_package_ready_cog_blocked"},
+            "converted_package_readiness_status": "not_provided",
+            "converted_package_layer_inventory_status": "not_provided",
+            "converted_package_layer_counts": {},
+            "converted_package_status": {},
+            "converted_package_scope_boundaries": {},
+            "converted_package_scope_deltas": {},
+            "hazard_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_manifest.json",
+            },
+            "map_package_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_map_package_manifest.json",
+            },
+            "pilot_gis_package_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_pilot_gis_package_manifest.json",
+            },
+            "cog_readiness_indicators": {
+                "gdalinfo_available": True,
+                "sample_raster_cog_layout": True,
+                "sample_raster_tiled": True,
+                "sample_raster_overviews": True,
+            },
+            "converted_sample_status": "not_provided",
+            "qgis_manual_qa_status": "not_run",
+            "artifacts_audited": 1,
+            "artifact_roots": ["hazard/results/tschamut_public_pilot/balfrin_demo_v1"],
+        }
+
+    def blocked_gis_report(self) -> dict[str, object]:
+        return {
+            "schema_version": "tschamut_gis_cog_package_readiness_v1",
+            "gis_cog_readiness_status": "blocked_missing_inputs",
+            "readiness_status": "blocked_missing_inputs",
+            "standard_package_readiness_status": "blocked_missing_inputs",
+            "standard_package_layer_counts": {},
+            "standard_package_status": {},
+            "converted_package_readiness_status": "not_provided",
+            "converted_package_layer_inventory_status": "not_provided",
+            "converted_package_layer_counts": {},
+            "converted_package_status": {},
+            "converted_package_scope_boundaries": {},
+            "converted_package_scope_deltas": {},
+            "hazard_manifest_paths": {},
+            "map_package_manifest_paths": {},
+            "pilot_gis_package_manifest_paths": {},
+            "cog_readiness_indicators": {
+                "gdalinfo_available": False,
+                "sample_raster_cog_layout": False,
+                "sample_raster_tiled": False,
+                "sample_raster_overviews": False,
+            },
+            "converted_sample_status": "blocked_missing_inputs",
+            "qgis_manual_qa_status": "not_run",
+            "artifacts_audited": 0,
+            "artifact_roots": [],
+        }
+
+    def bounded_scope_gis_report(self) -> dict[str, object]:
+        artifact_id = "validation_balfrin_probe"
+        return {
+            "schema_version": "tschamut_gis_cog_package_readiness_v1",
+            "gis_cog_readiness_status": "gis_package_ready_cog_blocked",
+            "readiness_status": "gis_package_ready_cog_blocked",
+            "standard_package_readiness_status": "gis_package_ready_cog_blocked",
+            "standard_package_layer_counts": {artifact_id: 22},
+            "standard_package_status": {artifact_id: "gis_package_ready_cog_blocked"},
+            "converted_package_readiness_status": "cog_package_ready_with_scope_delta",
+            "converted_package_layer_inventory_status": "scope_reduced",
+            "converted_package_layer_counts": {artifact_id: 20},
+            "converted_package_status": {artifact_id: "cog_package_ready_with_scope_delta"},
+            "converted_package_scope_boundaries": {
+                artifact_id: {
+                    "status": "bounded_scope",
+                    "reference_layer_count": 22,
+                    "exported_layer_count": 20,
+                    "omitted_layer_count": 2,
+                    "extra_layer_count": 0,
+                }
+            },
+            "converted_package_scope_deltas": {
+                artifact_id: {
+                    "status": "scope_delta",
+                    "missing_layer_count": 2,
+                    "missing_layer_names": ["jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"],
+                    "extra_layer_count": 0,
+                    "extra_layer_names": [],
+                }
+            },
+            "hazard_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_manifest.json",
+            },
+            "map_package_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_map_package_manifest.json",
+            },
+            "pilot_gis_package_manifest_paths": {
+                artifact_id: "hazard/results/tschamut_public_pilot/balfrin_demo_v1/validation_balfrin_probe_pilot_gis_package_manifest.json",
+            },
+            "cog_readiness_indicators": {
+                "gdalinfo_available": True,
+                "sample_raster_cog_layout": True,
+                "sample_raster_tiled": True,
+                "sample_raster_overviews": True,
+            },
+            "converted_sample_status": "cog_conversion_sample_ready",
+            "qgis_manual_qa_status": "not_run",
+            "artifacts_audited": 1,
+            "artifact_roots": ["hazard/results/tschamut_public_pilot/balfrin_demo_v1"],
+        }
+
+    def single_job_summary(self, *, curve_row_count: int | None = 729600) -> dict[str, object]:
+        return {
+            "schema_version": "balfrin_single_job_execution_sufficiency_v1",
+            "pilot_id": "tschamut_public_pilot",
+            "run_id": "tschamut_public_conditional_gate_v1",
+            "decision": "defer",
+            "single_job_sufficient_for_next_step": True,
+            "metrics_contract": {
+                "status": "complete",
+                "mandatory_metrics": {
+                    "conditional_curve_row_count": curve_row_count,
+                    "restartability_metadata": {
+                        "trajectory_plan_id": "trajectory-plan",
+                        "reducer_plan_id": "reducer-plan",
+                    },
+                },
+            },
+            "record_paths": {},
+        }
+
+    def probe_metrics(self) -> dict[str, object]:
+        return {
+            "status": "complete",
+            "wall_time_seconds": 17.84,
+            "memory_peak_mb": 409.22,
+            "validation_output": {"file_count": 2005, "bytes": 571377719},
+            "hazard_output": {"file_count": 46, "bytes": 16613900},
+        }
+
+    def post_run_report(self) -> dict[str, object]:
+        return {
+            "schema_version": "balfrin_post_run_interpretation_gate_v1",
+            "interpretation_status": "measured_conditional_diagnostic",
+            "artifact_acceptance_status": "accepted_conditional_diagnostic",
+            "usable_as_conditional_diagnostic_artifact": True,
+            "claim_boundaries": self.claim_boundaries(),
+        }
 
     def claim_boundaries(self) -> dict[str, bool]:
         return {

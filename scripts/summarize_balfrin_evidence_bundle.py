@@ -26,6 +26,7 @@ from scripts import summarize_balfrin_single_job_execution as single_job
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_evidence_bundle_v1"
+GIS_COG_PARITY_SCHEMA_VERSION = "balfrin_gis_cog_parity_report_v1"
 CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
@@ -145,6 +146,7 @@ def build_bundle_report(
     canonical_bundle_path: Path = CANONICAL_BUNDLE_DIR,
 ) -> dict[str, Any]:
     source_paths = source_paths or {}
+    gis_cog_parity_report = build_gis_cog_parity_report(single_job_summary=single_job_summary, gis_report=gis_report)
     bundle_status, bundle_blockers = derive_bundle_status(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
@@ -167,6 +169,7 @@ def build_bundle_report(
         "probe_metrics": probe_metrics,
         "post_run_interpretation_gate_report": post_run_report,
         "gis_cog_readiness_report": gis_report,
+        "gis_cog_parity_report": gis_cog_parity_report,
         "claim_boundaries": claim_boundaries,
         "source_paths": source_paths,
         "evidence_sources": evidence_sources(source_paths),
@@ -210,6 +213,7 @@ def blocked_report(
             "operational_claims_allowed": False,
             "scale_up_authorized": False,
         },
+        "gis_cog_parity_report": build_gis_cog_parity_report(),
         "claim_boundaries": post_run_gate.claim_boundaries(),
         "source_paths": {},
         "evidence_sources": evidence_sources({}),
@@ -255,6 +259,18 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  distributed_execution_authorized: {report['claim_boundaries'].get('distributed_execution_authorized', False)}",
         ]
     )
+    parity_report = report.get("gis_cog_parity_report")
+    if isinstance(parity_report, dict):
+        lines.extend(
+            [
+                "gis_cog_parity_report:",
+                f"  parity_status: {parity_report.get('parity_status', 'unknown')}",
+                f"  layer_counts: {parity_report.get('layer_counts', {})}",
+                f"  curve_linkage: {parity_report.get('curve_linkage', {})}",
+                f"  manifest_consistency: {parity_report.get('manifest_consistency', {})}",
+                f"  scope_delta: {parity_report.get('scope_delta', {})}",
+            ]
+        )
     if report.get("missing_inputs"):
         lines.append("missing_inputs:")
         lines.extend(f"  - {item}" for item in report["missing_inputs"])
@@ -284,6 +300,95 @@ def build_source_paths(*, single_job_summary: dict[str, Any], gis_report: dict[s
         "single_job_record_paths": single_job_summary.get("record_paths", {}),
         "post_run_contract_path": post_run_gate.DEFAULT_CONTRACT.as_posix(),
         "gis_artifact_roots": gis_report.get("artifact_roots", []),
+    }
+
+
+def build_gis_cog_parity_report(
+    *,
+    single_job_summary: dict[str, Any] | None = None,
+    gis_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    single_job_summary = single_job_summary or {}
+    gis_report = gis_report or {}
+    standard_package_readiness_status = str(gis_report.get("standard_package_readiness_status") or "blocked_missing_inputs")
+    converted_package_readiness_status = str(gis_report.get("converted_package_readiness_status") or "not_provided")
+    converted_package_layer_inventory_status = str(gis_report.get("converted_package_layer_inventory_status") or "not_provided")
+    standard_layer_counts = gis_report.get("standard_package_layer_counts") or {}
+    converted_layer_counts = gis_report.get("converted_package_layer_counts") or {}
+    converted_scope_deltas = gis_report.get("converted_package_scope_deltas") or {}
+    converted_scope_boundaries = gis_report.get("converted_package_scope_boundaries") or {}
+    hazard_manifest_paths = gis_report.get("hazard_manifest_paths") or {}
+    map_package_manifest_paths = gis_report.get("map_package_manifest_paths") or {}
+    pilot_gis_package_manifest_paths = gis_report.get("pilot_gis_package_manifest_paths") or {}
+    curve_row_count = (
+        single_job_summary.get("metrics_contract", {})
+        .get("mandatory_metrics", {})
+        .get("conditional_curve_row_count")
+    )
+    curve_linked = curve_row_count is not None and curve_row_count > 0
+    hazard_keys = set(hazard_manifest_paths) if isinstance(hazard_manifest_paths, dict) else set()
+    map_keys = set(map_package_manifest_paths) if isinstance(map_package_manifest_paths, dict) else set()
+    pilot_keys = set(pilot_gis_package_manifest_paths) if isinstance(pilot_gis_package_manifest_paths, dict) else set()
+    manifest_keys = sorted(hazard_keys | map_keys | pilot_keys)
+    manifest_consistent = bool(manifest_keys) and hazard_keys == map_keys == pilot_keys
+    has_scope_delta = converted_package_layer_inventory_status in {"scope_reduced", "scope_extended", "inventory_mismatch"}
+    has_scope_delta = has_scope_delta or any(
+        isinstance(delta, dict) and delta.get("status") == "scope_delta" for delta in converted_scope_deltas.values()
+    )
+    if gis_report.get("gis_cog_readiness_status") == "blocked_missing_inputs":
+        parity_status = "blocked_missing_inputs"
+    elif not manifest_consistent or not curve_linked:
+        parity_status = "blocked_missing_inputs"
+    elif has_scope_delta:
+        parity_status = "bounded_scope"
+    else:
+        parity_status = "ready"
+    return {
+        "schema_version": GIS_COG_PARITY_SCHEMA_VERSION,
+        "parity_status": parity_status,
+        "readiness_status": parity_status,
+        "layer_counts": {
+            "standard": standard_layer_counts,
+            "converted": converted_layer_counts,
+        },
+        "cog_metadata": {
+            "standard_package_readiness_status": standard_package_readiness_status,
+            "converted_package_readiness_status": converted_package_readiness_status,
+            "standard_package_status": gis_report.get("standard_package_status", {}),
+            "converted_package_status": gis_report.get("converted_package_status", {}),
+            "cog_readiness_indicators": gis_report.get("cog_readiness_indicators", {}),
+            "converted_sample_status": gis_report.get("converted_sample_status", "not_provided"),
+            "qgis_manual_qa_status": gis_report.get("qgis_manual_qa_status", "not_run"),
+        },
+        "curve_linkage": {
+            "status": "linked" if curve_linked else "blocked_missing_inputs",
+            "conditional_curve_row_count": curve_row_count,
+            "trajectory_plan_id": single_job_summary.get("metrics_contract", {})
+            .get("mandatory_metrics", {})
+            .get("restartability_metadata", {})
+            .get("trajectory_plan_id"),
+            "reducer_plan_id": single_job_summary.get("metrics_contract", {})
+            .get("mandatory_metrics", {})
+            .get("restartability_metadata", {})
+            .get("reducer_plan_id"),
+        },
+        "manifest_consistency": {
+            "status": "consistent" if manifest_consistent else "blocked_missing_inputs",
+            "artifact_ids": manifest_keys,
+            "hazard_manifest_paths": hazard_manifest_paths,
+            "map_package_manifest_paths": map_package_manifest_paths,
+            "pilot_gis_package_manifest_paths": pilot_gis_package_manifest_paths,
+        },
+        "scope_delta": {
+            "status": "scope_delta" if has_scope_delta else "parity_match",
+            "converted_package_layer_inventory_status": converted_package_layer_inventory_status,
+            "converted_package_scope_boundaries": converted_scope_boundaries,
+            "converted_package_scope_deltas": converted_scope_deltas,
+        },
+        "sources": {
+            "single_job_summary": single_job_summary.get("record_paths", {}),
+            "gis_artifact_roots": gis_report.get("artifact_roots", []),
+        },
     }
 
 

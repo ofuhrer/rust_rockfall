@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-109: Check Balfrin GIS/COG Demonstration Parity
-
-Goal: Verify that the Balfrin demonstration GIS package is usable, COG-ready where expected, and explicit about any layer-scope delta.
-
-Capability gap reduced: Demonstration-grade GIS/product usability.
-
-Why this outranks alternatives: Management-facing demos need visual and package coherence, but this should stay machine-auditable rather than manual polish.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `docs/pilot_gis_package.md`
-- `docs/balfrin_post_run_interpretation_gate.md`
-
-Deliverables:
-
-- A GIS/COG parity report for the Balfrin demo package covering layer counts, COG metadata, curve linkage, manifest consistency, and scope delta.
-- Tests for ready, blocked, and bounded-scope package states.
-
-Definition of done:
-
-- The GIS/COG parity report is emitted from measured or fixture evidence, focused checks pass, and TB-109 is removed from this backlog.
-
-Boundaries: Do not commit generated rasters, do not require manual QGIS QA unless artifacts and QGIS are actually available, and do not make operational GIS claims.
-
 ### TB-110: Audit Demo Claim Boundaries
 
 Goal: Machine-check that all Balfrin demo outputs preserve non-operational, non-annual, non-risk, non-exposure, non-vulnerability, and non-physical-probability boundaries.
