@@ -18,37 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-077: Prototype AOI-To-Release-Zone Heuristic Dry Run
-
-Goal: Start closing the automation gap between "user provides a region" and a
-candidate release-zone set by defining a deterministic, fixture-backed heuristic
-dry run.
-
-Inspect first:
-
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A dry-run helper or report that accepts an AOI/site config and emits candidate
-  release-zone heuristic requirements, inputs, and blocked/missing products.
-- A tiny fixture-backed example that does not claim the synthetic candidate is a
-  real public-geodata release-zone interpretation.
-- Documentation of heuristic assumptions and missing terrain/context
-  prerequisites for a real site.
-
-Definition of done:
-
-- The dry run produces deterministic JSON/text output for the Chant Sura fixture
-  and reports `deferred_public_context_inputs` where real context is absent.
-
-Boundaries: Do not download public data, run a second-site ensemble, tune
-  release-zone physics, or treat synthetic fixtures as field evidence.
-
 ### TB-078: Generate Pragmatic Release-Plan Dry Run
 
 Goal: Define how a portable source-zone candidate becomes deterministic release

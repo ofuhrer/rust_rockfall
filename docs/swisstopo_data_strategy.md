@@ -196,23 +196,27 @@ conditional diagnostic workflow.
    preparation manifest template to an ignored pilot directory and fill in the
    domain, source-tile inventory, local paths, and preprocessing plan before
    any simulation work.
-3. Obtain the required swissALTI3D 2 m tiles manually or through a documented
+3. Run the release-zone heuristic dry run against the same site config to
+   separate heuristic requirements from concrete inputs and to document which
+   terrain and public-context prerequisites are still missing before any real
+   release-zone interpretation is claimed.
+4. Obtain the required swissALTI3D 2 m tiles manually or through a documented
    swisstopo download process. Use 0.5 m only when the pilot question requires
    it and storage is acceptable.
-4. Record source tile ids, product version/date, CRS, vertical datum, checksum,
+5. Record source tile ids, product version/date, CRS, vertical datum, checksum,
    and license/terms reference.
-5. Crop the tiles to the pilot domain with a small buffer and convert to the
+6. Crop the tiles to the pilot domain with a small buffer and convert to the
    internal DEM representation; preserve LV95 coordinates and LN02 heights.
-6. Compute slope/aspect/hillshade for QA and define release zones from a slope
+7. Compute slope/aspect/hillshade for QA and define release zones from a slope
    threshold plus a documented geology/material mask.
-7. Run deterministic ensembles with explicit scenario ids, global seed, release
+8. Run deterministic ensembles with explicit scenario ids, global seed, release
    cell ids, and trajectory ids.
-8. Build hazard layers: reach probability, deposition density, maximum kinetic
+9. Build hazard layers: reach probability, deposition density, maximum kinetic
    energy, maximum jump height, and significant impact density where impact
    events are available.
-9. Export development products as CSV/ASCII for inspection; for real pilot
+10. Export development products as CSV/ASCII for inspection; for real pilot
    exchange, move toward GeoTIFF/COG rasters and GeoPackage/GeoJSON vectors.
-10. Visually compare terrain, release zones, and hazard layers against
+11. Visually compare terrain, release zones, and hazard layers against
     SWISSIMAGE and hillshade. Treat the result as a research diagnostic unless
     separately reviewed and validated.
 

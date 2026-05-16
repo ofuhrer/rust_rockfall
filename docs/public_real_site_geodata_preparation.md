@@ -242,6 +242,16 @@ swisstopo product categories, expected staging paths, and unresolved
 acquisition decisions so the future staging choice stays explicit before
 downloads or copies are attempted.
 
+The follow-on dry-run helper,
+`scripts/plan_release_zone_heuristic_dry_run.py`, keeps the same Chant Sura /
+Flüelapass fixture-backed site config but shifts the report from acquisition to
+release-zone screening. It enumerates the deterministic heuristic
+requirements, the concrete terrain and source/scenario inputs that are already
+staged, and the public-context products that remain blocked or deferred. The
+helper is intentionally not a release-zone interpretation: it stops at the dry
+run boundary and reports `deferred_public_context_inputs` when real context is
+absent.
+
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
 Chant Sura / Flüelapass public-context acquisition separate from physical
