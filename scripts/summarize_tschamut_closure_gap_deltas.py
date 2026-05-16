@@ -191,6 +191,10 @@ def build_layer_summary(
     summary = {
         "layer_key": layer_key,
         "closure_role": layer.get("closure_role"),
+        "stability_zone_class": layer.get("stability_zone_class"),
+        "stability_zone_dominant_category": layer.get("stability_zone_dominant_category"),
+        "stability_zone_dominant_high_uncertainty_category": layer.get("stability_zone_dominant_high_uncertainty_category"),
+        "stability_zone_closure_role_impact": layer.get("stability_zone_closure_role_impact"),
         "disagreement_decomposition_class": layer.get("disagreement_decomposition_class"),
         "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
         "high_uncertainty_cell_count": layer.get("high_uncertainty_cell_count"),
@@ -226,6 +230,8 @@ def build_layer_summary(
             "high_uncertainty_bbox_compactness": (
                 reference.get("high_uncertainty_cell_count", 0) / ref_bbox_cell_area if ref_bbox_cell_area else 0.0
             ),
+            "stability_zone_class": reference.get("stability_zone_class"),
+            "stability_zone_dominant_category": reference.get("stability_zone_dominant_category"),
         }
     return summary
 
@@ -435,6 +441,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             "  - "
             + item["layer_key"]
             + f" | role={item['closure_role']}"
+            + f" | stability={item.get('stability_zone_class')}"
             + f" | class={item['disagreement_decomposition_class']}"
             + f" | support/nodata={item['high_uncertainty_support_nodata_fraction']:.6g}"
             + f" | shared-support magnitude={item['high_uncertainty_shared_support_magnitude_fraction']:.6g}"
@@ -445,6 +452,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             "  - "
             + item["layer_key"]
             + f" | role={item['closure_role']}"
+            + f" | stability={item.get('stability_zone_class')}"
             + f" | class={item['disagreement_decomposition_class']}"
             + f" | support/nodata={item['high_uncertainty_support_nodata_fraction']:.6g}"
             + f" | shared-support magnitude={item['high_uncertainty_shared_support_magnitude_fraction']:.6g}"

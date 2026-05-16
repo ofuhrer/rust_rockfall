@@ -16,31 +16,7 @@ only labels, validators, or roadmap/status churn.
 
 ## Active Tasks
 
-### TB-059: Emit Persistent Spatial Disagreement Stability Zones
-
-Goal: TB-052 and TB-053 decomposed closure-limiting uncertainty, but workers still need a compact spatial product that distinguishes persistent closure-limiting regions from localized deferrable disagreement. Reduces: scientific interpretability and uncertainty understanding.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- JSON/text summary of stability zones for `max_kinetic_energy`, `max_jump_height`, and `velocity_exceedance_5mps`;
-- counts, bounding boxes, and fractions for persistent closure-limiting, deferrable localized, shared-support magnitude, and support/nodata-sensitive cells;
-- optional scratch-only CSV/GeoJSON products under `/tmp` for review.
-
-Definition of done:
-
-- closure helper consumes or references the stability-zone summary;
-- docs state whether the stability zones change the closure status, which is expected to remain conservative unless evidence proves otherwise;
-- focused tests cover the classification rules.
-
-Boundaries: no tuning, no physics change, no new ensemble, no accepted/no-go
-status change unless directly justified by existing measured evidence.
+_Backlog refill needed: no active TB tasks remain._
 
 ### TB-060: Trace Uncertainty Hotspots To Source And Scenario Evidence
 

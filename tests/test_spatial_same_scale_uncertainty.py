@@ -52,6 +52,51 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 report["layer_summaries"]["velocity_exceedance_5mps"]["disagreement_decomposition"]["classification"],
                 "mixed_support_and_magnitude",
             )
+            self.assertEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["stability_zone_summary"]["layer_stability_zone_class"],
+                "persistent_closure_limiting",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["max_jump_height"]["stability_zone_summary"]["layer_stability_zone_class"],
+                "persistent_closure_limiting",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["layer_stability_zone_class"],
+                "support_nodata_sensitive",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["stability_zone_summary"]["dominant_zone_category"],
+                "persistent_agreement",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["max_jump_height"]["stability_zone_summary"]["dominant_zone_category"],
+                "persistent_agreement",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["dominant_zone_category"],
+                "support_nodata_sensitive",
+            )
+            self.assertGreater(
+                report["layer_summaries"]["max_kinetic_energy"]["stability_zone_summary"]["zone_counts"]["shared_support_magnitude"],
+                0,
+            )
+            self.assertGreater(
+                report["layer_summaries"]["max_jump_height"]["stability_zone_summary"]["zone_counts"]["persistent_agreement"],
+                0,
+            )
+            self.assertGreater(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["zone_counts"]["persistent_agreement"],
+                0,
+            )
+            self.assertIsNotNone(
+                report["layer_summaries"]["max_kinetic_energy"]["stability_zone_summary"]["zone_bboxes"]["shared_support_magnitude"],
+            )
+            self.assertIsNotNone(
+                report["layer_summaries"]["max_jump_height"]["stability_zone_summary"]["zone_bboxes"]["persistent_agreement"],
+            )
+            self.assertIsNotNone(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["zone_bboxes"]["persistent_agreement"],
+            )
             self.assertGreaterEqual(
                 report["layer_summaries"]["max_kinetic_energy"]["high_uncertainty_shared_support_magnitude_fraction"],
                 0.5,
@@ -86,6 +131,9 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("dominated_by_nodata_support_differences", rendered)
             self.assertIn("mask role=", rendered)
             self.assertIn("decomposition=", rendered)
+            self.assertIn("stability zone=persistent_closure_limiting", rendered)
+            self.assertIn("support_nodata_sensitive", rendered)
+            self.assertIn("persistent_agreement", rendered)
 
             payload = json.loads(json.dumps(report))
             self.assertEqual(payload["schema_version"], summary_script.SCHEMA_VERSION)
@@ -117,6 +165,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
 
             report = summary_script.build_report(tuple(artifacts), summary_script.DEFAULT_HAZARD_LAYERS, top_n=2)
             self.assertEqual(report["spatial_uncertainty_status"], "blocked_missing_inputs")
+            self.assertEqual(report["stability_zone_status"], "blocked_missing_inputs")
             self.assertIn("missing", report["blocked_reason"])
             self.assertTrue(report["missing_input_paths"])
 

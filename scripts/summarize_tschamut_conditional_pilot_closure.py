@@ -286,10 +286,12 @@ def layer_closure_role(spatial_uncertainty: dict[str, Any], layer_key: str) -> s
 
 def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[str, Any]:
     layer_roles = {}
+    stability_zone_layer_summaries = {}
     for layer_key in ("max_kinetic_energy", "max_jump_height", "velocity_exceedance_5mps"):
         layer = spatial_layer_summary(spatial_uncertainty, layer_key)
         mask = layer.get("mask_evidence") or {}
         decomposition = layer.get("disagreement_decomposition") or {}
+        stability_zone = layer.get("stability_zone_summary") or {}
         layer_roles[layer_key] = {
             "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
             "closure_role": layer_closure_role(spatial_uncertainty, layer_key),
@@ -305,6 +307,11 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
             "high_uncertainty_shared_support_magnitude_fraction": layer.get("high_uncertainty_shared_support_magnitude_fraction"),
             "disagreement_decomposition_class": decomposition.get("classification"),
             "disagreement_decomposition": decomposition,
+            "stability_zone_class": stability_zone.get("layer_stability_zone_class"),
+            "stability_zone_dominant_category": stability_zone.get("dominant_zone_category"),
+            "stability_zone_dominant_high_uncertainty_category": stability_zone.get("dominant_high_uncertainty_zone_category"),
+            "stability_zone_closure_role_impact": stability_zone.get("closure_role_impact"),
+            "stability_zone_summary": stability_zone,
             "mask_status": mask.get("mask_status"),
             "mask_closure_role": mask.get("closure_role"),
             "high_uncertainty_cell_count": mask.get("high_uncertainty_cell_count"),
@@ -313,6 +320,7 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
             "mask_bbox": mask.get("mask_bbox"),
             "mask_path": mask.get("mask_path"),
         }
+        stability_zone_layer_summaries[layer_key] = stability_zone
     overall_role = spatial_uncertainty.get("spatial_interpretation")
     if overall_role == "nodata_support_dominated":
         overall_closure_role = "closure_limiting"
@@ -327,11 +335,24 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
         "spatial_interpretation": overall_role,
         "overall_closure_role": overall_closure_role,
         "layer_roles": layer_roles,
+        "stability_zone_summary": {
+            "stability_zone_status": spatial_uncertainty.get("stability_zone_status"),
+            "layer_summaries": stability_zone_layer_summaries,
+            "overall_closure_role_change": stability_zone_overall_change(stability_zone_layer_summaries),
+        },
         "dominant_layers": spatial_uncertainty.get("dominant_layers_by_mean_range", []),
         "dominant_layer_summaries": spatial_uncertainty.get("dominant_layer_summaries", []),
         "mask_status": spatial_uncertainty.get("mask_status"),
         "blocked_reason": spatial_uncertainty.get("blocked_reason", ""),
     }
+
+
+def stability_zone_overall_change(stability_zone_layer_summaries: dict[str, Any]) -> str:
+    if not stability_zone_layer_summaries:
+        return "blocked"
+    if all((layer or {}).get("closure_role_impact") == "no_change" for layer in stability_zone_layer_summaries.values()):
+        return "no_change"
+    return "mixed"
 
 
 def build_criteria_matrix(
@@ -733,7 +754,24 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "no_go_criteria": no_go_requirements(),
         "deferred_criteria": deferred_requirements(),
         "criteria_matrix": [],
-        "current_evidence": {},
+        "spatial_uncertainty_interpretation": {
+            "spatial_uncertainty_status": "blocked_missing_inputs",
+            "overall_closure_role": "blocked",
+            "layer_roles": {},
+            "stability_zone_summary": {
+                "stability_zone_status": "blocked_missing_inputs",
+                "overall_closure_role_change": "blocked",
+                "layer_summaries": {},
+            },
+        },
+        "current_evidence": {
+            "closure": {
+                "stability_zone_summary": {
+                    "stability_zone_status": "blocked_missing_inputs",
+                    "overall_closure_role_change": "blocked",
+                }
+            }
+        },
         "current_blockers": [],
         "current_follow_up_blockers": [],
         "missing_inputs": missing_inputs,
@@ -775,6 +813,29 @@ def render_text_report(report: dict[str, Any]) -> str:
                     f"  decomposition={decomposition.get('classification')} | "
                     f"support/nodata={fractions.get('support_nodata', 0.0):.6g} | "
                     f"shared-support magnitude={fractions.get('shared_support_magnitude', 0.0):.6g}"
+                )
+            stability_zone = layer.get("stability_zone_summary") or {}
+            if stability_zone:
+                zone_counts = stability_zone.get("zone_counts") or {}
+                zone_fractions = stability_zone.get("zone_fractions") or {}
+                lines.append(
+                    f"  stability={stability_zone.get('layer_stability_zone_class')} | "
+                    f"dominant={stability_zone.get('dominant_zone_category')} | "
+                    f"high-uncertainty={stability_zone.get('dominant_high_uncertainty_zone_category')} | "
+                    f"closure-role-change={stability_zone.get('closure_role_impact')}"
+                )
+                lines.append(
+                    "  zone counts="
+                    f"{zone_counts.get('support_nodata_sensitive', 0)}/"
+                    f"{zone_counts.get('shared_support_magnitude', 0)}/"
+                    f"{zone_counts.get('persistent_agreement', 0)}"
+                    " (support/nodata-sensitive / shared-support magnitude / persistent agreement)"
+                )
+                lines.append(
+                    "  zone fractions="
+                    f"{zone_fractions.get('support_nodata_sensitive', 0.0):.6g}/"
+                    f"{zone_fractions.get('shared_support_magnitude', 0.0):.6g}/"
+                    f"{zone_fractions.get('persistent_agreement', 0.0):.6g}"
                 )
     lines.append(
         "scale_up_authorized=false operational_claims_allowed=false"

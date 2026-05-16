@@ -564,6 +564,13 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("physical_credibility_blockers:")
     for blocker in report.get("physical_credibility_blockers", []):
         lines.append(f"  - {blocker}")
+    stability_zone_summary = (
+        report.get("current_evidence", {})
+        .get("closure", {})
+        .get("stability_zone_summary", {})
+    )
+    if stability_zone_summary:
+        lines.append(f"stability_zone_summary: {json.dumps(stability_zone_summary, sort_keys=True)}")
     lines.extend(
         [
             f"legacy_summary_only_status: {report['output_profile_status'].get('legacy_summary_only_status')}",

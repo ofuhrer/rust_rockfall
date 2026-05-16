@@ -57,6 +57,8 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertIn("velocity_exceedance_5mps", report["deferred_gap"]["supporting_layers"])
         self.assertIn("summary_only_not_rebuildable", {item["blocker_key"] for item in report["workflow_product_blocker_deltas"]})
         self.assertIn("standard_gis_roots_cog_blocked", {item["blocker_key"] for item in report["workflow_product_blocker_deltas"]})
+        self.assertEqual(report["closure_limiting_layers"][0]["stability_zone_class"], "persistent_closure_limiting")
+        self.assertEqual(report["deferrable_layers"][0]["stability_zone_class"], "deferrable_localized")
 
         scientific = {item["layer_key"]: item for item in report["scientific_blocker_deltas"]}
         self.assertGreater(scientific["max_jump_height"]["support_nodata_fraction_delta"], 0.0)
@@ -70,6 +72,7 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertIn("max_kinetic_energy", text)
         self.assertIn("max_jump_height", text)
         self.assertIn("velocity_exceedance_5mps", text)
+        self.assertIn("stability=persistent_closure_limiting", text)
         self.assertIn("workflow_product_blocker_deltas:", text)
         self.assertIn("summary_only_not_rebuildable", text)
         self.assertIn("claim_boundaries:", text)
@@ -142,9 +145,17 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
                         "spatial_uncertainty_interpretation": {
                             "spatial_interpretation": "nodata_support_dominated",
                             "overall_closure_role": "closure_limiting",
+                            "stability_zone_summary": {
+                                "stability_zone_status": "measured_existing_artifacts",
+                                "overall_closure_role_change": "no_change",
+                            },
                             "layer_roles": {
                                 "max_kinetic_energy": {
                                     "closure_role": "closure_limiting",
+                                    "stability_zone_class": "persistent_closure_limiting",
+                                    "stability_zone_dominant_category": "shared_support_magnitude",
+                                    "stability_zone_dominant_high_uncertainty_category": "shared_support_magnitude",
+                                    "stability_zone_closure_role_impact": "no_change",
                                     "disagreement_decomposition_class": "shared_support_magnitude_dominated",
                                     "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
                                     "high_uncertainty_cell_count": 4,
@@ -168,6 +179,10 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
                                 },
                                 "max_jump_height": {
                                     "closure_role": "closure_limiting",
+                                    "stability_zone_class": "persistent_closure_limiting",
+                                    "stability_zone_dominant_category": "persistent_agreement",
+                                    "stability_zone_dominant_high_uncertainty_category": "support_nodata_sensitive",
+                                    "stability_zone_closure_role_impact": "no_change",
                                     "disagreement_decomposition_class": "mixed_support_and_magnitude",
                                     "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
                                     "high_uncertainty_cell_count": 2,
@@ -191,6 +206,10 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
                                 },
                                 "velocity_exceedance_5mps": {
                                     "closure_role": "deferrable",
+                                    "stability_zone_class": "deferrable_localized",
+                                    "stability_zone_dominant_category": "persistent_agreement",
+                                    "stability_zone_dominant_high_uncertainty_category": "shared_support_magnitude",
+                                    "stability_zone_closure_role_impact": "no_change",
                                     "disagreement_decomposition_class": "shared_support_magnitude_dominated",
                                     "uncertainty_concentration_class": "spatially_localized_shared_support_magnitude",
                                     "high_uncertainty_cell_count": 1,

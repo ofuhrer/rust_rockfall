@@ -72,6 +72,36 @@ small same-scale corridor, while `max_jump_height` remains the layer most
 affected by nodata/support differences. This does not change the existing
 `inconclusive` convergence interpretation.
 
+## Persistent Spatial Disagreement Stability Zones
+
+The same measured masks can also be summarized as stability zones, which keeps
+the closure-limiting layers visible without changing the science status:
+
+- `max_kinetic_energy`: `persistent_closure_limiting`; dominant zone category
+  `shared_support_magnitude`; high-uncertainty zone category
+  `shared_support_magnitude`; zone counts over the evaluated cells are
+  `support_nodata_sensitive=66` (`0.2237288136`), `shared_support_magnitude=228`
+  (`0.7728813559`), and `persistent_agreement=1`
+  (`0.0033898305`); closure-role impact is `no_change`.
+- `max_jump_height`: `persistent_closure_limiting`; dominant zone category
+  `shared_support_magnitude`; high-uncertainty zone category
+  `shared_support_magnitude`; zone counts over the evaluated cells are
+  `support_nodata_sensitive=122` (`0.4135593220`),
+  `shared_support_magnitude=136` (`0.4610169492`), and
+  `persistent_agreement=2` (`0.0067796610`); closure-role impact is
+  `no_change`.
+- `velocity_exceedance_5mps`: `deferrable_localized`; dominant zone category
+  `support_nodata_sensitive`; high-uncertainty zone category
+  `shared_support_magnitude`; zone counts over the evaluated cells are
+  `support_nodata_sensitive=66` (`0.0007236842`),
+  `shared_support_magnitude=213` (`0.0023355263`), and
+  `persistent_agreement=0`; closure-role impact is `no_change`.
+
+The new stability-zone summary is therefore a compact interpretation aid, not a
+new acceptance criterion. It makes the persistent closure-limiting regions and
+the localized deferrable disagreement explicit, but it does not change the
+current `inconclusive` closure status.
+
 For the decision delta between the closure-limiting layers and the deferrable
 velocity layer, see
 `scripts/summarize_tschamut_closure_gap_deltas.py`. That helper reuses the

@@ -61,7 +61,14 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
             "annual_frequency_claims_allowed": False,
             "risk_exposure_vulnerability_claims_allowed": False,
             "distributed_execution_authorized": False,
-            "current_evidence": {},
+            "current_evidence": {
+                "closure": {
+                    "stability_zone_summary": {
+                        "stability_zone_status": "measured_existing_artifacts",
+                        "overall_closure_role_change": "no_change",
+                    }
+                }
+            },
             "evidence_sources": [],
         }
 
@@ -130,6 +137,14 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertFalse(report["runtime_scaling_status"]["distributed_execution_authorized"])
         self.assertEqual(report["portability_status"]["portability_preflight_status"], "deferred_public_context_inputs")
         self.assertEqual(report["physical_credibility_status"], "not_established")
+        self.assertEqual(
+            report["current_evidence"]["closure"]["stability_zone_summary"]["stability_zone_status"],
+            "measured_existing_artifacts",
+        )
+        self.assertEqual(
+            report["current_evidence"]["closure"]["stability_zone_summary"]["overall_closure_role_change"],
+            "no_change",
+        )
 
     def test_missing_evidence_override_reports_blocked_status(self) -> None:
         report = summary.build_report({"missing_inputs": ["docs/missing.json"]})
@@ -154,6 +169,7 @@ class TschamutConditionalDiagnosticInterpretationTest(unittest.TestCase):
         self.assertIn("native_rebuildable_reduced_status", text)
         self.assertIn("portability_blockers:", text)
         self.assertIn("physical_credibility_blockers:", text)
+        self.assertIn("stability_zone_summary", text)
         self.assertIn("converted_package_readiness_status", text)
         self.assertIn("scale_up_authorized: false", text)
         self.assertIn("operational_claims_allowed: false", text)

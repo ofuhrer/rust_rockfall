@@ -48,17 +48,32 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         spatial = report["spatial_uncertainty_interpretation"]
         self.assertEqual(spatial["spatial_interpretation"], "nodata_support_dominated")
         self.assertEqual(spatial["overall_closure_role"], "closure_limiting")
+        self.assertEqual(spatial["stability_zone_summary"]["stability_zone_status"], "measured_existing_artifacts")
+        self.assertEqual(spatial["stability_zone_summary"]["overall_closure_role_change"], "no_change")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["closure_role"], "closure_limiting")
         self.assertEqual(spatial["layer_roles"]["max_jump_height"]["closure_role"], "closure_limiting")
         self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["closure_role"], "deferrable")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["disagreement_decomposition_class"], "mixed_support_and_magnitude")
         self.assertEqual(spatial["layer_roles"]["max_jump_height"]["disagreement_decomposition_class"], "support_nodata_dominated")
         self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["disagreement_decomposition_class"], "shared_support_magnitude_dominated")
+        self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["stability_zone_class"], "persistent_closure_limiting")
+        self.assertEqual(spatial["layer_roles"]["max_jump_height"]["stability_zone_class"], "persistent_closure_limiting")
+        self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["stability_zone_class"], "deferrable_localized")
+        self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["stability_zone_dominant_category"], "shared_support_magnitude")
+        self.assertEqual(spatial["layer_roles"]["max_jump_height"]["stability_zone_dominant_category"], "persistent_agreement")
+        self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["stability_zone_dominant_category"], "persistent_agreement")
+        self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["stability_zone_closure_role_impact"], "no_change")
+        self.assertEqual(spatial["layer_roles"]["max_jump_height"]["stability_zone_closure_role_impact"], "no_change")
+        self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["stability_zone_closure_role_impact"], "no_change")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_status"], "available")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_closure_role"], "closure_limiting")
         self.assertGreaterEqual(spatial["layer_roles"]["max_kinetic_energy"]["high_uncertainty_cell_count"], 0)
         self.assertGreaterEqual(spatial["layer_roles"]["max_jump_height"]["support_nodata_cell_count"], 0)
         self.assertEqual(spatial["mask_status"], "available")
+        self.assertEqual(
+            spatial["stability_zone_summary"]["layer_summaries"]["velocity_exceedance_5mps"]["closure_role_impact"],
+            "no_change",
+        )
         self.assertIn("spatial_uncertainty_support_nodata_dominates_closure", report["current_blockers"])
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
@@ -67,9 +82,16 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         report = summary.build_closure_report({"missing_inputs": ["docs/missing.json"]})
         self.assertEqual(report["closure_status"], "blocked_missing_inputs")
         self.assertEqual(report["readiness_status"], "blocked_missing_inputs")
+        self.assertEqual(report["spatial_uncertainty_interpretation"]["stability_zone_summary"]["stability_zone_status"], "blocked_missing_inputs")
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
+
+    def test_text_output_mentions_stability_zone_changes(self) -> None:
+        text = summary.render_text_report(summary.build_closure_report(self._evidence_override()))
+        self.assertIn("stability=persistent_closure_limiting", text)
+        self.assertIn("stability=deferrable_localized", text)
+        self.assertIn("closure-role-change=no_change", text)
 
     def _evidence_override(self) -> dict[str, object]:
         return {
@@ -86,15 +108,16 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                 "target_convergence_interpretation": "inconclusive",
                 "dominant_layer_spread": {},
             },
-            "spatial_uncertainty": {
-                "spatial_uncertainty_status": "measured_existing_artifacts",
-                "spatial_interpretation": "nodata_support_dominated",
-                "overall_closure_role": "closure_limiting",
-                "mask_status": "available",
-                "layer_summaries": {
-                    "max_kinetic_energy": {
-                        "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
-                        "interpretation_note": "synthetic",
+                "spatial_uncertainty": {
+                    "spatial_uncertainty_status": "measured_existing_artifacts",
+                    "spatial_interpretation": "nodata_support_dominated",
+                    "overall_closure_role": "closure_limiting",
+                    "mask_status": "available",
+                    "stability_zone_status": "measured_existing_artifacts",
+                    "layer_summaries": {
+                        "max_kinetic_energy": {
+                            "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
+                            "interpretation_note": "synthetic",
                         "nodata_disagreement_count": 12,
                         "support_only_disagreement_count": 2,
                         "magnitude_only_disagreement_count": 6,
@@ -119,6 +142,22 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                             "shared_support_magnitude_cell_count": 4,
                             "mask_bbox": {"row_min": 1, "row_max": 2, "col_min": 1, "col_max": 2, "xmin": 1.0, "xmax": 3.0, "ymin": 1.0, "ymax": 3.0},
                             "mask_path": None,
+                        },
+                        "stability_zone_summary": {
+                            "layer_stability_zone_class": "persistent_closure_limiting",
+                            "dominant_zone_category": "shared_support_magnitude",
+                            "dominant_high_uncertainty_zone_category": "shared_support_magnitude",
+                            "closure_role_impact": "no_change",
+                            "zone_counts": {
+                                "support_nodata_sensitive": 6,
+                                "shared_support_magnitude": 14,
+                                "persistent_agreement": 5,
+                            },
+                            "zone_fractions": {
+                                "support_nodata_sensitive": 0.24,
+                                "shared_support_magnitude": 0.56,
+                                "persistent_agreement": 0.2,
+                            },
                         },
                     },
                     "max_jump_height": {
@@ -149,6 +188,22 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                             "mask_bbox": {"row_min": 0, "row_max": 1, "col_min": 0, "col_max": 1, "xmin": 0.0, "xmax": 2.0, "ymin": 2.0, "ymax": 4.0},
                             "mask_path": None,
                         },
+                        "stability_zone_summary": {
+                            "layer_stability_zone_class": "persistent_closure_limiting",
+                            "dominant_zone_category": "persistent_agreement",
+                            "dominant_high_uncertainty_zone_category": "support_nodata_sensitive",
+                            "closure_role_impact": "no_change",
+                            "zone_counts": {
+                                "support_nodata_sensitive": 9,
+                                "shared_support_magnitude": 4,
+                                "persistent_agreement": 12,
+                            },
+                            "zone_fractions": {
+                                "support_nodata_sensitive": 0.36,
+                                "shared_support_magnitude": 0.16,
+                                "persistent_agreement": 0.48,
+                            },
+                        },
                     },
                     "velocity_exceedance_5mps": {
                         "uncertainty_concentration_class": "spatially_localized_shared_support_magnitude",
@@ -177,6 +232,46 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                             "shared_support_magnitude_cell_count": 2,
                             "mask_bbox": {"row_min": 2, "row_max": 3, "col_min": 1, "col_max": 3, "xmin": 1.0, "xmax": 3.0, "ymin": 0.0, "ymax": 2.0},
                             "mask_path": None,
+                        },
+                        "stability_zone_summary": {
+                            "layer_stability_zone_class": "deferrable_localized",
+                            "dominant_zone_category": "persistent_agreement",
+                            "dominant_high_uncertainty_zone_category": "shared_support_magnitude",
+                            "closure_role_impact": "no_change",
+                            "zone_counts": {
+                                "support_nodata_sensitive": 1,
+                                "shared_support_magnitude": 4,
+                                "persistent_agreement": 20,
+                            },
+                            "zone_fractions": {
+                                "support_nodata_sensitive": 0.04,
+                                "shared_support_magnitude": 0.16,
+                                "persistent_agreement": 0.8,
+                            },
+                        },
+                    },
+                },
+                "stability_zone_summary": {
+                    "stability_zone_status": "measured_existing_artifacts",
+                    "overall_closure_role_change": "no_change",
+                    "layer_summaries": {
+                        "max_kinetic_energy": {
+                            "layer_stability_zone_class": "persistent_closure_limiting",
+                            "dominant_zone_category": "shared_support_magnitude",
+                            "dominant_high_uncertainty_zone_category": "shared_support_magnitude",
+                            "closure_role_impact": "no_change",
+                        },
+                        "max_jump_height": {
+                            "layer_stability_zone_class": "persistent_closure_limiting",
+                            "dominant_zone_category": "persistent_agreement",
+                            "dominant_high_uncertainty_zone_category": "support_nodata_sensitive",
+                            "closure_role_impact": "no_change",
+                        },
+                        "velocity_exceedance_5mps": {
+                            "layer_stability_zone_class": "deferrable_localized",
+                            "dominant_zone_category": "persistent_agreement",
+                            "dominant_high_uncertainty_zone_category": "shared_support_magnitude",
+                            "closure_role_impact": "no_change",
                         },
                     },
                 },

@@ -505,6 +505,11 @@ Supporting same-scale evidence remains reusable:
   `max_kinetic_energy` is concentrated in a compact LV95 footprint but still carries
   material support/nodata disagreement, `max_jump_height` remains support/nodata
   sensitive, and `velocity_exceedance_5mps` is localized with much smaller range.
+- The stability-zone summary added in TB-059 keeps the same measured conclusion
+  but makes the regions explicit:
+  `max_kinetic_energy` and `max_jump_height` remain
+  `persistent_closure_limiting`, while `velocity_exceedance_5mps` remains
+  `deferrable_localized`; all three layers report `closure-role-change=no_change`.
 
 ## Conditional Pilot Closure Assessment
 
@@ -531,6 +536,12 @@ rather than a closure blocker. The new decomposition keeps the same status but
 clarifies that the closure-limiting layers combine broader nodata/support
 disagreement with high-uncertainty cells that are mostly shared-support
 magnitude variation.
+
+TB-059 extends that same closure helper with a compact stability-zone summary.
+The new zone classes distinguish persistent closure-limiting regions from
+localized deferrable disagreement, but they do not change the canonical
+`inconclusive` closure status. That is deliberate: the new zone summary is an
+interpretation aid, not a new acceptance rule.
 
 That same spatial helper can now emit compact mask summaries to an ignored
 output directory. The summaries preserve the layer counts, extents, and

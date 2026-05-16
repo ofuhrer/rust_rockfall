@@ -148,6 +148,7 @@ def build_report(
     return {
         "schema_version": SCHEMA_VERSION,
         "spatial_uncertainty_status": "measured_existing_artifacts",
+        "stability_zone_status": "measured_existing_artifacts",
         "readiness_status": "ready",
         "command_plan_status": "ready",
         "artifacts_measured": artifacts,
@@ -177,6 +178,7 @@ def blocked_report(
     return {
         "schema_version": SCHEMA_VERSION,
         "spatial_uncertainty_status": "blocked_missing_inputs",
+        "stability_zone_status": "blocked_missing_inputs",
         "readiness_status": "blocked_missing_inputs",
         "command_plan_status": "ready",
         "artifacts_measured": [summarize_manifest_identity(item) for item in manifests if item.manifest_path.exists()],
@@ -232,6 +234,24 @@ def render_text(report: dict[str, Any]) -> str:
                 f"high={mask.get('high_uncertainty_cell_count')} "
                 f"support/nodata={mask.get('support_nodata_cell_count')} "
                 f"shared-support={mask.get('shared_support_magnitude_cell_count')}"
+            )
+        stability = summary.get("stability_zone_summary") or {}
+        if stability:
+            zone_counts = stability.get("zone_counts") or {}
+            zone_fractions = stability.get("zone_fractions") or {}
+            lines.append(
+                f"  stability zone={stability.get('layer_stability_zone_class')} "
+                f"dominant={stability.get('dominant_zone_category')} "
+                f"high-uncertainty={stability.get('dominant_high_uncertainty_zone_category')}"
+            )
+            lines.append(
+                "  zones: "
+                f"support/nodata_sensitive={zone_counts.get('support_nodata_sensitive', 0)} "
+                f"({zone_fractions.get('support_nodata_sensitive', 0.0):.6g}), "
+                f"shared_support_magnitude={zone_counts.get('shared_support_magnitude', 0)} "
+                f"({zone_fractions.get('shared_support_magnitude', 0.0):.6g}), "
+                f"persistent_agreement={zone_counts.get('persistent_agreement', 0)} "
+                f"({zone_fractions.get('persistent_agreement', 0.0):.6g})"
             )
         if summary["high_uncertainty_bbox"] is not None:
             bbox = summary["high_uncertainty_bbox"]
@@ -309,6 +329,7 @@ def summarize_layer(
     high_uncertainty_cells: list[dict[str, Any]] = []
     support_nodata_cells: list[dict[str, Any]] = []
     shared_support_magnitude_cells: list[dict[str, Any]] = []
+    support_nodata_sensitive_cells: list[dict[str, Any]] = []
 
     cells: list[dict[str, Any]] = []
     for row in range(nrows):
@@ -351,6 +372,12 @@ def summarize_layer(
     if not shared_valid_ranges:
         raise SpatialSameScaleUncertaintyError(f"no shared-valid cells found for {layer_key}")
 
+    support_nodata_sensitive_cells = [
+        cell
+        for cell in cells
+        if (any(cell["valid_flags"]) and not all(cell["valid_flags"]))
+        or (all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1)
+    ]
     support_only_disagreement_cells = [
         cell for cell in cells if all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1
     ]
@@ -421,6 +448,21 @@ def summarize_layer(
 
     bbox = bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
     centroid = centroid_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    stability_zone_summary = summarize_stability_zones(
+        layer_key=layer_key,
+        cells=cells,
+        support_nodata_sensitive_cells=support_nodata_sensitive_cells,
+        shared_support_magnitude_cells=magnitude_only_disagreement_cells,
+        persistent_agreement_cells=stable_shared_support_cells,
+        any_valid_count=any_valid_count,
+        analysis_cell_count=analysis_cell_count,
+        high_uncertainty_cells=high_uncertainty,
+        nrows=nrows,
+        cellsize=cellsize,
+        xllcorner=xllcorner,
+        yllcorner=yllcorner,
+        closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+    )
     mask_cells = dedupe_cells(high_uncertainty + support_nodata_cells + shared_support_magnitude_cells)
     mask_bbox = bbox_for_cells(mask_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
     mask_path = None
@@ -514,6 +556,7 @@ def summarize_layer(
             format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
             for cell in high_uncertainty
         ],
+        "stability_zone_summary": stability_zone_summary,
         "mask_evidence": build_mask_evidence(
             layer_key=layer_key,
             layer_grids=layer_grids,
@@ -534,6 +577,117 @@ def summarize_layer(
         "uncertainty_concentration_class": interpretation["uncertainty_concentration_class"],
         "interpretation_note": interpretation["interpretation_note"],
     }
+
+
+def summarize_stability_zones(
+    *,
+    layer_key: str,
+    cells: list[dict[str, Any]],
+    support_nodata_sensitive_cells: list[dict[str, Any]],
+    shared_support_magnitude_cells: list[dict[str, Any]],
+    persistent_agreement_cells: list[dict[str, Any]],
+    any_valid_count: int,
+    analysis_cell_count: int,
+    high_uncertainty_cells: list[dict[str, Any]],
+    nrows: int,
+    cellsize: float,
+    xllcorner: float,
+    yllcorner: float,
+    closure_role: str,
+) -> dict[str, Any]:
+    zone_cells = {
+        "support_nodata_sensitive": support_nodata_sensitive_cells,
+        "shared_support_magnitude": shared_support_magnitude_cells,
+        "persistent_agreement": persistent_agreement_cells,
+    }
+    zone_counts = {key: len(value) for key, value in zone_cells.items()}
+    dominant_zone_category = max(
+        zone_counts,
+        key=lambda key: (zone_counts[key], -zone_zone_priority(key)),
+    ) if zone_counts else "unknown"
+    if closure_role == "closure_limiting":
+        layer_stability_zone_class = "persistent_closure_limiting"
+    elif closure_role == "deferrable":
+        layer_stability_zone_class = "deferrable_localized"
+    elif dominant_zone_category == "persistent_agreement":
+        layer_stability_zone_class = "stable_low_disagreement"
+    elif dominant_zone_category in {"support_nodata_sensitive", "shared_support_magnitude"}:
+        layer_stability_zone_class = dominant_zone_category
+    else:
+        layer_stability_zone_class = "mixed_stability_zone"
+
+    high_uncertainty_zone_cells = {
+        "support_nodata_sensitive": [
+            cell
+            for cell in high_uncertainty_cells
+            if (not all(cell["valid_flags"])) or (all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1)
+        ],
+        "shared_support_magnitude": [
+            cell
+            for cell in high_uncertainty_cells
+            if all(cell["valid_flags"]) and all(cell["support_flags"]) and cell["range"] is not None and cell["range"] > 0
+        ],
+        "persistent_agreement": [
+            cell
+            for cell in high_uncertainty_cells
+            if all(cell["valid_flags"]) and all(cell["support_flags"]) and (cell["range"] is None or cell["range"] == 0)
+        ],
+    }
+    zone_bboxes = {key: bbox_for_cells(value, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner) for key, value in zone_cells.items()}
+    high_uncertainty_zone_bboxes = {
+        key: bbox_for_cells(value, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+        for key, value in high_uncertainty_zone_cells.items()
+    }
+
+    zone_fractions = {
+        key: (len(value) / any_valid_count if any_valid_count else 0.0)
+        for key, value in zone_cells.items()
+    }
+    high_uncertainty_zone_fractions = {
+        key: (len(value) / len(high_uncertainty_cells) if high_uncertainty_cells else 0.0)
+        for key, value in high_uncertainty_zone_cells.items()
+    }
+    dominant_high_uncertainty_zone_category = max(
+        high_uncertainty_zone_cells,
+        key=lambda key: (len(high_uncertainty_zone_cells[key]), -zone_zone_priority(key)),
+    ) if high_uncertainty_zone_cells else "unknown"
+    return {
+        "zone_status": "available",
+        "layer_key": layer_key,
+        "closure_role": closure_role,
+        "layer_stability_zone_class": layer_stability_zone_class,
+        "dominant_zone_category": dominant_zone_category,
+        "dominant_high_uncertainty_zone_category": dominant_high_uncertainty_zone_category,
+        "closure_role_impact": "no_change",
+        "analysis_cell_count": analysis_cell_count,
+        "evaluated_cell_count": any_valid_count,
+        "all_nodata_cell_count": analysis_cell_count - any_valid_count,
+        "all_nodata_fraction_of_analysis": (analysis_cell_count - any_valid_count) / analysis_cell_count if analysis_cell_count else 0.0,
+        "zone_counts": zone_counts,
+        "zone_fractions": zone_fractions,
+        "zone_bboxes": zone_bboxes,
+        "high_uncertainty_zone_counts": {key: len(value) for key, value in high_uncertainty_zone_cells.items()},
+        "high_uncertainty_zone_fractions": high_uncertainty_zone_fractions,
+        "high_uncertainty_zone_bboxes": high_uncertainty_zone_bboxes,
+        "high_uncertainty_bbox": bbox_for_cells(high_uncertainty_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        "high_uncertainty_cell_count": len(high_uncertainty_cells),
+        "high_uncertainty_cell_fraction": len(high_uncertainty_cells) / any_valid_count if any_valid_count else 0.0,
+        "high_uncertainty_shared_support_magnitude_fraction": high_uncertainty_zone_fractions["shared_support_magnitude"],
+        "high_uncertainty_support_nodata_fraction": high_uncertainty_zone_fractions["support_nodata_sensitive"],
+        "interpretation_note": (
+            f"{layer_key} stability zones: {layer_stability_zone_class}; "
+            f"dominant={dominant_zone_category}; high-uncertainty={dominant_high_uncertainty_zone_category}"
+        ),
+    }
+
+
+def zone_zone_priority(zone_key: str) -> int:
+    priorities = {
+        "support_nodata_sensitive": 0,
+        "shared_support_magnitude": 1,
+        "persistent_agreement": 2,
+    }
+    return priorities.get(zone_key, 99)
 
 
 def build_mask_evidence(
