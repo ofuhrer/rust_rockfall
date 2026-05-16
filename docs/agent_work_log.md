@@ -1019,7 +1019,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-073: Stabilize Clean-Checkout Python Test Gates
 
 - Date: 2026-05-16
-- Commit: pending
+- Commit: `f2cfc05`
 - Objective: keep the Python regression suite green on a clean checkout without depending on ignored local Tschamut or Chant Sura artifact roots.
 - Files changed: docs/agent_work_log.md, docs/task_backlog.md, tests/test_hazard_context_overlap.py, tests/test_pilot_command_plan.py, tests/test_tschamut_public_context_layers.py
 - Implementation summary: added brief test comments that separate clean-checkout fixture and mock coverage from the optional GDAL-backed local integration check, and documented that the Chant Sura / Flüelapass command-plan assertions are metadata-only and do not require staged public-context artifacts.
@@ -1027,3 +1027,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no scientific classifications, hazard-layer semantics, physics, operational boundaries, scale-up authorization, or artifact-generation policy were changed.
 - Next task: `TB-074`
+
+### TB-074: Stabilize Clean-Checkout Rust Reduced-Output Test
+
+- Date: 2026-05-16
+- Commit: `f745a0d`
+- Objective: keep the Rust reduced-output regression test green on a clean checkout without depending on ignored Tschamut same-scale artifacts.
+- Files changed: tests/config_io_terrain.rs, tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml, tests/fixtures/rebuildable_reduced_output/validation_output_mode_rebuildable_reduced_release_points.csv, tests/fixtures/rebuildable_reduced_output/validation_output_mode_rebuildable_reduced_deposition_points.csv
+- Implementation summary: replaced the reduced-output fixture with a tiny self-contained plane case, added committed observation CSVs, and updated the integration test to inject temporary output paths while asserting trajectory, deposition, impact-event CSV, diagnostics, trajectory metadata, and stop-state outputs. The test now proves the native `rebuildable_reduced_output` builder-facing contract without private or ignored artifacts.
+- Checks run: `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-074 --format json`; `rg -n "^### TB-074:" docs/task_backlog.md`; `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs -- --nocapture`; `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no simulator physics, reduced-output scientific meaning, summary-only rebuildability, operational, scale-up, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was changed.
+- Next task: `TB-075`

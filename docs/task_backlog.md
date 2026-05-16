@@ -18,39 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-074: Stabilize Clean-Checkout Rust Reduced-Output Test
-
-Goal: Fix the Rust clean-checkout failure where the native
-`rebuildable_reduced_output` fixture test reports `Skipped` instead of proving
-the builder-facing output contract.
-
-Inspect first:
-
-- `tests/config_io_terrain.rs`
-- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
-- `src/validation.rs`
-- `src/validation/runner.rs`
-- `src/manifest.rs`
-
-Deliverables:
-
-- A deterministic tiny reduced-output fixture path that can run in CI without
-  private or ignored same-scale artifacts.
-- Assertions that the native reduced mode writes trajectory, deposition,
-  impact-event CSV, diagnostics, trajectory metadata, and stop-state artifacts
-  needed by the hazard builder.
-- Clear skip behavior only for genuinely unavailable external prerequisites,
-  not for committed fixture inputs.
-
-Definition of done:
-
-- `cargo test validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs`
-  passes.
-- `cargo test` passes locally.
-
-Boundaries: Do not change reduced-output scientific meaning, simulator physics,
-  or summary-only behavior; keep `summary_only` non-rebuildable.
-
 ### TB-075: Emit Full-Scope COG Export Parity Proof
 
 Goal: Make the first-class COG export path prove the intended same-scale layer
