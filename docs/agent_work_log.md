@@ -2024,3 +2024,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: this records package-scope classification only; it does not commit generated rasters, require manual QGIS QA, or convert GIS readiness into operational approval.
 - Next task: `TB-123`
+
+### TB-123: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
+
+- Date: 2026-05-17
+- Commit: `0306acc`
+- Objective: Produce deterministic terrain-driven release-zone candidate metrics for the Balfrin/Tschamut AOI without using them as field-validated release zones.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only terrain candidate-metrics helper that screens the committed Tschamut public pilot DEM with a fixed Horn 3x3 slope kernel and a fixed slope band, excludes the frozen source-zone footprint from candidate screening, and reports deterministic candidate counts, areas, excluded areas, and provenance.
+  - Kept the report boundary explicit: the helper emits heuristic workflow inputs only and does not validate release zones, tune thresholds to outcomes, or claim physical release probability.
+  - Added focused regressions for deterministic output on the committed inputs and blocked behavior when the public inputs are absent, and exposed the helper through the Balfrin single-release-zone command plan.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_pilot_command_plan`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --format json > /tmp/tb123_candidate_metrics.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/generate_pilot_command_plan.py tests/test_plan_terrain_release_zone_candidates.py tests/test_pilot_command_plan.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: completed
+- Boundaries: no release-zone replacement, threshold tuning, or physical release-probability claims were introduced.
+- Next task: `TB-124`
