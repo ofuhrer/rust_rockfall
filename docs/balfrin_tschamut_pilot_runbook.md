@@ -134,10 +134,17 @@ they do not, stop and inspect the generated package before proceeding.
 PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py \
   --format json \
   --evidence-json "${RUN_ROOT}/balfrin_post_run_evidence.json"
+
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_failure_taxonomy.py \
+  --format json \
+  --evidence-json "${RUN_ROOT}/balfrin_post_run_evidence.json" \
+  --json-output "${RUN_ROOT}/balfrin_failure_taxonomy_v1.json"
 ```
 
 Use the post-run evidence bundle only after the collection step has produced the
 measured outputs that the gate expects. Keep the gate read-only.
+The taxonomy helper is read-only too; it labels operational recovery cases and
+scope-limited scientific states without changing the interpretation criteria.
 
 ### 2.8 Cleanup
 
@@ -161,6 +168,7 @@ tar -C "${RUN_ROOT}" -czf "/tmp/${RUN_ID}_balfrin_probe_handoff.tgz" \
   balfrin_submission_package.json \
   balfrin_submission_package.md \
   balfrin_probe_summary.json \
+  balfrin_failure_taxonomy_v1.json \
   balfrin_probe_context.txt \
   balfrin_probe_full_time.txt \
   balfrin_hazard_stage_time.txt
@@ -185,6 +193,7 @@ Do not commit these generated artifacts if they appear in a run root:
 - `balfrin_submission_package.json`
 - `balfrin_submission_package.md`
 - `balfrin_probe_summary.json`
+- `balfrin_failure_taxonomy_v1.json`
 - `balfrin_probe_context.txt`
 - `balfrin_probe_full_time.txt`
 - `balfrin_hazard_stage_time.txt`

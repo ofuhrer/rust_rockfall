@@ -2940,6 +2940,7 @@ def check_hazard_claim_hygiene() -> list[str]:
         ROOT / "docs/balfrin_post_run_interpretation_gate.md",
         ROOT / "docs/balfrin_minimal_demo_vs_closure.md",
         ROOT / "docs/tschamut_public_conditional_pilot_gate_report.md",
+        ROOT / "scripts/summarize_balfrin_failure_taxonomy.py",
         ROOT / "scripts/summarize_balfrin_post_run_interpretation_gate.py",
         ROOT / "scripts/summarize_tschamut_conditional_diagnostic_interpretation.py",
     ]

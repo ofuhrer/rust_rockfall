@@ -22,6 +22,10 @@ splits.
 
 ## Taxonomy
 
+The canonical machine-readable taxonomy helper is
+`scripts/summarize_balfrin_failure_taxonomy.py`. The table below is the same
+operator vocabulary in prose form.
+
 | Category | Machine-readable failure class | Primary signal | Recovery action |
 | --- | --- | --- | --- |
 | Infrastructure | `readiness_blocked` | `scripts/check_balfrin_tschamut_readiness.py` returns `status: blocked_for_balfrin_readiness` and a non-empty `blocking_checks` list | Repair the reported blocker, then rerun readiness and regenerate the package with the same run identifiers. |

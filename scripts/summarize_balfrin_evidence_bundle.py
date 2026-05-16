@@ -20,6 +20,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import audit_gis_cog_package_readiness as gis_cog
+from scripts import summarize_balfrin_failure_taxonomy as failure_taxonomy
 from scripts import summarize_balfrin_post_run_interpretation_gate as post_run_gate
 from scripts import summarize_balfrin_single_job_execution as single_job
 
@@ -168,6 +169,12 @@ def build_bundle_report(
         "single_job_execution_summary": single_job_summary,
         "probe_metrics": probe_metrics,
         "post_run_interpretation_gate_report": post_run_report,
+        "failure_taxonomy_report": build_failure_taxonomy_report(
+            single_job_summary=single_job_summary,
+            probe_metrics=probe_metrics,
+            post_run_report=post_run_report,
+            gis_report=gis_report,
+        ),
         "gis_cog_readiness_report": gis_report,
         "gis_cog_parity_report": gis_cog_parity_report,
         "claim_boundaries": claim_boundaries,
@@ -207,6 +214,7 @@ def blocked_report(
             "usable_as_conditional_diagnostic_artifact": False,
             "claim_boundaries": post_run_gate.claim_boundaries(),
         },
+        "failure_taxonomy_report": failure_taxonomy.build_report({}),
         "gis_cog_readiness_report": {
             "schema_version": gis_cog.SCHEMA_VERSION,
             "gis_cog_readiness_status": "blocked_missing_inputs",
@@ -248,6 +256,9 @@ def render_text_report(report: dict[str, Any]) -> str:
             "post_run_interpretation_gate_report:",
             f"  interpretation_status: {report['post_run_interpretation_gate_report'].get('interpretation_status', 'unknown')}",
             f"  artifact_acceptance_status: {report['post_run_interpretation_gate_report'].get('artifact_acceptance_status', 'unknown')}",
+            "failure_taxonomy_report:",
+            f"  taxonomy_status: {report['failure_taxonomy_report'].get('taxonomy_status', 'unknown')}",
+            f"  observed_failure_classes: {len(report['failure_taxonomy_report'].get('observed_failure_classes', []))}",
             "gis_cog_readiness_report:",
             f"  gis_cog_readiness_status: {report['gis_cog_readiness_report'].get('gis_cog_readiness_status', 'unknown')}",
             "claim_boundaries:",
@@ -541,11 +552,34 @@ def evidence_sources(source_paths: dict[str, Any]) -> list[str]:
     sources = [
         "scripts/summarize_balfrin_single_job_execution.py",
         "scripts/summarize_balfrin_post_run_interpretation_gate.py",
+        "scripts/summarize_balfrin_failure_taxonomy.py",
         "scripts/audit_gis_cog_package_readiness.py",
     ]
     if source_paths:
         sources.append("validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1")
     return sources
+
+
+def build_failure_taxonomy_report(
+    *,
+    single_job_summary: dict[str, Any],
+    probe_metrics: dict[str, Any],
+    post_run_report: dict[str, Any],
+    gis_report: dict[str, Any],
+) -> dict[str, Any]:
+    return failure_taxonomy.build_report(
+        {
+            "pilot_id": single_job_summary.get("pilot_id"),
+            "run_id": single_job_summary.get("run_id"),
+            "single_job_summary": single_job_summary,
+            "probe_metrics": probe_metrics,
+            "post_run_report": post_run_report,
+            "readiness_check": post_run_report.get("readiness_check"),
+            "gis_report": gis_report,
+            "runtime_report": single_job_summary.get("runtime_report"),
+            "submission_report": single_job_summary.get("submission_report"),
+        }
+    )
 
 
 def as_mapping(value: Any) -> dict[str, Any]:

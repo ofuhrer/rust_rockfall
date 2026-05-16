@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-112: Define Balfrin Operational Failure Taxonomy
-
-Goal: Formalize Balfrin run failure classes and recovery semantics for readiness, scheduler, runtime, partial-output, metrics, GIS/export, and scientific-state failures.
-
-Capability gap reduced: Operational robustness and maintainability.
-
-Why this outranks alternatives: Failure classification prevents infrastructure or orchestration problems from being misread as scientific no-go outcomes.
-
-Inspect first:
-
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-
-Deliverables:
-
-- A machine-readable failure taxonomy or helper output used by the runbook and post-run bundle.
-- Tests for representative failure classes and escalation boundaries.
-
-Definition of done:
-
-- Failure classes are actionable and wired to at least one helper or report, focused checks pass, and TB-112 is removed from this backlog.
-
-Boundaries: Do not create labels without command/action mappings, and do not let failure taxonomy change scientific interpretation criteria.
-
 ### TB-113: Update Balfrin Runtime And Scaling Frontier
 
 Goal: Use measured Balfrin evidence to refine runtime, storage, file-count, memory, and job-count projections for bounded next-step planning.

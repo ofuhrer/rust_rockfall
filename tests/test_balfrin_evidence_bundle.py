@@ -34,6 +34,7 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(report["bundle_summary"]["status"], "complete")
         self.assertIn("readiness, metrics, outputs, GIS / COG status", report["bundle_summary"]["summary"])
         self.assertEqual(report["post_run_interpretation_gate_report"]["interpretation_status"], "measured_conditional_diagnostic")
+        self.assertEqual(report["failure_taxonomy_report"]["taxonomy_status"], "scope_limited")
         self.assertEqual(report["gis_cog_readiness_report"]["gis_cog_readiness_status"], "gis_package_ready")
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
@@ -45,6 +46,7 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(report["bundle_status"], "incomplete")
         self.assertEqual(report["bundle_summary"]["status"], "incomplete")
         self.assertEqual(report["post_run_interpretation_gate_report"]["interpretation_status"], "inconclusive_conditional_diagnostic")
+        self.assertEqual(report["failure_taxonomy_report"]["taxonomy_status"], "scope_limited")
         self.assertEqual(report["gis_cog_readiness_report"]["gis_cog_readiness_status"], "gis_package_ready_cog_blocked")
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
@@ -174,6 +176,15 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
                 "usable_as_conditional_diagnostic_artifact": True,
                 "claim_boundaries": self.claim_boundaries(),
             },
+            "failure_taxonomy_report": {
+                "schema_version": "balfrin_failure_taxonomy_v1",
+                "taxonomy_status": "scope_limited",
+                "status_counts": {"observed": 0, "scope_limited": 0, "clear": 0, "not_observed": 0},
+                "observed_failure_classes": [],
+                "scope_limited_failure_classes": [],
+                "failure_classes": [],
+                "claim_boundaries": self.claim_boundaries(),
+            },
             "gis_cog_readiness_report": {
                 "schema_version": "tschamut_gis_cog_package_readiness_v1",
                 "gis_cog_readiness_status": "gis_package_ready",
@@ -206,6 +217,15 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             "interpretation_status": "inconclusive_conditional_diagnostic",
             "artifact_acceptance_status": "accepted_conditional_diagnostic",
             "usable_as_conditional_diagnostic_artifact": True,
+            "claim_boundaries": self.claim_boundaries(),
+        }
+        report["failure_taxonomy_report"] = {
+            "schema_version": "balfrin_failure_taxonomy_v1",
+            "taxonomy_status": "scope_limited",
+            "status_counts": {"observed": 0, "scope_limited": 0, "clear": 0, "not_observed": 0},
+            "observed_failure_classes": [],
+            "scope_limited_failure_classes": [],
+            "failure_classes": [],
             "claim_boundaries": self.claim_boundaries(),
         }
         report["gis_cog_readiness_report"] = {
