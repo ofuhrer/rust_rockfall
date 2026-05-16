@@ -1506,3 +1506,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no scientific helpers, output semantics, or branch/worktree workflows were changed; failure diagnostics remain visible through the preserved final error block guidance.
 - Next task: `TB-105`
+
+### TB-105: Build Canonical Balfrin Evidence Bundle
+
+- Date: 2026-05-16
+- Commit: `a316ece7a2da1994ca699dc431dfeb6c04e685fe`
+- Objective: assemble the Balfrin readiness, metrics, outputs, GIS / COG status, restartability, and interpretation evidence into one canonical read-only bundle and report.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/balfrin_post_run_interpretation_gate.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a read-only Balfrin evidence-bundle helper that can return a direct fixture bundle, assemble the current repo evidence into a canonical JSON / text pair, or return `blocked_missing_inputs` when required sections are absent.
+  - Kept the claim-boundary contract explicit in the bundle output and text rendering so operational, probability, annual-frequency, risk/exposure/vulnerability, scale-up, and distributed-execution claims remain false.
+  - Added focused regression coverage for complete, incomplete, blocked, and boundary-preserving bundle cases, plus artifact writing for the canonical bundle directory.
+  - Documented the management-facing canonical bundle path in the Balfrin sufficiency and post-run gate docs and removed TB-105 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_evidence_bundle.py tests/test_balfrin_evidence_bundle.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json >/tmp/tb105_bundle_smoke.json`
+  - `jq -r '.bundle_status, .post_run_interpretation_gate_report.interpretation_status, .gis_cog_readiness_report.gis_cog_readiness_status' /tmp/tb105_bundle_smoke.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: the bundle remains read-only and preserves non-operational, non-probabilistic, non-scale-up, and distributed-execution boundaries; the live repo evidence currently resolves to an `incomplete` bundle rather than a stronger claim.
+- Next task: `TB-106`
