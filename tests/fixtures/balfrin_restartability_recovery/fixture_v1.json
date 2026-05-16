@@ -1,0 +1,72 @@
+{
+  "schema_version": "balfrin_restartability_recovery_v1",
+  "evidence_type": "fixture",
+  "pilot_id": "tschamut_public_pilot",
+  "run_id": "tschamut_public_balfrin_restartability_recovery_v1",
+  "partial_state": {
+    "status": "partial",
+    "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/fixture_partial",
+    "trajectory_chunks": {
+      "chunk_000000": "complete",
+      "chunk_000001": "partial"
+    },
+    "reducer_chunks": {
+      "chunk_000000": "complete",
+      "chunk_000001": "partial"
+    },
+    "artifact_layout": {
+      "staged_outputs": [
+        "command_plan.json",
+        "probe.sbatch",
+        "logs/slurm-123.out"
+      ],
+      "scratch_only_outputs": [
+        "output/validation",
+        "output/hazard"
+      ]
+    }
+  },
+  "resume_commands": [
+    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml --run-root /scratch/rust_rockfall/probes/balfrin-demo/fixture_partial --run-id tschamut_public_balfrin_restartability_recovery_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit",
+    "PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/rust_rockfall/probes/balfrin-demo/fixture_partial"
+  ],
+  "recovery_outcome": {
+    "reused_chunks": [
+      "trajectory/chunk_000000",
+      "reducer/chunk_000000"
+    ],
+    "executed_chunks": [
+      "trajectory/chunk_000001",
+      "reducer/chunk_000001"
+    ],
+    "reused_chunk_counts": {
+      "trajectory": 1,
+      "reducer": 1
+    },
+    "executed_chunk_counts": {
+      "trajectory": 1,
+      "reducer": 1
+    },
+    "numerical_artifact_stability": {
+      "classification": "pass_hash_stable",
+      "changed_artifact_count": 0,
+      "changed_paths": []
+    }
+  },
+  "artifact_hygiene": {
+    "classification": "pass_clean",
+    "generated_roots": [
+      "/scratch/rust_rockfall/probes/balfrin-demo/fixture_partial"
+    ],
+    "placeholder_roots_avoided": [
+      "data/processed/swisstopo/placeholder_second_site_v1",
+      "validation/private/placeholder_second_site_v1",
+      "hazard/results/placeholder_second_site_v1"
+    ]
+  },
+  "explicit_limits": [
+    "fixture-backed recovery evidence only; no live interruption is claimed here.",
+    "no distributed execution authorization is implied.",
+    "no physics, sampling, or output-profile changes are introduced by this report."
+  ]
+}

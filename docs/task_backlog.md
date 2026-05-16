@@ -23,33 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-106: Demonstrate Balfrin Restartability Recovery
-
-Goal: Prove deterministic recovery from a deliberate partial Balfrin run state or equivalent controlled fixture without corrupting outputs or changing numerical artifacts.
-
-Capability gap reduced: Operational robustness and long-run reliability.
-
-Why this outranks alternatives: Restartability must be demonstrated intentionally before larger or management-visible runs rely on it.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A measured or fixture-backed interruption/recovery report covering partial state, resume commands, reused/executed chunks, numerical stability, and artifact hygiene.
-- Tests for recovery classification where helper code changes.
-
-Definition of done:
-
-- Restartability recovery is classified as measured, blocked, or fixture-proven with explicit limits; focused checks pass; TB-106 is removed from this backlog.
-
-Boundaries: Do not delete valuable generated artifacts outside the task’s documented scratch roots, do not infer recovery from incomplete evidence, and do not authorize distributed execution.
-
 ### TB-107: Write Balfrin Demonstration Failure-Recovery Playbook
 
 Goal: Provide deterministic operator-facing recovery procedures for Balfrin demo failures across readiness, scheduler, partial-output, metrics, GIS/export, and interpretation states.
