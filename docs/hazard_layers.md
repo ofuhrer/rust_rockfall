@@ -113,6 +113,14 @@ manifest carry the available EPSG, affine transform, nodata, extent, and grid
 metadata. Cloud-Optimized GeoTIFF is reserved for a later verified writer; COG
 requests fail explicitly rather than producing non-COG files.
 
+The spatial uncertainty diagnostics used in TB-067 follow a different contract.
+They summarize the measured stability classes as JSON, CSV, and GeoJSON
+products for persistent agreement, persistent disagreement, support/nodata-
+sensitive regions, closure-limiting regions, and deferrable disagreement
+regions. That output is intentionally diagnostic only: it repackages existing
+cell classifications for GIS inspection rather than introducing a new hazard
+raster or an operational layer.
+
 For local GIS/QGIS review bundles, pass `--pilot-gis-package` together with
 `--export-geotiff`, or set `pilot_gis_package.enabled: true` in the case file.
 The builder then writes `<prefix>_pilot_gis_package_manifest.json`, a

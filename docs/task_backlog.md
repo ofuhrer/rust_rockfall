@@ -18,35 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-067: Export Spatial Stability And Confidence Layers
-
-Goal: after TB-059 has a compact stability-zone summary, expose those classifications as GIS-ready diagnostic products. Reduces: scientific interpretability and uncertainty-product usability.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `scripts/build_hazard_layers.py`
-- `docs/hazard_layers.md`
-
-Deliverables:
-
-- GIS-ready diagnostic stability/confidence products for persistent disagreement, persistent agreement, support/nodata-sensitive regions, closure-limiting regions, and deferrable disagreement regions;
-- optional ignored GeoTIFF/COG-ready uncertainty layers under ignored paths, or a documented reason why only JSON/CSV/GeoJSON is appropriate for this step;
-- JSON/text summary describing confidence classes, uncertainty concentration, and stable versus unstable hazard regions.
-
-Definition of done:
-
-- helper emits deterministic GIS-ready uncertainty products or summaries from existing measured artifacts;
-- closure helper references the uncertainty-layer summary without changing closure unless evidence directly supports it;
-- tests validate classification logic and deterministic output contracts;
-- docs clearly state uncertainty products are diagnostic and non-operational.
-
-Boundaries: no tuning, no new ensemble, no hazard reclassification, no
-operational or physical-probability claims.
-
 ### TB-068: Canonicalize Rebuild-Compatible Reduced Output Workflow
 
 Goal: native `rebuildable_reduced_output` exists, but older derivation/proof language can still make the scalable path look secondary. Reduces: runtime/output workflow fragmentation.

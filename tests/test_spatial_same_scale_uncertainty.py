@@ -106,6 +106,24 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertLessEqual(len(report["layer_summaries"]["max_kinetic_energy"]["top_high_uncertainty_cells"]), 3)
             self.assertIsNotNone(report["layer_summaries"]["max_kinetic_energy"]["high_uncertainty_bbox"])
             self.assertLess(report["layer_summaries"]["max_kinetic_energy"]["nodata_disagreement_fraction"], 0.15)
+            self.assertEqual(report["uncertainty_layer_summary"]["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
+            self.assertEqual(report["uncertainty_layer_summary"]["summary_status"], "measured_existing_artifacts")
+            self.assertEqual(
+                [layer["layer_key"] for layer in report["uncertainty_layer_summary"]["layer_summaries"]],
+                sorted(summary_script.DEFAULT_HAZARD_LAYERS),
+            )
+            self.assertIn(
+                "persistent_disagreement",
+                {region["region_kind"] for region in report["uncertainty_layer_summary"]["region_products"]},
+            )
+            self.assertIn(
+                "persistent_agreement",
+                {region["region_kind"] for region in report["uncertainty_layer_summary"]["region_products"]},
+            )
+            self.assertIn(
+                "support_nodata_sensitive",
+                {region["region_kind"] for region in report["uncertainty_layer_summary"]["region_products"]},
+            )
 
             kinetic_mask = report["layer_summaries"]["max_kinetic_energy"]["mask_evidence"]
             jump_mask = report["layer_summaries"]["max_jump_height"]["mask_evidence"]
@@ -125,6 +143,63 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertTrue(Path(velocity_mask["mask_path"]).exists())
             self.assertEqual(velocity_mask["closure_role"], "unresolved")
 
+            gis_output_dir = Path(tmp) / "gis_products"
+            written_paths = summary_script.write_uncertainty_layer_products(report, gis_output_dir)
+            self.assertEqual(
+                [path.name for path in written_paths],
+                [
+                    "spatial_uncertainty_layer_summary.json",
+                    "spatial_uncertainty_region_products.csv",
+                    "spatial_uncertainty_region_products.geojson",
+                ],
+            )
+            summary_json = json.loads((gis_output_dir / "spatial_uncertainty_layer_summary.json").read_text())
+            geojson = json.loads((gis_output_dir / "spatial_uncertainty_region_products.geojson").read_text())
+            csv_text = (gis_output_dir / "spatial_uncertainty_region_products.csv").read_text()
+            self.assertEqual(summary_json["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
+            self.assertEqual(geojson["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
+            self.assertEqual(geojson["type"], "FeatureCollection")
+            self.assertTrue(csv_text.startswith("layer_key,region_kind,confidence_class,closure_role"))
+            region_order = {
+                "persistent_agreement": 0,
+                "support_nodata_sensitive": 1,
+                "shared_support_magnitude": 2,
+                "persistent_disagreement": 3,
+                "closure_limiting_disagreement": 4,
+                "deferrable_disagreement": 5,
+            }
+            self.assertEqual(
+                [
+                    (feature["properties"]["layer_key"], feature["properties"]["region_kind"])
+                    for feature in geojson["features"]
+                ],
+                sorted(
+                    [
+                        (
+                            feature["properties"]["layer_key"],
+                            feature["properties"]["region_kind"],
+                        )
+                        for feature in geojson["features"]
+                    ],
+                    key=lambda item: (item[0], region_order[item[1]]),
+                ),
+            )
+            self.assertTrue(any(feature["geometry"] is not None for feature in geojson["features"]))
+            repeat_dir = Path(tmp) / "gis_products_repeat"
+            summary_script.write_uncertainty_layer_products(report, repeat_dir)
+            self.assertEqual(
+                (gis_output_dir / "spatial_uncertainty_layer_summary.json").read_text(),
+                (repeat_dir / "spatial_uncertainty_layer_summary.json").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_uncertainty_region_products.geojson").read_text(),
+                (repeat_dir / "spatial_uncertainty_region_products.geojson").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_uncertainty_region_products.csv").read_text(),
+                (repeat_dir / "spatial_uncertainty_region_products.csv").read_text(),
+            )
+
             rendered = summary_script.render_text(report)
             self.assertIn("spatial same-scale uncertainty: measured_existing_artifacts", rendered)
             self.assertIn("max_kinetic_energy", rendered)
@@ -134,6 +209,8 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("stability zone=persistent_closure_limiting", rendered)
             self.assertIn("support_nodata_sensitive", rendered)
             self.assertIn("persistent_agreement", rendered)
+            self.assertIn("uncertainty layer summary:", rendered)
+            self.assertIn("confidence=", rendered)
 
             payload = json.loads(json.dumps(report))
             self.assertEqual(payload["schema_version"], summary_script.SCHEMA_VERSION)

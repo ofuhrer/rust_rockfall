@@ -21,10 +21,19 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "spatial_same_scale_uncertainty_v1"
+UNCERTAINTY_LAYER_SCHEMA_VERSION = "spatial_uncertainty_layer_summary_v1"
 DEFAULT_HAZARD_LAYERS = (
     "max_kinetic_energy",
     "max_jump_height",
     "velocity_exceedance_5mps",
+)
+UNCERTAINTY_REGION_KIND_ORDER = (
+    "persistent_agreement",
+    "support_nodata_sensitive",
+    "shared_support_magnitude",
+    "persistent_disagreement",
+    "closure_limiting_disagreement",
+    "deferrable_disagreement",
 )
 DEFAULT_MANIFESTS = (
     ROOT / "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json",
@@ -101,6 +110,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="optional ignored output directory for compact mask summary artifacts",
     )
+    parser.add_argument(
+        "--gis-output-dir",
+        type=Path,
+        default=None,
+        help="optional ignored output directory for JSON/CSV/GeoJSON diagnostic uncertainty products",
+    )
     args = parser.parse_args(argv)
 
     report = build_report(
@@ -109,6 +124,9 @@ def main(argv: list[str] | None = None) -> int:
         top_n=args.top_n,
         mask_output_dir=args.mask_output_dir,
     )
+
+    if args.gis_output_dir is not None and report["spatial_uncertainty_status"] == "measured_existing_artifacts":
+        write_uncertainty_layer_products(report, args.gis_output_dir)
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
@@ -144,6 +162,16 @@ def build_report(
         key=lambda item: (item["range_summary"]["mean_range"] or 0.0, item["nodata_disagreement_fraction"]),
         reverse=True,
     )
+    uncertainty_layer_summary = build_uncertainty_layer_summary(
+        spatial_report={
+            "spatial_uncertainty_status": "measured_existing_artifacts",
+            "selected_layers": list(selected_layers),
+            "layer_summaries": layer_summaries,
+            "dominant_layers_by_mean_range": [item["layer_key"] for item in dominant_layers],
+            "dominant_layer_summaries": dominant_layers,
+            "blocked_reason": "",
+        }
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -156,6 +184,7 @@ def build_report(
         "layer_summaries": layer_summaries,
         "dominant_layers_by_mean_range": [item["layer_key"] for item in dominant_layers],
         "dominant_layer_summaries": dominant_layers,
+        "uncertainty_layer_summary": uncertainty_layer_summary,
         "defaults_changed": False,
         "physics_changed": False,
         "thresholds_changed": False,
@@ -196,6 +225,14 @@ def blocked_report(
         "measurement_command": "PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json",
         "spatial_interpretation": "blocked_missing_inputs",
         "mask_status": "blocked_missing_inputs",
+        "uncertainty_layer_summary": {
+            "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "region_products": [],
+            "stable_region_status": "blocked_missing_inputs",
+            "unstable_region_status": "blocked_missing_inputs",
+        },
     }
 
 
@@ -270,7 +307,324 @@ def render_text(report: dict[str, Any]) -> str:
         if mask and mask.get("mask_path"):
             lines.append(f"  mask path: {mask['mask_path']}")
         lines.append(f"  top cells: {len(summary['top_high_uncertainty_cells'])}")
+    uncertainty_layer_summary = report.get("uncertainty_layer_summary") or {}
+    if uncertainty_layer_summary:
+        lines.append(
+            "uncertainty layer summary: "
+            f"{uncertainty_layer_summary.get('summary_status')} | "
+            f"stable={uncertainty_layer_summary.get('stable_region_status')} | "
+            f"unstable={uncertainty_layer_summary.get('unstable_region_status')}"
+        )
+        for layer in uncertainty_layer_summary.get("layer_summaries", []):
+            lines.append(
+                f"- {layer['layer_key']}: confidence={layer['confidence_class']} | "
+                f"uncertainty={layer['uncertainty_concentration_class']} | "
+                f"stable={layer['stable_region']['cell_count']} | "
+                f"unstable={layer['unstable_region']['cell_count']}"
+            )
     return "\n".join(lines)
+
+
+def build_uncertainty_layer_summary(spatial_report: dict[str, Any]) -> dict[str, Any]:
+    if spatial_report.get("spatial_uncertainty_status") != "measured_existing_artifacts":
+        return {
+            "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+            "summary_status": spatial_report.get("spatial_uncertainty_status", "blocked_missing_inputs"),
+            "layer_summaries": [],
+            "region_products": [],
+            "stable_region_status": "blocked_missing_inputs",
+            "unstable_region_status": "blocked_missing_inputs",
+            "blocked_reason": spatial_report.get("blocked_reason", ""),
+        }
+
+    layer_summaries: list[dict[str, Any]] = []
+    region_products: list[dict[str, Any]] = []
+    total_stable_cells = 0
+    total_unstable_cells = 0
+    for layer_key in spatial_report.get("selected_layers", []):
+        layer = dict((spatial_report.get("layer_summaries") or {}).get(layer_key) or {})
+        stability = dict(layer.get("stability_zone_summary") or {})
+        layer_summary = summarize_uncertainty_layer(layer_key, layer, stability)
+        layer_summaries.append(layer_summary)
+        region_products.extend(layer_summary["region_products"])
+        total_stable_cells += int(layer_summary["stable_region"]["cell_count"])
+        total_unstable_cells += int(layer_summary["unstable_region"]["cell_count"])
+
+    layer_summaries.sort(key=lambda item: item["layer_key"])
+    region_products.sort(
+        key=lambda item: (
+            item["layer_key"],
+            UNCERTAINTY_REGION_KIND_ORDER.index(item["region_kind"]) if item["region_kind"] in UNCERTAINTY_REGION_KIND_ORDER else 99,
+        )
+    )
+    return {
+        "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+        "summary_status": spatial_report.get("spatial_uncertainty_status"),
+        "layer_summaries": layer_summaries,
+        "region_products": region_products,
+        "stable_region_status": "measured_existing_artifacts" if total_stable_cells >= 0 else "blocked_missing_inputs",
+        "unstable_region_status": "measured_existing_artifacts" if total_unstable_cells >= 0 else "blocked_missing_inputs",
+        "stable_region_cell_count": total_stable_cells,
+        "unstable_region_cell_count": total_unstable_cells,
+        "blocked_reason": spatial_report.get("blocked_reason", ""),
+    }
+
+
+def summarize_uncertainty_layer(layer_key: str, layer: dict[str, Any], stability: dict[str, Any]) -> dict[str, Any]:
+    zone_counts = dict(stability.get("zone_counts") or {})
+    zone_fractions = dict(stability.get("zone_fractions") or {})
+    zone_bboxes = dict(stability.get("zone_bboxes") or {})
+    high_uncertainty_zone_counts = dict(stability.get("high_uncertainty_zone_counts") or {})
+    high_uncertainty_zone_fractions = dict(stability.get("high_uncertainty_zone_fractions") or {})
+    closure_role = str(layer.get("closure_role") or "unresolved")
+    confidence_class = derive_confidence_class(layer_key, layer, stability)
+
+    persistent_agreement = summarize_region(
+        layer_key=layer_key,
+        region_kind="persistent_agreement",
+        confidence_class=confidence_class,
+        closure_role=closure_role,
+        cell_count=int(zone_counts.get("persistent_agreement", 0) or 0),
+        cell_fraction=float(zone_fractions.get("persistent_agreement", 0.0) or 0.0),
+        bbox=zone_bboxes.get("persistent_agreement"),
+    )
+    support_nodata_sensitive = summarize_region(
+        layer_key=layer_key,
+        region_kind="support_nodata_sensitive",
+        confidence_class=confidence_class,
+        closure_role=closure_role,
+        cell_count=int(zone_counts.get("support_nodata_sensitive", 0) or 0),
+        cell_fraction=float(zone_fractions.get("support_nodata_sensitive", 0.0) or 0.0),
+        bbox=zone_bboxes.get("support_nodata_sensitive"),
+    )
+    shared_support_magnitude = summarize_region(
+        layer_key=layer_key,
+        region_kind="shared_support_magnitude",
+        confidence_class=confidence_class,
+        closure_role=closure_role,
+        cell_count=int(zone_counts.get("shared_support_magnitude", 0) or 0),
+        cell_fraction=float(zone_fractions.get("shared_support_magnitude", 0.0) or 0.0),
+        bbox=zone_bboxes.get("shared_support_magnitude"),
+    )
+    persistent_disagreement = summarize_region(
+        layer_key=layer_key,
+        region_kind="persistent_disagreement",
+        confidence_class=confidence_class,
+        closure_role=closure_role,
+        cell_count=int(zone_counts.get("support_nodata_sensitive", 0) or 0) + int(zone_counts.get("shared_support_magnitude", 0) or 0),
+        cell_fraction=float(zone_fractions.get("support_nodata_sensitive", 0.0) or 0.0)
+        + float(zone_fractions.get("shared_support_magnitude", 0.0) or 0.0),
+        bbox=merge_bboxes(zone_bboxes.get("support_nodata_sensitive"), zone_bboxes.get("shared_support_magnitude")),
+    )
+    umbrella_kind = "closure_limiting_disagreement" if closure_role == "closure_limiting" else "deferrable_disagreement" if closure_role == "deferrable" else "persistent_disagreement"
+    umbrella_region = summarize_region(
+        layer_key=layer_key,
+        region_kind=umbrella_kind,
+        confidence_class=confidence_class,
+        closure_role=closure_role,
+        cell_count=persistent_disagreement["cell_count"],
+        cell_fraction=persistent_disagreement["cell_fraction"],
+        bbox=persistent_disagreement["bbox"],
+    )
+    stable_vs_unstable_fraction = {
+        "stable_fraction": persistent_agreement["cell_fraction"],
+        "unstable_fraction": persistent_disagreement["cell_fraction"],
+        "stable_cell_count": persistent_agreement["cell_count"],
+        "unstable_cell_count": persistent_disagreement["cell_count"],
+    }
+    return {
+        "layer_key": layer_key,
+        "closure_role": closure_role,
+        "confidence_class": confidence_class,
+        "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
+        "stability_zone_class": layer.get("stability_zone_class"),
+        "dominant_zone_category": layer.get("stability_zone_dominant_category"),
+        "dominant_high_uncertainty_zone_category": layer.get("stability_zone_dominant_high_uncertainty_category"),
+        "zone_counts": zone_counts,
+        "zone_fractions": zone_fractions,
+        "high_uncertainty_zone_counts": high_uncertainty_zone_counts,
+        "high_uncertainty_zone_fractions": high_uncertainty_zone_fractions,
+        "stable_region": persistent_agreement,
+        "unstable_region": persistent_disagreement,
+        "umbrella_region": umbrella_region,
+        "region_products": [
+            persistent_agreement,
+            support_nodata_sensitive,
+            shared_support_magnitude,
+            persistent_disagreement,
+            umbrella_region,
+        ],
+        "stable_vs_unstable": stable_vs_unstable_fraction,
+        "stable_region_status": "measured_existing_artifacts",
+        "unstable_region_status": "measured_existing_artifacts",
+    }
+
+
+def derive_confidence_class(layer_key: str, layer: dict[str, Any], stability: dict[str, Any]) -> str:
+    stability_zone_class = str(stability.get("layer_stability_zone_class") or layer.get("stability_zone_class") or "mixed_stability_zone")
+    if stability_zone_class == "persistent_closure_limiting":
+        return "closure_limiting_disagreement"
+    if stability_zone_class == "deferrable_localized":
+        return "deferrable_disagreement"
+    if stability_zone_class == "stable_low_disagreement":
+        return "stable_low_disagreement"
+    if layer_key == "velocity_exceedance_5mps" and layer.get("closure_role") == "deferrable":
+        return "deferrable_disagreement"
+    return "mixed_stability_zone"
+
+
+def summarize_region(
+    *,
+    layer_key: str,
+    region_kind: str,
+    confidence_class: str,
+    closure_role: str,
+    cell_count: int,
+    cell_fraction: float,
+    bbox: dict[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "layer_key": layer_key,
+        "region_kind": region_kind,
+        "confidence_class": confidence_class,
+        "closure_role": closure_role,
+        "cell_count": cell_count,
+        "cell_fraction": cell_fraction,
+        "bbox": bbox,
+        "geometry": bbox_to_polygon(bbox) if bbox is not None else None,
+        "region_status": "measured_existing_artifacts",
+    }
+
+
+def merge_bboxes(left: dict[str, Any] | None, right: dict[str, Any] | None) -> dict[str, Any] | None:
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return {
+        "row_min": min(int(left["row_min"]), int(right["row_min"])),
+        "row_max": max(int(left["row_max"]), int(right["row_max"])),
+        "col_min": min(int(left["col_min"]), int(right["col_min"])),
+        "col_max": max(int(left["col_max"]), int(right["col_max"])),
+        "xmin": min(float(left["xmin"]), float(right["xmin"])),
+        "xmax": max(float(left["xmax"]), float(right["xmax"])),
+        "ymin": min(float(left["ymin"]), float(right["ymin"])),
+        "ymax": max(float(left["ymax"]), float(right["ymax"])),
+    }
+
+
+def bbox_to_polygon(bbox: dict[str, Any] | None) -> dict[str, Any] | None:
+    if bbox is None:
+        return None
+    xmin = float(bbox["xmin"])
+    xmax = float(bbox["xmax"])
+    ymin = float(bbox["ymin"])
+    ymax = float(bbox["ymax"])
+    return {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [xmin, ymin],
+                [xmin, ymax],
+                [xmax, ymax],
+                [xmax, ymin],
+                [xmin, ymin],
+            ]
+        ],
+    }
+
+
+def write_uncertainty_layer_products(report: dict[str, Any], output_dir: Path) -> list[Path]:
+    summary = report.get("uncertainty_layer_summary") or build_uncertainty_layer_summary(report)
+    if summary.get("summary_status") != "measured_existing_artifacts":
+        return []
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    written_paths: list[Path] = []
+
+    summary_path = output_dir / "spatial_uncertainty_layer_summary.json"
+    summary_payload = {
+        **summary,
+        "region_products": [region_product_for_serialization(region) for region in summary.get("region_products", [])],
+        "layer_summaries": [
+            {
+                **layer_summary,
+                "region_products": [region_product_for_serialization(region) for region in layer_summary.get("region_products", [])],
+            }
+            for layer_summary in summary.get("layer_summaries", [])
+        ],
+    }
+    summary_path.write_text(json.dumps(summary_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    written_paths.append(summary_path)
+
+    csv_path = output_dir / "spatial_uncertainty_region_products.csv"
+    csv_lines = ["layer_key,region_kind,confidence_class,closure_role,cell_count,cell_fraction,xmin,ymin,xmax,ymax"]
+    for region in summary.get("region_products", []):
+        bbox = region.get("bbox") or {}
+        csv_lines.append(
+            ",".join(
+                [
+                    csv_escape(region.get("layer_key")),
+                    csv_escape(region.get("region_kind")),
+                    csv_escape(region.get("confidence_class")),
+                    csv_escape(region.get("closure_role")),
+                    str(region.get("cell_count")),
+                    format_float(region.get("cell_fraction")),
+                    format_float(bbox.get("xmin")),
+                    format_float(bbox.get("ymin")),
+                    format_float(bbox.get("xmax")),
+                    format_float(bbox.get("ymax")),
+                ]
+            )
+        )
+    csv_path.write_text("\n".join(csv_lines) + "\n", encoding="utf-8")
+    written_paths.append(csv_path)
+
+    geojson_path = output_dir / "spatial_uncertainty_region_products.geojson"
+    geojson_features = [region_feature(region) for region in summary.get("region_products", [])]
+    geojson_payload = {
+        "type": "FeatureCollection",
+        "schema_version": UNCERTAINTY_LAYER_SCHEMA_VERSION,
+        "features": geojson_features,
+    }
+    geojson_path.write_text(json.dumps(geojson_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    written_paths.append(geojson_path)
+    return written_paths
+
+
+def region_product_for_serialization(region: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "layer_key": region.get("layer_key"),
+        "region_kind": region.get("region_kind"),
+        "confidence_class": region.get("confidence_class"),
+        "closure_role": region.get("closure_role"),
+        "cell_count": region.get("cell_count"),
+        "cell_fraction": region.get("cell_fraction"),
+        "bbox": region.get("bbox"),
+        "region_status": region.get("region_status"),
+    }
+
+
+def region_feature(region: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "Feature",
+        "geometry": region.get("geometry"),
+        "properties": region_product_for_serialization(region),
+    }
+
+
+def csv_escape(value: Any) -> str:
+    text = "" if value is None else str(value)
+    if any(character in text for character in (",", "\"", "\n", "\r")):
+        return "\"" + text.replace("\"", "\"\"") + "\""
+    return text
+
+
+def format_float(value: Any) -> str:
+    if value is None:
+        return ""
+    return f"{float(value):.12g}"
 
 
 def summarize_manifest_identity(manifest: ManifestArtifact) -> dict[str, Any]:

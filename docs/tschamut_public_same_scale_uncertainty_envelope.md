@@ -102,6 +102,15 @@ new acceptance criterion. It makes the persistent closure-limiting regions and
 the localized deferrable disagreement explicit, but it does not change the
 current `inconclusive` closure status.
 
+The same measured stability classes can be exported as GIS-ready diagnostic
+summaries with `scripts/summarize_spatial_same_scale_uncertainty.py
+--gis-output-dir <ignored-root>`. That helper writes JSON, CSV, and GeoJSON
+products for persistent agreement, persistent disagreement, support/nodata
+sensitivity, closure-limiting disagreement, and deferrable disagreement.
+Those outputs are intentionally summaries rather than new raster layers: they
+repackage the measured cell classes for GIS inspection without introducing a
+new hazard map or a new interpretation criterion.
+
 For the decision delta between the closure-limiting layers and the deferrable
 velocity layer, see
 `scripts/summarize_tschamut_closure_gap_deltas.py`. That helper reuses the

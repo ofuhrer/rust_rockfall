@@ -322,6 +322,7 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
         }
         stability_zone_layer_summaries[layer_key] = stability_zone
     overall_role = spatial_uncertainty.get("spatial_interpretation")
+    uncertainty_layer_summary = dict(spatial_uncertainty.get("uncertainty_layer_summary") or {})
     if overall_role == "nodata_support_dominated":
         overall_closure_role = "closure_limiting"
     elif overall_role == "spatially_localized":
@@ -340,6 +341,7 @@ def summarize_spatial_uncertainty(spatial_uncertainty: dict[str, Any]) -> dict[s
             "layer_summaries": stability_zone_layer_summaries,
             "overall_closure_role_change": stability_zone_overall_change(stability_zone_layer_summaries),
         },
+        "uncertainty_layer_summary": uncertainty_layer_summary,
         "dominant_layers": spatial_uncertainty.get("dominant_layers_by_mean_range", []),
         "dominant_layer_summaries": spatial_uncertainty.get("dominant_layer_summaries", []),
         "mask_status": spatial_uncertainty.get("mask_status"),
@@ -836,6 +838,20 @@ def render_text_report(report: dict[str, Any]) -> str:
                     f"{zone_fractions.get('support_nodata_sensitive', 0.0):.6g}/"
                     f"{zone_fractions.get('shared_support_magnitude', 0.0):.6g}/"
                     f"{zone_fractions.get('persistent_agreement', 0.0):.6g}"
+                )
+        uncertainty_layers = spatial.get("uncertainty_layer_summary") or {}
+        if uncertainty_layers:
+            lines.append(
+                "- uncertainty layer summary: "
+                f"{uncertainty_layers.get('summary_status')} | "
+                f"stable={uncertainty_layers.get('stable_region_status')} | "
+                f"unstable={uncertainty_layers.get('unstable_region_status')}"
+            )
+            for layer in uncertainty_layers.get("layer_summaries", []):
+                lines.append(
+                    f"  - {layer.get('layer_key')}: confidence={layer.get('confidence_class')} | "
+                    f"unstable={layer.get('unstable_region', {}).get('cell_count', 0)} | "
+                    f"stable={layer.get('stable_region', {}).get('cell_count', 0)}"
                 )
     lines.append(
         "scale_up_authorized=false operational_claims_allowed=false"

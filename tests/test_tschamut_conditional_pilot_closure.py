@@ -65,6 +65,11 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["stability_zone_closure_role_impact"], "no_change")
         self.assertEqual(spatial["layer_roles"]["max_jump_height"]["stability_zone_closure_role_impact"], "no_change")
         self.assertEqual(spatial["layer_roles"]["velocity_exceedance_5mps"]["stability_zone_closure_role_impact"], "no_change")
+        self.assertEqual(spatial["uncertainty_layer_summary"]["summary_status"], "measured_existing_artifacts")
+        self.assertEqual(
+            [layer["confidence_class"] for layer in spatial["uncertainty_layer_summary"]["layer_summaries"]],
+            ["closure_limiting_disagreement", "closure_limiting_disagreement", "deferrable_disagreement"],
+        )
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_status"], "available")
         self.assertEqual(spatial["layer_roles"]["max_kinetic_energy"]["mask_closure_role"], "closure_limiting")
         self.assertGreaterEqual(spatial["layer_roles"]["max_kinetic_energy"]["high_uncertainty_cell_count"], 0)
@@ -92,6 +97,8 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
         self.assertIn("stability=persistent_closure_limiting", text)
         self.assertIn("stability=deferrable_localized", text)
         self.assertIn("closure-role-change=no_change", text)
+        self.assertIn("uncertainty layer summary:", text)
+        self.assertIn("confidence=closure_limiting_disagreement", text)
 
     def _evidence_override(self) -> dict[str, object]:
         return {
@@ -114,6 +121,35 @@ class TschamutConditionalPilotClosureTest(unittest.TestCase):
                     "overall_closure_role": "closure_limiting",
                     "mask_status": "available",
                     "stability_zone_status": "measured_existing_artifacts",
+                    "uncertainty_layer_summary": {
+                        "schema_version": "spatial_uncertainty_layer_summary_v1",
+                        "summary_status": "measured_existing_artifacts",
+                        "stable_region_status": "measured_existing_artifacts",
+                        "unstable_region_status": "measured_existing_artifacts",
+                        "layer_summaries": [
+                            {
+                                "layer_key": "max_kinetic_energy",
+                                "confidence_class": "closure_limiting_disagreement",
+                                "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
+                                "stable_region": {"cell_count": 5},
+                                "unstable_region": {"cell_count": 20},
+                            },
+                            {
+                                "layer_key": "max_jump_height",
+                                "confidence_class": "closure_limiting_disagreement",
+                                "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
+                                "stable_region": {"cell_count": 12},
+                                "unstable_region": {"cell_count": 13},
+                            },
+                            {
+                                "layer_key": "velocity_exceedance_5mps",
+                                "confidence_class": "deferrable_disagreement",
+                                "uncertainty_concentration_class": "spatially_localized_shared_support_magnitude",
+                                "stable_region": {"cell_count": 20},
+                                "unstable_region": {"cell_count": 5},
+                            },
+                        ],
+                    },
                     "layer_summaries": {
                         "max_kinetic_energy": {
                             "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
