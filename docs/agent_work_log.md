@@ -1423,3 +1423,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no simulations, scientific claims, or backlog protocol changes were introduced.
 - Next task: backlog refill needed
+
+### TB-101: Define Balfrin Minimal Demonstration Contract
+
+- Date: 2026-05-16
+- Commit: `8043643`
+- Objective: define the smallest convincing Balfrin demonstration artifact with explicit inputs, commands, artifacts, evidence, visual products, success criteria, and non-goals.
+- Files changed: `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`, `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`, `tests/test_balfrin_single_release_zone_pilot_contract.py`, `docs/balfrin_minimal_demo_vs_closure.md`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Expanded the committed Balfrin contract into a minimal-demo contract section that is machine-readable and rendered as JSON/text, with explicit required inputs, commands, artifacts, evidence, visual products, success criteria, and non-goals.
+  - Added scope-guard validation so the helper reports `ready`, `blocked_missing_inputs`, or `blocked_scope_creep` without authorizing scale-up, distributed execution, or physical-probability claims.
+  - Added focused regression coverage for the ready, blocked-input, and scope-creep cases plus a short docs pointer that distinguishes minimal demo success from scientific closure.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_single_release_zone_pilot_contract.py tests/test_balfrin_single_release_zone_pilot_contract.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_single_release_zone_pilot_contract tests.test_balfrin_single_release_zone_case_plan_dry_run -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json >/tmp/tb101_balfrin_contract.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format text >/tmp/tb101_balfrin_contract.txt`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no Balfrin jobs were run, the contract stays non-operational, and no annual-frequency, risk, exposure, vulnerability, distributed-execution, scale-up, or physical-probability claims were authorized.
+- Next task: `TB-102`
