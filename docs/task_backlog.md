@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-092: Generate Large Single-Zone Tschamut Case Plan
-
-Goal: Generate a deterministic dry-run case plan for the Balfrin single-release-zone pilot using the frozen public Tschamut source-zone and scenario records.
-
-Capability gap reduced: Deterministic large-case generation toward a valley-scale pilot.
-
-Why this outranks alternatives: A large Balfrin run cannot be submitted or costed reliably until the exact case inputs, seed policy, trajectory count, and output paths are reproducible.
-
-Inspect first:
-
-- `scripts/generate_tschamut_same_scale_cases.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
-
-Deliverables:
-
-- A generator or dry-run report for the large single-zone case plan, including the exact ignored output roots and validation output mode.
-- Tests proving the plan is deterministic and cannot be mistaken for an executed case.
-- Command-plan integration if that is the repo's narrowest existing pattern.
-
-Definition of done:
-
-- One command emits the large-case dry-run plan, focused tests pass, and TB-092 is removed from this backlog.
-
-Boundaries: Do not run validation, do not tune physics or block parameters, and do not commit generated private cases unless they are tiny explicit fixtures.
-
 ### TB-093: Emit Balfrin Submission Package For The Pilot
 
 Goal: Build a generate-only Balfrin submission package for the large single-release-zone pilot that includes the command plan, SLURM script, expected outputs, and collection instructions.

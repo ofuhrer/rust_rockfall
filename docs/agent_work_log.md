@@ -1258,3 +1258,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new ensemble was run, no Swiss-wide rollout was authorized, and no annual, risk, exposure, vulnerability, operational, or physical-frequency claim was introduced.
 - Next task: `TB-092`
+
+### TB-092: Generate Large Single-Zone Tschamut Case Plan
+
+- Date: 2026-05-16
+- Commit: `db5ba5d`
+- Objective: add a deterministic dry-run case plan for the Balfrin single-release-zone pilot that records the frozen public source-zone/scenario inputs, validation output mode, and ignored output roots without authorizing execution.
+- Files changed: `scripts/plan_balfrin_single_release_zone_case_dry_run.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_balfrin_single_release_zone_case_plan_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only Balfrin case-plan helper that loads the frozen source-zone metadata, scenario table, contract, policy, and rebuildable-reduced fixture and emits a deterministic dry-run report.
+  - Recorded the exact ignored output roots, the rebuildable_reduced_output validation mode, the planned case output roots, and a blocked execution template so the report cannot be confused with an executed validation case.
+  - Added portable command-plan integration and focused regression coverage for deterministic output, text rendering, and the new command-plan entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_single_release_zone_case_plan_dry_run tests.test_release_plan_dry_run tests.test_pilot_command_plan`
+- Result/status: completed.
+- Boundaries: no validation run, no physics tuning, no block-parameter tuning, no distributed execution, and no generated private cases were introduced.
+- Next task: `TB-093`

@@ -222,6 +222,7 @@ def build_tschamut_site_plan(
     )
     commands.extend(build_gis_cog_package_conversion_commands())
     commands.extend(build_rebuildable_reduced_output_commands())
+    commands.extend(build_balfrin_single_release_zone_plan_commands())
     commands.extend(
         [
             command_entry(
@@ -656,6 +657,38 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             may_produce_ignored_outputs=True,
             ignored_output_paths=[rel(reduced_root)],
         ),
+    ]
+
+
+def build_balfrin_single_release_zone_plan_commands() -> list[dict[str, Any]]:
+    return [
+        command_entry(
+            site="tschamut_same_scale",
+            group="balfrin_single_release_zone_plan",
+            command_id="tschamut_balfrin_single_release_zone_case_plan_dry_run",
+            description="Generate the large Balfrin single-release-zone dry-run case plan without executing a validation case.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "plan_balfrin_single_release_zone_case_dry_run.py"),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml",
+                "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+                "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+            ],
+            expected_outputs=["JSON large-case dry-run plan"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        )
     ]
 
 
