@@ -1183,3 +1183,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new ensemble was run, no production scale-up was authorized, and no scientific closure criteria or physical-probability boundaries were changed.
 - Next task: `TB-087`
+
+### TB-087: Extract Persistent Conditional Hazard Confidence Regions
+
+- Date: 2026-05-16
+- Commit: `17bf806`
+- Objective: derive deterministic conditional-hazard interpretive regions from the committed same-scale uncertainty evidence without authorizing new simulation output.
+- Files changed: docs/task_backlog.md, docs/tschamut_public_conditional_pilot_gate_report.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, scripts/summarize_spatial_same_scale_uncertainty.py, scripts/summarize_tschamut_conditional_diagnostic_interpretation.py, tests/test_spatial_same_scale_uncertainty.py, tests/test_tschamut_conditional_diagnostic_interpretation.py
+- Implementation summary: added a conditional-hazard region summary on top of the existing spatial uncertainty report so the committed artifacts now name `persistent_agreement`, `stable_low_disagreement`, `shared_support_magnitude_sensitive`, and `support_nodata_sensitive` regions as interpretive aids; threaded that summary through the conditional diagnostic helper and text/JSON output so the measured regions are visible without changing closure status; extended the focused regression coverage to pin the new summary shape and report text; and updated the Tschamut narrative docs plus the active backlog to match the new region language.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty tests.test_tschamut_conditional_diagnostic_interpretation`; `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_spatial_same_scale_uncertainty.py scripts/summarize_tschamut_conditional_diagnostic_interpretation.py tests/test_spatial_same_scale_uncertainty.py tests/test_tschamut_conditional_diagnostic_interpretation.py`; `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`; `PYENV_VERSION=system uv run python scripts/summarize_tschamut_conditional_diagnostic_interpretation.py --format json`
+- Result/status: completed.
+- Boundaries: no operational hazard zone, regulatory class, risk/exposure product, or new simulation output was created; the regions remain interpretive aids only.
+- Next task: `TB-088`
