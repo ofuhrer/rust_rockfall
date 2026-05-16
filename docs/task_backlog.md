@@ -18,35 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-089: Add AOI-To-Prepared-Pilot Dry-Run Orchestrator
-
-Goal: Chain existing AOI acquisition, public-context gate, release-zone dry-run, release-plan dry-run, and command-plan helpers into one dry-run workflow report.
-
-Capability gap reduced: Workflow automation from user AOI toward prepared conditional pilot inputs.
-
-Why this outranks alternatives: It reduces manual orchestration across already-existing helpers without pretending the missing downloads or evidence exist.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A dry-run orchestrator or command-plan group that reports ordered steps, blockers, expected inputs, and generated/ignored output roots for a candidate AOI.
-- The report remains blocked/deferred when real public-context products are missing.
-- Tests prove the dry run does not download data or run ensembles.
-
-Definition of done:
-
-- One command produces a deterministic AOI-to-prepared-pilot dry-run report for Chant Sura, focused tests pass, and TB-089 is removed from this backlog.
-
-Boundaries: No data downloads, no second-site ensemble, no hazard build, no operational or physical-probability claim.
-
 ### TB-090: Generate Second-Site Conditional Case Skeleton
 
 Goal: Produce a blocked, inspectable second-site case skeleton from the current Chant Sura contract without authorizing execution.
