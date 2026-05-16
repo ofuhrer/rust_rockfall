@@ -1242,3 +1242,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no Chant Sura validation or hazard generation was run, and no public-context readiness or operational claim was added.
 - Next task: backlog refill needed.
+
+### TB-091: Define Balfrin Single-Release-Zone Pilot Contract
+
+- Date: 2026-05-16
+- Commit: `pending`
+- Objective: Freeze a measurable one-release-zone Balfrin pilot contract with native reduced output, conditional GIS products, and explicit non-operational boundaries.
+- Files changed: `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`, `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`, `tests/test_balfrin_single_release_zone_pilot_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary: added a read-only Balfrin contract helper that reports the frozen release-zone scope, trajectory target, validation output mode, expected artifact families, hazard-layer products, Balfrin resource assumptions, and no-go boundaries; added a committed machine-readable contract record for the next single-release-zone pilot; and covered both the ready contract and a missing-input contract with focused regressions and CLI smoke checks.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_single_release_zone_pilot_contract.py tests/test_balfrin_single_release_zone_pilot_contract.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_single_release_zone_pilot_contract -v`; `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json`; `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format text`
+- Result/status: completed.
+- Boundaries: no new ensemble was run, no Swiss-wide rollout was authorized, and no annual, risk, exposure, vulnerability, operational, or physical-frequency claim was introduced.
+- Next task: `TB-092`

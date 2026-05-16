@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-091: Define Balfrin Single-Release-Zone Pilot Contract
-
-Goal: Freeze the measurable contract for the next Balfrin valley-scale pilot: one release zone, pragmatic block scenarios, native reduced output, conditional GIS outputs, and explicit non-operational boundaries.
-
-Capability gap reduced: Balfrin pilot execution realism and reproducibility.
-
-Why this outranks alternatives: The project now needs a concrete scale target before workers can safely generate large cases, job scripts, or storage projections.
-
-Inspect first:
-
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `scripts/check_balfrin_tschamut_readiness.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`
-
-Deliverables:
-
-- A machine-readable pilot contract or summary that names the release-zone scope, trajectory-count target, validation output mode, expected artifact families, hazard-layer products, Balfrin resource assumptions, and no-go boundaries.
-- A text/JSON helper output that distinguishes conditional diagnostic feasibility from scale-up or physical-frequency authorization.
-- Focused tests covering a ready contract and a blocked/missing-input contract.
-
-Definition of done:
-
-- The contract helper emits JSON/text, focused tests pass, and TB-091 is removed from this backlog.
-
-Boundaries: Do not run a new ensemble, do not authorize Swiss-wide rollout, and do not introduce annual, risk, exposure, vulnerability, or operational claims.
-
 ### TB-092: Generate Large Single-Zone Tschamut Case Plan
 
 Goal: Generate a deterministic dry-run case plan for the Balfrin single-release-zone pilot using the frozen public Tschamut source-zone and scenario records.
