@@ -295,6 +295,55 @@ def _build_collection_instructions(run_root: Path) -> list[str]:
     ]
 
 
+def _build_operator_sequence(
+    *,
+    run_root: Path,
+    run_id: str,
+    probe_manifest: Path,
+    partition: str,
+    time_budget: str,
+    nodes: int,
+    ntasks: int,
+    cpus_per_task: int,
+) -> dict[str, list[str]]:
+    submit_base = (
+        "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
+        f"{probe_manifest} --run-root {run_root} --run-id {run_id} "
+        f"--partition {partition} --time {time_budget} --nodes {nodes} "
+        f"--ntasks {ntasks} --cpus-per-task {cpus_per_task}"
+    )
+    return {
+        "preflight": [
+            f"RUN_MANIFEST={probe_manifest}",
+            "PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py \"$RUN_MANIFEST\" --format both",
+        ],
+        "generate_only": [f"{submit_base} --generate-only"],
+        "submit": [f"{submit_base} --submit"],
+        "stop": [
+            "JOB_ID=<job-id-from-sbatch-or-sacct>",
+            "scancel \"${JOB_ID}\"",
+        ],
+        "resume": [
+            "# Reuse the same RUN_ROOT and RUN_ID so the job picks up the same deterministic layout.",
+            f"{submit_base} --submit",
+        ],
+        "collect": [
+            f"PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root {run_root}",
+            f"PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root {run_root}",
+        ],
+        "verify": [
+            f"PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json --evidence-json {run_root}/balfrin_post_run_evidence.json",
+            f"PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root {run_root}",
+        ],
+        "cleanup": [
+            f"rm -rf {run_root}",
+        ],
+        "failure_handoff": [
+            f"tar -C {run_root} -czf /tmp/{_safe_fragment(run_id)}_balfrin_probe_handoff.tgz logs command_plan.json probe.sbatch balfrin_submission_package.json balfrin_submission_package.md balfrin_probe_summary.json balfrin_probe_context.txt balfrin_probe_full_time.txt balfrin_hazard_stage_time.txt",
+        ],
+    }
+
+
 def _build_submission_package_report(
     *,
     run_root: Path,
@@ -315,12 +364,24 @@ def _build_submission_package_report(
     git_info = _git_info(repo_root)
     output_roots = _collect_output_roots(command_plan, repo_root=repo_root)
     generated_output_roots = [str(run_root.resolve()), str((run_root / "logs").resolve())]
+    run_id = str(command_plan.get("run_id") or "").strip() or run_root.name
+    operator_sequence = _build_operator_sequence(
+        run_root=run_root,
+        run_id=run_id,
+        probe_manifest=probe_manifest.resolve(),
+        partition=partition,
+        time_budget=time_budget,
+        nodes=nodes,
+        ntasks=ntasks,
+        cpus_per_task=cpus_per_task,
+    )
 
     return {
         "schema_version": PACKAGE_SCHEMA_VERSION,
         "package_mode": "generate-only",
         "probe_manifest": str(probe_manifest.resolve()),
         "run_root": str(run_root.resolve()),
+        "run_id": run_id,
         "repository": {
             "repo_root": str(repo_root),
             "branch": git_info.get("branch") or readiness_report.get("branch"),
@@ -347,6 +408,18 @@ def _build_submission_package_report(
         "sbatch_script_path": str(run_root / "probe.sbatch"),
         "generated_output_roots": generated_output_roots,
         "ignored_output_roots": output_roots,
+        "ignored_artifacts": [
+            str((run_root / "command_plan.json").resolve()),
+            str((run_root / "probe.sbatch").resolve()),
+            str((run_root / f"{PACKAGE_BASENAME}.json").resolve()),
+            str((run_root / f"{PACKAGE_BASENAME}.md").resolve()),
+            str((run_root / "balfrin_probe_summary.json").resolve()),
+            str((run_root / "balfrin_probe_context.txt").resolve()),
+            str((run_root / "balfrin_probe_full_time.txt").resolve()),
+            str((run_root / "balfrin_hazard_stage_time.txt").resolve()),
+            str((run_root / "logs").resolve()),
+        ],
+        "operator_sequence": operator_sequence,
         "expected_outputs": _build_expected_outputs(run_root),
         "collection_instructions": _build_collection_instructions(run_root),
     }
@@ -360,6 +433,7 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
         f"- Mode: `{package['package_mode']}`",
         f"- Probe manifest: `{package['probe_manifest']}`",
         f"- Run root: `{package['run_root']}`",
+        f"- Run id: `{package['run_id']}`",
         "",
         "## SLURM",
         "",
@@ -392,6 +466,19 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Operator Sequence",
+            "",
+        ]
+    )
+    for step_name, commands in package["operator_sequence"].items():
+        lines.append(f"- {step_name}:")
+        for command in commands:
+            lines.append("```bash")
+            lines.append(command)
+            lines.append("```")
+    lines.extend(
+        [
+            "",
             "## Expected Outputs",
             "",
         ]
@@ -407,6 +494,18 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
     )
     for instruction in package["collection_instructions"]:
         lines.append(f"```bash\n{instruction}\n```")
+    lines.extend(
+        [
+            "",
+            "## Do Not Commit",
+            "",
+            "Do not commit any generated Balfrin probe outputs or scratch-run artifacts from the paths listed below.",
+        ]
+    )
+    for root in package["ignored_output_roots"]:
+        lines.append(f"- `{root}`")
+    for artifact in package["ignored_artifacts"]:
+        lines.append(f"- `{artifact}`")
     return "\n".join(lines)
 
 

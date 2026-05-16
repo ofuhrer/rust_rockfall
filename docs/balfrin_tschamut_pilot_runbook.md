@@ -35,7 +35,159 @@ Set a manifest variable for reuse:
 
 ```bash
 RUN_MANIFEST="${RUN_MANIFEST:-validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml}"
+RUN_ROOT="${RUN_ROOT:-${SCRATCH:-/scratch}/rust_rockfall/probes/balfrin-demo/${RUN_ID:-$(date -u +%Y%m%d_%H%M%S_utc)}}"
+RUN_ID="${RUN_ID:-$(basename "$RUN_ROOT")}"
 ```
+
+The exact command sequence below is the operational demo procedure. Keep the
+same `RUN_ROOT` and `RUN_ID` for submit, stop, resume, collect, and cleanup so
+the run stays reproducible.
+
+### 2.1 Preflight
+
+```bash
+PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py \
+  "$RUN_MANIFEST" --format both
+```
+
+### 2.2 Generate-only
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  "$RUN_MANIFEST" \
+  --generate-only \
+  --run-root "$RUN_ROOT" \
+  --run-id "$RUN_ID" \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16
+```
+
+Use `--generate-only` when you want the frozen command plan, SBATCH script, and
+submission package without actually starting SLURM.
+
+### 2.3 Submit
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  "$RUN_MANIFEST" \
+  --submit \
+  --run-root "$RUN_ROOT" \
+  --run-id "$RUN_ID" \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16
+```
+
+Record the `submitted_job_id` from the helper output. It is the value used for
+stop and resume handoff.
+
+### 2.4 Stop
+
+```bash
+JOB_ID="<submitted_job_id>"
+scancel "${JOB_ID}"
+```
+
+Stop only the Balfrin probe job you submitted. Do not cancel unrelated work.
+
+### 2.5 Resume
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  "$RUN_MANIFEST" \
+  --submit \
+  --run-root "$RUN_ROOT" \
+  --run-id "$RUN_ID" \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16
+```
+
+Resume means rerun the same helper with the same `RUN_ROOT` and `RUN_ID` after
+the stopped job has been cleared. Do not change the command plan or scratch
+layout when resuming.
+
+### 2.6 Collect
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  --collect \
+  --run-root "$RUN_ROOT"
+
+PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py \
+  --run-root "$RUN_ROOT"
+```
+
+The submission helper and the collector should agree on the same run root. If
+they do not, stop and inspect the generated package before proceeding.
+
+### 2.7 Verify
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py \
+  --format json \
+  --evidence-json "${RUN_ROOT}/balfrin_post_run_evidence.json"
+```
+
+Use the post-run evidence bundle only after the collection step has produced the
+measured outputs that the gate expects. Keep the gate read-only.
+
+### 2.8 Cleanup
+
+```bash
+rm -rf "${RUN_ROOT}"
+```
+
+Cleanup applies only after you have copied the needed evidence to a durable
+location. Keep scratch-only probe roots out of the repository.
+
+### 2.9 Failure handoff
+
+If the run fails or needs escalation, capture the run package, summary, logs,
+and context as a single scratch archive before handing it off:
+
+```bash
+tar -C "${RUN_ROOT}" -czf "/tmp/${RUN_ID}_balfrin_probe_handoff.tgz" \
+  logs \
+  command_plan.json \
+  probe.sbatch \
+  balfrin_submission_package.json \
+  balfrin_submission_package.md \
+  balfrin_probe_summary.json \
+  balfrin_probe_context.txt \
+  balfrin_probe_full_time.txt \
+  balfrin_hazard_stage_time.txt
+```
+
+The handoff archive should include the submission package, command plan, logs,
+and timing sidecars, not tracked outputs copied from elsewhere.
+
+### 2.10 Do not commit generated artifacts
+
+Do not commit any files or directories under these generated output roots:
+
+- `$RUN_ROOT`
+- `$RUN_ROOT/logs`
+- `validation/private/tschamut_public_pilot/...`
+- `hazard/results/tschamut_public_pilot/...`
+
+Do not commit these generated artifacts if they appear in a run root:
+
+- `command_plan.json`
+- `probe.sbatch`
+- `balfrin_submission_package.json`
+- `balfrin_submission_package.md`
+- `balfrin_probe_summary.json`
+- `balfrin_probe_context.txt`
+- `balfrin_probe_full_time.txt`
+- `balfrin_hazard_stage_time.txt`
 
 ## 3) Read-only readiness check
 

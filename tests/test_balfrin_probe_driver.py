@@ -197,6 +197,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 )
 
         self.assertEqual(package["schema_version"], "balfrin_submission_package_v1")
+        self.assertEqual(package["run_id"], run_root.name)
         self.assertEqual(package["repository"]["commit"], "abc123")
         self.assertEqual(package["generated_output_roots"], [str(run_root.resolve()), str((run_root / "logs").resolve())])
         self.assertEqual(
@@ -206,6 +207,9 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 str((ROOT / "validation/private/tschamut_public_pilot/target_gate_v1").resolve()),
             ],
         )
+        self.assertIn("generate_only", package["operator_sequence"])
+        self.assertIn("collect", package["operator_sequence"])
+        self.assertIn(str((run_root / "command_plan.json").resolve()), package["ignored_artifacts"])
         self.assertIn(
             f"PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root {run_root}",
             package["collection_instructions"],
@@ -219,6 +223,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             "package_mode": "generate-only",
             "probe_manifest": "validation/pilot_runs/probe.yaml",
             "run_root": "/scratch/rust_rockfall/probes/scale-test/001",
+            "run_id": "probe_fixed",
             "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
             "slurm": {
                 "partition": "postproc",
@@ -237,6 +242,49 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             "sbatch_script_path": "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
             "generated_output_roots": ["/scratch/rust_rockfall/probes/scale-test/001"],
             "ignored_output_roots": [],
+            "ignored_artifacts": [
+                "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
+                "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_submission_package.json",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_submission_package.md",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_probe_summary.json",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_probe_context.txt",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_probe_full_time.txt",
+                "/scratch/rust_rockfall/probes/scale-test/001/balfrin_hazard_stage_time.txt",
+                "/scratch/rust_rockfall/probes/scale-test/001/logs",
+            ],
+            "operator_sequence": {
+                "preflight": [
+                    "RUN_MANIFEST=validation/pilot_runs/probe.yaml",
+                    "PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py \"$RUN_MANIFEST\" --format both",
+                ],
+                "generate_only": [
+                    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/probe.yaml --run-root /scratch/rust_rockfall/probes/scale-test/001 --run-id probe_fixed --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only",
+                ],
+                "submit": [
+                    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/probe.yaml --run-root /scratch/rust_rockfall/probes/scale-test/001 --run-id probe_fixed --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit",
+                ],
+                "stop": [
+                    "JOB_ID=<job-id-from-sbatch-or-sacct>",
+                    "scancel \"${JOB_ID}\"",
+                ],
+                "resume": [
+                    "# Reuse the same RUN_ROOT and RUN_ID so the job picks up the same deterministic layout.",
+                    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/probe.yaml --run-root /scratch/rust_rockfall/probes/scale-test/001 --run-id probe_fixed --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit",
+                ],
+                "collect": [
+                    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/rust_rockfall/probes/scale-test/001",
+                    "PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/rust_rockfall/probes/scale-test/001",
+                ],
+                "verify": [
+                    "PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json --evidence-json /scratch/rust_rockfall/probes/scale-test/001/balfrin_post_run_evidence.json",
+                    "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/rust_rockfall/probes/scale-test/001",
+                ],
+                "cleanup": ["rm -rf /scratch/rust_rockfall/probes/scale-test/001"],
+                "failure_handoff": [
+                    "tar -C /scratch/rust_rockfall/probes/scale-test/001 -czf /tmp/probe_fixed_balfrin_probe_handoff.tgz logs command_plan.json probe.sbatch balfrin_submission_package.json balfrin_submission_package.md balfrin_probe_summary.json balfrin_probe_context.txt balfrin_probe_full_time.txt balfrin_hazard_stage_time.txt",
+                ],
+            },
             "expected_outputs": [
                 "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
                 "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
@@ -278,6 +326,11 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                     json.loads((run_root / "balfrin_submission_package.json").read_text(encoding="utf-8")),
                     fake_package,
                 )
+                markdown = (run_root / "balfrin_submission_package.md").read_text(encoding="utf-8")
+                self.assertIn("## Operator Sequence", markdown)
+                self.assertIn("scancel \"${JOB_ID}\"", markdown)
+                self.assertIn("## Do Not Commit", markdown)
+                self.assertIn("balfrin_probe_full_time.txt", markdown)
                 self.assertIn("run_root=", buf.getvalue())
 
     def test_collect_probe_metrics_parses_synthetic_outputs(self) -> None:

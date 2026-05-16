@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-103: Harden Balfrin Demonstration Runbook
-
-Goal: Make the Balfrin demo execution procedure operationally reproducible with exact start, stop, resume, collect, verify, and cleanup steps.
-
-Capability gap reduced: Operational demonstration readiness.
-
-Why this outranks alternatives: A management-facing run should not depend on ad hoc operator memory once measured execution begins.
-
-Inspect first:
-
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-
-Deliverables:
-
-- A command-driven runbook section or helper output covering preflight, submit/generate-only, stop/resume, collect, post-run gate, artifact hygiene, and failure handoff.
-- Tests or smoke checks for any helper changes.
-- Exact statement of ignored output roots and artifacts that must not be committed.
-
-Definition of done:
-
-- The runbook is executable from existing helper commands, focused checks pass, and TB-103 is removed from this backlog.
-
-Boundaries: Documentation/helper command consolidation only; do not submit jobs, broaden claims, or add generic documentation unrelated to the Balfrin demo path.
-
 ### TB-104: Add Structured Worker Output Compression
 
 Goal: Reduce autonomous worker/orchestrator output pressure by standardizing concise progress summaries, bounded command output, and final structured reports.
