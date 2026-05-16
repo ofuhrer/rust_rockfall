@@ -2058,6 +2058,7 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
         errors.append("docs/agent_work_log.md should say 'backlog refill needed' instead of 'Next task: none'")
 
     errors.extend(_find_unreachable_work_log_commits(work_log_text))
+    errors.extend(_find_work_log_commits_without_task_file_changes(work_log_text))
 
     for task_id, block in _extract_tb_blocks(work_log_text):
         for field in (
@@ -2075,6 +2076,9 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
                 errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
 
     return errors
+
+
+WORK_LOG_META_PATHS = {"docs/agent_work_log.md", "docs/task_backlog.md"}
 
 
 def _find_unreachable_work_log_commits(
@@ -2095,6 +2099,48 @@ def _find_unreachable_work_log_commits(
     return errors
 
 
+def _find_work_log_commits_without_task_file_changes(
+    work_log_text: str,
+    changed_files_provider: Callable[[str], set[str]] | None = None,
+) -> list[str]:
+    provider = changed_files_provider or _git_commit_changed_files
+    errors: list[str] = []
+    for task_id, block in _extract_tb_blocks(work_log_text):
+        commit_match = re.search(r"(?mi)^- Commit:\s*`([0-9a-f]{7,40})`", block)
+        if not commit_match:
+            continue
+        expected_files = _extract_work_log_files_changed(block)
+        task_files = {path for path in expected_files if path not in WORK_LOG_META_PATHS}
+        if not task_files:
+            continue
+        commit_hash = commit_match.group(1)
+        changed_files = provider(commit_hash)
+        if changed_files and task_files.isdisjoint(changed_files):
+            errors.append(
+                f"docs/agent_work_log.md TB-{task_id:03d} commit {commit_hash} does not touch listed task files"
+            )
+    return errors
+
+
+def _extract_work_log_files_changed(block: str) -> set[str]:
+    match = re.search(r"(?mi)^- Files changed:\s*(.+)$", block)
+    if not match:
+        return set()
+    value = match.group(1).strip()
+    backtick_paths = re.findall(r"`([^`]+)`", value)
+    if backtick_paths:
+        return {path.strip() for path in backtick_paths if _looks_like_repo_path(path.strip())}
+    return {
+        part.strip()
+        for part in value.split(",")
+        if _looks_like_repo_path(part.strip())
+    }
+
+
+def _looks_like_repo_path(value: str) -> bool:
+    return "/" in value and not value.startswith("see ")
+
+
 def _git_commit_is_ancestor_of_head(commit_hash: str) -> bool:
     result = subprocess.run(
         ["git", "merge-base", "--is-ancestor", commit_hash, "HEAD"],
@@ -2104,6 +2150,20 @@ def _git_commit_is_ancestor_of_head(commit_hash: str) -> bool:
         check=False,
     )
     return result.returncode == 0
+
+
+def _git_commit_changed_files(commit_hash: str) -> set[str]:
+    result = subprocess.run(
+        ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", commit_hash],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
 def _section_between(text: str, start_heading: str, end_heading: str) -> str:

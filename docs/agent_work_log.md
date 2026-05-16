@@ -19,10 +19,12 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   `docs/agent_work_log_archive.md`.
 - Prefer concise entries. Link to generated helpers, docs, and commits rather
   than pasting long command transcripts.
-- Do not leave `Commit: pending` in a committed entry. If the hash is not
-  known yet, write the entry with `pending`, commit once, replace `pending`
-  with `git rev-parse --short HEAD`, amend the commit, and rerun repository
-  consistency before pushing.
+- Do not leave `Commit: pending` in a committed entry. Use a two-commit
+  sequence when recording a completed task: first commit the implementation
+  with the backlog removal and no new work-log entry, then append the work-log
+  entry with that implementation commit hash and make a small follow-up
+  `Record TB-XXX work log` commit. Do not amend repeatedly to chase a
+  self-referential hash.
 
 ## Entry Template
 
@@ -30,7 +32,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-XXX: Short Title
 
 - Date: YYYY-MM-DD
-- Commit: `<hash>`; never leave `pending` in a pushed commit.
+- Commit: `<implementation-commit-hash>`; never leave `pending` in a pushed commit.
 - Objective: one sentence describing the task.
 - Files changed: concise comma-separated list or grouped paths.
 - Implementation summary: 2-4 bullets focused on what changed.
@@ -1329,7 +1331,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-096: Plan Terrain-Driven Release-Zone Candidate Generation
 
 - Date: 2026-05-16
-- Commit: `c571108`
+- Commit: `bb0bfff`
 - Objective: produce a deterministic dry-run release-zone candidate contract from public terrain and context inputs while keeping candidate generation separate from validated release-zone evidence.
 - Files changed: `scripts/plan_release_zone_heuristic_dry_run.py`, `tests/test_release_zone_heuristic_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary: added a first-class release-zone candidate-generation contract covering terrain derivatives, slope/roughness/corridor screening inputs, context exclusions, output geometry schema, provenance requirements, and explicit evidence-boundary labels; kept the dry-run status tied to deferred public context rather than generating release zones; added focused regressions for the blocked Chant Sura public-context path and the tiny synthetic AOI fixture.

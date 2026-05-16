@@ -114,6 +114,51 @@ class HazardClaimHygieneTests(unittest.TestCase):
             ["docs/agent_work_log.md TB-011 commit def5678 is not reachable from HEAD"],
         )
 
+    def test_task_hygiene_detects_commit_that_does_not_touch_task_files(self) -> None:
+        work_log_text = """### TB-012: Task
+
+- Date: 2026-05-16
+- Commit: `abc1234`
+- Objective: x
+- Files changed: `scripts/task_helper.py`, `tests/test_task_helper.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary: x
+- Checks run: x
+- Result/status: completed.
+- Boundaries: x
+- Next task: backlog refill needed
+"""
+
+        errors = check_repo_consistency._find_work_log_commits_without_task_file_changes(
+            work_log_text,
+            changed_files_provider=lambda _commit_hash: {"docs/agent_work_log.md", "docs/task_backlog.md"},
+        )
+
+        self.assertEqual(
+            errors,
+            ["docs/agent_work_log.md TB-012 commit abc1234 does not touch listed task files"],
+        )
+
+    def test_task_hygiene_accepts_commit_that_touches_any_task_file(self) -> None:
+        work_log_text = """### TB-013: Task
+
+- Date: 2026-05-16
+- Commit: `abc1234`
+- Objective: x
+- Files changed: scripts/task_helper.py, tests/test_task_helper.py, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: x
+- Checks run: x
+- Result/status: completed.
+- Boundaries: x
+- Next task: backlog refill needed
+"""
+
+        errors = check_repo_consistency._find_work_log_commits_without_task_file_changes(
+            work_log_text,
+            changed_files_provider=lambda _commit_hash: {"scripts/task_helper.py"},
+        )
+
+        self.assertEqual(errors, [])
+
     def test_python_tool_dependency_metadata_is_consistent(self) -> None:
         self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
 
