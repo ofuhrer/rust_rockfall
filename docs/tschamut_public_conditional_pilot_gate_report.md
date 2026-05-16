@@ -143,6 +143,40 @@ The helper does not change the interpretation. It only makes the measured
 delta between accepted-diagnostic requirements, deferred status, and no-go
 status visible in one reportable artifact.
 
+## Next-Ensemble Feasibility Probe
+
+The read-only bounded-probe helper is
+`scripts/summarize_bounded_next_ensemble_feasibility_probe.py`. It composes
+the closure-gap, bounded-output, rebuildable-reduced-output, runtime-scaling,
+and single-job-sufficiency evidence into a proposal for the smallest
+additional same-scale probe that is currently bounded enough to describe.
+
+Current proposal snapshot:
+
+- probe id: `tschamut_native_rebuildable_reduced_next_probe`;
+- validation output mode: `rebuildable_reduced_output`;
+- seed: `34014`;
+- ensemble size / trajectory count: `1000`;
+- scenario id: `tschamut_public_block_observed_rows`;
+- source zone id: `tschamut_public_lps_release_bbox`;
+- expected artifact families: diagnostics, manifest, trajectory, ensemble
+  deposition, trajectory metadata, and impact events;
+- expected output root:
+  `validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced`;
+- measured size of that reduced root: `17` files / `3953602` bytes.
+
+The boundedness check stays comfortably below the measured target-scale
+outputs already recorded in the repository:
+
+- target validation output: `2004` files / `571131205` bytes;
+- target hazard output: `54` files / `75423367` bytes.
+
+The associated command-plan template now exists in
+`scripts/generate_pilot_command_plan.py` under
+`tschamut_same_scale::rebuildable_reduced_output`, but execution remains
+deferred until explicitly authorized. The report stays read-only and does not
+authorize scale-up, distributed execution, or any new simulation.
+
 ## Hotspot Provenance
 
 The read-only hotspot provenance helper is

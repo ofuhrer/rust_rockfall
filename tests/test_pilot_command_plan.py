@@ -119,6 +119,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_converted_package_audit", report["command_ids"])
         self.assertIn("tschamut_package_cog_export", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_validation", report["command_ids"])
+        self.assertIn("tschamut_next_ensemble_feasibility_probe_template", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_derivation", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_hazard_rebuild", report["command_ids"])
         native_reduced_command = next(
@@ -141,7 +142,16 @@ class PilotCommandPlanTest(unittest.TestCase):
             "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
             report["ignored_output_paths"],
         )
-        self.assertEqual(report["blocked_template_commands"], [])
+        self.assertEqual(report["blocked_template_commands"], ["tschamut_next_ensemble_feasibility_probe_template"])
+        probe_template_command = next(
+            command for command in report["commands"] if command["id"] == "tschamut_next_ensemble_feasibility_probe_template"
+        )
+        self.assertEqual(probe_template_command["blocked_reason"], "execution deferred until explicitly authorized")
+        self.assertTrue(probe_template_command["may_produce_ignored_outputs"])
+        self.assertIn(
+            "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+            probe_template_command["command"],
+        )
 
         export_command = next(command for command in report["commands"] if command["id"] == "tschamut_package_cog_export")
         self.assertIn("scripts/build_hazard_layers.py", export_command["command"])
@@ -190,9 +200,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertIn("tschamut_package_cog_export", report["command_ids"])
         self.assertIn("tschamut_reduced_profile_validation", report["command_ids"])
+        self.assertIn("tschamut_next_ensemble_feasibility_probe_template", report["command_ids"])
         self.assertIn("tschamut_converted_package_audit", report["command_ids"])
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
-        self.assertEqual(report["blocked_template_commands"], [])
+        self.assertEqual(report["blocked_template_commands"], ["tschamut_next_ensemble_feasibility_probe_template"])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
         report = self._fixture_report("chant_sura_fluelapass")
@@ -263,6 +274,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
+        self.assertIn("tschamut_next_ensemble_feasibility_probe_template", output)
 
 
 if __name__ == "__main__":

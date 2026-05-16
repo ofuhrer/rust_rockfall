@@ -588,6 +588,28 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
         command_entry(
             site="tschamut_same_scale",
             group="rebuildable_reduced_output",
+            command_id="tschamut_next_ensemble_feasibility_probe_template",
+            description="Template the smallest additional same-scale probe with the native rebuildable_reduced_output case; execution remains deferred until explicitly authorized.",
+            command=native_validation_command,
+            expected_inputs=[
+                rel(REDUCED_VALIDATION_CASE),
+            ],
+            expected_outputs=[
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_deposition.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_impact_events.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory_metadata.csv"),
+                rel(reduced_root / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_metrics.json"),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            blocked_reason="execution deferred until explicitly authorized",
+            ignored_output_paths=[rel(reduced_root)],
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="rebuildable_reduced_output",
             command_id="tschamut_reduced_profile_derivation",
             description="Derive the canonical rebuildable reduced-output root from the full target validation artifacts as a legacy proof path.",
             command=derivation_command,

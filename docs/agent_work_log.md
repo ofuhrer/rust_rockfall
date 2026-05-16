@@ -871,3 +871,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no new simulation, source-zone tuning, operational interpretation, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability claim was introduced.
 - Next task: `TB-061`
+
+### TB-061: Define A Bounded Next-Ensemble Feasibility Probe
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: add a read-only feasibility report and deferred command-plan template for the smallest bounded same-scale probe that could still clarify the remaining closure question without authorizing scale-up.
+- Files changed: scripts/summarize_bounded_next_ensemble_feasibility_probe.py, scripts/generate_pilot_command_plan.py, tests/test_bounded_next_ensemble_feasibility_probe.py, tests/test_pilot_command_plan.py, docs/tschamut_public_conditional_pilot_gate_report.md, docs/task_backlog.md, docs/agent_work_log.md
+- Implementation summary: added a JSON/text helper that composes closure-gap, rebuildable-reduced-output, runtime-scaling, and single-job-sufficiency evidence into a bounded next-probe report; added a deferred native `rebuildable_reduced_output` command-plan template; updated the gate report to publish the proposed probe scope, boundedness proof, and explicit no-go conditions.
+- Checks run: `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_bounded_next_ensemble_feasibility_probe.py scripts/generate_pilot_command_plan.py tests/test_bounded_next_ensemble_feasibility_probe.py tests/test_pilot_command_plan.py`; `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_next_ensemble_feasibility_probe tests.test_pilot_command_plan`; `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`
+- Result/status: completed.
+- Boundaries: no ensemble was run, no parameters were tuned, and no scale-up or distributed execution was authorized.
+- Next task: `TB-062`

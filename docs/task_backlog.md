@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Backlog refill needed: no active TB tasks remain._
 
-### TB-061: Define A Bounded Next-Ensemble Feasibility Probe
-
-Goal: closure remains inconclusive, but any additional ensemble should be justified by expected information gain and bounded output cost. Reduces: uncertainty characterization and scalable execution planning.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- a read-only feasibility report for the smallest additional same-scale probe, including proposed seed/scenario scope, expected artifact families, estimated output size, and expected closure question answered;
-- command-plan template using native `rebuildable_reduced_output`, but not executing the run;
-- explicit go/no-go criteria for whether the probe would be worth running.
-
-Definition of done:
-
-- JSON/text helper and command-plan entry exist;
-- report proves the proposed probe is bounded relative to measured target/full output sizes;
-- docs keep execution deferred until explicitly authorized.
-
-Boundaries: do not run the ensemble, do not tune parameters, do not authorize
-scale-up or distributed execution.
-
 ### TB-062: Generate Chant Sura Dry-Run Case Skeleton
 
 Goal: Chant Sura core synthetic staging is ready and public context is deferred, but there is no concrete second-site case-generation skeleton showing what would run once real public context exists. Reduces: Swiss-wide portability and second-site realism.
