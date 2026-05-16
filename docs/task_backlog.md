@@ -24,7 +24,44 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-116: Execute And Collect Balfrin Single-Release-Zone Demo
+### TB-116: Harden Balfrin Scheduler-Block Classification
+
+Goal: Make `submit_balfrin_probe.py` return a structured
+`scheduler_submission_failed` report when `sbatch` is unavailable so Balfrin
+demo attempts fail cleanly instead of surfacing an unclassified stack trace.
+
+Capability gap reduced: Clear orchestration failure classification for
+environments without SLURM.
+
+Why this outranks alternatives: TB-116 is blocked on scheduler availability;
+the next smallest repo-side unblock is a machine-readable report path that
+preserves the failure taxonomy and keeps downstream synthesis tasks honest.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/summarize_balfrin_failure_taxonomy.py`
+- `docs/balfrin_failure_recovery_playbook.md`
+- `docs/balfrin_single_release_zone_execution_report.md`
+
+Deliverables:
+
+- A guarded submit path that emits a structured scheduler-block report when
+  `sbatch` is missing or unreachable.
+- Focused regression coverage proving the missing-sbatch path is classified as
+  `scheduler_submission_failed`.
+
+Definition of done:
+
+- The submit helper no longer crashes unclassified on a missing `sbatch`
+  executable, and the blocked report can be consumed by the taxonomy and
+  recovery docs.
+
+Boundaries: Do not fake a successful Balfrin run, do not broaden the claim
+boundary, and do not introduce distributed execution or operational hazard
+claims.
+
+### TB-117: Execute And Collect Balfrin Single-Release-Zone Demo
 
 Goal: Run the canonical Balfrin demonstration workflow end-to-end for one
 release zone, one bounded deterministic ensemble, one native reduced-output
@@ -66,7 +103,7 @@ Boundaries: Use bounded deterministic ensembles and native rebuildable reduced
 output only; do not run distributed/MPI/GPU jobs, large production ensembles, or
 operational/physical-frequency products.
 
-### TB-117: Build Canonical Balfrin Demonstration Evidence Bundle
+### TB-118: Build Canonical Balfrin Demonstration Evidence Bundle
 
 Goal: Convert the measured Balfrin run root into one canonical evidence bundle
 for readiness, metrics, outputs, GIS/COG status, restartability, failure
@@ -104,7 +141,7 @@ Definition of done:
 Boundaries: Do not fabricate missing metrics, do not commit large generated
 outputs, and do not broaden claim boundaries.
 
-### TB-118: Demonstrate Measured Balfrin Restartability And Recovery
+### TB-119: Demonstrate Measured Balfrin Restartability And Recovery
 
 Goal: Interrupt and recover the canonical Balfrin demonstration or classify why
 a live interruption/recovery proof remains blocked, using measured run evidence
@@ -140,13 +177,13 @@ Deliverables:
 Definition of done:
 
 - The reports no longer imply fixture-backed evidence is a live Balfrin
-  measurement; focused checks pass and TB-118 is removed.
+  measurement; focused checks pass and TB-119 is removed.
 
 Boundaries: Do not create artificial interruption evidence, do not rerun large
 ensembles unless explicitly required by the runbook, and do not classify
 `summary_only` as rebuildable.
 
-### TB-119: Generate Canonical Balfrin Conditional Diagnostic Interpretation
+### TB-120: Generate Canonical Balfrin Conditional Diagnostic Interpretation
 
 Goal: Produce one coherent measured Balfrin interpretation that combines
 uncertainty, convergence, scaling, GIS readiness, portability, closure
@@ -185,7 +222,7 @@ Definition of done:
 Boundaries: Do not tune physics, change acceptance thresholds, or claim physical
 validation from conditional diagnostic agreement.
 
-### TB-120: Resolve Balfrin GIS/COG Demonstration Scope Delta
+### TB-121: Resolve Balfrin GIS/COG Demonstration Scope Delta
 
 Goal: Make the Balfrin demonstration GIS package either full-scope COG-ready or
 explicitly encode the intended scope delta in the measured evidence bundle.
@@ -219,7 +256,7 @@ Definition of done:
 Boundaries: Do not commit generated rasters, do not require manual QGIS QA, and
 do not convert GIS readiness into operational approval.
 
-### TB-121: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
+### TB-122: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
 
 Goal: Produce deterministic terrain-driven release-zone candidate metrics for
 the Balfrin/Tschamut AOI without using them as field-validated release zones.
@@ -254,7 +291,7 @@ Definition of done:
 Boundaries: Do not replace the frozen pilot release zone, tune thresholds to
 match outcomes, or claim physical release probability.
 
-### TB-122: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
+### TB-123: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
 
 Goal: Produce a deterministic block-scenario sensitivity plan for the Balfrin
 demo that separates pragmatic scenario coverage from physical frequency claims.
@@ -288,7 +325,7 @@ Definition of done:
 Boundaries: Do not fit block-size distributions, infer annual frequencies, or
 change the already measured Balfrin demo unless a later task authorizes it.
 
-### TB-123: Prototype AOI-To-Demonstration Preparation Path
+### TB-124: Prototype AOI-To-Demonstration Preparation Path
 
 Goal: Given AOI extents or a release polygon, prepare the deterministic inputs
 needed for a demonstration workflow without running an ensemble.
@@ -323,7 +360,7 @@ Definition of done:
 Boundaries: Do not run ensembles, download public context, or claim release-zone
 validity from the dry-run scaffold.
 
-### TB-124: Define Second-Site Real-Context Trigger From Balfrin Evidence
+### TB-125: Define Second-Site Real-Context Trigger From Balfrin Evidence
 
 Goal: Convert the Chant Sura / Fluelapass defer decision into a concrete
 measured trigger for when real public-context staging should proceed.
@@ -361,7 +398,7 @@ Boundaries: Do not download real public context, do not run a second-site
 ensemble, and do not override the existing defer decision without measured
 Balfrin evidence.
 
-### TB-125: Measure Practical Balfrin Ensemble Frontier
+### TB-126: Measure Practical Balfrin Ensemble Frontier
 
 Goal: Estimate the smallest useful next Balfrin ensemble by comparing runtime,
 output growth, rebuildability cost, and uncertainty/stability changes across
@@ -398,7 +435,7 @@ Definition of done:
 Boundaries: Do not run a large production ensemble, tune physics, or authorize
 Swiss-wide execution.
 
-### TB-126: Update Swiss-Wide Envelope From Measured Balfrin Demo
+### TB-127: Update Swiss-Wide Envelope From Measured Balfrin Demo
 
 Goal: Recompute the Swiss-wide runtime, storage, file-count, memory, and
 job-count planning envelope from measured Balfrin demo evidence.
@@ -432,7 +469,7 @@ Definition of done:
 Boundaries: Do not authorize Swiss-wide execution, distributed execution, or
 production ensembles; this is a planning envelope only.
 
-### TB-127: Map Balfrin Demo Evidence To Physical-Credibility Gaps
+### TB-128: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 Goal: Map the measured Balfrin demo outputs to the existing physical
 credibility, validation, and calibration evidence requirements.
@@ -467,44 +504,6 @@ Definition of done:
 
 Boundaries: Do not introduce calibration, fitting, return periods, risk,
 exposure, vulnerability, or physical-probability claims.
-
-### TB-128: Harden Balfrin Scheduler-Block Classification
-
-Goal: Make `submit_balfrin_probe.py` return a structured
-`scheduler_submission_failed` report when `sbatch` is unavailable so Balfrin
-demo attempts fail cleanly instead of surfacing an unclassified stack trace.
-
-Capability gap reduced: Clear orchestration failure classification for
-environments without SLURM.
-
-Why this outranks alternatives: TB-116 is blocked on scheduler availability;
-the next smallest repo-side unblock is a machine-readable report path that
-preserves the failure taxonomy and keeps downstream synthesis tasks honest.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/summarize_balfrin_failure_taxonomy.py`
-- `docs/balfrin_failure_recovery_playbook.md`
-- `docs/balfrin_single_release_zone_execution_report.md`
-
-Deliverables:
-
-- A guarded submit path that emits a structured scheduler-block report when
-  `sbatch` is missing or unreachable.
-- Focused regression coverage proving the missing-sbatch path is classified as
-  `scheduler_submission_failed`.
-
-Definition of done:
-
-- The submit helper no longer crashes unclassified on a missing `sbatch`
-  executable, and the blocked report can be consumed by the taxonomy and
-  recovery docs.
-
-Boundaries: Do not fake a successful Balfrin run, do not broaden the claim
-boundary, and do not introduce distributed execution or operational hazard
-claims.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
