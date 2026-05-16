@@ -13,6 +13,7 @@ import importlib.util
 import json
 import math
 import sys
+from itertools import combinations
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
@@ -22,6 +23,7 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "spatial_same_scale_uncertainty_v1"
 UNCERTAINTY_LAYER_SCHEMA_VERSION = "spatial_uncertainty_layer_summary_v1"
+HOTSPOT_PERSISTENCE_SCHEMA_VERSION = "spatial_hotspot_persistence_v1"
 DEFAULT_HAZARD_LAYERS = (
     "max_kinetic_energy",
     "max_jump_height",
@@ -157,6 +159,12 @@ def build_report(
         layer_key: summarize_layer(layer_key, artifacts, top_n=top_n, mask_output_dir=mask_output_dir)
         for layer_key in selected_layers
     }
+    hotspot_persistence_summary = build_hotspot_persistence_summary(
+        selected_layers=selected_layers,
+        artifacts=artifacts,
+        layer_summaries=layer_summaries,
+        top_n=top_n,
+    )
     dominant_layers = sorted(
         layer_summaries.values(),
         key=lambda item: (item["range_summary"]["mean_range"] or 0.0, item["nodata_disagreement_fraction"]),
@@ -185,6 +193,7 @@ def build_report(
         "dominant_layers_by_mean_range": [item["layer_key"] for item in dominant_layers],
         "dominant_layer_summaries": dominant_layers,
         "uncertainty_layer_summary": uncertainty_layer_summary,
+        "hotspot_persistence_summary": hotspot_persistence_summary,
         "defaults_changed": False,
         "physics_changed": False,
         "thresholds_changed": False,
@@ -232,6 +241,13 @@ def blocked_report(
             "region_products": [],
             "stable_region_status": "blocked_missing_inputs",
             "unstable_region_status": "blocked_missing_inputs",
+        },
+        "hotspot_persistence_summary": {
+            "schema_version": HOTSPOT_PERSISTENCE_SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "pairwise_comparison_count": 0,
+            "blocked_reason": reason,
         },
     }
 
@@ -322,6 +338,27 @@ def render_text(report: dict[str, Any]) -> str:
                 f"stable={layer['stable_region']['cell_count']} | "
                 f"unstable={layer['unstable_region']['cell_count']}"
             )
+    hotspot_persistence_summary = report.get("hotspot_persistence_summary") or {}
+    if hotspot_persistence_summary:
+        lines.append(
+            "hotspot persistence summary: "
+            f"{hotspot_persistence_summary.get('summary_status')} | "
+            f"pairs={hotspot_persistence_summary.get('pairwise_comparison_count', 0)}"
+        )
+        for layer in hotspot_persistence_summary.get("layer_summaries", []):
+            lines.append(
+                f"- {layer['layer_key']}: {layer['persistence_class']} | "
+                f"selected_hotspots={layer['selected_hotspot_cell_count']} | "
+                f"persistent_fraction={layer['persistent_hotspot_fraction']:.6g} | "
+                f"transient_fraction={layer['transient_hotspot_fraction']:.6g}"
+            )
+            support_histogram = layer.get("pairwise_support_histogram") or {}
+            if support_histogram:
+                formatted = ", ".join(
+                    f"{support}={support_histogram[str(support)]}"
+                    for support in sorted(int(key) for key in support_histogram.keys())
+                )
+                lines.append(f"  pairwise support histogram: {formatted}")
     return "\n".join(lines)
 
 
@@ -662,6 +699,23 @@ def summarize_layer(
     mask_output_dir: Path | None = None,
 ) -> dict[str, Any]:
     layer_grids = [load_layer_grid(artifact["manifest_path"], layer_key) for artifact in artifacts]
+    return summarize_layer_grids(
+        layer_key,
+        artifacts,
+        layer_grids,
+        top_n=top_n,
+        mask_output_dir=mask_output_dir,
+    )
+
+
+def summarize_layer_grids(
+    layer_key: str,
+    artifacts: list[dict[str, Any]],
+    layer_grids: list[LayerGrid],
+    *,
+    top_n: int,
+    mask_output_dir: Path | None = None,
+) -> dict[str, Any]:
     nrows = layer_grids[0].header.nrows
     ncols = layer_grids[0].header.ncols
     xllcorner = layer_grids[0].header.xllcorner
@@ -757,16 +811,16 @@ def summarize_layer(
         if cell["range"] is not None and cell["range"] >= range_threshold
     ]
     high_uncertainty.sort(key=lambda cell: (-float(cell["range"]), cell["row"], cell["col"]))
-    high_uncertainty = high_uncertainty[: max(top_n, 1)] if top_n > 0 else []
+    selected_high_uncertainty = high_uncertainty[: max(top_n, 1)] if top_n > 0 else []
 
     high_uncertainty_support_nodata_count = sum(
         1
-        for cell in high_uncertainty
+        for cell in selected_high_uncertainty
         if (not all(cell["valid_flags"])) or (all(cell["valid_flags"]) and len(set(cell["support_flags"])) > 1)
     )
     high_uncertainty_magnitude_only_count = sum(
         1
-        for cell in high_uncertainty
+        for cell in selected_high_uncertainty
         if all(cell["valid_flags"]) and all(cell["support_flags"]) and cell["range"] is not None and cell["range"] > 0
     )
     decomposition_class = classify_decomposition(
@@ -795,13 +849,13 @@ def summarize_layer(
         shared_valid_count=shared_valid_count,
         nonzero_union_count=nonzero_union_count,
         nonzero_intersection_count=nonzero_intersection_count,
-        high_uncertainty_bbox=bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
+        high_uncertainty_bbox=bbox_for_cells(selected_high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner),
         analysis_cell_count=analysis_cell_count,
-        high_uncertainty_count=len(high_uncertainty),
+        high_uncertainty_count=len(selected_high_uncertainty),
     )
 
-    bbox = bbox_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
-    centroid = centroid_for_cells(high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    bbox = bbox_for_cells(selected_high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
+    centroid = centroid_for_cells(selected_high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
     stability_zone_summary = summarize_stability_zones(
         layer_key=layer_key,
         cells=cells,
@@ -810,14 +864,14 @@ def summarize_layer(
         persistent_agreement_cells=stable_shared_support_cells,
         any_valid_count=any_valid_count,
         analysis_cell_count=analysis_cell_count,
-        high_uncertainty_cells=high_uncertainty,
+        high_uncertainty_cells=selected_high_uncertainty,
         nrows=nrows,
         cellsize=cellsize,
         xllcorner=xllcorner,
         yllcorner=yllcorner,
         closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
     )
-    mask_cells = dedupe_cells(high_uncertainty + support_nodata_cells + shared_support_magnitude_cells)
+    mask_cells = dedupe_cells(selected_high_uncertainty + support_nodata_cells + shared_support_magnitude_cells)
     mask_bbox = bbox_for_cells(mask_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
     mask_path = None
     if mask_output_dir is not None:
@@ -829,7 +883,7 @@ def summarize_layer(
             cellsize=cellsize,
             xllcorner=xllcorner,
             yllcorner=yllcorner,
-            high_uncertainty_cells=high_uncertainty,
+            high_uncertainty_cells=selected_high_uncertainty,
             support_nodata_cells=support_nodata_cells,
             shared_support_magnitude_cells=shared_support_magnitude_cells,
             mask_cells=mask_cells,
@@ -874,10 +928,12 @@ def summarize_layer(
             "p95_range": p95,
         },
         "high_uncertainty_threshold": range_threshold,
-        "high_uncertainty_cell_count": len(high_uncertainty),
-        "high_uncertainty_cell_fraction": len(high_uncertainty) / shared_valid_count if shared_valid_count else 0.0,
-        "high_uncertainty_support_nodata_fraction": high_uncertainty_support_nodata_count / len(high_uncertainty) if high_uncertainty else 0.0,
-        "high_uncertainty_shared_support_magnitude_fraction": high_uncertainty_magnitude_only_count / len(high_uncertainty) if high_uncertainty else 0.0,
+        "high_uncertainty_cell_count": len(selected_high_uncertainty),
+        "high_uncertainty_all_cell_count": len(high_uncertainty),
+        "high_uncertainty_cell_fraction": len(selected_high_uncertainty) / shared_valid_count if shared_valid_count else 0.0,
+        "high_uncertainty_all_cell_fraction": len(high_uncertainty) / shared_valid_count if shared_valid_count else 0.0,
+        "high_uncertainty_support_nodata_fraction": high_uncertainty_support_nodata_count / len(selected_high_uncertainty) if selected_high_uncertainty else 0.0,
+        "high_uncertainty_shared_support_magnitude_fraction": high_uncertainty_magnitude_only_count / len(selected_high_uncertainty) if selected_high_uncertainty else 0.0,
         "high_uncertainty_bbox": bbox,
         "high_uncertainty_centroid": centroid,
         "shared_support_magnitude_range_summary": shared_support_magnitude_range_summary,
@@ -893,8 +949,8 @@ def summarize_layer(
                 "stable_shared_support_count": len(stable_shared_support_cells),
             },
             "high_uncertainty_fraction_explained": {
-                "support_nodata": high_uncertainty_support_nodata_count / len(high_uncertainty) if high_uncertainty else 0.0,
-                "shared_support_magnitude": high_uncertainty_magnitude_only_count / len(high_uncertainty) if high_uncertainty else 0.0,
+                "support_nodata": high_uncertainty_support_nodata_count / len(selected_high_uncertainty) if selected_high_uncertainty else 0.0,
+                "shared_support_magnitude": high_uncertainty_magnitude_only_count / len(selected_high_uncertainty) if selected_high_uncertainty else 0.0,
             },
             "shared_support_magnitude_range_summary": shared_support_magnitude_range_summary,
             "interpretation_note": decomposition_note(
@@ -908,7 +964,7 @@ def summarize_layer(
         },
         "top_high_uncertainty_cells": [
             format_high_uncertainty_cell(cell, layer_grids, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
-            for cell in high_uncertainty
+            for cell in selected_high_uncertainty
         ],
         "stability_zone_summary": stability_zone_summary,
         "mask_evidence": build_mask_evidence(
@@ -920,7 +976,7 @@ def summarize_layer(
             cellsize=cellsize,
             xllcorner=xllcorner,
             yllcorner=yllcorner,
-            high_uncertainty_cells=high_uncertainty,
+            high_uncertainty_cells=selected_high_uncertainty,
             support_nodata_cells=support_nodata_cells,
             shared_support_magnitude_cells=shared_support_magnitude_cells,
             mask_cells=mask_cells,
@@ -930,6 +986,131 @@ def summarize_layer(
         ),
         "uncertainty_concentration_class": interpretation["uncertainty_concentration_class"],
         "interpretation_note": interpretation["interpretation_note"],
+    }
+
+
+def build_hotspot_persistence_summary(
+    *,
+    selected_layers: tuple[str, ...],
+    artifacts: list[dict[str, Any]],
+    layer_summaries: dict[str, dict[str, Any]],
+    top_n: int,
+) -> dict[str, Any]:
+    if not artifacts:
+        return {
+            "schema_version": HOTSPOT_PERSISTENCE_SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "layer_summaries": [],
+            "pairwise_comparison_count": 0,
+            "blocked_reason": "required same-scale spatial uncertainty inputs are missing",
+        }
+
+    layer_entries: list[dict[str, Any]] = []
+    pair_index = list(range(len(artifacts)))
+    pair_artifact_ids = [artifact["artifact_id"] for artifact in artifacts]
+    pairwise_comparison_count = math.comb(len(artifacts), 2) if len(artifacts) >= 2 else 0
+
+    for layer_key in selected_layers:
+        selected_hotspots = list(layer_summaries.get(layer_key, {}).get("top_high_uncertainty_cells") or [])
+        if not selected_hotspots:
+            layer_entries.append(
+                {
+                    "layer_key": layer_key,
+                    "selected_hotspot_cell_count": 0,
+                    "pairwise_comparison_count": 0,
+                    "persistent_hotspot_cell_count": 0,
+                    "mostly_persistent_hotspot_cell_count": 0,
+                    "transient_hotspot_cell_count": 0,
+                    "persistent_hotspot_fraction": 0.0,
+                    "mostly_persistent_hotspot_fraction": 0.0,
+                    "transient_hotspot_fraction": 0.0,
+                    "pairwise_support_histogram": {},
+                    "persistence_class": "blocked_missing_inputs",
+                    "selected_hotspots": [],
+                }
+            )
+            continue
+
+        layer_grids = [load_layer_grid(artifact["manifest_path"], layer_key) for artifact in artifacts]
+        analysis_cell_count = layer_grids[0].header.nrows * layer_grids[0].header.ncols
+        pairwise_support_sets: list[set[tuple[int, int]]] = []
+        for left_index, right_index in combinations(pair_index, 2):
+            pair_artifacts = [artifacts[left_index], artifacts[right_index]]
+            pair_grids = [layer_grids[left_index], layer_grids[right_index]]
+            pair_summary = summarize_layer_grids(
+                layer_key,
+                pair_artifacts,
+                pair_grids,
+                top_n=analysis_cell_count,
+                mask_output_dir=None,
+            )
+            pairwise_support_sets.append(
+                {
+                    (cell["row"], cell["col"])
+                    for cell in pair_summary["top_high_uncertainty_cells"]
+                }
+            )
+
+        support_counts = []
+        enriched_selected_hotspots = []
+        for cell in selected_hotspots:
+            coord = (int(cell["row"]), int(cell["col"]))
+            support_count = sum(coord in hotspot_set for hotspot_set in pairwise_support_sets)
+            support_counts.append(support_count)
+            enriched_selected_hotspots.append(
+                {
+                    **cell,
+                    "pairwise_hotspot_support_count": support_count,
+                    "pairwise_hotspot_support_fraction": support_count / len(pairwise_support_sets) if pairwise_support_sets else 0.0,
+                }
+            )
+
+        support_histogram: dict[str, int] = {}
+        for support_count in support_counts:
+            key = str(support_count)
+            support_histogram[key] = support_histogram.get(key, 0) + 1
+
+        persistent_hotspot_count = sum(1 for support_count in support_counts if support_count == len(pairwise_support_sets))
+        mostly_persistent_hotspot_count = sum(1 for support_count in support_counts if support_count >= 4)
+        transient_hotspot_count = sum(1 for support_count in support_counts if support_count <= 3)
+        persistent_hotspot_fraction = persistent_hotspot_count / len(selected_hotspots)
+        mostly_persistent_hotspot_fraction = mostly_persistent_hotspot_count / len(selected_hotspots)
+        transient_hotspot_fraction = transient_hotspot_count / len(selected_hotspots)
+
+        if persistent_hotspot_fraction == 1.0:
+            persistence_class = "stable_across_all_pairs"
+        elif mostly_persistent_hotspot_fraction >= 0.75:
+            persistence_class = "mostly_persistent"
+        elif mostly_persistent_hotspot_fraction >= 0.25:
+            persistence_class = "mixed_persistence"
+        else:
+            persistence_class = "transient_dominant"
+
+        layer_entries.append(
+            {
+                "layer_key": layer_key,
+                "artifact_ids": pair_artifact_ids,
+                "selected_hotspot_cell_count": len(selected_hotspots),
+                "pairwise_comparison_count": len(pairwise_support_sets),
+                "pairwise_support_histogram": support_histogram,
+                "persistent_hotspot_cell_count": persistent_hotspot_count,
+                "mostly_persistent_hotspot_cell_count": mostly_persistent_hotspot_count,
+                "transient_hotspot_cell_count": transient_hotspot_count,
+                "persistent_hotspot_fraction": persistent_hotspot_fraction,
+                "mostly_persistent_hotspot_fraction": mostly_persistent_hotspot_fraction,
+                "transient_hotspot_fraction": transient_hotspot_fraction,
+                "persistence_class": persistence_class,
+                "selected_hotspots": enriched_selected_hotspots,
+            }
+        )
+
+    layer_entries.sort(key=lambda item: item["layer_key"])
+    return {
+        "schema_version": HOTSPOT_PERSISTENCE_SCHEMA_VERSION,
+        "summary_status": "measured_existing_artifacts",
+        "layer_summaries": layer_entries,
+        "pairwise_comparison_count": pairwise_comparison_count,
+        "blocked_reason": "",
     }
 
 

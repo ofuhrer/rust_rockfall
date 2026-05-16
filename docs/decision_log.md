@@ -559,3 +559,10 @@ roadmaps and evidence reports:
 When a detailed result is needed, regenerate or re-read the current benchmark,
 validation, roadmap, and schema documents rather than relying on removed
 historical snapshots.
+
+## TB-070 Hotspot Persistence Counting
+
+- Date: 2026-05-16
+- Decision: quantify spatial hotspot persistence by taking the selected hotspot cells from the existing four-artifact same-scale spatial summary and counting how often each cell reappears across the six pairwise artifact comparisons.
+- Rationale: this keeps the persistence metric deterministic, uses only committed artifacts, and avoids introducing a new hotspot definition or a new simulation artifact class.
+- Sources: `scripts/summarize_spatial_same_scale_uncertainty.py`, `tests/test_spatial_same_scale_uncertainty.py`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`.

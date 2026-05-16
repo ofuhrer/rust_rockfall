@@ -979,3 +979,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no operational semantics, no new simulation, no reclassification, and no physical validation or scale-up claim were introduced.
 - Next task: `TB-070`
+
+### TB-070: Quantify Spatial Uncertainty Hotspot Persistence Across Seeds
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: quantify how the existing spatial same-scale hotspot cells persist across the gate, target, sampling probe v1, and sampling probe v2 artifacts without adding new runs.
+- Files changed: docs/agent_work_log.md, docs/decision_log.md, docs/task_backlog.md, docs/tschamut_public_same_scale_uncertainty_envelope.md, scripts/summarize_spatial_same_scale_uncertainty.py, tests/test_spatial_same_scale_uncertainty.py
+- Implementation summary: added a deterministic hotspot-persistence summary to the spatial helper by counting how often the selected hotspot cells reappear across the six pairwise artifact comparisons, exposed pairwise-support histograms and stability classes per layer, updated the spatial envelope doc to state which layers are stable versus transient, and added regression coverage on the small committed fixture set.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty tests.test_tschamut_hotspot_provenance tests.test_same_scale_sampling_uncertainty -v`; `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json >/tmp/tb070_spatial_summary.json`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no new ensemble runs, no tuning, no operational claim, and no scale-up or probability semantics were introduced.
+- Next task: `TB-071`

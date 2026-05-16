@@ -18,32 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-070: Quantify Spatial Uncertainty Hotspot Persistence Across Seeds
-
-Goal: uncertainty hotspots are spatially identified, but persistence across the existing gate/target/probe artifacts is not yet quantified directly. Reduces: uncertainty interpretation ambiguity.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v1_full/`
-- `validation/private/tschamut_public_pilot/sampling_sensitivity_v2_full/`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- hotspot persistence summary across gate, target, sampling probe v1, and sampling probe v2;
-- persistence metrics for `max_kinetic_energy`, `max_jump_height`, and velocity exceedance layers;
-- optional ignored persistence masks or hotspot overlays.
-
-Definition of done:
-
-- helper emits deterministic persistence metrics from existing artifacts;
-- docs state whether uncertainty hotspots are spatially stable or transient across seeds/probes;
-- tests validate hotspot aggregation logic with small fixtures.
-
-Boundaries: no new ensemble runs, no tuning, no operational claims.
-
 ### TB-071: Define Physical-Credibility Claim Boundaries Per Product Layer
 
 Goal: physical credibility is globally not established, but the repo does not yet distinguish credibility limitations per hazard/intensity product layer. Reduces: scientific ambiguity and future overclaim risk.

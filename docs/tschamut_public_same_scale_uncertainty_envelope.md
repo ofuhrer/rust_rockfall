@@ -102,6 +102,32 @@ new acceptance criterion. It makes the persistent closure-limiting regions and
 the localized deferrable disagreement explicit, but it does not change the
 current `inconclusive` closure status.
 
+## Hotspot Persistence Across Gate/Target/Probes
+
+The selected hotspot cells can also be checked for pairwise persistence across
+the four committed artifacts, which gives a direct stability view over the
+existing gate, target, sampling probe v1, and sampling probe v2 layers. This is
+measured from the six pairwise comparisons among those artifacts and does not
+introduce a new simulation run.
+
+- `max_kinetic_energy`: `mixed_persistence`; the selected hotspot cells recur
+  in `2..4` of the `6` pairwise comparisons, with pairwise-support histogram
+  `2=2, 3=3, 4=3`. The hotspot core is present, but some edge cells are still
+  transient across seeds/probes.
+- `max_jump_height`: `mostly_persistent`; the selected hotspot cells recur in
+  `3..5` of the `6` pairwise comparisons, with pairwise-support histogram
+  `3=1, 4=3, 5=4`. This is the clearest mostly-stable hotspot pattern in the
+  current spatial envelope.
+- `velocity_exceedance_5mps`: `stable_across_all_pairs`; all selected hotspot
+  cells recur in all `6` pairwise comparisons, with pairwise-support histogram
+  `6=8`. This layer is spatially stable at the selected hotspot scale.
+
+Taken together, the hotspot core is spatially stable for the velocity layer and
+mostly persistent for jump height, while kinetic energy retains a transient
+edge. That is a stability statement about the measured hotspot cells only; it
+does not change the existing `inconclusive` convergence interpretation or any
+claim boundary.
+
 The same measured stability classes can be exported as GIS-ready diagnostic
 summaries with `scripts/summarize_spatial_same_scale_uncertainty.py
 --gis-output-dir <ignored-root>`. That helper writes JSON, CSV, and GeoJSON

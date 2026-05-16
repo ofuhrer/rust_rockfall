@@ -125,6 +125,25 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 {region["region_kind"] for region in report["uncertainty_layer_summary"]["region_products"]},
             )
 
+            hotspot_persistence = report["hotspot_persistence_summary"]
+            self.assertEqual(hotspot_persistence["schema_version"], summary_script.HOTSPOT_PERSISTENCE_SCHEMA_VERSION)
+            self.assertEqual(hotspot_persistence["summary_status"], "measured_existing_artifacts")
+            self.assertEqual(hotspot_persistence["pairwise_comparison_count"], 6)
+            self.assertEqual(
+                [layer["layer_key"] for layer in hotspot_persistence["layer_summaries"]],
+                sorted(summary_script.DEFAULT_HAZARD_LAYERS),
+            )
+            self.assertEqual(hotspot_persistence["layer_summaries"][0]["persistence_class"], "stable_across_all_pairs")
+            self.assertEqual(hotspot_persistence["layer_summaries"][0]["pairwise_support_histogram"], {"6": 3})
+            self.assertEqual(hotspot_persistence["layer_summaries"][1]["persistence_class"], "stable_across_all_pairs")
+            self.assertEqual(hotspot_persistence["layer_summaries"][1]["pairwise_support_histogram"], {"6": 1})
+            self.assertEqual(hotspot_persistence["layer_summaries"][2]["persistence_class"], "mixed_persistence")
+            self.assertEqual(hotspot_persistence["layer_summaries"][2]["pairwise_support_histogram"], {"3": 1, "4": 2})
+            self.assertEqual(
+                hotspot_persistence["layer_summaries"][2]["selected_hotspots"][0]["pairwise_hotspot_support_count"],
+                4,
+            )
+
             kinetic_mask = report["layer_summaries"]["max_kinetic_energy"]["mask_evidence"]
             jump_mask = report["layer_summaries"]["max_jump_height"]["mask_evidence"]
             velocity_mask = report["layer_summaries"]["velocity_exceedance_5mps"]["mask_evidence"]
@@ -210,6 +229,8 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("support_nodata_sensitive", rendered)
             self.assertIn("persistent_agreement", rendered)
             self.assertIn("uncertainty layer summary:", rendered)
+            self.assertIn("hotspot persistence summary:", rendered)
+            self.assertIn("stable_across_all_pairs", rendered)
             self.assertIn("confidence=", rendered)
 
             payload = json.loads(json.dumps(report))
