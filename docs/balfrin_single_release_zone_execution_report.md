@@ -240,3 +240,95 @@ keeps the demo boundary non-operational.
 
 TB-129 should restore or expose scheduler access for the canonical Balfrin
 demo submission path before dependent synthesis work resumes.
+
+## TB-118 attempt
+
+Status: blocked execution report, not measured Balfrin evidence.
+
+This addendum records the live TB-118 attempt to execute the canonical
+Balfrin single-release-zone demo on the Balfrin cluster. Readiness and frozen
+submission-package generation succeeded, and the SLURM job started, but the job
+stalled in the Rust compilation phase and was canceled before the run-root
+collector could emit a complete metrics contract.
+
+### Attempted commands
+
+```bash
+ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'
+```
+
+```bash
+ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16'
+```
+
+```bash
+ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --submit --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16'
+```
+
+```bash
+ssh balfrin 'squeue -j 4325958 -o "%.18i %.9T %.50R" || true'
+```
+
+```bash
+ssh balfrin 'sacct -j 4325958 --format=JobID,State,Elapsed,TotalCPU,MaxRSS,ExitCode -P || true'
+```
+
+```bash
+ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --output-json /tmp/balfrin_tb118_collect_metrics.json'
+```
+
+```bash
+ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json'
+```
+
+### Exact failure class
+
+- Failure class: `partial_output_incomplete`
+- Blocking message: the job reached `Compiling rust_rockfall v0.6.1` on
+  `nid001226`, but it did not produce the full run-root metrics contract before
+  cancellation
+- Effect: the collector reports `metrics_contract_status: blocked_missing_inputs`
+  with missing `memory_peak_mb`, `validation_output.file_count`,
+  `validation_output.bytes`, `hazard_output.file_count`, and
+  `hazard_output.bytes`
+
+### Execution outcome
+
+- Readiness status: `ready_for_balfrin_target_gate`
+- Submission status: `submitted_job_id=4325958`
+- Job runtime before cancel: `00:08:09`
+- Cancel status: `scancel` completed cleanly
+- Run root: generated at
+  `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1`
+- Probe package: generated
+- SLURM log state: the job was canceled after the compiler phase and did not
+  emit the run summary or full/hazard timing sidecars
+- Metrics summary: blocked, but partial output exists
+
+### Partial metrics evidence
+
+The collector saw these partial evidence fields before the cancellation:
+
+- `total_wall_seconds`: `9.295269045978785`
+- `output_file_count`: `50`
+- `output_bytes`: `15614702`
+- `conditional_curve_row_count`: `729600`
+- `trajectory_plan_id`: `validation_tschamut_public_conditional_gate_v1__trajectory_execution_plan__ec29c17a15d14be158e5b29f`
+- `reducer_plan_id`: `validation_tschamut_public_conditional_gate_v1__execution_plan__45a1df662650afcf9d9f8e09`
+- `trajectory_decision_counts`: `{"executed": 4}`
+- `reducer_decision_counts`: `{"executed": 4}`
+- `reduced_output_family_counts`: `{"deposition_points": 1, "hazard_layer": 32, "hazard_metadata": 1, "map_package_manifest": 1, "pilot_gis_package_manifest": 1, "reducer_chunk_manifest": 4, "reducer_execution_index": 1, "reducer_execution_plan": 1, "reducer_merge_state": 1, "trajectory_chunk_manifest": 4, "trajectory_execution_index": 1, "trajectory_execution_plan": 1, "trajectory_merge_state": 1}`
+
+### Closure summary
+
+The post-run interpretation gate remains blocked because no post-run evidence
+bundle was provided. It returns `interpretation_status: blocked_missing_inputs`
+and keeps the conditional-diagnostic boundary explicit.
+
+### Boundary note
+
+This blocked report does not claim a measured Balfrin demo run, operational
+hazard readiness, annual frequency, physical probability, risk, exposure,
+vulnerability, or distributed execution. It records the exact partial-output
+state for the current Balfrin attempt and leaves the task open for follow-up on
+the remote build stall.

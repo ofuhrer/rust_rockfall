@@ -1846,3 +1846,35 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   frequency, physical probability, risk, exposure, vulnerability, or
   distributed execution.
 - Next task: `TB-118`
+
+### TB-118 blocked report: Execute And Collect Balfrin Single-Release-Zone Demo
+
+- Date: 2026-05-17
+- Commit: `2b189c4e03282c04a76fc43f4aef8d88a64083c8`
+- Objective: run the canonical Balfrin single-release-zone demo end-to-end or
+  classify the exact blocked execution state with measurable evidence.
+- Files changed: `docs/balfrin_single_release_zone_execution_report.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified Balfrin readiness on the remote checkout, generated the frozen
+    submission package, and submitted the single-node SLURM job to `postproc`.
+  - Watched the live run reach `Compiling rust_rockfall v0.6.1` on `nid001226`
+    before it stalled and was canceled after `00:08:09` of runtime.
+  - Collected the partial metrics summary from the same run root, which records
+    partial output evidence but still reports
+    `metrics_contract_status: blocked_missing_inputs`.
+  - Captured the post-run interpretation gate in blocked mode so the closure
+    boundary stays explicit and no operational claim is implied.
+- Checks run:
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --submit --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --run-id tschamut_public_balfrin_single_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16'`
+  - `ssh balfrin 'squeue -j 4325958 -o "%.18i %.9T %.50R" || true'`
+  - `ssh balfrin 'sacct -j 4325958 --format=JobID,State,Elapsed,TotalCPU,MaxRSS,ExitCode -P || true'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1 --output-json /tmp/balfrin_tb118_collect_metrics.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json'`
+- Result/status: implemented_blocked_report
+- Boundaries: the live Balfrin attempt produced partial output evidence only;
+  it did not produce a measured run root, full metrics bundle, operational
+  hazard readiness, annual frequency, physical probability, risk, exposure,
+  vulnerability, or distributed-execution claim.
+- Next task: `TB-118`
