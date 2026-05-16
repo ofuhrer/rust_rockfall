@@ -10,7 +10,8 @@ capability, analysis, run, or validation outcome it enables.
 Worker rule: when a task is completed successfully and committed, remove that
 task from this backlog. Add at most one follow-up task if the completed work
 uncovers a concrete next blocker. Record durable choices in `decision_log.md`
-and completed work in `agent_work_log.md`.
+and append completed TB work to the bottom of `agent_work_log.md` using that
+file's template. Do not insert work-log entries near older related tasks.
 
 Progress rule: backlog tasks must normally produce executable or measured
 progress, not only procedural artifacts. Acceptable real progress includes an
@@ -578,8 +579,10 @@ task has been removed from this backlog, fix that engineering drift before
 starting the next scientific or portability task. This does not replace the
 active task queue; it keeps the queue executable.
 
-Do not keep completed tasks here. Use `agent_work_log.md` for execution
-history and `decision_log.md` for durable decisions.
+Do not keep completed tasks here. Use `agent_work_log.md` for chronological TB
+execution history and `decision_log.md` for durable decisions. Always append
+new work-log entries at the bottom of `agent_work_log.md`; older non-TB history
+belongs in `agent_work_log_archive.md`.
 
 ## Deferred Backlog
 

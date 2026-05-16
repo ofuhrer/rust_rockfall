@@ -15,7 +15,8 @@ Use this document to decide how to work. Use the docs to decide what to build.
   task from the backlog when it is completed successfully and may add one
   concrete follow-up task when needed.
 - Durable decisions: `docs/decision_log.md`.
-- Completed task history: `docs/agent_work_log.md`.
+- Completed TB task history: `docs/agent_work_log.md`. Older non-TB history is
+  archived in `docs/agent_work_log_archive.md`.
 - Literature and background inventory: `docs/literature_review.md`
 - Current equations, assumptions, and APIs: `docs/model_design.md`
 - Phase ordering and future work: `docs/implementation_plan.md`
@@ -93,8 +94,11 @@ Use this bootstrap before broad reading or implementation:
 
 3. Use `PYENV_VERSION=system uv run python ...`; avoid plain `python` or
    `python3` because local pyenv shims can point at unavailable interpreters.
-4. Treat `docs/agent_work_log.md` as append-only history, not current state.
-   Prefer current reports, the backlog, and machine-readable helper output.
+4. Treat `docs/agent_work_log.md` as append-only chronological TB history, not
+   current state. Always append a completed `TB-xxx` entry at the bottom using
+   the template in that file; do not insert entries near related older work.
+   Prefer current reports, the backlog, and machine-readable helper output for
+   current state.
 5. Prefer canonical helpers over manually reconstructing long commands or
    artifact paths.
 6. Keep scratch outputs in `/tmp` unless the file is an intentional tiny
@@ -125,8 +129,9 @@ cross-document drift:
 6. After edits, verify changed sections with `rg -n` and short `sed -n`
    ranges. Avoid rereading entire large docs just to confirm a small patch.
 7. When the task is done, remove it from `docs/task_backlog.md`, optionally add
-   one concrete follow-up task, and keep `docs/agent_work_log.md` concise.
-   Record the decision and checks, not a full transcript.
+   one concrete follow-up task, and append one concise entry at the bottom of
+   `docs/agent_work_log.md` using its template. Record the decision and
+   checks, not a full transcript.
 
 ## Tschamut Worker Fast Path
 
@@ -160,9 +165,9 @@ inspection:
    - `scripts/measure_hazard_context_overlap.py` for hazard/context proximity;
    - `scripts/summarize_same_scale_uncertainty_envelope.py` for composed
      evidence summaries.
-4. Treat `docs/agent_work_log.md` as append-only and non-chronological. Use it
-   for execution history, not as the primary current-state source. Prefer the
-   readiness preflight, current reports, and machine-readable script output.
+4. Treat `docs/agent_work_log.md` as append-only chronological TB history. Use
+   it for execution history, not as the primary current-state source. Prefer
+   the readiness preflight, current reports, and machine-readable script output.
 5. For hazard/context overlap work, start with bounded probes and broaden only
    after a successful small run. Kill stale overlap or `ogrinfo` processes
    before rerunning a changed query.
