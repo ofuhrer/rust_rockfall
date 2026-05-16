@@ -1404,3 +1404,22 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no operational or physical-probability claims were authorized, no Balfrin run was executed here, and the gate remains a read-only conditional-diagnostic acceptance layer.
 - Next task: `TB-100`
+
+### TB-100: Refill Maturity Snapshot For The Balfrin Pilot Track
+
+- Date: 2026-05-16
+- Commit: `9cf3ba3`
+- Objective: refresh the compact maturity snapshot and worker-context guidance so the Balfrin single-release-zone pilot track is the current execution focus.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `scripts/print_agent_task_context.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworded the maturity snapshot to separate completed dry-run automation from the remaining measured Balfrin execution gap.
+  - Removed TB-100 from the active backlog once the snapshot reflected the Balfrin pilot track as the current execution focus.
+  - Added a compact `current_execution_focus` line to the task-context helper so the empty active queue still points workers at the Balfrin pilot track.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/print_agent_task_context.py`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `PYENV_VERSION=system uv run python -c 'import json; p=json.load(open("/tmp/tb100_task_context.json")); print(p["agent_task_context_status"]); print(p.get("backlog_refill_needed")); print(p.get("current_execution_focus")); print(len(p.get("active_tasks", [])))'`
+  - `git diff --check`
+- Result/status: completed.
+- Boundaries: no simulations, scientific claims, or backlog protocol changes were introduced.
+- Next task: backlog refill needed
