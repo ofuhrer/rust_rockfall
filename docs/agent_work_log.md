@@ -1572,3 +1572,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no jobs were run or broadened, the playbook stays within the current Balfrin single-release-zone demo scope, and the helper contracts remain read-only.
 - Next task: `TB-108`
+
+### TB-108: Audit Post-Balfrin Output Tier Sufficiency
+
+- Date: 2026-05-16
+- Commit: `c7d573a`
+- Objective: Determine whether the measured `rebuildable_reduced_output` tier is sufficient for the Balfrin demo and future bounded runs.
+- Files changed: `scripts/summarize_balfrin_output_tier_audit.py`, `tests/test_balfrin_output_tier_audit.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a read-only Balfrin output-tier audit helper that classifies the measured tier as `sufficient`, `insufficient`, or `blocked_missing_measured_output` without introducing any new output mode.
+  - The audit now reports required family counts, measured family counts, validation and hazard file/byte counts, conditional-curve availability, and omitted-output implications from the collected probe evidence.
+  - Added focused tests for the complete measured case, a missing-family insufficient case, a missing-measured-output blocked case, and CLI artifact materialization.
+  - Removed TB-108 from the active backlog and updated the maturity snapshot to reflect the new audit helper.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_output_tier_audit tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_parses_synthetic_outputs tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_reports_blocked_incomplete_root`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_output_tier_audit.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --format text`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_output_tier_audit.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no new output modes were introduced, `summary_only` was not called rebuildable, and the audit keeps operational, scale-up, and physical-probability boundaries false.
+- Next task: `TB-109`
