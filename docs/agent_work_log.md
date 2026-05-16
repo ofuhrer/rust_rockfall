@@ -1992,3 +1992,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   interruption evidence was fabricated, and no operational, annual-frequency,
   physical-probability, risk, exposure, vulnerability, scale-up, or
   distributed-execution claim was introduced.
+
+### TB-121: Generate Canonical Balfrin Conditional Diagnostic Interpretation
+
+- Date: 2026-05-17
+- Commit: `6682682`
+- Objective: Produce one coherent measured Balfrin interpretation that combines uncertainty, convergence, scaling, GIS readiness, portability, closure semantics, and physical-credibility boundaries.
+- Files changed: `scripts/summarize_balfrin_scientific_delta_report.py`, `tests/test_balfrin_scientific_delta_report.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a canonical interpretation layer to the Balfrin scientific delta helper with an explicit support/weakens/unchanged delta classification.
+  - Exposed machine-readable blocker fields for closure-limiting layers, GIS/product scope, runtime/output sufficiency, portability, and physical-credibility limits.
+  - Added artifact-dir materialization for the canonical JSON/text interpretation bundle and covered it with focused tests.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scientific_delta_report`; `git diff --check`; `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`; `scripts/git-hooks/pre-commit`; `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no physics tuning, acceptance-threshold changes, operational claims, or physical validation claims were introduced.
+- Next task: `TB-122`
