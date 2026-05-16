@@ -18,40 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-073: Stabilize Clean-Checkout Python Test Gates
-
-Goal: Make the Python regression suite pass in a clean checkout without relying
-on ignored local Tschamut or Chant Sura artifacts.
-
-Inspect first:
-
-- `tests/test_hazard_context_overlap.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_tschamut_conditional_diagnostic_interpretation.py`
-- `tests/test_tschamut_public_context_layers.py`
-- `tests/test_pilot_command_plan.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-
-Deliverables:
-
-- Fixture-backed or explicit blocked/skip behavior for tests that currently
-  assume ignored artifact roots, staged public context archives, or local GDAL
-  binaries.
-- Focused tests that still exercise the happy path with tiny fixtures or mocks.
-- Documentation or test comments that separate clean-checkout unit coverage
-  from local artifact integration checks.
-
-Definition of done:
-
-- `PYENV_VERSION=system uv run python -m unittest discover -s tests -p 'test_*.py'`
-  passes in this checkout after removing dependencies on ignored generated
-  artifacts, or artifact-dependent cases skip explicitly with a reason.
-- No generated artifact roots or placeholder policies are committed.
-
-Boundaries: Do not change scientific classifications, hazard-layer semantics,
-physics, operational boundaries, or scale-up authorization.
-
 ### TB-074: Stabilize Clean-Checkout Rust Reduced-Output Test
 
 Goal: Fix the Rust clean-checkout failure where the native

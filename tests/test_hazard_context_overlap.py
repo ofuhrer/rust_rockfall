@@ -31,6 +31,9 @@ class HazardContextOverlapTests(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
 
     def test_missing_archive_returns_blocked_report(self) -> None:
+        # Clean-checkout unit coverage: this test synthesizes a tiny manifest and
+        # explicitly models the absent staged archive instead of requiring ignored
+        # local artifact roots.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             hazard_manifest = root / "manifest.json"
@@ -97,6 +100,9 @@ class HazardContextOverlapTests(unittest.TestCase):
         self.assertEqual(report["selected_cell_total"], 0)
 
     def test_measured_overlap_reports_per_category_counts_and_conservative_classification(self) -> None:
+        # Clean-checkout unit coverage: the overlap path is exercised with a fake
+        # archive and mocked GDAL query results so the regression suite does not
+        # depend on local Tschamut artifacts or binaries.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             archive = root / "swisstlm3d.zip"

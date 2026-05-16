@@ -113,6 +113,9 @@ class TschamutPublicContextLayerInspectionTests(unittest.TestCase):
         self.assertEqual(report["roads_or_transport_relevance"]["classification"], "unresolved")
         self.assertEqual(report["final_classification"], "limiting")
 
+    # Local integration check: this exercises the GDAL-backed layer-count path
+    # only when ogrinfo is installed. Clean-checkout coverage uses the fixture
+    # and mocked query path above.
     @unittest.skipUnless(shutil.which("ogrinfo"), "ogrinfo is unavailable")
     def test_vector_layer_count_on_tiny_geojson_fixture_detects_intersection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

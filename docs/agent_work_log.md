@@ -1015,3 +1015,15 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no second-site ensemble, hazard build, downloads, operational claim, scale-up claim, or physical-probability claim was introduced.
 - Next task: `TB-073`
+
+### TB-073: Stabilize Clean-Checkout Python Test Gates
+
+- Date: 2026-05-16
+- Commit: pending
+- Objective: keep the Python regression suite green on a clean checkout without depending on ignored local Tschamut or Chant Sura artifact roots.
+- Files changed: docs/agent_work_log.md, docs/task_backlog.md, tests/test_hazard_context_overlap.py, tests/test_pilot_command_plan.py, tests/test_tschamut_public_context_layers.py
+- Implementation summary: added brief test comments that separate clean-checkout fixture and mock coverage from the optional GDAL-backed local integration check, and documented that the Chant Sura / Flüelapass command-plan assertions are metadata-only and do not require staged public-context artifacts.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_context_overlap tests.test_tschamut_public_context_layers tests.test_pilot_command_plan`; `PYENV_VERSION=system uv run python -m unittest discover -s tests -p 'test_*.py'`
+- Result/status: completed.
+- Boundaries: no scientific classifications, hazard-layer semantics, physics, operational boundaries, scale-up authorization, or artifact-generation policy were changed.
+- Next task: `TB-074`

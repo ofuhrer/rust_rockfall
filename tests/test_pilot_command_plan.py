@@ -208,6 +208,9 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(report["blocked_template_commands"], ["tschamut_next_ensemble_feasibility_probe_template"])
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
+        # The Chant Sura / Flüelapass plan is intentionally metadata-only here:
+        # it should surface ignored output roots and blocked template commands
+        # without requiring any staged public-context artifacts.
         report = self._fixture_report("chant_sura_fluelapass")
 
         self.assertEqual(report["second_site_portability_status"], "deferred_public_context_inputs")
