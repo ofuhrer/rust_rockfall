@@ -26,18 +26,32 @@ MODULE = load_module()
 
 class BoundedNextEnsembleFeasibilityProbeTests(unittest.TestCase):
     def test_report_records_bounded_same_scale_probe_and_deferred_execution(self) -> None:
+        self.assertNotIn("probabilistic_metadata", MODULE.load_yaml(MODULE.REDUCED_CASE))
         report = MODULE.build_report()
 
         self.assertEqual(report["schema_version"], "bounded_next_ensemble_feasibility_probe_v1")
-        self.assertEqual(report["probe_status"], "deferred_pending_authorization")
+        self.assertEqual(report["probe_status"], "deferred_pending_optional_probabilistic_metadata")
+        self.assertEqual(report["planning_status"], "deferred_pending_optional_probabilistic_metadata")
+        self.assertEqual(
+            report["planning_blocker"],
+            "optional probabilistic metadata is absent from the current reduced-output fixture",
+        )
         self.assertTrue(report["read_only"])
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["distributed_execution_authorized"])
         self.assertEqual(report["proposed_probe"]["validation_output_mode"], "rebuildable_reduced_output")
-        self.assertEqual(report["proposed_probe"]["seed"], 34014)
+        self.assertEqual(report["proposed_probe"]["seed"], 123)
         self.assertEqual(report["proposed_probe"]["ensemble_size"], 1000)
-        self.assertEqual(report["proposed_probe"]["scenario_id"], "tschamut_public_block_observed_rows")
-        self.assertEqual(report["proposed_probe"]["source_zone_id"], "tschamut_public_lps_release_bbox")
+        self.assertIsNone(report["proposed_probe"]["scenario_id"])
+        self.assertEqual(
+            report["proposed_probe"]["probabilistic_metadata_status"],
+            "optional_probabilistic_metadata_missing",
+        )
+        self.assertIsNone(report["proposed_probe"]["source_zone_id"])
+        self.assertEqual(
+            report["proposed_probe"]["source_zone_status"],
+            "missing_optional_hazard_probability",
+        )
         self.assertEqual(
             report["proposed_probe"]["expected_artifact_families"],
             [
@@ -61,7 +75,10 @@ class BoundedNextEnsembleFeasibilityProbeTests(unittest.TestCase):
         self.assertEqual(report["measured_evidence"]["single_job_decision"], "defer")
         self.assertTrue(report["measured_evidence"]["single_job_sufficient_for_next_step"])
         self.assertIn("target-vs-small-gate convergence interpretation", report["expected_closure_question"])
-        self.assertIn("execution deferred until explicitly authorized", report["command_plan_template"]["blocked_reason"])
+        self.assertEqual(
+            report["command_plan_template"]["blocked_reason"],
+            "optional probabilistic metadata is absent from the current reduced-output fixture",
+        )
         self.assertEqual(report["command_plan_template"]["command_id"], "tschamut_next_ensemble_feasibility_probe_template")
         self.assertEqual(report["command_plan_template"]["group"], "rebuildable_reduced_output")
 
@@ -74,6 +91,7 @@ class BoundedNextEnsembleFeasibilityProbeTests(unittest.TestCase):
         output = buffer.getvalue()
         self.assertIn("Bounded Next-Ensemble Feasibility Probe", output)
         self.assertIn("Bounded relative to target validation: `True`", output)
+        self.assertIn("Planning blocker: `optional probabilistic metadata is absent from the current reduced-output fixture`", output)
         self.assertIn("Go / No-Go Criteria", output)
         self.assertIn("tschamut_next_ensemble_feasibility_probe_template", output)
 

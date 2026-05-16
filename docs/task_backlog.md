@@ -18,34 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-081: Harden Bounded Next-Ensemble Feasibility Probe
-
-Goal: Fix the next-ensemble feasibility helper so bounded-probe planning is executable against current reduced-output fixtures instead of crashing on stale full-case assumptions.
-
-Capability gap reduced: Scalable execution realism and uncertainty-planning reproducibility.
-
-Why this outranks alternatives: The helper currently fails before it can inform any additional ensemble decision, so larger uncertainty work has no reliable planning gate.
-
-Inspect first:
-
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `tests/test_bounded_next_ensemble_feasibility_probe.py`
-- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-
-Deliverables:
-
-- The feasibility helper exits cleanly for the current reduced-output fixture and reports a blocked/deferred planning status when optional probabilistic metadata is absent.
-- A focused regression test covers missing `probabilistic_metadata` without requiring ignored full same-scale artifacts.
-- Existing command-plan references to the helper remain accurate.
-
-Definition of done:
-
-- The helper emits stable JSON/text instead of a `KeyError`, focused tests pass, and TB-081 is removed from this backlog.
-
-Boundaries: Do not run a new ensemble, authorize scale-up, change physics, tune parameters, or reinterpret closure status.
-
 ### TB-082: Split Benchmark Intake Readiness From Calibration Readiness
 
 Goal: Correct the observed runout/deposition intake contract so independent benchmark readiness is not blocked by absent calibration data.

@@ -28,6 +28,7 @@ REDUCED_VALIDATION_MANIFEST = (
     REDUCED_VALIDATION_ROOT / "validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json"
 )
 TARGET_GATE_RECORD = ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml"
+OPTIONAL_PROBABILISTIC_METADATA_STATUS = "optional_probabilistic_metadata_missing"
 
 
 def _load_module(module_name: str, filename: str):
@@ -81,6 +82,20 @@ def build_report() -> dict[str, Any]:
     single_job = SINGLE_JOB.build_summary()
     reduced_case = load_yaml(REDUCED_CASE)
     target_gate = load_yaml(TARGET_GATE_RECORD)
+    probabilistic_metadata = reduced_case.get("probabilistic_metadata")
+    metadata_present = isinstance(probabilistic_metadata, dict)
+    hazard_probability = reduced_case.get("hazard_probability")
+    hazard_probability_present = isinstance(hazard_probability, dict)
+    planning_status = (
+        "deferred_pending_authorization"
+        if metadata_present
+        else "deferred_pending_optional_probabilistic_metadata"
+    )
+    planning_blocker = (
+        "execution deferred until explicitly authorized"
+        if metadata_present
+        else "optional probabilistic metadata is absent from the current reduced-output fixture"
+    )
 
     reduced_profile = reduced_output["reduced_profile"]
     rebuildable_reduced_profile = reduced_output["rebuildable_reduced_profile"]
@@ -125,11 +140,13 @@ def build_report() -> dict[str, Any]:
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "probe_status": "deferred_pending_authorization",
+        "probe_status": planning_status,
         "read_only": True,
         "scale_up_authorized": False,
         "distributed_execution_authorized": False,
         "operational_claims_allowed": False,
+        "planning_status": planning_status,
+        "planning_blocker": planning_blocker,
         "target_gate_record_path": str(TARGET_GATE_RECORD),
         "reduced_case_path": str(REDUCED_CASE),
         "proposed_probe": {
@@ -137,8 +154,22 @@ def build_report() -> dict[str, Any]:
             "validation_output_mode": reduced_case["outputs"]["validation_output_mode"],
             "seed": int(reduced_case["random"]["seed"]),
             "ensemble_size": int(target_gate["execution_evidence"]["validation_run"]["validation_simulated_trajectory_count"]),
-            "scenario_id": str(reduced_case["probabilistic_metadata"]["scenario_id"]),
-            "source_zone_id": str(reduced_case["hazard_probability"]["filters"]["source_zone_ids"][0]),
+            "scenario_id": (
+                str(probabilistic_metadata["scenario_id"]) if metadata_present and probabilistic_metadata.get("scenario_id") else None
+            ),
+            "probabilistic_metadata_status": (
+                "present" if metadata_present else OPTIONAL_PROBABILISTIC_METADATA_STATUS
+            ),
+            "source_zone_id": (
+                str(hazard_probability["filters"]["source_zone_ids"][0])
+                if hazard_probability_present
+                and isinstance(hazard_probability.get("filters"), dict)
+                and hazard_probability["filters"].get("source_zone_ids")
+                else None
+            ),
+            "source_zone_status": (
+                "present" if hazard_probability_present else "missing_optional_hazard_probability"
+            ),
             "release_cell_count": int(target_gate["target_execution_plan"]["release_cell_count"]),
             "trajectory_count": int(target_gate["execution_evidence"]["validation_run"]["validation_simulated_trajectory_count"]),
             "expected_artifact_families": [
@@ -226,7 +257,7 @@ def build_report() -> dict[str, Any]:
             ],
             "read_only": False,
             "may_produce_ignored_outputs": True,
-            "blocked_reason": "execution deferred until explicitly authorized",
+            "blocked_reason": planning_blocker,
             "ignored_output_paths": [str(REDUCED_VALIDATION_ROOT)],
         },
         "command_plan_status": "ready",
@@ -251,6 +282,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "Bounded Next-Ensemble Feasibility Probe",
         "",
         f"- Probe status: `{report['probe_status']}`",
+        f"- Planning blocker: `{report['planning_blocker']}`",
         f"- Read-only: `{report['read_only']}`",
         f"- Scale-up authorized: `{report['scale_up_authorized']}`",
         f"- Distributed execution authorized: `{report['distributed_execution_authorized']}`",
@@ -263,7 +295,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Seed: `{proposed['seed']}`",
         f"- Ensemble size: `{proposed['ensemble_size']}`",
         f"- Scenario id: `{proposed['scenario_id']}`",
+        f"- Probabilistic metadata status: `{proposed['probabilistic_metadata_status']}`",
         f"- Source zone id: `{proposed['source_zone_id']}`",
+        f"- Source zone status: `{proposed['source_zone_status']}`",
         f"- Release cell count: `{proposed['release_cell_count']}`",
         f"- Trajectory count: `{proposed['trajectory_count']}`",
         f"- Expected output file count: `{proposed['expected_output_file_count']}`",
