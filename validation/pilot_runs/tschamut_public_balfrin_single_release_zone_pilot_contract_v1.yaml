@@ -4,6 +4,110 @@ run_id: tschamut_public_balfrin_single_release_zone_pilot_contract_v1
 contract_status: ready_for_balfrin_single_release_zone_pilot
 operational_status: research_diagnostic
 
+minimal_demo_contract:
+  minimal_demo_status: ready
+  required_inputs:
+    - docs/balfrin_minimal_demo_vs_closure.md
+    - docs/balfrin_single_job_execution_sufficiency.md
+    - docs/balfrin_tschamut_pilot_runbook.md
+    - docs/tschamut_public_conditional_pilot_gate_report.md
+    - scripts/check_balfrin_tschamut_readiness.py
+    - scripts/plan_balfrin_single_release_zone_case_dry_run.py
+    - scripts/summarize_balfrin_post_run_interpretation_gate.py
+    - scripts/summarize_balfrin_single_release_zone_pilot_contract.py
+    - validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml
+    - validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  commands:
+    - command_id: summarize_contract_json
+      mode: read_only
+      command: PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format json
+      purpose: Render the minimal demo contract as machine-readable JSON.
+      expected_outputs:
+        - JSON report with required inputs, commands, artifacts, evidence, visual products, success criteria, and non-goals
+    - command_id: summarize_contract_text
+      mode: read_only
+      command: PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_release_zone_pilot_contract.py --format text
+      purpose: Render the minimal demo contract as a text summary for management review.
+      expected_outputs:
+        - Text report with the same contract sections and explicit closure boundary
+    - command_id: dry_run_case_plan
+      mode: dry_run
+      command: PYENV_VERSION=system uv run python scripts/plan_balfrin_single_release_zone_case_dry_run.py --format json
+      purpose: Describe the bounded Balfrin case-plan inputs without executing validation.
+      expected_outputs:
+        - JSON dry-run case plan
+        - deterministic command template
+    - command_id: post_run_gate_preview
+      mode: read_only
+      command: PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format text
+      purpose: Distinguish minimal demo success from later scientific closure.
+      expected_outputs:
+        - Post-run interpretation gate boundary summary
+  artifacts:
+    - artifact_id: contract_yaml
+      kind: machine_readable_contract
+      path: validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml
+    - artifact_id: contract_json
+      kind: rendered_json
+      path: /tmp/balfrin_single_release_zone_contract.json
+    - artifact_id: contract_text
+      kind: rendered_text
+      path: /tmp/balfrin_single_release_zone_contract.txt
+    - artifact_id: dry_run_plan_json
+      kind: rendered_json
+      path: /tmp/balfrin_single_release_zone_case_plan.json
+    - artifact_id: closure_boundary_note
+      kind: doc_pointer
+      path: docs/balfrin_minimal_demo_vs_closure.md
+  evidence:
+    - evidence_id: deterministic_contract_rendering
+      status: ready
+      note: The helper emits stable JSON and text without running Balfrin jobs.
+    - evidence_id: bounded_dry_run_plan
+      status: ready
+      note: The dry-run planner names the inputs and command template without executing validation.
+    - evidence_id: closure_boundary
+      status: ready
+      note: Scientific closure is deferred to the post-run interpretation gate and is not claimed here.
+  visual_products:
+    - visual_product_id: contract_table
+      format: text
+      purpose: Compact management-facing summary of scope and boundaries.
+    - visual_product_id: command_plan_table
+      format: text
+      purpose: Show the dry-run plan and ignored-output roots without execution.
+    - visual_product_id: boundary_matrix
+      format: text
+      purpose: Distinguish minimal demo success from scientific closure.
+  success_criteria:
+    - criterion_id: json_text_emit
+      statement: The helper emits valid JSON and stable text.
+    - criterion_id: bounded_inputs_only
+      statement: All required inputs are committed helpers, docs, or frozen records.
+    - criterion_id: dry_run_only
+      statement: The contract and dry-run plan do not execute Balfrin jobs.
+    - criterion_id: boundary_honesty
+      statement: Minimal demo success is not scientific closure and does not authorize scale-up, annual-frequency, risk, exposure, vulnerability, distributed execution, or physical-probability claims.
+  non_goals:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk
+    - exposure
+    - vulnerability
+    - operational_hazard_map
+    - distributed_execution
+    - scale_up
+    - scientific_closure
+  claim_boundaries:
+    operational_claims_allowed: false
+    annual_frequency_claims_allowed: false
+    physical_probability_claims_allowed: false
+    risk_exposure_vulnerability_claims_allowed: false
+    scale_up_authorized: false
+    distributed_execution_authorized: false
+  scope_authorizations: []
+
 release_zone_scope:
   release_zone_count: 1
   release_cell_count: 10
@@ -49,20 +153,24 @@ no_go_boundaries:
   - annual_frequency
   - physical_probability
   - return_period
-  - risk_map
+  - risk
   - exposure
   - vulnerability
   - operational_hazard_map
   - distributed_execution
-  - Swiss_wide_rollout
-  - physical_probability_authorization
+  - scale_up
+  - scientific_closure
 
 required_inputs:
+  - docs/balfrin_minimal_demo_vs_closure.md
   - docs/balfrin_single_job_execution_sufficiency.md
+  - docs/balfrin_tschamut_pilot_runbook.md
   - docs/tschamut_public_conditional_pilot_gate_report.md
   - scripts/check_balfrin_tschamut_readiness.py
-  - scripts/summarize_bounded_next_ensemble_feasibility_probe.py
-  - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  - scripts/plan_balfrin_single_release_zone_case_dry_run.py
+  - scripts/summarize_balfrin_post_run_interpretation_gate.py
+  - scripts/summarize_balfrin_single_release_zone_pilot_contract.py
+  - validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml
   - validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
 
 contract_boundary_summary:

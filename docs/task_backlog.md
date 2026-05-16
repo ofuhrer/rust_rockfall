@@ -23,34 +23,6 @@ later prompts.
 
 _Active TB tasks remain below._
 
-### TB-101: Define Balfrin Minimal Demonstration Contract
-
-Goal: Define the smallest convincing Balfrin demonstration artifact that is reproducible, stable, bounded, visually interpretable, scientifically honest, and management-comprehensible.
-
-Capability gap reduced: Demonstration focus and scope control.
-
-Why this outranks alternatives: The repo has enough infrastructure that uncontrolled demo scope is now a larger risk than missing scaffolding.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml`
-- `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
-- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-
-Deliverables:
-
-- A machine-readable and text-rendered minimal demo contract that states required inputs, commands, artifacts, evidence, visual products, success criteria, and explicit non-goals.
-- Focused tests for ready, blocked, and scope-creep cases.
-- A short docs pointer that distinguishes minimal demo success from full scientific closure.
-
-Definition of done:
-
-- The minimal demo contract helper emits JSON/text, focused tests pass, and TB-101 is removed from this backlog.
-
-Boundaries: Do not run Balfrin jobs, do not weaken scientific criteria, and do not authorize operational, annual-frequency, risk, exposure, vulnerability, scale-up, distributed-execution, or physical-probability claims.
-
 ### TB-102: Execute And Collect The Balfrin Single-Release-Zone Pilot
 
 Goal: Produce the first measured Balfrin execution evidence for the frozen single-release-zone pilot and collect the required metrics bundle.

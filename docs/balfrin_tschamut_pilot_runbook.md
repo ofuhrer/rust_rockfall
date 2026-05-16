@@ -15,6 +15,13 @@ default) and keeps the process read-only where possible.
   - `git`, `python3`, `cargo`, and `uv`.
   - Optional GIS review tooling: `qgis` (warn-only if missing).
 
+## Minimal Demo Boundary
+
+Use [`docs/balfrin_minimal_demo_vs_closure.md`](./balfrin_minimal_demo_vs_closure.md) as the short pointer for the demo boundary.
+Minimal demo success means the contract helper and dry-run planner are bounded
+and explicit; scientific closure still belongs to the post-run gate and
+measured evidence.
+
 ## 2) Bring the repo and manifest to a known state
 
 ```bash
