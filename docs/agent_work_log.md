@@ -1483,3 +1483,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed.
 - Boundaries: no Balfrin jobs were submitted, no claim boundaries were broadened, and no generated probe artifacts were committed.
 - Next task: `TB-104`
+
+### TB-104: Add Structured Worker Output Compression
+
+- Date: 2026-05-16
+- Commit: `e8fe035`
+- Objective: Reduce autonomous worker/orchestrator output pressure by standardizing concise progress summaries, bounded command output, and final structured reports.
+- Files changed: `AGENTS.md`, `docs/task_backlog.md`, `scripts/check_repo_consistency.py`, `scripts/print_agent_task_context.py`, `tests/test_agent_task_context.py`
+- Implementation summary:
+  - Added an explicit worker-output guidance block to the task-context helper with a compact progress style, `/tmp` redirection policy, bounded log/diff guidance, and a fixed final-report schema.
+  - Surfaced the same compact-output contract in `AGENTS.md` and the backlog protocol so future worker prompts carry the same output-pressure guidance.
+  - Added focused regression coverage for the JSON payload, rendered text output, and repository-consistency guard so the guidance cannot drift silently.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/print_agent_task_context.py scripts/check_repo_consistency.py tests/test_agent_task_context.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_agent_task_context -v`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-104 --format json >/tmp/tb104_task_context.json`
+  - `PYENV_VERSION=system uv run python -c 'import json; p=json.load(open("/tmp/tb104_task_context.json")); print(p["worker_output_guidance"]["schema_version"]); print("|".join(p["worker_output_guidance"]["final_report_schema"])); print(p["worker_output_guidance"]["command_output_policy"][0])'`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed.
+- Boundaries: no scientific helpers, output semantics, or branch/worktree workflows were changed; failure diagnostics remain visible through the preserved final error block guidance.
+- Next task: `TB-105`
