@@ -24,17 +24,21 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-115: Align Balfrin Demo Contract With Readiness Gate
+### TB-115: Freeze Canonical Balfrin Demonstration Contract
 
-Goal: Make the minimal Balfrin single-release-zone demonstration contract pass
-the same readiness gate that would be used before execution.
+Goal: Define one bounded reproducible Balfrin demonstration workflow and make
+its selected run manifest pass the same readiness gate that would be used before
+execution.
 
-Capability gap reduced: Balfrin execution realism and reproducibility.
+Capability gap reduced: Balfrin execution realism, reproducibility, and
+demonstration scope control.
 
 Why this outranks alternatives: TB-102 showed the pilot cannot be executed from
 the current minimal contract because the readiness helper rejects its schema.
-No measured Balfrin run should be attempted until this contract/gate mismatch is
-removed.
+No measured Balfrin run should be attempted until there is one canonical
+demonstration contract covering the release zone, scenario family, ensemble
+size, reduced-output mode, GIS package mode, uncertainty interpretation path,
+and readiness-compatible run manifest.
 
 Inspect first:
 
@@ -48,18 +52,21 @@ Inspect first:
 
 Deliverables:
 
-- A corrected contract/readiness path where the Balfrin minimal demo contract
-  either validates directly or has an explicit generated run manifest that does.
+- A frozen demonstration manifest or generated run manifest for one release
+  zone, one deterministic scenario family, one bounded ensemble size, one
+  native reduced-output mode, one GIS/COG package mode, and one uncertainty
+  interpretation path.
+- A canonical command sequence, ignored-root structure, expected runtime/output
+  footprint, and explicit demonstration boundaries.
 - Focused tests or smoke checks proving the readiness gate no longer fails on
-  `schema_version`.
-- Documentation updates that keep minimal-demo success distinct from scientific
-  closure.
+  `schema_version` and that minimal-demo success remains distinct from
+  scientific closure.
 
 Definition of done:
 
-- `check_balfrin_tschamut_readiness.py` passes for the selected Balfrin run
-  manifest or reports only non-blocking warnings; focused checks pass; TB-115 is
-  removed from this backlog.
+- the canonical Balfrin demonstration run manifest is readiness-compatible,
+  reproducible, and bounded; focused checks pass; TB-115 is removed from this
+  backlog.
 
 Boundaries: Do not run the Balfrin job, do not weaken readiness checks just to
 pass the contract, and do not authorize operational, distributed, scale-up, or
@@ -67,8 +74,9 @@ physical-probability claims.
 
 ### TB-116: Execute And Collect Balfrin Single-Release-Zone Demo
 
-Goal: Run the corrected Balfrin single-release-zone demonstration path and
-collect the required metrics and artifact evidence bundle roots.
+Goal: Run the canonical Balfrin demonstration workflow end-to-end for one
+release zone, one bounded deterministic ensemble, one native reduced-output
+workflow, and one GIS package path.
 
 Capability gap reduced: Balfrin demonstration realism and measured execution
 evidence.
@@ -92,8 +100,9 @@ Deliverables:
 - A measured Balfrin run root or a clearly classified blocked execution report
   using the outcome taxonomy in `docs/orchestration_strategy.md`.
 - Collected metrics JSON/manifest evidence for wall time, memory, output bytes,
-  file counts, reduced-output families, conditional curves, and restartability
-  evidence.
+  file counts, reduced-output families, conditional curves, uncertainty
+  products, GIS package outputs, closure interpretation summary, and
+  restartability evidence.
 
 Definition of done:
 
@@ -105,11 +114,12 @@ Boundaries: Use bounded deterministic ensembles and native rebuildable reduced
 output only; do not run distributed/MPI/GPU jobs, large production ensembles, or
 operational/physical-frequency products.
 
-### TB-117: Assemble Measured Balfrin Evidence Bundle
+### TB-117: Build Canonical Balfrin Demonstration Evidence Bundle
 
 Goal: Convert the measured Balfrin run root into one canonical evidence bundle
 for readiness, metrics, outputs, GIS/COG status, restartability, failure
-taxonomy, and post-run interpretation.
+taxonomy, uncertainty summary, runtime summary, GIS-ready outputs, and
+post-run interpretation.
 
 Capability gap reduced: Reproducible demonstration evidence and auditability.
 
@@ -142,10 +152,11 @@ Definition of done:
 Boundaries: Do not fabricate missing metrics, do not commit large generated
 outputs, and do not broaden claim boundaries.
 
-### TB-118: Promote Balfrin Output-Tier And Restartability Reports To Measured Evidence
+### TB-118: Demonstrate Measured Balfrin Restartability And Recovery
 
-Goal: Replace fixture-backed output-tier and restartability demonstrations with
-reports derived from the measured Balfrin run evidence.
+Goal: Interrupt and recover the canonical Balfrin demonstration or classify why
+a live interruption/recovery proof remains blocked, using measured run evidence
+where available.
 
 Capability gap reduced: Rebuild-compatible execution realism and recovery
 confidence.
@@ -165,9 +176,12 @@ Inspect first:
 
 Deliverables:
 
+- Interrupted-run and resumed-run evidence when feasible, including manifest
+  continuity, output continuity, restartability timing, and deterministic
+  recovery checks.
 - Measured output-tier sufficiency and restartability/recovery reports from the
-  real run root, or explicit blocked reports if the measured run lacks the
-  required evidence.
+  real run root, or explicit blocked reports if live interruption/recovery is
+  not available.
 - Updated tests that preserve fixture-backed behavior while proving measured
   evidence is classified separately.
 
@@ -180,10 +194,11 @@ Boundaries: Do not create artificial interruption evidence, do not rerun large
 ensembles unless explicitly required by the runbook, and do not classify
 `summary_only` as rebuildable.
 
-### TB-119: Compare Measured Balfrin Outputs To Same-Scale Uncertainty
+### TB-119: Generate Canonical Balfrin Conditional Diagnostic Interpretation
 
-Goal: Interpret the measured Balfrin hazard layers against same-scale
-uncertainty, closure-gap deltas, stability zones, and hotspot provenance.
+Goal: Produce one coherent measured Balfrin interpretation that combines
+uncertainty, convergence, scaling, GIS readiness, portability, closure
+semantics, and physical-credibility boundaries.
 
 Capability gap reduced: Scientific interpretability and uncertainty-aware
 demonstration meaning.
@@ -203,10 +218,12 @@ Inspect first:
 
 Deliverables:
 
-- A measured Balfrin-vs-same-scale delta report that states whether the run
+- A canonical measured interpretation artifact that states whether the run
   supports, weakens, or leaves unchanged the current inconclusive diagnostic
   interpretation.
-- Machine-readable blocker and boundary fields for closure-limiting layers.
+- Machine-readable blocker and boundary fields for closure-limiting layers,
+  GIS/product scope, runtime/output sufficiency, portability status, and
+  physical-credibility limits.
 
 Definition of done:
 
@@ -319,7 +336,42 @@ Definition of done:
 Boundaries: Do not fit block-size distributions, infer annual frequencies, or
 change the already measured Balfrin demo unless a later task authorizes it.
 
-### TB-123: Define Second-Site Real-Context Trigger From Balfrin Evidence
+### TB-123: Prototype AOI-To-Demonstration Preparation Path
+
+Goal: Given AOI extents or a release polygon, prepare the deterministic inputs
+needed for a demonstration workflow without running an ensemble.
+
+Capability gap reduced: AOI-to-workflow automation and Swiss-wide portability.
+
+Why this outranks alternatives: The current workflow still assumes substantial
+Tschamut-specific preparation. A minimal AOI-to-demonstration path is the first
+real generalization step toward Swiss-wide automation.
+
+Inspect first:
+
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/plan_pragmatic_release_plan.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- A dry-run preparation report that emits terrain manifests, context manifests,
+  release/scenario placeholders, command-plan hooks, and ignored output roots
+  from an AOI or release polygon input.
+- Tests for deterministic output and blocked/missing-input behavior.
+
+Definition of done:
+
+- The prototype can prepare a bounded demonstration scaffold without executing
+  trajectories, downloading real data, or treating placeholders as evidence.
+
+Boundaries: Do not run ensembles, download public context, or claim release-zone
+validity from the dry-run scaffold.
+
+### TB-124: Define Second-Site Real-Context Trigger From Balfrin Evidence
 
 Goal: Convert the Chant Sura / Fluelapass defer decision into a concrete
 measured trigger for when real public-context staging should proceed.
@@ -357,7 +409,44 @@ Boundaries: Do not download real public context, do not run a second-site
 ensemble, and do not override the existing defer decision without measured
 Balfrin evidence.
 
-### TB-124: Update Swiss-Wide Envelope From Measured Balfrin Demo
+### TB-125: Measure Practical Balfrin Ensemble Frontier
+
+Goal: Estimate the smallest useful next Balfrin ensemble by comparing runtime,
+output growth, rebuildability cost, and uncertainty/stability changes across
+measured or bounded ensemble evidence.
+
+Capability gap reduced: Ensemble-size practicality and uncertainty
+characterization.
+
+Why this outranks alternatives: After a measured demonstration exists, the next
+question is not Swiss-wide production; it is the smallest additional bounded
+ensemble that would materially improve uncertainty interpretation.
+
+Inspect first:
+
+- `scripts/summarize_same_scale_stability_frontier.py`
+- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
+- `scripts/summarize_spatial_same_scale_uncertainty.py`
+- `scripts/summarize_balfrin_scientific_delta_report.py`
+- `scripts/summarize_balfrin_single_job_execution.py`
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
+
+Deliverables:
+
+- A practical ensemble-frontier report with uncertainty reduction, runtime
+  growth, output growth, rebuildability cost, and a minimum-useful-ensemble
+  recommendation or explicit defer/no-go label.
+- Tests preserving blocked behavior when measured Balfrin evidence is absent.
+
+Definition of done:
+
+- The report identifies whether a next bounded ensemble is scientifically
+  justified and operationally practical without authorizing production scale-up.
+
+Boundaries: Do not run a large production ensemble, tune physics, or authorize
+Swiss-wide execution.
+
+### TB-126: Update Swiss-Wide Envelope From Measured Balfrin Demo
 
 Goal: Recompute the Swiss-wide runtime, storage, file-count, memory, and
 job-count planning envelope from measured Balfrin demo evidence.
@@ -391,7 +480,7 @@ Definition of done:
 Boundaries: Do not authorize Swiss-wide execution, distributed execution, or
 production ensembles; this is a planning envelope only.
 
-### TB-125: Map Balfrin Demo Evidence To Physical-Credibility Gaps
+### TB-127: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 Goal: Map the measured Balfrin demo outputs to the existing physical
 credibility, validation, and calibration evidence requirements.
