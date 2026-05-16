@@ -1,0 +1,646 @@
+#!/usr/bin/env python3
+"""Generate deterministic terrain-driven release-zone candidate metrics.
+
+This helper stays read-only. It uses the committed Tschamut public pilot
+terrain crop, terrain metadata, and frozen source-zone metadata to report a
+fixed heuristic screening over the Balfrin/Tschamut AOI. It does not emit a
+validated release zone, tune thresholds, download public data, or authorize any
+ensemble work.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import sys
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+try:
+    import yaml  # type: ignore
+except ImportError as exc:  # pragma: no cover - environment setup.
+    raise SystemExit("PyYAML is required; install with `python3 -m pip install PyYAML`") from exc
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_VERSION = "terrain_release_zone_candidate_metrics_v1"
+DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
+DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
+DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
+
+MIN_CANDIDATE_SLOPE_DEG = 30.0
+MAX_CANDIDATE_SLOPE_DEG = 55.0
+NODATA_SENTINEL = -9999.0
+
+
+class TerrainReleaseZoneCandidateMetricsError(ValueError):
+    """User-facing dry-run helper error."""
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--terrain-crop", type=Path, default=None)
+    parser.add_argument("--terrain-metadata", type=Path, default=None)
+    parser.add_argument("--source-zone-metadata", type=Path, default=None)
+    parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument("--json-output", type=Path, default=None)
+    args = parser.parse_args(argv)
+
+    try:
+        report = build_report(
+            repo_root=args.repo_root,
+            terrain_crop_path=args.terrain_crop,
+            terrain_metadata_path=args.terrain_metadata,
+            source_zone_metadata_path=args.source_zone_metadata,
+        )
+    except TerrainReleaseZoneCandidateMetricsError as exc:
+        print(f"terrain release-zone candidate metrics error: {exc}", file=sys.stderr)
+        return 2
+
+    if args.json_output is not None:
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    print(output)
+    return 0 if report["candidate_metrics_status"] == "ready" else 2
+
+
+def build_report(
+    *,
+    repo_root: Path | None = None,
+    terrain_crop_path: Path | None = None,
+    terrain_metadata_path: Path | None = None,
+    source_zone_metadata_path: Path | None = None,
+) -> dict[str, Any]:
+    repo_root = repo_root or ROOT
+    terrain_crop_path = terrain_crop_path or default_repo_path(repo_root, DEFAULT_TERRAIN_CROP)
+    terrain_metadata_path = terrain_metadata_path or default_repo_path(repo_root, DEFAULT_TERRAIN_METADATA)
+    source_zone_metadata_path = source_zone_metadata_path or default_repo_path(repo_root, DEFAULT_SOURCE_ZONE_METADATA)
+    terrain_crop_path = resolve_path(repo_root, terrain_crop_path)
+    terrain_metadata_path = resolve_path(repo_root, terrain_metadata_path)
+    source_zone_metadata_path = resolve_path(repo_root, source_zone_metadata_path)
+
+    required_inputs = [
+        terrain_crop_path,
+        terrain_metadata_path,
+        source_zone_metadata_path,
+    ]
+    missing_inputs = [display_path(path, repo_root) for path in required_inputs if not path.exists()]
+    if missing_inputs:
+        return blocked_report(repo_root=repo_root, missing_inputs=missing_inputs)
+
+    terrain = read_esri_ascii_grid(terrain_crop_path)
+    terrain_metadata = load_yaml(terrain_metadata_path)
+    source_zone_metadata = load_yaml(source_zone_metadata_path)
+
+    screening = build_screening_criteria(terrain_metadata, source_zone_metadata)
+    candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, screening)
+    terrain_summary = build_terrain_summary(terrain)
+    candidate_summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, screening)
+    excluded_area_summary = build_excluded_area_summary(terrain_masks, terrain, screening)
+    provenance = build_provenance(terrain_crop_path, terrain_metadata_path, source_zone_metadata_path, terrain_metadata, source_zone_metadata)
+
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "candidate_metrics_status": "ready",
+        "candidate_release_zone_set_status": "not_emitted",
+        "candidate_release_zone_interpretation": "heuristic_workflow_input_only",
+        "candidate_site_id": "tschamut_public_pilot",
+        "candidate_site_name": "Balfrin / Tschamut AOI",
+        "candidate_selection_rationale": (
+            "The committed Tschamut public pilot terrain and frozen source-zone metadata are the "
+            "reproducible Balfrin/Tschamut AOI inputs available in-repo."
+        ),
+        "repo_root": str(repo_root),
+        "site_extent": terrain_metadata.get("extent_lv95_m", {}),
+        "screening_criteria": screening,
+        "terrain_inputs": {
+            "terrain_crop_path": display_path(terrain_crop_path, repo_root),
+            "terrain_metadata_path": display_path(terrain_metadata_path, repo_root),
+            "terrain_crop_sha256": sha256_file(terrain_crop_path),
+            "terrain_metadata_sha256": sha256_file(terrain_metadata_path),
+            "terrain_download_status": terrain_metadata.get("download_status"),
+            "terrain_license": terrain_metadata.get("license"),
+        },
+        "source_zone_inputs": build_source_zone_inputs(source_zone_metadata_path, source_zone_metadata, repo_root),
+        "terrain_summary": terrain_summary,
+        "candidate_summary": candidate_summary,
+        "excluded_area_summary": excluded_area_summary,
+        "provenance": provenance,
+        "claim_boundaries": {
+            "heuristic_workflow_input_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "notes": [
+                "candidate cells are heuristic workflow inputs, not validated release zones",
+                "slope screening is fixed and deterministic",
+                "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
+            ],
+        },
+        "blocked_missing_inputs": [],
+        "blocked_reason": "",
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+    }
+    return report
+
+
+def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "candidate_metrics_status": "blocked_missing_inputs",
+        "candidate_release_zone_set_status": "not_emitted",
+        "candidate_release_zone_interpretation": "not_claimed",
+        "candidate_site_id": "tschamut_public_pilot",
+        "candidate_site_name": "Balfrin / Tschamut AOI",
+        "candidate_selection_rationale": (
+            "The committed Tschamut public pilot terrain and frozen source-zone metadata are the "
+            "reproducible Balfrin/Tschamut AOI inputs available in-repo."
+        ),
+        "repo_root": str(repo_root),
+        "site_extent": {},
+        "screening_criteria": screening_criteria_stub(),
+        "terrain_inputs": {
+            "terrain_crop_path": display_path(default_repo_path(repo_root, DEFAULT_TERRAIN_CROP), repo_root),
+            "terrain_metadata_path": display_path(default_repo_path(repo_root, DEFAULT_TERRAIN_METADATA), repo_root),
+        },
+        "source_zone_inputs": {
+            "source_zone_metadata_path": display_path(
+                default_repo_path(repo_root, DEFAULT_SOURCE_ZONE_METADATA), repo_root
+            ),
+        },
+        "terrain_summary": {},
+        "candidate_summary": {},
+        "excluded_area_summary": [],
+        "provenance": {},
+        "claim_boundaries": {
+            "heuristic_workflow_input_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "notes": [
+                "candidate cells are heuristic workflow inputs, not validated release zones",
+                "slope screening is fixed and deterministic",
+                "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
+            ],
+        },
+        "blocked_missing_inputs": missing_inputs,
+        "blocked_reason": "required public inputs are missing: " + ", ".join(missing_inputs),
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+    }
+
+
+def screening_criteria_stub() -> dict[str, Any]:
+    return {
+        "slope_algorithm": "horn_3x3_cell_center_deg",
+        "minimum_finite_neighborhood": "3x3",
+        "candidate_slope_min_deg": MIN_CANDIDATE_SLOPE_DEG,
+        "candidate_slope_max_deg": MAX_CANDIDATE_SLOPE_DEG,
+        "exclude_nodata": True,
+        "exclude_incomplete_neighborhood": True,
+        "exclude_frozen_release_zone_footprint": True,
+        "frozen_release_zone_footprint_mask": "cell_center_in_polygon",
+    }
+
+
+def build_screening_criteria(terrain_metadata: dict[str, Any], source_zone_metadata: dict[str, Any]) -> dict[str, Any]:
+    criteria = screening_criteria_stub()
+    criteria.update(
+        {
+            "terrain_crs_epsg": terrain_metadata.get("coordinate_reference_system", {}).get("epsg"),
+            "terrain_vertical_datum": terrain_metadata.get("coordinate_reference_system", {}).get("vertical_datum"),
+            "source_zone_id": source_zone_metadata.get("source_zone_id"),
+        }
+    )
+    return criteria
+
+
+def build_terrain_summary(terrain: dict[str, Any]) -> dict[str, Any]:
+    values = terrain["values"]
+    valid_mask = terrain["valid_mask"]
+    cell_count = int(values.size)
+    valid_cell_count = int(valid_mask.sum())
+    cell_area_m2 = terrain["cellsize"] ** 2
+    return {
+        "cell_count": cell_count,
+        "valid_cell_count": valid_cell_count,
+        "invalid_cell_count": cell_count - valid_cell_count,
+        "cell_area_m2": cell_area_m2,
+        "total_area_m2": cell_count * cell_area_m2,
+        "valid_area_m2": valid_cell_count * cell_area_m2,
+        "elevation_min_m": float(np.nanmin(np.where(valid_mask, values, np.nan))),
+        "elevation_max_m": float(np.nanmax(np.where(valid_mask, values, np.nan))),
+        "elevation_mean_m": float(np.nanmean(np.where(valid_mask, values, np.nan))),
+        "resolution_m": terrain["cellsize"],
+        "ncols": terrain["ncols"],
+        "nrows": terrain["nrows"],
+        "extent_lv95_m": {
+            "xmin": terrain["xllcorner"],
+            "ymin": terrain["yllcorner"],
+            "xmax": terrain["xllcorner"] + terrain["ncols"] * terrain["cellsize"],
+            "ymax": terrain["yllcorner"] + terrain["nrows"] * terrain["cellsize"],
+        },
+    }
+
+
+def build_source_zone_inputs(
+    source_zone_metadata_path: Path,
+    source_zone_metadata: dict[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    vertices = extract_polygon_vertices(source_zone_metadata)
+    return {
+        "source_zone_metadata_path": display_path(source_zone_metadata_path, repo_root),
+        "source_zone_metadata_sha256": sha256_file(source_zone_metadata_path),
+        "source_zone_id": source_zone_metadata.get("source_zone_id"),
+        "crs_epsg": source_zone_metadata.get("crs_epsg"),
+        "vertical_datum": source_zone_metadata.get("vertical_datum"),
+        "release_sampling_policy": source_zone_metadata.get("release_sampling_policy", {}),
+        "provenance": source_zone_metadata.get("provenance", {}),
+        "footprint": {
+            "polygon_area_m2_exact": polygon_area(vertices),
+            "vertex_count": len(vertices),
+            "vertices": vertices,
+        },
+    }
+
+
+def build_candidate_summary(
+    terrain: dict[str, Any],
+    candidate_mask: np.ndarray,
+    terrain_masks: dict[str, np.ndarray],
+    screening: dict[str, Any],
+) -> dict[str, Any]:
+    values = terrain["values"]
+    candidate_values = values[candidate_mask]
+    cell_area_m2 = terrain["cellsize"] ** 2
+    candidate_count = int(candidate_mask.sum())
+    screenable_count = int(terrain_masks["screenable_mask"].sum())
+    valid_interior_count = int(terrain_masks["valid_interior_mask"].sum())
+    return {
+        "candidate_cell_count": candidate_count,
+        "candidate_area_m2": candidate_count * cell_area_m2,
+        "candidate_fraction_of_screenable_cells": fraction(candidate_count, screenable_count),
+        "candidate_fraction_of_valid_interior_cells": fraction(candidate_count, valid_interior_count),
+        "candidate_slope_min_deg": float(np.min(candidate_values)) if candidate_count else None,
+        "candidate_slope_max_deg": float(np.max(candidate_values)) if candidate_count else None,
+        "candidate_slope_mean_deg": float(np.mean(candidate_values)) if candidate_count else None,
+        "candidate_slope_median_deg": float(np.median(candidate_values)) if candidate_count else None,
+        "candidate_slope_p95_deg": float(np.quantile(candidate_values, 0.95)) if candidate_count else None,
+        "screenable_cell_count": screenable_count,
+        "screenable_area_m2": screenable_count * cell_area_m2,
+        "screenable_fraction_of_valid_cells": fraction(screenable_count, int(terrain["valid_mask"].sum())),
+        "screening_summary": {
+            "candidate_slope_min_deg": screening["candidate_slope_min_deg"],
+            "candidate_slope_max_deg": screening["candidate_slope_max_deg"],
+            "slope_algorithm": screening["slope_algorithm"],
+        },
+    }
+
+
+def build_excluded_area_summary(
+    terrain_masks: dict[str, np.ndarray],
+    terrain: dict[str, Any],
+    screening: dict[str, Any],
+) -> list[dict[str, Any]]:
+    cell_area_m2 = terrain["cellsize"] ** 2
+    slope = terrain_masks["slope_deg"]
+    low_mask = terrain_masks["low_slope_mask"]
+    high_mask = terrain_masks["high_slope_mask"]
+    return [
+        {
+            "category": "nodata_or_invalid",
+            "cell_count": int(terrain_masks["nodata_mask"].sum()),
+            "area_m2": int(terrain_masks["nodata_mask"].sum()) * cell_area_m2,
+            "reason": "cells with nodata or non-finite terrain values",
+        },
+        {
+            "category": "incomplete_neighborhood",
+            "cell_count": int(terrain_masks["incomplete_neighborhood_mask"].sum()),
+            "area_m2": int(terrain_masks["incomplete_neighborhood_mask"].sum()) * cell_area_m2,
+            "reason": "border cells without a full 3x3 slope kernel",
+        },
+        {
+            "category": "frozen_release_zone_footprint",
+            "cell_count": int(terrain_masks["footprint_mask"].sum()),
+            "area_m2": int(terrain_masks["footprint_mask"].sum()) * cell_area_m2,
+            "reason": "cells inside the committed frozen source-zone footprint are excluded from candidate screening",
+        },
+        {
+            "category": "slope_below_candidate_band",
+            "cell_count": int(low_mask.sum()),
+            "area_m2": int(low_mask.sum()) * cell_area_m2,
+            "reason": f"slope below {screening['candidate_slope_min_deg']} degrees",
+        },
+        {
+            "category": "slope_above_candidate_band",
+            "cell_count": int(high_mask.sum()),
+            "area_m2": int(high_mask.sum()) * cell_area_m2,
+            "reason": f"slope above {screening['candidate_slope_max_deg']} degrees",
+        },
+        {
+            "category": "candidate_band",
+            "cell_count": int(terrain_masks["candidate_mask"].sum()),
+            "area_m2": int(terrain_masks["candidate_mask"].sum()) * cell_area_m2,
+            "reason": (
+                f"slope within [{screening['candidate_slope_min_deg']}, {screening['candidate_slope_max_deg']}] degrees "
+                "and outside the frozen release-zone footprint"
+            ),
+        },
+    ]
+
+
+def compute_candidate_masks(
+    terrain: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    screening: dict[str, Any],
+) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    values = terrain["values"]
+    valid_mask = terrain["valid_mask"]
+    nrows, ncols = values.shape
+
+    slope_deg = np.full_like(values, np.nan, dtype=float)
+    valid_interior_mask = np.zeros_like(valid_mask, dtype=bool)
+    nodata_mask = ~valid_mask
+    incomplete_neighborhood_mask = np.ones_like(valid_mask, dtype=bool)
+    incomplete_neighborhood_mask[1:-1, 1:-1] = False
+    footprint_mask = point_in_polygon_mask(terrain, extract_polygon_vertices(source_zone_metadata))
+
+    for row in range(1, nrows - 1):
+        for col in range(1, ncols - 1):
+            neighborhood = values[row - 1 : row + 2, col - 1 : col + 2]
+            if not np.isfinite(neighborhood).all():
+                continue
+            valid_interior_mask[row, col] = True
+            dzdx = (
+                (neighborhood[0, 2] + 2.0 * neighborhood[1, 2] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[1, 0] + neighborhood[2, 0])
+            ) / (8.0 * terrain["cellsize"])
+            dzdy = (
+                (neighborhood[2, 0] + 2.0 * neighborhood[2, 1] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[0, 1] + neighborhood[0, 2])
+            ) / (8.0 * terrain["cellsize"])
+            slope_deg[row, col] = math.degrees(math.atan(math.hypot(dzdx, dzdy)))
+
+    screenable_mask = valid_interior_mask & ~footprint_mask
+    candidate_mask = screenable_mask & (slope_deg >= MIN_CANDIDATE_SLOPE_DEG) & (slope_deg <= MAX_CANDIDATE_SLOPE_DEG)
+    low_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg < MIN_CANDIDATE_SLOPE_DEG)
+    high_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg > MAX_CANDIDATE_SLOPE_DEG)
+
+    terrain_masks = {
+        "slope_deg": slope_deg,
+        "valid_interior_mask": valid_interior_mask,
+        "nodata_mask": nodata_mask,
+        "incomplete_neighborhood_mask": incomplete_neighborhood_mask,
+        "footprint_mask": footprint_mask,
+        "screenable_mask": screenable_mask,
+        "candidate_mask": candidate_mask,
+        "low_slope_mask": low_slope_mask,
+        "high_slope_mask": high_slope_mask,
+    }
+    return candidate_mask, terrain_masks
+
+
+def point_in_polygon_mask(terrain: dict[str, Any], vertices: list[tuple[float, float]]) -> np.ndarray:
+    mask = np.zeros((terrain["nrows"], terrain["ncols"]), dtype=bool)
+    if not vertices:
+        return mask
+    for row in range(terrain["nrows"]):
+        y = terrain["yllcorner"] + (terrain["nrows"] - row - 0.5) * terrain["cellsize"]
+        for col in range(terrain["ncols"]):
+            x = terrain["xllcorner"] + (col + 0.5) * terrain["cellsize"]
+            mask[row, col] = point_in_polygon(x, y, vertices)
+    return mask
+
+
+def point_in_polygon(x: float, y: float, vertices: list[tuple[float, float]]) -> bool:
+    inside = False
+    j = len(vertices) - 1
+    for i, (xi, yi) in enumerate(vertices):
+        xj, yj = vertices[j]
+        intersects = ((yi > y) != (yj > y)) and (
+            x < ((xj - xi) * (y - yi)) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi
+        )
+        if intersects:
+            inside = not inside
+        j = i
+    return inside
+
+
+def extract_polygon_vertices(source_zone_metadata: dict[str, Any]) -> list[tuple[float, float]]:
+    geometry = source_zone_metadata.get("geometry", {})
+    raw_vertices = None
+    if isinstance(geometry, dict):
+        raw_vertices = geometry.get("vertices") or geometry.get("coordinates")
+    if not isinstance(raw_vertices, list):
+        return []
+    vertices: list[tuple[float, float]] = []
+    for entry in raw_vertices:
+        if not isinstance(entry, (list, tuple)) or len(entry) < 2:
+            continue
+        vertices.append((float(entry[0]), float(entry[1])))
+    if vertices and vertices[0] == vertices[-1]:
+        vertices.pop()
+    return vertices
+
+
+def polygon_area(vertices: list[tuple[float, float]]) -> float:
+    if len(vertices) < 3:
+        return 0.0
+    area = 0.0
+    for idx, (x0, y0) in enumerate(vertices):
+        x1, y1 = vertices[(idx + 1) % len(vertices)]
+        area += x0 * y1 - x1 * y0
+    return abs(area) / 2.0
+
+
+def build_provenance(
+    terrain_crop_path: Path,
+    terrain_metadata_path: Path,
+    source_zone_metadata_path: Path,
+    terrain_metadata: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "terrain_source": {
+            "source_dataset": terrain_metadata.get("source_dataset"),
+            "source_product": terrain_metadata.get("source_product"),
+            "source_url": terrain_metadata.get("source_url"),
+            "source_filename": terrain_metadata.get("source_filename"),
+            "source_file_present": terrain_metadata.get("source_file_present"),
+            "download_status": terrain_metadata.get("download_status"),
+            "license": terrain_metadata.get("license"),
+            "processed_utc": terrain_metadata.get("preprocessing", {}).get("processed_utc"),
+            "raw_sha256": terrain_metadata.get("preprocessing", {}).get("raw_sha256"),
+            "processed_sha256": terrain_metadata.get("preprocessing", {}).get("processed_sha256"),
+            "tool": terrain_metadata.get("preprocessing", {}).get("tool"),
+            "crop_extent_lv95_m": terrain_metadata.get("preprocessing", {}).get("crop_extent_lv95_m"),
+            "terrain_crop_sha256": sha256_file(terrain_crop_path),
+            "terrain_metadata_sha256": sha256_file(terrain_metadata_path),
+        },
+        "source_zone_source": {
+            "source_zone_id": source_zone_metadata.get("source_zone_id"),
+            "license": source_zone_metadata.get("provenance", {}).get("license"),
+            "source": source_zone_metadata.get("provenance", {}).get("source"),
+            "notes": source_zone_metadata.get("provenance", {}).get("notes", []),
+            "source_zone_metadata_sha256": sha256_file(source_zone_metadata_path),
+        },
+        "heuristic_notes": [
+            "cell-center inclusion against the frozen source-zone polygon is deterministic",
+            "the 3x3 Horn slope kernel is fixed and does not fit outcomes",
+            "candidate cells are workflow inputs only and are not validated release zones",
+        ],
+    }
+
+
+def read_esri_ascii_grid(path: Path) -> dict[str, Any]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if len(lines) < 6:
+        raise TerrainReleaseZoneCandidateMetricsError(f"ESRI ASCII grid is too short: {path}")
+
+    header: dict[str, float] = {}
+    for line in lines[:6]:
+        key, value = line.split(maxsplit=1)
+        header[key.lower()] = float(value)
+
+    ncols = int(header["ncols"])
+    nrows = int(header["nrows"])
+    cellsize = float(header["cellsize"])
+    nodata = float(header.get("nodata_value", NODATA_SENTINEL))
+    data = np.loadtxt(lines[6:], dtype=float)
+    if data.shape != (nrows, ncols):
+        raise TerrainReleaseZoneCandidateMetricsError(
+            f"terrain grid shape mismatch for {path}: expected {(nrows, ncols)}, got {data.shape}"
+        )
+    valid_mask = np.isfinite(data) & (data != nodata)
+    data = np.where(valid_mask, data, np.nan)
+    return {
+        "values": data,
+        "valid_mask": valid_mask,
+        "ncols": ncols,
+        "nrows": nrows,
+        "xllcorner": float(header.get("xllcorner", 0.0)),
+        "yllcorner": float(header.get("yllcorner", 0.0)),
+        "cellsize": cellsize,
+        "nodata_value": nodata,
+    }
+
+
+def load_yaml(path: Path) -> dict[str, Any]:
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 - file context matters.
+        raise TerrainReleaseZoneCandidateMetricsError(f"failed to read YAML {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise TerrainReleaseZoneCandidateMetricsError(f"expected YAML mapping in {path}")
+    return data
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def display_path(path: Path, repo_root: Path) -> str:
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
+
+
+def resolve_path(repo_root: Path, path: Path) -> Path:
+    return path if path.is_absolute() else (repo_root / path).resolve()
+
+
+def default_repo_path(repo_root: Path, path: Path) -> Path:
+    try:
+        rel = path.relative_to(ROOT)
+    except ValueError:
+        return path
+    return (repo_root / rel).resolve()
+
+
+def fraction(numerator: int, denominator: int) -> float | None:
+    if denominator == 0:
+        return None
+    return numerator / denominator
+
+
+def render_text_report(report: dict[str, Any]) -> str:
+    lines = [
+        f"schema_version: {report['schema_version']}",
+        f"candidate_metrics_status: {report['candidate_metrics_status']}",
+        f"candidate_release_zone_set_status: {report['candidate_release_zone_set_status']}",
+        f"candidate_release_zone_interpretation: {report['candidate_release_zone_interpretation']}",
+        f"candidate_site_id: {report['candidate_site_id']}",
+        f"candidate_site_name: {report['candidate_site_name']}",
+        f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
+        "",
+        "screening_criteria:",
+    ]
+    lines.extend(f"- {key}: {value}" for key, value in report["screening_criteria"].items())
+    lines.append("")
+    lines.append("terrain_summary:")
+    lines.extend(render_mapping(report["terrain_summary"]))
+    lines.append("")
+    lines.append("candidate_summary:")
+    lines.extend(render_mapping(report["candidate_summary"]))
+    lines.append("")
+    lines.append("excluded_area_summary:")
+    for row in report["excluded_area_summary"]:
+        lines.append(
+            f"- {row['category']}: cell_count={row['cell_count']}, area_m2={row['area_m2']}, reason={row['reason']}"
+        )
+    lines.append("")
+    lines.append("source_zone_inputs:")
+    lines.extend(render_mapping(report["source_zone_inputs"]))
+    lines.append("")
+    lines.append("terrain_inputs:")
+    lines.extend(render_mapping(report["terrain_inputs"]))
+    lines.append("")
+    lines.append("provenance:")
+    lines.extend(render_mapping(report["provenance"]))
+    lines.append("")
+    lines.append("claim_boundaries:")
+    lines.extend(render_mapping(report["claim_boundaries"]))
+    lines.append("")
+    lines.append(f"blocked_reason: {report['blocked_reason']}")
+    return "\n".join(lines)
+
+
+def render_mapping(mapping: dict[str, Any], indent: str = "") -> list[str]:
+    lines: list[str] = []
+    for key, value in mapping.items():
+        if isinstance(value, dict):
+            lines.append(f"{indent}- {key}:")
+            lines.extend(render_mapping(value, indent=f"{indent}  "))
+        elif isinstance(value, list):
+            lines.append(f"{indent}- {key}:")
+            for item in value:
+                if isinstance(item, dict):
+                    lines.append(f"{indent}  -")
+                    lines.extend(render_mapping(item, indent=f"{indent}    "))
+                else:
+                    lines.append(f"{indent}  - {item}")
+        else:
+            lines.append(f"{indent}- {key}: {value}")
+    return lines
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

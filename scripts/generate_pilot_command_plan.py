@@ -665,6 +665,31 @@ def build_balfrin_single_release_zone_plan_commands() -> list[dict[str, Any]]:
         command_entry(
             site="tschamut_same_scale",
             group="balfrin_single_release_zone_plan",
+            command_id="tschamut_terrain_release_zone_candidate_metrics",
+            description="Generate deterministic terrain-driven release-zone candidate metrics for the Balfrin/Tschamut AOI without emitting validated release zones.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+            ],
+            expected_outputs=["JSON terrain candidate metrics report for the Balfrin/Tschamut AOI"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="balfrin_single_release_zone_plan",
             command_id="tschamut_balfrin_single_release_zone_case_plan_dry_run",
             description="Generate the large Balfrin single-release-zone dry-run case plan without executing a validation case.",
             command=command_string(

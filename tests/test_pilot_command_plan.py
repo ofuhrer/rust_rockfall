@@ -114,6 +114,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             ],
         )
         self.assertIn("tschamut_case_generation", report["command_ids"])
+        self.assertIn("tschamut_terrain_release_zone_candidate_metrics", report["command_ids"])
         self.assertIn("tschamut_target_hazard_build", report["command_ids"])
         self.assertIn("tschamut_output_profile_summary", report["command_ids"])
         self.assertIn("tschamut_standard_package_audit", report["command_ids"])

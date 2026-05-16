@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-123: Generate Balfrin Terrain-Driven Release-Zone Candidate Metrics
-
-Goal: Produce deterministic terrain-driven release-zone candidate metrics for
-the Balfrin/Tschamut AOI without using them as field-validated release zones.
-
-Capability gap reduced: Workflow automation and release-zone generation
-reproducibility.
-
-Why this outranks alternatives: Swiss-wide automation needs reproducible
-terrain-derived candidates; the current workflow still depends on preselected
-release-zone records for real execution.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `data/processed/swisstopo/tschamut_public_pilot/input/`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A deterministic dry-run candidate report for the Balfrin/Tschamut AOI with
-  slope/terrain criteria, candidate counts, excluded areas, and provenance.
-- Tests proving deterministic output and blocked behavior when public inputs
-  are absent.
-
-Definition of done:
-
-- The helper emits reproducible candidate metrics and explicitly states that
-  candidates are heuristic workflow inputs, not validated release zones.
-
-Boundaries: Do not replace the frozen pilot release zone, tune thresholds to
-match outcomes, or claim physical release probability.
-
 ### TB-124: Generate Deterministic Balfrin Block-Scenario Sensitivity Plan
 
 Goal: Produce a deterministic block-scenario sensitivity plan for the Balfrin
