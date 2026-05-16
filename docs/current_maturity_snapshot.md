@@ -149,8 +149,10 @@ objective are:
     populated. The contract records the required independent benchmark
     manifest, geometry, provenance, and objective-function placeholders. The
     remaining boundary work is to keep benchmark-intake readiness separate from
-    calibration readiness, then make the intake requirements executable as a
-    dry-run readiness pack for future real evidence.
+    calibration readiness; the intake requirements are now executable as a
+    dry-run readiness pack that writes template manifest, geometry inventory,
+    provenance checklist, and validation summary files without claiming real
+    evidence.
 
 ## Backlog Quality Assessment
 

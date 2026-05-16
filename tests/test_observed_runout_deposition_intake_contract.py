@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+import yaml
 
 from scripts import summarize_observed_runout_deposition_intake_contract as helper
 
@@ -165,6 +168,49 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             current_state["calibration_missing_inputs"],
             [str(calibration_root)],
         )
+
+    def test_readiness_pack_writes_template_non_evidence_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "observed_runout_deposition_intake_readiness_pack_v1"
+            report = helper.build_report(output_root=output_root)
+            pack = report["readiness_pack"]
+            template_manifest_path = Path(pack["generated_files"]["template_manifest"])
+            geometry_inventory_path = Path(pack["generated_files"]["required_geometry_inventory"])
+            provenance_checklist_path = Path(pack["generated_files"]["provenance_checklist"])
+            validation_summary_path = Path(pack["generated_files"]["validation_summary"])
+
+            self.assertEqual(pack["readiness_pack_status"], "written")
+            self.assertEqual(pack["artifact_classification"], "template_non_evidence")
+            self.assertEqual(Path(pack["readiness_pack_root"]), output_root)
+            self.assertTrue(template_manifest_path.exists())
+            self.assertTrue(geometry_inventory_path.exists())
+            self.assertTrue(provenance_checklist_path.exists())
+            self.assertTrue(validation_summary_path.exists())
+
+            template_manifest = yaml.safe_load(template_manifest_path.read_text(encoding="utf-8"))
+            geometry_inventory = yaml.safe_load(geometry_inventory_path.read_text(encoding="utf-8"))
+            validation_summary = json.loads(validation_summary_path.read_text(encoding="utf-8"))
+            provenance_checklist = provenance_checklist_path.read_text(encoding="utf-8")
+
+            self.assertEqual(template_manifest["artifact_classification"], "template_non_evidence")
+            self.assertEqual(template_manifest["pack_status"], "dry_run_template")
+            self.assertIn("observed_runout_deposition_intake_status", template_manifest)
+            self.assertEqual(template_manifest["validation_boundary"], "diagnostic_only_until_independent_benchmark_is_staged")
+            self.assertEqual(geometry_inventory["artifact_classification"], "template_non_evidence")
+            self.assertIn("source_polygon", geometry_inventory["allowed_geometry_roles"])
+            self.assertEqual(validation_summary["artifact_classification"], "template_non_evidence")
+            self.assertEqual(validation_summary["validation_status"], "ready")
+            self.assertEqual(validation_summary["missing_files"], [])
+            self.assertIn("Template / non-evidence artifact.", provenance_checklist)
+            self.assertIn("Supply a real independent observed runout/deposition benchmark manifest.", provenance_checklist)
+
+    def test_main_writes_pack_and_exits_successfully_when_output_root_is_supplied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir) / "observed_runout_deposition_intake_readiness_pack_v1"
+            exit_code = helper.main(["--output-root", str(output_root), "--format", "json"])
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_root / "template_manifest.yaml").exists())
+            self.assertTrue((output_root / "validation_summary.json").exists())
 
 
 if __name__ == "__main__":  # pragma: no cover

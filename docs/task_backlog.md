@@ -18,33 +18,6 @@ only labels, validators, or roadmap/status churn.
 
 _Active TB tasks remain below._
 
-### TB-083: Add Observed Runout Intake Readiness Pack Generator
-
-Goal: Make the TB-080 observed runout/deposition contract actionable by generating a dry-run readiness pack for future real benchmark data.
-
-Capability gap reduced: Validation-data acquisition reproducibility.
-
-Why this outranks alternatives: The contract is useful but still manual; a dry-run pack tells a future data provider exactly what files, fields, and provenance must exist.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A CLI option or helper emits a template manifest, required geometry inventory, provenance checklist, and validation summary into a caller-provided temporary directory.
-- The generated pack is explicitly marked as a template/non-evidence artifact.
-- Tests verify the pack structure without committing generated benchmark files.
-
-Definition of done:
-
-- The readiness pack can be generated and validated in a temporary directory, focused tests pass, and TB-083 is removed from this backlog.
-
-Boundaries: No real benchmark data, calibration, parameter fitting, operational claims, or committed generated artifact roots.
-
 ### TB-084: Resolve COG Export Layer-Scope Delta
 
 Goal: Make the COG export proof either full-scope with the standard same-scale GIS package or explicitly bounded in machine-readable audit output.

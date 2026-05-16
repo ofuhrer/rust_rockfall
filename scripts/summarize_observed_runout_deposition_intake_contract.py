@@ -17,6 +17,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+try:
+    import yaml  # type: ignore
+except ImportError as exc:  # pragma: no cover - environment setup.
+    raise SystemExit("PyYAML is required; install with `python3 -m pip install PyYAML`") from exc
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "observed_runout_deposition_intake_contract_v1"
@@ -34,9 +39,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument("--output-root", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report()
+    report = build_report(output_root=args.output_root)
     if args.json_output is not None:
         output_path = args.json_output if args.json_output.is_absolute() else ROOT / args.json_output
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -44,16 +50,19 @@ def main(argv: list[str] | None = None) -> int:
 
     output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
+    readiness_pack = report.get("readiness_pack", {})
+    if readiness_pack.get("readiness_pack_status") == "written":
+        return 0
     return 2 if report["observed_runout_deposition_intake_status"] == "blocked_missing_inputs" else 0
 
 
-def build_report() -> dict[str, Any]:
+def build_report(output_root: Path | None = None) -> dict[str, Any]:
     contract = build_contract()
     field_requirement_map = build_field_requirement_map()
     current_state = build_current_state()
     benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
 
-    return {
+    report: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "observed_runout_deposition_intake_status": (
             "blocked_missing_inputs" if benchmark_missing_inputs else "ready"
@@ -70,6 +79,190 @@ def build_report() -> dict[str, Any]:
         "missing_inputs": benchmark_missing_inputs,
         "current_state_summary": current_state_summary(current_state),
     }
+    if output_root is not None:
+        readiness_pack = build_readiness_pack(output_root=output_root, report=report)
+        report["readiness_pack"] = readiness_pack
+    return report
+
+
+def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[str, Any]:
+    pack_root = resolve_output_root(output_root)
+    pack_root.mkdir(parents=True, exist_ok=True)
+
+    template_manifest = build_template_manifest(report=report, pack_root=pack_root)
+    geometry_inventory = build_required_geometry_inventory(report=report, pack_root=pack_root)
+    provenance_checklist = build_provenance_checklist(report=report, pack_root=pack_root)
+
+    template_manifest_path = pack_root / "template_manifest.yaml"
+    geometry_inventory_path = pack_root / "required_geometry_inventory.yaml"
+    provenance_checklist_path = pack_root / "provenance_checklist.md"
+    validation_summary_path = pack_root / "validation_summary.json"
+
+    template_manifest_path.write_text(yaml.safe_dump(template_manifest, sort_keys=False), encoding="utf-8")
+    geometry_inventory_path.write_text(yaml.safe_dump(geometry_inventory, sort_keys=False), encoding="utf-8")
+    provenance_checklist_path.write_text(provenance_checklist, encoding="utf-8")
+
+    validation_summary = validate_readiness_pack(
+        pack_root=pack_root,
+        template_manifest_path=template_manifest_path,
+        geometry_inventory_path=geometry_inventory_path,
+        provenance_checklist_path=provenance_checklist_path,
+    )
+    validation_summary_path.write_text(json.dumps(validation_summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    return {
+        "readiness_pack_status": "written",
+        "artifact_classification": "template_non_evidence",
+        "readiness_pack_root": str(pack_root),
+        "generated_files": {
+            "template_manifest": str(template_manifest_path),
+            "required_geometry_inventory": str(geometry_inventory_path),
+            "provenance_checklist": str(provenance_checklist_path),
+            "validation_summary": str(validation_summary_path),
+        },
+        "validation_summary": validation_summary,
+    }
+
+
+def build_template_manifest(*, report: dict[str, Any], pack_root: Path) -> dict[str, Any]:
+    contract = report["benchmark_intake_contract"]
+    current_state = report["current_repo_state"]
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "artifact_classification": "template_non_evidence",
+        "pack_status": "dry_run_template",
+        "pack_root": str(pack_root),
+        "source_script": "scripts/summarize_observed_runout_deposition_intake_contract.py",
+        "observed_runout_deposition_intake_status": report["observed_runout_deposition_intake_status"],
+        "blocked_reason": report["blocked_reason"],
+        "benchmark_intake_contract": {
+            "geometry": contract["geometry"],
+            "event_source_metadata": contract["event_source_metadata"],
+            "uncertainty": contract["uncertainty"],
+            "objective_function_placeholders": contract["objective_function_placeholders"],
+        },
+        "required_inputs": [
+            {
+                "path": str(EXPECTED_BENCHMARK_MANIFEST),
+                "exists": EXPECTED_BENCHMARK_MANIFEST.exists(),
+            },
+            {
+                "path": str(EXPECTED_BENCHMARK_GEOMETRY),
+                "exists": EXPECTED_BENCHMARK_GEOMETRY.exists(),
+            },
+        ],
+        "validation_boundary": current_state["evidence_boundary"],
+        "claim_boundaries": report["claim_boundaries"],
+        "notes": [
+            "Template/non-evidence artifact only.",
+            "No real benchmark data, calibration fit, or operational claim is encoded here.",
+        ],
+    }
+
+
+def build_required_geometry_inventory(*, report: dict[str, Any], pack_root: Path) -> dict[str, Any]:
+    contract = report["benchmark_intake_contract"]
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "artifact_classification": "template_non_evidence",
+        "inventory_status": "dry_run_template",
+        "pack_root": str(pack_root),
+        "required_crs": contract["geometry"]["required_crs"],
+        "required_vertical_datum": contract["geometry"]["required_vertical_datum"],
+        "allowed_geometry_roles": contract["geometry"]["allowed_geometry_roles"],
+        "required_fields": contract["geometry"]["required_fields"],
+        "geometry_roles": [
+            {
+                "geometry_role": role,
+                "required": True,
+                "description": geometry_role_description(role),
+            }
+            for role in contract["geometry"]["allowed_geometry_roles"]
+        ],
+        "notes": [
+            "This inventory is a template for future geometry intake.",
+            "It does not contain observed benchmark geometries.",
+        ],
+    }
+
+
+def build_provenance_checklist(*, report: dict[str, Any], pack_root: Path) -> str:
+    contract = report["benchmark_intake_contract"]
+    current_state = report["current_repo_state"]
+    lines = [
+        "# Observed runout/deposition intake provenance checklist",
+        "",
+        "Template / non-evidence artifact.",
+        "This checklist names the future benchmark metadata that must exist before the intake can be treated as real evidence.",
+        "",
+        "Required provenance items:",
+        f"- Required CRS: {contract['geometry']['required_crs']}",
+        f"- Required vertical datum: {contract['geometry']['required_vertical_datum']}",
+        f"- Geometry roles: {', '.join(contract['geometry']['allowed_geometry_roles'])}",
+        f"- Geometry fields: {', '.join(contract['geometry']['required_fields'])}",
+        f"- Event/source fields: {', '.join(contract['event_source_metadata']['required_fields'])}",
+        f"- Source metadata fields: {', '.join(contract['event_source_metadata']['source_metadata_required'])}",
+        f"- Uncertainty fields: {', '.join(contract['uncertainty']['required_fields'])}",
+        f"- Objective placeholder fields: {', '.join(contract['objective_function_placeholders']['required_fields'])}",
+        "",
+        "Validation boundary:",
+        f"- {current_state['evidence_boundary']}",
+        "",
+        "Checklist:",
+        "- Supply a real independent observed runout/deposition benchmark manifest.",
+        "- Supply the matching observed geometry record(s).",
+        "- Preserve provenance URIs, observer/method metadata, and site identifiers.",
+        "- Keep calibration evidence separate from benchmark intake evidence.",
+        "- Keep the pack out of committed benchmark roots.",
+        "",
+        "Artifact root:",
+        f"- {pack_root}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def validate_readiness_pack(
+    *,
+    pack_root: Path,
+    template_manifest_path: Path,
+    geometry_inventory_path: Path,
+    provenance_checklist_path: Path,
+) -> dict[str, Any]:
+    required_paths = {
+        "template_manifest": template_manifest_path,
+        "required_geometry_inventory": geometry_inventory_path,
+        "provenance_checklist": provenance_checklist_path,
+    }
+    missing = [name for name, path in required_paths.items() if not path.exists()]
+    unexpected = [
+        str(path.relative_to(pack_root))
+        for path in pack_root.iterdir()
+        if path.is_file() and path.name not in {p.name for p in required_paths.values()} and path.name != "validation_summary.json"
+    ]
+    return {
+        "validation_status": "ready" if not missing and not unexpected else "blocked_missing_inputs",
+        "artifact_classification": "template_non_evidence",
+        "pack_root": str(pack_root),
+        "required_files_present": not missing,
+        "missing_files": missing,
+        "unexpected_files": unexpected,
+        "validation_boundary": "template_non_evidence_only",
+        "checked_files": {name: str(path) for name, path in required_paths.items()},
+    }
+
+
+def geometry_role_description(role: str) -> str:
+    descriptions = {
+        "source_polygon": "observed source geometry tied to provenance and release-zone screening",
+        "runout_axis_line": "measured or digitized axis used for runout comparison",
+        "deposition_footprint_polygon": "observed deposition footprint used for overlap comparison",
+        "reference_observation_points": "site reference points used for future QA or alignment",
+    }
+    return descriptions.get(role, "required geometry role for benchmark intake")
+
+
+def resolve_output_root(output_root: Path) -> Path:
+    return output_root if output_root.is_absolute() else ROOT / output_root
 
 
 def build_contract() -> dict[str, Any]:
@@ -401,6 +594,15 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("missing_inputs:")
     for item in current_state["missing_inputs"]:
         lines.append(f"- {item}")
+    if "readiness_pack" in report:
+        readiness_pack = report["readiness_pack"]
+        lines.append("")
+        lines.append("readiness_pack:")
+        lines.append(f"- readiness_pack_status: {readiness_pack['readiness_pack_status']}")
+        lines.append(f"- artifact_classification: {readiness_pack['artifact_classification']}")
+        lines.append(f"- readiness_pack_root: {readiness_pack['readiness_pack_root']}")
+        for name, path in readiness_pack["generated_files"].items():
+            lines.append(f"- {name}: {path}")
     lines.append("")
     lines.append("claim_boundaries:")
     for key, value in report["claim_boundaries"].items():

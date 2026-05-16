@@ -321,6 +321,14 @@ is partial, but physical credibility is not yet established. Calibration and
 block-population evidence remain missing, and annual-frequency, risk,
 exposure, vulnerability, and operational claims stay out of scope.
 
+The observed runout/deposition intake contract helper
+`scripts/summarize_observed_runout_deposition_intake_contract.py` now also
+generates a dry-run readiness pack in a caller-provided temporary directory.
+That pack contains a template manifest, required geometry inventory,
+provenance checklist, and validation summary, and it is explicitly marked as
+a template/non-evidence artifact so future benchmark evidence cannot be
+confused with the contract scaffolding.
+
 The source-zone / scenario contract audit helper
 `scripts/audit_multisite_source_scenario_contract.py` now distinguishes the
 portable contract shape from the Tschamut-specific heuristics that were used

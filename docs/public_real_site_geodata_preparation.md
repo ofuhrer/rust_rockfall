@@ -244,7 +244,11 @@ uncertainty, and objective placeholders without implying that a calibration
 dataset is already available. That helper now separates benchmark intake
 readiness, which depends on the benchmark manifest and geometry only, from
 calibration readiness, which is reported independently. The current
-repository state is still blocked on independent benchmark evidence.
+repository state is still blocked on independent benchmark evidence, and the
+same helper can now emit a dry-run readiness pack into a caller-provided
+temporary directory with a template manifest, required geometry inventory,
+provenance checklist, and validation summary that are explicitly marked as
+non-evidence artifacts.
 
 The Chant Sura real-context readiness gate,
 `scripts/check_chant_sura_real_context_readiness_gate.py`, layers on top of
