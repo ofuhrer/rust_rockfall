@@ -262,6 +262,10 @@ contract:
   distinguishes standard COG-blocked roots from ignored converted-package
   exports and now reports layer parity versus intentional scope reduction,
   rather than treating `--export-cog` as universally deferred.
+- `scripts/summarize_large_aoi_gis_cog_stress_test.py` reports package runtime,
+  scratch COG conversion timing, raster count, manifest size, layer parity, and
+  missing-layer summaries for a standard-root package plus ignored converted
+  scratch root while keeping the standard-root COG-blocked state visible.
 - `tests/test_hazard_layers.py::HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries`
   verifies the pilot package manifest records GeoTIFF outputs, CSV/ASCII parity
   files, source-zone and terrain metadata sidecars, visual QA status, and

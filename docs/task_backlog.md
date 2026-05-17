@@ -22,45 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-186: Large-AOI GIS Packaging Stress Test
-
-Goal: Stress-test GIS package generation, manifest generation, COG conversion,
-and raster packaging for a realistically large AOI or synthetic large-AOI
-fixture derived from current target-area outputs.
-
-Capability gap reduced: Unknown GIS/COG packaging pressure for larger AOIs and
-multi-zone products.
-
-Why this outranks alternatives: GIS product usability is secondary to
-scientific evidence, but large-AOI packaging can become the first practical
-demonstration bottleneck once multi-zone outputs exist.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/summarize_balfrin_target_area_gis_cog_scope.py`
-- `docs/pilot_gis_package.md`
-
-Deliverables:
-
-- A bounded GIS/COG stress-test helper or mode using scratch/ignored outputs.
-- Package runtime, COG conversion timing, raster count, manifest size, layer
-  parity, and missing-layer summaries.
-- A report that distinguishes standard-root COG-blocked status from converted
-  scratch package readiness.
-
-Definition of done:
-
-- Focused tests cover the stress-test summary and blocked-missing-input path,
-  and the report identifies the first GIS packaging bottleneck without
-  committing generated rasters.
-
-Boundaries: No operational GIS product claim, no manual QGIS acceptance claim,
-no generated raster commit, and no claim that scratch COG readiness upgrades
-standard roots.
-
 ### TB-187: Multi-Zone Reducer And Merge Scaling Probe
 
 Goal: Measure reducer pressure, chunk scaling, deterministic merge ordering,

@@ -3271,3 +3271,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: projection-only; no scale-up authorization, no distributed execution, no Swiss-wide run, no annual-frequency or operational claim, and target-area evidence is reported as blocked rather than invented when the measured run root is unavailable.
 - Next task: `TB-186`
+
+### TB-186: Large-AOI GIS Packaging Stress Test
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: add a bounded large-AOI GIS/COG stress-test helper that reports standard-root package runtime, scratch conversion timing, raster count, manifest size, layer parity, and missing-layer summaries while keeping the standard-root COG-blocked state visible.
+- Files changed: `scripts/summarize_large_aoi_gis_cog_stress_test.py`, `tests/test_large_aoi_gis_cog_stress_test.py`, `docs/pilot_gis_package.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a standalone large-AOI stress-test helper that audits the standard package root, measures an ignored scratch conversion, and separates the standard-root COG-blocked status from the converted scratch package readiness.
+  - Reported package runtime, COG conversion timing, raster count, manifest size, layer parity, missing-layer summaries, and a first GIS packaging bottleneck label without claiming operational readiness or writing generated rasters into the repository.
+  - Added focused regressions for the standard-root COG-blocked plus scope-delta-ready path and the blocked-missing-input short-circuit, then updated the pilot GIS package documentation and removed TB-186 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_aoi_gis_cog_stress_test`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_aoi_gis_cog_stress_test tests.test_gis_cog_package_readiness tests.test_same_scale_cog_package_conversion tests.test_balfrin_target_area_gis_cog_scope`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no operational GIS product claim, no manual QGIS acceptance claim, no generated raster commit, and scratch COG readiness does not upgrade the standard root.
+- Next task: `TB-187`
