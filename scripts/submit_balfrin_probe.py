@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -189,6 +191,19 @@ def _load_ensemble_frontier() -> Any:
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("unable to load ensemble frontier helper module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
+def _load_feasibility_probe() -> Any:
+    feasibility_path = ROOT / "scripts" / "summarize_bounded_next_ensemble_feasibility_probe.py"
+    spec = importlib.util.spec_from_file_location(
+        "submit_balfrin_probe_feasibility",
+        feasibility_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load bounded next-ensemble feasibility helper module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[union-attr]
     return module
@@ -421,15 +436,7 @@ def _build_submission_package_report(
         run_manifest_path=probe_manifest.resolve(),
     )
     if frontier_report is None:
-        try:
-            frontier_report = _load_ensemble_frontier().build_report()
-        except Exception as exc:  # pragma: no cover - defensive dry-run fallback.
-            frontier_report = {
-                "frontier_status": "blocked_missing_inputs",
-                "recommendation_class": "blocked_pending_helper_contract",
-                "recommendation_reason": str(exc),
-                "minimum_useful_ensemble_recommendation": {},
-            }
+        frontier_report = _build_fast_submission_frontier_report()
     git_info = _git_info(repo_root)
     output_roots = _collect_output_roots(command_plan, repo_root=repo_root)
     reduced_output_settings = _collect_reduced_output_settings(command_plan)
@@ -515,6 +522,77 @@ def _build_submission_package_report(
         "operator_sequence": operator_sequence,
         "expected_outputs": _build_expected_outputs(run_root),
         "collection_instructions": _build_collection_instructions(run_root),
+    }
+
+
+def _build_fast_submission_frontier_report() -> dict[str, Any]:
+    """Build a bounded-probe recommendation without live full-frontier scans.
+
+    The full Balfrin frontier helper composes several live reports and may be
+    slow or blocked in a fresh checkout. Submission-package generation should
+    stay deterministic and quick because it is an unlaunched operator handoff.
+    It therefore uses the bounded feasibility helper as the source for the
+    exact probe package fields while preserving fail-closed status when that
+    helper is blocked.
+    """
+
+    feasibility_module = _load_feasibility_probe()
+    try:
+        reduced_case = yaml.safe_load(feasibility_module.REDUCED_CASE.read_text(encoding="utf-8")) or {}
+        target_gate = yaml.safe_load(feasibility_module.TARGET_GATE_RECORD.read_text(encoding="utf-8")) or {}
+        metadata_contract = feasibility_module.summarize_optional_probabilistic_metadata_contract(reduced_case)
+    except Exception as exc:  # pragma: no cover - defensive dry-run fallback.
+        return {
+            "frontier_status": "blocked_missing_inputs",
+            "recommendation_class": "blocked_pending_helper_contract",
+            "recommendation_reason": str(exc),
+            "minimum_useful_ensemble_recommendation": {},
+        }
+
+    metadata_status = str(metadata_contract.get("status") or "")
+    if metadata_status != "complete":
+        return {
+            "frontier_status": "blocked_missing_inputs",
+            "recommendation_class": "blocked_pending_helper_contract",
+            "recommendation_reason": (
+                f"bounded next-ensemble feasibility metadata is blocked: {metadata_status}"
+            ),
+            "minimum_useful_ensemble_recommendation": {},
+        }
+
+    validation_output_mode = str(
+        dict(reduced_case.get("outputs") or {}).get("validation_output_mode") or ""
+    )
+    validation_run = dict(dict(target_gate.get("execution_evidence") or {}).get("validation_run") or {})
+    trajectory_count = validation_run.get("validation_simulated_trajectory_count")
+    try:
+        trajectory_count = int(trajectory_count)
+    except (TypeError, ValueError):
+        trajectory_count = None
+    recommendation = {
+        "decision": "defer",
+        "probe_id": "tschamut_native_rebuildable_reduced_next_probe",
+        "ensemble_size": trajectory_count,
+        "validation_output_mode": validation_output_mode,
+        "expected_output_file_count": None,
+        "expected_output_bytes": None,
+        "expected_artifact_families": [
+            "diagnostics_json",
+            "manifest_json",
+            "trajectory_csv",
+            "ensemble_deposition_csv",
+            "trajectory_metadata_csv",
+            "impact_events_csv",
+        ],
+    }
+    return {
+        "frontier_status": "measured_existing_artifacts",
+        "recommendation_class": "defer_small_bounded_ensemble",
+        "recommendation_reason": (
+            "bounded feasibility metadata is complete; package generation remains "
+            "deferred pending explicit launch authorization"
+        ),
+        "minimum_useful_ensemble_recommendation": recommendation,
     }
 
 
