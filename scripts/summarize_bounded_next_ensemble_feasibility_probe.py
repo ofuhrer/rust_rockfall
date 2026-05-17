@@ -29,6 +29,26 @@ REDUCED_VALIDATION_MANIFEST = (
 )
 TARGET_GATE_RECORD = ROOT / "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml"
 OPTIONAL_PROBABILISTIC_METADATA_STATUS = "optional_probabilistic_metadata_missing"
+OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS = "blocked_missing_optional_probabilistic_metadata"
+OPTIONAL_PROBABILISTIC_METADATA_DEFERRED_STATUS = "deferred_pending_authorization"
+OPTIONAL_PROBABILISTIC_METADATA_FIELDS = (
+    "source_zone_metadata_path",
+    "scenario_table_path",
+    "map_product_id",
+    "probability_mode",
+    "normalization_scope",
+    "scenario_id",
+)
+OPTIONAL_HAZARD_PROBABILITY_FIELDS = (
+    "probability_model",
+    "metadata_path",
+    "weight_column",
+    "normalization_convention",
+)
+OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS = (
+    "source_zone_ids",
+    "scenario_ids",
+)
 
 
 def _load_module(module_name: str, filename: str):
@@ -56,10 +76,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument("--case", type=Path, default=REDUCED_CASE, help="optional reduced-output case override")
+    parser.add_argument(
+        "--target-gate-record",
+        type=Path,
+        default=TARGET_GATE_RECORD,
+        help="optional target-gate evidence override",
+    )
     args = parser.parse_args(argv)
 
     try:
-        report = build_report()
+        report = build_report(reduced_case_path=args.case, target_gate_path=args.target_gate_record)
     except FeasibilityProbeError as exc:
         print(f"bounded next-ensemble feasibility probe error: {exc}", file=sys.stderr)
         return 2
@@ -75,27 +102,26 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def build_report() -> dict[str, Any]:
+def build_report(
+    *,
+    reduced_case_path: Path = REDUCED_CASE,
+    target_gate_path: Path = TARGET_GATE_RECORD,
+) -> dict[str, Any]:
     closure_gap = CLOSURE_GAP.build_report()
     reduced_output = REDUCED_OUTPUT.build_report(list(REDUCED_OUTPUT.DEFAULT_PROFILE_SPECS))
     runtime_scaling = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
     single_job = SINGLE_JOB.build_summary()
-    reduced_case = load_yaml(REDUCED_CASE)
-    target_gate = load_yaml(TARGET_GATE_RECORD)
-    probabilistic_metadata = reduced_case.get("probabilistic_metadata")
-    metadata_present = isinstance(probabilistic_metadata, dict)
-    hazard_probability = reduced_case.get("hazard_probability")
-    hazard_probability_present = isinstance(hazard_probability, dict)
+    reduced_case = load_yaml(reduced_case_path)
+    target_gate = load_yaml(target_gate_path)
+    metadata_contract = summarize_optional_probabilistic_metadata_contract(reduced_case)
+    metadata_contract_status = metadata_contract["status"]
+    metadata_contract_complete = metadata_contract_status == "complete"
     planning_status = (
-        "deferred_pending_authorization"
-        if metadata_present
-        else "deferred_pending_optional_probabilistic_metadata"
+        OPTIONAL_PROBABILISTIC_METADATA_DEFERRED_STATUS
+        if metadata_contract_complete
+        else OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS
     )
-    planning_blocker = (
-        "execution deferred until explicitly authorized"
-        if metadata_present
-        else "optional probabilistic metadata is absent from the current reduced-output fixture"
-    )
+    planning_blocker = metadata_contract["blocked_reason"]
 
     reduced_profile = reduced_output["reduced_profile"]
     rebuildable_reduced_profile = reduced_output["rebuildable_reduced_profile"]
@@ -135,7 +161,7 @@ def build_report() -> dict[str, Any]:
 
     command = (
         "PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case "
-        "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+        f"{reduced_case_path}"
     )
 
     return {
@@ -147,29 +173,18 @@ def build_report() -> dict[str, Any]:
         "operational_claims_allowed": False,
         "planning_status": planning_status,
         "planning_blocker": planning_blocker,
-        "target_gate_record_path": str(TARGET_GATE_RECORD),
-        "reduced_case_path": str(REDUCED_CASE),
+        "metadata_contract": metadata_contract,
+        "target_gate_record_path": str(target_gate_path),
+        "reduced_case_path": str(reduced_case_path),
         "proposed_probe": {
             "probe_id": "tschamut_native_rebuildable_reduced_next_probe",
             "validation_output_mode": reduced_case["outputs"]["validation_output_mode"],
             "seed": int(reduced_case["random"]["seed"]),
             "ensemble_size": int(target_gate["execution_evidence"]["validation_run"]["validation_simulated_trajectory_count"]),
-            "scenario_id": (
-                str(probabilistic_metadata["scenario_id"]) if metadata_present and probabilistic_metadata.get("scenario_id") else None
-            ),
-            "probabilistic_metadata_status": (
-                "present" if metadata_present else OPTIONAL_PROBABILISTIC_METADATA_STATUS
-            ),
-            "source_zone_id": (
-                str(hazard_probability["filters"]["source_zone_ids"][0])
-                if hazard_probability_present
-                and isinstance(hazard_probability.get("filters"), dict)
-                and hazard_probability["filters"].get("source_zone_ids")
-                else None
-            ),
-            "source_zone_status": (
-                "present" if hazard_probability_present else "missing_optional_hazard_probability"
-            ),
+            "scenario_id": metadata_contract["scenario_id"],
+            "probabilistic_metadata_status": metadata_contract["probabilistic_metadata_status"],
+            "source_zone_id": metadata_contract["source_zone_id"],
+            "source_zone_status": metadata_contract["source_zone_status"],
             "release_cell_count": int(target_gate["target_execution_plan"]["release_cell_count"]),
             "trajectory_count": int(target_gate["execution_evidence"]["validation_run"]["validation_simulated_trajectory_count"]),
             "expected_artifact_families": [
@@ -185,6 +200,8 @@ def build_report() -> dict[str, Any]:
             "expected_output_file_count": reduced_files,
             "expected_output_bytes": reduced_bytes,
             "expected_command": command,
+            "required_metadata_fields": metadata_contract["required_fields"],
+            "missing_metadata_fields": metadata_contract["missing_fields"],
         },
         "measured_evidence": {
             "closure_gap_status": closure_gap["closure_gap_status"],
@@ -238,8 +255,9 @@ def build_report() -> dict[str, Any]:
                 "execution remains deferred until explicitly authorized."
             ),
             "command": command,
+            "status": "ready" if metadata_contract_complete else OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS,
             "expected_inputs": [
-                str(REDUCED_CASE),
+                str(reduced_case_path),
                 "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
                 "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
                 "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv",
@@ -258,10 +276,136 @@ def build_report() -> dict[str, Any]:
             "read_only": False,
             "may_produce_ignored_outputs": True,
             "blocked_reason": planning_blocker,
+            "required_metadata_fields": metadata_contract["required_fields"],
+            "missing_metadata_fields": metadata_contract["missing_fields"],
             "ignored_output_paths": [str(REDUCED_VALIDATION_ROOT)],
         },
-        "command_plan_status": "ready",
+        "command_plan_status": "ready" if metadata_contract_complete else OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS,
     }
+
+
+def summarize_optional_probabilistic_metadata_contract(case: dict[str, Any]) -> dict[str, Any]:
+    probabilistic_metadata = case.get("probabilistic_metadata")
+    hazard_probability = case.get("hazard_probability")
+
+    required_fields = [
+        f"probabilistic_metadata.{field}" for field in OPTIONAL_PROBABILISTIC_METADATA_FIELDS
+    ] + [
+        f"hazard_probability.{field}" for field in OPTIONAL_HAZARD_PROBABILITY_FIELDS
+    ] + [
+        f"hazard_probability.filters.{field}" for field in OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS
+    ]
+
+    present_fields: list[str] = []
+    missing_fields: list[str] = []
+
+    if isinstance(probabilistic_metadata, dict):
+        for field in OPTIONAL_PROBABILISTIC_METADATA_FIELDS:
+            value = probabilistic_metadata.get(field)
+            if _has_value(value):
+                present_fields.append(f"probabilistic_metadata.{field}")
+            else:
+                missing_fields.append(f"probabilistic_metadata.{field}")
+    else:
+        missing_fields.extend(f"probabilistic_metadata.{field}" for field in OPTIONAL_PROBABILISTIC_METADATA_FIELDS)
+
+    if isinstance(hazard_probability, dict):
+        for field in OPTIONAL_HAZARD_PROBABILITY_FIELDS:
+            value = hazard_probability.get(field)
+            if _has_value(value):
+                present_fields.append(f"hazard_probability.{field}")
+            else:
+                missing_fields.append(f"hazard_probability.{field}")
+
+        filters = hazard_probability.get("filters")
+        if isinstance(filters, dict):
+            for field in OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS:
+                value = filters.get(field)
+                if _has_nonempty_sequence(value):
+                    present_fields.append(f"hazard_probability.filters.{field}")
+                else:
+                    missing_fields.append(f"hazard_probability.filters.{field}")
+        else:
+            missing_fields.extend(f"hazard_probability.filters.{field}" for field in OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS)
+    else:
+        missing_fields.extend(f"hazard_probability.{field}" for field in OPTIONAL_HAZARD_PROBABILITY_FIELDS)
+        missing_fields.extend(
+            f"hazard_probability.filters.{field}" for field in OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS
+        )
+
+    scenario_id = None
+    if isinstance(probabilistic_metadata, dict):
+        raw_scenario_id = probabilistic_metadata.get("scenario_id")
+        if _has_value(raw_scenario_id):
+            scenario_id = str(raw_scenario_id)
+
+    source_zone_id = None
+    if isinstance(hazard_probability, dict):
+        filters = hazard_probability.get("filters")
+        if isinstance(filters, dict):
+            source_zone_ids = filters.get("source_zone_ids")
+            if _has_nonempty_sequence(source_zone_ids):
+                source_zone_id = str(source_zone_ids[0])
+
+    if missing_fields:
+        status = OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS
+        blocked_reason = (
+            "the smallest useful probe requires optional probabilistic metadata fields that are missing: "
+            + ", ".join(missing_fields)
+        )
+    else:
+        status = "complete"
+        blocked_reason = "execution deferred until explicitly authorized"
+
+    if isinstance(probabilistic_metadata, dict) and all(
+        f"probabilistic_metadata.{field}" in present_fields for field in OPTIONAL_PROBABILISTIC_METADATA_FIELDS
+    ):
+        probabilistic_metadata_status = "present"
+    else:
+        probabilistic_metadata_status = "missing_optional_probabilistic_metadata"
+
+    if source_zone_id is not None:
+        source_zone_status = "present"
+    else:
+        source_zone_status = "missing_optional_hazard_probability"
+
+    return {
+        "status": status,
+        "blocked_reason": blocked_reason,
+        "required_sections": ["probabilistic_metadata", "hazard_probability"],
+        "required_fields": required_fields,
+        "present_fields": present_fields,
+        "missing_fields": missing_fields,
+        "probabilistic_metadata_status": probabilistic_metadata_status,
+        "source_zone_status": source_zone_status,
+        "scenario_id": scenario_id,
+        "source_zone_id": source_zone_id,
+        "smallest_useful_probe_required_metadata": {
+            "probabilistic_metadata": list(OPTIONAL_PROBABILISTIC_METADATA_FIELDS),
+            "hazard_probability": {
+                "fields": list(OPTIONAL_HAZARD_PROBABILITY_FIELDS),
+                "filter_fields": list(OPTIONAL_HAZARD_PROBABILITY_FILTER_FIELDS),
+            },
+        },
+    }
+
+
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, set, frozenset, dict)):
+        return bool(value)
+    return True
+
+
+def _has_nonempty_sequence(value: Any) -> bool:
+    if not isinstance(value, (list, tuple)):
+        return False
+    if not value:
+        return False
+    return all(_has_value(item) for item in value)
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -278,6 +422,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     proposed = report["proposed_probe"]
     bounded = report["boundedness_proof"]
     evidence = report["measured_evidence"]
+    metadata_contract = report["metadata_contract"]
     lines = [
         "Bounded Next-Ensemble Feasibility Probe",
         "",
@@ -302,6 +447,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Trajectory count: `{proposed['trajectory_count']}`",
         f"- Expected output file count: `{proposed['expected_output_file_count']}`",
         f"- Expected output bytes: `{proposed['expected_output_bytes']}`",
+        f"- Required metadata fields: `{len(proposed['required_metadata_fields'])}`",
+        f"- Missing metadata fields: `{len(proposed['missing_metadata_fields'])}`",
         "",
         "Expected artifact families:",
     ]
@@ -325,11 +472,22 @@ def render_text_report(report: dict[str, Any]) -> str:
             "",
             report["expected_closure_question"],
             "",
-            "## Go / No-Go Criteria",
+            "## Metadata Contract",
             "",
-            "Go:",
+            f"- Contract status: `{metadata_contract['status']}`",
+            f"- Required sections: `{', '.join(metadata_contract['required_sections'])}`",
         ]
     )
+    lines.extend(["", "Required metadata fields:"])
+    for field in metadata_contract["required_fields"]:
+        lines.append(f"- `{field}`")
+    lines.extend(["", "Missing metadata fields:"])
+    if metadata_contract["missing_fields"]:
+        for field in metadata_contract["missing_fields"]:
+            lines.append(f"- `{field}`")
+    else:
+        lines.append("- `none`")
+    lines.extend(["", "## Go / No-Go Criteria", "", "Go:"])
     for item in report["go_no_go_criteria"]["go"]:
         lines.append(f"- {item}")
     lines.extend(["", "No-go:",])
@@ -342,6 +500,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             "",
             f"- Command id: `{report['command_plan_template']['command_id']}`",
             f"- Group: `{report['command_plan_template']['group']}`",
+            f"- Command-plan status: `{report['command_plan_template']['status']}`",
             f"- Command: `{report['command_plan_template']['command']}`",
             f"- Blocked reason: `{report['command_plan_template']['blocked_reason']}`",
             "",

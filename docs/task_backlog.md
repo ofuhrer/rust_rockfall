@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-143: Unblock Bounded Next-Ensemble Metadata Contract
-
-Goal: Fix the optional probabilistic metadata blocker that currently prevents a
-small bounded next-ensemble probe from being evaluated cleanly.
-
-Capability gap reduced: uncertainty/runtime frontier planning blocked by a
-metadata-contract mismatch.
-
-Why this outranks alternatives: the next scientific execution decision is
-blocked by metadata plumbing rather than by a principled no-go result.
-
-Inspect first:
-
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
-- `tests/test_bounded_next_ensemble_feasibility_probe.py`
-
-Deliverables:
-
-- A robust feasibility helper that handles reduced-output fixtures without
-  crashing or over-authorizing execution.
-- A measured, deferred, or blocked status that explains exactly which metadata
-  is required for the smallest useful probe.
-- Regression tests for full, reduced, and missing metadata cases.
-
-Definition of done:
-
-- The bounded next-ensemble feasibility helper exits deterministically and
-  produces a decision-quality report in clean checkout and live-artifact
-  contexts.
-
-Boundaries: No new ensemble run, no tuning, no scale-up authorization, and no
-operational claim.
-
 ### TB-144: Execute Or Block Minimal Bounded Balfrin Ensemble Probe
 
 Goal: Run the smallest bounded Balfrin follow-up probe, or produce a precise

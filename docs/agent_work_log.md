@@ -2417,3 +2417,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new ensemble, no scale-up authorization, no operational claim, no substitution of fixture evidence for live measurements, and no claim that the canonical bundle retains scheduler artifacts it does not store.
 - Next task: `TB-143`
+
+### TB-143
+- Date: 2026-05-17
+- Commit: local
+- Objective: make the bounded next-ensemble feasibility helper report the optional probabilistic metadata contract explicitly so reduced-output fixtures are handled deterministically without over-authorizing execution.
+- Files changed: `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`, `tests/test_bounded_next_ensemble_feasibility_probe.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit optional-metadata contract summary to the bounded next-ensemble feasibility helper, including required sections, required fields, present fields, missing fields, and the exact smallest-useful-probe metadata bundle.
+  - Split the section status reporting so a reduced fixture can block on the missing probabilistic metadata contract while a full optional-metadata fixture stays deferred until explicit authorization.
+  - Extended the text and JSON reports to surface the exact missing paths, the command-plan status, and the override paths used by the report builder.
+  - Added regression coverage for the native reduced fixture, a full optional-metadata fixture, and a partially missing-metadata fixture.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_next_ensemble_feasibility_probe -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_ensemble_frontier -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new ensemble run, no tuning, no scale-up authorization, no operational claim, and no physical-probability claim.
+- Next task: `TB-144`
