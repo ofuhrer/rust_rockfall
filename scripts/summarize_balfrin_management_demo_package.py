@@ -124,6 +124,8 @@ def build_report(
             gis_scope_section=dict(evidence_override["gis_scope_section"]),
             uncertainty_section=dict(evidence_override["uncertainty_section"]),
             claim_boundary_section=dict(evidence_override["claim_boundary_section"]),
+            scaling_section=dict(evidence_override["scaling_section"]),
+            next_decision_section=dict(evidence_override["next_decision_section"]),
             source_artifacts=as_mapping(evidence_override.get("source_artifacts")),
             regeneration_commands=listify(evidence_override.get("regeneration_commands")),
             package_artifact_dir=Path(str(evidence_override.get("package_artifact_dir") or artifact_dir)),
@@ -164,6 +166,8 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
         gis_scope_section=build_gis_scope_section(bundle_report),
         uncertainty_section=build_uncertainty_section(bundle_report, smoke_report),
         claim_boundary_section=build_claim_boundary_section(post_run_report),
+        scaling_section=build_scaling_section(bundle_report, post_run_report),
+        next_decision_section=build_next_decision_section(bundle_report, post_run_report),
         source_artifacts=build_source_artifacts(
             bundle_report=bundle_report,
             smoke_report=smoke_report,
@@ -184,6 +188,8 @@ def assemble_package_report(
     gis_scope_section: dict[str, Any],
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
+    scaling_section: dict[str, Any],
+    next_decision_section: dict[str, Any],
     source_artifacts: dict[str, Any],
     regeneration_commands: list[str],
     package_artifact_dir: Path,
@@ -196,6 +202,8 @@ def assemble_package_report(
         ("gis_scope_section", gis_scope_section, build_section_source_paths(gis_scope_section)),
         ("uncertainty_section", uncertainty_section, build_section_source_paths(uncertainty_section)),
         ("claim_boundary_section", claim_boundary_section, build_section_source_paths(claim_boundary_section)),
+        ("scaling_section", scaling_section, build_section_source_paths(scaling_section)),
+        ("next_decision_section", next_decision_section, build_section_source_paths(next_decision_section)),
     ]
     section_provenance_profile = []
     for section_name, section_payload, source_paths in sections:
@@ -211,7 +219,15 @@ def assemble_package_report(
     package_status = derive_package_status(section_provenance_profile)
     package_summary = {
         "status": package_status,
-        "summary": summarize_package(package_status, runtime_section, replay_section, uncertainty_section, claim_boundary_section),
+        "summary": summarize_package(
+            package_status,
+            runtime_section,
+            replay_section,
+            uncertainty_section,
+            claim_boundary_section,
+            scaling_section,
+            next_decision_section,
+        ),
         "section_counts": section_provenance_counts(section_provenance_profile),
     }
     return {
@@ -227,6 +243,8 @@ def assemble_package_report(
         "gis_scope_section": gis_scope_section,
         "uncertainty_section": uncertainty_section,
         "claim_boundary_section": claim_boundary_section,
+        "scaling_section": scaling_section,
+        "next_decision_section": next_decision_section,
         "claim_boundaries": claim_boundary_section.get("claim_boundaries", post_run_gate.claim_boundaries()),
         "section_provenance_profile": section_provenance_profile,
         "source_artifacts": source_artifacts,
@@ -250,6 +268,8 @@ def blocked_report(
         "gis_scope_section",
         "uncertainty_section",
         "claim_boundary_section",
+        "scaling_section",
+        "next_decision_section",
     )
     section_provenance_profile = [
         {
@@ -280,6 +300,8 @@ def blocked_report(
             "status": "blocked_missing_inputs",
             "claim_boundaries": claim_boundaries,
         },
+        "scaling_section": {"status": "blocked_missing_inputs"},
+        "next_decision_section": {"status": "blocked_missing_inputs"},
         "claim_boundaries": claim_boundaries,
         "section_provenance_profile": section_provenance_profile,
         "source_artifacts": {
@@ -389,7 +411,7 @@ def build_uncertainty_section(bundle_report: dict[str, Any], smoke_report: dict[
         "status": str(bundle_report.get("bundle_status") or post_run_report.get("interpretation_status") or "blocked_missing_inputs"),
         "evidence_type": "measured",
         "summary": (
-            "Uncertainty remains conditional and non-operational; the package separates measured evidence from fixture-backed replay and keeps the false claim boundaries intact."
+            "Scientific meaning remains conditional and non-operational; the package separates measured evidence from fixture-backed replay and keeps the false claim boundaries intact."
         ),
         "bundle_status": bundle_report.get("bundle_status"),
         "bundle_summary": bundle_report.get("bundle_summary", {}),
@@ -414,6 +436,54 @@ def build_claim_boundary_section(post_run_report: dict[str, Any]) -> dict[str, A
         ),
         "claim_boundaries": claim_boundaries,
         "source_paths": [str(post_run_gate.DEFAULT_CONTRACT), "docs/balfrin_post_run_interpretation_gate.md"],
+    }
+
+
+def build_scaling_section(bundle_report: dict[str, Any], post_run_report: dict[str, Any]) -> dict[str, Any]:
+    single_job_summary = dict(bundle_report.get("single_job_execution_summary") or {})
+    claim_boundaries = dict(post_run_report.get("claim_boundaries") or post_run_gate.claim_boundaries())
+    single_job_sufficient = bool(single_job_summary.get("single_job_sufficient_for_next_step"))
+    scale_up_authorized = bool(claim_boundaries.get("scale_up_authorized", False))
+    distributed_execution_authorized = bool(claim_boundaries.get("distributed_execution_authorized", False))
+    if single_job_sufficient:
+        scaling_implication = (
+            "Keep the next step at the single-job boundary; scale-up and distributed execution stay deferred."
+        )
+    else:
+        scaling_implication = (
+            "Do not infer a scale-up path from this package; the current evidence does not justify moving beyond the single-job boundary."
+        )
+    return {
+        "status": "measured",
+        "summary": "Scaling stays bounded by the measured single-job path; the package does not authorize a larger execution mode.",
+        "single_job_sufficient_for_next_step": single_job_sufficient,
+        "scale_up_authorized": scale_up_authorized,
+        "distributed_execution_authorized": distributed_execution_authorized,
+        "scaling_implication": scaling_implication,
+        "source_paths": build_runtime_source_paths(bundle_report),
+    }
+
+
+def build_next_decision_section(bundle_report: dict[str, Any], post_run_report: dict[str, Any]) -> dict[str, Any]:
+    single_job_summary = dict(bundle_report.get("single_job_execution_summary") or {})
+    claim_boundaries = dict(post_run_report.get("claim_boundaries") or post_run_gate.claim_boundaries())
+    next_authorized_step = "management review of this package"
+    if bool(single_job_summary.get("single_job_sufficient_for_next_step")) and not bool(
+        claim_boundaries.get("scale_up_authorized", False)
+    ):
+        recommendation = (
+            "The next authorized step is management review of this package; no new Balfrin submission, scale-up, or distributed execution is authorized here."
+        )
+    else:
+        recommendation = (
+            "The package stays advisory only; a separate authorization would be required before any further Balfrin execution."
+        )
+    return {
+        "status": "deferred",
+        "summary": "This package is for review and decision-making, not for launching another Balfrin job.",
+        "recommended_next_authorized_step": next_authorized_step,
+        "recommendation": recommendation,
+        "source_paths": [str(post_run_gate.DEFAULT_CONTRACT), "docs/balfrin_single_job_execution_sufficiency.md"],
     }
 
 
@@ -530,6 +600,16 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  risk_exposure_vulnerability_claims_allowed: {report['claim_boundaries'].get('risk_exposure_vulnerability_claims_allowed', False)}",
             f"  scale_up_authorized: {report['claim_boundaries'].get('scale_up_authorized', False)}",
             f"  distributed_execution_authorized: {report['claim_boundaries'].get('distributed_execution_authorized', False)}",
+            "scaling_section:",
+            f"  status: {report['scaling_section'].get('status', 'unknown')}",
+            f"  single_job_sufficient_for_next_step: {report['scaling_section'].get('single_job_sufficient_for_next_step', False)}",
+            f"  scale_up_authorized: {report['scaling_section'].get('scale_up_authorized', False)}",
+            f"  distributed_execution_authorized: {report['scaling_section'].get('distributed_execution_authorized', False)}",
+            f"  scaling_implication: {report['scaling_section'].get('scaling_implication', 'unknown')}",
+            "next_decision_section:",
+            f"  status: {report['next_decision_section'].get('status', 'unknown')}",
+            f"  recommended_next_authorized_step: {report['next_decision_section'].get('recommended_next_authorized_step', 'unknown')}",
+            f"  recommendation: {report['next_decision_section'].get('recommendation', 'unknown')}",
             "section_provenance_profile:",
         ]
     )
@@ -602,20 +682,24 @@ def summarize_package(
     replay_section: dict[str, Any],
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
+    scaling_section: dict[str, Any],
+    next_decision_section: dict[str, Any],
 ) -> str:
     if package_status == "blocked_missing_inputs":
         return "Balfrin management package is blocked because one or more required sections are missing."
     replay_status = str(replay_section.get("run_root_provenance") or "unknown")
+    scaling_implication = str(scaling_section.get("scaling_implication") or "Scaling stays bounded by the single-job path.")
+    next_step = str(next_decision_section.get("recommended_next_authorized_step") or "management review of this package")
     if package_status == "mixed_provenance":
         return (
-            "Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; replay is fixture-backed so the package stays reproducible without collapsing provenance."
+            f"Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; replay is fixture-backed so the package stays reproducible without collapsing provenance. {scaling_implication} The next authorized step is {next_step}."
         )
     if package_status == "fixture_backed":
         return (
-            "All package sections are fixture-backed, so the manifest is replayable but does not represent live measured evidence."
+            f"All package sections are fixture-backed, so the manifest is replayable but does not represent live measured evidence. {scaling_implication} The next authorized step is {next_step}."
         )
     return (
-        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false."
+        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false. {scaling_implication} The next authorized step is {next_step}."
     )
 
 

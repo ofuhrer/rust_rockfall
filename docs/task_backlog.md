@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-176: Produce Target-Area Management Demonstration Package
-
-Goal: Assemble a compact management-facing package that explains the target-area Balfrin demonstration, evidence, limits, and next decision.
-
-Capability gap reduced: Demonstration communication and decision readiness.
-
-Why this outranks alternatives: Once evidence exists, management needs a concise artifact that is honest, auditable, and not buried in helper outputs.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `README.md`
-
-Deliverables:
-
-- Compact JSON/text or markdown management package.
-- Run status, scientific meaning, GIS preview/scope, scaling implication, and explicit boundaries.
-- Recommendation for next authorized step.
-
-Definition of done:
-
-- A reviewer can understand the target-area demonstration state without reading the full repo.
-
-Boundaries: No marketing overclaim, no operational claim, no annual-frequency claim, and no physical credibility upgrade.
-
 ### TB-177: Prepare Second-Site Real-Context Acquisition Execution Plan
 
 Goal: Convert the Chant Sura real-context staging checklist into a concrete operator execution plan for acquiring and verifying real public-context products.

@@ -3084,3 +3084,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no distributed execution, no Swiss-wide run, no scale-up authorization, and no operational claim.
 - Next task: `TB-176`
+
+### TB-176: Produce Target-Area Management Demonstration Package
+
+- Date: 2026-05-17
+- Commit: `local`
+- Objective: assemble a compact management-facing package that explains the target-area Balfrin demonstration, evidence, limits, scaling implication, and next decision without inventing new evidence or authorizing a larger execution mode.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Balfrin management package helper so the generated JSON/text package now includes explicit scaling and next-decision sections alongside runtime, replay, restartability, GIS scope, uncertainty, and claim-boundary evidence.
+  - Tightened the scientific-meaning summary to keep the diagnostic boundary explicit and to state that the package is not an operational or physical-credibility result.
+  - Added focused tests for the new scaling implication and recommended next authorized step, while keeping fixture-backed override coverage and blocked-input coverage in place.
+  - Removed TB-176 from the active backlog after producing the management-facing package.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no marketing overclaim, no operational claim, no annual-frequency claim, no physical credibility upgrade, no distributed-execution authorization, and no new Balfrin job submission.
+- Next task: `TB-177`
