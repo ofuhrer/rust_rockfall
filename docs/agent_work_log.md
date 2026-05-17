@@ -2592,3 +2592,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no block-population fitting, no annual-frequency semantics, no physics changes, and no operational claim.
 - Next task: `TB-152`
+
+### TB-152: Emit Runnable Case Skeletons From AOI Dry Run
+
+- Date: 2026-05-17
+- Commit: `fd94635`
+- Objective: extend the AOI dry-run so it can emit a non-executed case skeleton bundle and command references under ignored roots.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an optional ignored-root output mode that writes a candidate case skeleton YAML, a command manifest JSON, an expected-output-roots YAML, and a blocked-execution JSON bundle.
+  - Classified the AOI command references as runnable or template-only in the dry-run report and surfaced those lists in the human-readable output.
+  - Added regression coverage for deterministic bundle generation in the optional output mode and for blocked missing-input states that still preserve the handoff artifacts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no ensemble execution, no second-site hazard build, no large-artifact commit, no physical-probability semantics, and no operational claim.
+- Next task: backlog refill needed
