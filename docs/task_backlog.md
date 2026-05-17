@@ -22,45 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-185: Switzerland-Scale Runtime And Storage Projection
-
-Goal: Project runtime, output pressure, storage growth, reducer scaling, and
-rebuildability cost for 10 release zones, 100 release zones, regional workflows,
-and a Switzerland-scale planning envelope.
-
-Capability gap reduced: National feasibility is currently extrapolated from
-single-zone and target-area evidence without a multi-zone planning model.
-
-Why this outranks alternatives: It turns measured Balfrin output pressure and
-candidate/scenario cardinality into explicit no-go/defer/next-probe planning
-labels before larger runs are attempted.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Runtime/storage/file-count/rebuildability projections for 10-zone, 100-zone,
-  regional, and Swiss-wide planning cases.
-- Sensitivity bands using measured single-zone, target-area, and generated
-  scenario-table evidence where available.
-- Explicit bottleneck labels for validation output, hazard output, reducer
-  merge, manifest count, memory, and scheduler practicality.
-
-Definition of done:
-
-- The projection helper/report is deterministic, fails closed when measured
-  inputs are absent, and states which scale levels are no-go, deferred, or
-  eligible only for an explicitly authorized next probe.
-
-Boundaries: Projection only; no scale-up authorization, no distributed
-execution, no Swiss-wide run, and no annual-frequency or operational claim.
-
 ### TB-186: Large-AOI GIS Packaging Stress Test
 
 Goal: Stress-test GIS package generation, manifest generation, COG conversion,

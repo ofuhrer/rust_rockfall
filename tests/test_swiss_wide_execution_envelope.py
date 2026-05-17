@@ -157,6 +157,9 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["planning_labels"]["allowed_next_probe"],
             "allowed_next_probe_blocked_missing_inputs",
         )
+        self.assertEqual(report["planning_case_summary"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["planning_cases"], [])
+        self.assertEqual(report["bottleneck_labels"]["validation_output"]["label"], "blocked_missing_inputs")
         self.assertIsNone(report["measurement_basis"]["bounded_probe_recommendation_status"])
         self.assertIn("measured reduced-output artifact target_rebuildable_reduced is missing", report["blocked_reason"])
         self.assertIsNone(report["runtime_seconds"]["nominal"])
@@ -165,6 +168,102 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["measurement_basis"]["balfrin_demo_run_root"],
             "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
         )
+
+    def test_canonical_planning_cases_cover_all_scale_labels(self) -> None:
+        with mock.patch.object(estimator.SINGLE_JOB, "build_summary", return_value=self._single_job_summary()), mock.patch.object(
+            estimator.FEASIBILITY,
+            "build_report",
+            return_value=self._feasibility_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_canonical_bundle_report",
+            return_value=self._canonical_bundle_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_target_area_probe_report",
+            return_value=self._target_area_probe_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_generated_scenario_table_evidence",
+            return_value=self._generated_scenario_table_report(),
+        ):
+            report = estimator.build_report(
+                estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6),
+                coefficients=self._coefficients(),
+            )
+
+        self.assertEqual(report["planning_case_summary"]["case_count"], 4)
+        self.assertEqual(report["planning_case_summary"]["next_probe"], ["10_zone"])
+        self.assertEqual(report["planning_case_summary"]["defer"], ["100_zone"])
+        self.assertEqual(report["planning_case_summary"]["no_go"], ["regional", "swiss_wide"])
+        self.assertEqual([case["case_id"] for case in report["planning_cases"]], ["10_zone", "100_zone", "regional", "swiss_wide"])
+
+        ten_zone_case = report["planning_cases"][0]
+        hundred_zone_case = report["planning_cases"][1]
+        regional_case = report["planning_cases"][2]
+        swiss_wide_case = report["planning_cases"][3]
+
+        self.assertEqual(ten_zone_case["planning_decision"], "next_probe")
+        self.assertEqual(ten_zone_case["planning_labels"]["allowed_next_probe"], "allowed_next_probe_measured_existing_artifacts")
+        self.assertEqual(hundred_zone_case["planning_decision"], "defer")
+        self.assertEqual(hundred_zone_case["planning_labels"]["defer"], "defer_scale_up_authorized_false")
+        self.assertEqual(regional_case["planning_decision"], "no_go")
+        self.assertEqual(regional_case["planning_labels"]["no_go"], "no_go_extrapolated_beyond_measured_evidence")
+        self.assertEqual(swiss_wide_case["planning_decision"], "no_go")
+        self.assertEqual(swiss_wide_case["bottleneck_labels"]["scheduler_practicality"]["label"], "scheduler_practicality_requires_authorization")
+        self.assertEqual(swiss_wide_case["bottleneck_labels"]["manifest_count"]["label"], "manifest_size")
+
+        text = estimator.render_text_report(report)
+        self.assertIn("planning_case_summary:", text)
+        self.assertIn("planning_cases:", text)
+        self.assertIn("case_id: 10_zone", text)
+        self.assertIn("planning_decision: next_probe", text)
+        self.assertIn("scheduler_practicality_bottleneck: scheduler_practicality_requires_authorization", text)
+
+    def _single_job_summary(self) -> dict[str, object]:
+        return {
+            "decision": "defer",
+            "final_classification": "defer",
+            "single_job_sufficient_for_next_step": True,
+            "current_pressure": "validation_output_size",
+            "output_size_evidence": {
+                "current_gap_output_bytes": 267527120,
+                "current_gap_output_file_count": 191,
+            },
+        }
+
+    def _feasibility_report(self) -> dict[str, object]:
+        return {
+            "measured_evidence": {
+                "rebuildable_reduced_output_bytes": 1884291,
+                "rebuildable_reduced_output_file_count": 6,
+            }
+        }
+
+    def _canonical_bundle_report(self) -> dict[str, object]:
+        return {
+            "bundle_status": "measured_existing_artifacts",
+            "bundle_summary": {"status": "measured_existing_artifacts", "section_counts": {"measured": 6}},
+        }
+
+    def _target_area_probe_report(self) -> dict[str, object]:
+        return {
+            "report_status": "measured_existing_artifacts",
+            "wall_time_seconds": 347.825,
+            "memory_peak_mb": 409.22,
+            "validation_output": {"file_count": 2004, "bytes": 571131205},
+            "hazard_output": {"file_count": 54, "bytes": 75423367},
+        }
+
+    def _generated_scenario_table_report(self) -> dict[str, object]:
+        return {
+            "stress_test_status": "ready",
+            "candidate_repeat_count": 3,
+            "candidate_release_zone_record_count": 30,
+            "scenario_row_count": 120,
+            "scenario_table_manifest": {"table_status": "ready"},
+            "first_scaling_bottleneck": {"name": "manifest_size"},
+        }
 
 
 if __name__ == "__main__":

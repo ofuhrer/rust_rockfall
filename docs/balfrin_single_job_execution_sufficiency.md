@@ -258,6 +258,18 @@ The current Swiss-wide projection from the measured target-area evidence
 `defer_scale_up_authorized_false`, and
 `allowed_next_probe_measured_existing_artifacts`.
 
+The helper now also emits a canonical four-case planning table so the next
+scale labels are explicit before larger runs are attempted:
+
+- `10_zone`: `next_probe`
+- `100_zone`: `defer`
+- `regional`: `no_go`
+- `swiss_wide`: `no_go`
+
+That table reuses the measured single-job evidence, the target-area probe
+metrics when the authorized run root is available, and the deterministic
+scenario-table stress evidence for manifest and scheduler bottleneck labels.
+
 - Runtime band: `347.825` / `463.84` / `1437.203` s
 - Storage band: `33441382` / `102793652` / `6955705120` bytes
 - File-count band: `156` / `442` / `4966`

@@ -3253,3 +3253,21 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no public-data download, no simulation run, no second-site ensemble, no operational claim, and no synthetic fixture was represented as public evidence.
 - Next task: `TB-185`
+
+### TB-185: Switzerland-Scale Runtime And Storage Projection
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: extend the Swiss-wide execution envelope helper into a deterministic multi-case planning report that covers 10-zone, 100-zone, regional, and Switzerland-scale envelopes with explicit no-go / defer / next-probe labels, rebuildability ratios, and bottleneck labels.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Swiss-wide envelope helper to load canonical single-job, target-area, and generated scenario-table evidence sources, then synthesize a four-case planning table for 10-zone, 100-zone, regional, and Swiss-wide envelopes.
+  - Added explicit rebuildability-cost ratios and bottleneck labels for validation output, hazard output, reducer merge, manifest count, memory, and scheduler practicality, while keeping the helper deterministic and read-only with respect to the repository.
+  - Added a focused synthetic regression for the canonical planning cases plus the existing measured-path regressions, updated the Balfrin sufficiency note and maturity snapshot, and removed TB-185 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py tests/test_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json >/tmp/tb185_envelope.json`
+- Result/status: implemented_measured
+- Boundaries: projection-only; no scale-up authorization, no distributed execution, no Swiss-wide run, no annual-frequency or operational claim, and target-area evidence is reported as blocked rather than invented when the measured run root is unavailable.
+- Next task: `TB-186`

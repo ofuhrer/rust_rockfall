@@ -210,7 +210,10 @@ objective are:
    measured Balfrin demo run root
    `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`,
    and now surfaces explicit `no_go`, `defer`, and `allowed_next_probe`
-   labels for planning cases. The bounded next-ensemble probe evaluates the
+   labels for planning cases. It also emits a canonical 10-zone / 100-zone /
+   regional / Swiss-wide planning table so manifest, reducer, memory, and
+   scheduler bottlenecks are explicit before larger runs are attempted. The
+   bounded next-ensemble probe evaluates the
    complete optional-metadata contract and still fails closed when optional
    metadata is absent. One bounded target-area probe has now been explicitly
    authorized and measured on Balfrin; future generated submission packages are
