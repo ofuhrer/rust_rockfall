@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-168: Execute Authorized Target-Area Balfrin Probe
-
-Goal: Submit exactly one bounded target-area Balfrin probe now that explicit authorization exists, then record measured execution evidence or the exact scheduler/runtime failure.
-
-Capability gap reduced: Measured target-area Balfrin execution realism.
-
-Why this outranks alternatives: All downstream metrics, evidence-bundle, GIS, uncertainty, and interpretation tasks depend on a measured run root or a precise execution failure.
-
-Inspect first:
-
-- `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Submitted job id, run root, submission report, and measured completion evidence if the job succeeds.
-- If submission or runtime fails, a precise blocked/failure report with the final relevant scheduler or log output.
-- Updated work-log entry that distinguishes measured execution from scheduler/runtime failure.
-
-Definition of done:
-
-- Exactly one authorized bounded probe is either submitted and measured, or blocked/failed with the exact unresolved gate and preserved handoff artifacts.
-
-Boundaries: Do not submit more than once without renewed authorization; no large ensemble, no distributed execution, no operational claim, and no scale-up authorization.
-
 ### TB-169: Collect Target-Area Balfrin Metrics Completeness
 
 Goal: Collect and classify target-area Balfrin runtime, output, memory, split-output, and remediation metrics from the measured run root.

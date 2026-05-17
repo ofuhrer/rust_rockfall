@@ -2913,3 +2913,31 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: blocked
 - Boundaries: no Balfrin submission, no measured run, no scale-up authorization, no distributed execution, and no operational or physical-probability claim.
 - Next task: `TB-168`
+
+### TB-168: Execute Authorized Target-Area Balfrin Probe
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: submit the single authorized bounded Balfrin probe for the frozen Tschamut target-area contract, or record the precise scheduler/runtime gate if the remote environment could not support that one submission.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the frozen authorization record at `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml` exposes a single authorized submit command and a fixed run root for `tschamut_public_balfrin_target_area_demo_v1`.
+  - Attempted the required Balfrin SSH handoff checks, but the expected clone path `/scratch/mch/olifu/rust_rockfall/main` did not exist on Balfrin and the authorized run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517` was also absent, so no submission was issued.
+  - Removed TB-168 from the active backlog and recorded the blocked execution state instead of fabricating a job id or completion evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-168 --format json`
+  - `rg -n "^### TB-168:" docs/task_backlog.md`
+  - `sed -n '27,80p' docs/task_backlog.md`
+  - `sed -n '1,220p' validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
+  - `sed -n '1,260p' scripts/submit_balfrin_probe.py`
+  - `sed -n '1,260p' scripts/collect_balfrin_probe_metrics.py`
+  - `sed -n '1,260p' docs/balfrin_probe_slurm_driver.md`
+  - `sed -n '1,260p' scripts/summarize_balfrin_evidence_bundle.py`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml --format json`
+  - `ssh balfrin 'set -euo pipefail; cd /scratch/mch/olifu/rust_rockfall/main; git pull --ff-only origin main; git status --short --branch; test -f validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml; test -f validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml; test -f scripts/submit_balfrin_probe.py; test -d /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 && echo run_root_exists=1 || echo run_root_exists=0'`
+  - `ssh balfrin 'set -euo pipefail; pwd; ls /scratch || true; find /scratch -maxdepth 3 -type d -name .git 2>/dev/null | sed -n "1,20p"; find /scratch -maxdepth 4 -type d -path "*/rust_rockfall/*" 2>/dev/null | sed -n "1,40p"'`
+  - `ssh balfrin 'set -euo pipefail; for d in /scratch/mch/jkeiser /scratch/mch/jkeiser/rust_rockfall /scratch/mch/jkeiser/rust_rockfall/main /scratch/mch/jkeiser/rust_rockfall/probes /scratch/mch/jkeiser/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1 /scratch/mch/jkeiser/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517; do if [ -e "$d" ]; then printf "exists %s\n" "$d"; else printf "missing %s\n" "$d"; fi; done'`
+- Result/status: implemented_blocked_report
+- Blocked output: `bash: line 0: cd: /scratch/mch/olifu/rust_rockfall/main: No such file or directory`
+- Boundaries: no Balfrin submission, no measured run, no second submission attempt, no scale-up authorization, and no operational or physical-probability claim.
+- Next task: `TB-169`
