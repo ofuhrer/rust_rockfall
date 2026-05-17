@@ -2200,3 +2200,22 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: live single-node Balfrin recovery only; no distributed execution, scale-up authorization, physics, annual-frequency, risk, exposure, vulnerability, or operational claim was introduced.
 - Next task: `TB-131`
+
+### TB-131: Complete Balfrin Metrics Contract Coverage
+- Date: 2026-05-17
+- Commit: `87c4016`
+- Objective: complete the measured Balfrin metrics contract by surfacing mandatory runtime/output evidence and naming the remaining ancillary-unavailable fields explicitly.
+- Files changed: `scripts/collect_balfrin_probe_metrics.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Extended the Balfrin probe collector with an explicit ancillary-metrics block that classifies validation-output-mode and output-write-kind fields as available or unavailable without changing the mandatory metrics contract.
+  - Threaded the ancillary block through the canonical evidence bundle so the read-only summary now states the unavailable ancillary fields explicitly while still preserving the measured peak-memory and validation/hazard file-count and byte evidence.
+  - Added focused regressions for the measured collector path, the blocked incomplete-root path, the synthetic complete-with-unavailable-ancillary path, and the bundle report propagation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_evidence_bundle`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no new ensemble, no scale-up authorization, no replacement of measured evidence with synthetic evidence, and no operational or probabilistic claim expansion.
+- Next task: `TB-132`
