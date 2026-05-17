@@ -22,45 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-182: Large Deterministic Scenario Table Generation Stress Test
-
-Goal: Generate and measure a realistic large deterministic scenario table from
-automatically generated release candidates.
-
-Capability gap reduced: Unknown scenario-space cardinality, manifest pressure,
-and scenario-generation practicality for many release candidates.
-
-Why this outranks alternatives: Multi-zone Balfrin planning is not meaningful
-until the repo can quantify how many conditional scenario rows its automated
-candidate generation produces.
-
-Inspect first:
-
-- `scripts/generate_balfrin_target_area_scenario_tables.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A deterministic stress-test path that consumes candidate release-zone records
-  and emits large scenario tables into ignored/scratch roots.
-- Scenario cardinality metrics by candidate, source-zone family, block family,
-  and scenario-family template.
-- Runtime, storage, and manifest-size measurements for the generated tables.
-- A bounded report naming the first scenario-generation scaling bottleneck.
-
-Definition of done:
-
-- Scenario generation is deterministic and provenance-aware, focused tests cover
-  cardinality/manifest summaries and missing-input failure, and the report
-  states whether TB-183 has enough planning input to proceed.
-
-Boundaries: No annual-frequency semantics, no physical probability semantics,
-no parameter tuning, no ensemble execution, and no generated large tables in
-git.
-
 ### TB-183: Multi-Release-Zone Balfrin Dry-Run Demonstration
 
 Goal: Build a bounded multi-release-zone Balfrin demonstration package from
