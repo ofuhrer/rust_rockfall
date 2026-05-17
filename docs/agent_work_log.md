@@ -3475,3 +3475,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: bounded extraction only; no schema redesign, no claim-boundary behavior change, no mass migration of unrelated scripts, and no generated artifact commit.
 - Next task: `TB-195`
+
+### TB-195: Hazard-Layer Writer And Manifest Module Split
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: split the lowest-risk hazard-layer writer, manifest-entry, and report-rendering helpers out of `scripts/build_hazard_layers.py` without changing CLI behavior or generated schemas.
+- Files changed: `scripts/build_hazard_layers.py`, `scripts/hazard_output_writers.py`, `scripts/hazard_output_manifests.py`, `scripts/hazard_output_reports.py`, `tests/test_hazard_output_helpers.py`, `docs/hazard_output_profile_contract.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added focused helper modules for shared file/checksum accounting, compact manifest-entry helpers, and HTML report rendering.
+  - Updated the hazard builder to delegate those responsibilities while leaving reducer math, raster writers, probability normalization, output-profile defaults, and GIS/COG semantics unchanged.
+  - Added direct helper tests for writer metadata/checksums, manifest metadata precedence and fallback hashing, and report rendering output accounting.
+  - Documented the next safe split target as the remaining raster writer family, explicitly bounded to behavior-preserving extraction only.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_hazard_layers.py scripts/hazard_output_writers.py scripts/hazard_output_manifests.py scripts/hazard_output_reports.py tests/test_hazard_output_helpers.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_hazard_output_helpers`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_default_grid_csv_export_is_enabled tests.test_hazard_layers.HazardLayerTests.test_hazard_manifest_includes_terrain_metadata_sidecar_provenance tests.test_hazard_layers.HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_hazard_layers tests.test_hazard_output_helpers`
+- Result/status: implemented_measured
+- Boundaries: no reducer redesign, no probability-semantics change, no output-profile default change, no large fixture regeneration, and no GIS/COG claim upgrade.
+- Next task: `TB-196`

@@ -269,6 +269,15 @@ This would map to the control combinations in this contract without changing
 defaults and without altering existing legacy behavior. This remains a future CLI
 ergonomic improvement, intentionally not implemented yet.
 
+## Implementation Split Note
+
+`scripts/build_hazard_layers.py` now delegates stable file-writing, manifest-entry,
+and HTML-report helpers to small focused modules. The next safe split target is
+the remaining raster writer family (`write_layers`, ASCII grid, GeoTIFF, and
+curve-table emission), but that should stay behavior-preserving and fixture-backed:
+do not change reducer math, probability normalization, output-profile defaults,
+or GIS/COG claim status as part of that extraction.
+
 ## Scope notes
 
 - This contract applies to conditional research hazard outputs.

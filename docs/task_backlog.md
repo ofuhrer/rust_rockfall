@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-195: Hazard-Layer Writer And Manifest Module Split
-
-Goal: Split the lowest-risk output writer and manifest/report generation responsibilities out of `scripts/build_hazard_layers.py` while preserving CLI behavior and generated artifact schemas.
-
-Capability gap reduced: Hazard-layer maintainability and scaling risk from a single monolithic post-processing script.
-
-Why this outranks alternatives: The hazard builder is now an accidental platform; extracting writers and manifests first creates a stable seam without changing reducer math, probability semantics, or raster values.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_layers.py`
-- `docs/hazard_layers.md`
-- `docs/hazard_output_profile_contract.md`
-- `docs/hazard_throughput_bottleneck_report.md`
-
-Deliverables:
-
-- One or more focused modules for CSV/ASCII/GeoTIFF/COG writer helpers, manifest assembly, and text/HTML report rendering.
-- Direct module-level tests for writer and manifest helpers, with existing CLI tests still covering end-to-end compatibility.
-- A before/after behavior check on representative hazard-layer fixtures confirming raster summaries, manifests, checksums, and report fields are unchanged.
-- A follow-up note identifying the next safe split target, if any.
-
-Definition of done:
-
-- `scripts/build_hazard_layers.py` delegates writer/manifest/report responsibilities to focused modules, existing hazard-layer tests pass, and generated schemas remain byte- or field-compatible where deterministic.
-
-Boundaries: No reducer redesign, no probability-semantics change, no output-profile default change, no large fixture regeneration, and no GIS/COG claim upgrade.
-
 ### TB-196: Explicit Missing-Data Validity Semantics In Validation Metrics
 
 Goal: Replace silent zero or empty fallback behavior in validation metrics and summary parsing with explicit validity flags, warnings, or structured failures.
