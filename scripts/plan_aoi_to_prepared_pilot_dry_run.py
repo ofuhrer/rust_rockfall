@@ -30,6 +30,7 @@ CASE_SKELETON_SCHEMA_VERSION = "aoi_to_prepared_pilot_case_skeleton_v1"
 COMMAND_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_manifest_v1"
 EXPECTED_OUTPUT_ROOTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_output_roots_v1"
 BLOCKED_EXECUTION_SCHEMA_VERSION = "aoi_to_prepared_pilot_blocked_execution_v1"
+GIS_SCOPE_SUMMARY_SCHEMA_VERSION = "aoi_to_prepared_pilot_gis_scope_summary_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -314,6 +315,13 @@ def build_prep_summary(
     if terrain_metadata_record is not None:
         terrain_manifests.append(terrain_metadata_record)
     context_manifests = list(acquisition_report.get("public_context_acquisition_plan", []))
+    gis_scope_summary = build_gis_scope_summary(
+        acquisition_report=acquisition_report,
+        terrain_manifests=terrain_manifests,
+        context_manifests=context_manifests,
+        command_plan_report=command_plan_report,
+        workflow_status=release_plan_report.get("scenario_plan_status", "unknown"),
+    )
     release_plan_paths = release_plan_report.get("source_inputs", {})
     generic_release_plan_contract = generic_release_plan_report.get("scenario_generation_contract", {})
     release_scenario_placeholders = {
@@ -415,6 +423,7 @@ def build_prep_summary(
         "scenario_generation_inputs": scenario_generation_inputs,
         "terrain_manifests": terrain_manifests,
         "context_manifests": context_manifests,
+        "gis_scope_summary": gis_scope_summary,
         "release_scenario_placeholders": release_scenario_placeholders,
         "command_plan_hooks": command_plan_hooks,
         "ignored_output_roots": ignored_output_roots,
@@ -519,6 +528,8 @@ def build_report(
         candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
     )
+    if isinstance(prep_summary.get("gis_scope_summary"), dict):
+        prep_summary["gis_scope_summary"]["status"] = workflow_status
     skeleton_output = build_case_skeleton_output(
         report_inputs={
             "config_path": config_path,
@@ -552,6 +563,7 @@ def build_report(
         "preparation_input": prep_summary,
         "terrain_manifests": prep_summary["terrain_manifests"],
         "context_manifests": prep_summary["context_manifests"],
+        "gis_scope_summary": prep_summary["gis_scope_summary"],
         "release_scenario_placeholders": prep_summary["release_scenario_placeholders"],
         "candidate_source_zones": prep_summary["candidate_source_zones"],
         "scenario_generation_inputs": prep_summary["scenario_generation_inputs"],
@@ -579,6 +591,119 @@ def build_report(
         "case_skeleton_output": skeleton_output,
     }
     return report
+
+
+def build_gis_scope_summary(
+    *,
+    acquisition_report: dict[str, Any],
+    terrain_manifests: list[dict[str, Any]],
+    context_manifests: list[dict[str, Any]],
+    command_plan_report: dict[str, Any],
+    workflow_status: str,
+) -> dict[str, Any]:
+    planned_products = [
+        build_gis_scope_product_entry(row, source="terrain")
+        for row in terrain_manifests
+    ]
+    planned_products.extend(
+        build_gis_scope_product_entry(row, source="context")
+        for row in context_manifests
+    )
+    blocked_missing_inputs = dedupe(
+        [
+            *(str(item) for item in acquisition_report.get("blocked_missing_inputs", []) if item),
+            *(
+                product["expected_staged_path"]
+                for product in planned_products
+                if product.get("current_status") == "missing" and product.get("expected_staged_path")
+            ),
+        ]
+    )
+    downstream_template_only_commands = list(command_plan_report.get("blocked_template_commands", []))
+    cog_export_expectation = {
+        "status": "template_only" if downstream_template_only_commands else "not_requested",
+        "generated_now": False,
+        "hazard_layers_generated": False,
+        "cog_export_generated": False,
+        "downstream_template_only_command_ids": downstream_template_only_commands,
+        "summary": (
+            "AOI handoff stops before hazard-map generation; any COG export remains a downstream template-only expectation."
+        ),
+    }
+    non_operational_gis_boundaries = {
+        "operational_claims_allowed": False,
+        "hazard_layers_generated": False,
+        "cog_export_generated": False,
+        "scale_up_authorized": False,
+        "distributed_execution_authorized": False,
+        "annual_frequency_claims_allowed": False,
+        "physical_probability_claims_allowed": False,
+        "risk_exposure_vulnerability_claims_allowed": False,
+    }
+    template_only_products = [
+        {
+            "category": "downstream_cog_export",
+            "product": "hazard-map COG export expectation",
+            "product_kind": "raster",
+            "scope_state": "template_only",
+            "current_status": "not_generated",
+            "expected_staged_path": "",
+            "source": "command_plan",
+            "downstream_template_only_command_ids": downstream_template_only_commands,
+        }
+    ]
+    return {
+        "schema_version": GIS_SCOPE_SUMMARY_SCHEMA_VERSION,
+        "status": workflow_status,
+        "summary": (
+            "The AOI case-skeleton lists planned GIS inputs separately from downstream template-only COG expectations and does not imply any hazard layers were generated."
+        ),
+        "planned_products": planned_products,
+        "planned_raster_products": [product for product in planned_products if product.get("product_kind") == "raster"],
+        "planned_vector_products": [product for product in planned_products if product.get("product_kind") == "vector"],
+        "template_only_products": template_only_products,
+        "blocked_missing_inputs": blocked_missing_inputs,
+        "cog_export_expectation": cog_export_expectation,
+        "non_operational_gis_boundaries": non_operational_gis_boundaries,
+        "no_hazard_layers_generated": True,
+    }
+
+
+def build_gis_scope_product_entry(row: dict[str, Any], *, source: str) -> dict[str, Any]:
+    current_status = str(row.get("current_status") or row.get("status") or "unknown")
+    scope_state = "planned"
+    if current_status == "missing":
+        scope_state = "unavailable"
+    elif current_status == "optional":
+        scope_state = "planned"
+    return {
+        "source": source,
+        "category": row.get("category", ""),
+        "product": row.get("product", ""),
+        "product_kind": classify_gis_product_kind(row.get("category", ""), row.get("product", "")),
+        "required": bool(row.get("required", False)),
+        "current_status": current_status,
+        "scope_state": scope_state,
+        "expected_staged_path": row.get("expected_staged_path", ""),
+    }
+
+
+def classify_gis_product_kind(category: str, product: str) -> str:
+    if category in {"terrain_crop", "swissimage_context", "swisssurface3d_context", "swisssurface3d_raster_context"}:
+        return "raster"
+    if category in {"swisstlm3d_context", "swissbuildings3d_context", "barrier_inventory"}:
+        return "vector"
+    if category.endswith("_metadata") or category in {"aoi_tile_catalog", "scenario_table", "source_scenario_policy"}:
+        return "metadata"
+    if category == "source_zone_metadata":
+        return "metadata"
+    if category == "release_observation_evidence":
+        return "evidence"
+    if "raster" in category or "terrain" in category:
+        return "raster"
+    if "tile" in category or "catalog" in category:
+        return "metadata"
+    return "unknown"
 
 
 def build_steps(
@@ -955,6 +1080,53 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "gis_scope_summary:",
+        ]
+    )
+    gis_scope_summary = prep.get("gis_scope_summary", {})
+    lines.append(f"- schema_version: {gis_scope_summary.get('schema_version', '')}")
+    lines.append(f"- status: {gis_scope_summary.get('status', '')}")
+    lines.append(f"- summary: {gis_scope_summary.get('summary', '')}")
+    lines.append(f"- no_hazard_layers_generated: {gis_scope_summary.get('no_hazard_layers_generated', False)}")
+    lines.append(f"- cog_export_expectation: {gis_scope_summary.get('cog_export_expectation', {})}")
+    lines.append("- planned_raster_products:")
+    if gis_scope_summary.get("planned_raster_products"):
+        for row in gis_scope_summary["planned_raster_products"]:
+            lines.append(
+                f"  - {row.get('category', '')}: {row.get('product', '')} "
+                f"[{row.get('current_status', '')} -> {row.get('scope_state', '')}]"
+            )
+    else:
+        lines.append("  - none")
+    lines.append("- planned_vector_products:")
+    if gis_scope_summary.get("planned_vector_products"):
+        for row in gis_scope_summary["planned_vector_products"]:
+            lines.append(
+                f"  - {row.get('category', '')}: {row.get('product', '')} "
+                f"[{row.get('current_status', '')} -> {row.get('scope_state', '')}]"
+            )
+    else:
+        lines.append("  - none")
+    lines.append("- template_only_products:")
+    if gis_scope_summary.get("template_only_products"):
+        for row in gis_scope_summary["template_only_products"]:
+            lines.append(
+                f"  - {row.get('category', '')}: {row.get('product', '')} "
+                f"[{row.get('scope_state', '')}]"
+            )
+    else:
+        lines.append("  - none")
+    if gis_scope_summary.get("blocked_missing_inputs"):
+        lines.append("- blocked_missing_inputs:")
+        lines.extend(f"  - {item}" for item in gis_scope_summary["blocked_missing_inputs"])
+    else:
+        lines.append("- blocked_missing_inputs: none")
+    lines.append("- non_operational_gis_boundaries:")
+    for key, value in (gis_scope_summary.get("non_operational_gis_boundaries") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
             "release_scenario_placeholders:",
         ]
     )
@@ -1136,6 +1308,7 @@ def build_case_skeleton_output(
         "input_mode": prep_summary["input_mode"],
         "site_extent": prep_summary["site_extent"],
         "release_polygon": prep_summary["release_polygon"],
+        "gis_scope_summary": prep_summary.get("gis_scope_summary", {}),
         "blocked_reason": (
             "workflow blocked_missing_inputs; required inputs are missing"
             if report_inputs["workflow_status"] == "blocked_missing_inputs"

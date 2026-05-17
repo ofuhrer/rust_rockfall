@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-160: Add Demonstration GIS Scope Review For AOI Handoff
-
-Goal: Extend GIS/COG scope reporting so AOI case-skeleton handoff bundles
-declare which GIS products are planned, template-only, or unavailable.
-
-Capability gap reduced: Demonstration GIS scope is clear for Balfrin evidence
-but not yet connected to generic AOI handoff bundles.
-
-Why this outranks alternatives: Management-facing demonstrations need clear
-visual-product expectations before operators run or stage second-site inputs.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- AOI handoff report fields for planned raster/vector products, COG export
-  expectation, blocked/missing inputs, and non-operational GIS boundaries.
-- Tests proving GIS scope is deterministic for ready and missing-input
-  skeletons.
-- Documentation note distinguishing planned GIS products from generated
-  hazard-map outputs.
-
-Definition of done:
-
-- AOI case-skeleton reports expose a machine-readable GIS scope summary without
-  implying any hazard layers were generated.
-
-Boundaries: No hazard build, no generated raster commit, no operational GIS
-claim, no risk/exposure/vulnerability semantics, and no scale-up claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

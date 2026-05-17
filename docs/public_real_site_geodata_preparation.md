@@ -196,6 +196,12 @@ The GIS/COG audit now also accepts explicit converted-sample paths and ignored
 converted package roots while keeping the current committed packages marked as
 COG-blocked.
 
+AOI handoff reports now carry a separate machine-readable GIS scope summary
+that names planned raster/vector products, template-only downstream export
+expectations, and unavailable inputs. That summary is a planning artifact, not
+a generated hazard-map output, and it should not be read as evidence that any
+hazard layers were produced.
+
 The portable command plan now exposes the canonical package-level conversion
 path directly, including the standard audit command, the `--export-cog`
 builder path to the ignored `gate_v1_cog_export` package, and the

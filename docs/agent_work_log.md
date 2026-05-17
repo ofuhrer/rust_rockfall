@@ -2746,3 +2746,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no calibration, no tuning, no physical-probability claim, no annual-frequency claim, and no operational claim.
 - Next task: `TB-160`
+
+### TB-160: Add Demonstration GIS Scope Review For AOI Handoff
+- Date: 2026-05-17
+- Commit: local
+- Objective: extend AOI case-skeleton handoff bundles with a machine-readable GIS scope summary that separates planned raster/vector products, downstream template-only COG expectations, unavailable inputs, and non-operational boundaries.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `gis_scope_summary` block to the AOI dry-run report and case-skeleton output so the handoff now records planned raster/vector products, a template-only COG export expectation, blocked/missing inputs, and explicit non-operational GIS boundaries without implying any hazard layers were generated.
+  - Kept the summary deterministic for both staged and missing-input skeletons by threading the same structure through the report, written skeleton YAML, and text rendering, then pinning it with focused unittest coverage.
+  - Added a short documentation note that states the AOI GIS scope summary is a planning artifact and must not be read as generated hazard-map output.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no hazard build, no generated raster commit, no operational GIS claim, no risk/exposure/vulnerability semantics, and no scale-up claim.
+- Next task: backlog refill needed

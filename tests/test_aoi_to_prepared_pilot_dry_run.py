@@ -33,7 +33,7 @@ staging = _load_module(
 
 class AoiToPreparedPilotDryRunTests(unittest.TestCase):
     def test_staged_aoi_with_release_polygon_emits_preparation_sections(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
             config_path = self._write_candidate_config(repo_root)
             staging.stage_minimal_inputs(
@@ -42,9 +42,23 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
             release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
 
-            first = planner.build_report(config_path, repo_root=repo_root, release_polygon_path=release_polygon_path)
-            second = planner.build_report(config_path, repo_root=repo_root, release_polygon_path=release_polygon_path)
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+            skeleton = first["case_skeleton_output"]
+            case = yaml.safe_load(Path(skeleton["case_skeleton_path"]).read_text(encoding="utf-8"))
 
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "aoi_to_prepared_pilot_dry_run_v1")
@@ -115,6 +129,18 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("second_site_aoi_acquisition_dry_run_planner", hook_ids)
         self.assertIn("second_site_release_plan_dry_run", hook_ids)
         self.assertIn("second_site_benchmark_preparation_template", hook_ids)
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"], skeleton["case_skeleton"]["gis_scope_summary"])
+        self.assertEqual(case["gis_scope_summary"], skeleton["case_skeleton"]["gis_scope_summary"])
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"]["schema_version"], "aoi_to_prepared_pilot_gis_scope_summary_v1")
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"]["status"], "blocked_missing_inputs")
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"]["cog_export_expectation"]["status"], "template_only")
+        self.assertTrue(first["preparation_input"]["gis_scope_summary"]["no_hazard_layers_generated"])
+        self.assertIn("planned_raster_products", first["preparation_input"]["gis_scope_summary"])
+        self.assertIn("planned_vector_products", first["preparation_input"]["gis_scope_summary"])
+        self.assertIn("template_only_products", first["preparation_input"]["gis_scope_summary"])
+        self.assertIn("blocked_missing_inputs", first["preparation_input"]["gis_scope_summary"])
+        self.assertTrue(any(entry["product_kind"] == "raster" for entry in first["preparation_input"]["gis_scope_summary"]["planned_products"]))
+        self.assertTrue(any(entry["product_kind"] == "vector" for entry in first["preparation_input"]["gis_scope_summary"]["planned_products"]))
         self.assertTrue(
             any(path.endswith("validation/private/chant_sura_fluelapass_portability_example_v1") for path in first["ignored_output_roots"])
         )
@@ -219,6 +245,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_status"], "ready")
         self.assertTrue(first["terrain_manifests"])
         self.assertTrue(first["context_manifests"])
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"], skeleton["case_skeleton"]["gis_scope_summary"])
         self.assertTrue(
             first["terrain_manifests"][0]["expected_staged_path"].endswith(
                 "data/processed/swisstopo/unspecified_second_site/input/terrain.asc"
@@ -236,6 +263,12 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(case["case_skeleton_status"], "blocked_missing_inputs")
         self.assertEqual(case["blocked_execution_status"], "blocked_missing_inputs")
         self.assertEqual(case["write_status"], "written")
+        self.assertEqual(case["gis_scope_summary"]["schema_version"], "aoi_to_prepared_pilot_gis_scope_summary_v1")
+        self.assertEqual(case["gis_scope_summary"]["status"], "blocked_missing_inputs")
+        self.assertEqual(case["gis_scope_summary"]["cog_export_expectation"]["status"], "template_only")
+        self.assertIn("blocked_missing_inputs", case["gis_scope_summary"])
+        self.assertTrue(case["gis_scope_summary"]["no_hazard_layers_generated"])
+        self.assertEqual(case["gis_scope_summary"], first["preparation_input"]["gis_scope_summary"])
 
         text_report = planner.render_text_report(first)
         self.assertIn("schema_version: aoi_to_prepared_pilot_dry_run_v1", text_report)
@@ -243,6 +276,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("preparation_input:", text_report)
         self.assertIn("candidate_source_zones:", text_report)
         self.assertIn("scenario_generation_inputs:", text_report)
+        self.assertIn("gis_scope_summary:", text_report)
 
     def test_synthetic_non_tschamut_candidate_exposes_generic_scenario_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
