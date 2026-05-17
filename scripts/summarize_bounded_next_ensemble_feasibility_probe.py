@@ -122,6 +122,7 @@ def build_report(
         else OPTIONAL_PROBABILISTIC_METADATA_BLOCKED_STATUS
     )
     planning_blocker = metadata_contract["blocked_reason"]
+    bounded_probe_recommendation_status = planning_status
 
     reduced_profile = reduced_output["reduced_profile"]
     rebuildable_reduced_profile = reduced_output["rebuildable_reduced_profile"]
@@ -171,6 +172,7 @@ def build_report(
         "scale_up_authorized": False,
         "distributed_execution_authorized": False,
         "operational_claims_allowed": False,
+        "bounded_probe_recommendation_status": bounded_probe_recommendation_status,
         "planning_status": planning_status,
         "planning_blocker": planning_blocker,
         "metadata_contract": metadata_contract,
@@ -427,6 +429,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "Bounded Next-Ensemble Feasibility Probe",
         "",
         f"- Probe status: `{report['probe_status']}`",
+        f"- Bounded probe recommendation status: `{report['bounded_probe_recommendation_status']}`",
         f"- Planning blocker: `{report['planning_blocker']}`",
         f"- Read-only: `{report['read_only']}`",
         f"- Scale-up authorized: `{report['scale_up_authorized']}`",

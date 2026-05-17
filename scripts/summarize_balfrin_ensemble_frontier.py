@@ -128,7 +128,8 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     helper_statuses = {
         "scientific_delta_status": scientific.get("scientific_delta_status"),
         "single_job_decision": single_job.get("decision"),
-        "feasibility_probe_status": feasibility.get("probe_status"),
+        "feasibility_probe_status": feasibility.get("bounded_probe_recommendation_status") or feasibility.get("probe_status"),
+        "feasibility_metadata_contract_status": dict(feasibility.get("metadata_contract") or {}).get("status"),
         "stability_frontier_status": stability.get("frontier_status"),
     }
     helper_blockers = [
@@ -219,8 +220,12 @@ def classify_recommendation(
         return "blocked_pending_helper_contract", "scientific delta helper is blocked"
     if stability.get("recommendation_class") == "blocked_pending_helper_contract":
         return "blocked_pending_helper_contract", "stability frontier helper is blocked"
-    if feasibility.get("probe_status") == "blocked_pending_evidence":
+    bounded_probe_status = feasibility.get("bounded_probe_recommendation_status") or feasibility.get("probe_status")
+    metadata_contract_status = dict(feasibility.get("metadata_contract") or {}).get("status")
+    if bounded_probe_status == "blocked_pending_evidence":
         return "blocked_pending_helper_contract", "bounded next-ensemble helper is blocked"
+    if metadata_contract_status == "blocked_missing_optional_probabilistic_metadata":
+        return "blocked_pending_helper_contract", "bounded next-ensemble helper is blocked on missing optional probabilistic metadata"
 
     boundedness = dict(feasibility.get("boundedness_proof") or {})
     single_job_sufficient = bool(single_job.get("single_job_sufficient_for_next_step"))

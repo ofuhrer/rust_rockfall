@@ -72,11 +72,16 @@ def build_report() -> dict[str, Any]:
     runtime = RUNTIME.build_report(RUNTIME.DEFAULT_ARTIFACTS)
     feasibility = FEASIBILITY.build_report()
     closure_gap = CLOSURE_GAP.build_report()
+    bounded_probe_status = str(
+        feasibility.get("bounded_probe_recommendation_status")
+        or feasibility.get("probe_status")
+        or ""
+    )
 
     helper_statuses = {
         "sampling_uncertainty_status": uncertainty.get("sampling_uncertainty_status"),
         "reducer_scaling_status": runtime.get("reducer_scaling_status"),
-        "probe_status": feasibility.get("probe_status"),
+        "probe_status": bounded_probe_status,
         "closure_gap_status": closure_gap.get("closure_gap_status"),
     }
     helper_blockers = [
@@ -85,6 +90,7 @@ def build_report() -> dict[str, Any]:
         if status not in {
             "sampling_uncertainty_measured",
             "measured_existing_artifacts",
+            "deferred_pending_authorization",
             "deferred_pending_optional_probabilistic_metadata",
             "measured_gaps_remain",
         }
@@ -311,8 +317,10 @@ def build_bounded_probe_feasibility(runtime: dict[str, Any], feasibility: dict[s
         (entry for entry in runtime.get("comparison_pairs", []) if entry.get("label") == "target_full_vs_native_rebuildable_reduced"),
         {},
     )
+    bounded_probe_status = feasibility.get("bounded_probe_recommendation_status") or feasibility.get("probe_status")
     return {
         "probe_status": feasibility.get("probe_status"),
+        "bounded_probe_recommendation_status": bounded_probe_status,
         "planning_status": feasibility.get("planning_status"),
         "proposed_probe": {
             "probe_id": proposed_probe.get("probe_id"),

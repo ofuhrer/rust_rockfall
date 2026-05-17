@@ -2633,3 +2633,28 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no ensemble execution, no annual frequency, no physical-probability claim, no tuning, and no scale-up authorization.
 - Next task: `TB-154`
+
+### TB-154
+- Date: 2026-05-17
+- Commit: local
+- Objective: thread the complete bounded-probe feasibility result into the Balfrin ensemble frontier and Swiss-wide execution-envelope helpers.
+- Files changed: `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`, `scripts/summarize_same_scale_stability_frontier.py`, `scripts/summarize_balfrin_ensemble_frontier.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_ensemble_frontier.py`, `tests/test_same_scale_stability_frontier.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/task_backlog.md`, `docs/current_maturity_snapshot.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `bounded_probe_recommendation_status` to the bounded-next feasibility helper so downstream consumers can read the recomputed complete-metadata recommendation directly instead of inferring it from the old optional-metadata block.
+  - Updated the same-scale stability frontier and Balfrin ensemble frontier to treat the complete feasibility result as a deferred-but-evaluated probe path, while still blocking only on genuine missing-input evidence.
+  - Threaded the recommendation status into the Swiss-wide envelope measurement basis and render output, then updated the focused tests to assert the complete-metadata contract and the recomputed deferred status.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_next_ensemble_feasibility_probe`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_stability_frontier`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_ensemble_frontier tests.test_same_scale_stability_frontier`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope`
+  - `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new Balfrin run, no large ensemble, no distributed execution, no operational claim, no scale-up authorization, and no annual-frequency or physical-probability claim.
+- Next task: `TB-155`

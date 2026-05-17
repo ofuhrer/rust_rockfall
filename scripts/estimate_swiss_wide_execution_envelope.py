@@ -86,6 +86,7 @@ class MeasuredCoefficients:
     memory_peak_mb_nominal: float
     memory_peak_mb_high: float
     measurement_notes: tuple[str, ...]
+    bounded_probe_recommendation_status: str | None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -225,6 +226,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
             reproduction_hazard_memory_peak_mb,
         ),
         measurement_notes=measurement_notes,
+        bounded_probe_recommendation_status=feasibility_report.get("bounded_probe_recommendation_status"),
     )
 
 
@@ -296,6 +298,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "balfrin_demo_run_root": MEASURED_BALFRIN_DEMO_RUN_ROOT,
             "source_commands": MEASURED_SOURCE_COMMANDS,
             "measurement_notes": list(coefficients.measurement_notes),
+            "bounded_probe_recommendation_status": coefficients.bounded_probe_recommendation_status,
             "single_job_summary": {
                 "decision": single_job_summary.get("decision"),
                 "final_classification": single_job_summary.get("final_classification"),
@@ -380,6 +383,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             "measurement_notes": [
                 "measured Balfrin evidence was unavailable, so the frontier cannot be projected",
             ],
+            "bounded_probe_recommendation_status": None,
             "single_job_summary": None,
         },
         "planning_labels": build_planning_labels(
@@ -531,6 +535,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  no_go: {report['planning_labels']['no_go']}",
         f"  defer: {report['planning_labels']['defer']}",
         f"  allowed_next_probe: {report['planning_labels']['allowed_next_probe']}",
+        f"  bounded_probe_recommendation_status: {report['measurement_basis'].get('bounded_probe_recommendation_status')}",
         f"aoi_count: {report['input']['aoi_count']}",
         f"release_zone_count: {report['input']['release_zone_count']}",
         f"trajectory_count: {report['input']['trajectory_count']}",

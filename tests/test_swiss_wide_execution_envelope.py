@@ -40,6 +40,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             memory_peak_mb_nominal=4.0,
             memory_peak_mb_high=4.5,
             measurement_notes=("synthetic coefficients for unit tests",),
+            bounded_probe_recommendation_status="deferred_pending_authorization",
         )
 
     def test_small_projection_stays_within_measured_support(self) -> None:
@@ -92,6 +93,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["planning_labels"]["allowed_next_probe"],
             "allowed_next_probe_measured_existing_artifacts",
         )
+        self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)
         self.assertEqual(report["storage_bytes"]["nominal"], 31200)
         self.assertEqual(report["file_count"]["nominal"], 1560)
@@ -103,6 +105,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("aoi_count_exceeds_measured_support", text)
         self.assertIn("planning_labels:", text)
         self.assertIn("allowed_next_probe: allowed_next_probe_measured_existing_artifacts", text)
+        self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
 
     def test_measured_loader_smoke_uses_real_summary_inputs(self) -> None:
@@ -123,6 +126,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["measurement_basis"]["balfrin_demo_run_root"],
             "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
         )
+        self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
         self.assertEqual(
             report["planning_labels"]["allowed_next_probe"],
@@ -153,6 +157,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["planning_labels"]["allowed_next_probe"],
             "allowed_next_probe_blocked_missing_inputs",
         )
+        self.assertIsNone(report["measurement_basis"]["bounded_probe_recommendation_status"])
         self.assertIn("measured reduced-output artifact target_rebuildable_reduced is missing", report["blocked_reason"])
         self.assertIsNone(report["runtime_seconds"]["nominal"])
         self.assertIn("measured Balfrin evidence was unavailable", report["measurement_basis"]["measurement_notes"][0])

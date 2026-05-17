@@ -52,7 +52,10 @@ class SameScaleStabilityFrontierTests(unittest.TestCase):
         with patch.object(MODULE, "UNCERTAINTY") as uncertainty_module, patch.object(MODULE, "RUNTIME") as runtime_module, patch.object(MODULE, "FEASIBILITY") as feasibility_module, patch.object(MODULE, "CLOSURE_GAP") as closure_module:
             uncertainty_module.build_sampling_uncertainty_summary.return_value = {"sampling_uncertainty_status": "blocked_missing_inputs"}
             runtime_module.build_report.return_value = {"reducer_scaling_status": "blocked_missing_inputs"}
-            feasibility_module.build_report.return_value = {"probe_status": "blocked_pending_evidence"}
+            feasibility_module.build_report.return_value = {
+                "probe_status": "blocked_pending_evidence",
+                "bounded_probe_recommendation_status": "blocked_pending_evidence",
+            }
             closure_module.build_report.return_value = {"closure_gap_status": "blocked_missing_inputs"}
 
             report = MODULE.build_report()
@@ -184,8 +187,9 @@ class SameScaleStabilityFrontierTests(unittest.TestCase):
 
     def _feasibility_report(self) -> dict[str, object]:
         return {
-            "probe_status": "deferred_pending_optional_probabilistic_metadata",
-            "planning_status": "deferred_pending_optional_probabilistic_metadata",
+            "probe_status": "deferred_pending_authorization",
+            "bounded_probe_recommendation_status": "deferred_pending_authorization",
+            "planning_status": "deferred_pending_authorization",
             "proposed_probe": {
                 "probe_id": "tschamut_native_rebuildable_reduced_next_probe",
                 "trajectory_count": 1000,

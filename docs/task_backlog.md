@@ -24,44 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-154: Recompute Balfrin Frontier With Complete Probe Metadata
-
-Goal: Thread the unblocked bounded-probe feasibility result into the Balfrin
-ensemble-frontier and Swiss-wide execution-envelope helpers.
-
-Capability gap reduced: Current scaling recommendations remain conservative
-because the bounded next-probe path is recorded as blocked rather than
-evaluated.
-
-Why this outranks alternatives: Once the feasibility metadata blocker is
-removed, the next highest-value step is to see whether the recommended next
-probe remains deferred, becomes an allowed bounded probe, or exposes another
-blocker.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `tests/test_balfrin_ensemble_frontier.py`
-
-Deliverables:
-
-- Updated frontier report logic and tests for complete-metadata feasibility.
-- Swiss-wide envelope wording/status that reflects the recomputed bounded
-  probe recommendation.
-- Documentation update in the Balfrin sufficiency or maturity snapshot only if
-  the recommendation changes materially.
-
-Definition of done:
-
-- Balfrin frontier and Swiss-wide envelope helpers consume the complete
-  bounded-probe feasibility result without falling back to stale
-  `blocked_missing_optional_probabilistic_metadata` assumptions.
-
-Boundaries: No new Balfrin run, no large ensemble, no distributed execution,
-no operational claim, and no scale-up authorization.
-
 ### TB-155: Define Measured Minimal Balfrin Probe Execution Package
 
 Goal: Convert the recomputed bounded-probe recommendation into one executable

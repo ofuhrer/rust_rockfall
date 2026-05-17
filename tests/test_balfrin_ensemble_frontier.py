@@ -65,7 +65,9 @@ class BalfrinEnsembleFrontierTests(unittest.TestCase):
             feasibility_module.build_report.return_value = {
                 "schema_version": "bounded_next_ensemble_feasibility_probe_v1",
                 "probe_status": "blocked_missing_optional_probabilistic_metadata",
+                "bounded_probe_recommendation_status": "blocked_missing_optional_probabilistic_metadata",
                 "planning_status": "blocked_missing_optional_probabilistic_metadata",
+                "metadata_contract": {"status": "blocked_missing_optional_probabilistic_metadata"},
             }
             stability_module.build_report.return_value = self.stability_report()
 
@@ -76,6 +78,24 @@ class BalfrinEnsembleFrontierTests(unittest.TestCase):
         self.assertIn("feasibility_probe_status=blocked_missing_optional_probabilistic_metadata", report["recommendation_reason"])
         self.assertEqual(report["minimum_useful_ensemble_recommendation"], {})
         self.assertEqual(report["frontier_summary"], [])
+
+    def test_complete_metadata_feasibility_path_drives_the_bounded_frontier(self) -> None:
+        with patch.object(MODULE, "SCIENTIFIC") as scientific_module, patch.object(MODULE, "SINGLE_JOB") as single_job_module, patch.object(MODULE, "FEASIBILITY") as feasibility_module, patch.object(MODULE, "STABILITY") as stability_module:
+            scientific_module.build_report.return_value = self.scientific_report()
+            single_job_module.build_summary.return_value = self.single_job_summary()
+            feasibility_module.build_report.return_value = self.feasibility_report()
+            stability_module.build_report.return_value = self.stability_report()
+
+            report = MODULE.build_report()
+
+        self.assertEqual(report["frontier_status"], "measured_existing_artifacts")
+        self.assertEqual(report["recommendation_class"], "defer_small_bounded_ensemble")
+        self.assertEqual(report["helper_statuses"]["feasibility_probe_status"], "deferred_pending_authorization")
+        self.assertEqual(report["helper_statuses"]["feasibility_metadata_contract_status"], "complete")
+        self.assertEqual(report["minimum_useful_ensemble_recommendation"]["decision"], "defer")
+        self.assertEqual(report["minimum_useful_ensemble_recommendation"]["ensemble_size"], 1000)
+        self.assertIn("measured Balfrin evidence still shows useful uncertainty spread", report["recommendation_reason"])
+        self.assertGreater(len(report["frontier_summary"]), 0)
 
     def test_cli_emits_text_and_json_for_measured_report(self) -> None:
         with patch.object(MODULE, "SCIENTIFIC") as scientific_module, patch.object(MODULE, "SINGLE_JOB") as single_job_module, patch.object(MODULE, "FEASIBILITY") as feasibility_module, patch.object(MODULE, "STABILITY") as stability_module:
@@ -132,6 +152,7 @@ class BalfrinEnsembleFrontierTests(unittest.TestCase):
         return {
             "schema_version": "bounded_next_ensemble_feasibility_probe_v1",
             "probe_status": "deferred_pending_optional_probabilistic_metadata",
+            "bounded_probe_recommendation_status": "deferred_pending_authorization",
             "proposed_probe": {
                 "probe_id": "tschamut_native_rebuildable_reduced_next_probe",
                 "trajectory_count": 1000,
@@ -145,6 +166,10 @@ class BalfrinEnsembleFrontierTests(unittest.TestCase):
                     "ensemble_deposition_csv",
                 ],
                 "expected_command": "command",
+            },
+            "metadata_contract": {
+                "status": "complete",
+                "missing_fields": [],
             },
             "boundedness_proof": {
                 "bounded_relative_to_target_validation": True,
