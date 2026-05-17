@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-125: Prototype AOI-To-Demonstration Preparation Path
-
-Goal: Given AOI extents or a release polygon, prepare the deterministic inputs
-needed for a demonstration workflow without running an ensemble.
-
-Capability gap reduced: AOI-to-workflow automation and Swiss-wide portability.
-
-Why this outranks alternatives: The current workflow still assumes substantial
-Tschamut-specific preparation. A minimal AOI-to-demonstration path is the first
-real generalization step toward Swiss-wide automation.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_pragmatic_release_plan.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A dry-run preparation report that emits terrain manifests, context manifests,
-  release/scenario placeholders, command-plan hooks, and ignored output roots
-  from an AOI or release polygon input.
-- Tests for deterministic output and blocked/missing-input behavior.
-
-Definition of done:
-
-- The prototype can prepare a bounded demonstration scaffold without executing
-  trajectories, downloading real data, or treating placeholders as evidence.
-
-Boundaries: Do not run ensembles, download public context, or claim release-zone
-validity from the dry-run scaffold.
-
 ### TB-126: Define Second-Site Real-Context Trigger From Balfrin Evidence
 
 Goal: Convert the Chant Sura / Fluelapass defer decision into a concrete

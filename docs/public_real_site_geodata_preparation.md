@@ -293,6 +293,14 @@ helper is intentionally not a release-zone interpretation: it stops at the dry
 run boundary and reports `deferred_public_context_inputs` when real context is
 absent.
 
+The new AOI-to-prepared-pilot dry-run helper,
+`scripts/plan_aoi_to_prepared_pilot_dry_run.py`, composes the acquisition,
+context, release-plan, and portable command-plan dry-run helpers into one
+preparation scaffold. Its report names the terrain manifests, public-context
+manifests, release/scenario placeholders, command-plan hooks, and ignored
+output roots that a future demonstration workflow would need, while still
+stopping short of any ensemble execution or public-context download.
+
 The next dry-run helper,
 `scripts/plan_release_plan_dry_run.py`, turns the same fixture-backed candidate
 source-zone record into deterministic release rows and block-scenario rows

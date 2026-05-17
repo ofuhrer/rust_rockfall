@@ -239,6 +239,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             ],
         )
         self.assertIn("second_site_case_skeleton_dry_run", report["command_ids"])
+        self.assertIn("second_site_aoi_to_prepared_pilot_dry_run", report["command_ids"])
         self.assertIn("second_site_release_plan_dry_run", report["command_ids"])
         self.assertIn("second_site_release_plan_execution_template", report["command_ids"])
         self.assertIn("second_site_aoi_acquisition_dry_run_planner", report["command_ids"])
@@ -267,6 +268,15 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn(
             "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
             planner_command["expected_inputs"],
+        )
+        preparation_command = next(
+            command for command in report["commands"] if command["id"] == "second_site_aoi_to_prepared_pilot_dry_run"
+        )
+        self.assertTrue(preparation_command["read_only"])
+        self.assertIn("plan_aoi_to_prepared_pilot_dry_run.py", preparation_command["command"])
+        self.assertIn(
+            "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            preparation_command["expected_inputs"],
         )
         dry_run_command = next(command for command in report["commands"] if command["id"] == "second_site_case_skeleton_dry_run")
         self.assertFalse(dry_run_command["blocked_reason"])

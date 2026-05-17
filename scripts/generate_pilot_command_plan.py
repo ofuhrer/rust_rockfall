@@ -928,6 +928,32 @@ def build_second_site_plan(
         command_entry(
             site="chant_sura_fluelapass",
             group="readiness_checks",
+            command_id="second_site_aoi_to_prepared_pilot_dry_run",
+            description="Compose the AOI-to-demonstration preparation scaffold without executing an ensemble.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"),
+                    "--site-config",
+                    rel(site_config),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
+            ],
+            expected_outputs=["JSON AOI-to-prepared-pilot dry-run preparation report"],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
+            site="chant_sura_fluelapass",
+            group="readiness_checks",
             command_id="second_site_acquisition_manifest_review",
             description="Review the committed Chant Sura / Flüelapass public-geodata acquisition manifest and staging contract.",
             command=command_string(
