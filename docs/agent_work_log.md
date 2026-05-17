@@ -3013,3 +3013,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no operational GIS claim, no QGIS sign-off claim, no generated raster commit, no risk/exposure/vulnerability semantics, and the committed target root remains distinct from the scratch COG proof.
 - Next task: `TB-172`
+
+## TB-172 Target-Area Spatial Uncertainty And Stability
+
+- Date: 2026-05-17
+- Commit: `local`
+- Objective: produce a target-area spatial uncertainty and stability summary, or report why it is unavailable, with persistent/unstable/support-nodata/magnitude-sensitive region language kept conservative.
+- Files changed: `docs/balfrin_target_area_spatial_uncertainty_stability_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a standalone blocked-artifacts report for the frozen target-area Balfrin demo that states the current uncertainty/stability/hotspot summaries are unavailable.
+  - Recorded the exact blockers: the preserved probe run root is missing locally, the probe metrics helper returns `blocked_missing_run_root`, the target-area handoff is `template_only`, and the GIS/COG scope remains `blocked_missing_products`.
+  - Kept the report boundary language aligned with the existing Tschamut summaries and added evidence-bundle integration notes so the target-area bundle can cite the report without treating canonical measured evidence as target-area uncertainty evidence.
+  - Removed TB-172 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_evidence_bundle.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_gis_cog_scope.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_evidence_bundle tests.test_balfrin_target_area_gis_cog_scope`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no closure upgrade by assertion, no operational hazard-map claim, no physical probability claim, no annual-frequency semantics, and no target-area uncertainty was inferred from a missing run root.
+- Next task: `TB-173`

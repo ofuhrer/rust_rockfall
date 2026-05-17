@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-172: Summarize Target-Area Spatial Uncertainty And Stability
-
-Goal: Produce uncertainty, stability-zone, persistence, and hotspot summaries for the target-area run or report why they are unavailable.
-
-Capability gap reduced: Scientific interpretability of the target-area demonstration.
-
-Why this outranks alternatives: A Balfrin run is not scientifically convincing unless uncertainty and unstable regions are explicit.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_same_scale_sampling_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `tests/test_spatial_same_scale_uncertainty.py`
-
-Deliverables:
-
-- Target-area spatial uncertainty report or blocked missing-artifacts report.
-- Persistent, unstable, support/nodata-sensitive, and magnitude-sensitive region summaries.
-- Integration notes for the evidence bundle.
-
-Definition of done:
-
-- Target-area uncertainty is summarized with the same conservative boundary language as Tschamut.
-
-Boundaries: No closure upgrade by assertion, no operational hazard-map claim, and no physical probability claim.
-
 ### TB-173: Interpret Target-Area Closure And Scientific Meaning
 
 Goal: Generate a target-area conditional diagnostic interpretation combining execution, uncertainty, GIS, output, and physical-credibility boundaries.
