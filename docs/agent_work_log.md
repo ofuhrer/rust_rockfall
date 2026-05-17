@@ -3544,3 +3544,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no dependency upgrade, no removal of CI support for `requirements-tools.txt`, no environment installation, and no behavior change beyond dependency guidance and consistency enforcement.
 - Next task: `TB-198`
+
+### TB-198: Calibration Script Failure Diagnostics
+
+- Date: 2026-05-18
+- Commit: `0940321`
+- Objective: harden calibration scripts so expected missing or empty inputs fail with stage-scoped diagnostics instead of index errors or opaque subprocess failures.
+- Files changed: `calibration/README.md`, `scripts/run_tschamut_calibration.py`, `scripts/calibrate_scarring_impact.py`, `scripts/preprocess_scarring_real_data.py`, `tests/test_calibration_failure_diagnostics.py`
+- Implementation summary:
+  - Added explicit checks for empty calibration splits, empty parameter grids, missing split/deposition rows, missing significant impact events, and failed `cargo run` subprocesses.
+  - Added temporary-fixture unit tests covering Tschamut calibration, scarring calibration, and scarring real-data preprocessing failure paths.
+  - Updated the calibration README to keep these scripts classified as research diagnostics, not accepted calibration or physical-credibility evidence.
+  - Worker completed code and push but missed backlog/work-log cleanup; this follow-up entry regularizes the task bookkeeping.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_calibration_failure_diagnostics`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_tschamut_calibration.py scripts/calibrate_scarring_impact.py scripts/preprocess_scarring_real_data.py tests/test_calibration_failure_diagnostics.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no calibration run, no parameter selection change, no accepted calibration evidence, no model default change, and no annual/physical probability claim.
+- Next task: `TB-199`

@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-198: Calibration Script Failure Diagnostics
-
-Goal: Harden calibration scripts so empty inputs, empty parameter grids, missing impact events, and subprocess failures produce explicit diagnostics with focused tests.
-
-Capability gap reduced: Opaque research-workflow failures in calibration paths that are important for future physical credibility work.
-
-Why this outranks alternatives: Calibration remains scientifically deferred, but the existing scripts should fail clearly before any future no-tuning or holdout protocol depends on them.
-
-Inspect first:
-
-- `scripts/run_tschamut_calibration.py`
-- `scripts/calibrate_scarring_impact.py`
-- `scripts/preprocess_scarring_real_data.py`
-- `calibration/README.md`
-- `tests/test_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- Explicit precondition checks for empty candidate rows, empty parameter grids, missing split/deposition rows, missing significant impacts, and failed `cargo run` subprocesses.
-- Focused unit tests for the failure cases using tiny temporary CSV/YAML fixtures.
-- Improved error messages that name the missing or malformed input and the calibration stage that failed.
-- A short documentation update clarifying that these scripts are research diagnostics, not accepted calibration evidence.
-
-Definition of done:
-
-- Calibration scripts no longer rely on `rows[0]`-style assumptions for expected failure modes, focused tests pass, and normal fixture-backed calibration paths remain unchanged.
-
-Boundaries: No calibration run, no parameter selection change, no accepted calibration evidence, no model default change, and no annual/physical probability claim.
-
 ### TB-199: Runtime-Facing Panic Path Reduction
 
 Goal: Convert the highest-risk runtime-facing terrain and validation panic paths into structured errors or tightly test-only helpers.
