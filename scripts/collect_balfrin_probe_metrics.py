@@ -148,6 +148,32 @@ def _availability_entry(value: Any, *, source: str) -> dict[str, Any]:
     }
 
 
+def _metric_status_entry(
+    value: Any,
+    *,
+    source: str,
+    unavailable_reason: str,
+    blocked_reason: str,
+    measured_status: str = "measured",
+) -> dict[str, Any]:
+    status = measured_status
+    reason = ""
+    if value is None:
+        status = "blocked" if blocked_reason else "unavailable"
+        reason = blocked_reason if status == "blocked" else unavailable_reason
+    elif isinstance(value, dict) and not value:
+        status = "unavailable"
+        reason = unavailable_reason
+    payload = {
+        "status": status,
+        "source": source,
+        "value": value,
+    }
+    if reason:
+        payload["reason"] = reason
+    return payload
+
+
 def _first_present(*values: Any) -> Any:
     for value in values:
         if value is not None:
@@ -279,6 +305,84 @@ def _build_metrics_contract(
             restartability_probe.get("reducer_decision_counts"),
         ),
     }
+    mandatory_metric_statuses = {
+        "wall_time_seconds": _metric_status_entry(
+            performance.get("total_wall_seconds"),
+            source="performance.total_wall_seconds",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required wall-time evidence",
+        ),
+        "memory_peak_mb": _metric_status_entry(
+            _first_present(
+                performance.get("memory_peak_mb"),
+                probe_metrics.get("memory_peak_mb") if isinstance(probe_metrics, dict) else None,
+                restartability_probe.get("memory_peak_mb"),
+            ),
+            source="performance.memory_peak_mb",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required peak-memory evidence",
+        ),
+        "validation_output.file_count": _metric_status_entry(
+            validation_output["file_count"],
+            source="performance.validation_output_file_count",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required validation output file count",
+        ),
+        "validation_output.bytes": _metric_status_entry(
+            validation_output["bytes"],
+            source="performance.validation_output_bytes",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required validation output byte count",
+        ),
+        "hazard_output.file_count": _metric_status_entry(
+            hazard_output["file_count"],
+            source="performance.hazard_output_file_count",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required hazard output file count",
+        ),
+        "hazard_output.bytes": _metric_status_entry(
+            hazard_output["bytes"],
+            source="performance.hazard_output_bytes",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required hazard output byte count",
+        ),
+        "conditional_curve_row_count": _metric_status_entry(
+            _safe_int(
+                _first_present(
+                    conditional_curve_export.get("row_count"),
+                    restartability_probe.get("conditional_curve_row_count"),
+                    output_budget.get("conditional_curve_row_count"),
+                )
+            ),
+            source="conditional_execution.conditional_curve_export.row_count",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required conditional-curve row count",
+        ),
+        "restartability_metadata.trajectory_plan_id": _metric_status_entry(
+            restartability_metadata["trajectory_plan_id"],
+            source="conditional_execution.trajectory_generation.plan_id",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required trajectory plan identifier",
+        ),
+        "restartability_metadata.reducer_plan_id": _metric_status_entry(
+            restartability_metadata["reducer_plan_id"],
+            source="conditional_execution.reducer.trajectory_execution_plan_id",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required reducer plan identifier",
+        ),
+        "restartability_metadata.trajectory_decision_counts": _metric_status_entry(
+            restartability_metadata["trajectory_decision_counts"],
+            source="trajectory_chunks/*.json::orchestration_decision",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required trajectory chunk decision counts",
+        ),
+        "restartability_metadata.reducer_decision_counts": _metric_status_entry(
+            restartability_metadata["reducer_decision_counts"],
+            source="chunks/*.json::orchestration_decision",
+            unavailable_reason="not recorded in the probe manifest",
+            blocked_reason="missing required reducer chunk decision counts",
+        ),
+    }
     metrics = {
         "wall_time_seconds": _safe_float(
             _first_present(
@@ -319,6 +423,51 @@ def _build_metrics_contract(
             else {}
         ),
     }
+    ancillary_metric_statuses = {
+        "validation_output_mode": _metric_status_entry(
+            reduced_output_family_counts.get("validation_output_mode"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.validation_output_mode",
+            unavailable_reason="the canonical bundle does not retain reduced-output family counts for this field",
+            blocked_reason="",
+        ),
+        "output_write_kind_seconds": _metric_status_entry(
+            scaling_summary.get("output_write_kind_seconds", {}) if isinstance(scaling_summary, dict) else {},
+            source="output_root.scaling_summary.output_write_kind_seconds",
+            unavailable_reason="the canonical bundle does not retain output_root.scaling_summary",
+            blocked_reason="",
+        ),
+        "output_write_kind_bytes": _metric_status_entry(
+            scaling_summary.get("output_write_kind_bytes", {}) if isinstance(scaling_summary, dict) else {},
+            source="output_root.scaling_summary.output_write_kind_bytes",
+            unavailable_reason="the canonical bundle does not retain output_root.scaling_summary",
+            blocked_reason="",
+        ),
+    }
+    metric_statuses = {
+        "mandatory": mandatory_metric_statuses,
+        "ancillary": ancillary_metric_statuses,
+        "measured": sorted(
+            [
+                name
+                for name, entry in {**mandatory_metric_statuses, **ancillary_metric_statuses}.items()
+                if entry.get("status") == "measured"
+            ]
+        ),
+        "unavailable": sorted(
+            [
+                name
+                for name, entry in ancillary_metric_statuses.items()
+                if entry.get("status") == "unavailable"
+            ]
+        ),
+        "blocked": sorted(
+            [
+                name
+                for name, entry in mandatory_metric_statuses.items()
+                if entry.get("status") == "blocked"
+            ]
+        ),
+    }
     missing = _missing_metrics(metrics)
     return {
         "status": "complete" if not missing else "blocked_missing_inputs",
@@ -327,6 +476,7 @@ def _build_metrics_contract(
         "source_paths": {
             "probe_metrics": str((Path("balfrin_probe_metrics.json")).as_posix()) if probe_metrics else None,
         },
+        "metric_statuses": metric_statuses,
         **metrics,
     }
 
@@ -473,6 +623,7 @@ def collect_run_metrics(
         "metrics_contract_blocked_reason": metrics_contract["blocked_reason"],
         "metrics_contract_missing_metrics": metrics_contract["missing_metrics"],
         "metrics_contract_ancillary_unavailable_metrics": metrics_contract["ancillary_unavailable_metrics"],
+        "metric_statuses": metrics_contract["metric_statuses"],
         "ancillary_metrics": metrics_contract["ancillary_metrics"],
         "metrics_contract": metrics_contract,
         "output_bytes": _safe_int(

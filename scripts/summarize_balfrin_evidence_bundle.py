@@ -324,6 +324,37 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['probe_metrics'].get('status', 'unknown')}",
             f"  wall_time_seconds: {report['probe_metrics'].get('wall_time_seconds', 'unknown')}",
             f"  memory_peak_mb: {report['probe_metrics'].get('memory_peak_mb', 'unknown')}",
+            f"  reduced_output_family_counts: {report['probe_metrics'].get('reduced_output_family_counts', {})}",
+        ]
+    )
+    metric_statuses = report["probe_metrics"].get("metric_statuses") or {}
+    if metric_statuses:
+        lines.append("  metric_statuses:")
+        for group_name in ("mandatory", "ancillary"):
+            group_statuses = metric_statuses.get(group_name) or {}
+            if not group_statuses:
+                continue
+            lines.append(f"    {group_name}:")
+            for key in sorted(group_statuses):
+                entry = group_statuses[key]
+                line = f"      {key}: {entry.get('status', 'unknown')}"
+                reason = entry.get("reason")
+                if reason:
+                    line += f" ({reason})"
+                lines.append(line)
+        for key in ("measured", "unavailable", "blocked"):
+            values = metric_statuses.get(key)
+            if values is not None:
+                lines.append(f"    {key}: {values}")
+        reduced_counts = metric_statuses.get("reduced_output_family_counts")
+        if isinstance(reduced_counts, dict):
+            lines.append("    reduced_output_family_counts:")
+            lines.append(f"      status: {reduced_counts.get('status', 'unknown')}")
+            lines.append(f"      source: {reduced_counts.get('source', 'unknown')}")
+            if reduced_counts.get("reason"):
+                lines.append(f"      reason: {reduced_counts.get('reason')}")
+    lines.extend(
+        [
             "ancillary_metrics:",
             f"  validation_output_mode: {report['probe_metrics'].get('ancillary_metrics', {}).get('validation_output_mode', {}).get('status', 'unknown')}",
             f"  output_write_kind_seconds: {report['probe_metrics'].get('ancillary_metrics', {}).get('output_write_kind_seconds', {}).get('status', 'unknown')}",
@@ -531,6 +562,163 @@ def build_gis_cog_scope_report(
     }
 
 
+def _metric_status_from_value(
+    value: Any,
+    *,
+    source: str,
+    unavailable_reason: str,
+    blocked_reason: str,
+) -> dict[str, Any]:
+    status = "measured"
+    reason = ""
+    if value is None:
+        status = "blocked" if blocked_reason else "unavailable"
+        reason = blocked_reason if status == "blocked" else unavailable_reason
+    elif isinstance(value, dict) and not value:
+        status = "unavailable"
+        reason = unavailable_reason
+    payload = {
+        "status": status,
+        "source": source,
+        "value": value,
+    }
+    if reason:
+        payload["reason"] = reason
+    return payload
+
+
+def _derive_metric_statuses(
+    *,
+    mandatory: dict[str, Any],
+    ancillary_metrics: dict[str, Any],
+) -> dict[str, Any]:
+    wall_time = mandatory.get("wall_time_seconds", {}) if isinstance(mandatory, dict) else {}
+    memory_peak = mandatory.get("memory_peak_mb", {}) if isinstance(mandatory, dict) else {}
+    validation_output = mandatory.get("validation_output", {}) if isinstance(mandatory, dict) else {}
+    hazard_output = mandatory.get("hazard_output", {}) if isinstance(mandatory, dict) else {}
+    restartability = mandatory.get("restartability_metadata", {}) if isinstance(mandatory, dict) else {}
+    reduced_output_family_counts = (
+        mandatory.get("reduced_output_family_counts", {}) if isinstance(mandatory, dict) else {}
+    )
+
+    mandatory_statuses = {
+        "wall_time_seconds": _metric_status_from_value(
+            wall_time.get("value"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.wall_time_seconds.value",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required wall-time evidence",
+        ),
+        "memory_peak_mb": _metric_status_from_value(
+            memory_peak.get("value"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.memory_peak_mb.value",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required peak-memory evidence",
+        ),
+        "validation_output.file_count": _metric_status_from_value(
+            validation_output.get("file_count"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.validation_output.file_count",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required validation output file count",
+        ),
+        "validation_output.bytes": _metric_status_from_value(
+            validation_output.get("bytes"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.validation_output.bytes",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required validation output byte count",
+        ),
+        "hazard_output.file_count": _metric_status_from_value(
+            hazard_output.get("file_count"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.hazard_output.file_count",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required hazard output file count",
+        ),
+        "hazard_output.bytes": _metric_status_from_value(
+            hazard_output.get("bytes"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.hazard_output.bytes",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required hazard output byte count",
+        ),
+        "conditional_curve_row_count": _metric_status_from_value(
+            mandatory.get("conditional_curve_row_count"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.conditional_curve_row_count",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required conditional-curve row count",
+        ),
+        "restartability_metadata.trajectory_plan_id": _metric_status_from_value(
+            restartability.get("trajectory_plan_id"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.restartability_metadata.trajectory_plan_id",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required trajectory plan identifier",
+        ),
+        "restartability_metadata.reducer_plan_id": _metric_status_from_value(
+            restartability.get("reducer_plan_id"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.restartability_metadata.reducer_plan_id",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required reducer plan identifier",
+        ),
+        "restartability_metadata.trajectory_decision_counts": _metric_status_from_value(
+            restartability.get("trajectory_decision_counts"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.restartability_metadata.trajectory_decision_counts",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required trajectory decision counts",
+        ),
+        "restartability_metadata.reducer_decision_counts": _metric_status_from_value(
+            restartability.get("reducer_decision_counts"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.restartability_metadata.reducer_decision_counts",
+            unavailable_reason="not retained in the canonical bundle snapshot",
+            blocked_reason="missing required reducer decision counts",
+        ),
+    }
+    ancillary_statuses = {
+        "validation_output_mode": _metric_status_from_value(
+            ancillary_metrics.get("validation_output_mode", {}).get("value") if isinstance(ancillary_metrics, dict) else None,
+            source="single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.validation_output_mode",
+            unavailable_reason="the canonical bundle does not retain reduced-output family counts for this field",
+            blocked_reason="",
+        ),
+        "output_write_kind_seconds": _metric_status_from_value(
+            ancillary_metrics.get("output_write_kind_seconds", {}).get("value") if isinstance(ancillary_metrics, dict) else None,
+            source="output_root.scaling_summary.output_write_kind_seconds",
+            unavailable_reason="the canonical bundle does not retain output_root.scaling_summary",
+            blocked_reason="",
+        ),
+        "output_write_kind_bytes": _metric_status_from_value(
+            ancillary_metrics.get("output_write_kind_bytes", {}).get("value") if isinstance(ancillary_metrics, dict) else None,
+            source="output_root.scaling_summary.output_write_kind_bytes",
+            unavailable_reason="the canonical bundle does not retain output_root.scaling_summary",
+            blocked_reason="",
+        ),
+    }
+    measured = sorted(
+        [
+            name
+            for name, entry in {**mandatory_statuses, **ancillary_statuses}.items()
+            if entry.get("status") == "measured"
+        ]
+    )
+    unavailable = sorted(
+        [name for name, entry in ancillary_statuses.items() if entry.get("status") == "unavailable"]
+    )
+    blocked = sorted([name for name, entry in mandatory_statuses.items() if entry.get("status") == "blocked"])
+    return {
+        "mandatory": mandatory_statuses,
+        "ancillary": ancillary_statuses,
+        "measured": measured,
+        "unavailable": unavailable,
+        "blocked": blocked,
+        "reduced_output_family_counts": {
+            "status": "measured" if reduced_output_family_counts else "unavailable",
+            "source": "single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts",
+            "value": reduced_output_family_counts,
+            "reason": (
+                ""
+                if reduced_output_family_counts
+                else "the canonical bundle does not retain the split-output family counts for this summary"
+            ),
+        },
+    }
+
+
 def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
     metrics = single_job_summary.get("metrics_contract", {})
     mandatory = metrics.get("mandatory_metrics", {}) if isinstance(metrics, dict) else {}
@@ -566,6 +754,9 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
         if isinstance(metrics, dict) and isinstance(metrics.get("ancillary_unavailable_metrics"), list)
         else [name for name, metric in ancillary_metrics.items() if metric.get("status") == "unavailable"]
     )
+    metric_statuses = metrics.get("metric_statuses")
+    if not isinstance(metric_statuses, dict):
+        metric_statuses = _derive_metric_statuses(mandatory=mandatory, ancillary_metrics=ancillary_metrics)
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
         "wall_time_seconds": wall_time.get("value"),
@@ -578,10 +769,12 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
             "file_count": hazard_output.get("file_count"),
             "bytes": hazard_output.get("bytes"),
         },
+        "reduced_output_family_counts": reduced_output_family_counts,
         "conditional_curve_row_count": mandatory.get("conditional_curve_row_count"),
         "restartability_metadata": restartability,
         "ancillary_metrics": ancillary_metrics,
         "ancillary_unavailable_metrics": ancillary_unavailable_metrics,
+        "metric_statuses": metric_statuses,
         "output_write_kind_seconds": ancillary_metrics.get("output_write_kind_seconds", {}).get("value", {}),
         "output_write_kind_bytes": ancillary_metrics.get("output_write_kind_bytes", {}).get("value", {}),
     }

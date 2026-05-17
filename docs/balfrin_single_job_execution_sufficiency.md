@@ -100,18 +100,30 @@ boundaries explicit:
 
 - `status`: `complete`
 - `missing_mandatory_metrics`: `[]`
-- Mandatory before claiming Balfrin pilot feasibility:
-  - wall time
-  - memory peak
-  - validation output file count
-  - validation output bytes
-  - hazard output file count
-  - hazard output bytes
-  - reduced-output family counts
-  - conditional curve row count
-  - restartability metadata
+- `metric_statuses.mandatory`:
+  - measured fields:
+    - wall time
+    - memory peak
+    - validation output file count
+    - validation output bytes
+    - hazard output file count
+    - hazard output bytes
+    - conditional curve row count
+    - restartability metadata
+  - blocked fields: none in the current measured bundle
+- `metric_statuses.ancillary`:
+  - measured split-output fields when the live run-root scaling summary is still available:
+    - output write kind seconds
+    - output write kind bytes
+  - unavailable by design in the canonical bundle snapshot:
+    - validation output mode
+    - output write kind seconds
+    - output write kind bytes
+- `metric_statuses.measured`: measured mandatory fields plus any ancillary fields recovered from the live run-root summary
+- `metric_statuses.unavailable`: ancillary fields that the canonical bundle cannot recover from the preserved single-job summary alone
+- `metric_statuses.blocked`: mandatory fields missing from the measured evidence chain
 - Restartability metadata must include stable trajectory and reducer plan IDs, plus the observed decision counts for completed chunks.
-- If any of those fields are absent, the collector should report the run as blocked rather than treating it as feasibility evidence.
+- If any mandatory field is absent, the collector reports the run as blocked rather than treating it as feasibility evidence.
 
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
@@ -139,7 +151,11 @@ interpretation checks into one read-only review artifact, and it now carries a
 machine-readable failure taxonomy report for operational recovery handoff.
 Its bundle summary also records measured, fixture-backed, and blocked section
 counts so the canonical review path can distinguish live Balfrin evidence from
-fixture-only or blocked sections.
+fixture-only or blocked sections. The probe-metrics section now makes the
+mandatory, ancillary, measured, unavailable, and blocked fields explicit so a
+reader can see which fields are measured in the live run-root collector and
+which fields are unavailable in the canonical summary because the preserved
+bundle does not retain the run-root `output_root.scaling_summary` tree.
 When evidence is missing, it reports `blocked_missing_inputs` instead of
 fabricating a stronger claim.
 

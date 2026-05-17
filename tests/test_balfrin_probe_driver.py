@@ -433,6 +433,14 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertEqual(summary["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
         self.assertEqual(summary["ancillary_metrics"]["output_write_kind_seconds"]["status"], "available")
         self.assertEqual(summary["ancillary_metrics"]["output_write_kind_bytes"]["status"], "available")
+        self.assertEqual(summary["metric_statuses"]["mandatory"]["memory_peak_mb"]["status"], "measured")
+        self.assertEqual(summary["metric_statuses"]["mandatory"]["validation_output.file_count"]["status"], "measured")
+        self.assertEqual(summary["metric_statuses"]["ancillary"]["validation_output_mode"]["status"], "unavailable")
+        self.assertEqual(summary["metric_statuses"]["ancillary"]["output_write_kind_seconds"]["status"], "measured")
+        self.assertEqual(summary["metric_statuses"]["ancillary"]["output_write_kind_bytes"]["status"], "measured")
+        self.assertEqual(summary["metric_statuses"]["unavailable"], ["validation_output_mode"])
+        self.assertEqual(summary["metric_statuses"]["blocked"], [])
+        self.assertIn("reduced-output family counts", summary["metric_statuses"]["ancillary"]["validation_output_mode"]["reason"])
         self.assertEqual(summary["output_write_kind_seconds"]["geotiff"], 0.4)
         self.assertEqual(summary["output_write_kind_bytes"]["manifest_json"], 3400)
         self.assertEqual(
@@ -479,6 +487,9 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
         )
         self.assertEqual(summary["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
+        self.assertEqual(summary["metric_statuses"]["blocked"][0], "conditional_curve_row_count")
+        self.assertIn("validation_output.file_count", summary["metric_statuses"]["blocked"])
+        self.assertEqual(summary["metric_statuses"]["unavailable"], ["output_write_kind_bytes", "output_write_kind_seconds", "validation_output_mode"])
         self.assertEqual(summary["reduced_output_family_counts"], {})
         self.assertEqual(summary["trajectory_plan_id"], None)
         self.assertEqual(summary["reducer_plan_id"], None)
@@ -546,6 +557,8 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertEqual(contract["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
         self.assertEqual(contract["ancillary_metrics"]["output_write_kind_seconds"]["status"], "unavailable")
         self.assertEqual(contract["ancillary_metrics"]["output_write_kind_bytes"]["status"], "unavailable")
+        self.assertEqual(contract["metric_statuses"]["blocked"], [])
+        self.assertEqual(contract["metric_statuses"]["unavailable"], ["output_write_kind_bytes", "output_write_kind_seconds", "validation_output_mode"])
 
     def test_local_command_plan_mode_prints_plan(self) -> None:
         fake_plan = {"run_status": "target_run_completed", "run_id": "local-plan", "commands": []}

@@ -155,10 +155,13 @@ objective are:
    same-scale evidence still says validation output size is the dominant
    pressure rather than hazard-reducer parallelism. The measured Balfrin run
    produced a real run root and feeds the evidence bundle, scientific delta,
-   ensemble-frontier, and Swiss-wide envelope helpers. Some ancillary collected
-   fields remain incomplete or conservative, including memory peak and split
-   validation/hazard file counts, so the measurement improves planning realism
-   without authorizing scale-up. The Swiss-wide envelope helper records the
+   ensemble-frontier, and Swiss-wide envelope helpers. The Balfrin metrics
+   report now separates mandatory, ancillary, measured, unavailable, and
+   blocked fields, so memory peak and split-output provenance are explicit
+   rather than implied: the live run-root collector can recover split-output
+   write kinds when the output summary is still present, while the canonical
+   bundle marks those fields unavailable when the preserved summary does not
+   retain the run-root scaling tree. The Swiss-wide envelope helper records the
    measured Balfrin demo run root
    `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`,
    and now surfaces explicit `no_go`, `defer`, and `allowed_next_probe`

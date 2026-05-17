@@ -2395,3 +2395,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no new Slurm execution, no generated artifact commits, no operational claim, and no physical-probability claim.
 - Next task: `TB-142`
+
+### TB-142: Close Balfrin Metrics Completeness Gaps
+- Date: 2026-05-17
+- Commit: local
+- Objective: separate the Balfrin metrics report into explicit mandatory, ancillary, measured, unavailable, and blocked fields so the canonical evidence bundle no longer blurs live measurements with unrecoverable scheduler/artifact data.
+- Files changed: `scripts/collect_balfrin_probe_metrics.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit metric-status sections to the Balfrin probe collector so mandatory fields, ancillary split-output fields, measured values, unavailable values, and blocked values are all reported separately with recovery notes.
+  - Surfaced the new metric-status sections in the canonical Balfrin evidence bundle text and JSON output, including the split-output family counts that explain the ancillary status.
+  - Updated the Balfrin sufficiency note and maturity snapshot to describe which fields the live run-root collector can recover and which fields the canonical bundle cannot retain.
+  - Extended the Balfrin probe-driver and evidence-bundle regression tests to cover measured mandatory fields, measured split-output artifacts, unavailable ancillary fields, and blocked missing-input cases.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_evidence_bundle -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new ensemble, no scale-up authorization, no operational claim, no substitution of fixture evidence for live measurements, and no claim that the canonical bundle retains scheduler artifacts it does not store.
+- Next task: `TB-143`

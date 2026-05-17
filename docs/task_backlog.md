@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-142: Close Balfrin Metrics Completeness Gaps
-
-Goal: Convert remaining Balfrin ancillary metrics gaps into measured fields or
-explicitly non-required blocked classifications.
-
-Capability gap reduced: incomplete runtime/output evidence for management and
-future scaling decisions.
-
-Why this outranks alternatives: measured execution exists, but missing or
-ambiguous peak-memory and split output metrics weaken the scaling argument.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Updated metrics report with mandatory, ancillary, measured, unavailable, and
-  blocked fields clearly separated.
-- Live Balfrin evidence where available, or a precise explanation of which
-  scheduler/artifact fields cannot be recovered.
-- Focused tests covering measured and unavailable ancillary metrics.
-
-Definition of done:
-
-- The canonical Balfrin evidence bundle no longer leaves the reader guessing
-  whether a metric is missing accidentally, unavailable by design, or measured.
-
-Boundaries: No new ensemble, no scale-up authorization, no operational claim,
-and no substitution of fixture evidence for live measurements.
-
 ### TB-143: Unblock Bounded Next-Ensemble Metadata Contract
 
 Goal: Fix the optional probabilistic metadata blocker that currently prevents a
