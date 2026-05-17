@@ -83,6 +83,15 @@ class BalfrinTargetAreaDemoHandoffTests(unittest.TestCase):
                 "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
             )
         )
+        self.assertIn(
+            "generate_balfrin_target_area_scenario_tables.py",
+            case["scenario_generation_handoff"]["scenario_table_generation"]["command"],
+        )
+        self.assertTrue(
+            case["scenario_generation_handoff"]["scenario_table_generation"]["scenario_manifest_json"].endswith(
+                "tschamut_public_balfrin_target_area_demo_scenario_manifest.json"
+            )
+        )
         self.assertGreater(case["scenario_generation_handoff"]["scenario_table_row_count"], 0)
         self.assertTrue(case["gis_scope_summary"]["conditional_gate_case_path"].endswith("tschamut_public_target_gate_case.yaml"))
 

@@ -151,6 +151,7 @@ def build_report(contract_path: Path = DEFAULT_CONTRACT, output_root: Path = DEF
         reproduction_record=reproduction_record,
         execution_contract=execution_contract,
         target_gate_case=target_gate_case,
+        output_root=output_root,
     )
     gis_scope_summary = build_gis_scope_summary(
         target_area=target_area,
@@ -434,7 +435,31 @@ def build_scenario_generation_handoff(
     reproduction_record: dict[str, Any],
     execution_contract: dict[str, Any],
     target_gate_case: dict[str, Any],
+    output_root: Path,
 ) -> dict[str, Any]:
+    scenario_table_generation_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            display_path(ROOT / "scripts" / "generate_balfrin_target_area_scenario_tables.py"),
+            "--contract",
+            display_path(contract_path),
+            "--source-scenario-policy",
+            display_path(source_scenario_policy_path),
+            "--source-zone-metadata",
+            display_path(source_zone_metadata_path),
+            "--release-points",
+            display_path(resolve_repo_path(input_freeze.get("release_points_csv"))),
+            "--reference-scenario-table",
+            display_path(scenario_table_path),
+            "--output-root",
+            display_path(output_root),
+            "--format",
+            "json",
+        ]
+    )
     return {
         "schema_version": SCENARIO_GENERATION_HANDOFF_SCHEMA_VERSION,
         "status": BUNDLE_STATUS,
@@ -458,6 +483,19 @@ def build_scenario_generation_handoff(
         "scenario_probability_semantics": text_value(
             input_freeze.get("scenario_probability_semantics"), "input_freeze.scenario_probability_semantics"
         ),
+        "scenario_table_generation": {
+            "command_id": "target_area_scenario_table_generation",
+            "command": scenario_table_generation_command,
+            "output_root": display_path(output_root),
+            "scenario_table_csv": display_path(output_root / "tschamut_public_balfrin_target_area_demo_scenario_table.csv"),
+            "scenario_manifest_json": display_path(
+                output_root / "tschamut_public_balfrin_target_area_demo_scenario_manifest.json"
+            ),
+            "conditional_only_weighting": True,
+            "source_zone_id": text_value(source_zone_metadata.get("source_zone_id"), "source_zone_metadata.source_zone_id"),
+            "release_sampling_seed": source_zone_metadata.get("release_sampling_policy", {}).get("seed"),
+            "scenario_id": (scenario_rows[0].get("scenario_id") if scenario_rows else None),
+        },
         "target_gate_case_id": text_value(target_gate_case.get("case_id"), "target_gate_case.case_id"),
         "source_zone_id": text_value(source_zone_metadata.get("source_zone_id"), "source_zone_metadata.source_zone_id"),
         "source_zone_release_point_count": len(source_zone_metadata.get("release_points") or []),

@@ -2852,3 +2852,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no validated release-zone claim, no tuning, no annual-frequency or physical-probability semantics, no scale-up authorization, and no operational hazard-map claim.
 - Next task: `TB-165`
+
+### TB-165: Generate Target-Area Deterministic Scenario Tables
+- Date: 2026-05-17
+- Commit: local
+- Objective: generate deterministic target-area scenario tables and a provenance manifest from the frozen Tschamut Balfrin target-area contract, committed source-zone metadata, release-point metadata, and conditional source-scenario policy without introducing annual-frequency semantics.
+- Files changed: `scripts/generate_balfrin_target_area_scenario_tables.py`, `scripts/generate_balfrin_target_area_demo_handoff.py`, `tests/test_balfrin_target_area_scenario_tables.py`, `tests/test_balfrin_target_area_demo_handoff.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a target-area scenario-table wrapper that replays the frozen Tschamut contract into the committed deterministic scenario table, writes a matching manifest, and keeps the conditional-only boundary explicit.
+  - Exposed the scenario-table materialization command and output paths through the frozen target-area handoff so the Balfrin bundle now points at the same deterministic provenance trail.
+  - Added focused regression coverage for the default frozen inputs, a synthetic contract-backed target-area replay, the blocked-missing-input path, and the handoff integration hook.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_scenario_tables tests.test_balfrin_target_area_demo_handoff`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation`
+- Result/status: implemented_fixture_backed
+- Boundaries: no block-population fitting, no annual-frequency semantics, no physics changes, and no operational claim.
+- Next task: `TB-166`

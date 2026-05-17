@@ -359,6 +359,13 @@ semantics without introducing annual frequency or block-population fitting.
 The conditional-only weights remain sampling weights, not physical probability
 or annual-frequency claims.
 
+The frozen target-area demo now also has a thin wrapper,
+`scripts/generate_balfrin_target_area_scenario_tables.py`, that replays the
+committed Tschamut source-zone metadata, release points, and conditional
+source-scenario policy into the deterministic target-area scenario table and
+manifest used by the Balfrin handoff. It keeps the same conditional-only
+probability semantics and does not add a new physical interpretation layer.
+
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps
 Chant Sura / Flüelapass public-context acquisition separate from physical

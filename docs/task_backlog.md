@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-165: Generate Target-Area Deterministic Scenario Tables
-
-Goal: Generate or block deterministic target-area scenario tables from candidate source-zone metadata and policy inputs.
-
-Capability gap reduced: Handcrafted scenario dependence for the target-area demonstration.
-
-Why this outranks alternatives: A full demonstration needs scenario rows and provenance generated from the same target contract, not manually inferred.
-
-Inspect first:
-
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/generate_tschamut_same_scale_cases.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `tests/test_release_plan_dry_run.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Deterministic scenario table or blocked missing-input report.
-- Scenario manifest with source-zone, seed, scenario id, and conditional-weight provenance.
-- Regression coverage for target-area or synthetic target-area scenario generation.
-
-Definition of done:
-
-- Scenario generation is reproducible and preserves conditional-only probability semantics.
-
-Boundaries: No block-population fitting, no annual-frequency semantics, no physics changes, and no operational claim.
-
 ### TB-166: Build Target-Area Balfrin Submission Package
 
 Goal: Produce an unlaunched Balfrin submission package for the frozen target-area demonstration.
