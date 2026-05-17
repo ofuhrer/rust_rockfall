@@ -2086,3 +2086,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no ensembles were run, no public context was downloaded, and no release-zone validity or operational claim was inferred from the dry-run scaffold.
 - Next task: `TB-126`
+
+### TB-126: Define Second-Site Real-Context Trigger From Balfrin Evidence
+
+- Date: 2026-05-17
+- Commit: `8fc3afb`
+- Objective: convert the Chant Sura / Fluelapass defer decision into a measurable Balfrin-driven trigger for second-site public-context staging.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a Balfrin trigger matrix to the Chant Sura real-context readiness gate so SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D all share the same measured proceed/defer/blocked logic.
+  - Wired the gate to an optional Balfrin evidence snapshot and surfaced the trigger summary in both JSON and text output, keeping the current defer boundary explicit while allowing a measured post-run bundle to flip the staging decision.
+  - Updated the Chant Sura decision pack and the broader public-real-site docs to name the measured trigger conditions, and added focused regressions for proceed, defer, and blocked trigger states.
+  - Removed TB-126 from the active backlog after the trigger matrix was encoded.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_chant_sura_real_context_readiness_gate.py tests/test_chant_sura_real_context_readiness_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --balfrin-evidence-json validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner tests.test_aoi_to_prepared_pilot_dry_run -v`
+  - `git diff --check`
+- Result/status: completed
+- Boundaries: no real public context was downloaded, no second-site ensemble was run, and the existing defer decision remains in force until measured Balfrin evidence satisfies the proceed trigger.
+- Next task: `TB-127`
