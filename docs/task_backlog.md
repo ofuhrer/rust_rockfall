@@ -22,44 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-187: Multi-Zone Reducer And Merge Scaling Probe
-
-Goal: Measure reducer pressure, chunk scaling, deterministic merge ordering,
-manifest scaling, and output pressure for many simultaneous release zones using
-fixture-backed or scratch multi-zone inputs.
-
-Capability gap reduced: Reducer/runtime evidence remains mostly single-zone
-and may not represent aggregation costs for multi-zone workflows.
-
-Why this outranks alternatives: Before live multi-zone Balfrin execution, the
-repo needs a local or fixture-backed reducer stress path that exposes manifest
-and merge-order bottlenecks.
-
-Inspect first:
-
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_balfrin_output_tier_audit.py`
-- `src/validation/runner.rs`
-- `docs/tschamut_public_bounded_validation_output_profile.md`
-
-Deliverables:
-
-- Deterministic multi-zone reducer stress fixture or scratch input generator.
-- Measurements for chunk count, merge order, reducer wall time, manifest size,
-  file count, and bytes by output family.
-- A scaling report with bottleneck labels and recommended reducer constraints
-  for TB-183.
-
-Definition of done:
-
-- The probe is reproducible without relying on ignored live artifacts, focused
-  tests cover deterministic merge ordering and summary fields, and the report
-  states whether reducer pressure blocks a multi-zone Balfrin dry run.
-
-Boundaries: No distributed reducer, no MPI/GPU, no live Balfrin job, no physics
-change, and no generated heavy outputs committed.
-
 ### TB-188: Real Chant Sura Workflow Dry Run
 
 Goal: Run a non-Tschamut workflow dry run for Chant Sura / Flüelapass covering

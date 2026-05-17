@@ -3292,3 +3292,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no operational GIS product claim, no manual QGIS acceptance claim, no generated raster commit, and scratch COG readiness does not upgrade the standard root.
 - Next task: `TB-187`
+
+### TB-187: Multi-Zone Reducer And Merge Scaling Probe
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: build a deterministic scratch-root multi-zone reducer probe that measures chunk scaling, merge-order determinism, manifest size, file pressure, reducer wall time, and output-family bytes without relying on ignored live artifacts or a live Balfrin job.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a scratch-root probe helper that materializes a 12-zone multi-zone input set, writes manifest-shaped reducer and trajectory outputs, and summarizes chunk count, merge order, reducer wall time, manifest size, file count, and bytes by output family.
+  - Classified the probe as `multi_zone_dry_run_blocked` because manifest pressure, output-family pressure, and reducer-runtime pressure are all visible in the scratch-root measurements, and surfaced the corresponding reducer-constraint recommendations for TB-183.
+  - Added focused regressions for deterministic repeated materialization and requested release-zone-count propagation, then wrote a small markdown report that preserves the measured blocker/constraint set and removed TB-187 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_bounded_reducer_runtime_scaling -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_reducer_pressure.py tests/test_multi_zone_reducer_pressure.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/tb187_multi_zone_probe --format json > /tmp/tb187_multi_zone_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin job, no distributed reducer, no MPI/GPU, no physics change, no operational hazard claim, and no generated heavy outputs committed.
+- Next task: `TB-188`
