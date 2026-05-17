@@ -129,6 +129,21 @@ boundaries explicit:
 - Restartability metadata must include stable trajectory and reducer plan IDs, plus the observed decision counts for completed chunks.
 - If any mandatory field is absent, the collector reports the run as blocked rather than treating it as feasibility evidence.
 
+For a deterministic target-area metrics completeness report from the measured
+run root, use the report helper:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py \
+  --evidence-json /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517/balfrin_probe_metrics.json \
+  --artifact-dir validation/private/tschamut_public_pilot/balfrin_probe_metrics_v1
+```
+
+The helper materializes `balfrin_probe_metrics_report_v1.json` and
+`balfrin_probe_metrics_report_v1.txt` in that directory. Its classification
+keeps mandatory metrics, ancillary metrics, unavailable fields, and
+next-run-required metrics explicit, and it reports `blocked_missing_run_root`
+when the measured run root is absent.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to

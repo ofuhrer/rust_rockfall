@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-169: Collect Target-Area Balfrin Metrics Completeness
-
-Goal: Collect and classify target-area Balfrin runtime, output, memory, split-output, and remediation metrics from the measured run root.
-
-Capability gap reduced: Demonstration runtime/output evidence completeness.
-
-Why this outranks alternatives: A run without metrics cannot support management or scaling conclusions.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `tests/test_balfrin_probe_driver.py`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Target-area metrics JSON/text report.
-- Mandatory, ancillary, unavailable, and next-run-required metric classification.
-- Updated tests or fixtures for the metrics contract.
-
-Definition of done:
-
-- The measured run root has a deterministic metrics completeness report or a blocked missing-run-root report.
-
-Boundaries: No fabricated measured metrics, no new run unless covered by TB-168, no operational claim, and no scale-up authorization.
-
 ### TB-170: Build Target-Area Evidence Bundle
 
 Goal: Compose the target-area Balfrin evidence into one deterministic JSON/text bundle with section provenance.

@@ -2157,7 +2157,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 - Date: 2026-05-17
-- Commit: `7546bf9`
+- Commit: `0221112`
 - Objective: map the measured Balfrin demo outputs to the existing physical-credibility, validation, and calibration evidence requirements without conflating the demo with calibration, validation, annual-frequency, or operational evidence.
 - Files changed: `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
