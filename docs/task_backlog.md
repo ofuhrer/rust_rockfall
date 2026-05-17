@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-132: Prototype AOI-To-Swisstopo Product Tile Discovery
-
-Goal: Given a Swiss LV95 AOI, deterministically report required swisstopo
-products, tile candidates, staging roots, and blocked download prerequisites.
-
-Capability gap reduced: Swiss-wide public-geodata automation before any
-simulation runs.
-
-Why this outranks alternatives: the current workflows still depend on manually
-known products and roots; AOI-to-product discovery is the first reusable
-Swiss-wide automation step.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-
-Deliverables:
-
-- Deterministic AOI-to-product/tile discovery helper or extension.
-- JSON/text dry-run report with product names, candidate tiles or coverage
-  descriptors, expected staging roots, missing catalog inputs, and no-download
-  boundaries.
-
-Definition of done:
-
-- A fixture-backed AOI emits stable product/tile discovery output and a missing
-  catalog/input case fails closed without downloading data.
-
-Boundaries: No public-data download, no ensemble execution, no physical
-probability or operational claim.
-
 ### TB-133: Emit Terrain Release-Zone Candidate Polygons And Masks
 
 Goal: Convert deterministic terrain candidate metrics into reproducible
