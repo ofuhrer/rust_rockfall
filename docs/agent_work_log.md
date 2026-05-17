@@ -2263,3 +2263,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no physics changes, no annual frequency, no fitted block-size population model, and no operational interpretation.
 - Next task: `TB-135`
+
+### TB-135: Execute Bounded Next Ensemble Probe
+- Date: 2026-05-17
+- Commit: local
+- Objective: produce a fail-closed record for the smallest bounded next same-scale probe that could test uncertainty/runtime tradeoffs without scale-up or operational claims.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the bounded-next feasibility helper against the committed same-scale evidence and confirmed the proposed probe remains the frozen rebuildable-reduced target-gate command, with a 17-file / 3,953,602-byte output footprint.
+  - Recorded the helper's conservative blocker: optional probabilistic metadata is absent from the current reduced-output fixture, so the probe stays `deferred_pending_optional_probabilistic_metadata` rather than being authorized as a new execution.
+  - Compared that blocked probe posture against the existing same-scale envelope in `docs/tschamut_public_same_scale_uncertainty_envelope.md`, where the measured 12-trajectory probes remain materially larger at 247 files and roughly 68 MB, while the same-scale frontier code only supports another bounded probe if the frontier stays informative and the boundedness proof remains true.
+  - Noted the Balfrin frontier policy path: it defers a small bounded ensemble only when the same-scale frontier is informative; otherwise it falls back to `no_go_additional_ensemble`, so the conservative next step remains to wait for the missing metadata rather than scale up.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_ensemble_frontier.py --format json` (did not complete within the bounded wait window)
+- Result/status: implemented_blocked_report
+- Boundaries: no large production ensemble, no tuning, no scale-up authorization, and no operational claim was introduced; the task records a blocked next-step plan rather than asserting closure change.
+- Next task: `TB-136`

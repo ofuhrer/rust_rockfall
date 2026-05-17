@@ -24,39 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-135: Execute Bounded Next Ensemble Probe
-
-Goal: Run or produce a fail-closed plan for the smallest bounded next ensemble
-probe that can materially test uncertainty/runtime tradeoffs.
-
-Capability gap reduced: uncertainty reduction versus runtime/output ambiguity.
-
-Why this outranks alternatives: frontier summaries now exist, but the next
-scientific question is whether a small measured probe changes the stability
-picture enough to justify further execution.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- Measured bounded probe evidence or a precise blocked report.
-- Runtime/output/stability comparison against existing same-scale and Balfrin
-  evidence, with a conservative next-step recommendation.
-
-Definition of done:
-
-- The repository records whether the smallest useful next probe was measured or
-  why it remains blocked, without changing closure status by assertion.
-
-Boundaries: No large production ensemble, no tuning, no scale-up
-authorization, and no operational claim.
-
 ### TB-136: Generate Persistent Hazard Confidence Products
 
 Goal: Convert same-scale stability and persistence evidence into deterministic
