@@ -174,8 +174,10 @@ not a Swiss-wide production hazard service. New contributors should assume:
   interruption/resume proof, a canonical evidence bundle, and a replay smoke
   helper.
 - AOI-to-workflow automation exists as deterministic dry-run composition:
-  product discovery, terrain release-zone candidates, pragmatic scenario
-  planning, ignored output roots, and command-plan references.
+  product discovery, public-geodata cache verification, AOI terrain
+  preprocessing, terrain release-zone candidate stability checks, generic
+  candidate-source-zone scenario generation, ignored output roots, command-plan
+  references, and blocked case-skeleton handoff bundles.
 - Chant Sura / Fluelapass remains a second-site readiness/acquisition track;
   synthetic fixtures are not public-context or validation evidence.
 - Observed runout/deposition benchmark intake is specified as a non-evidence

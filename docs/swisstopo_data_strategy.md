@@ -222,16 +222,28 @@ conditional diagnostic workflow.
    and license/terms reference.
 6. Crop the tiles to the pilot domain with a small buffer and convert to the
    internal DEM representation; preserve LV95 coordinates and LN02 heights.
-7. Compute slope/aspect/hillshade for QA and define release zones from a slope
-   threshold plus a documented geology/material mask.
-8. Run deterministic ensembles with explicit scenario ids, global seed, release
-   cell ids, and trajectory ids.
-9. Build hazard layers: reach probability, deposition density, maximum kinetic
+7. Run the AOI terrain preprocessing helper against staged terrain tiles to
+   record the crop extent, CRS, resolution, nodata policy, source tile ids, and
+   deterministic output roots.
+8. Compute slope/aspect/hillshade for QA and generate deterministic
+   release-zone candidates. Use the bounded sensitivity report to distinguish
+   stable heuristic agreement from heuristic-sensitive regions; do not treat
+   either class as validated release-zone evidence.
+9. Generate deterministic release rows and conditional block-scenario rows
+   from candidate source-zone metadata plus a policy template. Keep sampling
+   weights conditional-only and leave annual frequency fields empty.
+10. Emit an AOI case-skeleton/command handoff bundle under ignored roots and
+    inspect which commands are runnable versus template-only before any
+    ensemble is authorized.
+11. Run deterministic ensembles with explicit scenario ids, global seed,
+    release cell ids, and trajectory ids only after the relevant inputs are
+    staged and the execution boundary is explicitly approved.
+12. Build hazard layers: reach probability, deposition density, maximum kinetic
    energy, maximum jump height, and significant impact density where impact
    events are available.
-10. Export development products as CSV/ASCII for inspection; for real pilot
+13. Export development products as CSV/ASCII for inspection; for real pilot
    exchange, move toward GeoTIFF/COG rasters and GeoPackage/GeoJSON vectors.
-11. Visually compare terrain, release zones, and hazard layers against
+14. Visually compare terrain, release zones, and hazard layers against
     SWISSIMAGE and hillshade. Treat the result as a research diagnostic unless
     separately reviewed and validated.
 

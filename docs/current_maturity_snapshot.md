@@ -29,9 +29,10 @@ This is the first real Balfrin single-release-zone demonstration evidence in
 the repository. It is still a bounded, non-operational conditional diagnostic
 demonstration. It does not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
-The largest near-term gap has moved from "can the Balfrin demo execute?" to
-"what follow-up evidence materially reduces the remaining scientific,
-physical-credibility, portability, and scaling uncertainty?"
+The largest near-term gap has moved from "can the Balfrin demo execute?" and
+"can an AOI dry run be composed?" to "which measured follow-up most reduces
+the remaining scientific, physical-credibility, portability, and scaling
+uncertainty?"
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -51,9 +52,11 @@ bounded runtime/output evidence. Larger selected-domain runs remain blocked
 until the dominant uncertainty and physical-credibility gaps below are reduced
 with measured evidence. Second-site pilots remain non-executed, but Chant Sura
 / Fluelapass now has a concrete candidate manifest, reusable public-geodata
-contract reporting, deterministic acquisition planning, a tiny synthetic
-core-input staging helper, a product-by-product readiness pack,
-AOI-to-prepared-pilot dry-run composition, and explicit blocked/deferred
+contract reporting, deterministic acquisition planning, a public-geodata cache
+verification contract, fixture-backed AOI terrain preprocessing, deterministic
+release-zone candidate sensitivity reporting, generic candidate-source-zone
+scenario generation, a site-level AOI-to-prepared-pilot dry-run composition,
+an optional ignored-root case-skeleton bundle, and explicit blocked/deferred
 boundaries for missing public-context products.
 
 Non-goals for current backlog work: operational warning systems, regulatory
@@ -131,27 +134,31 @@ objective are:
    are now split from Tschamut-specific heuristics, and dry-run helpers define
    deterministic release-zone candidate generation and pragmatic
    block-scenario generation from public-input contracts. The terrain candidate
-   helper now also emits deterministic GIS-readable mask and polygon bundles
-   with stable candidate IDs and frozen-footprint comparison metadata, and the
-   scenario-table helper can reproduce the committed Tschamut summary table from
-   policy plus release metadata. TB-150 adds a bounded sensitivity report that
-   compares small threshold and preprocessing perturbations, separates stable
-   from heuristic-sensitive candidate regions, and still does not validate any
-   release-zone output. These helpers do not generate production release zones,
-   tune thresholds, or claim field evidence. The remaining automation gap is
-   moving from dry-run contracts to a measured,
-   public-context-backed second-site run only after real swisstopo context is
-   staged.
+   helper now emits deterministic GIS-readable mask and polygon bundles with
+   stable candidate IDs, frozen-footprint comparison metadata, and a bounded
+   sensitivity report that compares small threshold and preprocessing
+   perturbations. That report separates stable from heuristic-sensitive
+   candidate regions, but it does not validate any release-zone output. The
+   scenario-table helper can reproduce the committed Tschamut summary table and
+   now also accepts generic candidate source-zone metadata plus a policy
+   template, emitting provenance-aware manifests with stable ids and explicit
+   conditional-only weighting semantics. These helpers do not generate
+   production release zones, tune thresholds, fit block populations, or claim
+   field evidence. The remaining automation gap is moving from fixture-backed
+   dry-run contracts to a measured, public-context-backed second-site run only
+   after real swisstopo context is staged.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
-   contract, deterministic acquisition planning, a tiny synthetic core-input
-   staging path, a real-context readiness gate, a product readiness pack, a
-   release-zone heuristic dry run, a release-plan dry run, an
-   AOI-to-prepared-pilot dry-run orchestrator, and a blocked second-site case
-   skeleton. The candidate now separates staged core fixtures, missing AOI/tile
-   inputs, and deferred public-context products. No second-site ensemble or
-   hazard build is authorized, and the synthetic inputs must not be represented
-   as real swisstopo evidence.
+   contract, deterministic acquisition planning, a public-geodata cache
+   verifier, fixture-backed AOI terrain preprocessing, a tiny synthetic
+   core-input staging path, a real-context readiness gate, a product readiness
+   pack, a release-zone heuristic dry run, a release-plan dry run, an
+   AOI-to-prepared-pilot dry-run orchestrator, and an optional ignored-root
+   case-skeleton/command bundle that remains blocked from execution. The
+   candidate now separates verified cache records, staged core fixtures,
+   missing AOI/tile inputs, and deferred public-context products. No second-site
+   ensemble or hazard build is authorized, and the synthetic inputs must not be
+   represented as real swisstopo evidence.
 7. Scaling direction is now anchored by both same-scale Tschamut evidence and a
    measured Balfrin single-release-zone run. The single-job Balfrin path is the
    current execution boundary; distributed execution stays deferred, and prior
@@ -202,18 +209,19 @@ objective are:
    must provide, but they do not populate the evidence or calibrate the model.
 10. The fully automated "user supplies an AOI and receives an
     intensity-frequency hazard map" workflow is still a future product shape,
-    not the current user workflow. The missing pieces are AOI-to-swisstopo tile
-    discovery and download/cache management; generic terrain and context
-    preprocessing; heuristic release-zone identification; pragmatic release
-    and block-scenario plan generation; automatic ensemble-size/convergence
-    control; a site-level orchestrator that chains those steps; and, most
-    importantly, physical frequency semantics from source occurrence rates,
-    block-population frequencies, uncertainty propagation, and
-    validation/calibration evidence. Native rebuildable reduced output,
-    first-class COG export, the conditional gridpoint curve contract,
-    clean-checkout test hardening, AOI acquisition planning, release-zone
-    dry-run planning, release-plan dry-run planning, AOI-to-prepared-pilot
-    dry-run composition, blocked second-site case skeletons, the Balfrin pilot
+    not the current user workflow. The missing pieces are public-data download
+    and cache population beyond deterministic planning; real staged
+    public-context products; production terrain/context preprocessing;
+    field-supported release-zone identification; block-population/frequency
+    semantics; automatic ensemble-size/convergence control; a measured
+    second-site execution; and, most importantly, physical frequency semantics
+    from source occurrence rates, block-population frequencies, uncertainty
+    propagation, and validation/calibration evidence. Native rebuildable
+    reduced output, first-class COG export, the conditional gridpoint curve
+    contract, clean-checkout test hardening, AOI acquisition planning, cache
+    verification contracts, AOI terrain preprocessing, release-zone stability
+    reporting, generic scenario generation, AOI-to-prepared-pilot dry-run
+    composition, blocked case-skeleton handoff bundles, the Balfrin pilot
     contract, case plan, measured single-release-zone run, metrics contract,
     evidence bundle, scientific interpretation layer, and Swiss-wide execution
     envelope now distinguish completed dry-run automation from measured
@@ -251,8 +259,18 @@ objective are:
     generation; TB-135 recorded the bounded next-ensemble probe as blocked;
     TB-136 added spatial confidence products; TB-137 and TB-138 produced
     second-site and benchmark acquisition readiness packs; TB-139 added the
-    Balfrin replay smoke helper; and TB-140 composed the site-level
-    AOI-to-command-plan dry run.
+    Balfrin replay smoke helper; TB-140 composed the site-level
+    AOI-to-command-plan dry run; TB-141 hardened replay smoke provenance;
+    TB-142 made metrics-contract completeness explicit; TB-143 and TB-144
+    made the bounded next-ensemble feasibility path fail closed on missing
+    optional probabilistic metadata; TB-145 added bounded-probe interpretation;
+    TB-146 produced a compact management demonstration package; TB-147 hardened
+    AOI tile discovery; TB-148 added public-geodata cache/provenance
+    verification; TB-149 added fixture-backed AOI terrain preprocessing from
+    staged tiles; TB-150 measured release-zone heuristic stability; TB-151
+    generalized candidate-source-zone scenario generation; and TB-152 emitted
+    an ignored AOI case-skeleton/command handoff bundle that remains blocked
+    from execution.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public
@@ -261,7 +279,7 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
-    backlog is currently empty and `print_agent_task_context.py` reports
+    backlog is currently empty after TB-152 and `print_agent_task_context.py` reports
     `backlog_refill_needed=true`. The work log is chronological, archived
     history is separated, and repo consistency checks now reject unreachable or
     self-referential work-log commit hashes. File-backed worker logs reduced
@@ -289,18 +307,24 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-140:
+Current high-value work after TB-152:
 
-- refill the backlog from the measured Balfrin demo and dry-run composition
-  state, not from the older pre-execution plan;
+- refill the backlog from the measured Balfrin demo, explicit replay/metrics
+  status, and completed AOI dry-run composition state, not from the older
+  pre-execution plan;
 - decide whether the next live Balfrin work should be a small bounded ensemble
   probe, additional measured metrics capture, or public-context-backed
   portability work;
+- decide whether the next portability step is real Chant Sura public-context
+  acquisition, a measured second-site dry run after staging, or further
+  fixture-backed AOI automation;
 - use the canonical evidence bundle and scientific delta report as the
   management-facing demonstration evidence, while keeping the closure status
   inconclusive and non-operational;
 - close or explicitly defer remaining ancillary measured-metrics gaps while
   keeping fixture-backed regression evidence distinct from live measurements;
+- treat the AOI case-skeleton bundle as a reproducible operator handoff, not as
+  authorization to execute a second-site ensemble;
 - keep the Chant Sura / Fluelapass real-context decision tied to the trigger
   matrix and measured evidence, not synthetic fixtures;
 - keep physical credibility work tied to independent observed

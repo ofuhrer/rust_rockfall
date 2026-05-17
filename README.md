@@ -17,10 +17,12 @@ rebuildable reduced outputs, GIS/COG scope reporting, and AOI-to-command-plan
 dry-run composition.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
-dry-run helpers for AOI product discovery, terrain-driven release-zone
-candidates, block-scenario table generation, second-site acquisition planning,
-and site-level preparation, but it does not yet download all public inputs,
-run arbitrary AOIs, or generate physically annualized intensity-frequency
+dry-run helpers for AOI product discovery, public-geodata cache verification,
+AOI terrain preprocessing from staged tiles, terrain-driven release-zone
+candidate stability checks, generic candidate-source-zone scenario generation,
+second-site acquisition planning, and site-level case-skeleton handoff. It
+does not yet download all public inputs, run arbitrary AOIs, execute
+second-site ensembles, or generate physically annualized intensity-frequency
 products.
 
 Current products are diagnostic or sampling-weighted conditional hazard layers.

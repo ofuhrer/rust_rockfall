@@ -311,13 +311,16 @@ helper is intentionally not a release-zone interpretation: it stops at the dry
 run boundary and reports `deferred_public_context_inputs` when real context is
 absent.
 
-The new AOI-to-prepared-pilot dry-run helper,
+The AOI-to-prepared-pilot dry-run helper,
 `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, composes the acquisition,
 context, release-plan, and portable command-plan dry-run helpers into one
 preparation scaffold. Its report names the terrain manifests, public-context
 manifests, release/scenario placeholders, command-plan hooks, and ignored
 output roots that a future demonstration workflow would need, while still
-stopping short of any ensemble execution or public-context download.
+stopping short of any ensemble execution or public-context download. In its
+optional ignored-root output mode it writes a deterministic case skeleton,
+command manifest, expected-output-roots record, and blocked-execution record so
+operators can inspect the handoff bundle before any run is authorized.
 
 The next dry-run helper,
 `scripts/plan_release_plan_dry_run.py`, turns the same fixture-backed candidate
@@ -336,6 +339,13 @@ deterministic release-cell ids, required metadata is enumerated, and
 unsupported physical-frequency fields are called out as out of scope. If
 terrain or source-zone evidence is missing, the helper stays blocked rather
 than synthesizing a scenario table from incomplete inputs.
+
+For lower-level scenario-table generation,
+`scripts/generate_tschamut_block_scenario_tables.py` now has a generic
+candidate-source-zone path alongside the Tschamut compatibility wrapper. It can
+combine candidate source-zone metadata with a policy template to emit stable
+scenario ids, a provenance-aware manifest, and conditional-only weighting
+semantics without introducing annual frequency or block-population fitting.
 
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps

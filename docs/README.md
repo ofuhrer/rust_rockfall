@@ -35,6 +35,10 @@ fragments have been consolidated into `decision_log.md`; they do not override
   operational input datasets.
 - `swisstopo_data_strategy.md`: Swiss geodata roles, CRS/datum expectations,
   provenance requirements, and raw-data boundaries.
+- `current_maturity_snapshot.md`: current measured Balfrin state, AOI dry-run
+  automation state, remaining gaps, and backlog-refill guidance.
+- `orchestration_strategy.md`: context-efficient sequential worker execution
+  strategy and file-backed log monitoring.
 
 ## Current Roadmaps
 
