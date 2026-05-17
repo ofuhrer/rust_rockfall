@@ -31,7 +31,7 @@ execution reproducible and metadata-friendly on Balfrin.
 - `--generate-only`
   - Writes the command-plan JSON, SBATCH script, submission package report, and
     collection instructions into a deterministic run root.
-  - The generated package is explicitly marked `blocked_unlaunched` and carries
+  - The generated package is explicitly marked `deferred_pending_authorization` and carries
     the recomputed frontier recommendation, reduced-output settings, metrics
     collection command, and stop/resume notes.
   - Does not submit a job.

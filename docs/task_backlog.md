@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-166: Build Target-Area Balfrin Submission Package
-
-Goal: Produce an unlaunched Balfrin submission package for the frozen target-area demonstration.
-
-Capability gap reduced: Execution handoff from target contract to Balfrin.
-
-Why this outranks alternatives: Operators need a concrete sbatch script, command plan, expected roots, and metrics collection command before any controlled run.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `tests/test_balfrin_probe_driver.py`
-
-Deliverables:
-
-- Unlaunched submission package under an ignored root.
-- Sbatch script, command manifest, expected run root, stop/resume notes, and metrics command.
-- Explicit `deferred_pending_authorization` or ready-to-submit status.
-
-Definition of done:
-
-- The package can be generated quickly and inspected without submitting a Balfrin job.
-
-Boundaries: No job submission, no `git push --no-verify`, no scale-up authorization, and no distributed execution.
-
 ### TB-167: Execute Authorized Target-Area Balfrin Probe
 
 Goal: If the target-area package is explicitly authorized and runnable, submit one bounded Balfrin probe and record measured execution evidence; otherwise emit a precise blocked report.

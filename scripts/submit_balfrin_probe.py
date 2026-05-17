@@ -33,6 +33,7 @@ DEFAULT_NTASKS = 1
 DEFAULT_CPUS_PER_TASK = 16
 PACKAGE_SCHEMA_VERSION = "balfrin_submission_package_v1"
 PACKAGE_BASENAME = "balfrin_submission_package"
+PACKAGE_EXECUTION_STATUS = "deferred_pending_authorization"
 SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_scheduler_submission_report_v1"
 SUBMISSION_REPORT_BASENAME = "balfrin_submission_report"
 
@@ -461,7 +462,7 @@ def _build_submission_package_report(
     return {
         "schema_version": PACKAGE_SCHEMA_VERSION,
         "package_mode": "generate-only",
-        "execution_status": "blocked_unlaunched",
+        "execution_status": PACKAGE_EXECUTION_STATUS,
         "launch_authorized": False,
         "probe_manifest": str(probe_manifest.resolve()),
         "expected_run_root": str(run_root.resolve()),

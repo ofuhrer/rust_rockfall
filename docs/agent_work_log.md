@@ -2868,3 +2868,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no block-population fitting, no annual-frequency semantics, no physics changes, and no operational claim.
 - Next task: `TB-166`
+
+### TB-166: Build Target-Area Balfrin Submission Package
+- Date: 2026-05-17
+- Commit: local
+- Objective: build the unlaunched Balfrin submission package for the frozen Tschamut target-area demonstration contract without submitting a job.
+- Files changed: `scripts/submit_balfrin_probe.py`, `docs/balfrin_probe_slurm_driver.md`, `tests/test_balfrin_probe_driver.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Changed the generated Balfrin submission package status from `blocked_unlaunched` to `deferred_pending_authorization` so the handoff now matches the task's explicit package-status requirement.
+  - Regenerated the ignored target-area submission package under `validation/private/tschamut_public_pilot/balfrin_submission_package_v1` with the frozen Tschamut probe manifest, SBATCH script, command manifest, stop/resume notes, and metrics collection command ready for inspection.
+  - Removed TB-166 from the active backlog after verifying the package generation path and preserving the no-submission boundary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only --run-root validation/private/tschamut_public_pilot/balfrin_submission_package_v1 --run-id tschamut_public_balfrin_target_area_demo_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no Balfrin job submission, no scale-up authorization, no distributed execution, and no generated artifact commit.
+- Next task: `TB-167`

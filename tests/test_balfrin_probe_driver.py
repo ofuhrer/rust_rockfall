@@ -227,7 +227,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 )
 
         self.assertEqual(package["schema_version"], "balfrin_submission_package_v1")
-        self.assertEqual(package["execution_status"], "blocked_unlaunched")
+        self.assertEqual(package["execution_status"], "deferred_pending_authorization")
         self.assertFalse(package["launch_authorized"])
         self.assertEqual(package["run_id"], run_root.name)
         self.assertEqual(package["expected_run_root"], str(run_root.resolve()))
@@ -263,7 +263,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         fake_package = {
             "schema_version": "balfrin_submission_package_v1",
             "package_mode": "generate-only",
-            "execution_status": "blocked_unlaunched",
+            "execution_status": "deferred_pending_authorization",
             "launch_authorized": False,
             "probe_manifest": "validation/pilot_runs/probe.yaml",
             "expected_run_root": "/scratch/rust_rockfall/probes/scale-test/001",
@@ -387,7 +387,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                     fake_package,
                 )
                 markdown = (run_root / "balfrin_submission_package.md").read_text(encoding="utf-8")
-                self.assertIn("Launch status: `blocked_unlaunched`", markdown)
+                self.assertIn("Launch status: `deferred_pending_authorization`", markdown)
                 self.assertIn("## Recommendation", markdown)
                 self.assertIn("## Reduced Output Settings", markdown)
                 self.assertIn("## Launch Boundary", markdown)
@@ -403,7 +403,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         fake_package = {
             "schema_version": "balfrin_submission_package_v1",
             "package_mode": "generate-only",
-            "execution_status": "blocked_unlaunched",
+            "execution_status": "deferred_pending_authorization",
             "launch_authorized": False,
             "probe_manifest": "validation/pilot_runs/probe.yaml",
             "expected_run_root": "/tmp/balfrin/probe-fixed",
