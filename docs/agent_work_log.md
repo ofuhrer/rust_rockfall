@@ -2064,3 +2064,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no block-size distributions were fit, no annual frequencies or physical probabilities were inferred, and the already measured Balfrin demo was not changed.
 - Next task: `TB-125`
+
+### TB-125: Prototype AOI-To-Demonstration Preparation Path
+
+- Date: 2026-05-17
+- Commit: `82a1fbc`
+- Objective: Prepare a deterministic AOI-to-demonstration scaffold that emits terrain manifests, context manifests, release/scenario placeholders, command-plan hooks, and ignored output roots without running an ensemble.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_pilot_command_plan.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the AOI dry-run planner into a preparation scaffold with explicit preparation-input metadata, terrain and context manifest sections, release/scenario placeholders, command-plan hooks, and ignored output roots.
+  - Added release-polygon parsing and deterministic synthetic config/manifest handling so the same report shape remains available for AOI extents, release-polygon overrides, and blocked missing-input cases.
+  - Exposed the new preparation helper in the portable command plan and updated the focused tests to cover deterministic output and blocked/missing-input behavior.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_to_prepared_pilot_dry_run.py scripts/generate_pilot_command_plan.py tests/test_aoi_to_prepared_pilot_dry_run.py tests/test_pilot_command_plan.py`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: completed
+- Boundaries: no ensembles were run, no public context was downloaded, and no release-zone validity or operational claim was inferred from the dry-run scaffold.
+- Next task: `TB-126`
