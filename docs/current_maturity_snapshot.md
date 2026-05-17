@@ -263,7 +263,12 @@ objective are:
     templates, objective-function placeholders, a blocked no-evidence report,
     and validation summary files without claiming real evidence. Benchmark-
     intake readiness is now separated from calibration readiness, but actual
-    benchmark data and objective-function evaluation remain absent.
+    benchmark data and objective-function evaluation remain absent. TB-178
+    extends that into `docs/target_area_physical_evidence_acquisition_pack.md`,
+    which keeps observed benchmark intake, release-zone provenance,
+    block-population evidence, calibration separation, and source-frequency
+    evidence in distinct acquisition buckets instead of one implied validation
+    claim.
 12. Balfrin demonstration evidence has crossed from scaffolding into measured
     execution. TB-115 froze the canonical demonstration contract. TB-116 and
     TB-117 separated local scheduler failure from the SSH-accessible Balfrin

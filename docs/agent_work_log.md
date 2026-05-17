@@ -3127,3 +3127,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no second-site ensemble, no synthetic evidence upgrade, no operational claim, and no change to the public-context defer boundary.
 - Next task: `TB-178`
+
+### TB-178: Define Physical Evidence Acquisition Pack For Target Area
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: package the target-area physical-credibility gaps into a concrete acquisition checklist with dataset roles, required geometry/provenance fields, and blocked-status separation for benchmark intake, calibration, and source-frequency evidence.
+- Files changed: `docs/target_area_physical_evidence_acquisition_pack.md`, `docs/current_maturity_snapshot.md`, `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a target-area physical evidence acquisition pack that spells out the observed runout/deposition, release-zone, block-population, source-frequency, and calibration-separation acquisition steps without treating any of them as already validated evidence.
+  - Added a dataset-role table with the required geometry/provenance fields and claim-boundary mapping so the acquisition request stays tied to concrete record shapes instead of broad status labels.
+  - Added an explicit blocked-status summary that separates benchmark intake, calibration, source-frequency, and block-population evidence, and linked the pack from the maturity snapshot and gate report.
+  - Removed TB-178 from the active backlog after defining the pack.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json >/tmp/tb178_observed_runout_contract.json`
+  - `PYENV_VERSION=system uv run python scripts/map_physical_credibility_evidence_requirements.py --format json >/tmp/tb178_physical_requirements.json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json >/tmp/tb178_gap_report.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no calibration was performed, no validation evidence was fabricated, no annual-frequency or physical-probability claim was added, and no operational or risk/exposure/vulnerability claim was introduced.
+- Next task: `TB-179`

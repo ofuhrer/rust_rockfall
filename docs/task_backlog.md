@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-178: Define Physical Evidence Acquisition Pack For Target Area
-
-Goal: Specify the real observed runout/deposition, release-zone, block-population, and source-frequency evidence needed to move beyond workflow credibility for the target area.
-
-Capability gap reduced: Physical credibility and validation realism.
-
-Why this outranks alternatives: More execution alone will not establish physical credibility; the missing evidence must be concrete and acquirable.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-
-Deliverables:
-
-- Target-area physical evidence acquisition checklist.
-- Dataset roles, required geometry/provenance fields, and claim-boundary mapping.
-- Blocked status that separates benchmark intake, calibration, and frequency evidence.
-
-Definition of done:
-
-- Physical credibility gaps for the target area are concrete enough for data acquisition without implying validation exists.
-
-Boundaries: No calibration, no tuning, no annual-frequency claim, no risk/exposure/vulnerability workflow, and no operational claim.
-
 ### TB-179: Refill Or Close Post-Demonstration Backlog
 
 Goal: After the target-area demonstration sequence, reassess maturity and refill only the next highest-value tasks.

@@ -131,7 +131,10 @@ readiness. Benchmark intake readiness is driven only by the benchmark
 manifest and geometry inputs, while calibration readiness is reported
 separately. The current report remains `blocked_missing_inputs` because no
 independent observed runout/deposition benchmark dataset is staged in the
-repository.
+repository. TB-178 packages the target-area acquisition checklist at
+`docs/target_area_physical_evidence_acquisition_pack.md` so the benchmark
+intake, release-zone, block-population, calibration, and source-frequency
+tracks stay separated as acquisition targets rather than evidence claims.
 
 The helper keeps the distinction explicit between:
 
