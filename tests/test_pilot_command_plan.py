@@ -115,6 +115,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertIn("tschamut_case_generation", report["command_ids"])
         self.assertIn("tschamut_terrain_release_zone_candidate_metrics", report["command_ids"])
+        self.assertIn("tschamut_balfrin_target_area_case_handoff_dry_run", report["command_ids"])
         self.assertIn("tschamut_target_hazard_build", report["command_ids"])
         self.assertIn("tschamut_output_profile_summary", report["command_ids"])
         self.assertIn("tschamut_standard_package_audit", report["command_ids"])
@@ -155,6 +156,16 @@ class PilotCommandPlanTest(unittest.TestCase):
             "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
             probe_template_command["command"],
         )
+
+        handoff_command = next(
+            command for command in report["commands"] if command["id"] == "tschamut_balfrin_target_area_case_handoff_dry_run"
+        )
+        self.assertIn("generate_balfrin_target_area_demo_handoff.py", handoff_command["command"])
+        self.assertIn(
+            "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_case_skeleton.yaml",
+            handoff_command["expected_outputs"],
+        )
+        self.assertTrue(handoff_command["may_produce_ignored_outputs"])
 
         export_command = next(command for command in report["commands"] if command["id"] == "tschamut_package_cog_export")
         self.assertIn("scripts/build_hazard_layers.py", export_command["command"])

@@ -713,7 +713,45 @@ def build_balfrin_single_release_zone_plan_commands() -> list[dict[str, Any]]:
             expected_outputs=["JSON large-case dry-run plan"],
             read_only=True,
             may_produce_ignored_outputs=False,
-        )
+        ),
+        command_entry(
+            site="tschamut_same_scale",
+            group="balfrin_single_release_zone_plan",
+            command_id="tschamut_balfrin_target_area_case_handoff_dry_run",
+            description="Materialize the frozen Tschamut target-area Balfrin handoff bundle into an ignored validation/private root.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_balfrin_target_area_demo_handoff.py"),
+                    "--output-root",
+                    rel(ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1"),
+                    "--format",
+                    "json",
+                ]
+            ),
+            expected_inputs=[
+                "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml",
+                "validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml",
+                "validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml",
+                "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml",
+                "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+            ],
+            expected_outputs=[
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_case_skeleton.yaml",
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_command_manifest.json",
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_expected_output_roots.yaml",
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_scenario_generation_handoff.json",
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_gis_scope_summary.yaml",
+                "validation/private/tschamut_public_pilot/balfrin_target_area_demo_v1/tschamut_public_balfrin_target_area_demo_bundle_report.json",
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+        ),
     ]
 
 

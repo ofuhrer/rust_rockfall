@@ -2809,3 +2809,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no synthetic evidence upgrade, no ensemble execution, and no operational or physical-probability claim.
 - Next task: `TB-163`
+
+### TB-163: Materialize Target-Area AOI Case Handoff
+- Date: 2026-05-17
+- Commit: local
+- Objective: materialize the frozen Tschamut target-area AOI handoff bundle with a case skeleton, command manifest, expected-output roots, scenario-generation handoff, and GIS scope summary while keeping the bundle template-only.
+- Files changed: `scripts/generate_balfrin_target_area_demo_handoff.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_balfrin_target_area_demo_handoff.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a new target-area-only handoff generator that reads the frozen Tschamut Balfrin contract and writes an ignored bundle with a case skeleton, command manifest, expected-output-roots sidecar, scenario-generation handoff, GIS scope summary, and bundle report.
+  - Kept the bundle template-only and non-operational while preserving the frozen target-area boundary, the conditional-only scenario semantics, and the ignored target-gate output roots.
+  - Hooked the new generator into the portable pilot command plan and added focused regressions that verify the bundle shape, status, expected roots, and command-plan entry remain deterministic.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_target_area_demo_handoff.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_demo_handoff tests.test_balfrin_target_area_demo_contract tests.test_pilot_command_plan`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no hazard build, no generated raster commit, no second-site ensemble, no operational GIS claim, and no scale-up authorization.
+- Next task: `TB-164`

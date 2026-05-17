@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-163: Materialize Target-Area AOI Case Handoff
-
-Goal: Emit the ignored case-skeleton, command manifest, expected roots, scenario-generation handoff, and GIS scope summary for the frozen target area.
-
-Capability gap reduced: AOI-to-executable handoff reproducibility.
-
-Why this outranks alternatives: The project needs one target-area handoff bundle before workers can submit, replay, or review a full demonstration path.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- Ignored target-area handoff bundle or blocked report.
-- Case skeleton with scenario-generation and GIS scope sections.
-- Focused tests covering the target-area handoff shape.
-
-Definition of done:
-
-- The handoff bundle can be regenerated deterministically and states whether it is runnable or template-only.
-
-Boundaries: No hazard build, no generated raster commit, no second-site ensemble unless explicitly authorized, and no operational GIS claim.
-
 ### TB-164: Validate Target-Area Release-Zone Candidate Stability
 
 Goal: Run or extend the deterministic release-zone candidate stability audit for the frozen target area.
