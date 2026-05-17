@@ -2241,3 +2241,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: the helper emits dry-run candidate products only; no validated release-zone approval, threshold tuning to outcomes, annual-frequency claim, physical-probability claim, risk, exposure, vulnerability, or operational claim was introduced.
 - Next task: `TB-134`
+
+### TB-134: Generate Deterministic Block-Scenario Tables From Policy
+
+- Date: 2026-05-17
+- Commit: `e405957`
+- Objective: Turn the pragmatic block-scenario sensitivity plan into a deterministic scenario-table generator from release metadata and policy inputs.
+- Files changed: `scripts/generate_tschamut_block_scenario_tables.py`, `tests/test_tschamut_block_scenario_table_generation.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a deterministic Tschamut scenario-table generator that reproduces the committed single-row summary table from policy plus release-point metadata.
+  - Added a policy-family template and provenance-aware manifest that preserve stable row IDs, conditional weighting semantics, and non-frequency boundaries without annual-frequency fields.
+  - Added focused regression tests for byte-for-byte regeneration, deterministic alternate-template output, and fail-closed missing-input handling.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_tschamut_block_scenario_tables.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation tests.test_plan_pragmatic_release_plan`
+  - `PYENV_VERSION=system uv run python scripts/generate_tschamut_block_scenario_tables.py --format json --template observed_rows_summary_v1`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no physics changes, no annual frequency, no fitted block-size population model, and no operational interpretation.
+- Next task: `TB-135`
