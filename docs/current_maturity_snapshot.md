@@ -133,7 +133,11 @@ objective are:
    including the Tschamut selected domain, the target-gate reproduction
    record, the conditional-only scenario-family basis, the scalable
    conditional output mode, and the single-job Balfrin boundary with a
-   read-only command-plan hook.
+   read-only command-plan hook. The tracked target-area public
+   geodata/source/scenario inputs for that contract are present and the public
+   real-site manifest validates; this readiness is separate from the Chant
+   Sura / Fluelapass second-site public-context track, which remains blocked or
+   deferred until real second-site inputs are staged.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow

@@ -192,10 +192,13 @@ products:
 - The immediate effect is that the next actionable step is documentation or
   authorization review, not a download or ensemble run.
 
-### TB-162 Readiness Snapshot
+### Second-Site Readiness Snapshot
 
-The TB-162 readiness check on the frozen Chant Sura / Flüelapass candidate
-classifies the target area as `blocked_missing_inputs`.
+This second-site readiness check on the Chant Sura / Flüelapass candidate
+classifies the candidate as `blocked_missing_inputs`. It is not the frozen
+Tschamut target-area Balfrin demonstration contract; that contract is recorded
+separately in
+`validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
 
 Current helper outputs:
 

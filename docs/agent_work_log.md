@@ -2786,14 +2786,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-162: Verify Target-Area Public-Geodata Readiness
 
 - Date: 2026-05-17
-- Commit: `ed53bbc`
-- Objective: verify whether the frozen Chant Sura / Flüelapass target area has all required public geodata, cache-manifest inputs, terrain metadata, and context products staged for execution.
-- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Commit: `ed53bbc`; corrected by follow-up commit
+- Objective: verify whether the frozen Tschamut target-area Balfrin demonstration contract has the tracked public-geodata, source-zone, scenario, and policy inputs needed for the next handoff tasks.
+- Files changed: `docs/balfrin_probe_slurm_driver.md`, `docs/current_maturity_snapshot.md`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
-  - Added a TB-162 readiness snapshot to the Chant Sura / Flüelapass acquisition decision doc with the current helper outputs, exact missing and deferred paths, and the cache-verifier caveat.
-  - Removed TB-162 from `docs/task_backlog.md` after recording the blocked readiness classification.
-  - Kept the report metadata-only and fail-closed: the target area remains `blocked_missing_inputs` until the AOI catalog, terrain, source-zone, scenario, and policy inputs are staged.
+  - Verified that the frozen target-area contract is the Tschamut selected domain in `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, not the Chant Sura / Flüelapass second-site candidate.
+  - Confirmed the tracked Tschamut public real-site manifest validates and that the frozen source-zone metadata, release/deposition CSVs, scenario table, source-scenario policy, and conditional pilot gate record are present in the checkout.
+  - Kept the separate Chant Sura / Flüelapass readiness snapshot as a second-site blocked/deferred public-context record, not as the frozen Balfrin target-area readiness result.
+  - Removed TB-162 from `docs/task_backlog.md` after recording the readiness distinction.
 - Checks run:
+  - `PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/tschamut_public_pilot_manifest.yaml`
+  - tracked-path presence check for the frozen target-area source-zone, release/deposition, scenario, policy, and gate records
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --local-command-plan`
   - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
   - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
   - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml --format json`
@@ -2802,6 +2806,6 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
   - `scripts/git-hooks/pre-commit`
   - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
-- Result/status: blocked
+- Result/status: implemented_measured
 - Boundaries: no downloads, no synthetic evidence upgrade, no ensemble execution, and no operational or physical-probability claim.
 - Next task: `TB-163`

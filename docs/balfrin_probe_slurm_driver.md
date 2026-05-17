@@ -79,6 +79,21 @@ The frozen target-area demonstration contract is
 Its `balfrin_execution_boundary.command_plan_hook.command` is the read-only
 hook for inspecting the frozen Balfrin command plan without launching a job.
 
+Target-area public-geodata readiness for that frozen contract is currently
+`ready_for_frozen_target_area_demo` at the tracked contract level:
+
+- the public real-site manifest
+  `data/processed/swisstopo/tschamut_public_pilot_manifest.yaml` validates;
+- the frozen source-zone metadata, release/deposition CSVs, scenario table,
+  source-scenario policy, and conditional pilot gate record are present in the
+  checkout;
+- generated raw geodata, private validation outputs, and hazard outputs remain
+  ignored and are not committed;
+- this readiness classification is only for the selected Tschamut target-area
+  demonstration contract. It is separate from the Chant Sura / Fluelapass
+  second-site public-context readiness track, which remains blocked or
+  deferred until real second-site inputs are staged.
+
 ## SBATCH defaults and constraints
 
 Default submit behavior:
