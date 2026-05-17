@@ -2972,3 +2972,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no fabricated measured metrics, no new run, no scale-up authorization, and no operational, physical-probability, or annual-frequency claim.
 - Next task: `TB-170`
+
+### TB-170: Build Target-Area Evidence Bundle
+
+- Date: 2026-05-17
+- Commit: `7132231`
+- Objective: compose the target-area Balfrin evidence into one deterministic JSON/text bundle with explicit section provenance.
+- Files changed: `scripts/summarize_balfrin_target_area_evidence_bundle.py`, `tests/test_balfrin_target_area_evidence_bundle.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a target-area evidence bundle helper that combines the frozen handoff report, the preserved probe-metrics report, and the measured canonical bundle.
+  - Classified the target-area sections as unavailable, blocked, and measured so the review artifact does not collapse provenance boundaries.
+  - Added focused tests for the live mixed-provenance report, fixture-backed overrides, blocked missing-inputs behavior, and artifact writing.
+  - Updated the maturity snapshot and removed TB-170 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_evidence_bundle tests.test_balfrin_evidence_bundle.BalfrinEvidenceBundleTests.test_current_report_is_measured_and_tracks_section_provenance`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no operational claim, no physical-credibility upgrade, no generated-output commit, and no annual-frequency semantics.
+- Next task: `TB-171`
