@@ -80,7 +80,10 @@ def run_experiment(config: dict[str, Any]) -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
-    for candidate_index, candidate in enumerate(parameter_candidates(config)):
+    candidates = parameter_candidates(config)
+    if not candidates:
+        raise stage_error("parameter grid evaluation", "parameter_grid produced no candidates")
+    for candidate_index, candidate in enumerate(candidates):
         candidate_id = f"candidate_{candidate_index:03}"
         impact_rows = []
         for impact in impacts:
@@ -96,6 +99,8 @@ def run_experiment(config: dict[str, Any]) -> None:
         )
 
     rows.sort(key=lambda row: (float(row["objective"]), row["candidate_id"]))
+    if not rows:
+        raise stage_error("candidate evaluation", "parameter_grid produced no candidate rows")
     write_candidate_results(resolve(config["outputs"]["candidate_results_csv"]), rows)
     write_selected_parameters(resolve(config["outputs"]["selected_parameters_yaml"]), rows[0], config)
     write_summary(resolve(config["outputs"]["summary_json"]), rows, impacts, config)
@@ -105,6 +110,8 @@ def run_experiment(config: dict[str, Any]) -> None:
 def read_reference_impacts(path: Path) -> list[dict[str, Any]]:
     with path.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
+    if not rows:
+        raise stage_error("impact dataset loading", f"impact CSV {path} has no rows")
     impacts = []
     for row in rows:
         impacts.append(
@@ -133,11 +140,22 @@ def read_reference_impacts(path: Path) -> list[dict[str, Any]]:
 
 def parameter_candidates(config: dict[str, Any]) -> list[dict[str, float]]:
     grid = config["parameter_grid"]
+    grid_axes = {
+        "soil_strength_pa": grid.get("soil_strength_pa", []),
+        "scarring_drag_coefficient": grid.get("scarring_drag_coefficient", []),
+        "scarring_layer_density_kgpm3": grid.get("scarring_layer_density_kgpm3", []),
+    }
+    missing = [name for name, values in grid_axes.items() if not values]
+    if missing:
+        raise stage_error(
+            "parameter grid evaluation",
+            f"parameter_grid is empty for {', '.join(missing)}",
+        )
     candidates = []
     for soil_strength, drag, density in itertools.product(
-        grid["soil_strength_pa"],
-        grid["scarring_drag_coefficient"],
-        grid["scarring_layer_density_kgpm3"],
+        grid_axes["soil_strength_pa"],
+        grid_axes["scarring_drag_coefficient"],
+        grid_axes["scarring_layer_density_kgpm3"],
     ):
         candidates.append(
             {
@@ -165,33 +183,49 @@ def simulate_impact(
     impact_events_path = event_dir / f"{run_id}.json"
     sim_config = build_single_impact_config(config, candidate, impact)
     config_path.write_text(json.dumps(sim_config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    subprocess.run(
-        [
-            "cargo",
-            "run",
-            "-q",
-            "--",
-            "run",
-            "--config",
-            str(config_path),
-            "--output",
-            str(trajectory_path),
-            "--impact-events-json",
-            str(impact_events_path),
-        ],
-        cwd=ROOT,
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.run(
+            [
+                "cargo",
+                "run",
+                "-q",
+                "--",
+                "run",
+                "--config",
+                str(config_path),
+                "--output",
+                str(trajectory_path),
+                "--impact-events-json",
+                str(impact_events_path),
+            ],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        detail = f"cargo run failed for {run_id} with exit code {exc.returncode}"
+        if stderr:
+            detail = f"{detail}: {stderr.splitlines()[-1]}"
+        raise stage_error("impact simulation", detail) from exc
     events = json.loads(impact_events_path.read_text(encoding="utf-8"))
     significant = [
         event
         for event in events
         if float(event["incoming_normal_speed_mps"]) >= 0.05
     ]
+    if not significant:
+        raise stage_error(
+            "impact event filtering",
+            f"{run_id} produced no significant impact events in {impact_events_path}",
+        )
     if len(significant) != 1:
-        raise SystemExit(f"expected one significant impact for {run_id}, got {len(significant)}")
+        raise stage_error(
+            "impact event filtering",
+            f"{run_id} produced {len(significant)} significant impact events in {impact_events_path}; expected exactly one",
+        )
     return significant[0]
 
 
@@ -333,6 +367,8 @@ def optional_float(value: object) -> float | None:
 
 
 def write_candidate_results(path: Path, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        raise stage_error("candidate result writing", f"no candidate rows are available for {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0])
     with path.open("w", newline="", encoding="utf-8") as file:
@@ -367,6 +403,8 @@ def write_selected_parameters(path: Path, best: dict[str, Any], config: dict[str
 def write_summary(
     path: Path, rows: list[dict[str, Any]], impacts: list[dict[str, Any]], config: dict[str, Any]
 ) -> None:
+    if not rows:
+        raise stage_error("summary writing", f"no candidate rows are available for {path}")
     summary = {
         "experiment_id": config["experiment_id"],
         "model_version": model_version(),
@@ -392,6 +430,8 @@ def write_summary(
 def write_html_report(
     path: Path, rows: list[dict[str, Any]], impacts: list[dict[str, Any]], config: dict[str, Any]
 ) -> None:
+    if not rows:
+        raise stage_error("report generation", f"no candidate rows are available for {path}")
     best = rows[0]
     impact_columns = [
         "impact_id",
@@ -502,6 +542,10 @@ def format_progress_value(value: Any) -> str:
 
 def escape(value: Any) -> str:
     return html.escape(str(value))
+
+
+def stage_error(stage: str, message: str) -> SystemExit:
+    return SystemExit(f"{stage}: {message}")
 
 
 if __name__ == "__main__":

@@ -83,6 +83,16 @@ def prepare_split(config: dict[str, Any]) -> None:
     dataset = config["dataset"]
     releases = read_csv(resolve(dataset["release_points_csv"]))
     depositions = read_csv(resolve(dataset["deposition_points_csv"]))
+    if not releases:
+        raise stage_error(
+            "split preparation",
+            f"release CSV {dataset['release_points_csv']} has no rows",
+        )
+    if not depositions:
+        raise stage_error(
+            "split preparation",
+            f"deposition CSV {dataset['deposition_points_csv']} has no rows",
+        )
     deposition_by_id = {row["trajectory_id"]: row for row in depositions}
 
     by_block: dict[str, list[dict[str, str]]] = {}
@@ -123,16 +133,44 @@ def prepare_split(config: dict[str, Any]) -> None:
             "holdout_count": len(holdout_ids),
         },
     }
+    missing = sorted(set(calibration_ids + holdout_ids) - set(deposition_by_id))
+    if missing:
+        raise stage_error(
+            "split preparation",
+            f"deposition CSV {dataset['deposition_points_csv']} is missing trajectory_id rows for {missing}",
+        )
     split_path = resolve(split_cfg["path"])
     write_yaml(split_path, split)
 
     out_dir = split_path.parent
-    write_subset_csv(out_dir / "calibration_release_points.csv", releases, calibration_ids)
-    write_subset_csv(out_dir / "calibration_observed_deposition.csv", depositions, calibration_ids)
-    write_subset_csv(out_dir / "holdout_release_points.csv", releases, holdout_ids)
-    write_subset_csv(out_dir / "holdout_observed_deposition.csv", depositions, holdout_ids)
-    if missing := sorted(set(calibration_ids + holdout_ids) - set(deposition_by_id)):
-        raise SystemExit(f"split contains ids without deposition rows: {missing}")
+    write_subset_csv(
+        out_dir / "calibration_release_points.csv",
+        releases,
+        calibration_ids,
+        stage="split preparation",
+        source_label=f"release CSV {dataset['release_points_csv']}",
+    )
+    write_subset_csv(
+        out_dir / "calibration_observed_deposition.csv",
+        depositions,
+        calibration_ids,
+        stage="split preparation",
+        source_label=f"deposition CSV {dataset['deposition_points_csv']}",
+    )
+    write_subset_csv(
+        out_dir / "holdout_release_points.csv",
+        releases,
+        holdout_ids,
+        stage="split preparation",
+        source_label=f"release CSV {dataset['release_points_csv']}",
+    )
+    write_subset_csv(
+        out_dir / "holdout_observed_deposition.csv",
+        depositions,
+        holdout_ids,
+        stage="split preparation",
+        source_label=f"deposition CSV {dataset['deposition_points_csv']}",
+    )
 
 
 def stable_key(seed: int, block_id: str, trajectory_id: str) -> str:
@@ -145,7 +183,16 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(file))
 
 
-def write_subset_csv(path: Path, rows: list[dict[str, str]], selected_ids: list[str]) -> None:
+def write_subset_csv(
+    path: Path,
+    rows: list[dict[str, str]],
+    selected_ids: list[str],
+    *,
+    stage: str,
+    source_label: str,
+) -> None:
+    if not rows:
+        raise stage_error(stage, f"{source_label} is empty")
     selected = set(selected_ids)
     subset = [row for row in rows if row["trajectory_id"] in selected]
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,6 +211,8 @@ def run_experiment(config: dict[str, Any]) -> None:
     report_dir.mkdir(parents=True, exist_ok=True)
 
     candidates = list(parameter_candidates(config))
+    if not candidates:
+        raise stage_error("parameter grid evaluation", "parameter_grid produced no candidates")
     rows = []
     for index, candidate in enumerate(candidates):
         candidate_id = f"candidate_{index:03}"
@@ -186,6 +235,8 @@ def run_experiment(config: dict[str, Any]) -> None:
         )
 
     rows.sort(key=lambda row: (float(row["calibration_objective"]), float(row["holdout_objective"])))
+    if not rows:
+        raise stage_error("candidate evaluation", "parameter_grid produced no candidate rows")
     write_candidate_results(resolve(config["outputs"]["candidate_results_csv"]), rows)
     write_selected_parameters(resolve(config["outputs"]["selected_parameters_yaml"]), rows[0], config)
     write_summary(resolve(config["outputs"]["summary_json"]), rows, config)
@@ -194,12 +245,24 @@ def run_experiment(config: dict[str, Any]) -> None:
 
 def parameter_candidates(config: dict[str, Any]) -> list[dict[str, Any]]:
     grid = config["parameter_grid"]
+    grid_axes = {
+        "normal_restitution": grid.get("normal_restitution", []),
+        "tangential_restitution": grid.get("tangential_restitution", []),
+        "friction_coefficient": grid.get("friction_coefficient", []),
+        "roughness_profile": grid.get("roughness_profile", []),
+    }
+    missing = [name for name, values in grid_axes.items() if not values]
+    if missing:
+        raise stage_error(
+            "parameter grid evaluation",
+            f"parameter_grid is empty for {', '.join(missing)}",
+        )
     candidates = []
     for normal, tangential, friction, roughness in itertools.product(
-        grid["normal_restitution"],
-        grid["tangential_restitution"],
-        grid["friction_coefficient"],
-        grid["roughness_profile"],
+        grid_axes["normal_restitution"],
+        grid_axes["tangential_restitution"],
+        grid_axes["friction_coefficient"],
+        grid_axes["roughness_profile"],
     ):
         candidates.append(
             {
@@ -229,12 +292,21 @@ def evaluate_candidate(
     ensemble_csv = report_dir / f"{case_id}_ensemble_deposition.csv"
     case = build_case(config, candidate, case_id, partition, diagnostics_json, ensemble_csv)
     write_yaml(case_path, case)
-    subprocess.run(
-        ["cargo", "run", "-q", "--", "validate", "--case", str(case_path)],
-        cwd=ROOT,
-        check=True,
-        stdout=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.run(
+            ["cargo", "run", "-q", "--", "validate", "--case", str(case_path)],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        detail = f"cargo run failed for {case_path} with exit code {exc.returncode}"
+        if stderr:
+            detail = f"{detail}: {stderr.splitlines()[-1]}"
+        raise stage_error("validation subprocess", detail) from exc
     return json.loads(diagnostics_json.read_text(encoding="utf-8"))
 
 
@@ -338,6 +410,8 @@ def prefixed_metrics(prefix: str, metrics: dict[str, Any]) -> dict[str, float]:
 
 
 def write_candidate_results(path: Path, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        raise stage_error("candidate result writing", f"no candidate rows are available for {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0])
     with path.open("w", newline="", encoding="utf-8") as file:
@@ -369,6 +443,8 @@ def write_selected_parameters(path: Path, best: dict[str, Any], config: dict[str
 
 
 def write_summary(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]) -> None:
+    if not rows:
+        raise stage_error("summary writing", f"no candidate rows are available for {path}")
     best = rows[0]
     summary = {
         "experiment_id": config["experiment_id"],
@@ -392,6 +468,8 @@ def write_summary(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]
 
 
 def write_html_report(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]) -> None:
+    if not rows:
+        raise stage_error("report generation", f"no candidate rows are available for {path}")
     best = rows[0]
     table_rows = []
     for row in rows:
@@ -441,6 +519,10 @@ def write_html_report(path: Path, rows: list[dict[str, Any]], config: dict[str, 
 
 def escape(value: Any) -> str:
     return html.escape(str(value), quote=False)
+
+
+def stage_error(stage: str, message: str) -> SystemExit:
+    return SystemExit(f"{stage}: {message}")
 
 
 if __name__ == "__main__":

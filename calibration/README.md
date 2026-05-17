@@ -9,3 +9,5 @@ Current experiment:
 - `experiments/scarring_single_impact_chant_sura_esurf_2019_v0_4/`: exploratory single-impact `scarring_contact_v1` calibration using public Chant Sura scar dimensions and jump-energy table data from Caviezel et al. 2019. It is real-data calibration, not validation, and the impact components are inferred.
 
 Generated intermediate reports and temporary cases belong under `calibration/results/` and are ignored by git. Small, reproducible experiment definitions, dataset splits, and final summaries are committed under `calibration/experiments/` and `calibration/data/`.
+
+The calibration scripts in `scripts/` are research diagnostics for these experiments. Their outputs and failure messages are intended to make missing inputs, empty grids, and subprocess failures explicit; they are not accepted calibration evidence or operational guidance.

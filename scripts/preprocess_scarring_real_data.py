@@ -60,6 +60,8 @@ def main() -> int:
     scars = read_scar_table(raw_paths["scar_dimensions"])
     jumps, ratios = read_trajectory_table(raw_paths["trajectory_sections"])
     rows = build_rows(scars, jumps, ratios)
+    if not rows:
+        raise stage_error("real-data preprocessing", "no calibration rows were built from the source tables")
     write_csv(rows)
     write_metadata(len(rows))
     print(f"wrote {len(rows)} impacts to {OUT_CSV.relative_to(ROOT)}")
@@ -98,6 +100,8 @@ def read_xlsx_rows(path: Path) -> list[list[str]]:
 
 def read_scar_table(path: Path) -> dict[str, dict[str, float]]:
     rows = read_xlsx_rows(path)
+    if not rows:
+        raise stage_error("scar table parsing", f"scar table {path} has no rows")
     header = rows[0]
     scars: dict[str, dict[str, float]] = {}
     for row in rows[1:]:
@@ -116,6 +120,8 @@ def read_scar_table(path: Path) -> dict[str, dict[str, float]]:
 
 def read_trajectory_table(path: Path) -> tuple[dict[str, dict[str, float]], dict[str, float]]:
     rows = read_xlsx_rows(path)
+    if not rows:
+        raise stage_error("trajectory table parsing", f"trajectory table {path} has no rows")
     header = rows[0]
     jumps: dict[str, dict[str, float]] = {}
     ratios: dict[str, float] = {}
@@ -148,8 +154,16 @@ def build_rows(
     radius_m = equivalent_sphere_radius_m(EOTA221_MASS_KG, CONCRETE_DENSITY_KGPM3)
     rows: list[dict[str, object]] = []
     for from_jump, to_jump, scar_id in TRANSITIONS:
-        incoming = jumps[from_jump]
-        outgoing = jumps[to_jump]
+        try:
+            incoming = jumps[from_jump]
+            outgoing = jumps[to_jump]
+            scar = scars[scar_id]
+        except KeyError as exc:
+            missing = exc.args[0]
+            raise stage_error(
+                "real-data preprocessing",
+                f"missing required input {missing!r} for transition {from_jump}->{to_jump} and scar {scar_id}",
+            ) from exc
         incoming_speed = incoming["velocity_end_mps"]
         normal_speed = min(incoming_speed, math.sqrt(2.0 * GRAVITY_MPS2 * incoming["jump_height_m"]))
         tangent_speed = math.sqrt(max(incoming_speed * incoming_speed - normal_speed * normal_speed, 0.0))
@@ -157,7 +171,6 @@ def build_rows(
         pre_energy_j = incoming["energy_end_j"]
         post_energy_j = outgoing["energy_begin_j"]
         total_loss_j = max(pre_energy_j - post_energy_j, 0.0)
-        scar = scars[scar_id]
         rows.append(
             {
                 "impact_id": f"chant_sura_{scar_id.replace('.', '_')}",
@@ -190,6 +203,8 @@ def build_rows(
 
 
 def write_csv(rows: list[dict[str, object]]) -> None:
+    if not rows:
+        raise stage_error("real-data preprocessing", f"no rows are available for {OUT_CSV}")
     fieldnames = list(rows[0].keys())
     with OUT_CSV.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -242,6 +257,10 @@ def parse_float(value: object) -> float:
     if text in {"", "–", "-"}:
         return float("nan")
     return float(text)
+
+
+def stage_error(stage: str, message: str) -> SystemExit:
+    return SystemExit(f"{stage}: {message}")
 
 
 if __name__ == "__main__":
