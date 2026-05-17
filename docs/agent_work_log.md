@@ -2177,3 +2177,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: the report stays diagnostic only; no calibration, fitting, return-period, annual-frequency, risk, exposure, vulnerability, distributed-execution, physical-probability, or operational claim was introduced.
 - Next task: backlog refill needed; see `docs/task_backlog.md`.
+
+### TB-130: Execute Live Balfrin Restartability And Resume Proof
+
+- Date: 2026-05-17
+- Commit: `5102976`
+- Objective: replace the fixture-backed Balfrin restartability note with a live interrupted-and-resumed recovery proof from the Balfrin single-node probe path.
+- Files changed: `docs/balfrin_failure_recovery_playbook.md`, `docs/balfrin_restartability_recovery_report.md`, `docs/task_backlog.md`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_restartability_recovery.py`, `tests/test_balfrin_restartability_recovery.py`
+- Implementation summary:
+  - Rewrote the restartability report around the live interrupted `v1` run and resumed `v3` run, including the 530-second resume gap, the job ids, and the artifact-continuity checks.
+  - Extended the recovery summarizer so measured overrides can carry live timing and continuity fields, and so the rendered report distinguishes live proof from fixture-backed proof.
+  - Updated the recovery playbook note and the evidence-bundle source list so the canonical reporting points at the live restartability proof, then removed TB-130 from the active backlog.
+  - Added focused tests for measured recovery timing, artifact continuity, and the unchanged fixture-backed CLI path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_restartability_recovery.py scripts/summarize_balfrin_evidence_bundle.py tests/test_balfrin_restartability_recovery.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_restartability_recovery tests.test_balfrin_evidence_bundle`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_restartability_recovery.py --evidence-json /tmp/balfrin_restartability_recovery_live_override.json --format text`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: live single-node Balfrin recovery only; no distributed execution, scale-up authorization, physics, annual-frequency, risk, exposure, vulnerability, or operational claim was introduced.
+- Next task: `TB-131`
