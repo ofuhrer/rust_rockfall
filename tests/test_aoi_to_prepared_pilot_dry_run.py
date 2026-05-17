@@ -46,8 +46,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "aoi_to_prepared_pilot_dry_run_v1")
-        self.assertEqual(first["workflow_status"], "deferred_public_context_inputs")
-        self.assertEqual(first["preparation_status"], "deferred_public_context_inputs")
+        self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
+        self.assertEqual(first["preparation_status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_input"]["input_mode"], "aoi_extent_with_release_polygon")
         self.assertEqual(first["preparation_input"]["release_polygon"]["geometry_type"], "Polygon")
         self.assertEqual(first["preparation_input"]["release_polygon"]["vertex_count"], 4)
@@ -56,6 +56,23 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertTrue(first["preparation_input"]["site_config_path"].endswith("site_config.yaml"))
         self.assertEqual(first["preparation_input"]["aoi_tile_discovery"]["discovery_status"], "ready")
         self.assertEqual(first["preparation_input"]["aoi_tile_discovery"]["tile_candidate_count"], 1)
+        self.assertEqual(first["candidate_source_zones"]["candidate_metrics_status"], "blocked_missing_inputs")
+        self.assertTrue(first["candidate_source_zones"]["blocked_missing_inputs"])
+        self.assertEqual(first["candidate_source_zones"]["candidate_release_zone_set_status"], "not_emitted")
+        self.assertEqual(first["candidate_source_zones"]["candidate_release_zone_interpretation"], "not_claimed")
+        self.assertIn("terrain_inputs", first["candidate_source_zones"])
+        self.assertIn("source_zone_inputs", first["candidate_source_zones"])
+        self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_status"], "ready")
+        self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_summary"]["block_size_bin_count"], 3)
+        self.assertEqual(
+            first["scenario_generation_inputs"]["source_policy_provenance"]["policy_id"],
+            "tschamut_public_source_scenario_policy_v1",
+        )
+        self.assertEqual(first["output_root_planning"]["prepared_validation_root"], "validation/private/chant_sura_fluelapass_portability_example_v1")
+        self.assertIn(
+            "second_site_release_plan_execution_template",
+            first["output_root_planning"]["blocked_command_ids"],
+        )
 
         terrain_categories = [row["category"] for row in first["terrain_manifests"]]
         self.assertEqual(terrain_categories, ["terrain_crop", "terrain_metadata"])
@@ -69,18 +86,18 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("swissimage_context", context_categories)
         self.assertIn("swisstlm3d_context", context_categories)
         self.assertTrue(
-            first["release_scenario_placeholders"]["source_zone_metadata"].endswith(
-                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml"
+            first["release_scenario_placeholders"]["source_scenario_policy_path"].endswith(
+                "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
             )
         )
         self.assertTrue(
-            first["release_scenario_placeholders"]["scenario_table"].endswith(
-                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv"
+            first["release_scenario_placeholders"]["scenario_table_path"].endswith(
+                "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
             )
         )
         self.assertTrue(
-            first["release_scenario_placeholders"]["source_scenario_policy"].endswith(
-                "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml"
+            first["release_scenario_placeholders"]["same_scale_reference_path"].endswith(
+                "docs/tschamut_public_same_scale_uncertainty_envelope.md"
             )
         )
         hook_ids = [row["command_id"] for row in first["command_plan_hooks"]]
@@ -97,6 +114,9 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         text_report = planner.render_text_report(first)
         self.assertIn("preparation_input:", text_report)
         self.assertIn("aoi_tile_discovery:", text_report)
+        self.assertIn("candidate_source_zones:", text_report)
+        self.assertIn("scenario_generation_inputs:", text_report)
+        self.assertIn("output_root_planning:", text_report)
         self.assertIn("terrain_manifests:", text_report)
         self.assertIn("context_manifests:", text_report)
         self.assertIn("command_plan_hooks:", text_report)
@@ -114,6 +134,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["preparation_status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_input"]["input_mode"], "missing_inputs")
         self.assertEqual(first["preparation_input"]["candidate_site_id"], "unspecified_second_site")
+        self.assertEqual(first["candidate_source_zones"]["candidate_metrics_status"], "blocked_missing_inputs")
+        self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_status"], "ready")
         self.assertTrue(first["terrain_manifests"])
         self.assertTrue(first["context_manifests"])
         self.assertTrue(
@@ -132,6 +154,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("schema_version: aoi_to_prepared_pilot_dry_run_v1", text_report)
         self.assertIn("workflow_status: blocked_missing_inputs", text_report)
         self.assertIn("preparation_input:", text_report)
+        self.assertIn("candidate_source_zones:", text_report)
+        self.assertIn("scenario_generation_inputs:", text_report)
 
     def _write_candidate_config(self, repo_root: Path) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"

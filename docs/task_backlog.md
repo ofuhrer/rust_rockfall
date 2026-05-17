@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-140: Compose Site-Level AOI-To-Command-Plan Dry Run
-
-Goal: Chain AOI product discovery, release-zone candidate generation,
-scenario-table generation, output-root planning, and command-plan hooks into
-one dry-run site orchestration report.
-
-Capability gap reduced: missing composition layer between individual
-automation helpers and an AOI-to-workflow user path.
-
-Why this outranks alternatives: individual dry-run helpers now exist, but
-Swiss-wide workflow realism requires proving they compose into one deterministic
-site-level preparation plan.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_pragmatic_release_plan.py`
-- `scripts/generate_pilot_command_plan.py`
-
-Deliverables:
-
-- End-to-end AOI/release-polygon dry-run report with product discovery,
-  candidate source zones, scenario-generation inputs, ignored output roots,
-  and runnable or blocked command-plan references.
-- Tests covering deterministic fixture output and blocked missing-input states.
-
-Definition of done:
-
-- The repository has one compact dry-run command that shows how an AOI would be
-  prepared up to, but not including, ensemble execution.
-
-Boundaries: No downloads, no ensembles, no second-site hazard build, no
-physical-probability semantics, and no operational claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

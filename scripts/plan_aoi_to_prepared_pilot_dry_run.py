@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Compose the Chant Sura AOI-to-prepared-pilot dry-run workflow.
 
-This is a read-only orchestrator. It chains the existing AOI acquisition,
-real-context gate, release-zone heuristic dry run, release-plan dry run, and
-portable command-plan helpers into one deterministic workflow report. It does
-not download data, stage public products, or run any ensemble work.
+This is a read-only orchestrator. It chains the AOI acquisition planner, the
+terrain release-zone candidate helper, the pragmatic release-plan helper, and
+the portable command-plan helper into one deterministic workflow report. It
+does not download data, stage public products, or run any ensemble work.
 """
 
 from __future__ import annotations
@@ -44,9 +44,8 @@ def _load_module(module_name: str, filename: str):
 
 
 AOI_ACQUISITION = _load_module("aoi_to_prepared_pilot_aoi_acquisition", "plan_swisstopo_aoi_acquisition.py")
-REAL_CONTEXT_GATE = _load_module("aoi_to_prepared_pilot_real_context_gate", "check_chant_sura_real_context_readiness_gate.py")
-RELEASE_ZONE = _load_module("aoi_to_prepared_pilot_release_zone", "plan_release_zone_heuristic_dry_run.py")
-RELEASE_PLAN = _load_module("aoi_to_prepared_pilot_release_plan", "plan_release_plan_dry_run.py")
+CANDIDATE_GENERATION = _load_module("aoi_to_prepared_pilot_candidate_generation", "plan_terrain_release_zone_candidates.py")
+SCENARIO_PLAN = _load_module("aoi_to_prepared_pilot_scenario_plan", "plan_pragmatic_release_plan.py")
 COMMAND_PLAN = _load_module("aoi_to_prepared_pilot_command_plan", "generate_pilot_command_plan.py")
 
 
@@ -271,9 +270,8 @@ def build_prep_summary(
     synthetic_config: bool,
     has_site_config: bool,
     acquisition_report: dict[str, Any],
-    real_context_report: dict[str, Any],
-    release_zone_report: dict[str, Any],
     release_plan_report: dict[str, Any],
+    candidate_generation_report: dict[str, Any],
     command_plan_report: dict[str, Any],
 ) -> dict[str, Any]:
     terrain_manifests = [
@@ -305,11 +303,39 @@ def build_prep_summary(
     if terrain_metadata_record is not None:
         terrain_manifests.append(terrain_metadata_record)
     context_manifests = list(acquisition_report.get("public_context_acquisition_plan", []))
+    release_plan_paths = release_plan_report.get("source_inputs", {})
     release_scenario_placeholders = {
-        "source_zone_metadata": release_plan_report.get("site_specific_inputs", {}).get("expected_paths", {}).get("source_zone_metadata", ""),
-        "scenario_table": release_plan_report.get("site_specific_inputs", {}).get("expected_paths", {}).get("scenario_table", ""),
-        "source_scenario_policy": release_plan_report.get("site_specific_inputs", {}).get("expected_paths", {}).get("source_scenario_policy", ""),
+        "source_scenario_policy_path": release_plan_paths.get("source_scenario_policy_path", ""),
+        "scenario_table_path": release_plan_paths.get("scenario_table_path", ""),
+        "same_scale_reference_path": release_plan_paths.get("same_scale_reference_path", ""),
         "release_polygon": release_polygon,
+        "scenario_plan_status": release_plan_report.get("scenario_plan_status", "unknown"),
+    }
+    candidate_source_zones = {
+        "candidate_metrics_status": candidate_generation_report.get("candidate_metrics_status", "unknown"),
+        "candidate_release_zone_set_status": candidate_generation_report.get("candidate_release_zone_set_status", "unknown"),
+        "candidate_release_zone_interpretation": candidate_generation_report.get("candidate_release_zone_interpretation", "unknown"),
+        "candidate_summary": candidate_generation_report.get("candidate_summary", {}),
+        "screening_criteria": candidate_generation_report.get("screening_criteria", {}),
+        "terrain_inputs": candidate_generation_report.get("terrain_inputs", {}),
+        "source_zone_inputs": candidate_generation_report.get("source_zone_inputs", {}),
+        "blocked_missing_inputs": candidate_generation_report.get("blocked_missing_inputs", []),
+        "blocked_reason": candidate_generation_report.get("blocked_reason", ""),
+        "claim_boundaries": candidate_generation_report.get("claim_boundaries", {}),
+        "candidate_release_zone_products": candidate_generation_report.get("candidate_release_zone_products", {}),
+    }
+    scenario_generation_inputs = {
+        "scenario_plan_status": release_plan_report.get("scenario_plan_status", "unknown"),
+        "source_policy_provenance": release_plan_report.get("source_policy_provenance", {}),
+        "block_size_bins": release_plan_report.get("block_size_bins", []),
+        "weighting_semantics": release_plan_report.get("weighting_semantics", {}),
+        "reference_scenario_table": release_plan_report.get("reference_scenario_table", {}),
+        "scenario_plan_summary": release_plan_report.get("scenario_plan_summary", {}),
+        "explicit_non_frequency_labels": release_plan_report.get("explicit_non_frequency_labels", []),
+        "same_scale_reference": release_plan_report.get("same_scale_reference", {}),
+        "claim_boundary": release_plan_report.get("claim_boundary", {}),
+        "pragmatic_coverage_boundary": release_plan_report.get("pragmatic_coverage_boundary", {}),
+        "source_inputs": release_plan_report.get("source_inputs", {}),
     }
     command_plan_hooks = [
         {
@@ -332,16 +358,12 @@ def build_prep_summary(
             "second_site_benchmark_preparation_template",
         }
     ]
-    supporting_root_paths = [
-        entry.get("expected_path")
-        for entry in real_context_report.get("supporting_local_roots", [])
-        if isinstance(entry, dict) and entry.get("expected_path")
-    ]
+    blocked_template_outputs = command_plan_report.get("ignored_output_paths", [])
+    blocked_template_output_roots = [str(Path(path).parent) for path in blocked_template_outputs if path]
     ignored_output_roots = dedupe(
         [
             *acquisition_report.get("acquisition_manifest_expected_ignored_roots", []),
-            *supporting_root_paths,
-            *release_plan_ignored_output_roots(release_plan_report),
+            *blocked_template_output_roots,
             *command_plan_report.get("ignored_output_paths", []),
         ]
     )
@@ -367,11 +389,20 @@ def build_prep_summary(
         "release_polygon": release_polygon,
         "synthetic_config": synthetic_config,
         "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
+        "candidate_source_zones": candidate_source_zones,
+        "scenario_generation_inputs": scenario_generation_inputs,
         "terrain_manifests": terrain_manifests,
         "context_manifests": context_manifests,
         "release_scenario_placeholders": release_scenario_placeholders,
         "command_plan_hooks": command_plan_hooks,
         "ignored_output_roots": ignored_output_roots,
+        "output_root_planning": {
+            "prepared_validation_root": f"validation/private/{acquisition_report.get('candidate_site_id', '')}",
+            "prepared_hazard_root": f"hazard/results/{acquisition_report.get('candidate_site_id', '')}",
+            "ignored_output_roots": ignored_output_roots,
+            "command_plan_ignored_output_roots": command_plan_report.get("ignored_output_paths", []),
+            "blocked_command_ids": command_plan_report.get("blocked_template_commands", []),
+        },
     }
 
 
@@ -380,12 +411,6 @@ def _patched_repo_root(repo_root: Path) -> Iterator[None]:
     patched_targets = [
         (AOI_ACQUISITION, "ROOT"),
         (AOI_ACQUISITION.PREFLIGHT, "ROOT"),
-        (REAL_CONTEXT_GATE, "ROOT"),
-        (REAL_CONTEXT_GATE.PREFLIGHT, "ROOT"),
-        (RELEASE_ZONE, "ROOT"),
-        (RELEASE_ZONE.PREFLIGHT, "ROOT"),
-        (RELEASE_PLAN, "ROOT"),
-        (RELEASE_PLAN.PREFLIGHT, "ROOT"),
     ]
     originals: list[tuple[Any, str, Any]] = []
     for module, attr in patched_targets:
@@ -430,17 +455,15 @@ def build_report(
 
     with _patched_repo_root(repo_root):
         acquisition_report = AOI_ACQUISITION.build_report(config_path)
-        real_context_report = REAL_CONTEXT_GATE.build_report(config_path, repo_root=repo_root)
-        release_zone_report = RELEASE_ZONE.build_report(config_path, repo_root=repo_root)
-        release_plan_report = RELEASE_PLAN.build_report(config_path, repo_root=repo_root)
+        candidate_generation_report = CANDIDATE_GENERATION.build_report(repo_root=repo_root)
+        release_plan_report = SCENARIO_PLAN.build_report()
 
     command_plan_report = COMMAND_PLAN.build_report(DEFAULT_COMMAND_PLAN_SITE, config_path)
 
     steps = build_steps(
         acquisition_report=acquisition_report,
-        real_context_report=real_context_report,
-        release_zone_report=release_zone_report,
         release_plan_report=release_plan_report,
+        candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
     )
     generated_output_roots = sorted({root for step in steps for root in step["generated_output_roots"]})
@@ -455,9 +478,8 @@ def build_report(
         synthetic_config=synthetic_config,
         has_site_config=has_site_config,
         acquisition_report=acquisition_report,
-        real_context_report=real_context_report,
-        release_zone_report=release_zone_report,
         release_plan_report=release_plan_report,
+        candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
     )
 
@@ -473,6 +495,9 @@ def build_report(
         "terrain_manifests": prep_summary["terrain_manifests"],
         "context_manifests": prep_summary["context_manifests"],
         "release_scenario_placeholders": prep_summary["release_scenario_placeholders"],
+        "candidate_source_zones": prep_summary["candidate_source_zones"],
+        "scenario_generation_inputs": prep_summary["scenario_generation_inputs"],
+        "output_root_planning": prep_summary["output_root_planning"],
         "command_plan_hooks": prep_summary["command_plan_hooks"],
         "ignored_output_roots": prep_summary["ignored_output_roots"],
         "step_order": [step["step_id"] for step in steps],
@@ -487,11 +512,10 @@ def build_report(
         },
         "ignored_output_roots_by_step": {step["step_id"]: step["ignored_output_roots"] for step in steps},
         "acquisition_report": acquisition_report,
-        "real_context_gate_report": real_context_report,
-        "release_zone_heuristic_report": release_zone_report,
+        "candidate_generation_report": candidate_generation_report,
         "release_plan_report": release_plan_report,
         "command_plan_report": command_plan_report,
-        "claim_boundaries": real_context_report["claim_boundaries"],
+        "claim_boundaries": candidate_generation_report.get("claim_boundaries", {}),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
     }
@@ -501,9 +525,8 @@ def build_report(
 def build_steps(
     *,
     acquisition_report: dict[str, Any],
-    real_context_report: dict[str, Any],
-    release_zone_report: dict[str, Any],
     release_plan_report: dict[str, Any],
+    candidate_generation_report: dict[str, Any],
     command_plan_report: dict[str, Any],
 ) -> list[dict[str, Any]]:
     candidate_site_id = acquisition_report["candidate_site_id"]
@@ -538,52 +561,33 @@ def build_steps(
             ),
         },
         {
-            "step_id": "public_context_gate",
-            "label": "Public-context readiness gate",
-            "status": real_context_report["real_context_readiness_gate_status"],
-            "blocked_reason": (
-                "public-context products are intentionally deferred"
-                if real_context_report["real_context_readiness_gate_status"] != "ready"
-                else ""
-            ),
-            "expected_inputs": expected_inputs_from_real_context_gate(real_context_report),
-            "generated_output_roots": [],
-            "ignored_output_roots": ignored_site_roots,
-            "blockers": build_step_blockers(
-                "public_context_gate",
-                real_context_report["real_context_readiness_gate_status"],
-                ignored_site_roots,
-                [entry["category"] for entry in real_context_report.get("deferred_public_context_products", [])],
-            ),
-        },
-        {
-            "step_id": "release_zone_heuristic_dry_run",
-            "label": "Release-zone heuristic dry run",
-            "status": release_zone_report["heuristic_dry_run_status"],
-            "blocked_reason": release_zone_report["blocked_reason"],
-            "expected_inputs": expected_inputs_from_release_zone(release_zone_report),
+            "step_id": "release_zone_candidate_generation",
+            "label": "Release-zone candidate generation",
+            "status": candidate_generation_report["candidate_metrics_status"],
+            "blocked_reason": candidate_generation_report.get("blocked_reason", ""),
+            "expected_inputs": expected_inputs_from_candidate_generation(candidate_generation_report),
             "generated_output_roots": [],
             "ignored_output_roots": [],
             "blockers": build_step_blockers(
-                "release_zone_heuristic_dry_run",
-                release_zone_report["heuristic_dry_run_status"],
+                "release_zone_candidate_generation",
+                candidate_generation_report["candidate_metrics_status"],
                 [],
-                [entry["category"] for entry in release_zone_report.get("blocked_missing_products", [])],
+                candidate_generation_report.get("blocked_missing_inputs", []),
             ),
         },
         {
             "step_id": "release_plan_dry_run",
-            "label": "Release-plan dry run",
-            "status": release_plan_report["release_plan_dry_run_status"],
-            "blocked_reason": release_plan_report["blocked_reason"],
-            "expected_inputs": expected_inputs_from_release_plan(release_plan_report),
-            "generated_output_roots": release_plan_generated_output_roots(release_plan_report),
-            "ignored_output_roots": release_plan_ignored_output_roots(release_plan_report),
+            "label": "Scenario-table generation",
+            "status": release_plan_report["scenario_plan_status"],
+            "blocked_reason": "",
+            "expected_inputs": expected_inputs_from_scenario_generation(release_plan_report),
+            "generated_output_roots": [],
+            "ignored_output_roots": [],
             "blockers": build_step_blockers(
                 "release_plan_dry_run",
-                release_plan_report["release_plan_dry_run_status"],
-                release_plan_ignored_output_roots(release_plan_report),
-                [release_plan_report["blocked_reason"]] if release_plan_report["blocked_reason"] else [],
+                release_plan_report["scenario_plan_status"],
+                [],
+                [],
             ),
         },
         {
@@ -660,25 +664,28 @@ def expected_inputs_from_release_zone(report: dict[str, Any]) -> list[str]:
     return dedupe(inputs)
 
 
-def expected_inputs_from_release_plan(report: dict[str, Any]) -> list[str]:
+def expected_inputs_from_candidate_generation(report: dict[str, Any]) -> list[str]:
     inputs: list[str] = []
-    site_specific_inputs = report.get("site_specific_inputs", {})
-    for path in (site_specific_inputs.get("expected_paths") or {}).values():
-        if path:
-            inputs.append(path)
+    terrain_inputs = report.get("terrain_inputs", {})
+    if isinstance(terrain_inputs, dict):
+        for value in terrain_inputs.values():
+            if isinstance(value, str):
+                inputs.append(value)
+    source_zone_inputs = report.get("source_zone_inputs", {})
+    if isinstance(source_zone_inputs, dict):
+        for value in source_zone_inputs.values():
+            if isinstance(value, str):
+                inputs.append(value)
     return dedupe(inputs)
 
 
-def release_plan_generated_output_roots(report: dict[str, Any]) -> list[str]:
-    outputs = report.get("blocked_second_site_execution_template", {}).get("expected_outputs", [])
-    roots = [str(Path(path).parent) for path in outputs if path]
-    return dedupe(roots)
-
-
-def release_plan_ignored_output_roots(report: dict[str, Any]) -> list[str]:
-    blocked_template = report.get("blocked_second_site_execution_template", {})
-    output_roots = [str(Path(path).parent) for path in blocked_template.get("expected_outputs", []) if path]
-    return dedupe(output_roots)
+def expected_inputs_from_scenario_generation(report: dict[str, Any]) -> list[str]:
+    inputs: list[str] = []
+    source_inputs = report.get("source_inputs", {})
+    for path in (source_inputs or {}).values():
+        if path:
+            inputs.append(path)
+    return dedupe(inputs)
 
 
 def command_plan_step_status(report: dict[str, Any]) -> str:
@@ -789,6 +796,77 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "candidate_source_zones:",
+        ]
+    )
+    candidate_source_zones = prep.get("candidate_source_zones", {})
+    lines.append(f"- candidate_metrics_status: {candidate_source_zones.get('candidate_metrics_status', '')}")
+    lines.append(
+        f"- candidate_release_zone_set_status: {candidate_source_zones.get('candidate_release_zone_set_status', '')}"
+    )
+    lines.append(
+        f"- candidate_release_zone_interpretation: {candidate_source_zones.get('candidate_release_zone_interpretation', '')}"
+    )
+    if candidate_source_zones.get("blocked_reason"):
+        lines.append(f"- blocked_reason: {candidate_source_zones.get('blocked_reason', '')}")
+    if candidate_source_zones.get("blocked_missing_inputs"):
+        lines.append("- blocked_missing_inputs:")
+        lines.extend(f"  - {item}" for item in candidate_source_zones["blocked_missing_inputs"])
+    lines.append("- candidate_summary:")
+    for key, value in (candidate_source_zones.get("candidate_summary") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- screening_criteria:")
+    for key, value in (candidate_source_zones.get("screening_criteria") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- terrain_inputs:")
+    for key, value in (candidate_source_zones.get("terrain_inputs") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- source_zone_inputs:")
+    for key, value in (candidate_source_zones.get("source_zone_inputs") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "scenario_generation_inputs:",
+        ]
+    )
+    scenario_generation_inputs = prep.get("scenario_generation_inputs", {})
+    lines.append(f"- scenario_plan_status: {scenario_generation_inputs.get('scenario_plan_status', '')}")
+    lines.append("- source_policy_provenance:")
+    for key, value in (scenario_generation_inputs.get("source_policy_provenance") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- block_size_bins:")
+    for row in scenario_generation_inputs.get("block_size_bins", []):
+        lines.append(
+            f"  - {row.get('block_scenario_id', '')}: {row.get('block_size_class', '')} / {row.get('sampling_weight', '')}"
+        )
+    lines.append("- weighting_semantics:")
+    for key, value in (scenario_generation_inputs.get("weighting_semantics") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- reference_scenario_table:")
+    for key, value in (scenario_generation_inputs.get("reference_scenario_table") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- scenario_plan_summary:")
+    for key, value in (scenario_generation_inputs.get("scenario_plan_summary") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- explicit_non_frequency_labels:")
+    for value in scenario_generation_inputs.get("explicit_non_frequency_labels", []):
+        lines.append(f"  - {value}")
+    lines.append("- same_scale_reference:")
+    for key, value in (scenario_generation_inputs.get("same_scale_reference") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- claim_boundary:")
+    for key, value in (scenario_generation_inputs.get("claim_boundary") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- pragmatic_coverage_boundary:")
+    for key, value in (scenario_generation_inputs.get("pragmatic_coverage_boundary") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- source_inputs:")
+    for key, value in (scenario_generation_inputs.get("source_inputs") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
             "terrain_manifests:",
         ]
     )
@@ -832,6 +910,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.extend(f"- {item}" for item in report["ignored_output_roots"])
     else:
         lines.append("- none")
+    lines.extend(
+        [
+            "",
+            "output_root_planning:",
+        ]
+    )
+    for key, value in (prep.get("output_root_planning") or {}).items():
+        lines.append(f"- {key}: {value}")
     lines.extend(
         [
             "",

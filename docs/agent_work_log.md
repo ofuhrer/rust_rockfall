@@ -2362,3 +2362,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new Slurm execution, no generated artifact commits, and no claim-boundary changes.
 - Next task: `TB-140`
+
+### TB-140
+- Date: 2026-05-17
+- Commit: local
+- Objective: compose the AOI acquisition, terrain candidate, frozen scenario, and portable command-plan dry-run helpers into one deterministic site-level preparation report.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the AOI dry-run orchestrator to compose the AOI acquisition planner, the terrain release-zone candidate helper, the frozen scenario-table helper, and the portable command-plan helper into one report.
+  - Added explicit report sections for candidate source zones, scenario-generation inputs, ignored output roots, and command-plan hooks, while keeping blocked missing-input behavior deterministic.
+  - Updated the focused regression test to cover the staged-fixture composition path and the blocked temp-repo path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_to_prepared_pilot_dry_run.py tests/test_aoi_to_prepared_pilot_dry_run.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_swisstopo_aoi_acquisition_planner tests.test_plan_terrain_release_zone_candidates tests.test_plan_pragmatic_release_plan tests.test_pilot_command_plan`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no ensembles, no second-site hazard build, no physical-probability semantics, and no operational claim.
+- Next task: backlog refill needed
