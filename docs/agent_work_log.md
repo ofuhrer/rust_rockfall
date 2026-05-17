@@ -2280,3 +2280,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no large production ensemble, no tuning, no scale-up authorization, and no operational claim was introduced; the task records a blocked next-step plan rather than asserting closure change.
 - Next task: `TB-136`
+
+### TB-136: Generate Persistent Hazard Confidence Products
+
+- Date: 2026-05-17
+- Commit: `a7a85ad`
+- Objective: Convert measured same-scale stability and persistence evidence into deterministic GIS-readable diagnostic confidence products with explicit claim boundaries.
+- Files changed: `scripts/summarize_spatial_same_scale_uncertainty.py`, `tests/test_spatial_same_scale_uncertainty.py`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a confidence-product manifest plus deterministic GeoJSON outputs for `persistent_hazard`, `unstable_region`, `support_nodata_sensitive`, and `shared_support_magnitude` derived from the measured same-scale region summaries.
+  - Kept the new products boundary-safe by marking them diagnostic-only and reusing the existing stable/unstable region evidence rather than introducing any new model run or probability claim.
+  - Extended the spatial regression test to verify the new manifest, product file ordering, deterministic repeat writes, and blocked-input behavior.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_same_scale_stability_frontier`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_conditional_diagnostic_interpretation`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_spatial_same_scale_uncertainty.py tests/test_spatial_same_scale_uncertainty.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: diagnostic uncertainty products only; no operational hazard, annual-frequency, physical-probability, or scale-up claim was introduced.
+- Next task: `TB-137`
