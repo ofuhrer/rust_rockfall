@@ -580,3 +580,10 @@ historical snapshots.
 - Decision: defer real public-context staging for Chant Sura / Flüelapass until the Balfrin demo path is assessed and an explicit acquisition authorization exists; keep the current candidate at `deferred_public_context_inputs`.
 - Rationale: the current helper reports are structurally ready for acquisition review, but the required SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D products are still intentionally deferred and the repository must not turn synthetic fixtures into evidence or download real public context without authorization.
 - Sources: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `scripts/plan_swisstopo_aoi_acquisition.py`, `scripts/check_chant_sura_real_context_readiness_gate.py`, `scripts/check_second_site_public_geodata_preflight.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`.
+
+## TB-168 Target-Area Balfrin Probe Authorization
+
+- Date: 2026-05-17
+- Decision: authorize exactly one bounded single-job Balfrin target-area probe for `TB-168` using the frozen Tschamut target-area contract and the deterministic run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
+- Rationale: TB-166 produced an unlaunched submission package, but the previous contract correctly blocked submission. The user explicitly authorized one bounded probe, so the repo now records a narrow execution authorization without changing scale-up, distributed-execution, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability boundaries.
+- Sources: `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, `docs/task_backlog.md`, `scripts/submit_balfrin_probe.py`, `docs/balfrin_probe_slurm_driver.md`.

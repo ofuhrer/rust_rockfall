@@ -37,6 +37,12 @@ class BalfrinTargetAreaDemoContractTests(unittest.TestCase):
         self.assertEqual(contract["balfrin_execution_boundary"]["execution_boundary"], "single_job_balfrin_slurm")
         self.assertEqual(contract["balfrin_execution_boundary"]["run_id_policy"], "deterministic_frozen_run_id")
         self.assertIn("--local-command-plan", contract["balfrin_execution_boundary"]["command_plan_hook"]["command"])
+        authorization = contract["balfrin_execution_boundary"]["execution_authorization"]
+        self.assertEqual(authorization["authorization_status"], "authorized_for_one_bounded_probe")
+        self.assertEqual(authorization["authorized_task"], "TB-168")
+        self.assertEqual(authorization["max_submissions"], 1)
+        self.assertTrue(authorization["no_rerun_without_renewed_authorization"])
+        self.assertIn("--submit", contract["balfrin_execution_boundary"]["authorized_submit_command"]["command"])
         self.assertIn(
             "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml",
             contract["balfrin_execution_boundary"]["probe_manifest_path"],

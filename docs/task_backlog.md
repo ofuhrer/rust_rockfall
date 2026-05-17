@@ -24,7 +24,35 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-168: Collect Target-Area Balfrin Metrics Completeness
+### TB-168: Execute Authorized Target-Area Balfrin Probe
+
+Goal: Submit exactly one bounded target-area Balfrin probe now that explicit authorization exists, then record measured execution evidence or the exact scheduler/runtime failure.
+
+Capability gap reduced: Measured target-area Balfrin execution realism.
+
+Why this outranks alternatives: All downstream metrics, evidence-bundle, GIS, uncertainty, and interpretation tasks depend on a measured run root or a precise execution failure.
+
+Inspect first:
+
+- `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `docs/balfrin_probe_slurm_driver.md`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+
+Deliverables:
+
+- Submitted job id, run root, submission report, and measured completion evidence if the job succeeds.
+- If submission or runtime fails, a precise blocked/failure report with the final relevant scheduler or log output.
+- Updated work-log entry that distinguishes measured execution from scheduler/runtime failure.
+
+Definition of done:
+
+- Exactly one authorized bounded probe is either submitted and measured, or blocked/failed with the exact unresolved gate and preserved handoff artifacts.
+
+Boundaries: Do not submit more than once without renewed authorization; no large ensemble, no distributed execution, no operational claim, and no scale-up authorization.
+
+### TB-169: Collect Target-Area Balfrin Metrics Completeness
 
 Goal: Collect and classify target-area Balfrin runtime, output, memory, split-output, and remediation metrics from the measured run root.
 
@@ -50,9 +78,9 @@ Definition of done:
 
 - The measured run root has a deterministic metrics completeness report or a blocked missing-run-root report.
 
-Boundaries: No fabricated measured metrics, no new run unless covered by TB-167, no operational claim, and no scale-up authorization.
+Boundaries: No fabricated measured metrics, no new run unless covered by TB-168, no operational claim, and no scale-up authorization.
 
-### TB-169: Build Target-Area Evidence Bundle
+### TB-170: Build Target-Area Evidence Bundle
 
 Goal: Compose the target-area Balfrin evidence into one deterministic JSON/text bundle with section provenance.
 
@@ -80,7 +108,7 @@ Definition of done:
 
 Boundaries: No operational claim, no physical credibility upgrade, no generated output commit, and no annual-frequency semantics.
 
-### TB-170: Produce Target-Area GIS And COG Scope Audit
+### TB-171: Produce Target-Area GIS And COG Scope Audit
 
 Goal: Audit the target-area GIS products, COG conversion scope, missing layers, and demonstration usability.
 
@@ -108,7 +136,7 @@ Definition of done:
 
 Boundaries: No operational GIS claim, no QGIS sign-off claim, no generated raster commit, and no risk/exposure/vulnerability semantics.
 
-### TB-171: Summarize Target-Area Spatial Uncertainty And Stability
+### TB-172: Summarize Target-Area Spatial Uncertainty And Stability
 
 Goal: Produce uncertainty, stability-zone, persistence, and hotspot summaries for the target-area run or report why they are unavailable.
 
@@ -136,7 +164,7 @@ Definition of done:
 
 Boundaries: No closure upgrade by assertion, no operational hazard-map claim, and no physical probability claim.
 
-### TB-172: Interpret Target-Area Closure And Scientific Meaning
+### TB-173: Interpret Target-Area Closure And Scientific Meaning
 
 Goal: Generate a target-area conditional diagnostic interpretation combining execution, uncertainty, GIS, output, and physical-credibility boundaries.
 
@@ -164,7 +192,7 @@ Definition of done:
 
 Boundaries: No accepted diagnostic unless criteria are actually met, no operational claim, no physical credibility upgrade, and no annual-frequency semantics.
 
-### TB-173: Demonstrate Target-Area Restartability Or Preserve Blocked Status
+### TB-174: Demonstrate Target-Area Restartability Or Preserve Blocked Status
 
 Goal: Run or document an interruption/resume proof for the target-area Balfrin package, using measured evidence only when available.
 
@@ -192,7 +220,7 @@ Definition of done:
 
 Boundaries: No unnecessary rerun, no destructive cancellation of healthy Slurm jobs, no distributed execution, and no operational claim.
 
-### TB-174: Update Target-Area Runtime And Swiss-Wide Scaling Envelope
+### TB-175: Update Target-Area Runtime And Swiss-Wide Scaling Envelope
 
 Goal: Recompute runtime/output and Swiss-wide scaling estimates from the target-area evidence.
 
@@ -220,7 +248,7 @@ Definition of done:
 
 Boundaries: No distributed execution, no national-scale run, no scale-up authorization, and no operational claim.
 
-### TB-175: Produce Target-Area Management Demonstration Package
+### TB-176: Produce Target-Area Management Demonstration Package
 
 Goal: Assemble a compact management-facing package that explains the target-area Balfrin demonstration, evidence, limits, and next decision.
 
@@ -248,7 +276,7 @@ Definition of done:
 
 Boundaries: No marketing overclaim, no operational claim, no annual-frequency claim, and no physical credibility upgrade.
 
-### TB-176: Prepare Second-Site Real-Context Acquisition Execution Plan
+### TB-177: Prepare Second-Site Real-Context Acquisition Execution Plan
 
 Goal: Convert the Chant Sura real-context staging checklist into a concrete operator execution plan for acquiring and verifying real public-context products.
 
@@ -276,7 +304,7 @@ Definition of done:
 
 Boundaries: No downloads unless explicitly requested and supported, no second-site ensemble, no synthetic evidence upgrade, and no operational claim.
 
-### TB-177: Define Physical Evidence Acquisition Pack For Target Area
+### TB-178: Define Physical Evidence Acquisition Pack For Target Area
 
 Goal: Specify the real observed runout/deposition, release-zone, block-population, and source-frequency evidence needed to move beyond workflow credibility for the target area.
 
@@ -304,7 +332,7 @@ Definition of done:
 
 Boundaries: No calibration, no tuning, no annual-frequency claim, no risk/exposure/vulnerability workflow, and no operational claim.
 
-### TB-178: Refill Or Close Post-Demonstration Backlog
+### TB-179: Refill Or Close Post-Demonstration Backlog
 
 Goal: After the target-area demonstration sequence, reassess maturity and refill only the next highest-value tasks.
 

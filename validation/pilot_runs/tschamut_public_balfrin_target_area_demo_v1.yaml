@@ -47,11 +47,30 @@ balfrin_execution_boundary:
   run_id_policy: deterministic_frozen_run_id
   run_id: tschamut_public_balfrin_target_area_demo_v1
   probe_manifest_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  execution_authorization:
+    authorization_status: authorized_for_one_bounded_probe
+    authorized_task: TB-168
+    authorized_by: user_request
+    authorization_date: 2026-05-17
+    max_submissions: 1
+    submission_mode: single_job_sbatch
+    partition: postproc
+    time: "00:30:00"
+    nodes: 1
+    ntasks: 1
+    cpus_per_task: 16
+    run_root: /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517
+    no_rerun_without_renewed_authorization: true
   command_plan_hook:
     helper: scripts/submit_balfrin_probe.py
     mode: local_command_plan
     command: PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --local-command-plan
     purpose: Inspect the frozen Balfrin command plan without launching a job.
+  authorized_submit_command:
+    helper: scripts/submit_balfrin_probe.py
+    mode: submit
+    command: PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --run-id tschamut_public_balfrin_target_area_demo_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit
+    purpose: Submit exactly one bounded Balfrin target-area probe after explicit user authorization.
   expected_ignored_output_roots:
     - validation/private/tschamut_public_pilot/target_gate_v1
     - validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced
@@ -59,8 +78,8 @@ balfrin_execution_boundary:
     - hazard/results/tschamut_public_pilot/target_gate_v1
   execution_notes:
     - keep the same run id and run root for any later replay of this frozen contract
-    - no job submission is authorized by this record
-    - no new ensemble is authorized by this record
+    - exactly one bounded single-job Balfrin submission is authorized for TB-168 by the 2026-05-17 user request
+    - reruns require renewed authorization
     - the command-plan hook is read-only and does not launch Balfrin
 
 claim_boundary:
@@ -97,4 +116,5 @@ contract_boundary_summary:
   - the release-zone record is the target-gate reproduction evidence set
   - the scenario family stays conditional and conditional-only
   - scalable conditional output is retained, but it remains non-operational
-  - no job submission, no new ensemble, and no scale-up authorization are granted
+  - exactly one bounded single-job Balfrin probe is authorized for TB-168
+  - no scale-up, distributed execution, operational use, or physical-probability claim is granted
