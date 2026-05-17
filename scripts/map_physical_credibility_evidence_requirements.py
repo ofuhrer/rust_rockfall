@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
 try:
     import yaml  # type: ignore
 except ImportError as exc:  # pragma: no cover - environment setup.
-    raise SystemExit("PyYAML is required; install with `python3 -m pip install PyYAML`") from exc
+    raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
 from scripts import assess_validation_calibration_evidence_gaps as assessment
 from scripts import summarize_chant_sura_holdout_evidence as chant_holdout

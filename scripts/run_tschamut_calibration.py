@@ -48,7 +48,11 @@ def load_yaml(path: Path) -> dict[str, Any]:
     try:
         import yaml  # type: ignore
     except ImportError as exc:
-        raise SystemExit("PyYAML is required: python3 -m pip install PyYAML") from exc
+        raise SystemExit(
+            "PyYAML is required. From the repo root, run "
+            "`PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py ...`. "
+            "CI may install `requirements-tools.txt` with system Python instead."
+        ) from exc
     with path.open(encoding="utf-8") as file:
         data = yaml.safe_load(file) or {}
     if not isinstance(data, dict):
@@ -60,7 +64,11 @@ def write_yaml(path: Path, data: dict[str, Any]) -> None:
     try:
         import yaml  # type: ignore
     except ImportError as exc:
-        raise SystemExit("PyYAML is required: python3 -m pip install PyYAML") from exc
+        raise SystemExit(
+            "PyYAML is required. From the repo root, run "
+            "`PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py ...`. "
+            "CI may install `requirements-tools.txt` with system Python instead."
+        ) from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 

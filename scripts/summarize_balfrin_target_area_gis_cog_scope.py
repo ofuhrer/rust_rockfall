@@ -20,7 +20,7 @@ from typing import Any
 try:
     import yaml  # type: ignore
 except ImportError as exc:  # pragma: no cover - environment setup.
-    raise SystemExit("PyYAML is required; install with `uv run --with PyYAML python ...`") from exc
+    raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

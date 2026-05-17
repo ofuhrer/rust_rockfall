@@ -22,7 +22,11 @@ from typing import Any
 try:
     import yaml  # type: ignore
 except ImportError as exc:  # pragma: no cover - environment issue.
-    raise SystemExit("PyYAML is required; install with `python3 -m pip install PyYAML`") from exc
+    raise SystemExit(
+        "PyYAML is required. From the repo root, run "
+        "`PYENV_VERSION=system uv run python scripts/run_performance_benchmark.py ...`. "
+        "CI may install `requirements-tools.txt` with system Python instead."
+    ) from exc
 
 
 ROOT = Path(__file__).resolve().parents[1]

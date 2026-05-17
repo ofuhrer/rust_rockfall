@@ -221,6 +221,9 @@ Inspect first:
     def test_python_tool_dependency_metadata_is_consistent(self) -> None:
         self.assertEqual(check_repo_consistency.check_python_tool_dependency_metadata(), [])
 
+    def test_python_execution_policy_guidance_is_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_python_execution_policy_guidance(), [])
+
     def test_demo_claim_boundary_audit_current_artifacts_are_clean(self) -> None:
         self.assertEqual(check_repo_consistency.check_hazard_claim_hygiene(), [])
 

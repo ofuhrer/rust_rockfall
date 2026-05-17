@@ -131,7 +131,7 @@ def sha256_file(path: Path) -> str:
 
 def read_yaml(path: Path) -> dict[str, Any]:
     if yaml is None:
-        raise DemSensitivityError("PyYAML is required; run through the project uv environment")
+        raise DemSensitivityError("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`")
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise DemSensitivityError(f"expected YAML mapping: {path}")

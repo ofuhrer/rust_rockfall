@@ -148,6 +148,7 @@ def main() -> int:
     errors.extend(check_staged_generated_outputs())
     errors.extend(check_tracked_copy_suffix_docs())
     errors.extend(check_python_tool_dependency_metadata())
+    errors.extend(check_python_execution_policy_guidance())
     errors.extend(check_roadmap_target_authority())
     errors.extend(check_task_backlog_and_work_log_hygiene())
     errors.extend(check_active_backlog_inspect_first_paths())
@@ -1939,6 +1940,22 @@ def check_python_tool_dependency_metadata() -> list[str]:
     return errors
 
 
+def check_python_execution_policy_guidance() -> list[str]:
+    errors: list[str] = []
+    forbidden_guidance = (
+        "python3 -m pip install " + "PyYAML",
+        "python -m pip install " + "PyYAML",
+    )
+    for path in sorted((ROOT / "scripts").rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for phrase in forbidden_guidance:
+            if phrase in text:
+                errors.append(
+                    f"{path.relative_to(ROOT)} contains forbidden PyYAML install guidance: {phrase}"
+                )
+    return errors
+
+
 def _requirement_name(requirement: str) -> str:
     name = re.split(r"[<>=!~;\\[]", requirement.strip(), maxsplit=1)[0].strip()
     return name.lower().replace("_", "-")
@@ -2446,7 +2463,10 @@ def check_yaml_cases() -> list[str]:
     try:
         import yaml  # type: ignore
     except ImportError:
-        return ["PyYAML is required; install with `python3 -m pip install PyYAML`"]
+        return [
+            "PyYAML is required. From the repo root, run "
+            "`PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`."
+        ]
 
     errors = []
     case_paths = sorted(ROOT.glob("verification/**/*.yaml")) + sorted(
@@ -3432,7 +3452,10 @@ def check_public_benchmark_framework() -> list[str]:
     try:
         import yaml  # type: ignore
     except ImportError:
-        return ["PyYAML is required; install with `python3 -m pip install PyYAML`"]
+        return [
+            "PyYAML is required. From the repo root, run "
+            "`PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`."
+        ]
 
     errors = []
     framework = ROOT / "docs/public_benchmark_framework.md"

@@ -23,38 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-197: Python Execution Policy Normalization
-
-Goal: Normalize repository Python invocation guidance and PyYAML dependency messages around the project-local `uv` workflow used by agents and local checks.
-
-Capability gap reduced: Environment-specific workflow failures caused by mixed `python`, `python3`, global pip, requirements, and `uv` guidance.
-
-Why this outranks alternatives: Reviewers reproduced the local pyenv failure mode; workers should receive one consistent command pattern when a Python dependency or tool invocation fails.
-
-Inspect first:
-
-- `AGENTS.md`
-- `docs/onboarding.md`
-- `README.md`
-- `.github/workflows/ci.yml`
-- `scripts/run_performance_benchmark.py`
-- `scripts/run_tschamut_calibration.py`
-- `scripts/calibrate_scarring_impact.py`
-- `scripts/download_datasets.py`
-
-Deliverables:
-
-- Consistent user-facing error messages in Python scripts that point to `PYENV_VERSION=system uv run python ...` or the documented CI exception.
-- Documentation updates that clarify when CI may use installed Python dependencies and when local workers must use `uv`.
-- A repository-consistency or focused test that rejects new global `python3 -m pip install PyYAML` guidance in scripts.
-- Confirmation that `pyproject.toml` and `requirements-tools.txt` remain intentionally synchronized rather than competing sources of truth.
-
-Definition of done:
-
-- The documented local Python policy is consistent across agent docs, onboarding docs, and script dependency errors, and focused checks catch regressions.
-
-Boundaries: No dependency upgrade, no removal of CI support for `requirements-tools.txt`, no environment installation, and no unrelated script rewrites.
-
 ### TB-198: Calibration Script Failure Diagnostics
 
 Goal: Harden calibration scripts so empty inputs, empty parameter grids, missing impact events, and subprocess failures produce explicit diagnostics with focused tests.

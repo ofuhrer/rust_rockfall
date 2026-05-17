@@ -3522,3 +3522,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no metric retuning, no benchmark reinterpretation, no default physics change, and no broad validation-file refactor beyond the affected paths.
 - Next task: `TB-197`
+
+### TB-197: Python Execution Policy Normalization
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: normalize local Python and PyYAML guidance around the repository `uv` workflow while keeping CI support for `requirements-tools.txt`.
+- Files changed: `README.md`, `docs/onboarding.md`, `scripts/check_repo_consistency.py`, PyYAML-dependent scripts under `scripts/`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated PyYAML dependency failures to point users at `PYENV_VERSION=system uv run python ...` and identify the CI `requirements-tools.txt` exception instead of recommending global pip installs.
+  - Clarified the local-vs-CI Python policy in README and onboarding docs without changing dependency versions or CI installation behavior.
+  - Added a repository-consistency check and focused regression test that reject restored global `python`/`python3 -m pip install PyYAML` guidance in Python scripts.
+  - Confirmed `pyproject.toml` and `requirements-tools.txt` remain the synchronized dependency sources checked by repo consistency.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile $(git diff --name-only | rg '\.py$')`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_python_tool_dependency_metadata_is_consistent tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_python_execution_policy_guidance_is_clean`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no dependency upgrade, no removal of CI support for `requirements-tools.txt`, no environment installation, and no behavior change beyond dependency guidance and consistency enforcement.
+- Next task: `TB-198`

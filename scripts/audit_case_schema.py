@@ -223,7 +223,7 @@ def audit_case_data(data: dict[str, Any], rel_path: str) -> list[str]:
 
 def audit_case_file(path: Path, root: Path = ROOT) -> list[str]:
     if yaml is None:
-        return ["PyYAML is required; install with `python3 -m pip install PyYAML`"]
+        return ["PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`"]
     rel_path = str(path.relative_to(root))
     data = yaml.safe_load(path.read_text()) or {}
     if not isinstance(data, dict):

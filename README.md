@@ -48,7 +48,7 @@ cargo test
 cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
 cargo run -- verify --all
 cargo run -- validate --all
-PYENV_VERSION=system uv run python scripts/check_repo_consistency.py
+PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
 
 For active implementation work, use `docs/task_backlog.md` and the compact task
@@ -57,6 +57,11 @@ context helper:
 ```bash
 PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-xxx --format json
 ```
+
+Local repository Python commands should use `PYENV_VERSION=system uv run python ...`
+so pyenv shims and global packages do not affect results. GitHub Actions may
+install `requirements-tools.txt` into its system Python; that file is kept in
+sync with `pyproject.toml` for CI compatibility, not as a separate local policy.
 
 If the helper reports `backlog_refill_needed`, do a scoped gap-analysis and
 backlog-refill pass before launching implementation workers.

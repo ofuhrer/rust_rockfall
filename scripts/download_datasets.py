@@ -26,7 +26,9 @@ def load_yaml(path: Path) -> dict:
         import yaml  # type: ignore
     except ImportError as exc:
         raise SystemExit(
-            "PyYAML is required for dataset downloads. Install with `python3 -m pip install PyYAML`."
+            "PyYAML is required for dataset downloads. From the repo root, run "
+            "`PYENV_VERSION=system uv run python scripts/download_datasets.py ...`. "
+            "CI may install `requirements-tools.txt` with system Python instead."
         ) from exc
     return yaml.safe_load(path.read_text())
 
@@ -116,4 +118,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

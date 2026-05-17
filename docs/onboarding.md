@@ -89,13 +89,18 @@ uv venv --python 3.12 .venv
 uv pip install -r requirements-tools.txt
 ```
 
-For one-off commands, plain `uv run python ...` is sufficient from the
-repository root because `uv` reads `pyproject.toml` and syncs the tool
-dependencies automatically:
+For one-off local commands, use `PYENV_VERSION=system uv run python ...` from
+the repository root because local pyenv shims can point at unavailable
+interpreters. `uv` reads `pyproject.toml` and syncs tool dependencies
+automatically:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
+PYENV_VERSION=system UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
+
+GitHub Actions is the exception: CI may install `requirements-tools.txt` into
+its system Python. `pyproject.toml` and `requirements-tools.txt` are checked for
+synchronization and should not drift into competing dependency sources.
 
 The `.venv/` directory is ignored by git. The repository hooks prefer
 `.venv/bin/python` when it exists, so activating the environment is not required
@@ -118,7 +123,7 @@ When `.venv/` has not been created yet, use `uv run` rather than relying on a
 possibly old system `python3`:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/check_repo_consistency.py
+PYENV_VERSION=system UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
 
 Set `RUST_ROCKFALL_PYTHON` only when intentionally overriding the local
