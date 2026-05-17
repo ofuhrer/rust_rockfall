@@ -28,6 +28,11 @@ until a human explicitly approves another run. The measured Balfrin run is:
 - node: `nid001226`;
 - exit status: completed successfully with exit code `0`.
 
+The current target-area review state is now also wrapped into a deterministic
+target-area evidence bundle that keeps the frozen handoff report, the preserved
+probe-metrics report, and the measured canonical bundle separate so the
+available, unavailable, blocked, and measured provenance remains explicit.
+
 This is the first real Balfrin single-release-zone demonstration evidence in
 the repository. It is still a bounded, non-operational conditional diagnostic
 demonstration. It does not establish physical credibility, annual frequency,
@@ -196,7 +201,11 @@ objective are:
    submission-package helper can now generate the unlaunched handoff quickly
    without invoking full live frontier scans. A metrics-remediation contract
    records missing mandatory, unavailable ancillary, and next-run-required
-   fields. None of this authorizes Swiss-wide execution.
+   fields. TB-170 now wraps the frozen target-area handoff report, the
+   preserved probe-metrics report, and the measured canonical bundle into one
+   deterministic target-area evidence bundle so the current demonstration
+   state is auditable without collapsing unavailable or blocked evidence into
+   the measured sections. None of this authorizes Swiss-wide execution.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing

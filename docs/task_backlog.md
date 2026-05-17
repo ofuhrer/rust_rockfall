@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-170: Build Target-Area Evidence Bundle
-
-Goal: Compose the target-area Balfrin evidence into one deterministic JSON/text bundle with section provenance.
-
-Capability gap reduced: Fragmented demonstration evidence.
-
-Why this outranks alternatives: Management and future workers need one auditable artifact rather than scattered helper outputs.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Target-area evidence bundle.
-- Section-level measured, fixture-backed, unavailable, and blocked provenance.
-- Text summary suitable for review.
-
-Definition of done:
-
-- One deterministic bundle represents the current target-area demonstration state without overclaiming.
-
-Boundaries: No operational claim, no physical credibility upgrade, no generated output commit, and no annual-frequency semantics.
-
 ### TB-171: Produce Target-Area GIS And COG Scope Audit
 
 Goal: Audit the target-area GIS products, COG conversion scope, missing layers, and demonstration usability.
