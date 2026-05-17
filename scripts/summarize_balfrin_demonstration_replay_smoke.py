@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-test Balfrin demonstration replay from a measured run root.
+"""Smoke-test Balfrin demonstration replay from a measured or fixture run root.
 
 The helper is read-only. It checks that a run root is present, rebuilds the
 Balfrin probe metrics, canonical evidence bundle, and post-run interpretation
@@ -61,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
 def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> dict[str, Any]:
     run_root = run_root.expanduser()
     artifact_dir = artifact_dir.expanduser()
+    run_root_provenance = classify_run_root_provenance(run_root)
     if not run_root.exists():
         missing_inputs = [str(run_root)]
         return blocked_report(
@@ -68,6 +69,7 @@ def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -
             reason=f"run root is missing: {run_root}",
             run_root=run_root,
             artifact_dir=artifact_dir,
+            run_root_provenance=run_root_provenance,
         )
 
     probe_summary = probe_metrics.collect_run_metrics(run_root)
@@ -117,6 +119,7 @@ def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -
         "run_root": str(run_root),
         "artifact_dir": str(artifact_dir),
         "run_root_status": "present",
+        "run_root_provenance": run_root_provenance,
         "probe_metrics_status": probe_metrics_status,
         "bundle_status": bundle_report.get("bundle_status", "blocked_missing_inputs"),
         "post_run_interpretation_status": post_run_report.get("interpretation_status", "blocked_missing_inputs"),
@@ -140,6 +143,7 @@ def blocked_report(
     reason: str,
     run_root: Path,
     artifact_dir: Path,
+    run_root_provenance: str,
 ) -> dict[str, Any]:
     bundle_report = bundle.build_report(
         {
@@ -154,6 +158,7 @@ def blocked_report(
         "run_root": str(run_root),
         "artifact_dir": str(artifact_dir),
         "run_root_status": "missing",
+        "run_root_provenance": run_root_provenance,
         "probe_metrics_status": "blocked_missing_inputs",
         "bundle_status": bundle_report.get("bundle_status", "blocked_missing_inputs"),
         "post_run_interpretation_status": post_run_report.get("interpretation_status", "blocked_missing_inputs"),
@@ -187,12 +192,21 @@ def build_source_paths(
     }
 
 
+def classify_run_root_provenance(run_root: Path) -> str:
+    if not run_root.exists():
+        return "missing"
+    if bundle.is_fixture_path(str(run_root)):
+        return "fixture_backed"
+    return "live_run_root"
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         "Balfrin Demonstration Replay Smoke",
         f"schema_version: {report['schema_version']}",
         f"smoke_status: {report['smoke_status']}",
         f"run_root_status: {report['run_root_status']}",
+        f"run_root_provenance: {report['run_root_provenance']}",
         f"run_root: {report['run_root']}",
         f"artifact_dir: {report['artifact_dir']}",
         f"probe_metrics_status: {report['probe_metrics_status']}",

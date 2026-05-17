@@ -42,6 +42,7 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             self.assertEqual(report["schema_version"], "balfrin_demonstration_replay_smoke_v1")
             self.assertEqual(report["smoke_status"], "replayable")
             self.assertEqual(report["run_root_status"], "present")
+            self.assertEqual(report["run_root_provenance"], "fixture_backed")
             self.assertEqual(report["bundle_status"], report["bundle_report"]["bundle_status"])
             self.assertEqual(
                 report["post_run_interpretation_status"],
@@ -52,6 +53,32 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             self.assertTrue((artifact_dir / "balfrin_evidence_bundle_v1.json").exists())
             self.assertTrue((artifact_dir / "balfrin_post_run_interpretation_gate_v1.json").exists())
             self.assertEqual(report["missing_inputs"], [])
+
+    def test_present_non_fixture_run_root_is_classified_as_live_run_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_root = Path(tmpdir) / "balfrin_live_run_root"
+            run_root.mkdir(parents=True)
+
+            artifact_dir = Path(tmpdir) / "balfrin_smoke_artifacts"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = smoke.main(
+                    [
+                        "--run-root",
+                        str(run_root),
+                        "--artifact-dir",
+                        str(artifact_dir),
+                        "--format",
+                        "json",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 2)
+            report = json.loads(buffer.getvalue())
+            self.assertEqual(report["run_root_status"], "present")
+            self.assertEqual(report["run_root_provenance"], "live_run_root")
+            self.assertEqual(report["smoke_status"], "blocked_missing_inputs")
+            self.assertGreater(len(report["missing_inputs"]), 0)
 
     def test_missing_run_root_fails_closed(self) -> None:
         missing_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/does-not-exist"
@@ -79,6 +106,7 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             smoke_report = json.loads((artifact_dir / "balfrin_demonstration_replay_smoke_v1.json").read_text(encoding="utf-8"))
             self.assertEqual(smoke_report["smoke_status"], "blocked_missing_inputs")
             self.assertEqual(smoke_report["run_root_status"], "missing")
+            self.assertEqual(smoke_report["run_root_provenance"], "missing")
             self.assertEqual(smoke_report["missing_inputs"], [str(missing_root)])
             self.assertEqual(
                 json.loads((artifact_dir / "balfrin_post_run_interpretation_gate_v1.json").read_text(encoding="utf-8"))["interpretation_status"],

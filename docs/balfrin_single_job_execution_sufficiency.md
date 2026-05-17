@@ -155,6 +155,11 @@ The smoke helper checks that the run root is present, regenerates the Balfrin
 evidence bundle and post-run interpretation outputs into the artifact
 directory, and returns `blocked_missing_inputs` when the run root is absent or
 the required replay artifacts are unavailable.
+Its report now also records `run_root_provenance` so fixture-backed replay
+coverage is distinguishable from a non-fixture live run root. A fixture path
+under `tests/fixtures/...` is reported as `fixture_backed`; a present
+non-fixture run root is reported as `live_run_root`; and an absent path
+remains `missing`.
 
 ## Scientific Blockers
 

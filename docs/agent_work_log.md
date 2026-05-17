@@ -2378,3 +2378,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no ensembles, no second-site hazard build, no physical-probability semantics, and no operational claim.
 - Next task: backlog refill needed
+
+### TB-141: Replay Measured Balfrin Demo From Live Run Root
+- Date: 2026-05-17
+- Commit: local
+- Objective: distinguish fixture-backed Balfrin replay smoke coverage from a live run-root replay path, then verify the live-root path fails closed when the measured Balfrin run root is absent in this environment.
+- Files changed: `scripts/summarize_balfrin_demonstration_replay_smoke.py`, `tests/test_balfrin_demonstration_replay_smoke.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit `run_root_provenance` classification to the Balfrin replay smoke helper so fixture-backed replay, non-fixture live-root replay, and missing roots are distinguishable in both JSON and text output.
+  - Added regression coverage for fixture-backed replay, non-fixture present-root classification, and missing-root fail-closed behavior.
+  - Documented the new provenance field in the Balfrin sufficiency note and removed the completed task from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_demonstration_replay_smoke.py tests/test_balfrin_demonstration_replay_smoke.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_demonstration_replay_smoke -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_replay_smoke.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3 --artifact-dir /tmp/balfrin_live_smoke_blocked_v1 --format json`
+- Result/status: implemented_blocked_report
+- Boundaries: no new Slurm execution, no generated artifact commits, no operational claim, and no physical-probability claim.
+- Next task: `TB-142`

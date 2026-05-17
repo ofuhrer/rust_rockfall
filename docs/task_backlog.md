@@ -24,43 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-141: Replay Measured Balfrin Demo From Live Run Root
-
-Goal: Verify the canonical Balfrin replay smoke path against the measured
-Balfrin run root rather than only the clean-checkout fixture.
-
-Capability gap reduced: demonstration handoff robustness from real HPC
-artifacts.
-
-Why this outranks alternatives: the demo is now measured, but the replay smoke
-path still needs a live-run-root check before it is a convincing operator
-handoff.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A measured replay-smoke report or explicit blocked report for the live
-  Balfrin run root.
-- Updated documentation or helper output that distinguishes fixture replay from
-  live-run-root replay.
-- Focused tests or fixture coverage for the live/blocked classification path.
-
-Definition of done:
-
-- A worker can run one command that reports whether the measured Balfrin demo is
-  replayable from available live artifacts, without relying on hidden local
-  state.
-
-Boundaries: No new Slurm execution, no generated artifact commits, no
-operational claim, and no physical-probability claim.
-
 ### TB-142: Close Balfrin Metrics Completeness Gaps
 
 Goal: Convert remaining Balfrin ancillary metrics gaps into measured fields or
