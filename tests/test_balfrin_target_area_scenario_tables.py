@@ -11,6 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_balfrin_target_area_scenario_tables.py"
+FIXTURE_INPUT_ROOT = ROOT / "tests" / "fixtures" / "tschamut_public_input"
 
 
 def _load_module(path: Path, name: str):
@@ -45,7 +46,7 @@ class BalfrinTargetAreaScenarioTableTests(unittest.TestCase):
         self.assertEqual(first["target_area_name"], "Tschamut public pilot")
         self.assertEqual(
             scenario_csv_text,
-            (ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"),
+            (FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"),
         )
         self.assertEqual(manifest["schema_version"], "candidate_source_zone_block_scenario_generation_manifest_v1")
         self.assertEqual(manifest["table_status"], "ready")
@@ -82,9 +83,9 @@ class BalfrinTargetAreaScenarioTableTests(unittest.TestCase):
             contract_path.write_text(yaml.safe_dump(contract, sort_keys=False), encoding="utf-8")
 
             for source, target in (
-                (ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml", source_zone_path),
-                (ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv", release_points_path),
-                (ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv", reference_table_path),
+                (FIXTURE_INPUT_ROOT / "tschamut_public_source_zone_metadata_v1.yaml", source_zone_path),
+                (FIXTURE_INPUT_ROOT / "release_points_lv95.csv", release_points_path),
+                (FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv", reference_table_path),
                 (ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml", policy_path),
             ):
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -134,9 +135,9 @@ class BalfrinTargetAreaScenarioTableTests(unittest.TestCase):
             policy_path.parent.mkdir(parents=True, exist_ok=True)
             policy_path.write_text((ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml").read_text(encoding="utf-8"), encoding="utf-8")
             release_points_path.parent.mkdir(parents=True, exist_ok=True)
-            release_points_path.write_text((ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv").read_text(encoding="utf-8"), encoding="utf-8")
+            release_points_path.write_text((FIXTURE_INPUT_ROOT / "release_points_lv95.csv").read_text(encoding="utf-8"), encoding="utf-8")
             reference_table_path.parent.mkdir(parents=True, exist_ok=True)
-            reference_table_path.write_text((ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"), encoding="utf-8")
+            reference_table_path.write_text((FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"), encoding="utf-8")
 
             source_zone_path.parent.mkdir(parents=True, exist_ok=True)
 

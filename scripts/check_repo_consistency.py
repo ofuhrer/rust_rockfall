@@ -28,6 +28,44 @@ ALLOWED_GENERATED = {
     "calibration/results/.gitkeep",
     "hazard/results/.gitkeep",
 }
+IGNORED_ARTIFACT_ROOT_PREFIXES = (
+    "hazard/results/",
+    "validation/private/",
+    "data/processed/swisstopo/",
+    "/scratch/",
+)
+IGNORED_ARTIFACT_READ_METHODS = (
+    "read_text(",
+    "read_bytes(",
+    "exists(",
+    "stat(",
+    "open(",
+    "glob(",
+    "rglob(",
+)
+IGNORED_ARTIFACT_BLOCKED_MARKERS = (
+    "blocked_missing_inputs",
+    "blocked_reason",
+    "blocked_pending_evidence",
+    "deferred_public_context_inputs",
+)
+IGNORED_ARTIFACT_HELPER_MARKERS = (
+    "load_measured_coefficients(",
+    "load_measured_coefficients()",
+)
+TRACKED_FIXTURE_MARKERS = (
+    'tests/fixtures/',
+    '"tests" / "fixtures"',
+    "FIXTURE_INPUT_ROOT",
+)
+IGNORED_ARTIFACT_TEST_CLASSIFICATION_ALLOWLIST = {
+    "tests/test_same_scale_artifact_readiness.py": {"temporary_fixture", "blocked_state"},
+    "tests/test_pilot_command_plan.py": {"tracked_fixture", "blocked_state"},
+    "tests/test_balfrin_probe_metrics_report.py": {"temporary_fixture", "blocked_state"},
+    "tests/test_balfrin_tschamut_readiness.py": {"temporary_fixture"},
+    "tests/test_balfrin_target_area_scenario_tables.py": {"temporary_fixture", "tracked_fixture"},
+    "tests/test_tschamut_block_scenario_table_generation.py": {"temporary_fixture", "tracked_fixture"},
+}
 SCRIPT_REF_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_./-])(?P<ref>(?:\./)?scripts/[A-Za-z0-9_./-]+\.py)\b"
 )
@@ -188,6 +226,7 @@ def main() -> int:
     errors.extend(check_balfrin_target_gate_reproduction())
     errors.extend(check_balfrin_single_job_execution_sufficiency())
     errors.extend(check_pilot_obstacle_scope_contract())
+    errors.extend(check_ignored_artifact_test_dependencies())
 
     if errors:
         for error in errors:
@@ -195,6 +234,87 @@ def main() -> int:
         return 1
     print("repository consistency checks passed")
     return 0
+
+
+def _contains_any(text: str, needles: Iterable[str]) -> bool:
+    return any(needle in text for needle in needles)
+
+
+def _ignored_artifact_read_lines(text: str) -> list[str]:
+    lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if _contains_any(line, IGNORED_ARTIFACT_ROOT_PREFIXES) and _contains_any(line, IGNORED_ARTIFACT_READ_METHODS):
+            lines.append(line)
+    return lines
+
+
+def classify_ignored_artifact_test_source(text: str) -> dict[str, Any]:
+    classifications: set[str] = set()
+    mentions_ignored_root = _contains_any(text, IGNORED_ARTIFACT_ROOT_PREFIXES)
+    if _contains_any(text, ("tempfile.TemporaryDirectory", "TemporaryDirectory(", "tmp_path", "tmpdir")) and mentions_ignored_root:
+        classifications.add("temporary_fixture")
+    if _contains_any(text, TRACKED_FIXTURE_MARKERS):
+        classifications.add("tracked_fixture")
+    if _contains_any(text, IGNORED_ARTIFACT_BLOCKED_MARKERS) and (mentions_ignored_root or _contains_any(text, IGNORED_ARTIFACT_HELPER_MARKERS)):
+        classifications.add("blocked_state")
+    if _contains_any(text, IGNORED_ARTIFACT_HELPER_MARKERS):
+        classifications.add("helper_smoke_cleanup_candidate")
+
+    direct_read_lines = _ignored_artifact_read_lines(text)
+    if direct_read_lines and not classifications.intersection({"temporary_fixture", "tracked_fixture", "blocked_state"}):
+        classifications.add("hard_dependency")
+
+    return {
+        "classifications": sorted(classifications),
+        "direct_read_lines": direct_read_lines,
+    }
+
+
+def build_ignored_artifact_test_audit(test_paths: Iterable[Path] | None = None) -> dict[str, Any]:
+    paths = list(test_paths) if test_paths is not None else sorted((ROOT / "tests").glob("test_*.py"))
+    entries: list[dict[str, Any]] = []
+    violations: list[str] = []
+    for path in paths:
+        text = path.read_text()
+        classification = classify_ignored_artifact_test_source(text)
+        categories = classification["classifications"]
+        if not categories:
+            continue
+        try:
+            relative = str(path.relative_to(ROOT))
+        except ValueError:
+            relative = str(path)
+        expected = sorted(IGNORED_ARTIFACT_TEST_CLASSIFICATION_ALLOWLIST.get(relative, set()))
+        entry = {
+            "path": relative,
+            "classifications": categories,
+            "allowlisted_classifications": expected,
+            "direct_read_lines": classification["direct_read_lines"],
+        }
+        entries.append(entry)
+        if "hard_dependency" in categories or "helper_smoke_cleanup_candidate" in categories:
+            violations.append(
+                f"{relative} has ignored-artifact dependency classifications: {', '.join(categories)}"
+            )
+    return {"entries": entries, "violations": violations}
+
+
+def check_ignored_artifact_test_dependencies() -> list[str]:
+    audit = build_ignored_artifact_test_audit()
+    errors: list[str] = []
+    for entry in audit["entries"]:
+        relative = entry["path"]
+        categories = set(entry["classifications"])
+        unexpected = categories - {"temporary_fixture", "tracked_fixture", "blocked_state"}
+        if unexpected:
+            errors.append(
+                f"{relative} has disallowed ignored-artifact classifications: {', '.join(sorted(unexpected))}"
+            )
+    errors.extend(audit["violations"])
+    return errors
 
 
 def check_fallible_terrain_boundaries() -> list[str]:

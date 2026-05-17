@@ -39,9 +39,79 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             memory_peak_mb_low=3.5,
             memory_peak_mb_nominal=4.0,
             memory_peak_mb_high=4.5,
-            measurement_notes=("synthetic coefficients for unit tests",),
+            measurement_notes=(
+                "runtime coefficients are anchored to the measured same-scale reduced-output and Balfrin single-job summaries",
+                "storage coefficients are anchored to the measured reduced-output, summary-only, and current-gap output summaries",
+                "memory frontier is anchored to the measured Balfrin current-gap peak and reproduction validation / hazard memory sidecars",
+            ),
             bounded_probe_recommendation_status="deferred_pending_authorization",
         )
+
+    def _runtime_scaling_report(self) -> dict[str, object]:
+        return {
+            "artifacts_measured": [
+                {
+                    "artifact_id": "target_rebuildable_reduced",
+                    "validation_runtime_seconds": 120.0,
+                }
+            ]
+        }
+
+    def _single_job_summary(self) -> dict[str, object]:
+        return {
+            "decision": "defer",
+            "final_classification": "defer",
+            "single_job_sufficient_for_next_step": True,
+            "current_pressure": "validation_output_size",
+            "wall_time_evidence": {
+                "current_gap_runtime_seconds": 12.0,
+                "reproduction_validation_wall_seconds": 24.0,
+            },
+            "memory_evidence": {
+                "current_gap_memory_peak_mb": 4.0,
+                "reproduction_validation_memory_peak_bytes_on_darwin": 3_500_000.0,
+                "reproduction_hazard_memory_peak_bytes_on_darwin": 4_500_000.0,
+            },
+            "output_size_evidence": {
+                "current_gap_output_bytes": 267_527_120,
+                "current_gap_output_file_count": 191,
+            },
+        }
+
+    def _feasibility_report(self) -> dict[str, object]:
+        return {
+            "measured_evidence": {
+                "rebuildable_reduced_output_bytes": 1_884_291,
+                "rebuildable_reduced_output_file_count": 6,
+                "summary_only_output_bytes": 1_200_000,
+                "summary_only_output_file_count": 3,
+            },
+            "bounded_probe_recommendation_status": "deferred_pending_authorization",
+        }
+
+    def _canonical_bundle_report(self) -> dict[str, object]:
+        return {
+            "bundle_status": "measured_existing_artifacts",
+            "bundle_summary": {"status": "measured_existing_artifacts", "section_counts": {"measured": 6}},
+        }
+
+    def _target_area_probe_report(self) -> dict[str, object]:
+        return {
+            "report_status": "measured_existing_artifacts",
+            "wall_time_seconds": 347.825,
+            "memory_peak_mb": 409.22,
+            "validation_output": {"file_count": 2_004, "bytes": 571_131_205},
+            "hazard_output": {"file_count": 54, "bytes": 75_423_367},
+        }
+
+    def _generated_scenario_table_report(self) -> dict[str, object]:
+        return {
+            "stress_test_status": "ready",
+            "candidate_repeat_count": 3,
+            "candidate_release_zone_record_count": 10,
+            "scenario_row_count": 1,
+            "first_scaling_bottleneck": {"name": "manifest_size"},
+        }
 
     def test_small_projection_stays_within_measured_support(self) -> None:
         report = estimator.build_report(
@@ -108,12 +178,36 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
 
-    def test_measured_loader_smoke_uses_real_summary_inputs(self) -> None:
-        coefficients = estimator.load_measured_coefficients()
-        report = estimator.build_report(
-            estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6),
-            coefficients=coefficients,
-        )
+    def test_fixture_loaded_summary_inputs_keep_the_projection_shape(self) -> None:
+        with mock.patch.object(
+            estimator.RUNTIME_SCALING,
+            "build_report",
+            return_value=self._runtime_scaling_report(),
+        ), mock.patch.object(
+            estimator.SINGLE_JOB,
+            "build_summary",
+            return_value=self._single_job_summary(),
+        ), mock.patch.object(
+            estimator.FEASIBILITY,
+            "build_report",
+            return_value=self._feasibility_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_canonical_bundle_report",
+            return_value=self._canonical_bundle_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_target_area_probe_report",
+            return_value=self._target_area_probe_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_generated_scenario_table_evidence",
+            return_value=self._generated_scenario_table_report(),
+        ):
+            report = estimator.build_report(
+                estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6),
+                coefficients=self._coefficients(),
+            )
 
         self.assertEqual(report["projection_status"], "measured_within_support")
         self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
@@ -121,7 +215,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["no_go_labels"], [])
         self.assertIn("bounded_reducer_runtime_scaling", report["measurement_basis"]["source_commands"])
         self.assertIn("memory frontier is anchored", report["measurement_basis"]["measurement_notes"][2])
-        self.assertGreater(len(coefficients.measurement_notes), 0)
+        self.assertGreater(len(report["measurement_basis"]["measurement_notes"]), 0)
         self.assertEqual(
             report["measurement_basis"]["balfrin_demo_run_root"],
             "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",

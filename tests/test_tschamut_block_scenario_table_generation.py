@@ -10,6 +10,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_tschamut_block_scenario_tables.py"
+FIXTURE_INPUT_ROOT = ROOT / "tests" / "fixtures" / "tschamut_public_input"
 
 
 def load_module(path: Path, name: str):
@@ -41,7 +42,7 @@ class TschamutBlockScenarioTableGenerationTests(unittest.TestCase):
 
             self.assertEqual(
                 csv_path.read_text(encoding="utf-8"),
-                (ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"),
+                (FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"),
             )
 
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

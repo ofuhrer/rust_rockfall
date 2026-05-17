@@ -1,0 +1,28 @@
+schema_version: source_zone_metadata_v1
+source_zone_id: tschamut_public_lps_release_bbox
+crs_epsg: 2056
+vertical_datum: LN02
+geometry:
+  type: polygon
+  vertices:
+  - - 2696622.482
+    - 1167728.092
+  - - 2696640.895
+    - 1167728.092
+  - - 2696640.895
+    - 1167745.852
+  - - 2696622.482
+    - 1167745.852
+release_sampling_policy:
+  mode: deterministic_grid
+  seed: 34014
+  release_count: 10
+  release_cell_id_prefix: tschamut_public_release_cell
+provenance:
+  source: Generated locally from scripts/prepare_tschamut_public_benchmark.py release-zone
+    sidecar for the selected Tschamut gate.
+  license: Derived from EnviDat Tschamut 2014 ODbL/DbCL rows.
+  notes:
+  - Ignored local staging artifact for conditional research diagnostics.
+  - No annual source frequency or physical release probability is encoded.
+annual_release_frequency_per_year: null

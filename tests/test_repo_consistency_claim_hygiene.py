@@ -286,6 +286,70 @@ The package is a risk map and an official hazard map.
         self.assertTrue(any("claim-boundary flag" in error for error in errors))
         self.assertTrue(any("risk-map claim" in error for error in errors))
 
+    def test_ignored_artifact_audit_classifies_current_test_files(self) -> None:
+        audit = check_repo_consistency.build_ignored_artifact_test_audit()
+        entries = {entry["path"]: entry["classifications"] for entry in audit["entries"]}
+
+        self.assertIn("temporary_fixture", entries["tests/test_same_scale_artifact_readiness.py"])
+        self.assertIn("blocked_state", entries["tests/test_same_scale_artifact_readiness.py"])
+        self.assertIn("tracked_fixture", entries["tests/test_pilot_command_plan.py"])
+        self.assertIn("blocked_state", entries["tests/test_pilot_command_plan.py"])
+        self.assertIn("temporary_fixture", entries["tests/test_balfrin_probe_metrics_report.py"])
+        self.assertIn("blocked_state", entries["tests/test_balfrin_probe_metrics_report.py"])
+        self.assertIn("temporary_fixture", entries["tests/test_balfrin_tschamut_readiness.py"])
+        self.assertIn("temporary_fixture", entries["tests/test_balfrin_target_area_scenario_tables.py"])
+        self.assertIn("tracked_fixture", entries["tests/test_balfrin_target_area_scenario_tables.py"])
+        self.assertIn("tracked_fixture", entries["tests/test_tschamut_block_scenario_table_generation.py"])
+        self.assertEqual(audit["violations"], [])
+
+    def test_ignored_artifact_audit_rejects_new_hard_read(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "tests" / "test_new_hard_dependency.py"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text(
+                'from pathlib import Path\n'
+                'ROOT = Path(__file__).resolve().parents[1]\n'
+                'value = (ROOT / "hazard/results/rogue_case/manifest.json").read_text(encoding="utf-8")\n',
+                encoding="utf-8",
+            )
+
+            audit = check_repo_consistency.build_ignored_artifact_test_audit([source])
+
+        self.assertTrue(audit["violations"])
+        self.assertIn("hard_dependency", audit["violations"][0])
+
+    def test_ignored_artifact_audit_accepts_temporary_and_tracked_fixture_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            temporary_source = root / "tests" / "test_temporary_fixture.py"
+            tracked_source = root / "tests" / "test_tracked_fixture.py"
+            temporary_source.parent.mkdir(parents=True, exist_ok=True)
+            tracked_source.parent.mkdir(parents=True, exist_ok=True)
+            temporary_source.write_text(
+                'import tempfile\n'
+                'from pathlib import Path\n'
+                'with tempfile.TemporaryDirectory() as tmp:\n'
+                '    root = Path(tmp)\n'
+                '    value = (root / "validation/private/example/manifest.json").read_text(encoding="utf-8")\n',
+                encoding="utf-8",
+            )
+            tracked_source.write_text(
+                'from pathlib import Path\n'
+                'ROOT = Path(__file__).resolve().parents[1]\n'
+                'fixture = ROOT / "tests/fixtures/example.csv"\n'
+                'value = fixture.read_text(encoding="utf-8")\n',
+                encoding="utf-8",
+            )
+
+            temporary_audit = check_repo_consistency.build_ignored_artifact_test_audit([temporary_source])
+            tracked_audit = check_repo_consistency.build_ignored_artifact_test_audit([tracked_source])
+
+        self.assertEqual(temporary_audit["violations"], [])
+        self.assertIn("temporary_fixture", temporary_audit["entries"][0]["classifications"])
+        self.assertEqual(tracked_audit["violations"], [])
+        self.assertIn("tracked_fixture", tracked_audit["entries"][0]["classifications"])
+
 
 if __name__ == "__main__":
     unittest.main()
