@@ -324,6 +324,11 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['probe_metrics'].get('status', 'unknown')}",
             f"  wall_time_seconds: {report['probe_metrics'].get('wall_time_seconds', 'unknown')}",
             f"  memory_peak_mb: {report['probe_metrics'].get('memory_peak_mb', 'unknown')}",
+            "ancillary_metrics:",
+            f"  validation_output_mode: {report['probe_metrics'].get('ancillary_metrics', {}).get('validation_output_mode', {}).get('status', 'unknown')}",
+            f"  output_write_kind_seconds: {report['probe_metrics'].get('ancillary_metrics', {}).get('output_write_kind_seconds', {}).get('status', 'unknown')}",
+            f"  output_write_kind_bytes: {report['probe_metrics'].get('ancillary_metrics', {}).get('output_write_kind_bytes', {}).get('status', 'unknown')}",
+            f"  ancillary_unavailable_metrics: {report['probe_metrics'].get('ancillary_unavailable_metrics', [])}",
             "post_run_interpretation_gate_report:",
             f"  interpretation_status: {report['post_run_interpretation_gate_report'].get('interpretation_status', 'unknown')}",
             f"  artifact_acceptance_status: {report['post_run_interpretation_gate_report'].get('artifact_acceptance_status', 'unknown')}",
@@ -534,6 +539,33 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
     validation_output = mandatory.get("validation_output", {}) if isinstance(mandatory, dict) else {}
     hazard_output = mandatory.get("hazard_output", {}) if isinstance(mandatory, dict) else {}
     restartability = mandatory.get("restartability_metadata", {}) if isinstance(mandatory, dict) else {}
+    reduced_output_family_counts = mandatory.get("reduced_output_family_counts", {}) if isinstance(mandatory, dict) else {}
+    ancillary_metrics = (
+        metrics.get("ancillary_metrics", {}) if isinstance(metrics, dict) and metrics.get("ancillary_metrics") else {}
+    )
+    if not ancillary_metrics:
+        ancillary_metrics = {
+            "validation_output_mode": {
+                "status": "unavailable" if reduced_output_family_counts.get("validation_output_mode") is None else "available",
+                "source": "single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.validation_output_mode",
+                "value": reduced_output_family_counts.get("validation_output_mode"),
+            },
+            "output_write_kind_seconds": {
+                "status": "unavailable" if reduced_output_family_counts.get("output_write_kind_seconds") is None else "available",
+                "source": "single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.output_write_kind_seconds",
+                "value": reduced_output_family_counts.get("output_write_kind_seconds"),
+            },
+            "output_write_kind_bytes": {
+                "status": "unavailable" if reduced_output_family_counts.get("output_write_kind_bytes") is None else "available",
+                "source": "single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.output_write_kind_bytes",
+                "value": reduced_output_family_counts.get("output_write_kind_bytes"),
+            },
+        }
+    ancillary_unavailable_metrics = (
+        metrics.get("ancillary_unavailable_metrics")
+        if isinstance(metrics, dict) and isinstance(metrics.get("ancillary_unavailable_metrics"), list)
+        else [name for name, metric in ancillary_metrics.items() if metric.get("status") == "unavailable"]
+    )
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
         "wall_time_seconds": wall_time.get("value"),
@@ -548,6 +580,10 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
         },
         "conditional_curve_row_count": mandatory.get("conditional_curve_row_count"),
         "restartability_metadata": restartability,
+        "ancillary_metrics": ancillary_metrics,
+        "ancillary_unavailable_metrics": ancillary_unavailable_metrics,
+        "output_write_kind_seconds": ancillary_metrics.get("output_write_kind_seconds", {}).get("value", {}),
+        "output_write_kind_bytes": ancillary_metrics.get("output_write_kind_bytes", {}).get("value", {}),
     }
 
 
@@ -795,8 +831,8 @@ def summarize_bundle(
         return "Balfrin evidence is blocked because one or more required source sections are absent."
     if bundle_status == "measured":
         return (
-            "Balfrin readiness, metrics, outputs, GIS / COG status, restartability, "
-            "and interpretation checks are measured and bundled with claim boundaries intact."
+            "Balfrin readiness, metrics, outputs, GIS / COG status, ancillary unavailable states, "
+            "restartability, and interpretation checks are measured and bundled with claim boundaries intact."
         )
     if bundle_status == "fixture_backed":
         return "Balfrin evidence is fixture-backed rather than measured; the bundle keeps that distinction explicit."

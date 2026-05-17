@@ -429,6 +429,10 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             {"executed": 2},
         )
         self.assertEqual(summary["reducer_decision_counts"], {"executed": 2})
+        self.assertEqual(summary["metrics_contract_ancillary_unavailable_metrics"], ["validation_output_mode"])
+        self.assertEqual(summary["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
+        self.assertEqual(summary["ancillary_metrics"]["output_write_kind_seconds"]["status"], "available")
+        self.assertEqual(summary["ancillary_metrics"]["output_write_kind_bytes"]["status"], "available")
         self.assertEqual(summary["output_write_kind_seconds"]["geotiff"], 0.4)
         self.assertEqual(summary["output_write_kind_bytes"]["manifest_json"], 3400)
         self.assertEqual(
@@ -470,6 +474,11 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertIn("hazard_output.file_count", summary["metrics_contract_missing_metrics"])
         self.assertIn("conditional_curve_row_count", summary["metrics_contract_missing_metrics"])
         self.assertIn("reduced_output_family_counts", summary["metrics_contract_missing_metrics"])
+        self.assertEqual(
+            summary["metrics_contract_ancillary_unavailable_metrics"],
+            ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
+        )
+        self.assertEqual(summary["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
         self.assertEqual(summary["reduced_output_family_counts"], {})
         self.assertEqual(summary["trajectory_plan_id"], None)
         self.assertEqual(summary["reducer_plan_id"], None)
@@ -494,6 +503,49 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 ],
             },
         )
+
+    def test_metrics_contract_marks_ancillary_fields_unavailable_without_blocking_complete_run(self) -> None:
+        contract = collect_driver._build_metrics_contract(
+            performance={
+                "total_wall_seconds": 12.5,
+                "memory_peak_mb": 256.0,
+                "validation_output_file_count": 17,
+                "validation_output_bytes": 4096,
+                "hazard_output_file_count": 8,
+                "hazard_output_bytes": 2048,
+            },
+            conditional_execution={
+                "output_budget": {},
+                "conditional_curve_export": {"row_count": 1},
+            },
+            outputs=[],
+            scaling_summary={},
+            probe_metrics={
+                "reduced_output_family_counts": {
+                    "validation_output_mode": None,
+                    "output_write_kind_seconds": None,
+                    "output_write_kind_bytes": None,
+                }
+            },
+            trajectory_plan_id="trajectory-plan",
+            reducer_plan_id="reducer-plan",
+            trajectory_decision_counts={"executed": 1},
+            reducer_decision_counts={"executed": 1},
+        )
+
+        self.assertEqual(contract["status"], "complete")
+        self.assertEqual(contract["missing_metrics"], [])
+        self.assertEqual(
+            contract["ancillary_unavailable_metrics"],
+            [
+                "validation_output_mode",
+                "output_write_kind_seconds",
+                "output_write_kind_bytes",
+            ],
+        )
+        self.assertEqual(contract["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
+        self.assertEqual(contract["ancillary_metrics"]["output_write_kind_seconds"]["status"], "unavailable")
+        self.assertEqual(contract["ancillary_metrics"]["output_write_kind_bytes"]["status"], "unavailable")
 
     def test_local_command_plan_mode_prints_plan(self) -> None:
         fake_plan = {"run_status": "target_run_completed", "run_id": "local-plan", "commands": []}

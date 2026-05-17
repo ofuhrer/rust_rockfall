@@ -135,6 +135,19 @@ def _count_output_families(outputs: list[Any]) -> dict[str, int]:
     return counts
 
 
+def _availability_entry(value: Any, *, source: str) -> dict[str, Any]:
+    status = "available"
+    if value is None:
+        status = "unavailable"
+    elif isinstance(value, dict) and not value:
+        status = "unavailable"
+    return {
+        "status": status,
+        "source": source,
+        "value": value,
+    }
+
+
 def _first_present(*values: Any) -> Any:
     for value in values:
         if value is not None:
@@ -196,6 +209,11 @@ def _build_metrics_contract(
     conditional_curve_export = (
         conditional_execution.get("conditional_curve_export", {}) if isinstance(conditional_execution, dict) else {}
     )
+    reduced_output_family_counts = (
+        probe_metrics.get("reduced_output_family_counts")
+        if isinstance(probe_metrics, dict) and isinstance(probe_metrics.get("reduced_output_family_counts"), dict)
+        else _count_output_families(outputs)
+    )
     restartability_probe = probe_metrics.get("restartability", {}) if isinstance(probe_metrics, dict) else {}
     validation_output = {
         "file_count": _safe_int(
@@ -227,6 +245,20 @@ def _build_metrics_contract(
                 restartability_probe.get("hazard_output_bytes"),
                 output_budget.get("hazard_output_bytes"),
             )
+        ),
+    }
+    ancillary_metrics = {
+        "validation_output_mode": _availability_entry(
+            reduced_output_family_counts.get("validation_output_mode"),
+            source="single_job_summary.metrics_contract.mandatory_metrics.reduced_output_family_counts.validation_output_mode",
+        ),
+        "output_write_kind_seconds": _availability_entry(
+            scaling_summary.get("output_write_kind_seconds", {}) if isinstance(scaling_summary, dict) else {},
+            source="output_root.scaling_summary.output_write_kind_seconds",
+        ),
+        "output_write_kind_bytes": _availability_entry(
+            scaling_summary.get("output_write_kind_bytes", {}) if isinstance(scaling_summary, dict) else {},
+            source="output_root.scaling_summary.output_write_kind_bytes",
         ),
     }
     restartability_metadata = {
@@ -263,11 +295,7 @@ def _build_metrics_contract(
         ),
         "validation_output": validation_output,
         "hazard_output": hazard_output,
-        "reduced_output_family_counts": (
-            probe_metrics.get("reduced_output_family_counts")
-            if isinstance(probe_metrics, dict) and isinstance(probe_metrics.get("reduced_output_family_counts"), dict)
-            else _count_output_families(outputs)
-        ),
+        "reduced_output_family_counts": reduced_output_family_counts,
         "conditional_curve_row_count": _safe_int(
             _first_present(
                 conditional_curve_export.get("row_count"),
@@ -276,6 +304,10 @@ def _build_metrics_contract(
             )
         ),
         "restartability_metadata": restartability_metadata,
+        "ancillary_metrics": ancillary_metrics,
+        "ancillary_unavailable_metrics": [
+            name for name, metric in ancillary_metrics.items() if metric.get("status") == "unavailable"
+        ],
         "output_write_kind_seconds": (
             scaling_summary.get("output_write_kind_seconds", {})
             if isinstance(scaling_summary, dict)
@@ -440,6 +472,8 @@ def collect_run_metrics(
         "metrics_contract_status": metrics_contract["status"],
         "metrics_contract_blocked_reason": metrics_contract["blocked_reason"],
         "metrics_contract_missing_metrics": metrics_contract["missing_metrics"],
+        "metrics_contract_ancillary_unavailable_metrics": metrics_contract["ancillary_unavailable_metrics"],
+        "ancillary_metrics": metrics_contract["ancillary_metrics"],
         "metrics_contract": metrics_contract,
         "output_bytes": _safe_int(
             (

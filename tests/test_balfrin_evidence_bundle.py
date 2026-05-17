@@ -168,6 +168,15 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "parity_match")
         self.assertIn("section_provenance_profile:", bundle.render_text_report(report))
         self.assertIn("bundle_provenance_status: measured", bundle.render_text_report(report))
+        self.assertEqual(
+            report["probe_metrics"]["ancillary_unavailable_metrics"],
+            ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
+        )
+        self.assertEqual(report["probe_metrics"]["ancillary_metrics"]["validation_output_mode"]["status"], "unavailable")
+        self.assertEqual(report["probe_metrics"]["ancillary_metrics"]["output_write_kind_seconds"]["status"], "unavailable")
+        self.assertEqual(report["probe_metrics"]["ancillary_metrics"]["output_write_kind_bytes"]["status"], "unavailable")
+        self.assertIn("ancillary unavailable states", report["bundle_summary"]["summary"])
+        self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
 
     def test_fixture_backed_override_stays_fixture_backed(self) -> None:
         fixture_path = "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"

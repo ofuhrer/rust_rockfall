@@ -24,39 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-131: Complete Balfrin Metrics Contract Coverage
-
-Goal: Fill or explicitly downgrade the remaining missing measured fields in the
-Balfrin metrics and evidence bundle.
-
-Capability gap reduced: incomplete runtime/output evidence for demonstration
-and scaling interpretation.
-
-Why this outranks alternatives: measured execution exists, but missing or
-ambiguous memory and split output fields weaken the evidence used by later
-scaling and management-facing summaries.
-
-Inspect first:
-
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/`
-
-Deliverables:
-
-- Collector and bundle updates for peak-memory evidence, validation/hazard file
-  counts, validation/hazard bytes, and explicit ancillary-unavailable states.
-- Focused tests for complete, missing, and unavailable metric fields.
-
-Definition of done:
-
-- The Balfrin metrics contract reports no hidden missing mandatory fields for
-  the measured run; unavailable fields are named and classified explicitly.
-
-Boundaries: No new ensemble, no scale-up authorization, and no replacement of
-measured evidence with synthetic evidence.
-
 ### TB-132: Prototype AOI-To-Swisstopo Product Tile Discovery
 
 Goal: Given a Swiss LV95 AOI, deterministically report required swisstopo
