@@ -181,6 +181,19 @@ def _load_readiness_checker() -> Any:
     return module
 
 
+def _load_ensemble_frontier() -> Any:
+    frontier_path = ROOT / "scripts" / "summarize_balfrin_ensemble_frontier.py"
+    spec = importlib.util.spec_from_file_location(
+        "summarize_balfrin_ensemble_frontier",
+        frontier_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load ensemble frontier helper module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
 def _read_command_plan(probe_manifest: Path) -> tuple[dict[str, Any], str]:
     module = _load_plan_validator()
     manifest = module.read_yaml(probe_manifest)
@@ -280,6 +293,49 @@ def _collect_output_roots(command_plan: dict[str, Any], *, repo_root: Path) -> l
     return sorted(str(path) for path in root_paths)
 
 
+def _collect_reduced_output_settings(command_plan: dict[str, Any]) -> dict[str, Any]:
+    commands = command_plan.get("commands")
+    if not isinstance(commands, list):
+        return {}
+
+    settings: dict[str, Any] = {}
+    flag_map = {
+        "--conditional-curve-export": "conditional_curve_export",
+        "--grid-csv-export": "grid_csv_export",
+        "--trajectory-workers": "trajectory_workers",
+        "--reducer-workers": "reducer_workers",
+        "--map-product-id": "map_product_id",
+        "--probability-mode": "probability_mode",
+        "--normalization-scope": "normalization_scope",
+    }
+    boolean_flags = {
+        "--export-geotiff": "export_geotiff",
+        "--pilot-gis-package": "pilot_gis_package",
+        "--no-plots": "no_plots",
+    }
+
+    for entry in commands:
+        if not isinstance(entry, dict):
+            continue
+        command = entry.get("command")
+        if not isinstance(command, list):
+            continue
+        tokens = [str(token) for token in command]
+        for idx, token in enumerate(tokens):
+            if token in flag_map and idx + 1 < len(tokens):
+                value: str | int | None = tokens[idx + 1]
+                if token in {"--trajectory-workers", "--reducer-workers"}:
+                    try:
+                        value = int(tokens[idx + 1])
+                    except ValueError:
+                        value = tokens[idx + 1]
+                settings[flag_map[token]] = value
+            elif token in boolean_flags:
+                settings[boolean_flags[token]] = True
+
+    return settings
+
+
 def _build_expected_outputs(run_root: Path) -> list[str]:
     return [
         str(run_root / "command_plan.json"),
@@ -356,6 +412,7 @@ def _build_submission_package_report(
     nodes: int,
     ntasks: int,
     cpus_per_task: int,
+    frontier_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     repo_root = ROOT.resolve()
     readiness_module = _load_readiness_checker()
@@ -363,10 +420,26 @@ def _build_submission_package_report(
         repo_root=repo_root,
         run_manifest_path=probe_manifest.resolve(),
     )
+    if frontier_report is None:
+        try:
+            frontier_report = _load_ensemble_frontier().build_report()
+        except Exception as exc:  # pragma: no cover - defensive dry-run fallback.
+            frontier_report = {
+                "frontier_status": "blocked_missing_inputs",
+                "recommendation_class": "blocked_pending_helper_contract",
+                "recommendation_reason": str(exc),
+                "minimum_useful_ensemble_recommendation": {},
+            }
     git_info = _git_info(repo_root)
     output_roots = _collect_output_roots(command_plan, repo_root=repo_root)
+    reduced_output_settings = _collect_reduced_output_settings(command_plan)
     generated_output_roots = [str(run_root.resolve()), str((run_root / "logs").resolve())]
     run_id = str(command_plan.get("run_id") or "").strip() or run_root.name
+    recommended_next_probe = dict(frontier_report.get("minimum_useful_ensemble_recommendation") or {})
+    if recommended_next_probe.get("validation_output_mode") and "validation_output_mode" not in reduced_output_settings:
+        reduced_output_settings["validation_output_mode"] = recommended_next_probe["validation_output_mode"]
+    if recommended_next_probe.get("expected_artifact_families") and "expected_artifact_families" not in reduced_output_settings:
+        reduced_output_settings["expected_artifact_families"] = list(recommended_next_probe["expected_artifact_families"])
     operator_sequence = _build_operator_sequence(
         run_root=run_root,
         run_id=run_id,
@@ -381,7 +454,10 @@ def _build_submission_package_report(
     return {
         "schema_version": PACKAGE_SCHEMA_VERSION,
         "package_mode": "generate-only",
+        "execution_status": "blocked_unlaunched",
+        "launch_authorized": False,
         "probe_manifest": str(probe_manifest.resolve()),
+        "expected_run_root": str(run_root.resolve()),
         "run_root": str(run_root.resolve()),
         "run_id": run_id,
         "repository": {
@@ -408,8 +484,23 @@ def _build_submission_package_report(
         },
         "command_plan_path": str(run_root / "command_plan.json"),
         "sbatch_script_path": str(run_root / "probe.sbatch"),
+        "command_script_path": str(run_root / "probe.sbatch"),
+        "command_script": str(run_root / "probe.sbatch"),
         "generated_output_roots": generated_output_roots,
         "ignored_output_roots": output_roots,
+        "recommended_next_probe": {
+            "frontier_status": frontier_report.get("frontier_status"),
+            "recommendation_class": frontier_report.get("recommendation_class"),
+            "recommendation_reason": frontier_report.get("recommendation_reason"),
+            "minimum_useful_ensemble_recommendation": recommended_next_probe,
+        },
+        "reduced_output_settings": reduced_output_settings,
+        "metrics_collection_command": f"PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root {run_root}",
+        "stop_resume_notes": [
+            "Keep the same RUN_ROOT and RUN_ID when resuming or collecting.",
+            "Stop with scancel after the job id is known, then rerun the same submit command from the same checkout.",
+            "Do not create a branch or worktree, and do not commit generated run artifacts from the run root.",
+        ],
         "ignored_artifacts": [
             str((run_root / "command_plan.json").resolve()),
             str((run_root / "probe.sbatch").resolve()),
@@ -433,7 +524,9 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
         "",
         f"- Schema: `{package['schema_version']}`",
         f"- Mode: `{package['package_mode']}`",
+        f"- Launch status: `{package['execution_status']}`",
         f"- Probe manifest: `{package['probe_manifest']}`",
+        f"- Expected run root: `{package['expected_run_root']}`",
         f"- Run root: `{package['run_root']}`",
         f"- Run id: `{package['run_id']}`",
         "",
@@ -456,10 +549,42 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
         f"- Status: `{package['input_checks']['status']}`",
         f"- Blocking checks: `{len(package['input_checks']['blocking_checks'])}`",
         "",
-        "## Output Roots",
+        "## Recommendation",
         "",
-        "- Generated roots:",
+        f"- Frontier status: `{package['recommended_next_probe']['frontier_status']}`",
+        f"- Recommendation class: `{package['recommended_next_probe']['recommendation_class']}`",
+        f"- Recommendation reason: {package['recommended_next_probe']['recommendation_reason']}",
+        f"- Probe id: `{package['recommended_next_probe']['minimum_useful_ensemble_recommendation'].get('probe_id')}`",
+        f"- Ensemble size: `{package['recommended_next_probe']['minimum_useful_ensemble_recommendation'].get('ensemble_size')}`",
+        f"- Validation output mode: `{package['recommended_next_probe']['minimum_useful_ensemble_recommendation'].get('validation_output_mode')}`",
+        "",
+        "## Reduced Output Settings",
+        "",
     ]
+    if package["reduced_output_settings"]:
+        for key, value in sorted(package["reduced_output_settings"].items()):
+            lines.append(f"- {key}: `{value}`")
+    else:
+        lines.append("- No reduced-output settings were resolved from the command plan.")
+    lines.extend(
+        [
+            "",
+            "## Launch Boundary",
+            "",
+            f"- Metrics collection command: `{package['metrics_collection_command']}`",
+            "- Stop / resume notes:",
+        ]
+    )
+    for note in package["stop_resume_notes"]:
+        lines.append(f"  - {note}")
+    lines.extend(
+        [
+            "",
+            "## Output Roots",
+            "",
+            "- Generated roots:",
+        ]
+    )
     for root in package["generated_output_roots"]:
         lines.append(f"  - `{root}`")
     lines.append("- Ignored roots:")

@@ -31,6 +31,9 @@ execution reproducible and metadata-friendly on Balfrin.
 - `--generate-only`
   - Writes the command-plan JSON, SBATCH script, submission package report, and
     collection instructions into a deterministic run root.
+  - The generated package is explicitly marked `blocked_unlaunched` and carries
+    the recomputed frontier recommendation, reduced-output settings, metrics
+    collection command, and stop/resume notes.
   - Does not submit a job.
 
 - `--submit`
@@ -64,6 +67,12 @@ Generated run files:
 
 `probe_id` defaults to a sanitized `run_id` from the generated command plan and
 `run_id` can be supplied explicitly.
+
+The submission package is the dry-run handoff. Inspect
+`balfrin_submission_package.json` and `balfrin_submission_package.md` before
+any later launch, because they record the exact run root, the bounded
+next-probe recommendation, the reduced-output controls, the metrics collection
+command, and the stop/resume boundary.
 
 ## SBATCH defaults and constraints
 
@@ -238,6 +247,8 @@ Use for CPU-only conditional probe workflows:
 - Keep `$HOME` clean; avoid large generated output outside scratch or tracked paths.
 - This driver is currently a single-job wrapper, not a job-array pipeline.
 - Runtime outputs remain untracked and should be kept in ignored probe/output roots.
+- To launch later, reuse the same checkout, `RUN_ROOT`, and `RUN_ID`; do not
+  create a branch or commit generated run artifacts first.
 
 ## Future extension path
 
@@ -285,6 +296,8 @@ The generate-only package report also records:
 - the requested SLURM partition, wall-time, node, task, and CPU settings,
 - repository branch and commit,
 - readiness-check input status and blocking checks,
+- the frontier recommendation and reduced-output settings for the smallest
+  recommended next probe,
 - generated package roots under the run directory,
 - ignored Balfrin output roots from the resolved command plan,
 - expected package outputs,

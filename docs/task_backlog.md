@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-155: Define Measured Minimal Balfrin Probe Execution Package
-
-Goal: Convert the recomputed bounded-probe recommendation into one executable
-Balfrin submission package without launching it automatically.
-
-Capability gap reduced: The repo lacks a measured-next-probe handoff that
-connects feasibility, reduced-output mode, SLURM command, expected outputs, and
-claim boundaries.
-
-Why this outranks alternatives: A bounded, reviewable submission package is the
-safest bridge from planning evidence to a future measured probe.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A deterministic dry-run package with command script, expected run root,
-  reduced-output settings, metrics collection command, and stop/resume notes.
-- Tests for package content and blocked/unlaunched status.
-- Clear operator instructions for launching later without using branches or
-  committing generated run artifacts.
-
-Definition of done:
-
-- A worker can generate and inspect the exact Balfrin probe package for the
-  smallest recommended next probe, and the package remains explicitly
-  unexecuted.
-
-Boundaries: Do not submit a job, do not run an ensemble, do not authorize
-distributed execution, and do not claim scale-up readiness.
-
 ### TB-156: Add Balfrin Metrics Completeness Remediation Plan
 
 Goal: Turn remaining unavailable or ancillary Balfrin metrics into an explicit

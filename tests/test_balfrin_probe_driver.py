@@ -178,9 +178,38 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                         "hazard/results/tschamut_public_pilot/target_gate_v1/map_package_manifest.json",
                         "--pilot-gis-package-manifest-json",
                         "hazard/results/tschamut_public_pilot/target_gate_v1/pilot_gis_package_manifest.json",
+                        "--conditional-curve-export",
+                        "summary-only",
+                        "--grid-csv-export",
+                        "none",
+                        "--trajectory-workers",
+                        "2",
+                        "--reducer-workers",
+                        "2",
+                        "--map-product-id",
+                        "target_gate_v1",
+                        "--probability-mode",
+                        "sampling_weighted_conditional",
+                        "--normalization-scope",
+                        "conditioned_on_filter",
+                        "--export-geotiff",
+                        "--pilot-gis-package",
+                        "--no-plots",
                     ],
                 }
             ]
+        }
+        fake_frontier = {
+            "frontier_status": "measured_existing_artifacts",
+            "recommendation_class": "defer_small_bounded_ensemble",
+            "recommendation_reason": "bounded next probe remains informative",
+            "minimum_useful_ensemble_recommendation": {
+                "probe_id": "tschamut_native_rebuildable_reduced_next_probe",
+                "ensemble_size": 1000,
+                "validation_output_mode": "rebuildable_reduced_output",
+                "expected_artifact_families": ["diagnostics_json", "manifest_json"],
+                "expected_command": "command",
+            },
         }
         run_root = Path("/scratch/rust_rockfall/probes/scale-test/001")
         with patch.object(submit_driver, "_load_readiness_checker", return_value=fake_readiness):
@@ -194,10 +223,14 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                     nodes=1,
                     ntasks=1,
                     cpus_per_task=16,
+                    frontier_report=fake_frontier,
                 )
 
         self.assertEqual(package["schema_version"], "balfrin_submission_package_v1")
+        self.assertEqual(package["execution_status"], "blocked_unlaunched")
+        self.assertFalse(package["launch_authorized"])
         self.assertEqual(package["run_id"], run_root.name)
+        self.assertEqual(package["expected_run_root"], str(run_root.resolve()))
         self.assertEqual(package["repository"]["commit"], "abc123")
         self.assertEqual(package["generated_output_roots"], [str(run_root.resolve()), str((run_root / "logs").resolve())])
         self.assertEqual(
@@ -207,6 +240,15 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 str((ROOT / "validation/private/tschamut_public_pilot/target_gate_v1").resolve()),
             ],
         )
+        self.assertEqual(package["recommended_next_probe"]["recommendation_class"], "defer_small_bounded_ensemble")
+        self.assertEqual(
+            package["recommended_next_probe"]["minimum_useful_ensemble_recommendation"]["probe_id"],
+            "tschamut_native_rebuildable_reduced_next_probe",
+        )
+        self.assertEqual(package["reduced_output_settings"]["map_product_id"], "target_gate_v1")
+        self.assertEqual(package["reduced_output_settings"]["export_geotiff"], True)
+        self.assertIn("metrics_collection_command", package)
+        self.assertIn("stop_resume_notes", package)
         self.assertIn("generate_only", package["operator_sequence"])
         self.assertIn("collect", package["operator_sequence"])
         self.assertIn(str((run_root / "command_plan.json").resolve()), package["ignored_artifacts"])
@@ -221,7 +263,10 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         fake_package = {
             "schema_version": "balfrin_submission_package_v1",
             "package_mode": "generate-only",
+            "execution_status": "blocked_unlaunched",
+            "launch_authorized": False,
             "probe_manifest": "validation/pilot_runs/probe.yaml",
+            "expected_run_root": "/scratch/rust_rockfall/probes/scale-test/001",
             "run_root": "/scratch/rust_rockfall/probes/scale-test/001",
             "run_id": "probe_fixed",
             "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
@@ -240,8 +285,23 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             "input_checks": {"status": "ready", "blocking_checks": [], "checks": []},
             "command_plan_path": "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
             "sbatch_script_path": "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
+            "command_script_path": "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
+            "command_script": "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
             "generated_output_roots": ["/scratch/rust_rockfall/probes/scale-test/001"],
             "ignored_output_roots": [],
+            "recommended_next_probe": {
+                "frontier_status": "measured_existing_artifacts",
+                "recommendation_class": "defer_small_bounded_ensemble",
+                "recommendation_reason": "bounded next probe remains informative",
+                "minimum_useful_ensemble_recommendation": {},
+            },
+            "reduced_output_settings": {},
+            "metrics_collection_command": "PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/rust_rockfall/probes/scale-test/001",
+            "stop_resume_notes": [
+                "Keep the same RUN_ROOT and RUN_ID when resuming or collecting.",
+                "Stop with scancel after the job id is known, then rerun the same submit command from the same checkout.",
+                "Do not create a branch or worktree, and do not commit generated run artifacts from the run root.",
+            ],
             "ignored_artifacts": [
                 "/scratch/rust_rockfall/probes/scale-test/001/command_plan.json",
                 "/scratch/rust_rockfall/probes/scale-test/001/probe.sbatch",
@@ -327,10 +387,15 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                     fake_package,
                 )
                 markdown = (run_root / "balfrin_submission_package.md").read_text(encoding="utf-8")
+                self.assertIn("Launch status: `blocked_unlaunched`", markdown)
+                self.assertIn("## Recommendation", markdown)
+                self.assertIn("## Reduced Output Settings", markdown)
+                self.assertIn("## Launch Boundary", markdown)
                 self.assertIn("## Operator Sequence", markdown)
                 self.assertIn("scancel \"${JOB_ID}\"", markdown)
                 self.assertIn("## Do Not Commit", markdown)
                 self.assertIn("balfrin_probe_full_time.txt", markdown)
+                self.assertIn("Metrics collection command", markdown)
                 self.assertIn("run_root=", buf.getvalue())
 
     def test_submit_reports_structured_failure_when_sbatch_is_missing(self) -> None:
@@ -338,7 +403,10 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         fake_package = {
             "schema_version": "balfrin_submission_package_v1",
             "package_mode": "generate-only",
+            "execution_status": "blocked_unlaunched",
+            "launch_authorized": False,
             "probe_manifest": "validation/pilot_runs/probe.yaml",
+            "expected_run_root": "/tmp/balfrin/probe-fixed",
             "run_root": "/tmp/balfrin/probe-fixed",
             "run_id": "probe_fixed",
             "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
@@ -357,8 +425,23 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             "input_checks": {"status": "ready", "blocking_checks": [], "checks": []},
             "command_plan_path": "/tmp/balfrin/probe-fixed/command_plan.json",
             "sbatch_script_path": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "command_script_path": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "command_script": "/tmp/balfrin/probe-fixed/probe.sbatch",
             "generated_output_roots": ["/tmp/balfrin/probe-fixed"],
             "ignored_output_roots": [],
+            "recommended_next_probe": {
+                "frontier_status": "measured_existing_artifacts",
+                "recommendation_class": "defer_small_bounded_ensemble",
+                "recommendation_reason": "bounded next probe remains informative",
+                "minimum_useful_ensemble_recommendation": {},
+            },
+            "reduced_output_settings": {},
+            "metrics_collection_command": "PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /tmp/balfrin/probe-fixed",
+            "stop_resume_notes": [
+                "Keep the same RUN_ROOT and RUN_ID when resuming or collecting.",
+                "Stop with scancel after the job id is known, then rerun the same submit command from the same checkout.",
+                "Do not create a branch or worktree, and do not commit generated run artifacts from the run root.",
+            ],
             "ignored_artifacts": [],
             "operator_sequence": {},
             "expected_outputs": ["/tmp/balfrin/probe-fixed/command_plan.json", "/tmp/balfrin/probe-fixed/probe.sbatch"],
