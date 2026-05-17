@@ -2208,7 +2208,13 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
     if re.search(r"(?mi)^- Next task:\s*none\b", work_log_text):
         errors.append("docs/agent_work_log.md should say 'backlog refill needed' instead of 'Next task: none'")
 
-    errors.extend(_find_unreachable_work_log_commits(work_log_text))
+    if _git_repository_is_shallow():
+        errors.append(
+            "docs/agent_work_log.md work-log reachability checks require full git history; "
+            "shallow clone detected"
+        )
+    else:
+        errors.extend(_find_unreachable_work_log_commits(work_log_text))
     errors.extend(_find_work_log_commits_without_task_file_changes(work_log_text))
 
     for task_id, block in _extract_tb_blocks(work_log_text):
@@ -2509,6 +2515,18 @@ def _git_commit_is_ancestor_of_head(commit_hash: str) -> bool:
         check=False,
     )
     return result.returncode == 0
+
+
+def _git_repository_is_shallow() -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
 
 
 def _git_commit_changed_files(commit_hash: str) -> set[str]:

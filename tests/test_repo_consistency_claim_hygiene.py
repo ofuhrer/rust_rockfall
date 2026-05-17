@@ -173,6 +173,19 @@ Inspect first:
             ["docs/agent_work_log.md TB-011 commit def5678 is not reachable from HEAD"],
         )
 
+    def test_task_hygiene_reports_shallow_history_for_work_log_reachability(self) -> None:
+        original = check_repo_consistency._git_repository_is_shallow
+        try:
+            check_repo_consistency._git_repository_is_shallow = lambda: True
+            errors = check_repo_consistency.check_task_backlog_and_work_log_hygiene()
+        finally:
+            check_repo_consistency._git_repository_is_shallow = original
+
+        self.assertTrue(
+            any("shallow clone" in error for error in errors),
+            msg="expected shallow-history detection to be reported",
+        )
+
     def test_task_hygiene_detects_commit_that_does_not_touch_task_files(self) -> None:
         work_log_text = """### TB-012: Task
 

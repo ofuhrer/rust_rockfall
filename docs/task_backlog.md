@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-202: CI Git History And Output-Root Portability Guard
-
-Goal: Remove CI-only failures caused by shallow Git history and by output-root allowlists that treat repository paths under `/tmp` as safe scratch paths.
-
-Capability gap reduced: Portability of repository hygiene checks and dry-run output-root validation across GitHub runners, local temporary checkouts, and isolated test roots.
-
-Why this outranks alternatives: These failures are not scientific, but they break CI and can mask more meaningful artifact-dependency failures.
-
-Inspect first:
-
-- `.github/workflows/ci.yml`
-- `scripts/check_repo_consistency.py`
-- `tests/test_repo_consistency_claim_hygiene.py`
-- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
-- `tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py`
-
-Deliverables:
-
-- CI checkout or consistency-check behavior that keeps work-log commit reachability deterministic, either by fetching full history for the Python job or by explicitly detecting and reporting shallow clones.
-- Focused tests for work-log reachability behavior under shallow-history simulation.
-- Output-root validation that rejects paths inside the repository unless they are under an allowed ignored output root, even when the repository root itself is located below `/tmp`.
-- Focused tests covering allowed `/tmp` scratch roots, allowed ignored repository roots, and forbidden repository-local paths.
-
-Definition of done:
-
-- GitHub Python tests no longer fail because historical work-log commits are unreachable in a shallow checkout, and dry-run skeleton output-root validation behaves consistently for repos under `/tmp`.
-
-Boundaries: No changes to task history, no weakening of work-log hygiene in normal full-history clones, no generated artifact commit, and no expansion of allowed output roots beyond documented ignored/scratch locations.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

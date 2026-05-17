@@ -234,9 +234,21 @@ def resolve_output_root(output_root: Path) -> Path:
     return output_root if output_root.is_absolute() else (ROOT / output_root)
 
 
-def is_allowed_output_root(output_root: Path) -> bool:
+def is_allowed_output_root(
+    output_root: Path,
+    *,
+    repo_root: Path = ROOT,
+    allowed_ignored_root: Path = ALLOWED_IGNORED_ROOT,
+    scratch_roots: tuple[Path, ...] = TMP_ROOTS,
+) -> bool:
     resolved = output_root.resolve()
-    return any(resolved.is_relative_to(root) for root in TMP_ROOTS) or resolved.is_relative_to(ALLOWED_IGNORED_ROOT)
+    resolved_repo_root = repo_root.resolve()
+    resolved_allowed_ignored_root = allowed_ignored_root.resolve()
+    if resolved.is_relative_to(resolved_allowed_ignored_root):
+        return True
+    if resolved.is_relative_to(resolved_repo_root):
+        return False
+    return any(resolved.is_relative_to(root.resolve()) for root in scratch_roots)
 
 
 def display_path(path: Path) -> str:

@@ -103,20 +103,33 @@ class ChantSuraFluelapassDryRunCaseSkeletonTests(unittest.TestCase):
             self.assertIn("blocked_missing_inputs", report["blocked_reason"])
             self.assertEqual(report["write_status"], "blocked")
 
-    def test_output_root_outside_tmp_or_ignored_paths_is_rejected(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_root:
+    def test_is_allowed_output_root_distinguishes_scratch_ignored_and_repo_local_paths(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as temp_root, tempfile.TemporaryDirectory(dir="/tmp") as scratch_root:
             repo_root = Path(temp_root)
-            site_config = self._write_site_config(repo_root)
-            self._stage_core_inputs(repo_root, site_config)
+            allowed_ignored_root = repo_root / "validation/private/chant_sura_fluelapass_portability_example_v1"
             forbidden_output_root = repo_root / "not_allowed"
 
-            original_root = MODULE.PREFLIGHT.ROOT
-            try:
-                MODULE.PREFLIGHT.ROOT = repo_root
-                with self.assertRaises(MODULE.CaseSkeletonError):
-                    MODULE.build_report(site_config, forbidden_output_root)
-            finally:
-                MODULE.PREFLIGHT.ROOT = original_root
+            self.assertTrue(
+                MODULE.is_allowed_output_root(
+                    Path(scratch_root),
+                    repo_root=repo_root,
+                    allowed_ignored_root=allowed_ignored_root,
+                )
+            )
+            self.assertTrue(
+                MODULE.is_allowed_output_root(
+                    allowed_ignored_root,
+                    repo_root=repo_root,
+                    allowed_ignored_root=allowed_ignored_root,
+                )
+            )
+            self.assertFalse(
+                MODULE.is_allowed_output_root(
+                    forbidden_output_root,
+                    repo_root=repo_root,
+                    allowed_ignored_root=allowed_ignored_root,
+                )
+            )
 
     def _write_site_config(self, repo_root: Path) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
