@@ -86,6 +86,12 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["jobs_per_aoi"], 1)
         self.assertIn("aoi_count_exceeds_measured_support", report["no_go_labels"])
         self.assertIn("total_job_count_exceeds_measured_single_job_support", report["no_go_labels"])
+        self.assertEqual(report["planning_labels"]["no_go"], "no_go_extrapolated_beyond_measured_evidence")
+        self.assertEqual(report["planning_labels"]["defer"], "defer_scale_up_authorized_false")
+        self.assertEqual(
+            report["planning_labels"]["allowed_next_probe"],
+            "allowed_next_probe_measured_existing_artifacts",
+        )
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)
         self.assertEqual(report["storage_bytes"]["nominal"], 31200)
         self.assertEqual(report["file_count"]["nominal"], 1560)
@@ -95,6 +101,9 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("projection_status: no_go_extrapolated_beyond_measured_evidence", text)
         self.assertIn("measurement_status: measured_existing_artifacts", text)
         self.assertIn("aoi_count_exceeds_measured_support", text)
+        self.assertIn("planning_labels:", text)
+        self.assertIn("allowed_next_probe: allowed_next_probe_measured_existing_artifacts", text)
+        self.assertIn("balfrin_demo_run_root:", text)
 
     def test_measured_loader_smoke_uses_real_summary_inputs(self) -> None:
         coefficients = estimator.load_measured_coefficients()
@@ -110,25 +119,47 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("bounded_reducer_runtime_scaling", report["measurement_basis"]["source_commands"])
         self.assertIn("memory frontier is anchored", report["measurement_basis"]["measurement_notes"][2])
         self.assertGreater(len(coefficients.measurement_notes), 0)
+        self.assertEqual(
+            report["measurement_basis"]["balfrin_demo_run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
+        )
+        self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
+        self.assertEqual(
+            report["planning_labels"]["allowed_next_probe"],
+            "allowed_next_probe_measured_existing_artifacts",
+        )
 
     def test_missing_measured_evidence_returns_blocked_report(self) -> None:
-        with mock.patch.object(
-            estimator,
-            "load_measured_coefficients",
-            side_effect=estimator.SwissWideExecutionEnvelopeError("measured Balfrin evidence is missing current_gap"),
-        ):
-            report = estimator.build_report_from_available_evidence(
-                estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6)
-            )
+        estimator.load_measured_coefficients.cache_clear()
+        try:
+            with mock.patch.object(
+                estimator.RUNTIME_SCALING,
+                "build_report",
+                return_value={"artifacts_measured": []},
+            ):
+                report = estimator.build_report_from_available_evidence(
+                    estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6)
+                )
+        finally:
+            estimator.load_measured_coefficients.cache_clear()
 
         self.assertEqual(report["measurement_status"], "blocked_missing_inputs")
         self.assertEqual(report["projection_status"], "blocked_missing_inputs")
         self.assertIsNone(report["job_count"])
         self.assertIsNone(report["jobs_per_aoi"])
         self.assertEqual(report["no_go_labels"], [])
-        self.assertIn("measured Balfrin evidence is missing current_gap", report["blocked_reason"])
+        self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
+        self.assertEqual(
+            report["planning_labels"]["allowed_next_probe"],
+            "allowed_next_probe_blocked_missing_inputs",
+        )
+        self.assertIn("measured reduced-output artifact target_rebuildable_reduced is missing", report["blocked_reason"])
         self.assertIsNone(report["runtime_seconds"]["nominal"])
         self.assertIn("measured Balfrin evidence was unavailable", report["measurement_basis"]["measurement_notes"][0])
+        self.assertEqual(
+            report["measurement_basis"]["balfrin_demo_run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
+        )
 
 
 if __name__ == "__main__":

@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-128: Update Swiss-Wide Envelope From Measured Balfrin Demo
-
-Goal: Recompute the Swiss-wide runtime, storage, file-count, memory, and
-job-count planning envelope from measured Balfrin demo evidence.
-
-Capability gap reduced: Swiss-wide scaling realism and bounded execution
-planning.
-
-Why this outranks alternatives: The current envelope has conservative blocked
-and no-go paths, but real Balfrin evidence is needed before future scaling
-claims or larger bounded probes are meaningful.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_single_job_execution.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A measured-envelope report anchored to the Balfrin run with clear no-go,
-  defer, and allowed-next-probe labels.
-- Tests preserving blocked behavior when measured Balfrin evidence is absent.
-
-Definition of done:
-
-- The envelope helper consumes measured Balfrin evidence and still keeps
-  `scale_up_authorized=false` unless a later explicit phase change exists.
-
-Boundaries: Do not authorize Swiss-wide execution, distributed execution, or
-production ensembles; this is a planning envelope only.
-
 ### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 Goal: Map the measured Balfrin demo outputs to the existing physical

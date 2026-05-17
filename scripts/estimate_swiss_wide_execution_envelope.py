@@ -28,6 +28,10 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "swiss_wide_execution_envelope_v1"
+MEASURED_BALFRIN_DEMO_RUN_ROOT = (
+    "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/"
+    "tschamut_public_balfrin_single_release_zone_v3"
+)
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
@@ -227,6 +231,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
 def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients) -> dict[str, Any]:
     validate_inputs(inputs)
 
+    single_job_summary = SINGLE_JOB.build_summary()
     total_units = inputs.aoi_count * inputs.release_zone_count * inputs.trajectory_count
     units_per_aoi = inputs.release_zone_count * inputs.trajectory_count
     jobs_per_aoi = math.ceil(units_per_aoi / coefficients.measured_units_per_job)
@@ -288,9 +293,22 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
         "no_go_labels": no_go_labels,
         "blocked_reason": build_blocked_reason(no_go_labels),
         "measurement_basis": {
+            "balfrin_demo_run_root": MEASURED_BALFRIN_DEMO_RUN_ROOT,
             "source_commands": MEASURED_SOURCE_COMMANDS,
             "measurement_notes": list(coefficients.measurement_notes),
+            "single_job_summary": {
+                "decision": single_job_summary.get("decision"),
+                "final_classification": single_job_summary.get("final_classification"),
+                "single_job_sufficient_for_next_step": single_job_summary.get(
+                    "single_job_sufficient_for_next_step"
+                ),
+                "current_pressure": single_job_summary.get("current_pressure"),
+            },
         },
+        "planning_labels": build_planning_labels(
+            measurement_status="measured_existing_artifacts",
+            no_go_labels=no_go_labels,
+        ),
         "per_unit_coefficients": {
             "runtime_seconds": {
                 "low": coefficients.runtime_seconds_per_unit_low,
@@ -357,11 +375,17 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
         "no_go_labels": [],
         "blocked_reason": blocked_reason,
         "measurement_basis": {
+            "balfrin_demo_run_root": MEASURED_BALFRIN_DEMO_RUN_ROOT,
             "source_commands": MEASURED_SOURCE_COMMANDS,
             "measurement_notes": [
                 "measured Balfrin evidence was unavailable, so the frontier cannot be projected",
             ],
+            "single_job_summary": None,
         },
+        "planning_labels": build_planning_labels(
+            measurement_status="blocked_missing_inputs",
+            no_go_labels=[],
+        ),
         "per_unit_coefficients": {
             "runtime_seconds": {"low": None, "nominal": None, "high": None},
             "storage_bytes": {"low": None, "nominal": None, "high": None},
@@ -404,6 +428,21 @@ def build_blocked_reason(no_go_labels: list[str]) -> str:
     if not no_go_labels:
         return "none"
     return "extrapolation beyond measured evidence: " + ", ".join(no_go_labels)
+
+
+def build_planning_labels(*, measurement_status: str, no_go_labels: list[str]) -> dict[str, str]:
+    no_go_label = "no_go_extrapolated_beyond_measured_evidence" if no_go_labels else "no_go_not_triggered"
+    defer_label = "defer_scale_up_authorized_false"
+    allowed_next_probe_label = (
+        "allowed_next_probe_measured_existing_artifacts"
+        if measurement_status == "measured_existing_artifacts"
+        else "allowed_next_probe_blocked_missing_inputs"
+    )
+    return {
+        "no_go": no_go_label,
+        "defer": defer_label,
+        "allowed_next_probe": allowed_next_probe_label,
+    }
 
 
 def build_scalar_band(
@@ -488,6 +527,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"measurement_status: {report['measurement_status']}",
         f"projection_status: {report['projection_status']}",
         f"blocked_reason: {report['blocked_reason']}",
+        "planning_labels:",
+        f"  no_go: {report['planning_labels']['no_go']}",
+        f"  defer: {report['planning_labels']['defer']}",
+        f"  allowed_next_probe: {report['planning_labels']['allowed_next_probe']}",
         f"aoi_count: {report['input']['aoi_count']}",
         f"release_zone_count: {report['input']['release_zone_count']}",
         f"trajectory_count: {report['input']['trajectory_count']}",
@@ -512,11 +555,21 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  high: {memory['high']}",
         f"no_go_labels: {', '.join(report['no_go_labels']) if report['no_go_labels'] else 'none'}",
         "measurement_basis:",
+        f"  balfrin_demo_run_root: {report['measurement_basis']['balfrin_demo_run_root']}",
     ]
     for label, command in report["measurement_basis"]["source_commands"].items():
         lines.append(f"  {label}: {command}")
     for note in report["measurement_basis"]["measurement_notes"]:
         lines.append(f"  note: {note}")
+    single_job_summary = report["measurement_basis"].get("single_job_summary")
+    if isinstance(single_job_summary, dict):
+        lines.append("  single_job_summary:")
+        lines.append(f"    decision: {single_job_summary.get('decision')}")
+        lines.append(f"    final_classification: {single_job_summary.get('final_classification')}")
+        lines.append(
+            "    single_job_sufficient_for_next_step: "
+            f"{single_job_summary.get('single_job_sufficient_for_next_step')}"
+        )
     return "\n".join(lines)
 
 

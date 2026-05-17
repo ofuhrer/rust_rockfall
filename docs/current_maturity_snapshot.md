@@ -142,8 +142,10 @@ objective are:
    after execution. The post-run gate currently reports
    `blocked_missing_inputs` when no post-run evidence bundle is supplied. The
    Swiss-wide envelope helper has a blocked-report path for missing measured
-   Balfrin evidence and a conservative no-go path for extrapolated planning
-   cases; it does not authorize Swiss-wide execution.
+   Balfrin evidence, records the measured Balfrin demo run root
+   `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`,
+   and now surfaces explicit `no_go`, `defer`, and `allowed_next_probe`
+   labels for planning cases; it does not authorize Swiss-wide execution.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
