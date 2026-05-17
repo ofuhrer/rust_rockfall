@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-146: Freeze Management Demonstration Evidence Package
-
-Goal: Produce a compact, replayable Balfrin demonstration package intended for
-management-facing feasibility review.
-
-Capability gap reduced: fragmented demonstration evidence across many helpers
-and documents.
-
-Why this outranks alternatives: the project now has enough measured evidence
-that presentation coherence, reproducibility, and claim boundaries matter more
-than another status-only report.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- One compact JSON/text demonstration package manifest with runtime, replay,
-  restartability, GIS scope, uncertainty, and claim-boundary sections.
-- A deterministic command sequence to regenerate the package into `/tmp` or an
-  ignored artifact root.
-- Tests that keep measured, fixture-backed, and blocked sections distinct.
-
-Definition of done:
-
-- A non-developer reviewer can inspect one generated package and understand
-  what the Balfrin demo proves and what it does not prove.
-
-Boundaries: No operational claim, no annual-frequency claim, no physical
-validation claim, and no generated large-artifact commit.
-
 ### TB-147: Harden AOI Tile Discovery Against Real Swisstopo Catalog Shapes
 
 Goal: Make AOI-to-product discovery robust to realistic swisstopo catalog

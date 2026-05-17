@@ -2473,3 +2473,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no closure upgrade by assertion, no physics tuning, no operational claim, no physical-probability claim, and no scale-up authorization.
 - Next task: `TB-146`
+
+### TB-146
+- Date: 2026-05-17
+- Commit: local
+- Objective: freeze the Balfrin management demonstration evidence into one compact replayable package manifest with explicit runtime, replay, restartability, GIS scope, uncertainty, and claim-boundary sections.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a compact management-demo package helper that composes the measured evidence bundle with the replay smoke helper and renders a single JSON/text manifest instead of a spread of ad hoc review outputs.
+  - Kept the runtime, replay, restartability, GIS scope, uncertainty, and claim-boundary sections separate, and recorded a deterministic regeneration command sequence alongside section provenance counts.
+  - Added focused regression coverage for a mixed measured/fixture-backed package, an all-fixture-backed override, and an explicit blocked-missing-inputs override so provenance does not collapse across section types.
+  - Documented the new package entrypoint in the Balfrin sufficiency note so a reviewer can regenerate the compact review artifact into `/tmp` or an ignored artifact root.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_management_demo_package.py tests/test_balfrin_management_demo_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_measured
+- Boundaries: no operational claim, no annual-frequency claim, no physical-probability claim, no validation claim, no scale-up authorization, and no generated large-artifact commit.
+- Next task: `TB-147`

@@ -177,6 +177,23 @@ under `tests/fixtures/...` is reported as `fixture_backed`; a present
 non-fixture run root is reported as `live_run_root`; and an absent path
 remains `missing`.
 
+For a compact management-facing package manifest that keeps runtime, replay,
+restartability, GIS scope, uncertainty, and claim boundaries separate, use
+`scripts/summarize_balfrin_management_demo_package.py`:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py \
+  --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root \
+  --artifact-dir /tmp/balfrin_management_demo_package_v1
+```
+
+The helper materializes `balfrin_management_demo_package_v1.json` and
+`balfrin_management_demo_package_v1.txt` in the chosen directory. Its manifest
+also records a deterministic regeneration command sequence so the package can
+be replayed without merging measured evidence with the fixture-backed replay
+section, and it keeps the false operational, annual-frequency, physical-
+probability, scale-up, and distributed-execution boundaries explicit.
+
 ## Scientific Blockers
 
 - `conditional_hazard_convergence_not_accepted` from `conditional_convergence_protocol`: current_classification remains inconclusive in the convergence protocol
