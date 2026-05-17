@@ -2552,3 +2552,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no national-scale processing, no unauthorized downloads, no physics changes, and no operational claim.
 - Next task: `TB-150`
+
+### TB-150: Stress-Test Release-Zone Candidate Heuristic Stability
+
+- Date: 2026-05-17
+- Commit: `ca6ad60`
+- Objective: quantify how deterministic terrain-driven release-zone candidates change under bounded threshold and preprocessing perturbations.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/current_maturity_snapshot.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic candidate-sensitivity report that compares baseline, tighter, wider, and footprint-buffered heuristic variants and records candidate count, area, overlap, and stable/unstable region summaries.
+  - Extended the candidate planner so a bounded footprint buffer can represent preprocessing perturbation without changing the release-zone claim boundary.
+  - Added fixture-backed regression coverage for ready, blocked, stable, and heuristic-sensitive report shapes and updated the text renderer to print the new section.
+  - Updated the maturity snapshot and swisstopo strategy notes so the repo explicitly says the stability report is characterization only, not validation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no threshold tuning to match outcomes, no field-validation claim, no operational release-zone claim, no ensemble run, and no scale-up authorization.
+- Next task: `TB-151`
