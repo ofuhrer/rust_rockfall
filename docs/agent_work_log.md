@@ -2153,3 +2153,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: the envelope remains a planning aid only; no Swiss-wide execution, distributed execution, production ensemble, or operational hazard claim was authorized.
 - Next task: `TB-129`
+
+### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: map the measured Balfrin demo outputs to the existing physical-credibility, validation, and calibration evidence requirements without conflating the demo with calibration, validation, annual-frequency, or operational evidence.
+- Files changed: `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a Balfrin-specific physical-credibility evidence-gap helper that composes the measured Balfrin bundle, the validation/calibration gap report, the observed runout/deposition intake contract, and the physical-credibility requirement matrix into one read-only report.
+  - Classified the Balfrin demo as measured but still `no_physical_evidence`, with diagnostic/reproducibility-only evidence separated from the physical-credibility requirements that remain missing.
+  - Added focused regressions for the measured, blocked, and no-physical-evidence states, including a synthetic override path that keeps the demo measured while the physical-credibility boundary stays negative.
+  - Removed TB-129 from the active backlog after the helper and tests were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_physical_credibility_evidence_gaps.py tests/test_balfrin_physical_credibility_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_physical_credibility_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_physical_credibility_evidence_gaps tests.test_balfrin_evidence_bundle tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_physical_credibility_evidence_gaps.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: the report stays diagnostic only; no calibration, fitting, return-period, annual-frequency, risk, exposure, vulnerability, distributed-execution, physical-probability, or operational claim was introduced.
+- Next task: backlog refill needed; see `docs/task_backlog.md`.

@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
-
-Goal: Map the measured Balfrin demo outputs to the existing physical
-credibility, validation, and calibration evidence requirements.
-
-Capability gap reduced: Physical-credibility boundary clarity and validation
-realism.
-
-Why this outranks alternatives: A successful conditional demo could be
-misread as physical validation unless the missing field evidence and calibration
-requirements remain explicit.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A Balfrin-specific evidence-gap report showing which physical-credibility
-  requirements remain missing after the demo and which, if any, are only
-  diagnostic/reproducibility evidence.
-- Tests or smoke checks for measured, blocked, and no-physical-evidence states.
-
-Definition of done:
-
-- The report prevents a measured Balfrin run from being confused with
-  calibration, validation, annual-frequency, or operational evidence.
-
-Boundaries: Do not introduce calibration, fitting, return periods, risk,
-exposure, vulnerability, or physical-probability claims.
 ## Backlog Protocol
 
 Task headings must always be exactly:
