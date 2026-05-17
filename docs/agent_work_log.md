@@ -269,21 +269,6 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   recorded in the archive.
 - Next task: see `docs/task_backlog.md` for the active queue.
 
-### TB-173: Interpret Target-Area Closure And Scientific Meaning
-
-- Date: 2026-05-17
-- Commit: `82f61e7`
-- Objective: Generate a deterministic target-area conditional diagnostic interpretation with explicit execution, uncertainty, GIS, output, and physical-credibility boundaries.
-- Files changed: `scripts/summarize_balfrin_target_area_interpretation.py`, `tests/test_balfrin_target_area_interpretation.py`, `docs/task_backlog.md`
-- Implementation summary:
-  - Added a new target-area interpretation helper that composes the target-area evidence bundle, GIS/COG scope, same-scale closure baseline, same-scale diagnostic baseline, and physical-credibility evidence into one sectioned report.
-  - Kept the report conservative: the target-area run remains mixed provenance, the diagnostic is not accepted, and the baseline comparison explicitly states that the current Tschamut/Balfrin boundary is unchanged.
-  - Added focused tests for override-driven report synthesis, text/JSON artifact generation, and explicit blocked-input behavior; also materialized the small ignored JSON/text report bundle under `validation/private/tschamut_public_pilot/balfrin_target_area_interpretation_v1/`.
-- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_interpretation -q`, `git diff --check`, `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`, `scripts/git-hooks/pre-commit`
-- Result/status: completed
-- Boundaries: no operational claim, no physical-credibility upgrade, no annual-frequency semantics, and no scale-up authorization.
-- Next task: `TB-174`
-
 ### TB-017: Target Manifest Restore Block
 
 - Date: see archive if not listed in the original entry.
@@ -3052,3 +3037,35 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no closure upgrade by assertion, no operational hazard-map claim, no physical probability claim, no annual-frequency semantics, and no target-area uncertainty was inferred from a missing run root.
 - Next task: `TB-173`
+
+### TB-173: Interpret Target-Area Closure And Scientific Meaning
+
+- Date: 2026-05-17
+- Commit: `82f61e7`
+- Objective: Generate a deterministic target-area conditional diagnostic interpretation with explicit execution, uncertainty, GIS, output, and physical-credibility boundaries.
+- Files changed: `scripts/summarize_balfrin_target_area_interpretation.py`, `tests/test_balfrin_target_area_interpretation.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a new target-area interpretation helper that composes the target-area evidence bundle, GIS/COG scope, same-scale closure baseline, same-scale diagnostic baseline, and physical-credibility evidence into one sectioned report.
+  - Kept the report conservative: the target-area run remains mixed provenance, the diagnostic is not accepted, and the baseline comparison explicitly states that the current Tschamut/Balfrin boundary is unchanged.
+  - Added focused tests for override-driven report synthesis, text/JSON artifact generation, and explicit blocked-input behavior; also materialized the small ignored JSON/text report bundle under `validation/private/tschamut_public_pilot/balfrin_target_area_interpretation_v1/`.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_interpretation -q`, `git diff --check`, `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`, `scripts/git-hooks/pre-commit`
+- Result/status: completed
+- Boundaries: no operational claim, no physical-credibility upgrade, no annual-frequency semantics, and no scale-up authorization.
+- Next task: `TB-174`
+
+### TB-174: Demonstrate Target-Area Restartability Or Preserve Blocked Status
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: record the live target-area Balfrin interruption/resume proof already captured in the restartability recovery report, keep the evidence-bundle integration intact, and remove TB-174 from the active backlog without inventing a new run.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the target-area restartability report already carries measured live interruption/resume provenance, including resume timing, reused reducer state, executed trajectory work, and artifact-continuity notes.
+  - Verified the evidence-bundle helper and its focused tests still recognize restartability fields without treating fixture-backed evidence as a live proof.
+  - Removed TB-174 from the active backlog and recorded the measured restartability status in this work log instead of rerunning or resubmitting Balfrin.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle -q`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_restartability_recovery -q`
+- Result/status: implemented_measured
+- Boundaries: no new Balfrin job was submitted, no cancellation was performed, no distributed execution or scale-up claim was introduced, and no fixture-backed recovery was presented as live evidence.
+- Next task: `TB-175`

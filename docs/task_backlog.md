@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-174: Demonstrate Target-Area Restartability Or Preserve Blocked Status
-
-Goal: Run or document an interruption/resume proof for the target-area Balfrin package, using measured evidence only when available.
-
-Capability gap reduced: Operational recovery credibility for the target-area demonstration.
-
-Why this outranks alternatives: A full Balfrin demonstration should show recovery behavior or explicitly state why it remains untested.
-
-Inspect first:
-
-- `docs/balfrin_restartability_recovery_report.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Target-area restartability report with measured or blocked provenance.
-- Resume timing, chunk reuse/execution counts, and artifact continuity if measured.
-- Evidence bundle integration.
-
-Definition of done:
-
-- Restartability is either measured for the target area or explicitly blocked without reusing fixture-backed evidence as measured proof.
-
-Boundaries: No unnecessary rerun, no destructive cancellation of healthy Slurm jobs, no distributed execution, and no operational claim.
-
 ### TB-175: Update Target-Area Runtime And Swiss-Wide Scaling Envelope
 
 Goal: Recompute runtime/output and Swiss-wide scaling estimates from the target-area evidence.
