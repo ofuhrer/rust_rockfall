@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import importlib.util
 import json
 import tempfile
@@ -65,6 +66,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("source_zone_inputs", first["candidate_source_zones"])
         self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_status"], "ready")
         self.assertEqual(first["scenario_generation_inputs"]["scenario_plan_summary"]["block_size_bin_count"], 3)
+        self.assertEqual(first["scenario_generation_inputs"]["blocked_execution_status"], "deferred_public_context_inputs")
+        self.assertTrue(first["scenario_generation_inputs"]["conditional_only_weighting"])
         self.assertEqual(
             first["scenario_generation_inputs"]["source_policy_provenance"]["policy_id"],
             "tschamut_public_source_scenario_policy_v1",
@@ -97,6 +100,13 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             )
         )
         self.assertTrue(
+            first["release_scenario_placeholders"]["scenario_table_manifest_path"].endswith("scenario_table_manifest.json")
+        )
+        self.assertIn(
+            "generate_tschamut_block_scenario_tables.py",
+            first["release_scenario_placeholders"]["scenario_generation_command"],
+        )
+        self.assertTrue(
             first["release_scenario_placeholders"]["same_scale_reference_path"].endswith(
                 "docs/tschamut_public_same_scale_uncertainty_envelope.md"
             )
@@ -122,6 +132,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("context_manifests:", text_report)
         self.assertIn("command_plan_hooks:", text_report)
         self.assertIn("ignored_output_roots:", text_report)
+        self.assertIn("generic_candidate_source_zone_provenance", text_report)
+        self.assertIn("scenario_generation_handoff", text_report)
 
     def test_output_root_mode_writes_deterministic_case_skeleton_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -174,6 +186,10 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(len(case["command_sequence"]), 4)
         self.assertEqual(case["command_sequence"][0]["step_id"], "aoi_acquisition")
         self.assertEqual(expected_output_roots["expected_output_roots"], skeleton["expected_output_roots"])
+        self.assertEqual(case["scenario_generation_handoff"]["blocked_execution_status"], "deferred_public_context_inputs")
+        self.assertTrue(case["scenario_generation_handoff"]["scenario_table_manifest_path"].endswith("scenario_table_manifest.json"))
+        self.assertIn("generate_tschamut_block_scenario_tables.py", case["scenario_generation_handoff"]["command"])
+        self.assertTrue(case["scenario_generation_handoff"]["conditional_only_weighting"])
 
     def test_missing_inputs_remain_blocked_and_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -228,15 +244,123 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("candidate_source_zones:", text_report)
         self.assertIn("scenario_generation_inputs:", text_report)
 
-    def _write_candidate_config(self, repo_root: Path) -> Path:
+    def test_synthetic_non_tschamut_candidate_exposes_generic_scenario_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(
+                repo_root,
+                candidate_site_id="synthetic_candidate_alpha",
+                candidate_site_name="Synthetic Candidate Alpha",
+            )
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._rewrite_synthetic_staged_inputs(repo_root, "synthetic_candidate_alpha", "synthetic_candidate_zone_alpha")
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/synthetic_candidate_alpha/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+        self.assertEqual(first, second)
+        scenario_inputs = first["scenario_generation_inputs"]
+        self.assertEqual(
+            scenario_inputs["generic_candidate_source_zone_provenance"]["candidate_source_zone_id"],
+            "synthetic_candidate_zone_alpha",
+        )
+        self.assertEqual(
+            scenario_inputs["generic_candidate_source_zone_provenance"]["source_zone_id_source"],
+            "candidate_source_zone_metadata",
+        )
+        self.assertEqual(scenario_inputs["blocked_execution_status"], "deferred_public_context_inputs")
+        self.assertTrue(
+            scenario_inputs["generic_scenario_generation"]["command"].startswith(
+                "PYENV_VERSION=system uv run python scripts/generate_tschamut_block_scenario_tables.py"
+            )
+        )
+        self.assertIn("--template policy_block_family_v1", scenario_inputs["generic_scenario_generation"]["command"])
+        self.assertTrue(scenario_inputs["scenario_table_manifest_path"].endswith("scenario_table_manifest.json"))
+
+        handoff = first["case_skeleton_output"]["case_skeleton"]["scenario_generation_handoff"]
+        self.assertEqual(handoff["blocked_execution_status"], "deferred_public_context_inputs")
+        self.assertEqual(
+            handoff["generic_candidate_source_zone_provenance"]["candidate_source_zone_id"],
+            "synthetic_candidate_zone_alpha",
+        )
+        self.assertTrue(handoff["scenario_table_manifest_path"].endswith("scenario_table_manifest.json"))
+
+    def _write_candidate_config(
+        self,
+        repo_root: Path,
+        candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1",
+        candidate_site_name: str = "Chant Sura / Flüelapass portability example",
+    ) -> Path:
+        return self._write_candidate_config_with_identity(repo_root, candidate_site_id, candidate_site_name)
+
+    def _write_candidate_config_with_identity(
+        self,
+        repo_root: Path,
+        candidate_site_id: str,
+        candidate_site_name: str,
+    ) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
         config_data = yaml.safe_load(config_source.read_text(encoding="utf-8"))
+        config_data = self._rewrite_strings(config_data, "chant_sura_fluelapass_portability_example_v1", candidate_site_id)
+        config_data = self._rewrite_strings(config_data, "Chant Sura / Flüelapass portability example", candidate_site_name)
+        config_data["candidate_site_id"] = candidate_site_id
+        config_data["candidate_site_name"] = candidate_site_name
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
         )
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
+
+    def _rewrite_synthetic_staged_inputs(self, repo_root: Path, candidate_site_id: str, source_zone_id: str) -> None:
+        source_zone_path = repo_root / "data/processed/swisstopo" / candidate_site_id / "input" / "source_zone_metadata.yaml"
+        source_zone = yaml.safe_load(source_zone_path.read_text(encoding="utf-8"))
+        source_zone["zone_id"] = source_zone_id
+        source_zone["source_zone_id"] = source_zone_id
+        source_zone["title"] = "Synthetic Candidate Alpha"
+        if isinstance(source_zone.get("release_sampling_policy"), dict):
+            source_zone["release_sampling_policy"]["release_cell_id_prefix"] = "synthetic_candidate_cell"
+        source_zone_path.write_text(yaml.safe_dump(source_zone, sort_keys=False), encoding="utf-8")
+
+        scenario_table_path = repo_root / "data/processed/swisstopo" / candidate_site_id / "input" / "scenario_table.csv"
+        with scenario_table_path.open("r", encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+            fieldnames = list(rows[0].keys()) if rows else []
+        for row in rows:
+            row["source_zone_id"] = source_zone_id
+            if row.get("scenario_id"):
+                row["scenario_id"] = f"{source_zone_id}__synthetic_candidate_block_001"
+            if row.get("block_scenario_id"):
+                row["block_scenario_id"] = "synthetic_candidate_block_001"
+        with scenario_table_path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(rows)
+
+    def _rewrite_strings(self, payload: object, source: str, target: str) -> object:
+        if isinstance(payload, str):
+            return payload.replace(source, target)
+        if isinstance(payload, list):
+            return [self._rewrite_strings(item, source, target) for item in payload]
+        if isinstance(payload, dict):
+            return {key: self._rewrite_strings(value, source, target) for key, value in payload.items()}
+        return payload
 
     def _write_release_polygon(self, repo_root: Path) -> Path:
         polygon = {

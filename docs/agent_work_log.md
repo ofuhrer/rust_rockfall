@@ -2701,3 +2701,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new Balfrin run, no synthetic measured metrics, no scale-up claim, and no operational claim.
 - Next task: `TB-157`
+
+### TB-157: Connect AOI Case Skeleton To Generic Scenario Generation
+- Date: 2026-05-17
+- Commit: local
+- Objective: make the AOI case-skeleton dry run expose the generic candidate-source-zone scenario-generation command, manifest path, expected scenario table, and blocked status without Tschamut-only scenario assumptions.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/plan_release_plan_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Threaded the generic release-plan dry run through the AOI composer so the handoff bundle now carries a portable candidate-source-zone provenance block, the scenario-generation command, the expected scenario table path, and the scenario-table manifest path.
+  - Kept the legacy Tschamut-oriented planning fields intact while making the AOI case-skeleton bundle and text report surface the generic handoff fields directly.
+  - Added deterministic synthetic-candidate coverage that rewrites staged source-zone inputs and proves the generic provenance remains candidate-specific, plus a doc note that the weights remain conditional-only sampling weights rather than annual-frequency claims.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_release_plan_dry_run`
+- Result/status: implemented_fixture_backed
+- Boundaries: no ensemble execution, no second-site hazard build, no block-population fitting, no annual frequency, and no operational claim.
+- Next task: `TB-158`

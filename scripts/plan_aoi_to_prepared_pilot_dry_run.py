@@ -50,6 +50,7 @@ def _load_module(module_name: str, filename: str):
 AOI_ACQUISITION = _load_module("aoi_to_prepared_pilot_aoi_acquisition", "plan_swisstopo_aoi_acquisition.py")
 CANDIDATE_GENERATION = _load_module("aoi_to_prepared_pilot_candidate_generation", "plan_terrain_release_zone_candidates.py")
 SCENARIO_PLAN = _load_module("aoi_to_prepared_pilot_scenario_plan", "plan_pragmatic_release_plan.py")
+GENERIC_RELEASE_PLAN = _load_module("aoi_to_prepared_pilot_generic_release_plan", "plan_release_plan_dry_run.py")
 COMMAND_PLAN = _load_module("aoi_to_prepared_pilot_command_plan", "generate_pilot_command_plan.py")
 
 
@@ -280,6 +281,7 @@ def build_prep_summary(
     has_site_config: bool,
     acquisition_report: dict[str, Any],
     release_plan_report: dict[str, Any],
+    generic_release_plan_report: dict[str, Any],
     candidate_generation_report: dict[str, Any],
     command_plan_report: dict[str, Any],
 ) -> dict[str, Any]:
@@ -313,9 +315,12 @@ def build_prep_summary(
         terrain_manifests.append(terrain_metadata_record)
     context_manifests = list(acquisition_report.get("public_context_acquisition_plan", []))
     release_plan_paths = release_plan_report.get("source_inputs", {})
+    generic_release_plan_contract = generic_release_plan_report.get("scenario_generation_contract", {})
     release_scenario_placeholders = {
         "source_scenario_policy_path": release_plan_paths.get("source_scenario_policy_path", ""),
         "scenario_table_path": release_plan_paths.get("scenario_table_path", ""),
+        "scenario_table_manifest_path": generic_release_plan_contract.get("generic_scenario_generation", {}).get("scenario_table_manifest_path", ""),
+        "scenario_generation_command": generic_release_plan_contract.get("generic_scenario_generation", {}).get("command", ""),
         "same_scale_reference_path": release_plan_paths.get("same_scale_reference_path", ""),
         "release_polygon": release_polygon,
         "scenario_plan_status": release_plan_report.get("scenario_plan_status", "unknown"),
@@ -336,6 +341,8 @@ def build_prep_summary(
     scenario_generation_inputs = {
         "scenario_plan_status": release_plan_report.get("scenario_plan_status", "unknown"),
         "source_policy_provenance": release_plan_report.get("source_policy_provenance", {}),
+        "generic_scenario_generation": generic_release_plan_contract.get("generic_scenario_generation", {}),
+        "generic_candidate_source_zone_provenance": generic_release_plan_contract.get("generic_candidate_source_zone_provenance", {}),
         "block_size_bins": release_plan_report.get("block_size_bins", []),
         "weighting_semantics": release_plan_report.get("weighting_semantics", {}),
         "reference_scenario_table": release_plan_report.get("reference_scenario_table", {}),
@@ -345,6 +352,11 @@ def build_prep_summary(
         "claim_boundary": release_plan_report.get("claim_boundary", {}),
         "pragmatic_coverage_boundary": release_plan_report.get("pragmatic_coverage_boundary", {}),
         "source_inputs": release_plan_report.get("source_inputs", {}),
+        "scenario_table_manifest_path": generic_release_plan_contract.get("generic_scenario_generation", {}).get("scenario_table_manifest_path", ""),
+        "blocked_execution_status": generic_release_plan_contract.get("generic_scenario_generation", {}).get(
+            "blocked_execution_status", release_plan_report.get("scenario_plan_status", "unknown")
+        ),
+        "conditional_only_weighting": generic_release_plan_contract.get("generic_scenario_generation", {}).get("conditional_only_weighting", True),
     }
     command_plan_hooks = [
         {
@@ -480,6 +492,7 @@ def build_report(
         acquisition_report = AOI_ACQUISITION.build_report(config_path)
         candidate_generation_report = CANDIDATE_GENERATION.build_report(repo_root=repo_root)
         release_plan_report = SCENARIO_PLAN.build_report()
+        generic_release_plan_report = GENERIC_RELEASE_PLAN.build_report(config_path, repo_root=repo_root)
 
     command_plan_report = COMMAND_PLAN.build_report(DEFAULT_COMMAND_PLAN_SITE, config_path)
 
@@ -502,6 +515,7 @@ def build_report(
         has_site_config=has_site_config,
         acquisition_report=acquisition_report,
         release_plan_report=release_plan_report,
+        generic_release_plan_report=generic_release_plan_report,
         candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
     )
@@ -514,6 +528,7 @@ def build_report(
             "has_site_config": has_site_config,
             "acquisition_report": acquisition_report,
             "release_plan_report": release_plan_report,
+            "generic_release_plan_report": generic_release_plan_report,
             "candidate_generation_report": candidate_generation_report,
             "command_plan_report": command_plan_report,
             "prep_summary": prep_summary,
@@ -879,6 +894,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("- source_policy_provenance:")
     for key, value in (scenario_generation_inputs.get("source_policy_provenance") or {}).items():
         lines.append(f"  - {key}: {value}")
+    lines.append("- generic_candidate_source_zone_provenance:")
+    for key, value in (scenario_generation_inputs.get("generic_candidate_source_zone_provenance") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- generic_scenario_generation:")
+    for key, value in (scenario_generation_inputs.get("generic_scenario_generation") or {}).items():
+        lines.append(f"  - {key}: {value}")
     lines.append("- block_size_bins:")
     for row in scenario_generation_inputs.get("block_size_bins", []):
         lines.append(
@@ -908,6 +929,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("- source_inputs:")
     for key, value in (scenario_generation_inputs.get("source_inputs") or {}).items():
         lines.append(f"  - {key}: {value}")
+    lines.append(f"- scenario_table_manifest_path: {scenario_generation_inputs.get('scenario_table_manifest_path', '')}")
+    lines.append(f"- blocked_execution_status: {scenario_generation_inputs.get('blocked_execution_status', '')}")
+    lines.append(f"- conditional_only_weighting: {scenario_generation_inputs.get('conditional_only_weighting', '')}")
     lines.extend(
         [
             "",
@@ -1032,6 +1056,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.extend(f"  - {item}" for item in skeleton["expected_output_roots"])
     else:
         lines.append("- expected_output_roots: none")
+    scenario_handoff = (skeleton.get("case_skeleton", {}) or {}).get("scenario_generation_handoff", {})
+    if scenario_handoff:
+        lines.append("- scenario_generation_handoff:")
+        for key, value in scenario_handoff.items():
+            if isinstance(value, dict):
+                lines.append(f"  - {key}:")
+                for subkey, subvalue in value.items():
+                    lines.append(f"    - {subkey}: {subvalue}")
+            else:
+                lines.append(f"  - {key}: {value}")
     return "\n".join(lines)
 
 
@@ -1124,6 +1158,28 @@ def build_case_skeleton_output(
         "template_only_command_ids": template_only_command_ids,
         "output_root": str(resolved_output_root) if resolved_output_root is not None else "",
         "write_status": "not_requested" if resolved_output_root is None else "pending",
+        "scenario_generation_handoff": {
+            "command_id": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("command_id", ""),
+            "command": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("command", ""),
+            "expected_scenario_table_path": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("expected_scenario_table_path", ""),
+            "scenario_table_manifest_path": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("scenario_table_manifest_path", ""),
+            "blocked_execution_status": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("blocked_execution_status", blocked_execution),
+            "conditional_only_weighting": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_scenario_generation", {})
+            .get("conditional_only_weighting", True),
+            "generic_candidate_source_zone_provenance": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            .get("generic_candidate_source_zone_provenance", {}),
+        },
     }
     command_manifest = {
         "schema_version": COMMAND_MANIFEST_SCHEMA_VERSION,

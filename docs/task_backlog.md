@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-157: Connect AOI Case Skeleton To Generic Scenario Generation
-
-Goal: Ensure the AOI case-skeleton dry run can reference the generic
-candidate-source-zone scenario generator instead of relying on Tschamut-only
-scenario assumptions.
-
-Capability gap reduced: The site-level AOI handoff is not yet fully composed
-from the generic release-zone and scenario-generation surfaces.
-
-Why this outranks alternatives: A future second-site worker needs one coherent
-handoff bundle whose scenario table is produced by the portable generator.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- AOI dry-run output that names the generic scenario-generation command,
-  expected scenario table, manifest path, and blocked execution status.
-- Tests proving deterministic skeleton output includes generic scenario
-  provenance for a synthetic non-Tschamut candidate.
-- Documentation note preserving conditional-only weighting semantics.
-
-Definition of done:
-
-- The AOI case-skeleton bundle can be inspected as a portable release/scenario
-  handoff without Tschamut-only scenario identifiers.
-
-Boundaries: No ensemble execution, no second-site hazard build, no
-block-population fitting, no annual frequency, and no operational claim.
-
 ### TB-158: Produce Chant Sura Real-Context Staging Checklist
 
 Goal: Convert the Chant Sura real-context acquisition decision into a concrete,

@@ -346,6 +346,8 @@ candidate-source-zone path alongside the Tschamut compatibility wrapper. It can
 combine candidate source-zone metadata with a policy template to emit stable
 scenario ids, a provenance-aware manifest, and conditional-only weighting
 semantics without introducing annual frequency or block-population fitting.
+The conditional-only weights remain sampling weights, not physical probability
+or annual-frequency claims.
 
 The public-credibility boundary is now also machine-readable via
 `scripts/map_physical_credibility_evidence_requirements.py`. That helper keeps

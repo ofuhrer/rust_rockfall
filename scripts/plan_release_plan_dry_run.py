@@ -30,6 +30,7 @@ SCHEMA_VERSION = "release_plan_dry_run_v1"
 SCENARIO_GENERATION_CONTRACT_SCHEMA_VERSION = "release_plan_generation_contract_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 TSCHAMUT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+GENERIC_SCENARIO_GENERATION_COMMAND_ID = "candidate_source_zone_block_scenario_generation"
 UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS = [
     "annual_frequency",
     "physical_probability",
@@ -293,6 +294,31 @@ def build_scenario_generation_contract(
     scenarios = build_block_size_bins(tschamut_policy)
     release_cells = build_release_cells(tschamut_policy)
     release_points = source_zone_record.get("release_points") or []
+    generic_scenario_table_path = paths["scenario_table"]
+    generic_scenario_table_manifest_path = generic_scenario_table_path.with_name("scenario_table_manifest.json")
+    generic_scenario_generation_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/generate_tschamut_block_scenario_tables.py",
+            "--policy",
+            str(paths["source_scenario_policy"]),
+            "--source-zone-metadata",
+            str(paths["source_zone_metadata"]),
+            "--reference-scenario-table",
+            str(paths["scenario_table"]),
+            "--template",
+            "policy_block_family_v1",
+            "--csv-output",
+            str(generic_scenario_table_path),
+            "--manifest-json",
+            str(generic_scenario_table_manifest_path),
+            "--format",
+            "json",
+        ]
+    )
 
     return {
         "schema_version": SCENARIO_GENERATION_CONTRACT_SCHEMA_VERSION,
@@ -337,6 +363,24 @@ def build_scenario_generation_contract(
             "scenario_probability_semantics": text_value((tschamut_policy.get("source_zone_policy", {}) or {}).get("release_sampling", {}).get("sampling_weight_semantics"))
             or "conditional_sampling_only",
             "unsupported_physical_frequency_fields": list(UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS),
+        },
+        "generic_scenario_generation": {
+            "command_id": GENERIC_SCENARIO_GENERATION_COMMAND_ID,
+            "command": generic_scenario_generation_command,
+            "expected_scenario_table_path": str(generic_scenario_table_path),
+            "scenario_table_manifest_path": str(generic_scenario_table_manifest_path),
+            "blocked_execution_status": release_plan_status(preflight_report),
+            "blocked_reason": preflight_report.get("blocked_reason"),
+            "conditional_only_weighting": True,
+        },
+        "generic_candidate_source_zone_provenance": {
+            "candidate_source_zone_id": text_value(source_zone_record.get("zone_id")),
+            "candidate_source_zone_metadata_path": str(paths["source_zone_metadata"]),
+            "scenario_table_path": str(paths["scenario_table"]),
+            "scenario_table_manifest_path": str(generic_scenario_table_manifest_path),
+            "source_zone_id_source": "candidate_source_zone_metadata",
+            "conditional_only_weighting": True,
+            "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
         },
         "tschamut_specific_heuristics": {
             "release_sampling_seed_policy": {
