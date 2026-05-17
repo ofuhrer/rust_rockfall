@@ -51,6 +51,42 @@ class BalfrinPhysicalCredibilityEvidenceGapsTests(unittest.TestCase):
             "post_run_interpretation_gate_report",
             {row["section"] for row in report["diagnostic_reproducibility_evidence"]},
         )
+        physical_summaries = report["current_evidence_sources"]["physical_requirements"]
+        self.assertTrue(
+            any(
+                row.get("artifact_class") == "aoi_cache_verification_and_terrain_preprocessing"
+                and row.get("status") == "workflow_provenance_only"
+                for row in physical_summaries
+            )
+        )
+        self.assertTrue(
+            any(
+                row.get("artifact_class") == "aoi_release_zone_candidates"
+                and row.get("status") == "workflow_provenance_only"
+                for row in physical_summaries
+            )
+        )
+        self.assertTrue(
+            any(
+                row.get("artifact_class") == "aoi_scenario_tables"
+                and row.get("status") == "workflow_provenance_only"
+                for row in physical_summaries
+            )
+        )
+        self.assertTrue(
+            any(
+                row.get("artifact_class") == "aoi_case_skeletons"
+                and row.get("status") == "workflow_provenance_only"
+                for row in physical_summaries
+            )
+        )
+        self.assertEqual(report["requirement_matrix"][0]["balfrin_evidence_state"], "diagnostic_reproducibility_only")
+        self.assertTrue(
+            all(
+                row["balfrin_evidence_state"] == "missing_physical_evidence"
+                for row in report["missing_physical_requirements"]
+            )
+        )
 
     def test_blocked_missing_inputs_state_is_explicit(self) -> None:
         report = helper.build_report({"missing_inputs": ["docs/missing.json"]})

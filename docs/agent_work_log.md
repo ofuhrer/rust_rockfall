@@ -2731,3 +2731,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no synthetic evidence upgrade, no second-site ensemble, no operational claim, and no physical validation claim.
 - Next task: `TB-159`
+
+### TB-159: Map Physical-Credibility Gaps Onto AOI Automation Outputs
+- Date: 2026-05-17
+- Commit: local
+- Objective: map AOI dry-run outputs to the physical-credibility evidence matrix so workflow artifacts stay separated from physical validation evidence.
+- Files changed: `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_physical_credibility_evidence_requirements.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit workflow/provenance summaries for AOI cache verification, terrain preprocessing, release-zone candidates, scenario tables, and case skeletons so the physical-credibility helper labels them as non-physical evidence.
+  - Threaded those AOI workflow rows into the Balfrin physical-credibility gap summary and updated the evidence-source matrix entries so downstream reports keep the boundary explicit.
+  - Added focused regressions that assert the AOI automation outputs remain workflow artifacts and do not satisfy observed-runout, calibration, block-population, or source-frequency requirements.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_physical_credibility_evidence_requirements tests.test_balfrin_physical_credibility_evidence_gaps tests.test_aoi_to_prepared_pilot_dry_run`
+- Result/status: implemented_fixture_backed
+- Boundaries: no calibration, no tuning, no physical-probability claim, no annual-frequency claim, and no operational claim.
+- Next task: `TB-160`

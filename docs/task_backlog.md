@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-159: Map Physical-Credibility Gaps Onto AOI Automation Outputs
-
-Goal: Show which AOI dry-run outputs remain workflow artifacts versus physical
-credibility evidence.
-
-Capability gap reduced: The new AOI automation chain could be mistaken for
-validation readiness unless its outputs are mapped to the physical-credibility
-evidence matrix.
-
-Why this outranks alternatives: As automation improves, claim-boundary drift
-becomes a larger risk than missing documentation.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_physical_credibility_evidence_requirements.py`
-
-Deliverables:
-
-- Updated physical-credibility matrix entries for AOI cache verification,
-  terrain preprocessing, release-zone candidates, scenario tables, and case
-  skeletons.
-- Tests proving those artifacts do not satisfy observed runout, calibration,
-  block-population, or source-frequency evidence requirements.
-- Concise docs update if needed.
-
-Definition of done:
-
-- Physical-credibility helpers explicitly classify every major AOI automation
-  output as workflow/provenance evidence, not physical validation evidence.
-
-Boundaries: No calibration, no tuning, no physical-probability claim, no
-annual frequency, and no operational claim.
-
 ### TB-160: Add Demonstration GIS Scope Review For AOI Handoff
 
 Goal: Extend GIS/COG scope reporting so AOI case-skeleton handoff bundles

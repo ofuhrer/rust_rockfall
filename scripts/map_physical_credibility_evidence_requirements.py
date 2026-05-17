@@ -126,6 +126,33 @@ EVIDENCE_ACQUISITION_PRIORITY_BLUEPRINTS = (
     },
 )
 
+AOI_WORKFLOW_ARTIFACT_SUMMARY = (
+    {
+        "summary": "AOI cache verification and terrain preprocessing are workflow/provenance evidence only.",
+        "status": "workflow_provenance_only",
+        "artifact_class": "aoi_cache_verification_and_terrain_preprocessing",
+        "physical_claim_boundary": "not_observed_runout_or_calibration_evidence",
+    },
+    {
+        "summary": "AOI release-zone candidates remain heuristic workflow inputs, not validated release-zone evidence.",
+        "status": "workflow_provenance_only",
+        "artifact_class": "aoi_release_zone_candidates",
+        "physical_claim_boundary": "not_observed_runout_or_release_evidence",
+    },
+    {
+        "summary": "AOI scenario tables remain conditional workflow tables, not source-frequency evidence.",
+        "status": "workflow_provenance_only",
+        "artifact_class": "aoi_scenario_tables",
+        "physical_claim_boundary": "not_source_frequency_or_annual_frequency_evidence",
+    },
+    {
+        "summary": "AOI case skeletons and blocked-execution manifests remain dry-run orchestration artifacts.",
+        "status": "workflow_provenance_only",
+        "artifact_class": "aoi_case_skeletons",
+        "physical_claim_boundary": "not_calibration_or_validation_evidence",
+    },
+)
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -343,6 +370,20 @@ def build_evidence_requirement_categories(
             "current_repo_evidence_status": category_status(gap_report, "release_zone_evidence"),
             "current_repo_evidence_sources": [
                 {
+                    "label": "AOI release-zone candidate metrics report",
+                    "reference": "scripts/plan_terrain_release_zone_candidates.py",
+                    "status": "partial",
+                    "role": "heuristic workflow input only",
+                    "notes": "Deterministic candidate cells are workflow inputs, not validated release zones or observed runout evidence.",
+                },
+                {
+                    "label": "AOI candidate release-zone products",
+                    "reference": "scripts/plan_terrain_release_zone_candidates.py#candidate_release_zone_products",
+                    "status": "partial",
+                    "role": "workflow artifact bundle",
+                    "notes": "Polygon, mask, and manifest outputs record reproducibility plumbing, not physical credibility evidence.",
+                },
+                {
                     "label": "Tschamut public pilot manifest",
                     "reference": "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml",
                     "status": "partial",
@@ -439,6 +480,20 @@ def build_evidence_requirement_categories(
             "current_repo_evidence_status": category_status(gap_report, "terrain_and_context_evidence"),
             "current_repo_evidence_sources": [
                 {
+                    "label": "AOI cache verification report",
+                    "reference": "scripts/check_second_site_public_geodata_preflight.py",
+                    "status": "partial",
+                    "role": "workflow cache-verification and preflight contract",
+                    "notes": "Verifies staged cache and metadata readiness for AOI planning; it does not observe runout, calibration, or validation behavior.",
+                },
+                {
+                    "label": "AOI terrain preprocessing report",
+                    "reference": "scripts/plan_aoi_terrain_preprocessing.py",
+                    "status": "partial",
+                    "role": "workflow terrain preprocessing provenance",
+                    "notes": "Records staged crop, source tiles, and output roots for planning only; not physical validation evidence.",
+                },
+                {
                     "label": f"swissALTI3D ({dataset_label(datasets, 'swisstopo_swissalti3d')})",
                     "reference": "data/datasets.yaml:swisstopo_swissalti3d",
                     "status": "partial",
@@ -501,6 +556,20 @@ def build_evidence_requirement_categories(
             "current_repo_evidence_status": "missing",
             "current_repo_evidence_sources": [
                 {
+                    "label": "AOI scenario-table dry-run plan",
+                    "reference": "scripts/plan_pragmatic_release_plan.py",
+                    "status": "partial",
+                    "role": "conditional scenario workflow",
+                    "notes": "Scenario rows are conditional workflow records with explicit non-frequency semantics.",
+                },
+                {
+                    "label": "AOI scenario-generation handoff",
+                    "reference": "scripts/plan_aoi_to_prepared_pilot_dry_run.py#scenario_generation_inputs",
+                    "status": "partial",
+                    "role": "workflow handoff provenance",
+                    "notes": "Carries scenario-table command and manifest references only; not source-frequency evidence.",
+                },
+                {
                     "label": f"Tschamut dataset ({dataset_label(datasets, 'tschamut2014')})",
                     "reference": "data/datasets.yaml:tschamut2014",
                     "status": "partial",
@@ -541,6 +610,13 @@ def build_evidence_requirement_categories(
             "category": "calibration_data_and_objective_functions",
             "current_repo_evidence_status": category_status(gap_report, "calibration_evidence"),
             "current_repo_evidence_sources": [
+                {
+                    "label": "AOI dry-run case skeleton bundle",
+                    "reference": "scripts/plan_aoi_to_prepared_pilot_dry_run.py#case_skeleton_output",
+                    "status": "partial",
+                    "role": "workflow orchestration artifact",
+                    "notes": "Case skeletons and blocked-execution manifests document dry-run plumbing, not calibration or parameter-fit evidence.",
+                },
                 {
                     "label": "Chant Sura internal model-selection fixture",
                     "reference": "validation/internal/shape_contact_v0_chant_sura_model_selection.yaml",
@@ -921,6 +997,15 @@ def current_evidence_summary(gap_report: dict[str, Any], holdout_report: dict[st
             "summary": "Multi-site portability remains metadata-only until public-context products are staged.",
             "status": "deferred_public_context_inputs",
         },
+        *[
+            {
+                "summary": item["summary"],
+                "status": item["status"],
+                "artifact_class": item["artifact_class"],
+                "physical_claim_boundary": item["physical_claim_boundary"],
+            }
+            for item in AOI_WORKFLOW_ARTIFACT_SUMMARY
+        ],
     ]
 
 

@@ -71,6 +71,11 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         report = helper.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_requirement_categories"]}
         matrix = {entry["category"]: entry for entry in report["evidence_acquisition_matrix"]}
+        current_summary_by_class = {
+            entry.get("artifact_class"): entry
+            for entry in report["current_evidence_summary"]
+            if entry.get("artifact_class")
+        }
         self.assertEqual(
             set(categories),
             {
@@ -112,6 +117,38 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
                 for source in report["candidate_data_sources"]
             )
         )
+        self.assertEqual(current_summary_by_class["aoi_cache_verification_and_terrain_preprocessing"]["status"], "workflow_provenance_only")
+        self.assertEqual(current_summary_by_class["aoi_release_zone_candidates"]["status"], "workflow_provenance_only")
+        self.assertEqual(current_summary_by_class["aoi_scenario_tables"]["status"], "workflow_provenance_only")
+        self.assertEqual(current_summary_by_class["aoi_case_skeletons"]["status"], "workflow_provenance_only")
+        self.assertEqual(
+            current_summary_by_class["aoi_case_skeletons"]["physical_claim_boundary"],
+            "not_calibration_or_validation_evidence",
+        )
+        self.assertIn(
+            "AOI cache verification report",
+            {source["label"] for source in categories["terrain_and_context_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "AOI terrain preprocessing report",
+            {source["label"] for source in categories["terrain_and_context_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "AOI release-zone candidate metrics report",
+            {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "AOI candidate release-zone products",
+            {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "AOI scenario-table dry-run plan",
+            {source["label"] for source in categories["source_frequency_and_temporal_frequency_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "AOI dry-run case skeleton bundle",
+            {source["label"] for source in categories["calibration_data_and_objective_functions"]["current_repo_evidence_sources"]},
+        )
 
     def test_text_output_names_required_evidence_categories(self) -> None:
         text = helper.render_text_report(helper.build_report())
@@ -124,6 +161,7 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertIn("priority 1: observed_runout_deposition", text)
         self.assertIn("layer_credibility_boundaries", text)
         self.assertIn("max_kinetic_energy", text)
+        self.assertIn("workflow_provenance_only", text)
 
     def test_missing_inputs_return_blocked_status(self) -> None:
         report = helper.build_report({"missing_inputs": ["docs/missing.json"]})
