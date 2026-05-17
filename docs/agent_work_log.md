@@ -2658,3 +2658,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new Balfrin run, no large ensemble, no distributed execution, no operational claim, no scale-up authorization, and no annual-frequency or physical-probability claim.
 - Next task: `TB-155`
+
+### TB-155: Define Measured Minimal Balfrin Probe Execution Package
+
+- Date: 2026-05-17
+- Commit: `78e01e3`
+- Objective: turn the recomputed bounded Balfrin probe recommendation into a deterministic dry-run submission package that can be inspected later without launching a job.
+- Files changed: `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_probe_driver.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Balfrin submission package to carry the recomputed frontier recommendation, reduced-output controls, explicit `blocked_unlaunched` status, expected run root, command-script path, metrics collection command, and stop/resume notes.
+  - Kept the package generation dry-run only by preserving `generate-only` behavior and making the new package fields purely descriptive; no SLURM job submission path was exercised.
+  - Updated the focused driver tests to assert the package content, the unlaunched boundary, and the deterministic markdown handoff.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py tests/test_balfrin_probe_driver.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no job submission, no ensemble execution, no distributed execution, no scale-up authorization, and no operational or physical-probability claims.
+- Next task: `TB-156`
