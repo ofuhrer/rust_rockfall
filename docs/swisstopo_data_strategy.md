@@ -231,8 +231,10 @@ conditional diagnostic workflow.
    deterministic output roots.
 8. Compute slope/aspect/hillshade for QA and generate deterministic
    release-zone candidates. Use the bounded sensitivity report to distinguish
-   stable heuristic agreement from heuristic-sensitive regions; do not treat
-   either class as validated release-zone evidence.
+   stable heuristic agreement from heuristic-sensitive regions, and use the
+   measured sweep report to track component-area distributions, output counts,
+   runtime, and topography thresholds; do not treat either class as validated
+   release-zone evidence.
 9. Generate deterministic release rows and conditional block-scenario rows
    from candidate source-zone metadata plus a policy template. Keep sampling
    weights conditional-only and leave annual frequency fields empty.

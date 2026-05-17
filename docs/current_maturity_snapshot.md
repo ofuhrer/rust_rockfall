@@ -74,11 +74,12 @@ with measured evidence. Second-site pilots remain non-executed, but Chant Sura
 / Fluelapass now has a concrete candidate manifest, reusable public-geodata
 contract reporting, deterministic acquisition planning, a public-geodata cache
 verification contract, fixture-backed AOI terrain preprocessing, deterministic
-release-zone candidate sensitivity reporting, generic candidate-source-zone
-scenario generation, a site-level AOI-to-prepared-pilot dry-run composition,
-an optional ignored-root case-skeleton bundle with scenario-generation and GIS
-scope summaries, and explicit blocked/deferred boundaries for missing
-public-context products.
+release-zone candidate sensitivity reporting, a measured real-terrain
+candidate sweep with runtime/output measurements and multi-zone readiness
+reporting, generic candidate-source-zone scenario generation, a site-level
+AOI-to-prepared-pilot dry-run composition, an optional ignored-root
+case-skeleton bundle with scenario-generation and GIS scope summaries, and
+explicit blocked/deferred boundaries for missing public-context products.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -169,7 +170,10 @@ objective are:
    stable candidate IDs, frozen-footprint comparison metadata, and a bounded
    sensitivity report that compares small threshold and preprocessing
    perturbations. That report separates stable from heuristic-sensitive
-   candidate regions, but it does not validate any release-zone output. The
+   candidate regions, and the measured real-terrain sweep wrapper now adds
+   component-area distributions, slope/topography thresholds, scratch-root
+   output counts, runtime measurements, and an explicit multi-zone stress-test
+   readiness signal. None of that validates any release-zone output. The
    scenario-table helper can reproduce the committed Tschamut summary table and
    now also accepts generic candidate source-zone metadata plus a policy
    template, emitting provenance-aware manifests with stable ids and explicit

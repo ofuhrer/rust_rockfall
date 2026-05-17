@@ -22,45 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-181: Automated Release-Zone Candidate Sweep On Real Terrain
-
-Goal: Run deterministic release-zone candidate generation across a larger real
-terrain AOI instead of only a handcrafted or frozen single-zone pilot.
-
-Capability gap reduced: Manual release-zone dependence in the Swiss-wide
-workflow.
-
-Why this outranks alternatives: Plausible terrain-derived release candidates
-are the largest remaining automation blocker before multi-zone workflows can
-be tested honestly.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
-- `docs/current_maturity_snapshot.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Deterministic large-AOI release-candidate sweep using staged real terrain.
-- Candidate masks or polygon outputs written only to ignored/scratch roots.
-- Candidate statistics: count, area distribution, slope/topography thresholds,
-  stable-vs-sensitive classes, and runtime/output measurements.
-- A short report that states whether the helper is ready for multi-zone
-  scenario-generation stress tests.
-
-Definition of done:
-
-- The sweep is reproducible from tracked inputs plus ignored terrain artifacts,
-  focused tests cover deterministic output shape and blocked-missing-input
-  behavior, and no generated GIS or raster outputs are committed.
-
-Boundaries: No release-zone validation claim, no tuning to match Tschamut, no
-field-evidence claim, no operational release-zone claim, and no Balfrin job
-submission.
-
 ### TB-182: Large Deterministic Scenario Table Generation Stress Test
 
 Goal: Generate and measure a realistic large deterministic scenario table from

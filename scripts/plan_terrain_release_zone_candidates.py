@@ -940,6 +940,7 @@ def emit_candidate_products(
         )
         for index, cells in enumerate(components)
     ]
+    component_area_values = [float(feature["properties"]["component_area_m2"]) for feature in component_features]
 
     manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_manifest.json"
     product_bundle: dict[str, Any] = {
@@ -956,6 +957,7 @@ def emit_candidate_products(
         "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
         "candidate_summary": report["candidate_summary"],
         "provenance": report["provenance"],
+        "component_area_distribution_m2": summarize_distribution(component_area_values),
     }
 
     if output_mode in {"polygon", "both"}:
@@ -993,6 +995,19 @@ def emit_candidate_products(
     manifest_path.write_text(json.dumps(product_bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     product_bundle["outputs"]["manifest"] = display_path(manifest_path, repo_root)
     return product_bundle
+
+
+def summarize_distribution(values: list[float]) -> dict[str, float | None]:
+    if not values:
+        return {"min": None, "max": None, "mean": None, "median": None, "p95": None}
+    array = np.asarray(values, dtype=float)
+    return {
+        "min": float(np.min(array)),
+        "max": float(np.max(array)),
+        "mean": float(np.mean(array)),
+        "median": float(np.median(array)),
+        "p95": float(np.quantile(array, 0.95)),
+    }
 
 
 def connected_candidate_components(candidate_mask: np.ndarray) -> list[list[tuple[int, int]]]:

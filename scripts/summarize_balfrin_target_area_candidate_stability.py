@@ -16,8 +16,9 @@ import argparse
 import importlib.util
 import json
 import sys
+from time import perf_counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     import yaml  # type: ignore
@@ -79,9 +80,12 @@ def main(argv: list[str] | None = None) -> int:
 def build_report(
     *,
     contract_path: Path = DEFAULT_CONTRACT,
+    repo_root: Path = ROOT,
     output_root: Path | None = None,
     output_mode: str = "both",
+    timer: Callable[[], float] | None = None,
 ) -> dict[str, Any]:
+    timer = timer or perf_counter
     if not contract_path.exists():
         raise TargetAreaCandidateStabilityError(f"missing target-area contract: {contract_path}")
 
@@ -91,12 +95,13 @@ def build_report(
     claim_boundary = require_mapping(contract.get("claim_boundary"), "claim_boundary")
 
     target_area_id = text_value(target_area.get("target_area_id"), "target_area.target_area_id")
-    source_zone_metadata_path = resolve_repo_path(input_freeze.get("source_zone_metadata_path"))
-    scenario_table_path = resolve_repo_path(input_freeze.get("scenario_table_path"))
-    source_scenario_policy_path = resolve_repo_path(input_freeze.get("source_scenario_policy_path"))
-    geodata_manifest_path = resolve_repo_path(target_area.get("geodata_manifest_path"))
+    source_zone_metadata_path = resolve_repo_path(input_freeze.get("source_zone_metadata_path"), base_root=repo_root)
+    scenario_table_path = resolve_repo_path(input_freeze.get("scenario_table_path"), base_root=repo_root)
+    source_scenario_policy_path = resolve_repo_path(input_freeze.get("source_scenario_policy_path"), base_root=repo_root)
+    geodata_manifest_path = resolve_repo_path(target_area.get("geodata_manifest_path"), base_root=repo_root)
     terrain_crop_path = source_zone_metadata_path.parent / "tschamut_public_swissalti3d_crop.asc"
     terrain_metadata_path = source_zone_metadata_path.parent / "tschamut_public_swissalti3d_metadata.yaml"
+    sweep_start = timer()
 
     required_inputs = [
         contract_path,
@@ -118,13 +123,14 @@ def build_report(
         )
 
     candidate_report = CANDIDATE_PLANNER.build_report(
-        repo_root=ROOT,
+        repo_root=repo_root,
         terrain_crop_path=terrain_crop_path,
         terrain_metadata_path=terrain_metadata_path,
         source_zone_metadata_path=source_zone_metadata_path,
         output_root=output_root,
         output_mode=output_mode,
     )
+    sweep_runtime_seconds = timer() - sweep_start
     if candidate_report["candidate_site_id"] != target_area_id:
         raise TargetAreaCandidateStabilityError(
             "frozen target-area contract and candidate helper disagree on target-area id"
@@ -133,6 +139,8 @@ def build_report(
     candidate_sensitivity_report = candidate_report["candidate_sensitivity_report"]
     stable_region = candidate_sensitivity_report["stable_candidate_region"]
     unstable_region = candidate_sensitivity_report["unstable_candidate_region"]
+    sweep_measurements = candidate_sweep_measurements(output_root, candidate_report, sweep_runtime_seconds)
+    multi_zone_readiness = multi_zone_stress_test_readiness(candidate_report, sweep_measurements)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -177,6 +185,33 @@ def build_report(
             "heuristic_sensitive_candidate_region": unstable_region,
             "pairwise_overlap_summary": candidate_sensitivity_report["pairwise_overlap_summary"],
         },
+        "candidate_sweep_summary": {
+            "sweep_status": candidate_report["candidate_metrics_status"],
+            "sweep_mode": "real_terrain_candidate_sweep",
+            "candidate_count": candidate_report["candidate_summary"].get("candidate_cell_count", 0),
+            "candidate_area_m2": candidate_report["candidate_summary"].get("candidate_area_m2", 0.0),
+            "candidate_count_range": candidate_sensitivity_report["candidate_count_range"],
+            "candidate_area_range_m2": candidate_sensitivity_report["candidate_area_range_m2"],
+            "candidate_component_area_distribution_m2": candidate_report["candidate_release_zone_products"].get(
+                "component_area_distribution_m2",
+                {"min": None, "max": None, "mean": None, "median": None, "p95": None},
+            ),
+            "slope_thresholds_deg": {
+                "minimum": candidate_report["screening_criteria"].get("candidate_slope_min_deg"),
+                "maximum": candidate_report["screening_criteria"].get("candidate_slope_max_deg"),
+            },
+            "topography_thresholds": {
+                "cell_area_m2": candidate_report["terrain_summary"].get("cell_area_m2"),
+                "resolution_m": candidate_report["terrain_summary"].get("resolution_m"),
+                "elevation_min_m": candidate_report["terrain_summary"].get("elevation_min_m"),
+                "elevation_max_m": candidate_report["terrain_summary"].get("elevation_max_m"),
+                "valid_area_fraction": candidate_report["terrain_summary"].get("valid_cell_count", 0)
+                / candidate_report["terrain_summary"].get("cell_count", 1),
+                "extent_lv95_m": candidate_report["terrain_summary"].get("extent_lv95_m", {}),
+            },
+            "multi_zone_stress_test_readiness": multi_zone_readiness,
+            "sweep_measurements": sweep_measurements,
+        },
         "candidate_release_zone_products": candidate_release_zone_products_summary(candidate_report),
         "candidate_footprint_comparison": candidate_report["candidate_footprint_comparison"],
         "claim_boundaries": claim_boundary,
@@ -203,11 +238,74 @@ def candidate_release_zone_products_summary(candidate_report: dict[str, Any]) ->
         "component_count": products.get("component_count", 0),
         "candidate_cell_count": products.get("candidate_cell_count", 0),
         "candidate_excludes_frozen_footprint": products.get("candidate_excludes_frozen_footprint", True),
+        "component_area_distribution_m2": products.get(
+            "component_area_distribution_m2", {"min": None, "max": None, "mean": None, "median": None, "p95": None}
+        ),
         "manifest_path": products.get("manifest_path"),
     }
     if "outputs" in products:
         summary["outputs"] = products["outputs"]
     return summary
+
+
+def candidate_sweep_measurements(
+    output_root: Path | None,
+    candidate_report: dict[str, Any],
+    sweep_runtime_seconds: float,
+) -> dict[str, Any]:
+    if output_root is None or candidate_report["candidate_release_zone_products"].get("output_status") != "emitted":
+        return {
+            "runtime_seconds": float(sweep_runtime_seconds),
+            "output_root": None,
+            "output_file_count": 0,
+            "output_total_bytes": 0,
+            "output_paths": {},
+        }
+
+    output_root = Path(output_root)
+    output_files = [path for path in output_root.rglob("*") if path.is_file()]
+    return {
+        "runtime_seconds": float(sweep_runtime_seconds),
+        "output_root": display_path(output_root),
+        "output_file_count": len(output_files),
+        "output_total_bytes": sum(path.stat().st_size for path in output_files),
+        "output_paths": dict(candidate_report["candidate_release_zone_products"].get("outputs") or {}),
+    }
+
+
+def multi_zone_stress_test_readiness(
+    candidate_report: dict[str, Any],
+    sweep_measurements: dict[str, Any],
+) -> dict[str, Any]:
+    if candidate_report["candidate_metrics_status"] != "ready":
+        return {
+            "status": "blocked_missing_inputs",
+            "summary": "candidate sweep inputs are missing",
+        }
+    if candidate_report["candidate_release_zone_products"].get("output_status") != "emitted":
+        return {
+            "status": "not_ready",
+            "summary": "candidate masks or polygons were not emitted to a scratch or ignored root",
+        }
+    if candidate_report["candidate_release_zone_products"].get("component_count", 0) < 2:
+        return {
+            "status": "not_ready",
+            "summary": "candidate sweep produced fewer than two polygon components",
+        }
+    if candidate_report["candidate_sensitivity_report"].get("sensitivity_status") != "ready":
+        return {
+            "status": "not_ready",
+            "summary": "candidate stability characterization is not ready",
+        }
+    if sweep_measurements.get("output_file_count", 0) < 2:
+        return {
+            "status": "not_ready",
+            "summary": "candidate sweep did not materialize enough scratch-root outputs for a multi-zone handoff",
+        }
+    return {
+        "status": "ready",
+        "summary": "deterministic real-terrain candidate sweep is ready for multi-zone scenario-generation stress tests",
+    }
 
 
 def blocked_report(
@@ -218,6 +316,13 @@ def blocked_report(
     claim_boundary: dict[str, Any],
     missing_inputs: list[str],
 ) -> dict[str, Any]:
+    sweep_measurements = {
+        "runtime_seconds": 0.0,
+        "output_root": None,
+        "output_file_count": 0,
+        "output_total_bytes": 0,
+        "output_paths": {},
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "candidate_metrics_status": "blocked_missing_inputs",
@@ -244,6 +349,29 @@ def blocked_report(
         },
         "candidate_summary": {},
         "candidate_stability_summary": {},
+        "candidate_sweep_summary": {
+            "sweep_status": "blocked_missing_inputs",
+            "sweep_mode": "real_terrain_candidate_sweep",
+            "candidate_count": 0,
+            "candidate_area_m2": 0.0,
+            "candidate_count_range": {"min": None, "max": None},
+            "candidate_area_range_m2": {"min": None, "max": None},
+            "candidate_component_area_distribution_m2": {"min": None, "max": None, "mean": None, "median": None, "p95": None},
+            "slope_thresholds_deg": {"minimum": None, "maximum": None},
+            "topography_thresholds": {
+                "cell_area_m2": None,
+                "resolution_m": None,
+                "elevation_min_m": None,
+                "elevation_max_m": None,
+                "valid_area_fraction": None,
+                "extent_lv95_m": {},
+            },
+            "multi_zone_stress_test_readiness": {
+                "status": "blocked_missing_inputs",
+                "summary": "required inputs are missing",
+            },
+            "sweep_measurements": sweep_measurements,
+        },
         "candidate_release_zone_products": {
             "schema_version": "terrain_release_zone_candidate_products_v1",
             "output_status": "not_emitted",
@@ -281,11 +409,11 @@ def require_mapping(value: Any, context: str) -> dict[str, Any]:
     return value
 
 
-def resolve_repo_path(value: Any) -> Path:
+def resolve_repo_path(value: Any, *, base_root: Path = ROOT) -> Path:
     if not isinstance(value, str) or not value.strip():
         raise TargetAreaCandidateStabilityError("missing required repository path value")
     path = Path(value)
-    return path if path.is_absolute() else (ROOT / path)
+    return path if path.is_absolute() else (base_root / path)
 
 
 def text_value(value: Any, context: str) -> str:
@@ -333,6 +461,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Baseline variant: `{report['candidate_stability_summary'].get('baseline_variant_id', 'n/a')}`",
         f"- Candidate count range: `{report['candidate_stability_summary'].get('candidate_count_range', {})}`",
         f"- Candidate area range m2: `{report['candidate_stability_summary'].get('candidate_area_range_m2', {})}`",
+        "",
+        "## Sweep Measurements",
+        "",
+        f"- Sweep status: `{report['candidate_sweep_summary'].get('sweep_status', 'n/a')}`",
+        f"- Sweep runtime seconds: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('runtime_seconds', 'n/a')}`",
+        f"- Output file count: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_file_count', 'n/a')}`",
+        f"- Output total bytes: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_total_bytes', 'n/a')}`",
+        f"- Multi-zone stress-test readiness: `{report['candidate_sweep_summary'].get('multi_zone_stress_test_readiness', {}).get('status', 'n/a')}`",
         "",
         "## Candidate Outputs",
         "",

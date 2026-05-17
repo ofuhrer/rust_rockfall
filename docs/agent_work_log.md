@@ -3170,3 +3170,21 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no scientific or execution task was launched, no Balfrin job was submitted, and no claim-boundary or roadmap expansion was introduced without measured evidence.
 - Next task: backlog refill needed; see `docs/task_backlog.md`.
+
+### TB-181: Automated Release-Zone Candidate Sweep On Real Terrain
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: run deterministic release-zone candidate generation on the staged Tschamut real-terrain crop with scratch-root outputs, measured runtime/output accounting, and an explicit multi-zone stress-test readiness signal.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/summarize_balfrin_target_area_candidate_stability.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/current_maturity_snapshot.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added deterministic component-area distribution statistics to the terrain candidate product bundle so emitted scratch-root polygons carry an explicit area distribution for the candidate components.
+  - Wrapped the frozen target-area candidate stability helper with a measured real-terrain sweep summary that records candidate count/area, slope and terrain thresholds, stable-versus-sensitive classes, runtime, output counts, and an explicit multi-zone scenario-generation readiness classification.
+  - Added focused regressions for deterministic output shape, blocked-missing-input behavior from a temporary repo root, and the new sweep measurements.
+  - Updated the maturity snapshot and swisstopo data strategy to mention the measured real-terrain sweep and its runtime/output evidence, then removed TB-181 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/summarize_balfrin_target_area_candidate_stability.py tests/test_balfrin_target_area_candidate_stability.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_candidate_stability -v`
+- Result/status: implemented_measured
+- Boundaries: no release-zone validation claim, no threshold tuning, no field-evidence claim, no operational release-zone claim, no Balfrin job submission, and no generated GIS or raster outputs committed.
+- Next task: `TB-182`
