@@ -321,7 +321,7 @@ def build_prep_summary(
             "expected_outputs": command.get("expected_outputs", []),
             "read_only": command.get("read_only", False),
         }
-        for command in command_plan_report.get("commands", [])
+            for command in command_plan_report.get("commands", [])
         if command["id"]
         in {
             "second_site_aoi_acquisition_dry_run_planner",
@@ -366,6 +366,7 @@ def build_prep_summary(
         "site_extent": site_extent,
         "release_polygon": release_polygon,
         "synthetic_config": synthetic_config,
+        "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
         "terrain_manifests": terrain_manifests,
         "context_manifests": context_manifests,
         "release_scenario_placeholders": release_scenario_placeholders,
@@ -747,6 +748,44 @@ def render_text_report(report: dict[str, Any]) -> str:
         polygon = prep["release_polygon"]
         for key, value in polygon.items():
             lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "aoi_tile_discovery:",
+        ]
+    )
+    discovery = prep.get("aoi_tile_discovery", {})
+    lines.extend(
+        [
+            f"- schema_version: {discovery.get('schema_version', '')}",
+            f"- discovery_status: {discovery.get('discovery_status', '')}",
+            f"- catalog_path: {discovery.get('catalog_path', '')}",
+            f"- tile_candidate_count: {discovery.get('tile_candidate_count', 0)}",
+        ]
+    )
+    if discovery.get("tile_candidates"):
+        lines.append("- tile_candidates:")
+        for entry in discovery["tile_candidates"]:
+            lines.append(f"  - {entry.get('tile_id', '')}: {entry.get('source_product', '')}")
+    else:
+        lines.append("- tile_candidates: none")
+    if discovery.get("required_products"):
+        lines.append("- required_products:")
+        for entry in discovery["required_products"]:
+            lines.append(
+                f"  - {entry.get('category', '')}: {entry.get('coverage_descriptor', '')}, "
+                f"staging_root={entry.get('expected_staging_root', '')}"
+            )
+    else:
+        lines.append("- required_products: none")
+    if discovery.get("missing_catalog_inputs"):
+        lines.append("- missing_catalog_inputs:")
+        lines.extend(f"  - {item}" for item in discovery["missing_catalog_inputs"])
+    else:
+        lines.append("- missing_catalog_inputs: none")
+    lines.append("- no_download_boundary:")
+    for key, value in (discovery.get("no_download_boundary") or {}).items():
+        lines.append(f"  - {key}: {value}")
     lines.extend(
         [
             "",

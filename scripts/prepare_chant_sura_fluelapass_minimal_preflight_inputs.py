@@ -3,10 +3,10 @@
 
 This helper copies tiny intentional fixtures into the ignored Chant Sura paths
 used by the second-site public-geodata preflight. It stages only the core
-terrain, source-zone, scenario, and policy records plus the ignored roots that
-the preflight checks for existence. It does not download public geodata and it
-does not create any of the public context products that remain intentionally
-deferred.
+terrain, AOI tile catalog, source-zone, scenario, and policy records plus the
+ignored roots that the preflight checks for existence. It does not download
+public geodata and it does not create any of the public context products that
+remain intentionally deferred.
 """
 
 from __future__ import annotations
@@ -118,6 +118,7 @@ def stage_minimal_inputs(*, repo_root: Path, site_config: Path, fixture_root: Pa
             str(paths["swissbuildings3d_context"].relative_to(repo_root)),
         ],
         "terrain_crop_path": str(paths["terrain_crop"].relative_to(repo_root)),
+        "aoi_tile_catalog_path": str(paths["aoi_tile_catalog"].relative_to(repo_root)),
         "terrain_metadata_path": str(paths["terrain_metadata"].relative_to(repo_root)),
         "source_zone_metadata_path": str(paths["source_zone_metadata"].relative_to(repo_root)),
         "scenario_table_path": str(paths["scenario_table"].relative_to(repo_root)),
@@ -143,6 +144,7 @@ def stage_fixture_files(paths: dict[str, Path], fixture_root: Path) -> list[Path
     staged: list[Path] = []
     copies = {
         fixture_root / "terrain.asc": paths["terrain_crop"],
+        fixture_root / "aoi_tile_catalog.yaml": paths["aoi_tile_catalog"],
         fixture_root / "terrain_metadata.yaml": paths["terrain_metadata"],
         fixture_root / "source_zone_metadata.yaml": paths["source_zone_metadata"],
         fixture_root / "scenario_table.csv": paths["scenario_table"],
@@ -172,6 +174,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         "created_dirs:",
     ]
     lines.extend(f"- {item}" for item in report["created_dirs"])
+    lines.append("")
+    lines.append("aoi_tile_catalog_path:")
+    lines.append(f"- {report['aoi_tile_catalog_path']}")
     lines.append("")
     lines.append("staged_files:")
     lines.extend(f"- {item}" for item in report["staged_files"])

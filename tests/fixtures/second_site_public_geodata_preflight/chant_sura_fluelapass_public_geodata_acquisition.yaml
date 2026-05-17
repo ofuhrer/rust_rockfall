@@ -32,6 +32,13 @@ expected_products:
     expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
     source_reference: docs/public_real_site_geodata_preparation.md
     notes: CRS, LN02, checksum, and crop provenance are staged here.
+  - category: aoi_tile_catalog
+    product: AOI tile catalog for deterministic swisstopo discovery
+    status: missing
+    required: true
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml
+    source_reference: docs/swisstopo_data_strategy.md
+    notes: Catalog-backed tile discovery keeps missing catalog inputs fail-closed.
   - category: swissimage_context
     product: SWISSIMAGE
     status: missing

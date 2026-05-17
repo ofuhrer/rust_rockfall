@@ -85,6 +85,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     )
     acquisition_manifest = PREFLIGHT.load_site_config(acquisition_manifest_path) if acquisition_manifest_path.exists() else {}
     paths = PREFLIGHT.build_paths(candidate_site_id, config)
+    acquisition_report = PREFLIGHT.build_report(site_config)
     public_context_acquisition_plan = PREFLIGHT.build_public_context_acquisition_plan(acquisition_manifest, [])
 
     product_rows: list[dict[str, Any]] = []
@@ -146,10 +147,15 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         for row in product_rows
         if row["required"] and row["category"] in DEFERRED_PUBLIC_CONTEXT_CATEGORIES and row["current_status"] != "ready"
     ]
+    planner_status = "ready"
+    if not acquisition_manifest_path.exists():
+        planner_status = "blocked_missing_inputs"
+    elif acquisition_report.get("aoi_tile_discovery", {}).get("discovery_status") == "blocked_missing_inputs":
+        planner_status = "blocked_missing_inputs"
 
     report = {
         "schema_version": SCHEMA_VERSION,
-        "planner_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
+        "planner_status": planner_status,
         "acquisition_boundary_status": boundary_status,
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
@@ -159,6 +165,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
         "public_context_acquisition_summary": PREFLIGHT.build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
+        "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
         "public_geodata_workflow_contract": PREFLIGHT.build_public_geodata_workflow_contract(
             candidate_site_id=candidate_site_id,
             candidate_site_name=candidate_site_name,
@@ -186,6 +193,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
 
 def metadata_category_set() -> set[str]:
     return {
+        "aoi_tile_catalog",
         "terrain_metadata",
         "swisstlm3d_metadata",
         "source_zone_metadata",
@@ -285,6 +293,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("public_context_acquisition_plan:")
     lines.extend(render_acquisition_plan_rows(report.get("public_context_acquisition_plan") or []))
     lines.append("")
+    lines.append("aoi_tile_discovery:")
+    lines.extend(render_aoi_tile_discovery_rows(report.get("aoi_tile_discovery") or {}))
+    lines.append("")
     lines.append("required_public_geodata_products:")
     lines.extend(render_rows(report["required_public_geodata_products"]))
 
@@ -331,6 +342,46 @@ def render_acquisition_plan_rows(rows: list[dict[str, Any]]) -> list[str]:
         )
     if not rendered:
         rendered.append("- []")
+    return rendered
+
+
+def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    rendered = [
+        f"- schema_version: {report.get('schema_version', '')}",
+        f"- discovery_status: {report.get('discovery_status', '')}",
+        f"- catalog_path: {report.get('catalog_path', '')}",
+        f"- catalog_status: {report.get('catalog_status', '')}",
+        f"- tile_catalog_status: {report.get('tile_catalog_status', '')}",
+        f"- tile_candidate_count: {report.get('tile_candidate_count', 0)}",
+    ]
+    if report.get("missing_catalog_inputs"):
+        rendered.append("- missing_catalog_inputs:")
+        rendered.extend(f"  - {item}" for item in report["missing_catalog_inputs"])
+    else:
+        rendered.append("- missing_catalog_inputs: none")
+    if report.get("tile_candidates"):
+        rendered.append("- tile_candidates:")
+        for entry in report["tile_candidates"]:
+            rendered.append(
+                f"  - {entry.get('tile_id', '')}: {entry.get('source_product', '')}, "
+                f"source_filename={entry.get('source_filename', '')}"
+            )
+    else:
+        rendered.append("- tile_candidates: none")
+    if report.get("required_products"):
+        rendered.append("- required_products:")
+        for entry in report["required_products"]:
+            rendered.append(
+                f"  - {entry.get('category', '')}: {entry.get('coverage_descriptor', '')}, "
+                f"staging_root={entry.get('expected_staging_root', '')}"
+            )
+    else:
+        rendered.append("- required_products: none")
+    rendered.append("- no_download_boundary:")
+    for key, value in (report.get("no_download_boundary") or {}).items():
+        rendered.append(f"  - {key}: {value}")
     return rendered
 
 

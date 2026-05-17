@@ -54,6 +54,10 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertTrue(report["acquisition_manifest_path"].endswith("chant_sura_fluelapass_public_geodata_acquisition.yaml"))
         self.assertGreaterEqual(report["acquisition_manifest_category_count"], 10)
+        self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 4)
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2700-1180")
+        self.assertFalse(report["aoi_tile_discovery"]["no_download_boundary"]["downloads_authorized"])
         self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["ready_product_count"], 0)
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
@@ -100,6 +104,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "acquisition_manifest_product_summaries",
                 "acquisition_manifest_status",
                 "assumptions_not_yet_generalized",
+                "aoi_tile_discovery",
                 "blocked_second_site_commands",
                 "core_input_status",
                 "blocked_reason",
@@ -166,6 +171,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["ready_product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 0)
+        self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2793-1180")
         self.assertEqual(
             report["public_context_acquisition_plan"][0]["expected_staging_root"],
             str(root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"),
@@ -231,6 +239,17 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
         self.assertEqual(product_requirements["swisstlm3d_metadata"]["current_status"], "deferred_public_context")
 
+    def test_missing_tile_catalog_blocks_preflight_and_reports_missing_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = self._build_report(root, site_config=self._candidate_example_config_path(), omit=["aoi_tile_catalog"])
+
+        self.assertEqual(report["portability_preflight_status"], "blocked_missing_inputs")
+        self.assertIn("aoi_tile_catalog", report["missing_input_categories"])
+        self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "blocked_missing_inputs")
+        self.assertTrue(report["aoi_tile_discovery"]["missing_catalog_inputs"])
+        self.assertFalse(report["aoi_tile_discovery"]["no_download_boundary"]["downloads_authorized"])
+
     def test_minimal_synthetic_aoi_fixture_reports_separate_fixture_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -253,6 +272,9 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(contract["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
         self.assertTrue(contract["cache_paths"]["processed_input_root"].endswith("minimal_synthetic_aoi_v1/input"))
         self.assertTrue(contract["deferred_optional_context"][0]["expected_staged_path"].endswith("/context/swissimage"))
+        self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2699-1179")
         self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
         self.assertIn("public_geodata_contract_readiness_status: ready", preflight.render_text_report(report))
 
@@ -404,6 +426,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             "swisssurface3d_raster_context": (paths["swisssurface3d_raster_context"] / "tile.txt", "raster\n"),
             "swissbuildings3d_context": (paths["swissbuildings3d_context"] / "tile.txt", "buildings\n"),
         }
+        catalog_fixture = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/aoi_tile_catalog.yaml"
+        files["aoi_tile_catalog"] = (paths["aoi_tile_catalog"], catalog_fixture.read_text(encoding="utf-8"))
         for key, (path, content) in files.items():
             if key in omit:
                 continue

@@ -41,11 +41,14 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
             )
 
             original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
             try:
                 preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
                 report = planner.build_report(config_path)
             finally:
                 preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
 
         self.assertEqual(report["planner_status"], "ready")
         self.assertEqual(report["acquisition_boundary_status"], "deferred_public_context_inputs")
@@ -55,6 +58,9 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
+        self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
+        self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2793-1180")
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
@@ -109,11 +115,14 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
             )
 
             original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
             try:
                 preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
                 report = planner.build_report(config_path)
             finally:
                 preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
 
         json_report = json.dumps(report, indent=2, sort_keys=True)
         self.assertEqual(json_report, json.dumps(report, indent=2, sort_keys=True))
@@ -121,6 +130,7 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         text_report = planner.render_text_report(report)
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
+        self.assertIn("aoi_tile_discovery:", text_report)
         self.assertIn("public_geodata_contract_readiness_status: ready", text_report)
         self.assertIn("required_public_geodata_products:", text_report)
         self.assertIn("public_context_acquisition_plan:", text_report)

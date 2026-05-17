@@ -1,0 +1,77 @@
+schema_version: swisstopo_aoi_tile_catalog_v1
+catalog_status: metadata_only
+source_product: swissALTI3D
+tile_size_m: 1000
+tiles:
+  - tile_id: 2699-1179
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2699-1179_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2699000.0
+      ymin: 1179000.0
+      xmax: 2700000.0
+      ymax: 1180000.0
+  - tile_id: 2700-1180
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2700-1180_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2700000.0
+      ymin: 1180000.0
+      xmax: 2701000.0
+      ymax: 1181000.0
+  - tile_id: 2700-1181
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2700-1181_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2700000.0
+      ymin: 1181000.0
+      xmax: 2701000.0
+      ymax: 1182000.0
+  - tile_id: 2701-1180
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2701-1180_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2701000.0
+      ymin: 1180000.0
+      xmax: 2702000.0
+      ymax: 1181000.0
+  - tile_id: 2701-1181
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2701-1181_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2701000.0
+      ymin: 1181000.0
+      xmax: 2702000.0
+      ymax: 1182000.0
+  - tile_id: 2793-1180
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2026_2793-1180_2m_cog.tif
+    source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+    product_version: 2026.1
+    product_date: 2026-03-01
+    license: swisstopo terms of use; verify current terms before any redistribution
+    extent_lv95_m:
+      xmin: 2793000.0
+      ymin: 1180000.0
+      xmax: 2794000.0
+      ymax: 1181000.0

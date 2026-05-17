@@ -10,6 +10,7 @@ site_extent:
 expected_processed_input_root: data/processed/swisstopo/placeholder_second_site_v1/input
 expected_processed_context_root: data/processed/swisstopo/placeholder_second_site_v1/context
 expected_terrain_crop_path: data/processed/swisstopo/placeholder_second_site_v1/input/terrain.asc
+expected_aoi_tile_catalog_path: data/processed/swisstopo/placeholder_second_site_v1/input/aoi_tile_catalog.yaml
 expected_terrain_metadata_path: data/processed/swisstopo/placeholder_second_site_v1/input/terrain_metadata.yaml
 expected_source_zone_metadata_path: data/processed/swisstopo/placeholder_second_site_v1/input/source_zone_metadata.yaml
 expected_scenario_table_path: data/processed/swisstopo/placeholder_second_site_v1/input/scenario_table.csv

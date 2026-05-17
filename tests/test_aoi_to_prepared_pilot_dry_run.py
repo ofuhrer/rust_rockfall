@@ -54,6 +54,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["preparation_input"]["release_polygon"]["extent_lv95_m"]["xmin"], 2793020.0)
         self.assertEqual(first["preparation_input"]["release_polygon"]["extent_lv95_m"]["ymax"], 1180780.0)
         self.assertTrue(first["preparation_input"]["site_config_path"].endswith("site_config.yaml"))
+        self.assertEqual(first["preparation_input"]["aoi_tile_discovery"]["discovery_status"], "ready")
+        self.assertEqual(first["preparation_input"]["aoi_tile_discovery"]["tile_candidate_count"], 1)
 
         terrain_categories = [row["category"] for row in first["terrain_manifests"]]
         self.assertEqual(terrain_categories, ["terrain_crop", "terrain_metadata"])
@@ -94,6 +96,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
 
         text_report = planner.render_text_report(first)
         self.assertIn("preparation_input:", text_report)
+        self.assertIn("aoi_tile_discovery:", text_report)
         self.assertIn("terrain_manifests:", text_report)
         self.assertIn("context_manifests:", text_report)
         self.assertIn("command_plan_hooks:", text_report)

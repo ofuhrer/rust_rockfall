@@ -8,3 +8,4 @@ site_extent:
   ymin: 1179000.0
   xmax: 2700000.0
   ymax: 1180000.0
+expected_aoi_tile_catalog_path: data/processed/swisstopo/minimal_synthetic_aoi_v1/input/aoi_tile_catalog.yaml

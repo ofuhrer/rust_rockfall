@@ -26,6 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "second_site_public_geodata_preflight_v1"
 PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_workflow_contract_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
+DEFAULT_AOI_TILE_CATALOG = (
+    ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml"
+)
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
     "swisstlm3d_context",
@@ -136,6 +139,13 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     source_zone_manifest_status = manifest_status(paths["source_zone_metadata"])
     scenario_manifest_status = manifest_status(paths["scenario_table"], paths["source_scenario_policy"])
     public_context_acquisition_plan = build_public_context_acquisition_plan(acquisition_manifest, requirements)
+    aoi_tile_discovery = build_aoi_tile_discovery(
+        candidate_site_id=candidate_site_id,
+        site_extent=site_extent,
+        acquisition_manifest=acquisition_manifest,
+        paths=paths,
+        config_base=config_base,
+    )
     core_input_status = "ready" if not missing_required else "blocked_missing_inputs"
     deferred_context_status = "deferred_public_context_inputs" if deferred_required and not missing_required else "ready"
     overall_status = "ready" if not missing_required and not deferred_required else deferred_context_status if not missing_required else core_input_status
@@ -167,6 +177,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_command_template_count": len(acquisition_manifest.get("command_templates") or []),
         "public_context_acquisition_summary": build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
+        "aoi_tile_discovery": aoi_tile_discovery,
         "public_geodata_workflow_contract": build_public_geodata_workflow_contract(
             candidate_site_id=candidate_site_id,
             candidate_site_name=candidate_site_name,
@@ -253,6 +264,8 @@ def build_public_context_product_requirements(
         if not isinstance(entry, dict):
             continue
         category = text_value(entry.get("category"))
+        if category == "aoi_tile_catalog":
+            continue
         requirement = requirement_by_category.get(category)
         expected_path = text_value(entry.get("expected_staged_path")) or (requirement or {}).get("path_or_pattern", "")
         notes = text_value(entry.get("notes"))
@@ -307,7 +320,7 @@ def build_public_context_acquisition_plan(
         if not expected_path:
             continue
         expected_path_obj = resolve_repo_path(expected_path)
-        staging_root = expected_path_obj.parent if expected_path_obj.name == "metadata.json" else expected_path_obj
+        staging_root = expected_staging_root(expected_path_obj)
         current_status = (
             "ready"
             if expected_path_obj.exists() or is_staged_path(expected_path_obj)
@@ -348,6 +361,179 @@ def build_public_context_acquisition_summary(plan: list[dict[str, Any]]) -> dict
             entry["category"]: entry["metadata_contract"] for entry in plan
         },
     }
+
+
+def build_aoi_tile_discovery(
+    *,
+    candidate_site_id: str,
+    site_extent: dict[str, Any],
+    acquisition_manifest: dict[str, Any],
+    paths: dict[str, Path],
+    config_base: Path,
+) -> dict[str, Any]:
+    catalog_path = paths["aoi_tile_catalog"]
+    catalog_ready = catalog_path.exists()
+    catalog = load_aoi_tile_catalog(catalog_path) if catalog_ready else {}
+    wanted_tile_ids = tile_catalog_ids_for_extent(site_extent)
+    catalog_tile_entries = tile_catalog_entries_for_extent(wanted_tile_ids, catalog) if catalog_ready else []
+    missing_catalog_inputs: list[str] = []
+    if not catalog_ready:
+        missing_catalog_inputs.append(str(catalog_path))
+    missing_catalog_inputs.extend(
+        candidate
+        for candidate in tile_catalog_missing_inputs(wanted_tile_ids, catalog)
+        if candidate not in missing_catalog_inputs
+    )
+
+    product_entries: list[dict[str, Any]] = []
+    for entry in acquisition_manifest.get("expected_products") or []:
+        if not isinstance(entry, dict):
+            continue
+        category = text_value(entry.get("category"))
+        product = text_value(entry.get("product"))
+        expected_path = text_value(entry.get("expected_staged_path"))
+        if not expected_path and category in paths:
+            expected_path = str(paths[category])
+        expected_path_obj = resolve_repo_path(expected_path, base=config_base) if expected_path else None
+        staging_root = ""
+        if expected_path_obj is not None:
+            staging_root = str(expected_staging_root(expected_path_obj))
+        if category == "terrain_crop":
+            coverage_descriptor = "AOI-intersecting 1 km swissALTI3D tiles"
+            tile_candidates = catalog_tile_entries
+        elif category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
+            coverage_descriptor = "deferred public-context directory bundle"
+            tile_candidates = []
+        elif category == "aoi_tile_catalog":
+            coverage_descriptor = "catalog-backed metadata input for tile discovery"
+            tile_candidates = []
+        elif category in {"terrain_metadata", "source_zone_metadata", "scenario_table", "source_scenario_policy"}:
+            coverage_descriptor = "metadata file contract"
+            tile_candidates = []
+        elif category in {"barrier_inventory", "release_observation_evidence"}:
+            coverage_descriptor = "optional site-specific directory bundle"
+            tile_candidates = []
+        else:
+            coverage_descriptor = "site-specific staging contract"
+            tile_candidates = []
+        product_entries.append(
+            {
+                "category": category,
+                "product": product,
+                "expected_staged_path": expected_path,
+                "expected_staging_root": staging_root,
+                "coverage_descriptor": coverage_descriptor,
+                "tile_candidates": tile_candidates,
+                "tile_candidate_count": len(tile_candidates),
+                "staging_mode": "metadata_file" if expected_path_obj is not None and expected_path_obj.suffix else "directory_bundle" if expected_path else "unknown",
+                "missing_catalog_inputs": missing_catalog_inputs if category == "terrain_crop" else [],
+                "download_boundary": no_download_boundary(),
+            }
+        )
+
+    discovery_ready = bool(catalog_ready and not missing_catalog_inputs and catalog_tile_entries)
+    return {
+        "schema_version": "swisstopo_aoi_tile_discovery_v1",
+        "discovery_status": "ready" if discovery_ready else "blocked_missing_inputs",
+        "candidate_site_id": candidate_site_id,
+        "aoi_extent": site_extent if site_extent else "placeholder_extent_missing",
+        "catalog_path": str(catalog_path),
+        "catalog_status": "ready" if catalog_ready else "blocked_missing_inputs",
+        "tile_catalog_status": "ready" if catalog_tile_entries else "blocked_missing_inputs",
+        "tile_candidates": catalog_tile_entries,
+        "tile_candidate_count": len(catalog_tile_entries),
+        "required_products": product_entries,
+        "missing_catalog_inputs": missing_catalog_inputs,
+        "no_download_boundary": no_download_boundary(),
+    }
+
+
+def no_download_boundary() -> dict[str, Any]:
+    boundaries = claim_boundaries()
+    boundaries.update(
+        {
+            "downloads_authorized": False,
+            "download_retry_authorized": False,
+            "tile_staging_authorized": False,
+            "download_note": "metadata-only dry run; no public-data download or staging is permitted",
+        }
+    )
+    return boundaries
+
+
+def load_aoi_tile_catalog(path: Path) -> dict[str, Any]:
+    data = load_site_config(path)
+    return data if isinstance(data, dict) else {}
+
+
+def expected_staging_root(path: Path) -> Path:
+    return path.parent if path.suffix else path
+
+
+def tile_catalog_ids_for_extent(site_extent: dict[str, Any]) -> list[str]:
+    if not site_extent or text_value(site_extent.get("crs")) != "EPSG:2056":
+        return []
+    if not all(k in site_extent and site_extent[k] not in (None, "") for k in ("xmin", "ymin", "xmax", "ymax")):
+        return []
+
+    min_east = tile_grid_floor(float(site_extent["xmin"]))
+    max_east = tile_grid_floor(float(site_extent["xmax"]) - 1e-9)
+    min_north = tile_grid_floor(float(site_extent["ymin"]))
+    max_north = tile_grid_floor(float(site_extent["ymax"]) - 1e-9)
+    return [
+        f"{east // 1000}-{north // 1000}"
+        for east in range(min_east, max_east + 1, 1000)
+        for north in range(min_north, max_north + 1, 1000)
+    ]
+
+
+def tile_catalog_entries_for_extent(wanted_tile_ids: list[str], catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    catalog_tiles = catalog_tiles_by_id(catalog)
+    return [catalog_tiles[tile_id] for tile_id in wanted_tile_ids if tile_id in catalog_tiles]
+
+
+def tile_catalog_missing_inputs(wanted_tile_ids: list[str], catalog: dict[str, Any]) -> list[str]:
+    if not catalog:
+        return []
+    catalog_tile_ids = {text_value(entry.get("tile_id")) for entry in catalog_entries(catalog) if text_value(entry.get("tile_id"))}
+    missing = sorted(tile_id for tile_id in wanted_tile_ids if tile_id not in catalog_tile_ids)
+    return [f"swissALTI3D tile catalog missing AOI candidate tile {tile_id}" for tile_id in missing]
+
+
+def catalog_entries(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    for key in ("tiles", "terrain_tiles", "swissalti3d_tiles"):
+        entries = catalog.get(key)
+        if isinstance(entries, list):
+            return [entry for entry in entries if isinstance(entry, dict)]
+    swissalti3d = catalog.get("swissalti3d")
+    if isinstance(swissalti3d, dict):
+        entries = swissalti3d.get("tiles")
+        if isinstance(entries, list):
+            return [entry for entry in entries if isinstance(entry, dict)]
+    return []
+
+
+def catalog_tiles_by_id(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    tiles: dict[str, dict[str, Any]] = {}
+    for entry in catalog_entries(catalog):
+        tile_id = text_value(entry.get("tile_id"))
+        if not tile_id:
+            continue
+        tiles[tile_id] = {
+            "tile_id": tile_id,
+            "source_product": text_value(entry.get("source_product")) or "swissALTI3D",
+            "source_filename": text_value(entry.get("source_filename")),
+            "product_version": text_value(entry.get("product_version")),
+            "product_date": text_value(entry.get("product_date")),
+            "source_url": text_value(entry.get("source_url")),
+            "license": text_value(entry.get("license")),
+            "extent_lv95_m": entry.get("extent_lv95_m") if isinstance(entry.get("extent_lv95_m"), dict) else {},
+        }
+    return tiles
+
+
+def tile_grid_floor(value: float) -> int:
+    return int(value // 1000) * 1000
 
 
 def build_public_geodata_workflow_contract(
@@ -475,7 +661,13 @@ def build_swisstopo_product_classes() -> list[dict[str, Any]]:
         {
             "class": "required_metadata_records",
             "required": True,
-            "products": ["terrain_metadata", "source_zone_metadata", "scenario_table", "source_scenario_policy"],
+            "products": [
+                "aoi_tile_catalog",
+                "terrain_metadata",
+                "source_zone_metadata",
+                "scenario_table",
+                "source_scenario_policy",
+            ],
             "workflow_role": "metadata records that freeze the site-specific contract",
         },
         {
@@ -599,6 +791,7 @@ def is_staged_path(path: Path) -> bool:
 
 def build_metadata_requirements(site_extent: dict[str, Any], requirements: list[dict[str, Any]]) -> dict[str, list[str]]:
     metadata: dict[str, list[str]] = {
+        "aoi_tile_catalog": ["tile_id", "source_product", "source_url", "extent_lv95_m"],
         "site_extent_definition": ["crs", "xmin", "ymin", "xmax", "ymax"],
         "terrain_metadata": ["crs", "vertical_datum", "crop_provenance", "checksum"],
         "source_zone_metadata": ["source_zone_id or equivalent site-specific release-zone identifier"],
@@ -720,6 +913,7 @@ def build_paths(site_id: str, config: dict[str, Any]) -> dict[str, Path]:
         "terrain_metadata": resolve_repo_path(config.get("expected_terrain_metadata_path"), input_root / "terrain_metadata.yaml"),
         "source_zone_metadata": resolve_repo_path(config.get("expected_source_zone_metadata_path"), input_root / "source_zone_metadata.yaml"),
         "scenario_table": resolve_repo_path(config.get("expected_scenario_table_path"), input_root / "scenario_table.csv"),
+        "aoi_tile_catalog": resolve_repo_path(config.get("expected_aoi_tile_catalog_path"), input_root / "aoi_tile_catalog.yaml"),
         "source_scenario_policy": resolve_repo_path(config.get("expected_source_scenario_policy_path"), policy_root / f"{site_id}_source_scenario_policy_v1.yaml"),
         "swissimage_context": resolve_repo_path(config.get("expected_swissimage_context_root"), context_root / "swissimage"),
         "swisstlm3d_context": resolve_repo_path(config.get("expected_swisstlm3d_context_root"), context_root / "swisstlm3d"),
@@ -846,6 +1040,16 @@ def build_requirements(site_id: str, site_extent: dict[str, Any], paths: dict[st
     )
 
     # Required metadata records.
+    add_requirement(
+        kind="metadata_record",
+        category="aoi_tile_catalog",
+        product="AOI tile catalog for deterministic swisstopo discovery",
+        path_or_pattern=str(paths["aoi_tile_catalog"]),
+        required=True,
+        status="ready" if paths["aoi_tile_catalog"].exists() else "blocked_missing_inputs",
+        reusable_from_tschamut=False,
+        notes="Tile discovery must be catalog-backed so missing catalog input fails closed.",
+    )
     add_requirement(
         kind="metadata_record",
         category="site_extent_definition",
@@ -1017,6 +1221,7 @@ def build_checklist(
         f"PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py data/processed/swisstopo/{candidate_site_id}_manifest.yaml",
         "PYENV_VERSION=system uv run python scripts/validate_public_real_site_conditional_pilot_run.py validation/templates/public_real_site_conditional_pilot_run_v1.yaml",
         f"PYENV_VERSION=system uv run python scripts/prepare_<site_id>_public_benchmark.py --output-root data/processed/swisstopo/{candidate_site_id} --padding-m <buffer> --force",
+        f"Stage an AOI tile catalog at {paths['aoi_tile_catalog']} before asking for candidate tiles.",
         f"Stage a site-specific terrain crop and terrain metadata under {paths['terrain_crop'].parent} and {paths['terrain_metadata'].parent}.",
         f"Stage release / source-zone metadata and the block / scenario table under {paths['source_zone_metadata'].parent}.",
         f"Populate the source-scenario policy at {paths['source_scenario_policy']}.",
@@ -1159,6 +1364,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("public_context_acquisition_plan:")
     lines.extend(_render_public_context_acquisition_plan(report.get("public_context_acquisition_plan") or []))
     lines.append("")
+    lines.append("aoi_tile_discovery:")
+    lines.extend(_render_aoi_tile_discovery(report.get("aoi_tile_discovery") or {}))
+    lines.append("")
     lines.append("expected_local_paths:")
     if report.get("expected_local_paths"):
         lines.extend(f"- {key}: {value}" for key, value in report["expected_local_paths"].items())
@@ -1257,6 +1465,46 @@ def _render_public_context_acquisition_plan(entries: list[dict[str, Any]]) -> li
         )
     if not lines:
         lines.append("- none")
+    return lines
+
+
+def _render_aoi_tile_discovery(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    lines = [
+        f"- schema_version: {report.get('schema_version', '')}",
+        f"- discovery_status: {report.get('discovery_status', '')}",
+        f"- catalog_path: {report.get('catalog_path', '')}",
+        f"- catalog_status: {report.get('catalog_status', '')}",
+        f"- tile_catalog_status: {report.get('tile_catalog_status', '')}",
+        f"- tile_candidate_count: {report.get('tile_candidate_count', 0)}",
+    ]
+    if report.get("missing_catalog_inputs"):
+        lines.append("- missing_catalog_inputs:")
+        lines.extend(f"  - {item}" for item in report["missing_catalog_inputs"])
+    else:
+        lines.append("- missing_catalog_inputs: none")
+    if report.get("tile_candidates"):
+        lines.append("- tile_candidates:")
+        for entry in report["tile_candidates"]:
+            lines.append(
+                f"  - {entry.get('tile_id', '')}: {entry.get('source_product', '')}, "
+                f"source_filename={entry.get('source_filename', '')}"
+            )
+    else:
+        lines.append("- tile_candidates: none")
+    if report.get("required_products"):
+        lines.append("- required_products:")
+        for entry in report["required_products"]:
+            lines.append(
+                f"  - {entry.get('category', '')}: {entry.get('coverage_descriptor', '')}, "
+                f"staging_root={entry.get('expected_staging_root', '')}"
+            )
+    else:
+        lines.append("- required_products: none")
+    lines.append("- no_download_boundary:")
+    for key, value in (report.get("no_download_boundary") or {}).items():
+        lines.append(f"  - {key}: {value}")
     return lines
 
 
