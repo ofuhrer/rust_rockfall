@@ -323,10 +323,14 @@ context, release-plan, and portable command-plan dry-run helpers into one
 preparation scaffold. Its report names the terrain manifests, public-context
 manifests, release/scenario placeholders, command-plan hooks, and ignored
 output roots that a future demonstration workflow would need, while still
-stopping short of any ensemble execution or public-context download. In its
-optional ignored-root output mode it writes a deterministic case skeleton,
-command manifest, expected-output-roots record, and blocked-execution record so
-operators can inspect the handoff bundle before any run is authorized.
+stopping short of any ensemble execution or public-context download. It also
+threads through the generic scenario-generation handoff and a planning-only GIS
+scope summary so operators can see which scenario tables, raster/vector
+products, and template-only COG steps would be expected after real inputs
+exist. In its optional ignored-root output mode it writes a deterministic case
+skeleton, command manifest, expected-output-roots record, and blocked-execution
+record so operators can inspect the handoff bundle before any run is
+authorized.
 
 The next dry-run helper,
 `scripts/plan_release_plan_dry_run.py`, turns the same fixture-backed candidate

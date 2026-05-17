@@ -277,36 +277,29 @@ now folds the same-scale uncertainty, bounded runtime/output, bounded
 next-probe feasibility, and closure-gap evidence into one conservative
 recommendation for whether another small probe would still be informative.
 
-## TB-144 Minimal Bounded Probe Status
+## Minimal Bounded Probe Status
 
-The minimal bounded Balfrin follow-up probe remains fail-closed in
+The minimal bounded Balfrin follow-up probe is no longer blocked by missing
+optional planning metadata. The reduced-output probe fixture now carries the
+`probabilistic_metadata` and `hazard_probability` fields expected by
 `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`.
 
-- Probe status: `blocked_missing_optional_probabilistic_metadata`
-- Planning blocker: the smallest useful probe requires optional probabilistic
-  metadata fields that are still missing
-- Exact missing fields:
-  - `probabilistic_metadata.source_zone_metadata_path`
-  - `probabilistic_metadata.scenario_table_path`
-  - `probabilistic_metadata.map_product_id`
-  - `probabilistic_metadata.probability_mode`
-  - `probabilistic_metadata.normalization_scope`
-  - `probabilistic_metadata.scenario_id`
-  - `hazard_probability.probability_model`
-  - `hazard_probability.metadata_path`
-  - `hazard_probability.weight_column`
-  - `hazard_probability.normalization_convention`
-  - `hazard_probability.filters.source_zone_ids`
-  - `hazard_probability.filters.scenario_ids`
+- Probe status: `deferred_pending_authorization`
+- Planning state: the smallest useful probe can be described and packaged, but
+  it is not authorized or submitted by default
+- Safety state: `scale_up_authorized` and `distributed_execution_authorized`
+  remain false
+- Failure mode: removing either optional metadata block still produces a
+  fail-closed missing-metadata report
 
-Because the bounded feasibility helper is blocked, the practical frontier
-helper `scripts/summarize_balfrin_ensemble_frontier.py` also stays in
-`blocked_missing_inputs` status instead of upgrading the closure or authorizing
-any larger ensemble by assertion.
+The practical frontier helper
+`scripts/summarize_balfrin_ensemble_frontier.py` and the Swiss-wide envelope
+helper now propagate this deferred recommendation instead of treating the
+planning basis as absent. `scripts/submit_balfrin_probe.py --generate-only` can
+also emit an unlaunched submission package without invoking the full frontier
+scan. That package is an operator handoff, not execution approval.
 
-The reduced-output probe fixture now carries the optional
-`probabilistic_metadata` and `hazard_probability` fields that the bounded
-feasibility helper expects. That change only unblocks planning: the helper
-classifies the complete fixture as `deferred_pending_authorization`, keeps
-`scale_up_authorized` and `distributed_execution_authorized` false, and still
-fails closed when either metadata block is removed.
+TB-156 added a metrics-remediation contract for the Balfrin evidence bundle. It
+separates missing mandatory metrics, unavailable ancillary metrics, and
+next-run-required collection fields so follow-up work can improve measured
+evidence without implying that another ensemble has already run.

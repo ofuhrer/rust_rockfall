@@ -172,14 +172,18 @@ not a Swiss-wide production hazard service. New contributors should assume:
 - Tschamut same-scale artifacts are the canonical local diagnostic evidence.
 - Balfrin now has measured single-release-zone demonstration evidence, a live
   interruption/resume proof, a canonical evidence bundle, and a replay smoke
-  helper.
+  helper. The bounded follow-up probe has an unlaunched submission-package
+  handoff and metrics-remediation checklist, but it is still deferred until
+  explicit execution authorization.
 - AOI-to-workflow automation exists as deterministic dry-run composition:
   product discovery, public-geodata cache verification, AOI terrain
   preprocessing, terrain release-zone candidate stability checks, generic
   candidate-source-zone scenario generation, ignored output roots, command-plan
-  references, and blocked case-skeleton handoff bundles.
+  references, blocked case-skeleton handoff bundles, and planning-only GIS
+  scope summaries.
 - Chant Sura / Fluelapass remains a second-site readiness/acquisition track;
-  synthetic fixtures are not public-context or validation evidence.
+  synthetic fixtures and AOI automation outputs are not public-context,
+  validation, calibration, source-frequency, or block-population evidence.
 - Observed runout/deposition benchmark intake is specified as a non-evidence
   acquisition pack; actual physical validation and calibration data are still
   absent.

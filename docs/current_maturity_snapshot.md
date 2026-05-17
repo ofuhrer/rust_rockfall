@@ -17,7 +17,10 @@ single-node SLURM submission path, a measured Balfrin run root, a canonical
 evidence bundle, a replay smoke helper, a live interruption/resume proof, a
 post-run scientific interpretation layer, GIS/COG scope classification,
 runtime/scaling frontier helpers, AOI/release/scenario dry-run automation, and
-a second-site acquisition trigger matrix. The measured Balfrin run is:
+a second-site acquisition trigger matrix. The follow-up probe path now has a
+complete reduced-fixture probabilistic metadata contract and an unlaunched
+Balfrin submission-package handoff; it remains `deferred_pending_authorization`
+until a human explicitly approves another run. The measured Balfrin run is:
 
 - run root:
   `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`;
@@ -56,8 +59,9 @@ contract reporting, deterministic acquisition planning, a public-geodata cache
 verification contract, fixture-backed AOI terrain preprocessing, deterministic
 release-zone candidate sensitivity reporting, generic candidate-source-zone
 scenario generation, a site-level AOI-to-prepared-pilot dry-run composition,
-an optional ignored-root case-skeleton bundle, and explicit blocked/deferred
-boundaries for missing public-context products.
+an optional ignored-root case-skeleton bundle with scenario-generation and GIS
+scope summaries, and explicit blocked/deferred boundaries for missing
+public-context products.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -178,8 +182,11 @@ objective are:
    labels for planning cases. The bounded next-ensemble probe now evaluates
    the complete optional-metadata contract and resolves to
    `deferred_pending_authorization` when the reduced-output fixture carries the
-   required fields; missing optional metadata still fails closed. This does
-   not authorize Swiss-wide execution.
+   required fields; missing optional metadata still fails closed. The Balfrin
+   submission-package helper can now generate the unlaunched handoff quickly
+   without invoking full live frontier scans. A metrics-remediation contract
+   records missing mandatory, unavailable ancillary, and next-run-required
+   fields. None of this authorizes Swiss-wide execution.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
@@ -222,7 +229,8 @@ objective are:
     contract, clean-checkout test hardening, AOI acquisition planning, cache
     verification contracts, AOI terrain preprocessing, release-zone stability
     reporting, generic scenario generation, AOI-to-prepared-pilot dry-run
-    composition, blocked case-skeleton handoff bundles, the Balfrin pilot
+    composition, blocked case-skeleton handoff bundles with scenario-generation
+    and GIS scope summaries, the Balfrin pilot
     contract, case plan, measured single-release-zone run, metrics contract,
     evidence bundle, scientific interpretation layer, and Swiss-wide execution
     envelope now distinguish completed dry-run automation from measured
@@ -269,9 +277,19 @@ objective are:
     AOI tile discovery; TB-148 added public-geodata cache/provenance
     verification; TB-149 added fixture-backed AOI terrain preprocessing from
     staged tiles; TB-150 measured release-zone heuristic stability; TB-151
-    generalized candidate-source-zone scenario generation; and TB-152 emitted
+    generalized candidate-source-zone scenario generation; TB-152 emitted
     an ignored AOI case-skeleton/command handoff bundle that remains blocked
-    from execution.
+    from execution; TB-153 added the optional probabilistic and hazard
+    probability metadata needed by the reduced bounded-probe fixture while
+    retaining fail-closed missing-metadata behavior; TB-154 threaded the
+    `deferred_pending_authorization` recommendation through Balfrin and
+    Swiss-wide frontier helpers; TB-155 added the unlaunched Balfrin submission
+    package handoff and a follow-up fix kept `--generate-only` fast; TB-156
+    added the Balfrin metrics remediation checklist; TB-157 connected AOI case
+    skeletons to generic scenario generation; TB-158 added product-by-product
+    Chant Sura real-context staging guidance; TB-159 mapped AOI automation
+    outputs to physical-credibility boundaries; and TB-160 added the AOI GIS
+    scope review summary.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public
@@ -280,7 +298,7 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
-    backlog is currently empty after TB-152 and `print_agent_task_context.py` reports
+    backlog is currently empty after TB-160 and `print_agent_task_context.py` reports
     `backlog_refill_needed=true`. The work log is chronological, archived
     history is separated, and repo consistency checks now reject unreachable or
     self-referential work-log commit hashes. File-backed worker logs reduced
@@ -308,14 +326,15 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-152:
+Current high-value work after TB-160:
 
-- refill the backlog from the measured Balfrin demo, explicit replay/metrics
-  status, and completed AOI dry-run composition state, not from the older
-  pre-execution plan;
-- decide whether the next live Balfrin work should be a small bounded ensemble
-  probe, additional measured metrics capture, or public-context-backed
-  portability work;
+- refill the backlog from the measured Balfrin demo, the now-unblocked but
+  unauthorized bounded-probe package handoff, explicit replay/metrics
+  remediation status, and completed AOI dry-run composition state, not from the
+  older pre-execution plan;
+- decide whether the next live Balfrin work should be an explicitly authorized
+  small bounded ensemble probe, additional measured metrics capture, or
+  public-context-backed portability work;
 - decide whether the next portability step is real Chant Sura public-context
   acquisition, a measured second-site dry run after staging, or further
   fixture-backed AOI automation;
@@ -324,8 +343,9 @@ Current high-value work after TB-152:
   inconclusive and non-operational;
 - close or explicitly defer remaining ancillary measured-metrics gaps while
   keeping fixture-backed regression evidence distinct from live measurements;
-- treat the AOI case-skeleton bundle as a reproducible operator handoff, not as
-  authorization to execute a second-site ensemble;
+- treat the AOI case-skeleton, scenario-generation handoff, and GIS scope
+  summary as reproducible operator handoff artifacts, not as authorization to
+  execute a second-site ensemble or as generated hazard/GIS evidence;
 - keep the Chant Sura / Fluelapass real-context decision tied to the trigger
   matrix and measured evidence, not synthetic fixtures;
 - keep physical credibility work tied to independent observed

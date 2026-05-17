@@ -234,7 +234,9 @@ conditional diagnostic workflow.
    weights conditional-only and leave annual frequency fields empty.
 10. Emit an AOI case-skeleton/command handoff bundle under ignored roots and
     inspect which commands are runnable versus template-only before any
-    ensemble is authorized.
+    ensemble is authorized. Treat its scenario-generation handoff and GIS scope
+    summary as planning evidence only; they do not mean hazard layers or COG
+    packages have been produced.
 11. Run deterministic ensembles with explicit scenario ids, global seed,
     release cell ids, and trajectory ids only after the relevant inputs are
     staged and the execution boundary is explicitly approved.

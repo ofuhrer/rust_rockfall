@@ -13,16 +13,19 @@ diagnostic workflow with measured Tschamut same-scale evidence and a measured
 Balfrin single-release-zone demonstration. The current Balfrin path includes a
 frozen demonstration contract, SLURM execution evidence, a live
 interruption/resume proof, a canonical evidence bundle, replay smoke checks,
-rebuildable reduced outputs, GIS/COG scope reporting, and AOI-to-command-plan
-dry-run composition.
+rebuildable reduced outputs, GIS/COG scope reporting, a metrics-remediation
+checklist, and AOI-to-command-plan dry-run composition. The smallest follow-up
+Balfrin probe is now packageable as an unlaunched handoff, but it remains
+explicitly deferred until a human authorizes execution.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
 dry-run helpers for AOI product discovery, public-geodata cache verification,
 AOI terrain preprocessing from staged tiles, terrain-driven release-zone
 candidate stability checks, generic candidate-source-zone scenario generation,
-second-site acquisition planning, and site-level case-skeleton handoff. It
-does not yet download all public inputs, run arbitrary AOIs, execute
-second-site ensembles, or generate physically annualized intensity-frequency
+second-site acquisition planning, site-level case-skeleton handoff, and
+planning-only GIS scope summaries. It does not yet download all public inputs,
+run arbitrary AOIs, execute second-site ensembles, produce hazard layers from
+AOI handoff bundles, or generate physically annualized intensity-frequency
 products.
 
 Current products are diagnostic or sampling-weighted conditional hazard layers.
