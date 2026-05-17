@@ -2107,3 +2107,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no real public context was downloaded, no second-site ensemble was run, and the existing defer decision remains in force until measured Balfrin evidence satisfies the proceed trigger.
 - Next task: `TB-127`
+
+### TB-127: Measure Practical Balfrin Ensemble Frontier
+
+- Date: 2026-05-17
+- Commit: `56d1730`
+- Objective: summarize the practical Balfrin next-ensemble frontier from the measured Balfrin evidence chain without authorizing scale-up.
+- Files changed: `scripts/summarize_balfrin_ensemble_frontier.py`, `tests/test_balfrin_ensemble_frontier.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a read-only Balfrin frontier helper that composes the scientific delta, single-job sufficiency, bounded next-ensemble feasibility, and same-scale stability evidence into one bounded report.
+  - Classified the current frontier as `defer_small_bounded_ensemble` when the measured evidence still shows useful uncertainty spread, the single-job path remains sufficient, and the bounded reduced-output probe stays inside the measured envelope.
+  - Preserved a blocked helper-contract path for missing measured Balfrin evidence and covered both the measured and blocked cases with focused regression tests.
+  - Removed TB-127 from the active backlog after the helper and tests were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_ensemble_frontier.py tests/test_balfrin_ensemble_frontier.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_ensemble_frontier`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_ensemble_frontier tests.test_balfrin_scientific_delta_report tests.test_balfrin_single_job_execution tests.test_bounded_next_ensemble_feasibility_probe tests.test_same_scale_stability_frontier`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no production ensemble was run, no physics or scale-up was changed, and the recommendation stays read-only and non-operational.
+- Next task: `TB-128`
