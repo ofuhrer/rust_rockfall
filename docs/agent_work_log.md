@@ -3636,3 +3636,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no broad test rewrite, no deletion of local artifacts, no generated fixtures outside `tests/fixtures`, no scientific evidence reclassification, and no scale-up or operational claim.
 - Next task: `TB-202`
+
+### TB-202: CI Git History And Output-Root Portability Guard
+
+- Date: 2026-05-18
+- Commit: `4806402`
+- Objective: Harden the Python CI path so work-log ancestry checks stay deterministic in full-history clones and Chant Sura dry-run output-root validation stays repo-aware when repositories live under `/tmp`.
+- Files changed: `.github/workflows/ci.yml`, `docs/task_backlog.md`, `docs/agent_work_log.md`, `scripts/check_repo_consistency.py`, `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`, `tests/test_repo_consistency_claim_hygiene.py`, `tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py`
+- Implementation summary:
+  - Set the Python workflow checkout to `fetch-depth: 0` so repository-consistency ancestry checks have full history in CI.
+  - Added shallow-clone detection to the work-log hygiene path and a regression test that simulates shallow history.
+  - Tightened the Chant Sura dry-run output-root guard to reject repo-local paths even when the repository root itself is under `/tmp`, while still allowing `/tmp` scratch roots and the ignored validation root.
+  - Added focused tests for allowed scratch roots, allowed ignored roots, and forbidden repository-local paths.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_repo_consistency_claim_hygiene tests.test_chant_sura_fluelapass_dry_run_case_skeleton`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no work-log history changes, no weakening of full-history hygiene, no generated artifact commit, and no expansion of allowed output roots beyond documented scratch/ignored locations.
+- Next task: backlog refill needed
