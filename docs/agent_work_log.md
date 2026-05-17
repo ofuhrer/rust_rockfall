@@ -3209,3 +3209,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no annual-frequency semantics, no physical probability semantics, no parameter tuning, no ensemble execution, and no generated large tables committed to git.
 - Next task: `TB-183`
+
+### TB-183: Multi-Release-Zone Balfrin Dry-Run Demonstration
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: build a bounded multi-release-zone Balfrin dry-run package that combines automatic release candidates, deterministic scenario planning, reduced-output pressure summaries, restartability checkpoints, and uncertainty-aware post-processing commands without authorizing live Balfrin execution.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a scratch-root-only multi-release-zone handoff generator that composes the candidate sweep summary, a contract-derived deterministic-scenarios snapshot, bounded output and reducer pressure summaries, single-job restartability evidence, and staged uncertainty-aware post-processing commands into one reviewable package.
+  - Kept the target-area handoff explicit in the command plan while preventing the package from materializing the target-area bundle, and normalized the volatile candidate sweep runtime so repeated dry-run generation is deterministic.
+  - Added focused regressions for the JSON CLI smoke path, the package filesystem outputs, the staged command-plan shape, and the non-materialized target-area bundle boundary.
+  - Removed TB-183 from the active backlog once the dry-run package and focused tests were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live Balfrin job submission, no scale-up authorization, no distributed execution, no operational claim, no generated artifacts committed, and no target-area bundle materialized by the package helper.
+- Next task: `TB-184`
