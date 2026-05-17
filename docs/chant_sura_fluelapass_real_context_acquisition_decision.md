@@ -192,6 +192,36 @@ products:
 - The immediate effect is that the next actionable step is documentation or
   authorization review, not a download or ensemble run.
 
+### TB-162 Readiness Snapshot
+
+The TB-162 readiness check on the frozen Chant Sura / Flüelapass candidate
+classifies the target area as `blocked_missing_inputs`.
+
+Current helper outputs:
+
+- `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
+- `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
+- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml --format json` -> `verified` with `product_count: 0`; this is only a manifest-shape check and does not prove that any products are staged.
+
+Exact missing or deferred products and paths:
+
+- missing AOI tile catalog metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml`
+- missing terrain crop at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`
+- missing terrain metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml`
+- missing source-zone metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml`
+- missing scenario table at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv`
+- missing source-scenario policy at `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
+- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage`
+- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d`
+- deferred public context metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json`
+- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d`
+- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster`
+- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d`
+
+The candidate remains blocked until the required catalog, terrain, source-zone,
+scenario, and policy inputs are staged. Public context stays deferred until a
+site-specific workflow explicitly needs it.
+
 ## Exact Commands
 
 Run these commands to reproduce the current decision surface:
@@ -218,6 +248,31 @@ The first two commands report the acquisition boundary and required product
 inventory. The real-context gate keeps the synthetic core fixtures out of the
 evidence bucket, and the AOI-to-prepared-pilot dry run keeps the downstream
 workflow blocked rather than authorizing a second-site ensemble.
+
+Use these reproduction commands to verify the cache contract and identify the
+missing-input remediation surface:
+
+```bash
+PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py \
+  --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml \
+  --format json
+
+PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --format json
+
+PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --format json
+```
+
+If the missing inputs are later staged, the remediation surface is the helper
+family already listed in the acquisition plan:
+
+- `stage_public_terrain_crop` for the terrain crop and metadata sidecar
+- `stage_public_context_bundle` for the public-context directory layout
+- `stage_source_and_scenario_records` for the source-zone metadata, scenario
+  table, and source-scenario policy
 
 Observed current statuses:
 

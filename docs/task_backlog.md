@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-162: Verify Target-Area Public-Geodata Readiness
-
-Goal: Check whether the frozen target area has all required public geodata, cache manifests, terrain metadata, and context products staged for execution.
-
-Capability gap reduced: Public-input readiness for the target-area demonstration.
-
-Why this outranks alternatives: A Balfrin run is only meaningful if the input provenance is explicit and missing public geodata is not hidden by synthetic fixtures.
-
-Inspect first:
-
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Target-area geodata readiness JSON/text report.
-- Product-by-product staged/missing/deferred classification.
-- Reproduction commands for cache verification and missing-input remediation.
-
-Definition of done:
-
-- The target area is classified as ready for real inputs or blocked with exact missing products and paths.
-
-Boundaries: No downloads unless explicitly already supported by an existing helper, no synthetic evidence upgrade, no ensemble execution, and no operational claim.
-
 ### TB-163: Materialize Target-Area AOI Case Handoff
 
 Goal: Emit the ignored case-skeleton, command manifest, expected roots, scenario-generation handoff, and GIS scope summary for the frozen target area.
