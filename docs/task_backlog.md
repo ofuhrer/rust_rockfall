@@ -24,44 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-153: Add Probabilistic Metadata To Reduced Probe Fixture
-
-Goal: Unblock the bounded next-ensemble feasibility path by adding the optional
-probabilistic metadata expected by the reduced-output probe fixture.
-
-Capability gap reduced: Current bounded-probe planning fails closed on missing
-optional probabilistic metadata rather than evaluating a runnable smallest
-useful probe.
-
-Why this outranks alternatives: The next measured Balfrin/scaling decision
-depends on a feasibility helper that can classify a candidate probe from
-complete reduced-output metadata.
-
-Inspect first:
-
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `tests/test_bounded_next_ensemble_feasibility_probe.py`
-- `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- Complete fixture-side `probabilistic_metadata` and `hazard_probability`
-  fields for the reduced-output probe path.
-- Updated feasibility-helper tests proving the present-metadata path is
-  classified separately from missing-metadata blocked states.
-- Documentation that the fixture unblocks planning only and does not authorize
-  execution by itself.
-
-Definition of done:
-
-- The bounded next-ensemble feasibility helper reports a non-blocked planning
-  classification for the complete reduced-output fixture while retaining
-  fail-closed behavior for missing metadata fixtures.
-
-Boundaries: No ensemble execution, no annual frequency, no physical-probability
-claim, no tuning, and no scale-up authorization.
-
 ### TB-154: Recompute Balfrin Frontier With Complete Probe Metadata
 
 Goal: Thread the unblocked bounded-probe feasibility result into the Balfrin

@@ -295,3 +295,10 @@ Because the bounded feasibility helper is blocked, the practical frontier
 helper `scripts/summarize_balfrin_ensemble_frontier.py` also stays in
 `blocked_missing_inputs` status instead of upgrading the closure or authorizing
 any larger ensemble by assertion.
+
+The reduced-output probe fixture now carries the optional
+`probabilistic_metadata` and `hazard_probability` fields that the bounded
+feasibility helper expects. That change only unblocks planning: the helper
+classifies the complete fixture as `deferred_pending_authorization`, keeps
+`scale_up_authorized` and `distributed_execution_authorized` false, and still
+fails closed when either metadata block is removed.

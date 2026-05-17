@@ -2613,3 +2613,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no ensemble execution, no second-site hazard build, no large-artifact commit, no physical-probability semantics, and no operational claim.
 - Next task: backlog refill needed
+
+### TB-153
+- Date: 2026-05-17
+- Commit: local
+- Objective: add the optional probabilistic metadata required by the reduced-output bounded next-ensemble probe fixture and keep the helper fail-closed for missing-metadata cases.
+- Files changed: `tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml`, `tests/test_bounded_next_ensemble_feasibility_probe.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Completed the reduced-output fixture with the optional `probabilistic_metadata` and `hazard_probability` blocks expected by the bounded next-ensemble feasibility helper, using the reduced Tschamut output metadata path and the conditional sampling-weighted filter contract already used elsewhere in the repository.
+  - Updated the feasibility-helper tests to assert that the complete fixture is classified as `deferred_pending_authorization` while stripped and partial fixtures remain blocked on missing optional metadata.
+  - Documented that the fixture change only unblocks planning and does not authorize execution, and removed TB-153 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_next_ensemble_feasibility_probe -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no ensemble execution, no annual frequency, no physical-probability claim, no tuning, and no scale-up authorization.
+- Next task: `TB-154`

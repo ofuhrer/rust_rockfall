@@ -37,3 +37,20 @@ expected:
   tolerances: {}
 outputs:
   validation_output_mode: rebuildable_reduced_output
+probabilistic_metadata:
+  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+  map_product_id: tschamut_public_conditional_gate_v1
+  probability_mode: sampling_weighted_conditional
+  normalization_scope: conditioned_on_filter
+  scenario_id: tschamut_public_block_observed_rows
+hazard_probability:
+  probability_model: sampling_weighted
+  metadata_path: validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_trajectory_metadata.csv
+  weight_column: sampling_weight
+  normalization_convention: conditioned_on_filter
+  filters:
+    source_zone_ids:
+    - tschamut_public_lps_release_bbox
+    scenario_ids:
+    - tschamut_public_block_observed_rows
