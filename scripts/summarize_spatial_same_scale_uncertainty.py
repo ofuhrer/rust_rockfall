@@ -25,11 +25,25 @@ SCHEMA_VERSION = "spatial_same_scale_uncertainty_v1"
 UNCERTAINTY_LAYER_SCHEMA_VERSION = "spatial_uncertainty_layer_summary_v1"
 CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION = "conditional_hazard_region_summary_v1"
 HOTSPOT_PERSISTENCE_SCHEMA_VERSION = "spatial_hotspot_persistence_v1"
+CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION = "spatial_confidence_product_manifest_v1"
+CONFIDENCE_PRODUCT_SCHEMA_VERSION = "spatial_confidence_product_v1"
 DEFAULT_HAZARD_LAYERS = (
     "max_kinetic_energy",
     "max_jump_height",
     "velocity_exceedance_5mps",
 )
+CONFIDENCE_PRODUCT_ORDER = (
+    "persistent_hazard",
+    "unstable_region",
+    "support_nodata_sensitive",
+    "shared_support_magnitude",
+)
+CONFIDENCE_PRODUCT_REGION_KIND = {
+    "persistent_hazard": "stable_region",
+    "unstable_region": "unstable_region",
+    "support_nodata_sensitive": "support_nodata_sensitive",
+    "shared_support_magnitude": "shared_support_magnitude_sensitive",
+}
 UNCERTAINTY_REGION_KIND_ORDER = (
     "persistent_agreement",
     "stable_low_disagreement",
@@ -183,6 +197,13 @@ def build_report(
         layer_summaries=layer_summaries,
         top_n=top_n,
     )
+    confidence_product_summary = build_confidence_product_summary(
+        {
+            "spatial_uncertainty_status": "measured_existing_artifacts",
+            "conditional_hazard_region_summary": conditional_hazard_region_summary,
+            "blocked_reason": "",
+        }
+    )
     dominant_layers = sorted(
         layer_summaries.values(),
         key=lambda item: (item["range_summary"]["mean_range"] or 0.0, item["nodata_disagreement_fraction"]),
@@ -214,6 +235,7 @@ def build_report(
         "uncertainty_layer_summary": uncertainty_layer_summary,
         "conditional_hazard_region_summary": conditional_hazard_region_summary,
         "hotspot_persistence_summary": hotspot_persistence_summary,
+        "confidence_product_summary": confidence_product_summary,
         "defaults_changed": False,
         "physics_changed": False,
         "thresholds_changed": False,
@@ -276,6 +298,13 @@ def blocked_report(
             "summary_status": "blocked_missing_inputs",
             "layer_summaries": [],
             "pairwise_comparison_count": 0,
+            "blocked_reason": reason,
+        },
+        "confidence_product_summary": {
+            "schema_version": CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION,
+            "summary_status": "blocked_missing_inputs",
+            "product_order": list(CONFIDENCE_PRODUCT_ORDER),
+            "products": [],
             "blocked_reason": reason,
         },
     }
@@ -406,6 +435,19 @@ def render_text(report: dict[str, Any]) -> str:
                     for support in sorted(int(key) for key in support_histogram.keys())
                 )
                 lines.append(f"  pairwise support histogram: {formatted}")
+    confidence_product_summary = report.get("confidence_product_summary") or {}
+    if confidence_product_summary:
+        lines.append(
+            "confidence product summary: "
+            f"{confidence_product_summary.get('summary_status')} | "
+            f"products={', '.join(confidence_product_summary.get('product_order', []))}"
+        )
+        for product in confidence_product_summary.get("products", []):
+            lines.append(
+                f"- {product['product_kind']}: {product['feature_count']} features | "
+                f"source={product['source_region_kind']} | "
+                f"layers={product['layer_count']}"
+            )
     return "\n".join(lines)
 
 
@@ -718,6 +760,55 @@ def write_uncertainty_layer_products(report: dict[str, Any], output_dir: Path) -
     }
     geojson_path.write_text(json.dumps(geojson_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     written_paths.append(geojson_path)
+
+    confidence_summary = report.get("confidence_product_summary") or build_confidence_product_summary(report)
+    confidence_manifest_path = output_dir / "spatial_confidence_product_manifest.json"
+    confidence_manifest_payload = {
+        **confidence_summary,
+        "products": [
+            {
+                **product,
+                "output_path": f"spatial_confidence_{product['product_kind']}.geojson",
+            }
+            for product in confidence_summary.get("products", [])
+        ],
+    }
+    confidence_manifest_path.write_text(
+        json.dumps(confidence_manifest_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    written_paths.append(confidence_manifest_path)
+
+    for product in confidence_summary.get("products", []):
+        product_path = output_dir / f"spatial_confidence_{product['product_kind']}.geojson"
+        product_payload = {
+            "type": "FeatureCollection",
+            "schema_version": CONFIDENCE_PRODUCT_SCHEMA_VERSION,
+            "product_kind": product["product_kind"],
+            "source_region_kind": product["source_region_kind"],
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": region.get("geometry"),
+                    "properties": {
+                        "layer_key": region.get("layer_key"),
+                        "product_kind": region.get("product_kind"),
+                        "source_region_kind": region.get("source_region_kind"),
+                        "region_kind": region.get("region_kind"),
+                        "confidence_class": region.get("confidence_class"),
+                        "closure_role": region.get("closure_role"),
+                        "cell_count": region.get("cell_count"),
+                        "cell_fraction": region.get("cell_fraction"),
+                        "bbox": region.get("bbox"),
+                        "region_status": region.get("region_status"),
+                        "claim_boundaries": region.get("claim_boundaries"),
+                    },
+                }
+                for region in product.get("product_regions", [])
+            ],
+        }
+        product_path.write_text(json.dumps(product_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        written_paths.append(product_path)
     return written_paths
 
 
@@ -1226,6 +1317,101 @@ def build_hotspot_persistence_summary(
         "layer_summaries": layer_entries,
         "pairwise_comparison_count": pairwise_comparison_count,
         "blocked_reason": "",
+    }
+
+
+def build_confidence_product_summary(spatial_report: dict[str, Any]) -> dict[str, Any]:
+    if spatial_report.get("spatial_uncertainty_status") != "measured_existing_artifacts":
+        return {
+            "schema_version": CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION,
+            "summary_status": spatial_report.get("spatial_uncertainty_status", "blocked_missing_inputs"),
+            "product_order": list(CONFIDENCE_PRODUCT_ORDER),
+            "products": [],
+            "blocked_reason": spatial_report.get("blocked_reason", ""),
+        }
+
+    region_summary = dict(spatial_report.get("conditional_hazard_region_summary") or {})
+    layer_summaries = list(region_summary.get("layer_summaries") or [])
+    product_entries = [
+        summarize_confidence_product(
+            product_kind=product_kind,
+            source_region_kind=source_region_kind,
+            layer_summaries=layer_summaries,
+        )
+        for product_kind, source_region_kind in CONFIDENCE_PRODUCT_REGION_KIND.items()
+    ]
+    product_entries.sort(key=lambda item: CONFIDENCE_PRODUCT_ORDER.index(item["product_kind"]))
+    return {
+        "schema_version": CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION,
+        "summary_status": "measured_existing_artifacts",
+        "product_order": list(CONFIDENCE_PRODUCT_ORDER),
+        "products": product_entries,
+        "blocked_reason": "",
+    }
+
+
+def summarize_confidence_product(
+    *,
+    product_kind: str,
+    source_region_kind: str,
+    layer_summaries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    product_regions: list[dict[str, Any]] = []
+    for layer_summary in layer_summaries:
+        region = dict(layer_summary.get(source_region_kind) or {})
+        if not region:
+            continue
+        product_regions.append(
+            {
+                "layer_key": region.get("layer_key"),
+                "product_kind": product_kind,
+                "source_region_kind": source_region_kind,
+                "region_kind": region.get("region_kind"),
+                "confidence_class": region.get("confidence_class"),
+                "closure_role": region.get("closure_role"),
+                "cell_count": region.get("cell_count"),
+                "cell_fraction": region.get("cell_fraction"),
+                "bbox": region.get("bbox"),
+                "geometry": region.get("geometry"),
+                "region_status": region.get("region_status"),
+                "claim_boundaries": {
+                    "operational_claims_allowed": False,
+                    "annual_frequency_claims_allowed": False,
+                    "physical_probability_claims_allowed": False,
+                },
+            }
+        )
+
+    layer_keys = [item["layer_key"] for item in product_regions]
+    closure_roles = sorted({str(item.get("closure_role") or "") for item in product_regions if item.get("closure_role")})
+    confidence_classes = sorted(
+        {str(item.get("confidence_class") or "") for item in product_regions if item.get("confidence_class")}
+    )
+    bbox = None
+    for item in product_regions:
+        bbox = merge_bboxes(bbox, item.get("bbox"))
+
+    return {
+        "product_kind": product_kind,
+        "source_region_kind": source_region_kind,
+        "schema_version": CONFIDENCE_PRODUCT_SCHEMA_VERSION,
+        "product_status": "measured_existing_artifacts",
+        "layer_count": len(product_regions),
+        "feature_count": len(product_regions),
+        "layer_keys": layer_keys,
+        "closure_roles": closure_roles,
+        "confidence_classes": confidence_classes,
+        "bbox": bbox,
+        "product_regions": product_regions,
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+        },
+        "product_note": (
+            f"{product_kind} is a diagnostic-only GIS product derived from measured same-scale evidence "
+            f"and the {source_region_kind} region summary."
+        ),
     }
 
 

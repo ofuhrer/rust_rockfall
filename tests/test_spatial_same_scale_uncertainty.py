@@ -183,6 +183,22 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 4,
             )
 
+            confidence_products = report["confidence_product_summary"]
+            self.assertEqual(confidence_products["schema_version"], summary_script.CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION)
+            self.assertEqual(confidence_products["summary_status"], "measured_existing_artifacts")
+            self.assertEqual(confidence_products["product_order"], list(summary_script.CONFIDENCE_PRODUCT_ORDER))
+            self.assertEqual(
+                [product["product_kind"] for product in confidence_products["products"]],
+                list(summary_script.CONFIDENCE_PRODUCT_ORDER),
+            )
+            self.assertEqual(confidence_products["products"][0]["source_region_kind"], "stable_region")
+            self.assertEqual(confidence_products["products"][0]["feature_count"], 3)
+            self.assertEqual(confidence_products["products"][1]["source_region_kind"], "unstable_region")
+            self.assertEqual(confidence_products["products"][2]["source_region_kind"], "support_nodata_sensitive")
+            self.assertEqual(confidence_products["products"][3]["source_region_kind"], "shared_support_magnitude_sensitive")
+            self.assertFalse(confidence_products["products"][0]["claim_boundaries"]["operational_claims_allowed"])
+            self.assertIn("diagnostic-only GIS product", confidence_products["products"][0]["product_note"])
+
             kinetic_mask = report["layer_summaries"]["max_kinetic_energy"]["mask_evidence"]
             jump_mask = report["layer_summaries"]["max_jump_height"]["mask_evidence"]
             velocity_mask = report["layer_summaries"]["velocity_exceedance_5mps"]["mask_evidence"]
@@ -209,14 +225,40 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                     "spatial_uncertainty_layer_summary.json",
                     "spatial_uncertainty_region_products.csv",
                     "spatial_uncertainty_region_products.geojson",
+                    "spatial_confidence_product_manifest.json",
+                    "spatial_confidence_persistent_hazard.geojson",
+                    "spatial_confidence_unstable_region.geojson",
+                    "spatial_confidence_support_nodata_sensitive.geojson",
+                    "spatial_confidence_shared_support_magnitude.geojson",
                 ],
             )
             summary_json = json.loads((gis_output_dir / "spatial_uncertainty_layer_summary.json").read_text())
             geojson = json.loads((gis_output_dir / "spatial_uncertainty_region_products.geojson").read_text())
             csv_text = (gis_output_dir / "spatial_uncertainty_region_products.csv").read_text()
+            confidence_manifest = json.loads((gis_output_dir / "spatial_confidence_product_manifest.json").read_text())
+            persistent_hazard_geojson = json.loads((gis_output_dir / "spatial_confidence_persistent_hazard.geojson").read_text())
+            unstable_region_geojson = json.loads((gis_output_dir / "spatial_confidence_unstable_region.geojson").read_text())
+            support_nodata_geojson = json.loads((gis_output_dir / "spatial_confidence_support_nodata_sensitive.geojson").read_text())
+            shared_support_geojson = json.loads((gis_output_dir / "spatial_confidence_shared_support_magnitude.geojson").read_text())
             self.assertEqual(summary_json["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
             self.assertEqual(geojson["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
             self.assertEqual(geojson["type"], "FeatureCollection")
+            self.assertEqual(confidence_manifest["schema_version"], summary_script.CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION)
+            self.assertEqual(confidence_manifest["product_order"], list(summary_script.CONFIDENCE_PRODUCT_ORDER))
+            self.assertEqual(
+                [product["product_kind"] for product in confidence_manifest["products"]],
+                list(summary_script.CONFIDENCE_PRODUCT_ORDER),
+            )
+            self.assertEqual(persistent_hazard_geojson["schema_version"], summary_script.CONFIDENCE_PRODUCT_SCHEMA_VERSION)
+            self.assertEqual(persistent_hazard_geojson["product_kind"], "persistent_hazard")
+            self.assertEqual(len(persistent_hazard_geojson["features"]), 3)
+            self.assertEqual(unstable_region_geojson["product_kind"], "unstable_region")
+            self.assertEqual(len(unstable_region_geojson["features"]), 3)
+            self.assertEqual(support_nodata_geojson["product_kind"], "support_nodata_sensitive")
+            self.assertEqual(len(support_nodata_geojson["features"]), 3)
+            self.assertEqual(shared_support_geojson["product_kind"], "shared_support_magnitude")
+            self.assertEqual(len(shared_support_geojson["features"]), 3)
+            self.assertFalse(persistent_hazard_geojson["features"][0]["properties"]["claim_boundaries"]["operational_claims_allowed"])
             self.assertTrue(csv_text.startswith("layer_key,region_kind,confidence_class,closure_role"))
             region_order = {
                 "persistent_agreement": 0,
@@ -244,6 +286,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 ),
             )
             self.assertTrue(any(feature["geometry"] is not None for feature in geojson["features"]))
+            self.assertTrue(any(feature["geometry"] is not None for feature in persistent_hazard_geojson["features"]))
             repeat_dir = Path(tmp) / "gis_products_repeat"
             summary_script.write_uncertainty_layer_products(report, repeat_dir)
             self.assertEqual(
@@ -258,6 +301,26 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 (gis_output_dir / "spatial_uncertainty_region_products.csv").read_text(),
                 (repeat_dir / "spatial_uncertainty_region_products.csv").read_text(),
             )
+            self.assertEqual(
+                (gis_output_dir / "spatial_confidence_product_manifest.json").read_text(),
+                (repeat_dir / "spatial_confidence_product_manifest.json").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_confidence_persistent_hazard.geojson").read_text(),
+                (repeat_dir / "spatial_confidence_persistent_hazard.geojson").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_confidence_unstable_region.geojson").read_text(),
+                (repeat_dir / "spatial_confidence_unstable_region.geojson").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_confidence_support_nodata_sensitive.geojson").read_text(),
+                (repeat_dir / "spatial_confidence_support_nodata_sensitive.geojson").read_text(),
+            )
+            self.assertEqual(
+                (gis_output_dir / "spatial_confidence_shared_support_magnitude.geojson").read_text(),
+                (repeat_dir / "spatial_confidence_shared_support_magnitude.geojson").read_text(),
+            )
 
             rendered = summary_script.render_text(report)
             self.assertIn("spatial same-scale uncertainty: measured_existing_artifacts", rendered)
@@ -271,6 +334,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("uncertainty layer summary:", rendered)
             self.assertIn("conditional hazard region summary:", rendered)
             self.assertIn("hotspot persistence summary:", rendered)
+            self.assertIn("confidence product summary:", rendered)
             self.assertIn("stable_across_all_pairs", rendered)
             self.assertIn("confidence=", rendered)
 
@@ -305,6 +369,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             report = summary_script.build_report(tuple(artifacts), summary_script.DEFAULT_HAZARD_LAYERS, top_n=2)
             self.assertEqual(report["spatial_uncertainty_status"], "blocked_missing_inputs")
             self.assertEqual(report["stability_zone_status"], "blocked_missing_inputs")
+            self.assertEqual(report["confidence_product_summary"]["summary_status"], "blocked_missing_inputs")
             self.assertIn("missing", report["blocked_reason"])
             self.assertTrue(report["missing_input_paths"])
 

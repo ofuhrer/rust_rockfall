@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-136: Generate Persistent Hazard Confidence Products
-
-Goal: Convert same-scale stability and persistence evidence into deterministic
-GIS-readable diagnostic confidence products.
-
-Capability gap reduced: uncertainty interpretation that is currently stronger
-in scalar summaries than in reviewable spatial products.
-
-Why this outranks alternatives: persistent hazard and unstable-region masks
-make the existing uncertainty evidence more interpretable without requiring a
-new model run.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `scripts/compare_hazard_map_convergence.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- Persistent-hazard, unstable-region, support/nodata-sensitive, and
-  shared-support magnitude diagnostic products or manifests.
-- Tests using fixture evidence and explicit GIS/product claim boundaries.
-
-Definition of done:
-
-- The helper emits stable diagnostic confidence products from measured
-  same-scale evidence and reports blocked status when required rasters are
-  absent.
-
-Boundaries: Diagnostic uncertainty products only; no operational hazard,
-annual-frequency, or physical-probability claim.
-
 ### TB-137: Prepare Chant Sura Real-Context Acquisition Readiness Pack
 
 Goal: Convert the Chant Sura real-context trigger matrix into a precise

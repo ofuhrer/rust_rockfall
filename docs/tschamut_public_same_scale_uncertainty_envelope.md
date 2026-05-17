@@ -181,6 +181,13 @@ roles for `max_kinetic_energy`, `max_jump_height`, and
 `velocity_exceedance_5mps` without forcing workers to re-derive the same cell
 sets from pairwise rasters.
 
+The same helper can now also materialize deterministic GIS confidence products
+and a manifest for `persistent_hazard`, `unstable_region`,
+`support_nodata_sensitive`, and `shared_support_magnitude`. These outputs are
+diagnostic-only wrappers around the measured stable/unstable region summaries;
+they keep the claim boundary explicit and do not introduce a new hazard or
+probability interpretation.
+
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid
 - `max_kinetic_energy` still dominates the envelope
