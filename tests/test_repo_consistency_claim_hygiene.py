@@ -34,6 +34,58 @@ class HazardClaimHygieneTests(unittest.TestCase):
     def test_task_backlog_and_work_log_hygiene_is_clean(self) -> None:
         self.assertEqual(check_repo_consistency.check_task_backlog_and_work_log_hygiene(), [])
 
+    def test_top_level_historical_doc_surface_is_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_top_level_historical_doc_surface(), [])
+
+    def test_top_level_historical_doc_surface_rejects_current_looking_archive_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs/archive").mkdir()
+            (root / "docs/old_report.md").write_text(
+                "# Old Report\n\nStatus: planning artifact for an old workflow.\n",
+                encoding="utf-8",
+            )
+            (root / "docs/archive/old_report.md").write_text(
+                "# Archived Report\n\nStatus: planning artifact for an old workflow.\n",
+                encoding="utf-8",
+            )
+
+            errors = check_repo_consistency.find_top_level_historical_doc_surface_errors(
+                ["docs/old_report.md", "docs/archive/old_report.md"],
+                root=root,
+            )
+
+        self.assertEqual(
+            errors,
+            [
+                "docs/old_report.md has archived/superseded status marker "
+                "'Status: planning artifact'; move it under docs/archive/ or add an explicit allowlist entry"
+            ],
+        )
+
+    def test_top_level_doc_index_coverage_is_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_top_level_doc_index_coverage(), [])
+
+    def test_top_level_doc_index_coverage_rejects_unindexed_doc(self) -> None:
+        errors = check_repo_consistency.find_top_level_doc_index_coverage_errors(
+            ["docs/current.md", "docs/archive/old.md"],
+            "- `other.md`: indexed doc\n",
+        )
+
+        self.assertEqual(errors, ["docs/README.md does not index top-level doc docs/current.md"])
+
+    def test_script_inventory_coverage_is_clean(self) -> None:
+        self.assertEqual(check_repo_consistency.check_script_inventory_coverage(), [])
+
+    def test_script_inventory_coverage_rejects_unclassified_script(self) -> None:
+        errors = check_repo_consistency.find_script_inventory_coverage_errors(
+            ["scripts/current.py"],
+            "- `scripts/other.py`\n",
+        )
+
+        self.assertEqual(errors, ["docs/script_inventory.md does not classify scripts/current.py"])
+
     def test_active_backlog_inspect_first_paths_are_resolvable(self) -> None:
         backlog_text = (ROOT / "docs/task_backlog.md").read_text()
 

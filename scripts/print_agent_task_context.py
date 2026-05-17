@@ -26,8 +26,9 @@ CHANT_SURA_CONFIG = (
     "chant_sura_fluelapass_candidate.yaml"
 )
 CURRENT_EXECUTION_FOCUS = (
-    "Balfrin single-release-zone pilot track: dry-run automation is in place, "
-    "and measured Balfrin execution plus post-run evidence are the next step."
+    "Backlog refill needed: run a scoped gap-analysis pass against the current "
+    "maturity snapshot, Balfrin/Tschamut evidence, AOI/second-site portability "
+    "state, and script/doc surface before creating the next TB queue."
 )
 WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION = "agent_worker_output_guidance_v1"
 WORKER_OUTPUT_REPORT_SCHEMA = [

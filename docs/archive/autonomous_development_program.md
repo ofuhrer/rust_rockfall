@@ -243,7 +243,7 @@ documentation rather than leaving it only in a chat transcript. Good homes are:
 
 - `AGENTS.md` for agent operating rules and required handoff behavior;
 - `docs/onboarding.md` for local environment and toolchain substitutions;
-- `docs/autonomous_development_program.md` for autonomous-session prompt
+- `docs/archive/autonomous_development_program.md` for autonomous-session prompt
   wording and stop conditions;
 - `docs/autonomous_sessions/template.md` for fields that should appear in every
   future session log.

@@ -345,15 +345,15 @@ objective are:
     readiness impact, reproduction commands, and product-by-product stage/defer
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
-14. Backlog and worker-context hygiene have improved materially. The active
-    backlog has been refilled after TB-179 around multi-zone automation,
-    Balfrin dry-run packaging, AOI-to-prepared-pilot composition, reducer/GIS
-    stress tests, second-site dry-run realism, and evidence preservation for
-    future authorized live runs. The work log is chronological, archived
-    history is separated, and repo consistency checks now reject unreachable or
-    self-referential work-log commit hashes. File-backed worker logs reduced
-    orchestration token pressure and exposed a concrete pitfall: workers must
-    not cancel healthy Slurm jobs solely because cold compilation is quiet.
+14. Backlog and worker-context hygiene have improved materially. TB-181 through
+    TB-202 completed the post-TB-179 queue: deterministic release-candidate
+    stress evidence, multi-zone reducer pressure, second-site dry-run realism,
+    shared validator helpers, dependency guidance, calibration failure
+    diagnostics, runtime-facing panic-path reduction, clean-checkout Python test
+    stabilization, ignored-artifact dependency auditing, and CI portability
+    guardrails. The active backlog is currently empty, so the next step is a
+    scoped gap-analysis/backlog-refill pass rather than inventing an
+    implementation task from stale queue text.
 
 ## Backlog Quality Assessment
 
@@ -373,19 +373,13 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-179:
+Current high-value work after TB-202:
 
-- execute the active TB-181 through TB-191 queue in dependency order, starting
-  with deterministic release-candidate and scenario stress evidence before any
-  multi-zone Balfrin handoff;
-- keep TB-183 as a dry-run/package milestone by default; any live multi-zone
-  Balfrin execution remains a separate explicit authorization event;
-- preserve peak-memory, split validation/hazard output, run-root, reducer, and
-  GIS artifact evidence before treating any future live run as demonstration
-  evidence;
-- decide after the dry-run and preservation-gate work whether any next live
-  Balfrin work should be a metrics-completion rerun, a bounded multi-zone probe,
-  or deferred in favor of public-context-backed portability work;
+- refill the backlog from current evidence, not from the completed TB-181
+  through TB-202 queue;
+- decide whether the next Balfrin step is a metrics-completion rerun, a bounded
+  multi-zone probe, or deferral in favor of public-context-backed portability
+  work;
 - decide whether the next portability step is real Chant Sura public-context
   acquisition, a measured second-site dry run after staging, or further
   fixture-backed AOI automation;

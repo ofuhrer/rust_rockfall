@@ -2,260 +2,242 @@
 
 Current project version: `v0.6.1`.
 
-`rust_rockfall` targets automated, reproducible rockfall hazard mapping for
-Switzerland's Alpine terrain from public geodata, primarily swisstopo. The first
-concrete milestone is a valley-scale pilot that connects pragmatic
-source-zone/block-scenario generation, large deterministic trajectory
-ensembles, uncertainty-aware conditional intensity-exceedance products,
-GIS-ready outputs, and performance that can grow from efficient single-socket
-runs toward CSCS/SLURM workflows. Risk modelling, exposure/vulnerability
-analysis, and operational warning systems are out of scope.
+Use this index as the authority map for current work. Top-level docs should be
+current, actionable, or canonical evidence summaries. Historical reports and
+superseded planning notes live under `archive/` and should not be used as
+starting context for implementation unless a task explicitly asks for them.
 
-Use this index by authority level. Governing documents and the authoritative
-task backlog are the starting point for new work. Evidence reports
-describe what was observed at the time they were written. Historical decision
-fragments have been consolidated into `decision_log.md`; they do not override
-`task_backlog.md`.
+## Status Taxonomy
 
-## Governing Documents
+- `governing`: source of truth for scope, claims, or workflow rules.
+- `current_workflow`: actively used runbook, contract, or helper documentation.
+- `evidence_summary`: canonical measured or fixture-backed evidence summary.
+- `archived_evidence`: historical measured evidence preserved for traceability.
+- `superseded`: replaced by a named current document.
+- `inactive_contract`: future-schema or gate placeholder, not active workflow.
+
+## Governing
 
 - `../README.md`: project overview, quickstart, scope, and current caveats.
-- `../AGENTS.md`: operating rules for automated agents, hard boundaries, and
-  long-term development direction.
-- `onboarding.md`: local prerequisites, hooks, optional data setup, and
-  handoff checks.
-- `model_design.md`: current equations, assumptions, contact models, terrain
-  conventions, and API boundaries.
-- `validation_data_schema.md`: YAML case and validation-data schema.
-- `architecture_boundaries.md`: module responsibility map, panic/error
-  boundaries, and refactor targets for large files.
-- `validation_plan.md`: validation strategy and calibration policy.
-- `validation_maturity_framework.md`: evidence levels and claim hierarchy.
-- `dataset_strategy.md`: separation of calibration, validation, pilot, and
-  operational input datasets.
-- `swisstopo_data_strategy.md`: Swiss geodata roles, CRS/datum expectations,
-  provenance requirements, and raw-data boundaries.
-- `current_maturity_snapshot.md`: current measured Balfrin state, AOI dry-run
-  automation state, remaining gaps, and backlog-refill guidance.
-- `orchestration_strategy.md`: context-efficient sequential worker execution
-  strategy and file-backed log monitoring.
-
-## Current Roadmaps
-
-- `task_backlog.md`: authoritative executable task backlog. Worker agents
-  should use its `TB-xxx` identifiers, remove completed tasks, and add at most
-  one concrete follow-up task when needed. Backlog tasks should identify the
-  executable implementation, validation, measured analysis, performance, or bug
-  fix outcome they enable.
-- `next_development_targets.md`: legacy pointer retained for older links; not
-  a maintained target list.
+- `../AGENTS.md`: automated-agent rules, hard boundaries, and worker fast path.
+- `task_backlog.md`: authoritative executable TB queue.
+- `current_maturity_snapshot.md`: current maturity, capability gaps, and
+  backlog-quality framing.
 - `decision_log.md`: durable design and sequencing decisions.
-- `agent_work_log.md`: concise record of completed task execution.
-- `roadmap_recommendation_matrix.md`: supporting scoring appendix behind target
-  ordering; not authoritative for current target selection and not updated for
-  routine DT completion.
-- `roadmap_hazard_mapping.md`: long-term hazard-map roadmap and hazard/risk
-  boundary.
-- `real_case_intensity_frequency_implementation_roadmap.md`: staged path from
-  conditional intensity-exceedance products to later physical/annual
-  intensity-frequency semantics; not authoritative for current target
-  selection and not the current gap-analysis source.
-- `scalability_and_data_formats_review.md`: large-ensemble, output-format, and
-  scaling roadmap.
-- `implementation_plan.md`: broad phased implementation plan.
-- `decision_log.md`: consolidated record of major design and sequencing
-  decisions after pruning stale standalone decision fragments.
+- `agent_work_log.md`: concise chronological TB execution history.
+- `onboarding.md`: local setup, hooks, checks, and clean handoff rules.
+- `orchestration_strategy.md`: sequential worker execution strategy.
+- `agent_reference.md`: detailed policy for broad model, output, versioning,
+  HPC, and review changes.
+- `project_overview.md`: detailed background reference kept out of the root
+  README.
 
-## Swiss Pilot And Geodata Contracts
+## Model, Validation, And Claims
 
-- `public_real_site_geodata_preparation.md`: share-safe public real-site
-  geodata manifest and conditional pilot run-freeze workflow.
-- `public_real_site_conditional_pilot_report_template.md`: pilot report
-  scaffold for pass/no-go/inconclusive classification.
-- `source_zone_block_scenario_policy_v1.md`: source-zone evidence levels,
-  deterministic release sampling, and representative block-scenario policy.
+- `model_design.md`: current equations, assumptions, terrain conventions,
+  contact models, API boundaries, and reproducibility model.
+- `architecture_boundaries.md`: module responsibility map, large-file refactor
+  targets, panic/error boundaries, and scaling boundary.
+- `validation_plan.md`: validation strategy, dataset policy, metrics, and
+  calibration separation.
+- `validation_maturity_framework.md`: evidence levels and allowed claim types.
+- `validation_data_schema.md`: validation-case and validation-data schema.
+- `verification_plan.md`: verification scope and current checked-in
+  verification workflow.
+- `dataset_strategy.md`: calibration, validation, pilot, and operational-input
+  dataset separation.
+- `datasets.md`: public dataset registry, download, preprocessing, and
+  calibration-data notes.
+- `literature_review.md`: public literature and grey-literature reference
+  context.
+- `hazard_map_semantics.md`: allowed/disallowed hazard-map language,
+  denominator rules, and hazard-versus-risk boundary.
+- `hazard_layers.md`: hazard-layer builder behavior, raster outputs, and
+  current layer semantics.
+- `hazard_output_profile_contract.md`: `full_debug`,
+  `scalable_conditional`, and `provenance_audit` output profiles.
+- `stochastic_sampling_rng_stream_audit.md`: stochastic stream audit and
+  deterministic sampling evidence.
+
+## Current Swiss Workflow
+
+- `swisstopo_data_strategy.md`: Swiss public geodata roles, metadata
+  requirements, AOI automation gaps, and second-site boundaries.
+- `public_real_site_geodata_preparation.md`: public real-site geodata manifest
+  and run-freeze workflow.
+- `public_real_site_conditional_pilot_report_template.md`: template for
+  conditional pilot reporting without operational claim upgrades.
+- `source_zone_block_scenario_policy_v1.md`: conditional source-zone and
+  block-scenario policy contract.
+- `swiss_terrain_ingestion_pilot.md`: minimal terrain-source, release-zone,
+  and terrain-class metadata contracts.
+- `terrain_model.md`: retained terrain-model record required by model
+  consistency checks.
+- `pilot_gis_package.md`: diagnostic QGIS/GeoTIFF package contract.
 - `dem_terrain_sensitivity_benchmark.md`: dry-runnable DEM/terrain sensitivity
   fixture and real-site scaffold.
-- `pilot_gis_package.md`: diagnostic QGIS/GeoTIFF package contract and visual
-  QA gate.
-- `swiss_terrain_ingestion_pilot.md`: minimal terrain-source, release-zone, and
-  terrain-class metadata contracts.
-- `tschamut_swissalti3d_pilot.md`: local/private Tschamut real-site pilot
-  workflow.
-- `tschamut_swissalti3d_controlled_pilot_plan.md`: historical controlled
-  Tschamut/swissALTI3D pilot plan; use current roadmaps for priority decisions.
-- `balfrin_tschamut_pilot_runbook.md`: reusable balfrin Tschamut pilot
-  operating procedure for readiness, validation/hazard execution, reducer
-  provenance inspection, scaling summary regeneration, and artifact hygiene.
-- `balfrin_tschamut_readiness.md`: read-only readiness checker for the balfrin
-  Tschamut conditional pilot checkout and ignored input artifacts; the selected
-  DT-02 readiness record is
-  `validation/pilot_runs/tschamut_public_balfrin_readiness_v1.yaml`.
-- `balfrin_probe_slurm_driver.md`: SLURM-first balfrin probe driver design for
-  dry-run generation, deterministic run roots, submit/collect modes, and output
-  metadata capture; DT-03 repeatability evidence is recorded in
-  `validation/pilot_runs/tschamut_public_slurm_probe_repeatability_v1.yaml`.
+- `chant_sura_fluelapass_real_context_acquisition_decision.md`: deferred
+  second-site public-context staging decision and operator checklist.
+
+## Current Balfrin And Tschamut Evidence
+
+- `balfrin_probe_slurm_driver.md`: SLURM-first Balfrin probe driver.
+- `balfrin_skills.md`: practical Balfrin cluster-discovery notes.
+- `balfrin_minimal_demo_vs_closure.md`: minimal demo versus scientific closure
+  boundary pointer retained because active Balfrin contracts cite it.
+- `balfrin_post_run_interpretation_gate.md`: post-run interpretation gate and
+  closure boundary.
+- `balfrin_failure_recovery_playbook.md`: failure/recovery playbook for the
+  current Balfrin pilot path.
+- `balfrin_restartability_recovery_report.md`: restartability/recovery
+  evidence summary consumed by the Balfrin evidence bundle.
+- `balfrin_single_job_execution_sufficiency.md`: canonical Balfrin runtime,
+  output, restartability, reducer, metrics, and scale-boundary summary.
+- `balfrin_tschamut_pilot_runbook.md`: reusable Balfrin Tschamut pilot
+  operating procedure.
+- `balfrin_tschamut_readiness.md`: read-only readiness checker documentation.
+- `target_area_physical_evidence_acquisition_pack.md`: target-area
+  physical-evidence acquisition pack; not an annual/physical authorization.
+- `tschamut_public_conditional_pilot_gate_report.md`: selected public
+  conditional pilot gate report.
+- `tschamut_public_same_scale_uncertainty_envelope.md`: same-scale uncertainty
+  envelope and closure-limiting layers.
+- `tschamut_public_bounded_validation_output_profile.md`: validation-output
+  pressure and reduced-output evidence.
 - `tschamut_public_scalable_conditional_target_gate.md`: selected Tschamut
-  target-gate evidence record, including the DT-04 balfrin reproduction summary
-  and validator for
-  `validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml`.
-- `mid_scale_balfrin_probe_plan.md`: current mid-scale balfrin probe evidence
-  and next one-dimension-at-a-time probe priorities.
+  scalable conditional target-gate record.
+- `tschamut_public_scalable_conditional_execution.md`: scalable conditional
+  execution design and diagnostics contract.
+- `tschamut_public_ensemble_feasibility.md`: bounded ensemble feasibility
+  record for the selected public pilot.
+- `tschamut_public_obstacle_context_scope.md`: obstacle/context scope record
+  used by closure and consistency helpers.
+- `tschamut_public_pilot_gis_package_review.md`: local GIS package review
+  record retained because tracked pilot records cite it.
+- `tschamut_public_pilot_scaling_review.md`: local scaling and output-volume
+  evidence retained because validators and pilot records cite it.
+- `tschamut_swissalti3d_pilot.md`: current swissALTI3D public-pilot context.
+- `conditional_hazard_convergence_acceptance_protocol.md`: current conditional
+  hazard convergence protocol.
+- `output_budget_reducer_scaling_gate.md`: output-budget and reducer scaling
+  gate.
+- `real_site_dem_input_conditioning_qa_gate.md`: DEM/input conditioning QA gate.
 
-## Hazard And Probabilistic Semantics
-
-- `hazard_layers.md`: hazard-layer builder, raster outputs, GeoTIFF options,
-  and layer semantics.
-- `hazard_map_semantics.md`: allowed/disallowed hazard-map language,
-  conditional versus physical/annual probability, denominators, and
-  normalization rules.
-- `conditional_hazard_convergence_acceptance_protocol.md`: DT-05 acceptance
-  protocol for conditional hazard-map evidence and the current DT-04 Balfrin
-  assessment.
-- `stochastic_sampling_rng_stream_audit.md`: DT-06 audit of current stochastic
-  sampling semantics, RNG stream labels, known limitations, and current
-  no-behavior-change boundary.
-- `real_site_dem_input_conditioning_qa_gate.md`: DT-07 fail-closed QA gate for
-  raw public inputs, DEM conditioning, CRS/registration, nodata, artifact, and
-  boundary semantics.
-- `output_budget_reducer_scaling_gate.md`: DT-08 fail-closed QA gate for
-  validation/hazard output budgets, summary-only curves, grid CSV suppression,
-  reducer restart manifests, and dense-grid scaling risk.
-- `probabilistic_scenario_model_design.md`: scenario-level probability modes,
-  source-zone placeholders, and normalization conventions.
-- `physical_source_frequency_design_gate.md`: design-gate decision for future
-  physical/source-frequency semantics; the current decision keeps the
-  annual/physical prototype deferred.
-- `source_frequency_evidence_contract.md`: inactive source-rate evidence
-  schema, validator, and template for closing one design-gate blocker without
-  enabling annual or physical products.
-- `block_release_probability_evidence_contract.md`: inactive block-scenario
-  and release-cell probability evidence schema, validator, and template for
-  closing one design-gate blocker without enabling annual or physical products.
-- `physical_frequency_reducer_preconditions.md`: inactive overlap-adjusted
-  reducer and uncertainty-propagation precondition schema, validator, and
-  template for closing one design-gate blocker without enabling annual or
-  physical products.
-- `annual_physical_validation_calibration_review_gate.md`: inactive
-  validation/calibration review-gate schema, validator, and template for
-  closing one design-gate blocker without enabling annual or physical products.
-- `annual_physical_prototype_preflight.md`: inactive annual/physical prototype
-  preflight schema, validator, and template that keeps the prototype
-  blocked while the design gate remains deferred.
-- `probabilistic_trajectory_metadata_design.md`: trajectory metadata fields for
-  probabilistic scenario/source-zone propagation.
-- `probabilistic_hazard_phase1_closure.md`: implemented Level 1/2
-  probabilistic map semantics and Phase 1 limits.
-- `probabilistic_hazard_mapping_development_roadmap.md`: broader staged
-  probabilistic hazard-map development roadmap.
-
-## Benchmark And Validation Evidence
+## Benchmarks And Diagnostics
 
 - `benchmark_catalog.md`: implemented verification and validation inventory.
 - `public_benchmark_framework.md`: unified public benchmark ingestion and
   no-tuning workflow.
-- `public_benchmark_results_baseline.md`: historical no-tuning public benchmark
-  execution inventory.
+- `public_benchmark_results_baseline.md`: no-tuning public benchmark inventory.
 - `tschamut_public_benchmark_reproduction.md`: public Tschamut reproduction
-  workflow and registration-reviewed benchmark context.
-- `public_tschamut_all_runs_grouped_validation.md`: grouped all-runs public
-  Tschamut validation report.
-- `public_tschamut_failure_mode_analysis.md`: grouped Tschamut failure-mode
-  analysis.
-- `tschamut_public_conditional_pilot_gate_report.md`: selected public
-  conditional pilot gate report.
-- `tschamut_public_ensemble_feasibility.md`: selected-domain ensemble
-  feasibility gate.
-- `chant_sura_contact_validation.md`: Chant Sura trajectory/contact validation.
+  workflow and registration-reviewed context.
+- `public_tschamut_all_runs_grouped_validation.md`: grouped public Tschamut
+  validation report.
+- `public_tschamut_failure_mode_analysis.md`: grouped public Tschamut
+  failure-mode analysis.
+- `chant_sura_contact_validation.md`: Chant Sura contact validation.
 - `chant_sura_contact_generalization.md`: held-out Chant Sura split.
-- `tschamut_public_obstacle_context_scope.md`: forest/obstacle omission scope
-  record.
-
-## Diagnostics And Experimental Work
-
-- `stopping_behavior_diagnostic_report.md`: no-tuning stopping-behavior
-  diagnostic schema and evidence.
-- `terrain_material_interaction_protocol.md`: implemented stop-state,
-  last-impact, and exposure provenance for terrain/material diagnostics.
-- `terrain_material_diagnostic_gap_report.md`: remaining gaps before
-  terrain/material calibration or model-selection work.
-- `terrain_material_interaction_diagnostic_protocol.md`: no-tuning protocol for
-  terrain/material diagnostics.
-- `terrain_material_diagnostic_matrix.md`: first terrain/material diagnostic
-  matrix using explicit stop-state fields where available.
+- `stopping_behavior_diagnostic_report.md`: no-tuning stopping diagnostics.
+- `terrain_material_interaction_protocol.md`: implemented terrain/material
+  diagnostic instrumentation.
+- `terrain_material_interaction_diagnostic_protocol.md`: no-tuning
+  terrain/material diagnostic protocol.
+- `terrain_material_diagnostic_gap_report.md`: terrain/material calibration
+  and model-selection gaps.
+- `terrain_material_diagnostic_matrix.md`: first terrain/material matrix.
 - `impact_diagnostics.md`: optional per-impact event logging fields.
-- `shape_aware_block_scaffold_design.md`: passive shape metadata scaffold
-  design.
-- `shape_metadata_application_plan.md`: passive shape metadata application plan.
+
+## Calibration And Historical Research Records
+
+These remain top-level only because current consistency checks, calibration
+scripts, or validation docs still cite them directly. They are research
+diagnostics, not accepted calibration or physical-credibility evidence.
+
+- `tschamut_calibration.md`: v0.3.0 Tschamut calibration experiment record.
+- `tschamut_scarring_experiment.md`: Tschamut scarring comparison record.
+- `scarring_single_impact_calibration.md`: proxy single-impact scarring
+  calibration record.
+- `scarring_real_data_calibration.md`: Chant Sura table-derived
+  single-impact scarring calibration record.
+
+## Experimental Or Deferred
+
 - `active_shape_contact_design.md`: design-only active shape-contact proposal.
-- `shape_contact_v0_experimental_contract.md`: frozen experimental contract for
-  `shape_contact_v0`.
+- `shape_aware_block_scaffold_design.md`: passive shape metadata scaffold.
+- `shape_metadata_application_plan.md`: passive shape metadata application
+  plan.
+- `shape_contact_v0_experimental_contract.md`: frozen experimental contract.
 - `shape_contact_v0_runtime_wiring_plan.md`: design-only runtime wiring plan.
-- `shape_contact_v0_internal_validation_progression.md`: internal-only
-  validation-style smoke progression.
-- `shape_contact_v0_chant_sura_internal_model_selection.md`: internal
-  model-selection result.
+- `shape_contact_v0_internal_validation_progression.md`: internal-only smoke
+  progression.
+- `shape_contact_v0_chant_sura_internal_model_selection.md`: internal model
+  selection result.
 - `shape_contact_v0_rebound_diagnostic_audit.md`: rebound/provenance audit and
   pause rationale.
 
-## Performance And Output Evidence
+## Inactive Physical/Annual Contracts
 
-- `performance_benchmarking.md`: lightweight benchmark instrumentation and
-  profiles.
-- `performance_ci_tracking.md`: CI benchmark baseline comparison and main-trend
+These are retained as `inactive_contract` records. They do not enable annual
+frequency, physical probability, return-period, risk, exposure, vulnerability,
+or operational products.
+
+- `physical_source_frequency_design_gate.md`
+- `source_frequency_evidence_contract.md`
+- `block_release_probability_evidence_contract.md`
+- `physical_frequency_reducer_preconditions.md`
+- `annual_physical_validation_calibration_review_gate.md`
+- `annual_physical_prototype_preflight.md`
+- `probabilistic_scenario_model_design.md`
+- `probabilistic_trajectory_metadata_design.md`
+- `probabilistic_hazard_phase1_closure.md`
+
+## Performance And Scaling
+
+- `performance_benchmarking.md`: benchmark instrumentation and profiles.
+- `performance_ci_tracking.md`: CI benchmark comparison and trend
   visualization workflow.
 - `performance_benchmark_profile_reference.md`: current benchmark profile
   reference.
-- `performance_benchmark_results_initial.md`: initial timing and output-volume
-  results.
-- `performance_benchmark_synthetic_scale.md`: opt-in synthetic scale benchmark
-  design.
-- `performance_benchmark_synthetic_scale_results.md`: measured synthetic scale
-  results.
+- `performance_benchmark_synthetic_scale.md`: opt-in synthetic scale
+  benchmark design.
 - `parquet_impact_benchmark_results.md`: Parquet impact-event benchmark.
 - `hazard_throughput_bottleneck_report.md`: hazard input-throughput
-  bottleneck observations.
-- `hazard_workflow_scale_review.md`: hazard-layer stress-test and Swiss-scale
+  observations.
+- `hazard_workflow_scale_review.md`: hazard-layer stress test and Swiss-scale
   requirements.
-- `hazard_output_profile_contract.md`: profile-level output contracts for
-  conditional hazard runs (`full_debug`, `scalable_conditional`,
-  `provenance_audit`).
-- `large_scale_execution_probe.md`: projection-only large-scale conditional
-  execution estimator and planning assumptions.
+- `large_scale_execution_probe.md`: projection-only execution estimator.
+- `multi_zone_reducer_pressure_probe.md`: scratch-root multi-zone reducer
+  pressure probe.
 
-## Background And Older Model Work
+## Archive And Script Inventory
 
-These documents remain for implementation traceability, but they are not the
-starting point for new roadmap decisions:
+- `archive/README.md`: archived and superseded docs preserved for traceability.
+- `script_inventory.md`: script tiers, deletion policy, and high-risk workflow
+  CLIs that must not be moved in the first cleanup pass.
+- `next_development_targets.md`: legacy pointer kept only for old links; do not
+  add current priorities there.
+- `roadmap_recommendation_matrix.md`: supporting scoring appendix, not the
+  active queue.
+- `roadmap_hazard_mapping.md`: long-term roadmap.
+- `real_case_intensity_frequency_implementation_roadmap.md`: long-term staged
+  roadmap toward future physical/annual semantics, not current task authority.
+- `scalability_and_data_formats_review.md`: historical planning review with
+  current notes where implemented.
 
-- `literature_review.md`
-- `verification_plan.md`
-- `model_review_v0.md`
-- `model_review_v0_3.md`
-- `model_gap_analysis_v0_3.md`
-- `scarring_contact_v1_review.md`
-- `scarring_impact_inspection.md`
-- `scarring_single_impact_calibration.md`
-- `scarring_real_data_calibration.md`
-- `tschamut_scarring_experiment.md`
-- `weighted_hazard_layer_review.md`
-- `ramms_gap_analysis.md`
-- `model_benchmark_execution_report.md`
-- `model_overall_assessment_report.md`
-- `expert_review_briefing.md`
+## Maintenance Rules
 
-## Documentation Maintenance
-
-When updating docs:
-
-- Prefer updating a governing document or current roadmap over adding another
+- Prefer updating a governing or current workflow document over adding a new
   standalone report.
-- Put long-lived sequencing decisions in `decision_log.md`.
-- Treat benchmark/result snapshots as historical unless regenerated with the
-  current code and current command paths.
-- Do not duplicate raw data, generated result directories, or large geospatial
-  outputs in `docs/`.
-- After removing or renaming docs, run `python3 scripts/check_repo_consistency.py`
-  and search for stale references.
+- Put durable decisions in `decision_log.md` and completed TB execution in
+  `agent_work_log.md`.
+- Move superseded reports to `archive/` instead of leaving them top-level with
+  current-looking titles.
+- Do not treat archived evidence as current maturity unless a current summary
+  cites and interprets it.
+- After moving docs or changing command references, run:
+
+```bash
+PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
+```
 
 Version notes are tracked in `../CHANGELOG.md`.

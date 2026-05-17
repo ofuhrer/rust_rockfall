@@ -373,7 +373,7 @@ optimize for the public-dataset Swiss pilot and later physical/annual
 intensity-frequency products.
 
 Detailed sources: `model_benchmark_execution_report.md`,
-`model_overall_assessment_report.md`, `expert_review_briefing.md`,
+`archive/model_overall_assessment_report.md`, `expert_review_briefing.md`,
 `benchmark_catalog.md`.
 
 ### Post TB-001 Through TB-004 Backlog Direction
@@ -391,7 +391,7 @@ execution blocker is validation debug-output volume. A distributed SLURM design
 would be premature until those blockers are reduced or shown to be secondary.
 
 Detailed sources: `docs/task_backlog.md`,
-`docs/tschamut_public_conditional_pilot_acceptance_summary.md`,
+`docs/archive/tschamut_public_conditional_pilot_acceptance_summary.md`,
 `docs/conditional_hazard_convergence_acceptance_protocol.md`,
 `docs/tschamut_public_bounded_validation_output_profile.md`,
 `docs/tschamut_public_obstacle_context_scope.md`.
@@ -560,7 +560,7 @@ roadmaps and evidence reports:
 - `expert_review_release_note.md`
 - `current_state_gap_analysis_next_directions.md`
 - `repository_scientific_roadmap_review.md`
-- `deep_code_review.md`
+- `archive/deep_code_review.md`
 - `deep_repository_review.md`
 
 When a detailed result is needed, regenerate or re-read the current benchmark,

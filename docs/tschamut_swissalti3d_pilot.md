@@ -101,7 +101,7 @@ The generated cases write ignored outputs under `validation/results/tschamut_swi
 
 The `--cell-size` examples below are convenience commands. Real controlled
 pilot acceptance should use the explicit DEM-derived grid arguments documented
-in `docs/tschamut_swissalti3d_controlled_pilot_plan.md`, so the hazard grid
+in `docs/archive/tschamut_swissalti3d_controlled_pilot_plan.md`, so the hazard grid
 matches the private DEM extent, dimensions, and cell size.
 
 Baseline hazard layers:

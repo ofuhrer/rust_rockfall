@@ -64,11 +64,11 @@ This is not an operational hazard assessment and not a claim of equivalence with
 
 ## Review Materials
 
-- `docs/model_benchmark_execution_report.md`
-- `docs/model_overall_assessment_report.md`
+- `docs/archive/model_benchmark_execution_report.md`
+- `docs/archive/model_overall_assessment_report.md`
 - `docs/public_tschamut_all_runs_grouped_validation.md`
 - `docs/public_tschamut_failure_mode_analysis.md`
 - `docs/chant_sura_contact_validation.md`
 - `docs/probabilistic_hazard_phase1_closure.md`
-- `docs/ramms_gap_analysis.md`
+- `docs/archive/ramms_gap_analysis.md`
 - `docs/active_shape_contact_design.md`

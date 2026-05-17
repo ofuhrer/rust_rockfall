@@ -28,6 +28,20 @@ ALLOWED_GENERATED = {
     "calibration/results/.gitkeep",
     "hazard/results/.gitkeep",
 }
+TOP_LEVEL_HISTORICAL_DOC_MARKERS = (
+    "Historical status note:",
+    "Status: historical",
+    "Status: planning artifact",
+    "Status: legacy planning",
+    "Status: superseded",
+    "not authoritative",
+)
+TOP_LEVEL_HISTORICAL_DOC_ALLOWLIST = {
+    "docs/next_development_targets.md",
+    "docs/roadmap_recommendation_matrix.md",
+    "docs/real_case_intensity_frequency_implementation_roadmap.md",
+    "docs/scalability_and_data_formats_review.md",
+}
 IGNORED_ARTIFACT_ROOT_PREFIXES = (
     "hazard/results/",
     "validation/private/",
@@ -188,6 +202,9 @@ def main() -> int:
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_python_execution_policy_guidance())
     errors.extend(check_roadmap_target_authority())
+    errors.extend(check_top_level_historical_doc_surface())
+    errors.extend(check_top_level_doc_index_coverage())
+    errors.extend(check_script_inventory_coverage())
     errors.extend(check_task_backlog_and_work_log_hygiene())
     errors.extend(check_active_backlog_inspect_first_paths())
     errors.extend(check_command_plan_reference_integrity())
@@ -2140,6 +2157,88 @@ def check_roadmap_target_authority() -> list[str]:
     return errors
 
 
+def check_top_level_historical_doc_surface() -> list[str]:
+    tracked = subprocess.run(
+        ["git", "ls-files", "docs/*.md"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    ).stdout.splitlines()
+    return find_top_level_historical_doc_surface_errors(tracked, root=ROOT)
+
+
+def find_top_level_historical_doc_surface_errors(
+    tracked_paths: Iterable[str],
+    *,
+    root: Path = ROOT,
+) -> list[str]:
+    errors: list[str] = []
+    for tracked_path in sorted(tracked_paths):
+        if not tracked_path.startswith("docs/") or tracked_path.startswith("docs/archive/"):
+            continue
+        if tracked_path in TOP_LEVEL_HISTORICAL_DOC_ALLOWLIST:
+            continue
+        path = root / tracked_path
+        if not path.exists():
+            continue
+        header = "\n".join(path.read_text(encoding="utf-8").splitlines()[:8])
+        for marker in TOP_LEVEL_HISTORICAL_DOC_MARKERS:
+            if marker in header:
+                errors.append(
+                    f"{tracked_path} has archived/superseded status marker {marker!r}; "
+                    "move it under docs/archive/ or add an explicit allowlist entry"
+                )
+                break
+    return errors
+
+
+def check_top_level_doc_index_coverage() -> list[str]:
+    docs = [
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "docs").glob("*.md")
+        if path.name != "README.md"
+    ]
+    index_text = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    return find_top_level_doc_index_coverage_errors(docs, index_text)
+
+
+def find_top_level_doc_index_coverage_errors(
+    doc_paths: Iterable[str],
+    index_text: str,
+) -> list[str]:
+    errors: list[str] = []
+    for doc_path in sorted(doc_paths):
+        if not doc_path.startswith("docs/") or doc_path.startswith("docs/archive/"):
+            continue
+        doc_name = Path(doc_path).name
+        if doc_name not in index_text and doc_path not in index_text:
+            errors.append(f"docs/README.md does not index top-level doc {doc_path}")
+    return errors
+
+
+def check_script_inventory_coverage() -> list[str]:
+    script_paths = [
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "scripts").glob("*.py")
+    ]
+    inventory_text = (ROOT / "docs/script_inventory.md").read_text(encoding="utf-8")
+    return find_script_inventory_coverage_errors(script_paths, inventory_text)
+
+
+def find_script_inventory_coverage_errors(
+    script_paths: Iterable[str],
+    inventory_text: str,
+) -> list[str]:
+    errors: list[str] = []
+    for script_path in sorted(script_paths):
+        if not script_path.startswith("scripts/"):
+            continue
+        if f"`{script_path}`" not in inventory_text:
+            errors.append(f"docs/script_inventory.md does not classify {script_path}")
+    return errors
+
+
 def check_task_backlog_and_work_log_hygiene() -> list[str]:
     errors: list[str] = []
     backlog_path = ROOT / "docs/task_backlog.md"
@@ -3333,7 +3432,7 @@ def _has_claim_hygiene_allowance(text: str, terms: tuple[str, ...]) -> bool:
 def check_contact_model_docs() -> list[str]:
     errors = []
     paths = [
-        ROOT / "docs/model_review_v0.md",
+        ROOT / "docs/archive/model_review_v0.md",
         ROOT / "docs/model_design.md",
         ROOT / "docs/validation_data_schema.md",
     ]
