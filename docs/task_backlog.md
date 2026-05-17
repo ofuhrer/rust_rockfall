@@ -24,43 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-127: Measure Practical Balfrin Ensemble Frontier
-
-Goal: Estimate the smallest useful next Balfrin ensemble by comparing runtime,
-output growth, rebuildability cost, and uncertainty/stability changes across
-measured or bounded ensemble evidence.
-
-Capability gap reduced: Ensemble-size practicality and uncertainty
-characterization.
-
-Why this outranks alternatives: After a measured demonstration exists, the next
-question is not Swiss-wide production; it is the smallest additional bounded
-ensemble that would materially improve uncertainty interpretation.
-
-Inspect first:
-
-- `scripts/summarize_same_scale_stability_frontier.py`
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_balfrin_scientific_delta_report.py`
-- `scripts/summarize_balfrin_single_job_execution.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- A practical ensemble-frontier report with uncertainty reduction, runtime
-  growth, output growth, rebuildability cost, and a minimum-useful-ensemble
-  recommendation or explicit defer/no-go label.
-- Tests preserving blocked behavior when measured Balfrin evidence is absent.
-
-Definition of done:
-
-- The report identifies whether a next bounded ensemble is scientifically
-  justified and operationally practical without authorizing production scale-up.
-
-Boundaries: Do not run a large production ensemble, tune physics, or authorize
-Swiss-wide execution.
-
 ### TB-128: Update Swiss-Wide Envelope From Measured Balfrin Demo
 
 Goal: Recompute the Swiss-wide runtime, storage, file-count, memory, and
