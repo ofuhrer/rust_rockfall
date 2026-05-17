@@ -310,14 +310,18 @@ recommendation for whether another small probe would still be informative.
 
 ## Minimal Bounded Probe Status
 
-The minimal bounded Balfrin follow-up probe is no longer blocked by missing
-optional planning metadata. The reduced-output probe fixture now carries the
-`probabilistic_metadata` and `hazard_probability` fields expected by
-`scripts/summarize_bounded_next_ensemble_feasibility_probe.py`.
+The minimal bounded Balfrin follow-up probe moved from planning handoff to one
+explicitly authorized measured run. TB-168 submitted the frozen target-area
+contract as SLURM job `4329024`, which completed successfully at:
 
-- Probe status: `deferred_pending_authorization`
-- Planning state: the smallest useful probe can be described and packaged, but
-  it is not authorized or submitted by default
+- `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`
+
+- Probe status: `measured_authorized_probe_completed`
+- Planning state: `--generate-only` remains available for future handoffs, but
+  a generated package is not execution approval
+- Metrics state: measured wall time, output bytes, file count, and conditional
+  curve rows are available; peak memory and split validation/hazard output
+  metrics remain incomplete in the preserved target-area evidence
 - Safety state: `scale_up_authorized` and `distributed_execution_authorized`
   remain false
 - Failure mode: removing either optional metadata block still produces a
@@ -325,10 +329,11 @@ optional planning metadata. The reduced-output probe fixture now carries the
 
 The practical frontier helper
 `scripts/summarize_balfrin_ensemble_frontier.py` and the Swiss-wide envelope
-helper now propagate this deferred recommendation instead of treating the
-planning basis as absent. `scripts/submit_balfrin_probe.py --generate-only` can
-also emit an unlaunched submission package without invoking the full frontier
-scan. That package is an operator handoff, not execution approval.
+helper use this bounded measured probe as evidence, while keeping additional
+probes and scale-up deferred until explicitly authorized.
+`scripts/submit_balfrin_probe.py --generate-only` can still emit an unlaunched
+submission package without invoking the full frontier scan. That package is an
+operator handoff, not execution approval.
 
 TB-156 added a metrics-remediation contract for the Balfrin evidence bundle. It
 separates missing mandatory metrics, unavailable ancillary metrics, and

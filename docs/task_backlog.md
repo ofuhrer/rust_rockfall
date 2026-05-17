@@ -22,7 +22,7 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-Backlog refill needed after TB-178; no active TB tasks are queued.
+Backlog refill needed after TB-179; no active TB tasks are queued.
 
 ## Backlog Protocol
 

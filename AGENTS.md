@@ -28,6 +28,9 @@ PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB
 rg -n "^### TB-xxx:" docs/task_backlog.md
 ```
 
+If the context helper reports `backlog_refill_needed=true`, do not invent an
+implementation task. Run a scoped backlog-refill or gap-analysis task first.
+
 Read only the selected backlog task and its `Inspect first` files unless the
 task explicitly asks for broader context. Use `--detail full` on the context
 helper only for orchestrator/review work.

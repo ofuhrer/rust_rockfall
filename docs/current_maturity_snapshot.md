@@ -17,10 +17,9 @@ single-node SLURM submission path, a measured Balfrin run root, a canonical
 evidence bundle, a replay smoke helper, a live interruption/resume proof, a
 post-run scientific interpretation layer, GIS/COG scope classification,
 runtime/scaling frontier helpers, AOI/release/scenario dry-run automation, and
-a second-site acquisition trigger matrix. The follow-up probe path now has a
-complete reduced-fixture probabilistic metadata contract and an unlaunched
-Balfrin submission-package handoff; it remains `deferred_pending_authorization`
-until a human explicitly approves another run. The measured Balfrin run is:
+a second-site acquisition trigger matrix. The follow-up target-area probe path
+has also moved from packaged handoff to one explicitly authorized measured
+Balfrin run. The measured Balfrin single-release-zone run is:
 
 - run root:
   `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`;
@@ -28,19 +27,32 @@ until a human explicitly approves another run. The measured Balfrin run is:
 - node: `nid001226`;
 - exit status: completed successfully with exit code `0`.
 
-The current target-area review state is now also wrapped into a deterministic
-target-area evidence bundle that keeps the frozen handoff report, the preserved
-probe-metrics report, and the measured canonical bundle separate so the
-available, unavailable, blocked, and measured provenance remains explicit.
+The authorized target-area probe is:
 
-This is the first real Balfrin single-release-zone demonstration evidence in
-the repository. It is still a bounded, non-operational conditional diagnostic
-demonstration. It does not establish physical credibility, annual frequency,
+- run root:
+  `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`;
+- SLURM job: `4329024`;
+- exit status: completed successfully with exit code `0`;
+- measured evidence: 58 output files, `192350243` output bytes, and `729600`
+  conditional-curve rows.
+
+The current target-area review state is now also wrapped into a deterministic
+target-area evidence bundle, metrics report, GIS/COG scope audit, scaling
+envelope, management package, and physical-evidence acquisition pack. Those
+reports keep measured, unavailable, blocked, and fixture-backed provenance
+separate. Peak-memory and split validation/hazard output metrics remain
+incomplete for the preserved target-area evidence, and local target-area
+spatial-uncertainty artifacts are still unavailable unless the Balfrin run root
+is mounted.
+
+These are the first real Balfrin demonstration evidence records in the
+repository. They are still bounded, non-operational conditional diagnostic
+demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
 The largest near-term gap has moved from "can the Balfrin demo execute?" and
-"can an AOI dry run be composed?" to "which measured follow-up most reduces
-the remaining scientific, physical-credibility, portability, and scaling
-uncertainty?"
+"can an AOI dry run be composed?" to "which next measured or automation task
+most reduces the remaining scientific, physical-credibility, portability, and
+scaling uncertainty without overclaiming the current demonstration?"
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -194,12 +206,11 @@ objective are:
    measured Balfrin demo run root
    `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`,
    and now surfaces explicit `no_go`, `defer`, and `allowed_next_probe`
-   labels for planning cases. The bounded next-ensemble probe now evaluates
-   the complete optional-metadata contract and resolves to
-   `deferred_pending_authorization` when the reduced-output fixture carries the
-   required fields; missing optional metadata still fails closed. The Balfrin
-   submission-package helper can now generate the unlaunched handoff quickly
-   without invoking full live frontier scans. A metrics-remediation contract
+   labels for planning cases. The bounded next-ensemble probe evaluates the
+   complete optional-metadata contract and still fails closed when optional
+   metadata is absent. One bounded target-area probe has now been explicitly
+   authorized and measured on Balfrin; future generated submission packages are
+   operator handoffs, not execution approval. A metrics-remediation contract
    records missing mandatory, unavailable ancillary, and next-run-required
    fields. TB-170 now wraps the frozen target-area handoff report, the
    preserved probe-metrics report, and the measured canonical bundle into one
@@ -307,13 +318,18 @@ objective are:
     probability metadata needed by the reduced bounded-probe fixture while
     retaining fail-closed missing-metadata behavior; TB-154 threaded the
     `deferred_pending_authorization` recommendation through Balfrin and
-    Swiss-wide frontier helpers; TB-155 added the unlaunched Balfrin submission
-    package handoff and a follow-up fix kept `--generate-only` fast; TB-156
-    added the Balfrin metrics remediation checklist; TB-157 connected AOI case
-    skeletons to generic scenario generation; TB-158 added product-by-product
-    Chant Sura real-context staging guidance; TB-159 mapped AOI automation
-    outputs to physical-credibility boundaries; and TB-160 added the AOI GIS
-    scope review summary.
+    Swiss-wide frontier helpers; TB-155 added the Balfrin submission-package
+    handoff and a follow-up fix kept `--generate-only` fast; TB-156 added the
+    Balfrin metrics remediation checklist; TB-157 connected AOI case skeletons
+    to generic scenario generation; TB-158 added product-by-product Chant Sura
+    real-context staging guidance; TB-159 mapped AOI automation outputs to
+    physical-credibility boundaries; TB-160 added the AOI GIS scope review
+    summary; TB-161 through TB-167 froze and prepared the target-area
+    demonstration path; TB-168 executed the authorized target-area Balfrin
+    probe; TB-169 through TB-179 turned that run into metrics, evidence,
+    GIS/COG, diagnostic, restartability, scaling, management, second-site, and
+    physical-evidence review artifacts, then left the backlog empty for the
+    next gap-analysis pass.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public
@@ -322,7 +338,7 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
-    backlog is currently empty after TB-178 and `print_agent_task_context.py` reports
+    backlog is currently empty after TB-179 and `print_agent_task_context.py` reports
     `backlog_refill_needed=true`. The work log is chronological, archived
     history is separated, and repo consistency checks now reject unreachable or
     self-referential work-log commit hashes. File-backed worker logs reduced
@@ -350,14 +366,14 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-178:
+Current high-value work after TB-179:
 
-- refill the backlog from the measured Balfrin demo, the now-unblocked but
-  unauthorized bounded-probe package handoff, explicit replay/metrics
-  remediation status, and completed AOI dry-run composition state, not from the
-  older pre-execution plan;
-- decide whether the next live Balfrin work should be an explicitly authorized
-  small bounded ensemble probe, additional measured metrics capture, or
+- refill the backlog from the measured Balfrin single-release-zone and
+  target-area evidence, the explicit replay/metrics remediation status, and
+  completed AOI dry-run composition state, not from the older pre-execution
+  plan;
+- decide whether any next live Balfrin work should be explicitly authorized as
+  a metrics-completion rerun, a bounded ensemble probe, or deferred in favor of
   public-context-backed portability work;
 - decide whether the next portability step is real Chant Sura public-context
   acquisition, a measured second-site dry run after staging, or further

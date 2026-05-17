@@ -18,8 +18,10 @@ decision_rationale: >-
   acquisition review, but the clean-checkout acquisition planner still reports
   blocked_missing_inputs until the expected local core files are staged, and
   the public-context bundle remains intentionally deferred. The task boundary
-  forbids any real swisstopo downloads until an explicit acquisition
-  authorization exists after the Balfrin demo path is assessed.
+  forbids any real swisstopo downloads until explicit acquisition
+  authorization exists. Measured Balfrin evidence now exists, but the current
+  interpretation remains conditional, bounded, and non-operational; it does
+  not automatically authorize second-site public-context staging.
 readiness_impact:
   planner_boundary: blocked_missing_inputs
   public_context_boundary: blocked_missing_inputs
@@ -145,8 +147,9 @@ operator response is a no-download fallback, not a retry loop.
 
 ## Balfrin Trigger Matrix
 
-The current decision stays `defer` until measured Balfrin evidence is
-available. The trigger is concrete:
+Measured Balfrin evidence is now available, but the current decision stays
+`defer` because the trigger requires accepted conditional-diagnostic evidence
+and an explicit acquisition authorization. The trigger is concrete:
 
 - `interpretation_status: measured_conditional_diagnostic`
 - `artifact_acceptance_status: accepted_conditional_diagnostic`

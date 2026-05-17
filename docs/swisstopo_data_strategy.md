@@ -398,13 +398,14 @@ release zone or authorize operational interpretation.
 The current decision pack for the Chant Sura / Flüelapass candidate is
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It keeps the
 decision explicit as `defer`, lists the cache/output roots, and preserves the
-public-context staging boundary until the Balfrin demo path has been assessed
-and an explicit acquisition authorization exists. The same pack now carries a
-machine-readable Balfrin trigger matrix so measured post-run evidence can flip
-the next acquisition decision from defer to proceed without treating synthetic
-fixtures as public-context evidence, and it now also carries the concrete
-operator execution checklist plus the no-download fallback report for the
-second-site public-context workflow.
+public-context staging boundary until explicit acquisition authorization
+exists. Measured Balfrin evidence is now available, but it does not
+automatically authorize real second-site staging. The same pack carries a
+machine-readable Balfrin trigger matrix so a future accepted diagnostic
+decision can flip acquisition from defer to proceed without treating synthetic
+fixtures as public-context evidence, and it also carries the concrete operator
+execution checklist plus the no-download fallback report for the second-site
+public-context workflow.
 
 ## Data-Size Implications
 

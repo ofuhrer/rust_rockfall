@@ -54,6 +54,10 @@ changed JSON/TOML/Markdown with available local tools.
 - Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
 - For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, deterministic reducer merge rules, and resume semantics before adding new execution frameworks.
 - CSCS/SLURM orchestration is in scope for the hazard-map goal, but should follow stable local chunk/reducer contracts. Do not add MPI, GPU, or heavy distributed frameworks without an explicit phase change.
+- The current measured Balfrin path is single-node SLURM execution with
+  rebuildable reduced outputs. Treat additional Balfrin runs, distributed
+  execution, and Swiss-wide scale-up as separate authorization steps, not as
+  automatic consequences of a successful probe.
 
 ## Versioning Rules
 

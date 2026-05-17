@@ -8,14 +8,17 @@
 
 ## What Is Available
 
-The frozen target-area contract is present, but it remains a template-only
-handoff rather than a measured uncertainty bundle.
+The frozen target-area contract and a measured remote Balfrin target-area run
+exist, but the local tracked checkout still does not contain target-area hazard
+layers or spatial-uncertainty artifacts. This report therefore remains a local
+blocked-artifacts note, not a claim that the remote probe did not run.
 
 - `scripts/summarize_balfrin_target_area_evidence_bundle.py` reports
   `bundle_status=mixed_provenance`.
-- The target-area handoff section is `template_only`.
-- The probe-metrics section is `blocked_missing_inputs` because the preserved
-  run root is not present in this checkout.
+- The target-area handoff section records the frozen contract and remote run
+  root, but the local artifact sections remain unavailable.
+- The probe-metrics section is `blocked_missing_inputs` when the preserved
+  Balfrin run root is not mounted in this checkout.
 - The canonical Balfrin evidence bundle remains measured, but it is not a
   target-area spatial-uncertainty artifact and must not be treated as one.
 - `scripts/summarize_balfrin_target_area_gis_cog_scope.py` reports the target
@@ -80,4 +83,3 @@ PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_repor
 PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_evidence_bundle.py --format json
 PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_gis_cog_scope.py --format json
 ```
-

@@ -28,6 +28,14 @@ literature-based and transparent by design. It does not decompile or inspect
 proprietary binaries, and it does not claim numerical equivalence with any
 proprietary or operational hazard tool.
 
+Current Balfrin evidence has crossed from dry-run scaffolding into measured
+single-node SLURM execution. The repo records a measured single-release-zone
+demonstration, a live interruption/resume proof, and one authorized bounded
+target-area probe. These are conditional diagnostic demonstrations: they improve
+execution confidence and scaling realism, but they do not establish physical
+credibility, annual-frequency semantics, operational acceptance, distributed
+execution authorization, or Swiss-wide scale-up readiness.
+
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,
 and completed task history is recorded in `docs/agent_work_log.md`. Long-term roadmap

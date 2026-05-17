@@ -172,9 +172,10 @@ not a Swiss-wide production hazard service. New contributors should assume:
 - Tschamut same-scale artifacts are the canonical local diagnostic evidence.
 - Balfrin now has measured single-release-zone demonstration evidence, a live
   interruption/resume proof, a canonical evidence bundle, and a replay smoke
-  helper. The bounded follow-up probe has an unlaunched submission-package
-  handoff and metrics-remediation checklist, but it is still deferred until
-  explicit execution authorization.
+  helper. One explicitly authorized target-area probe has also completed on
+  Balfrin; it adds measured target-area runtime/output evidence, but peak-memory
+  and split validation/hazard output metrics remain incomplete. Further or
+  repeat Balfrin probes still require explicit execution authorization.
 - AOI-to-workflow automation exists as deterministic dry-run composition:
   product discovery, public-geodata cache verification, AOI terrain
   preprocessing, terrain release-zone candidate stability checks, generic

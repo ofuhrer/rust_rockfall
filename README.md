@@ -14,9 +14,13 @@ Balfrin single-release-zone demonstration. The current Balfrin path includes a
 frozen demonstration contract, SLURM execution evidence, a live
 interruption/resume proof, a canonical evidence bundle, replay smoke checks,
 rebuildable reduced outputs, GIS/COG scope reporting, a metrics-remediation
-checklist, and AOI-to-command-plan dry-run composition. The smallest follow-up
-Balfrin probe is now packageable as an unlaunched handoff, but it remains
-explicitly deferred until a human authorizes execution.
+checklist, AOI-to-command-plan dry-run composition, and one explicitly
+authorized target-area probe. That bounded target-area probe completed on
+Balfrin as SLURM job `4329024` under
+`/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
+It provides measured runtime/output evidence for the frozen target-area
+contract, while peak-memory and split validation/hazard output metrics remain
+incomplete. No further Balfrin execution is authorized by default.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
 dry-run helpers for AOI product discovery, public-geodata cache verification,
@@ -54,6 +58,9 @@ context helper:
 PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-xxx --format json
 ```
 
+If the helper reports `backlog_refill_needed`, do a scoped gap-analysis and
+backlog-refill pass before launching implementation workers.
+
 ## Key Documentation
 
 - `docs/project_overview.md` - detailed model, validation, GIS, and workflow background.
@@ -61,9 +68,12 @@ PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB
 - `docs/agent_reference.md` - detailed agent policy for broad changes.
 - `docs/task_backlog.md` - authoritative active TB task queue.
 - `docs/current_maturity_snapshot.md` - current project maturity and capability gaps.
+- `docs/balfrin_probe_slurm_driver.md` - SLURM-first Balfrin execution flow.
+- `docs/balfrin_single_job_execution_sufficiency.md` - measured Balfrin runtime/output evidence.
 - `docs/decision_log.md` - durable decisions.
 - `docs/agent_work_log.md` - chronological completed TB history.
 - `docs/swisstopo_data_strategy.md` - public geodata strategy and boundaries.
+- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` - second-site public-context staging decision.
 - `docs/validation_maturity_framework.md` - claim levels and validation maturity.
 
 ## Local Git Hooks
