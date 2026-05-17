@@ -249,6 +249,22 @@ it projects runtime, storage, file-count, and job-count bands from measured
 same-scale and Balfrin coefficients, and it labels extrapolated multi-AOI
 requests as no-go planning cases rather than as authorized scale-up.
 
+The current Swiss-wide projection from the measured target-area evidence
+(`--aoi-count 26 --release-zone-count 10 --trajectory-count 6`) is a
+`no_go_extrapolated_beyond_measured_evidence` case. The helper reports
+`no_go_labels` of `aoi_count_exceeds_measured_support` and
+`total_job_count_exceeds_measured_single_job_support`, with planning labels of
+`no_go_extrapolated_beyond_measured_evidence`,
+`defer_scale_up_authorized_false`, and
+`allowed_next_probe_measured_existing_artifacts`.
+
+- Runtime band: `347.825` / `463.84` / `1437.203` s
+- Storage band: `33441382` / `102793652` / `6955705120` bytes
+- File-count band: `156` / `442` / `4966`
+- Memory band: `367.018` / `409.22` / `411.058` MB
+- Interpretation: the measured target-area evidence supports a bounded local
+  next step, but it does not authorize Swiss-wide scale-up.
+
 ## Limitations
 
 - This summary reuses recorded Balfrin and reducer evidence; it does not run a new simulation.

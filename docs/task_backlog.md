@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-175: Update Target-Area Runtime And Swiss-Wide Scaling Envelope
-
-Goal: Recompute runtime/output and Swiss-wide scaling estimates from the target-area evidence.
-
-Capability gap reduced: Scaling realism after measured target-area execution.
-
-Why this outranks alternatives: Management needs to know what the target-area evidence implies for future larger domains without authorizing scale-up.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `tests/test_swiss_wide_execution_envelope.py`
-
-Deliverables:
-
-- Updated target-area scaling envelope.
-- Runtime, output, memory, and uncertainty tradeoff classification.
-- Explicit no-go, defer, or allowed-next-probe planning labels.
-
-Definition of done:
-
-- Scaling conclusions are recomputed from current evidence and do not imply Swiss-wide authorization.
-
-Boundaries: No distributed execution, no national-scale run, no scale-up authorization, and no operational claim.
-
 ### TB-176: Produce Target-Area Management Demonstration Package
 
 Goal: Assemble a compact management-facing package that explains the target-area Balfrin demonstration, evidence, limits, and next decision.
