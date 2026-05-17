@@ -26,6 +26,10 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_to_prepared_pilot_dry_run_v1"
+CASE_SKELETON_SCHEMA_VERSION = "aoi_to_prepared_pilot_case_skeleton_v1"
+COMMAND_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_manifest_v1"
+EXPECTED_OUTPUT_ROOTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_output_roots_v1"
+BLOCKED_EXECUTION_SCHEMA_VERSION = "aoi_to_prepared_pilot_blocked_execution_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -57,6 +61,11 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def dump_yaml(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+
+def dump_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def normalize_candidate_site_id(value: str) -> str:
@@ -343,6 +352,7 @@ def build_prep_summary(
             "description": command["description"],
             "command": command["command"],
             "blocked_reason": command.get("blocked_reason", ""),
+            "execution_class": command_execution_class(command),
             "expected_inputs": command.get("expected_inputs", []),
             "expected_outputs": command.get("expected_outputs", []),
             "read_only": command.get("read_only", False),
@@ -402,6 +412,7 @@ def build_prep_summary(
             "ignored_output_roots": ignored_output_roots,
             "command_plan_ignored_output_roots": command_plan_report.get("ignored_output_paths", []),
             "blocked_command_ids": command_plan_report.get("blocked_template_commands", []),
+            "blocked_execution_status": blocked_execution_status(command_plan_report),
         },
     }
 
@@ -428,11 +439,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--release-polygon", type=Path, default=None)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="optional ignored output root for the candidate case skeleton bundle",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report(args.site_config, repo_root=args.repo_root, release_polygon_path=args.release_polygon)
+    report = build_report(
+        args.site_config,
+        repo_root=args.repo_root,
+        release_polygon_path=args.release_polygon,
+        skeleton_output_root=args.output_root,
+    )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -447,6 +469,7 @@ def build_report(
     site_config: Path | None,
     repo_root: Path | None = None,
     release_polygon_path: Path | None = None,
+    skeleton_output_root: Path | None = None,
 ) -> dict[str, Any]:
     repo_root = repo_root or ROOT
     config_path, config, release_polygon, synthetic_config, has_site_config = prepare_working_config(
@@ -482,6 +505,26 @@ def build_report(
         candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
     )
+    skeleton_output = build_case_skeleton_output(
+        report_inputs={
+            "config_path": config_path,
+            "config": config,
+            "release_polygon": release_polygon,
+            "synthetic_config": synthetic_config,
+            "has_site_config": has_site_config,
+            "acquisition_report": acquisition_report,
+            "release_plan_report": release_plan_report,
+            "candidate_generation_report": candidate_generation_report,
+            "command_plan_report": command_plan_report,
+            "prep_summary": prep_summary,
+            "workflow_status": workflow_status,
+            "workflow_steps": steps,
+        },
+        repo_root=repo_root,
+        output_root=skeleton_output_root,
+    )
+    if skeleton_output["write_status"] == "written":
+        write_case_skeleton_bundle(skeleton_output)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -518,6 +561,7 @@ def build_report(
         "claim_boundaries": candidate_generation_report.get("claim_boundaries", {}),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
+        "case_skeleton_output": skeleton_output,
     }
     return report
 
@@ -958,7 +1002,203 @@ def render_text_report(report: dict[str, Any]) -> str:
             )
     else:
         lines.append("- none")
+    lines.extend(
+        [
+            "",
+            "case_skeleton_output:",
+        ]
+    )
+    skeleton = report.get("case_skeleton_output", {})
+    lines.append(f"- status: {skeleton.get('status', 'not_requested')}")
+    lines.append(f"- write_status: {skeleton.get('write_status', 'not_requested')}")
+    lines.append(f"- blocked_execution_status: {skeleton.get('blocked_execution_status', 'blocked_missing_inputs')}")
+    lines.append(f"- output_root: {skeleton.get('output_root', '')}")
+    lines.append(f"- skeleton_path: {skeleton.get('case_skeleton_path', '')}")
+    lines.append(f"- command_manifest_path: {skeleton.get('command_manifest_path', '')}")
+    lines.append(f"- expected_output_roots_path: {skeleton.get('expected_output_roots_path', '')}")
+    lines.append(f"- blocked_execution_path: {skeleton.get('blocked_execution_path', '')}")
+    if skeleton.get("runnable_command_ids"):
+        lines.append("- runnable_command_ids:")
+        lines.extend(f"  - {item}" for item in skeleton["runnable_command_ids"])
+    else:
+        lines.append("- runnable_command_ids: none")
+    if skeleton.get("template_only_command_ids"):
+        lines.append("- template_only_command_ids:")
+        lines.extend(f"  - {item}" for item in skeleton["template_only_command_ids"])
+    else:
+        lines.append("- template_only_command_ids: none")
+    if skeleton.get("expected_output_roots"):
+        lines.append("- expected_output_roots:")
+        lines.extend(f"  - {item}" for item in skeleton["expected_output_roots"])
+    else:
+        lines.append("- expected_output_roots: none")
     return "\n".join(lines)
+
+
+def command_execution_class(command: dict[str, Any]) -> str:
+    return "template_only" if command.get("blocked_reason") else "runnable"
+
+
+def blocked_execution_status(command_plan_report: dict[str, Any], workflow_status: str | None = None) -> str:
+    if workflow_status == "blocked_missing_inputs":
+        return "blocked_missing_inputs"
+    return "blocked_template_only" if command_plan_report.get("blocked_template_commands") else "ready"
+
+
+def resolve_output_root(repo_root: Path, output_root: Path | None) -> Path | None:
+    if output_root is None:
+        return None
+    resolved = output_root if output_root.is_absolute() else repo_root / output_root
+    if not is_allowed_output_root(resolved, repo_root):
+        raise ValueError(f"output root must stay under /tmp or validation/private: {resolved}")
+    return resolved
+
+
+def is_allowed_output_root(output_root: Path, repo_root: Path) -> bool:
+    resolved = output_root.resolve()
+    allowed_roots = [Path("/tmp").resolve(), (repo_root / "validation/private").resolve()]
+    return any(resolved.is_relative_to(root) for root in allowed_roots)
+
+
+def build_case_skeleton_output(
+    *,
+    report_inputs: dict[str, Any],
+    repo_root: Path,
+    output_root: Path | None,
+) -> dict[str, Any]:
+    prep_summary = report_inputs["prep_summary"]
+    resolved_output_root = resolve_output_root(repo_root, output_root)
+    blocked_execution = blocked_execution_status(
+        report_inputs["command_plan_report"],
+        workflow_status=report_inputs["workflow_status"],
+    )
+    resolved_output_root_entries = [str(resolved_output_root)] if resolved_output_root is not None else []
+    expected_output_roots = dedupe(
+        [
+            *resolved_output_root_entries,
+            prep_summary["output_root_planning"]["prepared_validation_root"],
+            prep_summary["output_root_planning"]["prepared_hazard_root"],
+            *prep_summary["ignored_output_roots"],
+            *prep_summary["output_root_planning"]["command_plan_ignored_output_roots"],
+        ]
+    )
+    runnable_command_ids = [
+        command["command_id"]
+        for command in prep_summary["command_plan_hooks"]
+        if command["execution_class"] == "runnable"
+    ]
+    template_only_command_ids = [
+        command["command_id"]
+        for command in prep_summary["command_plan_hooks"]
+        if command["execution_class"] == "template_only"
+    ]
+    skeleton_status = "blocked_missing_inputs" if report_inputs["workflow_status"] == "blocked_missing_inputs" else "ready"
+    case_skeleton = {
+        "schema_version": CASE_SKELETON_SCHEMA_VERSION,
+        "case_skeleton_status": skeleton_status,
+        "blocked_execution_status": blocked_execution,
+        "candidate_site_id": report_inputs["acquisition_report"]["candidate_site_id"],
+        "candidate_site_name": report_inputs["acquisition_report"]["candidate_site_name"],
+        "input_mode": prep_summary["input_mode"],
+        "site_extent": prep_summary["site_extent"],
+        "release_polygon": prep_summary["release_polygon"],
+        "blocked_reason": (
+            "workflow blocked_missing_inputs; required inputs are missing"
+            if report_inputs["workflow_status"] == "blocked_missing_inputs"
+            else "dry-run only; ensemble execution is not authorized"
+        ),
+        "command_sequence": [
+            {
+                "step_id": step["step_id"],
+                "label": step["label"],
+                "status": step["status"],
+                "blocked_reason": step["blocked_reason"],
+                "expected_inputs": step["expected_inputs"],
+                "generated_output_roots": step["generated_output_roots"],
+                "ignored_output_roots": step["ignored_output_roots"],
+            }
+            for step in report_inputs["workflow_steps"]
+        ],
+        "expected_output_roots": expected_output_roots,
+        "runnable_command_ids": runnable_command_ids,
+        "template_only_command_ids": template_only_command_ids,
+        "output_root": str(resolved_output_root) if resolved_output_root is not None else "",
+        "write_status": "not_requested" if resolved_output_root is None else "pending",
+    }
+    command_manifest = {
+        "schema_version": COMMAND_MANIFEST_SCHEMA_VERSION,
+        "candidate_site_id": report_inputs["acquisition_report"]["candidate_site_id"],
+        "candidate_site_name": report_inputs["acquisition_report"]["candidate_site_name"],
+        "command_plan_status": report_inputs["command_plan_report"]["command_plan_status"],
+        "blocked_execution_status": blocked_execution,
+        "blocked_template_commands": report_inputs["command_plan_report"].get("blocked_template_commands", []),
+        "command_groups": report_inputs["command_plan_report"].get("command_groups", []),
+        "commands": report_inputs["command_plan_report"].get("commands", []),
+        "command_ids": report_inputs["command_plan_report"].get("command_ids", []),
+        "command_descriptions": report_inputs["command_plan_report"].get("command_descriptions", {}),
+        "ignored_output_paths": report_inputs["command_plan_report"].get("ignored_output_paths", []),
+        "runnable_command_ids": runnable_command_ids,
+        "template_only_command_ids": template_only_command_ids,
+    }
+    blocked_execution_report = {
+        "schema_version": BLOCKED_EXECUTION_SCHEMA_VERSION,
+        "case_skeleton_status": skeleton_status,
+        "blocked_execution_status": blocked_execution,
+        "blocked_reason": (
+            "workflow blocked_missing_inputs; required inputs are missing"
+            if report_inputs["workflow_status"] == "blocked_missing_inputs"
+            else "dry-run only; ensemble execution is not authorized"
+        ),
+        "missing_input_paths": report_inputs["prep_summary"].get("candidate_source_zones", {}).get("blocked_missing_inputs", []),
+        "blocked_command_ids": report_inputs["command_plan_report"].get("blocked_template_commands", []),
+    }
+    skeleton = {
+        **case_skeleton,
+        "command_manifest": command_manifest,
+        "blocked_execution": blocked_execution_report,
+    }
+    return {
+        "status": skeleton_status,
+        "write_status": "written" if resolved_output_root is not None else "not_requested",
+        "blocked_execution_status": blocked_execution,
+        "blocked_reason": blocked_execution_report["blocked_reason"],
+        "output_root": str(resolved_output_root) if resolved_output_root is not None else "",
+        "case_skeleton_path": str(
+            (resolved_output_root / "aoi_to_prepared_pilot_case_skeleton.yaml") if resolved_output_root is not None else ""
+        ),
+        "command_manifest_path": str(
+            (resolved_output_root / "aoi_to_prepared_pilot_command_manifest.json") if resolved_output_root is not None else ""
+        ),
+        "expected_output_roots_path": str(
+            (resolved_output_root / "aoi_to_prepared_pilot_expected_output_roots.yaml") if resolved_output_root is not None else ""
+        ),
+        "blocked_execution_path": str(
+            (resolved_output_root / "aoi_to_prepared_pilot_blocked_execution.json") if resolved_output_root is not None else ""
+        ),
+        "expected_output_roots": expected_output_roots,
+        "runnable_command_ids": runnable_command_ids,
+        "template_only_command_ids": template_only_command_ids,
+        "case_skeleton": skeleton,
+    }
+
+
+def write_case_skeleton_bundle(skeleton_output: dict[str, Any]) -> None:
+    output_root = skeleton_output.get("output_root")
+    if not output_root:
+        return
+    Path(output_root).mkdir(parents=True, exist_ok=True)
+    case_skeleton = copy.deepcopy(skeleton_output["case_skeleton"])
+    case_skeleton["write_status"] = "written"
+    dump_yaml(Path(skeleton_output["case_skeleton_path"]), case_skeleton)
+    dump_json(Path(skeleton_output["command_manifest_path"]), skeleton_output["case_skeleton"]["command_manifest"])
+    dump_yaml(
+        Path(skeleton_output["expected_output_roots_path"]),
+        {
+            "schema_version": EXPECTED_OUTPUT_ROOTS_SCHEMA_VERSION,
+            "expected_output_roots": skeleton_output["expected_output_roots"],
+        },
+    )
+    dump_json(Path(skeleton_output["blocked_execution_path"]), skeleton_output["case_skeleton"]["blocked_execution"])
 
 
 if __name__ == "__main__":

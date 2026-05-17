@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -122,12 +123,76 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("command_plan_hooks:", text_report)
         self.assertIn("ignored_output_roots:", text_report)
 
+    def test_output_root_mode_writes_deterministic_case_skeleton_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+            skeleton = first["case_skeleton_output"]
+            case = yaml.safe_load(Path(skeleton["case_skeleton_path"]).read_text(encoding="utf-8"))
+            command_manifest = json.loads(Path(skeleton["command_manifest_path"]).read_text(encoding="utf-8"))
+            expected_output_roots = yaml.safe_load(Path(skeleton["expected_output_roots_path"]).read_text(encoding="utf-8"))
+            blocked_execution = json.loads(Path(skeleton["blocked_execution_path"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
+        self.assertEqual(skeleton["status"], "blocked_missing_inputs")
+        self.assertEqual(skeleton["write_status"], "written")
+        self.assertEqual(skeleton["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertIn("second_site_aoi_acquisition_dry_run_planner", skeleton["runnable_command_ids"])
+        self.assertIn("second_site_release_plan_execution_template", skeleton["template_only_command_ids"])
+        self.assertEqual(case["schema_version"], "aoi_to_prepared_pilot_case_skeleton_v1")
+        self.assertEqual(case["write_status"], "written")
+        self.assertEqual(case["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertEqual(command_manifest["schema_version"], "aoi_to_prepared_pilot_command_manifest_v1")
+        self.assertEqual(command_manifest["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertEqual(expected_output_roots["schema_version"], "aoi_to_prepared_pilot_expected_output_roots_v1")
+        self.assertEqual(blocked_execution["schema_version"], "aoi_to_prepared_pilot_blocked_execution_v1")
+        self.assertEqual(blocked_execution["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertEqual(blocked_execution["case_skeleton_status"], "blocked_missing_inputs")
+        self.assertEqual(case["expected_output_roots"], skeleton["expected_output_roots"])
+        self.assertEqual(len(case["command_sequence"]), 4)
+        self.assertEqual(case["command_sequence"][0]["step_id"], "aoi_acquisition")
+        self.assertEqual(expected_output_roots["expected_output_roots"], skeleton["expected_output_roots"])
+
     def test_missing_inputs_remain_blocked_and_deterministic(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
             missing_config = repo_root / "missing_site_config.yaml"
-            first = planner.build_report(missing_config, repo_root=repo_root)
-            second = planner.build_report(missing_config, repo_root=repo_root)
+            output_root = Path(output_tmp) / "validation/private/unspecified_second_site/aoi_to_prepared_pilot_dry_run"
+            first = planner.build_report(
+                missing_config,
+                repo_root=repo_root,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                missing_config,
+                repo_root=repo_root,
+                skeleton_output_root=output_root,
+            )
+
+            skeleton = first["case_skeleton_output"]
+            case = yaml.safe_load(Path(skeleton["case_skeleton_path"]).read_text(encoding="utf-8"))
 
         self.assertEqual(first, second)
         self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
@@ -149,6 +214,12 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertTrue(
             any(path.endswith("hazard/results/unspecified_second_site") for path in first["ignored_output_roots"])
         )
+        self.assertEqual(skeleton["status"], "blocked_missing_inputs")
+        self.assertEqual(skeleton["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertEqual(skeleton["write_status"], "written")
+        self.assertEqual(case["case_skeleton_status"], "blocked_missing_inputs")
+        self.assertEqual(case["blocked_execution_status"], "blocked_missing_inputs")
+        self.assertEqual(case["write_status"], "written")
 
         text_report = planner.render_text_report(first)
         self.assertIn("schema_version: aoi_to_prepared_pilot_dry_run_v1", text_report)

@@ -24,43 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-152: Emit Runnable Case Skeletons From AOI Dry Run
-
-Goal: Extend the site-level AOI-to-command-plan dry run so it can emit
-non-executed validation case skeletons and command references under ignored
-roots.
-
-Capability gap reduced: gap between dry-run composition and a reproducible
-operator handoff for a new AOI.
-
-Why this outranks alternatives: after discovery, terrain, release, and scenario
-planning compose, the next automation milestone is a reproducible case skeleton
-that still stops before execution.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/generate_tschamut_same_scale_cases.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- Optional ignored output mode that writes a candidate case skeleton, command
-  manifest, expected output roots, and blocked execution status.
-- Tests for deterministic skeleton generation and blocked missing-input states.
-- Documentation of which commands are runnable and which remain template-only.
-
-Definition of done:
-
-- A worker can run one dry-run command for a fixture AOI and inspect the exact
-  case skeleton and command sequence that would be used before any ensemble
-  execution.
-
-Boundaries: No ensemble execution, no second-site hazard build, no generated
-large-artifact commit, no physical-probability semantics, and no operational
-claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
