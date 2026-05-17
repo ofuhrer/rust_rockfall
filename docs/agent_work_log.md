@@ -2830,3 +2830,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no hazard build, no generated raster commit, no second-site ensemble, no operational GIS claim, and no scale-up authorization.
 - Next task: `TB-164`
+
+### TB-164: Validate Target-Area Release-Zone Candidate Stability
+- Date: 2026-05-17
+- Commit: local
+- Objective: validate the frozen Tschamut target-area release-zone candidate audit with an explicit stable-versus-heuristic-sensitive summary and optional GIS-readable candidate outputs.
+- Files changed: `scripts/summarize_balfrin_target_area_candidate_stability.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a target-area-specific summary wrapper around the committed terrain candidate helper so the frozen Tschamut Balfrin contract can be checked against the deterministic candidate stability audit without claiming a validated release zone.
+  - Surfaced the stable and heuristic-sensitive region classes explicitly, tied the report back to the frozen target-area contract, and kept the GIS-readable candidate mask/polygon bundle available through the existing helper when a temporary output root is supplied.
+  - Added focused regressions that verify deterministic report rendering, the frozen target-area identifiers, and the emitted GIS-readable candidate outputs in a temp directory.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_target_area_candidate_stability.py tests/test_balfrin_target_area_candidate_stability.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_candidate_stability -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_candidate_stability.py --output-root /tmp/tb164_target_area_o8VdUQ/candidate_products --format json --json-output /tmp/tb164_target_area_o8VdUQ/report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: no validated release-zone claim, no tuning, no annual-frequency or physical-probability semantics, no scale-up authorization, and no operational hazard-map claim.
+- Next task: `TB-165`

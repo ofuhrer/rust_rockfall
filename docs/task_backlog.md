@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-164: Validate Target-Area Release-Zone Candidate Stability
-
-Goal: Run or extend the deterministic release-zone candidate stability audit for the frozen target area.
-
-Capability gap reduced: Release-zone heuristic uncertainty for the demonstration target.
-
-Why this outranks alternatives: The target run is scientifically weak if the release-zone candidate is not tied to a reproducible stability/sensitivity report.
-
-Inspect first:
-
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/prepare_tschamut_public_benchmark.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `docs/swisstopo_data_strategy.md`
-- `tests/test_release_zone_heuristic_dry_run.py`
-
-Deliverables:
-
-- Target-area candidate stability summary.
-- Stable versus heuristic-sensitive region classification.
-- GIS-readable candidate outputs if the existing helper supports them for the staged inputs.
-
-Definition of done:
-
-- The target-area release-zone candidate basis is deterministic and its heuristic sensitivity is explicit.
-
-Boundaries: No tuning, no field validation claim, no operational release-zone claim, and no physical credibility upgrade.
-
 ### TB-165: Generate Target-Area Deterministic Scenario Tables
 
 Goal: Generate or block deterministic target-area scenario tables from candidate source-zone metadata and policy inputs.
