@@ -3069,3 +3069,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new Balfrin job was submitted, no cancellation was performed, no distributed execution or scale-up claim was introduced, and no fixture-backed recovery was presented as live evidence.
 - Next task: `TB-175`
+
+### TB-175: Update Target-Area Runtime And Swiss-Wide Scaling Envelope
+
+- Date: 2026-05-17
+- Commit: `da2ce84`
+- Objective: recompute the Swiss-wide execution envelope from the measured target-area evidence and record the resulting no-go planning labels without authorizing scale-up.
+- Files changed: `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a compact Swiss-wide envelope note to the Balfrin sufficiency doc using the current 26-AOI projection from `scripts/estimate_swiss_wide_execution_envelope.py`.
+  - Recorded the no-go extrapolation labels and the measured runtime, storage, file-count, and memory bands in the target-area evidence narrative.
+  - Removed TB-175 from the active backlog after recomputing the envelope from current evidence.
+- Checks run: `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope -q`, `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json --aoi-count 26 --release-zone-count 10 --trajectory-count 6`, `PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_job_execution.py`, `git diff --check`, `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`, `scripts/git-hooks/pre-commit`, `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no distributed execution, no Swiss-wide run, no scale-up authorization, and no operational claim.
+- Next task: `TB-176`
