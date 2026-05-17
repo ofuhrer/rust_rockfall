@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Generate deterministic terrain-driven release-zone candidate metrics.
 
-This helper stays read-only. It uses the committed Tschamut public pilot
-terrain crop, terrain metadata, and frozen source-zone metadata to report a
-fixed heuristic screening over the Balfrin/Tschamut AOI. It does not emit a
-validated release zone, tune thresholds, download public data, or authorize any
-ensemble work.
+This helper stays read-only unless an explicit output root is requested. It
+uses the committed Tschamut public pilot terrain crop, terrain metadata, and
+frozen source-zone metadata to report a fixed heuristic screening over the
+Balfrin/Tschamut AOI and can emit deterministic GIS-readable candidate masks
+and polygon bundles for dry-run workflows. It does not emit a validated
+release zone, tune thresholds, download public data, or authorize any ensemble
+work.
 """
 
 from __future__ import annotations
@@ -28,9 +30,11 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "terrain_release_zone_candidate_metrics_v1"
+PRODUCT_SCHEMA_VERSION = "terrain_release_zone_candidate_products_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
+DEFAULT_OUTPUT_MODE = "both"
 
 MIN_CANDIDATE_SLOPE_DEG = 30.0
 MAX_CANDIDATE_SLOPE_DEG = 55.0
@@ -49,6 +53,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source-zone-metadata", type=Path, default=None)
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument("--output-root", type=Path, default=None, help="optional GIS-readable candidate product output root")
+    parser.add_argument(
+        "--output-mode",
+        choices=("mask", "polygon", "both"),
+        default=DEFAULT_OUTPUT_MODE,
+        help="candidate product type to emit when --output-root is set",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -57,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
             terrain_crop_path=args.terrain_crop,
             terrain_metadata_path=args.terrain_metadata,
             source_zone_metadata_path=args.source_zone_metadata,
+            output_root=args.output_root,
+            output_mode=args.output_mode,
         )
     except TerrainReleaseZoneCandidateMetricsError as exc:
         print(f"terrain release-zone candidate metrics error: {exc}", file=sys.stderr)
@@ -77,6 +90,8 @@ def build_report(
     terrain_crop_path: Path | None = None,
     terrain_metadata_path: Path | None = None,
     source_zone_metadata_path: Path | None = None,
+    output_root: Path | None = None,
+    output_mode: str = DEFAULT_OUTPUT_MODE,
 ) -> dict[str, Any]:
     repo_root = repo_root or ROOT
     terrain_crop_path = terrain_crop_path or default_repo_path(repo_root, DEFAULT_TERRAIN_CROP)
@@ -104,6 +119,8 @@ def build_report(
     terrain_summary = build_terrain_summary(terrain)
     candidate_summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, screening)
     excluded_area_summary = build_excluded_area_summary(terrain_masks, terrain, screening)
+    frozen_footprint_summary = build_frozen_footprint_summary(terrain, source_zone_metadata, terrain_masks)
+    candidate_footprint_comparison = build_candidate_footprint_comparison(terrain, terrain_masks)
     provenance = build_provenance(terrain_crop_path, terrain_metadata_path, source_zone_metadata_path, terrain_metadata, source_zone_metadata)
 
     report = {
@@ -132,6 +149,8 @@ def build_report(
         "terrain_summary": terrain_summary,
         "candidate_summary": candidate_summary,
         "excluded_area_summary": excluded_area_summary,
+        "frozen_source_zone_footprint": frozen_footprint_summary,
+        "candidate_footprint_comparison": candidate_footprint_comparison,
         "provenance": provenance,
         "claim_boundaries": {
             "heuristic_workflow_input_only": True,
@@ -150,7 +169,24 @@ def build_report(
         "blocked_reason": "",
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
+        "candidate_release_zone_products": {
+            "output_status": "not_emitted",
+            "output_mode": output_mode,
+            "output_root": display_path(Path(output_root), repo_root) if output_root is not None else None,
+        },
     }
+    if output_root is not None:
+        candidate_products = emit_candidate_products(
+            report=report,
+            terrain=terrain,
+            terrain_masks=terrain_masks,
+            source_zone_metadata=source_zone_metadata,
+            repo_root=repo_root,
+            output_root=output_root,
+            output_mode=output_mode,
+        )
+        report["candidate_release_zone_set_status"] = "emitted"
+        report["candidate_release_zone_products"] = candidate_products
     return report
 
 
@@ -181,6 +217,11 @@ def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, A
         "terrain_summary": {},
         "candidate_summary": {},
         "excluded_area_summary": [],
+        "frozen_source_zone_footprint": {},
+        "candidate_footprint_comparison": {
+            "comparison_status": "blocked_missing_inputs",
+            "candidate_excludes_frozen_footprint": False,
+        },
         "provenance": {},
         "claim_boundaries": {
             "heuristic_workflow_input_only": True,
@@ -199,6 +240,11 @@ def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, A
         "blocked_reason": "required public inputs are missing: " + ", ".join(missing_inputs),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
+        "candidate_release_zone_products": {
+            "output_status": "not_emitted",
+            "output_mode": DEFAULT_OUTPUT_MODE,
+            "output_root": None,
+        },
     }
 
 
@@ -283,8 +329,8 @@ def build_candidate_summary(
     terrain_masks: dict[str, np.ndarray],
     screening: dict[str, Any],
 ) -> dict[str, Any]:
-    values = terrain["values"]
-    candidate_values = values[candidate_mask]
+    slope_deg = terrain_masks["slope_deg"]
+    candidate_values = slope_deg[candidate_mask]
     cell_area_m2 = terrain["cellsize"] ** 2
     candidate_count = int(candidate_mask.sum())
     screenable_count = int(terrain_masks["screenable_mask"].sum())
@@ -307,6 +353,50 @@ def build_candidate_summary(
             "candidate_slope_max_deg": screening["candidate_slope_max_deg"],
             "slope_algorithm": screening["slope_algorithm"],
         },
+    }
+
+
+def build_frozen_footprint_summary(
+    terrain: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+) -> dict[str, Any]:
+    vertices = extract_polygon_vertices(source_zone_metadata)
+    mask = terrain_masks["footprint_mask"]
+    cell_area_m2 = terrain["cellsize"] ** 2
+    return {
+        "source_zone_id": source_zone_metadata.get("source_zone_id"),
+        "geometry_type": source_zone_metadata.get("geometry", {}).get("type", "polygon"),
+        "vertex_count": len(vertices),
+        "vertex_coordinates": [[x, y] for x, y in vertices],
+        "polygon_area_m2_exact": polygon_area(vertices),
+        "masked_cell_count_on_terrain_grid": int(mask.sum()),
+        "masked_area_m2_on_terrain_grid": int(mask.sum()) * cell_area_m2,
+        "bbox_lv95_m": polygon_bbox(vertices),
+    }
+
+
+def build_candidate_footprint_comparison(
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+) -> dict[str, Any]:
+    candidate_mask = terrain_masks["candidate_mask"]
+    footprint_mask = terrain_masks["footprint_mask"]
+    intersection_mask = candidate_mask & footprint_mask
+    cell_area_m2 = terrain["cellsize"] ** 2
+    candidate_count = int(candidate_mask.sum())
+    footprint_count = int(footprint_mask.sum())
+    intersection_count = int(intersection_mask.sum())
+    return {
+        "comparison_status": "ready",
+        "comparison_mode": "candidate_mask_vs_frozen_source_zone_footprint_mask",
+        "candidate_excludes_frozen_footprint": intersection_count == 0,
+        "candidate_cell_count": candidate_count,
+        "frozen_footprint_cell_count": footprint_count,
+        "candidate_and_frozen_footprint_intersection_cell_count": intersection_count,
+        "candidate_and_frozen_footprint_intersection_area_m2": intersection_count * cell_area_m2,
+        "candidate_overlap_fraction_of_candidate_cells": fraction(intersection_count, candidate_count),
+        "candidate_overlap_fraction_of_frozen_footprint_cells": fraction(intersection_count, footprint_count),
     }
 
 
@@ -411,6 +501,265 @@ def compute_candidate_masks(
         "high_slope_mask": high_slope_mask,
     }
     return candidate_mask, terrain_masks
+
+
+def emit_candidate_products(
+    *,
+    report: dict[str, Any],
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    source_zone_metadata: dict[str, Any],
+    repo_root: Path,
+    output_root: Path,
+    output_mode: str,
+) -> dict[str, Any]:
+    output_root = Path(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
+    source_zone_id = source_zone_metadata.get("source_zone_id") or report["candidate_site_id"]
+    components = connected_candidate_components(terrain_masks["candidate_mask"])
+    width = max(3, len(str(max(0, len(components) - 1))))
+    component_features = [
+        build_candidate_component_feature(
+            terrain=terrain,
+            terrain_masks=terrain_masks,
+            source_zone_metadata=source_zone_metadata,
+            component=cells,
+            index=index,
+            width=width,
+            source_zone_id=str(source_zone_id),
+            candidate_site_id=report["candidate_site_id"],
+            source_inputs=[
+                report["terrain_inputs"]["terrain_crop_path"],
+                report["terrain_inputs"]["terrain_metadata_path"],
+                report["source_zone_inputs"]["source_zone_metadata_path"],
+            ],
+        )
+        for index, cells in enumerate(components)
+    ]
+
+    manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_manifest.json"
+    product_bundle: dict[str, Any] = {
+        "schema_version": PRODUCT_SCHEMA_VERSION,
+        "output_status": "emitted",
+        "output_mode": output_mode,
+        "candidate_site_id": report["candidate_site_id"],
+        "candidate_site_name": report["candidate_site_name"],
+        "candidate_release_zone_set_status": "emitted",
+        "source_zone_id": source_zone_id,
+        "output_root": str(output_root),
+        "outputs": {},
+        "candidate_footprint_comparison": report["candidate_footprint_comparison"],
+        "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
+        "candidate_summary": report["candidate_summary"],
+        "provenance": report["provenance"],
+    }
+
+    if output_mode in {"polygon", "both"}:
+        polygon_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates.geojson"
+        polygon_payload = {
+            "schema_version": PRODUCT_SCHEMA_VERSION,
+            "type": "FeatureCollection",
+            "candidate_generation_label": "heuristic_candidate_generation_only",
+            "candidate_site_id": report["candidate_site_id"],
+            "candidate_site_name": report["candidate_site_name"],
+            "source_zone_id": source_zone_id,
+            "features": component_features,
+        }
+        polygon_path.write_text(json.dumps(polygon_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        product_bundle["outputs"]["polygon"] = display_path(polygon_path, repo_root)
+        product_bundle["polygon_feature_count"] = len(component_features)
+        product_bundle["polygon_path"] = display_path(polygon_path, repo_root)
+
+    if output_mode in {"mask", "both"}:
+        mask_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_mask.asc"
+        write_candidate_mask_ascii_grid(mask_path, terrain, terrain_masks["candidate_mask"])
+        product_bundle["outputs"]["mask"] = display_path(mask_path, repo_root)
+        product_bundle["mask_path"] = display_path(mask_path, repo_root)
+
+    product_bundle["manifest_path"] = display_path(manifest_path, repo_root)
+    product_bundle["candidate_release_zone_ids"] = [feature["properties"]["candidate_release_zone_id"] for feature in component_features]
+    product_bundle["component_count"] = len(component_features)
+    product_bundle["candidate_cell_count"] = int(terrain_masks["candidate_mask"].sum())
+    product_bundle["candidate_excludes_frozen_footprint"] = report["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"]
+    product_bundle["source_inputs"] = [
+        report["terrain_inputs"]["terrain_crop_path"],
+        report["terrain_inputs"]["terrain_metadata_path"],
+        report["source_zone_inputs"]["source_zone_metadata_path"],
+    ]
+    manifest_path.write_text(json.dumps(product_bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    product_bundle["outputs"]["manifest"] = display_path(manifest_path, repo_root)
+    return product_bundle
+
+
+def connected_candidate_components(candidate_mask: np.ndarray) -> list[list[tuple[int, int]]]:
+    nrows, ncols = candidate_mask.shape
+    visited = np.zeros_like(candidate_mask, dtype=bool)
+    components: list[list[tuple[int, int]]] = []
+    for row in range(nrows):
+        for col in range(ncols):
+            if not candidate_mask[row, col] or visited[row, col]:
+                continue
+            component = flood_fill_component(candidate_mask, visited, row, col)
+            component.sort()
+            components.append(component)
+    components.sort(key=component_sort_key)
+    return components
+
+
+def flood_fill_component(
+    candidate_mask: np.ndarray,
+    visited: np.ndarray,
+    start_row: int,
+    start_col: int,
+) -> list[tuple[int, int]]:
+    stack = [(start_row, start_col)]
+    visited[start_row, start_col] = True
+    cells: list[tuple[int, int]] = []
+    nrows, ncols = candidate_mask.shape
+    while stack:
+        row, col = stack.pop()
+        cells.append((row, col))
+        for next_row, next_col in (
+            (row - 1, col),
+            (row, col - 1),
+            (row, col + 1),
+            (row + 1, col),
+        ):
+            if next_row < 0 or next_row >= nrows or next_col < 0 or next_col >= ncols:
+                continue
+            if visited[next_row, next_col] or not candidate_mask[next_row, next_col]:
+                continue
+            visited[next_row, next_col] = True
+            stack.append((next_row, next_col))
+    return cells
+
+
+def component_sort_key(component: list[tuple[int, int]]) -> tuple[int, int, int, int, int]:
+    rows = [row for row, _ in component]
+    cols = [col for _, col in component]
+    return (min(rows), min(cols), max(rows), max(cols), len(component))
+
+
+def build_candidate_component_feature(
+    *,
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    source_zone_metadata: dict[str, Any],
+    component: list[tuple[int, int]],
+    index: int,
+    width: int,
+    source_zone_id: str,
+    candidate_site_id: str,
+    source_inputs: list[str],
+) -> dict[str, Any]:
+    component_mask = np.zeros_like(terrain_masks["candidate_mask"], dtype=bool)
+    for row, col in component:
+        component_mask[row, col] = True
+    slope_deg = terrain_masks["slope_deg"][component_mask]
+    cell_area_m2 = terrain["cellsize"] ** 2
+    properties = {
+        "candidate_release_zone_id": report_candidate_id(source_zone_id, index, width),
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "candidate_site_id": candidate_site_id,
+        "source_zone_id": source_zone_id,
+        "source_inputs": source_inputs,
+        "provenance_ref": "terrain_and_source_zone_inputs",
+        "component_index": index,
+        "component_cell_count": len(component),
+        "component_area_m2": len(component) * cell_area_m2,
+        "component_slope_min_deg": float(np.min(slope_deg)) if len(slope_deg) else None,
+        "component_slope_max_deg": float(np.max(slope_deg)) if len(slope_deg) else None,
+        "component_slope_mean_deg": float(np.mean(slope_deg)) if len(slope_deg) else None,
+        "component_slope_median_deg": float(np.median(slope_deg)) if len(slope_deg) else None,
+        "comparison_to_frozen_footprint_cell_count": int((component_mask & terrain_masks["footprint_mask"]).sum()),
+        "comparison_to_frozen_footprint_excludes_source_zone": bool(not (component_mask & terrain_masks["footprint_mask"]).any()),
+    }
+    geometry = component_multipolygon_geometry(component, terrain)
+    bbox = component_bbox(component, terrain)
+    properties["component_bbox_lv95_m"] = bbox
+    properties["source_zone_footprint_area_m2_exact"] = polygon_area(extract_polygon_vertices(source_zone_metadata))
+    return {
+        "type": "Feature",
+        "id": properties["candidate_release_zone_id"],
+        "geometry": geometry,
+        "properties": properties,
+    }
+
+
+def report_candidate_id(source_zone_id: str, index: int, width: int) -> str:
+    return f"{source_zone_id}_candidate_{index:0{width}d}"
+
+
+def component_multipolygon_geometry(component: list[tuple[int, int]], terrain: dict[str, Any]) -> dict[str, Any]:
+    coordinates = []
+    for row, col in component:
+        coordinates.append([cell_polygon_coordinates(row, col, terrain)])
+    return {"type": "MultiPolygon", "coordinates": coordinates}
+
+
+def cell_polygon_coordinates(row: int, col: int, terrain: dict[str, Any]) -> list[list[float]]:
+    x0 = terrain["xllcorner"] + col * terrain["cellsize"]
+    x1 = x0 + terrain["cellsize"]
+    y0 = terrain["yllcorner"] + (terrain["nrows"] - row - 1) * terrain["cellsize"]
+    y1 = y0 + terrain["cellsize"]
+    return [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+        [x0, y0],
+    ]
+
+
+def component_bbox(component: list[tuple[int, int]], terrain: dict[str, Any]) -> dict[str, float]:
+    rows = [row for row, _ in component]
+    cols = [col for _, col in component]
+    xmin = terrain["xllcorner"] + min(cols) * terrain["cellsize"]
+    xmax = terrain["xllcorner"] + (max(cols) + 1) * terrain["cellsize"]
+    ymin = terrain["yllcorner"] + (terrain["nrows"] - max(rows) - 1) * terrain["cellsize"]
+    ymax = terrain["yllcorner"] + (terrain["nrows"] - min(rows)) * terrain["cellsize"]
+    return {
+        "crs": "EPSG:2056",
+        "xmin": xmin,
+        "ymin": ymin,
+        "xmax": xmax,
+        "ymax": ymax,
+    }
+
+
+def polygon_bbox(vertices: list[tuple[float, float]]) -> dict[str, float]:
+    if not vertices:
+        return {"crs": "EPSG:2056", "xmin": 0.0, "ymin": 0.0, "xmax": 0.0, "ymax": 0.0}
+    xs = [vertex[0] for vertex in vertices]
+    ys = [vertex[1] for vertex in vertices]
+    return {
+        "crs": "EPSG:2056",
+        "xmin": min(xs),
+        "ymin": min(ys),
+        "xmax": max(xs),
+        "ymax": max(ys),
+    }
+
+
+def write_candidate_mask_ascii_grid(mask_path: Path, terrain: dict[str, Any], candidate_mask: np.ndarray) -> None:
+    lines = [
+        f"ncols {terrain['ncols']}",
+        f"nrows {terrain['nrows']}",
+        f"xllcorner {format_number(terrain['xllcorner'])}",
+        f"yllcorner {format_number(terrain['yllcorner'])}",
+        f"cellsize {format_number(terrain['cellsize'])}",
+        f"NODATA_value {format_number(terrain['nodata_value'])}",
+    ]
+    values = np.where(candidate_mask, 1.0, terrain["nodata_value"])
+    for row in values:
+        lines.append(" ".join(format_number(float(value)) for value in row))
+    mask_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def format_number(value: float) -> str:
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:g}"
 
 
 def point_in_polygon_mask(terrain: dict[str, Any], vertices: list[tuple[float, float]]) -> np.ndarray:
@@ -601,6 +950,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("candidate_summary:")
     lines.extend(render_mapping(report["candidate_summary"]))
     lines.append("")
+    lines.append("frozen_source_zone_footprint:")
+    lines.extend(render_mapping(report["frozen_source_zone_footprint"]))
+    lines.append("")
+    lines.append("candidate_footprint_comparison:")
+    lines.extend(render_mapping(report["candidate_footprint_comparison"]))
+    lines.append("")
     lines.append("excluded_area_summary:")
     for row in report["excluded_area_summary"]:
         lines.append(
@@ -615,6 +970,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("provenance:")
     lines.extend(render_mapping(report["provenance"]))
+    lines.append("")
+    lines.append("candidate_release_zone_products:")
+    lines.extend(render_mapping(report["candidate_release_zone_products"]))
     lines.append("")
     lines.append("claim_boundaries:")
     lines.extend(render_mapping(report["claim_boundaries"]))

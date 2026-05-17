@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-133: Emit Terrain Release-Zone Candidate Polygons And Masks
-
-Goal: Convert deterministic terrain candidate metrics into reproducible
-candidate polygon or mask products that can feed a dry-run workflow.
-
-Capability gap reduced: manual release-zone dependence in the path from public
-terrain to a prepared pilot.
-
-Why this outranks alternatives: release-zone generation remains one of the
-largest blockers to Swiss-wide automation, and the current candidate helper
-reports metrics but not reusable spatial candidates.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `docs/swisstopo_data_strategy.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Deterministic candidate polygon or mask output mode, stable candidate IDs,
-  provenance metadata, and comparison against the frozen Tschamut source-zone
-  footprint.
-- Fixture-backed tests for deterministic output and blocked missing-input
-  behavior.
-
-Definition of done:
-
-- The helper can emit GIS-readable release-zone candidate products for a
-  fixture or existing public terrain input without replacing the validated
-  Tschamut source zone.
-
-Boundaries: No threshold tuning to outcomes, no production release-zone
-approval, and no physical release-probability claim.
-
 ### TB-134: Generate Deterministic Block-Scenario Tables From Policy
 
 Goal: Turn the pragmatic block-scenario sensitivity plan into a deterministic

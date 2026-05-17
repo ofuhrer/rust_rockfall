@@ -129,11 +129,13 @@ objective are:
    from committed records and processed public inputs. The portable semantics
    are now split from Tschamut-specific heuristics, and dry-run helpers define
    deterministic release-zone candidate generation and pragmatic
-   block-scenario generation from public-input contracts. These helpers do not
-   generate production release zones, tune thresholds, or claim field evidence.
-   The remaining automation gap is moving from dry-run contracts to a measured,
-   public-context-backed second-site run only after real swisstopo context is
-   staged.
+   block-scenario generation from public-input contracts. The terrain candidate
+   helper now also emits deterministic GIS-readable mask and polygon bundles
+   with stable candidate IDs and frozen-footprint comparison metadata. These
+   helpers do not generate production release zones, tune thresholds, or claim
+   field evidence. The remaining automation gap is moving from dry-run
+   contracts to a measured, public-context-backed second-site run only after
+   real swisstopo context is staged.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
    contract, deterministic acquisition planning, a tiny synthetic core-input

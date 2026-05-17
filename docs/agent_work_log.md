@@ -2219,3 +2219,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no new ensemble, no scale-up authorization, no replacement of measured evidence with synthetic evidence, and no operational or probabilistic claim expansion.
 - Next task: `TB-132`
+
+### TB-133: Emit Terrain Release-Zone Candidate Polygons And Masks
+- Date: 2026-05-17
+- Commit: local
+- Objective: convert deterministic terrain candidate metrics into reproducible GIS-readable candidate polygon and mask products for the Tschamut dry-run workflow without replacing the validated source zone.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an optional `--output-root` / `--output-mode` emission path that writes deterministic candidate polygon and mask bundles plus a manifest, while preserving the existing read-only metrics report when no output root is supplied.
+  - Fixed the candidate slope summary to report slope degrees from the computed slope mask instead of terrain elevations, and added frozen-footprint comparison metadata so the emitted bundle explicitly shows the candidate set excludes the validated Tschamut source-zone footprint.
+  - Built stable connected-component candidate IDs, GeoJSON feature output, ESRI ASCII mask output, and provenance metadata for the terrain crop, terrain metadata, and frozen source-zone sidecar.
+  - Added focused regressions for deterministic emitted outputs, blocked missing-input behavior, and the new product/manifest fields, then removed TB-133 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --format json --output-root /tmp/tb133_candidate_products`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: the helper emits dry-run candidate products only; no validated release-zone approval, threshold tuning to outcomes, annual-frequency claim, physical-probability claim, risk, exposure, vulnerability, or operational claim was introduced.
+- Next task: `TB-134`
