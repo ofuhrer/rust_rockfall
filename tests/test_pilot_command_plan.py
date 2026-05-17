@@ -42,6 +42,15 @@ class PilotCommandPlanTest(unittest.TestCase):
             },
         }
 
+    def _output_profile_blocked(self) -> dict[str, object]:
+        return {
+            "hazard_rebuild_output_profile_status": "blocked_missing_inputs",
+            "profile_classifications": {
+                "target_rebuildable_reduced": "blocked_missing_inputs",
+                "native_rebuildable_reduced_output": "blocked_missing_inputs",
+            },
+        }
+
     def _second_site_deferred(self) -> dict[str, object]:
         return {
             "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
@@ -196,7 +205,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_blocked()), patch.object(
             MODULE.OUTPUT_PROFILE,
             "build_report",
-            return_value=self._output_profile_measured(),
+            return_value=self._output_profile_blocked(),
         ), patch.object(MODULE.PORTABILITY, "build_report", return_value=self._second_site_deferred()), patch.object(
             MODULE.CONTRACT,
             "build_report",
@@ -227,6 +236,9 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_converted_package_audit", report["command_ids"])
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
         self.assertEqual(report["blocked_template_commands"], ["tschamut_next_ensemble_feasibility_probe_template"])
+        self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "blocked_missing_inputs")
+        self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "blocked_missing_inputs")
+        self.assertEqual(report["tschamut_native_rebuildable_reduced_profile_classification"], "blocked_missing_inputs")
 
     def test_second_site_plan_marks_templates_blocked(self) -> None:
         # The Chant Sura / Flüelapass plan is intentionally metadata-only here:

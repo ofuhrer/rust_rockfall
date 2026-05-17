@@ -5,6 +5,7 @@ import io
 import json
 from contextlib import redirect_stdout
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -101,6 +102,42 @@ class BalfrinSingleReleaseZoneCasePlanDryRunTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         json.loads(buffer.getvalue())
+
+    def test_main_returns_structured_blocked_report_when_inputs_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as temp_root:
+            root = Path(temp_root)
+            contract = root / "missing_contract.yaml"
+            policy = root / "missing_policy.yaml"
+            source_zone = root / "missing_source_zone.yaml"
+            scenario_table = root / "missing_scenario_table.csv"
+            reduced_case = root / "missing_reduced_case.yaml"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = planner.main(
+                    [
+                        "--format",
+                        "json",
+                        "--contract",
+                        str(contract),
+                        "--policy",
+                        str(policy),
+                        "--source-zone-metadata",
+                        str(source_zone),
+                        "--scenario-table",
+                        str(scenario_table),
+                        "--reduced-output-case",
+                        str(reduced_case),
+                    ]
+                )
+
+            report = json.loads(buffer.getvalue())
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(report["case_plan_status"], "blocked_missing_inputs")
+            self.assertEqual(report["case_execution_status"], "blocked_template_only")
+            self.assertFalse(report["scale_up_authorized"])
+            self.assertIn("required committed inputs are missing", report["blocked_reason"])
+            self.assertEqual(report["validation_output"]["validation_output_mode"], "blocked_missing_inputs")
+            self.assertIn("Blocked Execution Template", planner.render_text_report(report))
 
 
 if __name__ == "__main__":

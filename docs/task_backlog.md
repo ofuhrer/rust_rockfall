@@ -23,40 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-200: GitHub Python Test Clean-Checkout Stabilization
-
-Goal: Make the Python tests that currently fail in GitHub pass from a clean checkout without relying on ignored Tschamut, hazard, validation, swisstopo, or Balfrin scratch artifacts.
-
-Capability gap reduced: CI reproducibility for planning and evidence helpers when local ignored artifacts are absent.
-
-Why this outranks alternatives: The failing tests are active feedback from GitHub CI; until they fail closed or use committed fixtures, local green runs can keep hiding clean-checkout regressions.
-
-Inspect first:
-
-- `tests/test_pilot_command_plan.py`
-- `tests/test_swiss_wide_execution_envelope.py`
-- `tests/test_balfrin_single_release_zone_case_plan_dry_run.py`
-- `tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
-- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
-
-Deliverables:
-
-- `generate_pilot_command_plan.py` no longer hard-reads ignored hazard manifests when building command-plan metadata; missing package manifests produce explicit bounded or empty scope metadata.
-- `estimate_swiss_wide_execution_envelope.py` and its measured-coefficient loader return a deterministic blocked report or use committed fixture evidence in tests when same-scale manifests are absent.
-- `plan_balfrin_single_release_zone_case_dry_run.py` either uses committed fixture inputs for smoke tests or returns a structured blocked report instead of exit-code-only failure when default ignored inputs are missing.
-- `generate_chant_sura_fluelapass_dry_run_case_skeleton.py` has deterministic test fixture setup for deferred-public-context and blocked-missing-input states, including the `/tmp` repo-root edge case.
-- Focused tests prove the affected Python test modules pass with ignored roots absent.
-
-Definition of done:
-
-- The named Python tests pass in a clean checkout without `hazard/results/tschamut_public_pilot`, `validation/private/tschamut_public_pilot`, `data/processed/swisstopo/tschamut_public_pilot`, or mounted `/scratch` roots, and reports distinguish `ready`, `blocked_missing_inputs`, and `fixture_backed` correctly.
-
-Boundaries: No public-data download, no generated ignored artifact commit, no fabricated measured evidence, no Balfrin access requirement, and no scale-up or operational claim.
-
 ### TB-201: Ignored-Artifact Dependency Audit For Python Tests
 
 Goal: Add an automated audit that identifies Python tests and helper smoke paths that read ignored artifact roots without creating committed fixtures, temporary fixtures, or explicit blocked-report expectations.

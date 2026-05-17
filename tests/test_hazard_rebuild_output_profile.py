@@ -107,6 +107,20 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             profile = classify_profile(manifest_path, root, "missing", "missing")
             self.assertEqual(profile.classification, "blocked_missing_inputs")
 
+            report = build_report(
+                [
+                    {
+                        "profile_id": "target_summary_only",
+                        "label": "current_target_summary_only",
+                        "root": root,
+                        "manifest": manifest_path,
+                    }
+                ]
+            )
+            self.assertEqual(report["hazard_rebuild_output_profile_status"], "blocked_missing_inputs")
+            self.assertEqual(report["readiness_status"], "blocked_missing_inputs")
+            self.assertEqual(report["profile_classifications"]["target_summary_only"], "blocked_missing_inputs")
+
     def test_report_contract_shape(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

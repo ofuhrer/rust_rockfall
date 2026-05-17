@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import yaml
@@ -20,7 +22,7 @@ SPEC.loader.exec_module(MODULE)
 
 class ChantSuraFluelapassDryRunCaseSkeletonTests(unittest.TestCase):
     def test_dry_run_skeleton_writes_expected_references_and_placeholders(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_root, tempfile.TemporaryDirectory(dir="/tmp") as output_root:
+        with tempfile.TemporaryDirectory(dir="/tmp") as temp_root, tempfile.TemporaryDirectory(dir="/tmp") as output_root:
             repo_root = Path(temp_root)
             site_config = self._write_site_config(repo_root)
             self._stage_core_inputs(repo_root, site_config)
@@ -69,6 +71,37 @@ class ChantSuraFluelapassDryRunCaseSkeletonTests(unittest.TestCase):
                 self.assertEqual(placeholder["status"], "deferred_public_context_inputs")
             self.assertIn("no ensemble execution", " ".join(case["notes"]))
             self.assertFalse(case["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_main_returns_blocked_report_when_core_inputs_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as temp_root, tempfile.TemporaryDirectory(dir="/tmp") as output_root:
+            repo_root = Path(temp_root)
+            site_config = self._write_site_config(repo_root)
+
+            original_root = MODULE.PREFLIGHT.ROOT
+            try:
+                MODULE.PREFLIGHT.ROOT = repo_root
+                buffer = io.StringIO()
+                with redirect_stdout(buffer):
+                    exit_code = MODULE.main(
+                        [
+                            "--site-config",
+                            str(site_config),
+                            "--output-root",
+                            str(Path(output_root)),
+                            "--format",
+                            "json",
+                        ]
+                    )
+            finally:
+                MODULE.PREFLIGHT.ROOT = original_root
+
+            report = json.loads(buffer.getvalue())
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(report["case_skeleton_status"], "blocked_missing_inputs")
+            self.assertEqual(report["reference_validation_status"], "blocked_missing_inputs")
+            self.assertEqual(report["ensemble_execution_status"], "blocked_template_only")
+            self.assertIn("blocked_missing_inputs", report["blocked_reason"])
+            self.assertEqual(report["write_status"], "blocked")
 
     def test_output_root_outside_tmp_or_ignored_paths_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
@@ -120,6 +153,16 @@ class ChantSuraFluelapassDryRunCaseSkeletonTests(unittest.TestCase):
             paths["source_zone_metadata"]: "source_zone_id: chant_sura_example\n",
             paths["scenario_table"]: "scenario_id,probability\nA,1.0\n",
             paths["source_scenario_policy"]: "policy_id: chant_sura_example\n",
+            paths["aoi_tile_catalog"]: (
+                "catalog_status: ready\n"
+                "swissalti3d:\n"
+                "  tiles:\n"
+                "    - tile_id: \"2793-1180\"\n"
+                "      product_id: swissALTI3D\n"
+                "      source_product: swissALTI3D\n"
+                "      expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissalti3d\n"
+                "      expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissalti3d/2793-1180.asc\n"
+            ),
         }
         for path, content in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)

@@ -280,6 +280,7 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
         for spec in profile_specs
     ]
     by_id = {profile.profile_id: profile for profile in profiles}
+    has_blocked_profiles = any(profile.classification == "blocked_missing_inputs" for profile in profiles)
 
     summary = by_id.get("target_summary_only")
     reduced = by_id.get("target_rebuildable_reduced")
@@ -311,8 +312,8 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
     return {
-        "hazard_rebuild_output_profile_status": "measured",
-        "readiness_status": "ready",
+        "hazard_rebuild_output_profile_status": "blocked_missing_inputs" if has_blocked_profiles else "measured",
+        "readiness_status": "blocked_missing_inputs" if has_blocked_profiles else "ready",
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
         "required_hazard_rebuild_artifacts": build_contract(),

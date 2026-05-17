@@ -72,8 +72,14 @@ def main(argv: list[str] | None = None) -> int:
             reduced_output_case_path=args.reduced_output_case,
         )
     except BalfrinSingleReleaseZoneCasePlanError as exc:
-        print(f"balfrin single-release-zone case plan error: {exc}", file=sys.stderr)
-        return 2
+        report = build_blocked_report(
+            blocked_reason=str(exc),
+            contract_path=args.contract,
+            policy_path=args.policy,
+            source_zone_metadata_path=args.source_zone_metadata,
+            scenario_table_path=args.scenario_table,
+            reduced_output_case_path=args.reduced_output_case,
+        )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -257,6 +263,125 @@ def build_report(
         "blocked_reason": "dry-run only",
     }
     return report
+
+
+def build_blocked_report(
+    *,
+    blocked_reason: str,
+    contract_path: Path,
+    policy_path: Path,
+    source_zone_metadata_path: Path,
+    scenario_table_path: Path,
+    reduced_output_case_path: Path,
+) -> dict[str, Any]:
+    planned_case_output_roots = [
+        display_path(PLANNED_CASE_OUTPUT_ROOT),
+        display_path(PLANNED_HAZARD_OUTPUT_ROOT),
+    ]
+    blocked_template_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "CARGO_TARGET_DIR=/tmp/rust-rockfall-target",
+            "cargo",
+            "run",
+            "--",
+            "validate",
+            "--case",
+            display_path(PLANNED_CASE_OUTPUT_ROOT / "tschamut_public_balfrin_single_release_zone_case.yaml"),
+        ]
+    )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "case_plan_status": "blocked_missing_inputs",
+        "case_execution_status": "blocked_template_only",
+        "read_only": True,
+        "scale_up_authorized": False,
+        "distributed_execution_authorized": False,
+        "operational_claims_allowed": False,
+        "pilot_id": "tschamut_public_pilot",
+        "run_id": "tschamut_public_balfrin_single_release_zone_pilot_contract_v1",
+        "case_plan_title": "Balfrin single-release-zone large case plan",
+        "source_inputs": {
+            "contract_path": display_path(contract_path),
+            "source_scenario_policy_path": display_path(policy_path),
+            "source_zone_metadata_path": display_path(source_zone_metadata_path),
+            "scenario_table_path": display_path(scenario_table_path),
+            "reduced_output_case_path": display_path(reduced_output_case_path),
+        },
+        "source_zone_record": {
+            "source_zone_id": "",
+            "crs_epsg": None,
+            "vertical_datum": None,
+            "release_sampling_policy": {},
+            "provenance": {},
+        },
+        "scenario_table_rows": [],
+        "policy_block_scenario_policy": {},
+        "release_zone_scope": {
+            "release_zone_count": None,
+            "release_cell_count": None,
+            "trajectory_count_target": None,
+            "trajectories_per_release_cell": None,
+            "block_scenario_count": None,
+            "block_scenario_policy": None,
+        },
+        "validation_output": {
+            "validation_output_mode": "blocked_missing_inputs",
+            "hazard_output_profile": None,
+            "conditional_curve_export": None,
+            "grid_csv_export": None,
+            "export_geotiff": None,
+            "pilot_gis_package": None,
+        },
+        "expected_artifact_families": [],
+        "hazard_layer_products": [],
+        "balfrin_resource_assumptions": {
+            "execution_boundary": None,
+            "trajectory_workers": None,
+            "reducer_workers": None,
+            "explicit_grid_required": None,
+            "distributed_execution_authorized": False,
+            "generated_outputs_committed": None,
+            "single_job_boundary": None,
+        },
+        "no_go_boundaries": [],
+        "planned_case_output_roots": planned_case_output_roots,
+        "ignored_output_roots": list(REPO_GENERATED_OUTPUT_ROOTS_TO_AVOID),
+        "deterministic_generation_evidence": {
+            "source_zone_id": "",
+            "release_sampling_seed": None,
+            "release_cell_id_prefix": "",
+            "release_cell_count": None,
+            "trajectory_count_target": None,
+            "trajectories_per_release_cell": None,
+            "release_zone_count": None,
+            "scenario_table_row_count": 0,
+            "scenario_table_row_ids": [],
+            "policy_block_scenario_count": 0,
+            "policy_block_scenario_ids": [],
+            "validation_output_mode": "blocked_missing_inputs",
+            "selection_rule": "blocked_missing_inputs; required dry-run inputs are unavailable",
+        },
+        "blocked_case_execution_template": {
+            "status": "template_only",
+            "command_id": "balfrin_single_release_zone_case_execution_template",
+            "command": blocked_template_command,
+            "expected_outputs": [
+                display_path(PLANNED_CASE_OUTPUT_ROOT / "tschamut_public_balfrin_single_release_zone_case.yaml"),
+                display_path(PLANNED_CASE_OUTPUT_ROOT / "validation_tschamut_public_balfrin_single_release_zone_manifest.json"),
+            ],
+            "blocked_reason": blocked_reason,
+        },
+        "claim_boundaries": {
+            "unsupported_current_claims": [],
+            "notes": [
+                "conditional sampling weights are not physical probabilities",
+                "the frozen public source-zone and scenario records are planning inputs, not validation evidence",
+                "no operational, annual-frequency, risk, exposure, or vulnerability claim is authorized here",
+            ],
+        },
+        "blocked_reason": blocked_reason,
+    }
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
