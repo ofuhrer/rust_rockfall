@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_chant_sura_real_context_readiness_gate.py"
 PREFLIGHT_SCRIPT_PATH = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
+POST_RUN_GATE_SCRIPT_PATH = ROOT / "scripts" / "summarize_balfrin_post_run_interpretation_gate.py"
 
 
 def _load_module(path: Path, name: str):
@@ -26,6 +27,7 @@ def _load_module(path: Path, name: str):
 gate = _load_module(SCRIPT_PATH, "check_chant_sura_real_context_readiness_gate")
 preflight = _load_module(PREFLIGHT_SCRIPT_PATH, "check_second_site_public_geodata_preflight_for_real_context_gate_test")
 staging = _load_module(STAGING_SCRIPT_PATH, "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_real_context_gate_test")
+post_run_gate = _load_module(POST_RUN_GATE_SCRIPT_PATH, "summarize_balfrin_post_run_interpretation_gate_for_real_context_gate_test")
 
 
 class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
@@ -87,7 +89,8 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
         next_decisions = {entry["category"]: entry for entry in report["next_acquisition_decisions"]}
         self.assertEqual(set(next_decisions), set(acquisition_plan))
-        self.assertTrue(all(entry["next_acquisition_decision"] == "acquire_and_stage_public_context_product" for entry in next_decisions.values()))
+        self.assertEqual(report["balfrin_trigger_summary"]["trigger_state"], "blocked_missing_inputs")
+        self.assertTrue(all(entry["next_acquisition_decision"] == "hold_for_balfrin_evidence" for entry in next_decisions.values()))
 
         deferred_products = {entry["category"]: entry for entry in report["deferred_public_context_products"]}
         self.assertEqual(set(deferred_products), set(acquisition_plan))
@@ -117,6 +120,53 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("processed_context_root", text_report)
         self.assertIn("empty_directory", text_report)
 
+    def test_balfrin_trigger_matrix_reports_proceed_defer_and_blocked_states(self) -> None:
+        measured_report = post_run_gate.build_report(self._measured_balfrin_evidence())
+        inconclusive_report = post_run_gate.build_report(self._inconclusive_balfrin_evidence())
+
+        measured_matrix = gate.build_balfrin_trigger_matrix(measured_report)
+        inconclusive_matrix = gate.build_balfrin_trigger_matrix(inconclusive_report)
+        blocked_matrix = gate.build_balfrin_trigger_matrix(None)
+
+        self.assertEqual(len(measured_matrix), 5)
+        self.assertEqual({row["trigger_state"] for row in measured_matrix}, {"proceed"})
+        self.assertEqual({row["next_acquisition_decision"] for row in measured_matrix}, {"proceed_real_context_staging"})
+        self.assertEqual(
+            [row["category"] for row in measured_matrix],
+            [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+        )
+
+        self.assertEqual({row["trigger_state"] for row in inconclusive_matrix}, {"defer"})
+        self.assertEqual({row["next_acquisition_decision"] for row in inconclusive_matrix}, {"defer_real_context_staging"})
+
+        self.assertEqual({row["trigger_state"] for row in blocked_matrix}, {"blocked_missing_inputs"})
+        self.assertEqual({row["next_acquisition_decision"] for row in blocked_matrix}, {"hold_for_balfrin_evidence"})
+
+    def test_build_report_includes_balfrin_trigger_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+
+            report = gate.build_report(
+                self._site_config_path(),
+                repo_root=repo_root,
+                balfrin_evidence_json=ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json",
+            )
+
+        self.assertEqual(report["balfrin_trigger_summary"]["trigger_state"], "defer")
+        self.assertEqual(report["balfrin_trigger_summary"]["proceed_product_count"], 0)
+        self.assertEqual(report["balfrin_trigger_summary"]["defer_product_count"], 5)
+        self.assertEqual(report["balfrin_trigger_summary"]["blocked_product_count"], 0)
+        self.assertEqual(report["next_acquisition_decisions"][0]["balfrin_trigger_state"], "defer")
+        self.assertEqual(report["next_acquisition_decisions"][0]["balfrin_next_decision"], "defer_real_context_staging")
+        self.assertTrue(report["balfrin_evidence_path"].endswith("balfrin_evidence_bundle_v1.json"))
+
     def _stage_minimal_inputs(self, repo_root: Path) -> None:
         staging.stage_minimal_inputs(
             repo_root=repo_root,
@@ -126,6 +176,49 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
     def _site_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+
+    def _measured_balfrin_evidence(self) -> dict[str, object]:
+        return {
+            "pilot_id": "tschamut_public_pilot",
+            "run_id": "tschamut_public_balfrin_single_release_zone_v1",
+            "contract_path": "validation/pilot_runs/tschamut_public_balfrin_single_release_zone_pilot_contract_v1.yaml",
+            "readiness_check": {
+                "status": "ready_for_balfrin_single_release_zone_pilot",
+                "summary": "Frozen Balfrin pilot contract and local inputs are ready.",
+            },
+            "convergence_stability_check": {
+                "status": "measured",
+                "summary": "Convergence and repeatability are measured.",
+            },
+            "output_check": {
+                "status": "rebuildable_reduced_output",
+                "summary": "The output footprint is bounded and reproducible.",
+            },
+            "gis_cog_check": {
+                "status": "gis_package_ready",
+                "summary": "GIS package and COG readiness are available.",
+            },
+            "physical_credibility_check": {
+                "status": "not_established",
+                "summary": "Physical credibility remains unestablished and is not used for physical-probability claims.",
+            },
+        }
+
+    def _inconclusive_balfrin_evidence(self) -> dict[str, object]:
+        evidence = self._measured_balfrin_evidence()
+        evidence["convergence_stability_check"] = {
+            "status": "inconclusive",
+            "summary": "Convergence and repeatability remain conservative.",
+        }
+        evidence["output_check"] = {
+            "status": "summary_only_not_rebuildable",
+            "summary": "The output footprint is still inspectable but not fully bounded.",
+        }
+        evidence["gis_cog_check"] = {
+            "status": "gis_package_ready_cog_blocked",
+            "summary": "GIS packaging is present but COG readiness remains blocked.",
+        }
+        return evidence
 
 
 if __name__ == "__main__":

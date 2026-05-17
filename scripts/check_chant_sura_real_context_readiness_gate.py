@@ -30,7 +30,9 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
+BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION = "chant_sura_real_context_trigger_matrix_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+DEFAULT_BALFRIN_EVIDENCE = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json"
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
     "swisstlm3d_context",
@@ -52,6 +54,16 @@ SUPPORTING_ROOT_CATEGORIES = {
     "validation_case_root",
     "hazard_results_root",
 }
+BALFRIN_TRIGGER_PRODUCTS = [
+    {"category": "swissimage_context", "product": "SWISSIMAGE", "staging_priority": 1},
+    {"category": "swisstlm3d_context", "product": "swissTLM3D", "staging_priority": 2},
+    {"category": "swisssurface3d_context", "product": "swissSURFACE3D", "staging_priority": 3},
+    {"category": "swisssurface3d_raster_context", "product": "swissSURFACE3D Raster", "staging_priority": 4},
+    {"category": "swissbuildings3d_context", "product": "swissBUILDINGS3D", "staging_priority": 5},
+]
+BALFRIN_PROCEED_STATUSES = {"measured_conditional_diagnostic"}
+BALFRIN_DEFER_STATUSES = {"inconclusive_conditional_diagnostic"}
+BALFRIN_BLOCKED_STATUSES = {"blocked_missing_inputs"}
 
 
 def _load_preflight_module():
@@ -68,6 +80,20 @@ def _load_preflight_module():
 PREFLIGHT = _load_preflight_module()
 
 
+def _load_post_run_gate_module():
+    path = ROOT / "scripts" / "summarize_balfrin_post_run_interpretation_gate.py"
+    spec = importlib.util.spec_from_file_location("chant_sura_real_context_post_run_gate", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load post-run gate helper from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+post_run_gate = _load_post_run_gate_module()
+
+
 @contextmanager
 def _patched_repo_root(repo_root: Path) -> Iterator[None]:
     original_root = PREFLIGHT.ROOT
@@ -82,11 +108,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument(
+        "--balfrin-evidence-json",
+        type=Path,
+        default=DEFAULT_BALFRIN_EVIDENCE,
+        help="optional measured Balfrin evidence bundle or post-run gate JSON",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report(args.site_config, repo_root=args.repo_root)
+    report = build_report(args.site_config, repo_root=args.repo_root, balfrin_evidence_json=args.balfrin_evidence_json)
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if report["real_context_readiness_gate_status"] == "ready_for_real_context_acquisition" else 2
 
 
-def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> dict[str, Any]:
+def build_report(
+    site_config: Path | None,
+    *,
+    repo_root: Path | None = None,
+    balfrin_evidence_json: Path | None = None,
+) -> dict[str, Any]:
     repo_root = repo_root or ROOT
     config_path = site_config or DEFAULT_SITE_CONFIG
 
@@ -113,11 +150,17 @@ def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> 
         acquisition_manifest = PREFLIGHT.load_site_config(
             Path(preflight_report["acquisition_manifest_path"])
         ) if preflight_report.get("acquisition_manifest_status") == "ready" else {}
+        balfrin_post_run_report = build_balfrin_post_run_report(load_balfrin_evidence_override(balfrin_evidence_json))
+        balfrin_trigger_matrix = build_balfrin_trigger_matrix(balfrin_post_run_report)
+        balfrin_trigger_summary = build_balfrin_trigger_summary(balfrin_post_run_report, balfrin_trigger_matrix)
 
         local_core_inputs = build_local_core_inputs(requirements)
         supporting_roots = build_supporting_roots(requirements)
         deferred_public_context_products = [entry for entry in acquisition_plan if entry["category"] in DEFERRED_PUBLIC_CONTEXT_CATEGORIES]
-        next_acquisition_decisions = build_next_acquisition_decisions(deferred_public_context_products)
+        next_acquisition_decisions = build_next_acquisition_decisions(
+            deferred_public_context_products,
+            balfrin_trigger_summary,
+        )
 
         gate_status = determine_gate_status(
             core_input_status=preflight_report["core_input_status"],
@@ -135,6 +178,7 @@ def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> 
             "site_extent": preflight_report["site_extent_or_placeholder"],
             "acquisition_manifest_status": preflight_report["acquisition_manifest_status"],
             "acquisition_manifest_path": preflight_report["acquisition_manifest_path"],
+            "balfrin_evidence_path": str(balfrin_evidence_json or DEFAULT_BALFRIN_EVIDENCE),
             "core_input_status": preflight_report["core_input_status"],
             "deferred_public_context_status": preflight_report["deferred_public_context_status"],
             "deterministic_acquisition_plan": acquisition_plan,
@@ -142,6 +186,9 @@ def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> 
             "supporting_local_roots": supporting_roots,
             "deferred_public_context_products": deferred_public_context_products,
             "next_acquisition_decisions": next_acquisition_decisions,
+            "balfrin_post_run_report": balfrin_post_run_report,
+            "balfrin_trigger_summary": balfrin_trigger_summary,
+            "balfrin_trigger_matrix": balfrin_trigger_matrix,
             "public_context_acquisition_summary": preflight_report["public_context_acquisition_summary"],
             "public_context_boundary_status": preflight_report["public_context_boundary_status"],
             "public_geodata_workflow_contract": preflight_report["public_geodata_workflow_contract"],
@@ -160,7 +207,133 @@ def build_report(site_config: Path | None, *, repo_root: Path | None = None) -> 
             ),
             "acquisition_manifest": acquisition_manifest,
         }
-        return report
+    return report
+
+
+def load_balfrin_evidence_override(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    if not path.exists():
+        return {"missing_inputs": ["post_run_evidence_bundle"], "blocked_reason": f"missing Balfrin evidence JSON: {path}"}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Balfrin evidence override must be a JSON object")
+    return data
+
+
+def build_balfrin_post_run_report(evidence_override: dict[str, Any] | None) -> dict[str, Any] | None:
+    if evidence_override is None:
+        return None
+    if "interpretation_status" in evidence_override and "artifact_acceptance_status" in evidence_override:
+        return dict(evidence_override)
+    if isinstance(evidence_override.get("post_run_interpretation_gate_report"), dict):
+        return dict(evidence_override["post_run_interpretation_gate_report"])
+    return post_run_gate.build_report(evidence_override)
+
+
+def build_balfrin_trigger_matrix(post_run_report: dict[str, Any] | None) -> list[dict[str, Any]]:
+    trigger_state = determine_balfrin_trigger_state(post_run_report)
+    rows: list[dict[str, Any]] = []
+    for product in BALFRIN_TRIGGER_PRODUCTS:
+        rows.append(
+            {
+                "schema_version": BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION,
+                "category": product["category"],
+                "product": product["product"],
+                "staging_priority": product["staging_priority"],
+                "trigger_state": trigger_state,
+                "decision": trigger_state,
+                "next_acquisition_decision": next_trigger_decision(trigger_state),
+                "proceed_when": {
+                    "interpretation_status": "measured_conditional_diagnostic",
+                    "artifact_acceptance_status": "accepted_conditional_diagnostic",
+                    "usable_as_conditional_diagnostic_artifact": True,
+                },
+                "defer_when": {
+                    "interpretation_status": "inconclusive_conditional_diagnostic",
+                    "artifact_acceptance_status": "accepted_conditional_diagnostic",
+                    "usable_as_conditional_diagnostic_artifact": True,
+                },
+                "blocked_when": {
+                    "interpretation_status": "blocked_missing_inputs",
+                    "artifact_acceptance_status": "blocked_missing_inputs",
+                    "usable_as_conditional_diagnostic_artifact": False,
+                },
+                "balfrin_post_run_status": summarize_balfrin_post_run_status(post_run_report),
+                "notes": balfrin_trigger_notes(trigger_state, product["product"]),
+            }
+        )
+    return rows
+
+
+def build_balfrin_trigger_summary(
+    post_run_report: dict[str, Any] | None,
+    trigger_matrix: list[dict[str, Any]],
+) -> dict[str, Any]:
+    trigger_state = determine_balfrin_trigger_state(post_run_report)
+    return {
+        "schema_version": BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION,
+        "trigger_state": trigger_state,
+        "decision": trigger_state,
+        "product_count": len(trigger_matrix),
+        "proceed_product_count": sum(1 for row in trigger_matrix if row["trigger_state"] == "proceed"),
+        "defer_product_count": sum(1 for row in trigger_matrix if row["trigger_state"] == "defer"),
+        "blocked_product_count": sum(1 for row in trigger_matrix if row["trigger_state"] == "blocked_missing_inputs"),
+        "post_run_status": summarize_balfrin_post_run_status(post_run_report),
+    }
+
+
+def determine_balfrin_trigger_state(post_run_report: dict[str, Any] | None) -> str:
+    if post_run_report is None:
+        return "blocked_missing_inputs"
+    interpretation_status = str(post_run_report.get("interpretation_status") or "").strip()
+    artifact_acceptance_status = str(post_run_report.get("artifact_acceptance_status") or "").strip()
+    if interpretation_status in BALFRIN_BLOCKED_STATUSES or artifact_acceptance_status in BALFRIN_BLOCKED_STATUSES:
+        return "blocked_missing_inputs"
+    if interpretation_status in BALFRIN_PROCEED_STATUSES and artifact_acceptance_status == "accepted_conditional_diagnostic":
+        return "proceed"
+    if interpretation_status in BALFRIN_DEFER_STATUSES:
+        return "defer"
+    return "defer"
+
+
+def summarize_balfrin_post_run_status(post_run_report: dict[str, Any] | None) -> dict[str, Any]:
+    if post_run_report is None:
+        return {
+            "interpretation_status": "blocked_missing_inputs",
+            "artifact_acceptance_status": "blocked_missing_inputs",
+            "usable_as_conditional_diagnostic_artifact": False,
+        }
+    return {
+        "interpretation_status": str(post_run_report.get("interpretation_status") or "blocked_missing_inputs"),
+        "artifact_acceptance_status": str(post_run_report.get("artifact_acceptance_status") or "blocked_missing_inputs"),
+        "usable_as_conditional_diagnostic_artifact": bool(post_run_report.get("usable_as_conditional_diagnostic_artifact")),
+    }
+
+
+def next_trigger_decision(trigger_state: str) -> str:
+    if trigger_state == "proceed":
+        return "proceed_real_context_staging"
+    if trigger_state == "blocked_missing_inputs":
+        return "hold_for_balfrin_evidence"
+    return "defer_real_context_staging"
+
+
+def balfrin_trigger_notes(trigger_state: str, product: str) -> list[str]:
+    if trigger_state == "proceed":
+        return [
+            f"Measured Balfrin evidence is sufficient to proceed with {product} staging.",
+            "Synthetic fixtures remain non-evidence and do not authorize staging by themselves.",
+        ]
+    if trigger_state == "blocked_missing_inputs":
+        return [
+            f"{product} staging remains blocked until a measured Balfrin post-run bundle is supplied.",
+            "Missing inputs keep the decision in a hold state rather than a defer/proceed call.",
+        ]
+    return [
+        f"{product} staging stays deferred because the measured Balfrin evidence is still inconclusive.",
+        "The existing defer decision remains in force until the Balfrin post-run gate is measured.",
+    ]
 
 
 def build_local_core_inputs(requirements: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -204,19 +377,32 @@ def build_supporting_roots(requirements: list[dict[str, Any]]) -> list[dict[str,
     return roots
 
 
-def build_next_acquisition_decisions(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_next_acquisition_decisions(
+    rows: list[dict[str, Any]],
+    balfrin_trigger_summary: dict[str, Any],
+) -> list[dict[str, Any]]:
     decisions: list[dict[str, Any]] = []
+    trigger_state = balfrin_trigger_summary["trigger_state"]
+    next_decision = next_trigger_decision(trigger_state)
+    if trigger_state == "proceed":
+        reason = "measured Balfrin evidence authorizes public-context staging"
+    elif trigger_state == "blocked_missing_inputs":
+        reason = "public-context staging is blocked until measured Balfrin evidence is supplied"
+    else:
+        reason = "public-context staging remains deferred until measured Balfrin evidence is conclusive"
     for row in rows:
         decisions.append(
             {
                 "category": row["category"],
                 "product": row["product"],
                 "decision_type": "deferred_public_context_staging",
-                "next_acquisition_decision": "acquire_and_stage_public_context_product",
+                "next_acquisition_decision": next_decision,
                 "expected_staged_path": row["expected_staged_path"],
                 "expected_staging_root": row["expected_staging_root"],
                 "current_status": row["current_status"],
-                "reason": "public context remains intentionally deferred until real products are staged",
+                "balfrin_trigger_state": trigger_state,
+                "balfrin_next_decision": next_decision,
+                "reason": reason,
                 "notes": row["notes"],
             }
         )
@@ -307,6 +493,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         f"acquisition_manifest_status: {report['acquisition_manifest_status']}",
         f"acquisition_manifest_path: {report['acquisition_manifest_path']}",
+        f"balfrin_evidence_path: {report['balfrin_evidence_path']}",
         "",
         "public_geodata_workflow_contract:",
     ]
@@ -338,6 +525,15 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("next_acquisition_decisions:")
     lines.extend(render_decision_rows(report.get("next_acquisition_decisions") or []))
+
+    lines.append("")
+    lines.append("balfrin_trigger_summary:")
+    for key, value in (report.get("balfrin_trigger_summary") or {}).items():
+        lines.append(f"- {key}: {value}")
+
+    lines.append("")
+    lines.append("balfrin_trigger_matrix:")
+    lines.extend(render_balfrin_trigger_rows(report.get("balfrin_trigger_matrix") or []))
 
     lines.append("")
     lines.append("deferred_public_context_products:")
@@ -388,7 +584,21 @@ def render_decision_rows(rows: list[dict[str, Any]]) -> list[str]:
         rendered.append(
             f"- {row['category']}: decision_type={row['decision_type']}, "
             f"next_acquisition_decision={row['next_acquisition_decision']}, "
-            f"expected_staged_path={row['expected_staged_path']}"
+            f"expected_staged_path={row['expected_staged_path']}, "
+            f"balfrin_trigger_state={row.get('balfrin_trigger_state', 'unknown')}, "
+            f"balfrin_next_decision={row.get('balfrin_next_decision', 'unknown')}"
+        )
+    if not rendered:
+        rendered.append("- []")
+    return rendered
+
+
+def render_balfrin_trigger_rows(rows: list[dict[str, Any]]) -> list[str]:
+    rendered: list[str] = []
+    for row in rows:
+        rendered.append(
+            f"- {row['category']}: product={row['product']}, trigger_state={row['trigger_state']}, "
+            f"next_acquisition_decision={row['next_acquisition_decision']}"
         )
     if not rendered:
         rendered.append("- []")

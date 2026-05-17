@@ -360,7 +360,10 @@ The current decision pack for the Chant Sura / Flüelapass candidate is
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It keeps the
 decision explicit as `defer`, lists the cache/output roots, and preserves the
 public-context staging boundary until the Balfrin demo path has been assessed
-and an explicit acquisition authorization exists.
+and an explicit acquisition authorization exists. The same pack now carries a
+machine-readable Balfrin trigger matrix so measured post-run evidence can flip
+the next acquisition decision from defer to proceed without treating synthetic
+fixtures as public-context evidence.
 
 ## Data-Size Implications
 

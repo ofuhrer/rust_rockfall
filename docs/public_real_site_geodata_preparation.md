@@ -246,7 +246,11 @@ The current decision pack for the Chant Sura / Flüelapass candidate lives at
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It records a
 defer recommendation, the cache/output roots, the required public-context
 products, and the exact helper commands needed to reproduce the current
-readiness boundary without downloading real public context.
+readiness boundary without downloading real public context. The same decision
+pack now carries the Balfrin trigger matrix: measured
+`balfrin_post_run_interpretation_gate_v1` evidence moves each public-context
+product from defer to proceed, inconclusive evidence keeps the product rows
+deferred, and missing evidence keeps them blocked.
 
 The tiny synthetic staging fixture under
 `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`

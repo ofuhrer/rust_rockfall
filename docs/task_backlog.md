@@ -24,44 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-126: Define Second-Site Real-Context Trigger From Balfrin Evidence
-
-Goal: Convert the Chant Sura / Fluelapass defer decision into a concrete
-measured trigger for when real public-context staging should proceed.
-
-Capability gap reduced: Swiss-wide portability realism and second-site
-planning discipline.
-
-Why this outranks alternatives: Portability work should not jump to downloads
-or second-site execution before the Balfrin demonstration shows which evidence
-classes and product scopes matter.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A machine-readable or documented trigger matrix linking Balfrin outcomes to
-  proceed/defer decisions for SWISSIMAGE, swissTLM3D, swissSURFACE3D,
-  swissSURFACE3D Raster, and swissBUILDINGS3D staging.
-- Tests or smoke checks for proceed, defer, and blocked trigger states if
-  helper code changes.
-
-Definition of done:
-
-- The next second-site acquisition decision can be made from measured Balfrin
-  evidence without treating synthetic fixtures as public-context evidence.
-
-Boundaries: Do not download real public context, do not run a second-site
-ensemble, and do not override the existing defer decision without measured
-Balfrin evidence.
-
 ### TB-127: Measure Practical Balfrin Ensemble Frontier
 
 Goal: Estimate the smallest useful next Balfrin ensemble by comparing runtime,

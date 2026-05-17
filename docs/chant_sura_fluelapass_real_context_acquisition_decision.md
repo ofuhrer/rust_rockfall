@@ -53,6 +53,71 @@ expected_cache_roots:
 | source-scenario policy | yes | `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml` | tiny policy record | required contract input |
 | release observation evidence | no | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations` | tiny if present | optional QA source, not a requirement |
 
+## Balfrin Trigger Matrix
+
+The current decision stays `defer` until measured Balfrin evidence is
+available. The trigger is concrete:
+
+- `interpretation_status: measured_conditional_diagnostic`
+- `artifact_acceptance_status: accepted_conditional_diagnostic`
+- `usable_as_conditional_diagnostic_artifact: true`
+
+If the Balfrin post-run gate is `inconclusive_conditional_diagnostic`, the
+same product rows stay deferred. If the evidence bundle is missing, the rows
+are blocked rather than guessed. The product order is a staging priority, not
+a scientific ranking.
+
+```yaml
+schema_version: chant_sura_real_context_trigger_matrix_v1
+evidence_sources:
+  post_run_interpretation_gate: scripts/summarize_balfrin_post_run_interpretation_gate.py
+  balfrin_evidence_bundle: validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json
+trigger_states:
+  proceed:
+    interpretation_status: measured_conditional_diagnostic
+    artifact_acceptance_status: accepted_conditional_diagnostic
+    usable_as_conditional_diagnostic_artifact: true
+  defer:
+    interpretation_status: inconclusive_conditional_diagnostic
+    artifact_acceptance_status: accepted_conditional_diagnostic
+    usable_as_conditional_diagnostic_artifact: true
+  blocked:
+    interpretation_status: blocked_missing_inputs
+    artifact_acceptance_status: blocked_missing_inputs
+    usable_as_conditional_diagnostic_artifact: false
+products:
+  - category: swissimage_context
+    product: SWISSIMAGE
+    staging_priority: 1
+    proceed_decision: proceed
+    defer_decision: defer
+    blocked_decision: blocked_missing_inputs
+  - category: swisstlm3d_context
+    product: swissTLM3D
+    staging_priority: 2
+    proceed_decision: proceed
+    defer_decision: defer
+    blocked_decision: blocked_missing_inputs
+  - category: swisssurface3d_context
+    product: swissSURFACE3D
+    staging_priority: 3
+    proceed_decision: proceed
+    defer_decision: defer
+    blocked_decision: blocked_missing_inputs
+  - category: swisssurface3d_raster_context
+    product: swissSURFACE3D Raster
+    staging_priority: 4
+    proceed_decision: proceed
+    defer_decision: defer
+    blocked_decision: blocked_missing_inputs
+  - category: swissbuildings3d_context
+    product: swissBUILDINGS3D
+    staging_priority: 5
+    proceed_decision: proceed
+    defer_decision: defer
+    blocked_decision: blocked_missing_inputs
+```
+
 ## Cache And Output Roots
 
 - Raw public-cache root: `data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1`
