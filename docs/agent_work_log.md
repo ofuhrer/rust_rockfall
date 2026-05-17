@@ -2949,3 +2949,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: exactly one Balfrin submission was issued under the TB-168 authorization; no second submission attempt, no scale-up authorization, and no operational or physical-probability claim.
 - Next task: `TB-169`
+
+### TB-169: Collect Target-Area Balfrin Metrics Completeness
+
+- Date: 2026-05-17
+- Commit: `0c1c75c`
+- Objective: collect and classify the measured Balfrin run-root metrics into a deterministic JSON/text completeness report without fabricating missing memory or split-output evidence.
+- Files changed: `scripts/summarize_balfrin_probe_metrics_report.py`, `tests/test_balfrin_probe_metrics_report.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated Balfrin metrics report helper that wraps the measured probe summary, renders JSON/text artifacts, and emits an explicit blocked missing-run-root report when the run root is absent.
+  - Classified the measured target-area run with mandatory measured metrics, mandatory blocked metrics, ancillary unavailable metrics, and deterministic next-run-required metrics from the preserved collector output.
+  - Materialized `balfrin_probe_metrics_report_v1.json` and `balfrin_probe_metrics_report_v1.txt` in `validation/private/tschamut_public_pilot/balfrin_probe_metrics_v1` from the preserved measured summary for review.
+  - Added focused tests for the live-run-like classification, the blocked missing-run-root case, and the artifact-writing CLI path; also repaired the stale TB-129 work-log commit reference so repository consistency checks pass.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_metrics_report`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_parses_synthetic_outputs tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_reports_blocked_incomplete_root tests.test_balfrin_evidence_bundle.BalfrinEvidenceBundleTests.test_current_report_is_measured_and_tracks_section_provenance`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py --evidence-json /tmp/balfrin_tb169_live_metrics.json --artifact-dir validation/private/tschamut_public_pilot/balfrin_probe_metrics_v1`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no fabricated measured metrics, no new run, no scale-up authorization, and no operational, physical-probability, or annual-frequency claim.
+- Next task: `TB-170`
