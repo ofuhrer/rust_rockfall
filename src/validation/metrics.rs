@@ -3,6 +3,7 @@ use super::*;
 pub(super) fn compute_deposition_cloud_metrics(
     runs: &[TrajectoryRun],
     observations: &ObservationData,
+    observed_deposition_configured: bool,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
 ) {
@@ -21,6 +22,12 @@ pub(super) fn compute_deposition_cloud_metrics(
         .map(|point| (point.x_m, point.y_m))
         .collect::<Vec<_>>();
     if simulated_points.is_empty() || observed_points.is_empty() {
+        if observed_deposition_configured {
+            warnings.push(
+                "deposition cloud metrics were omitted because simulated or observed deposition points were unavailable"
+                    .to_string(),
+            );
+        }
         return;
     }
 

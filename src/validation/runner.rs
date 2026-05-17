@@ -159,6 +159,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
         .ok_or_else(|| ValidationError::EmptyTrajectory(case.case_id.clone()))?;
 
     let mut metrics = compute_metrics(MetricContext {
+        case,
         samples,
         impact_events: &result.impact_events,
         first,
@@ -167,6 +168,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
         block: &config.block,
         observations: &observations.deposition_points,
         expected: &case.expected,
+        warnings: &mut warnings,
     });
     compute_ensemble_metrics(EnsembleMetricContext {
         case,
@@ -221,8 +223,16 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
         class_provider,
         &observations,
         &mut metrics,
+        &mut warnings,
     )?;
-    compute_observed_contact_metrics(case, &config, class_provider, &observations, &mut metrics)?;
+    compute_observed_contact_metrics(
+        case,
+        &config,
+        class_provider,
+        &observations,
+        &mut metrics,
+        &mut warnings,
+    )?;
     compute_roughness_comparison_metrics(case, &config, samples, &mut metrics)?;
     compute_scarring_comparison_metrics(case, &config, samples, &mut metrics)?;
 

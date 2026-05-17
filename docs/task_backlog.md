@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-196: Explicit Missing-Data Validity Semantics In Validation Metrics
-
-Goal: Replace silent zero or empty fallback behavior in validation metrics and summary parsing with explicit validity flags, warnings, or structured failures.
-
-Capability gap reduced: Scientific review risk from missing or malformed evidence appearing as valid numeric zeroes.
-
-Why this outranks alternatives: Validation summaries influence scientific conclusions; empty observations, malformed sidecars, and missing count maps must be distinguishable from real zero-valued results.
-
-Inspect first:
-
-- `src/validation/metric_math.rs`
-- `src/validation.rs`
-- `src/validation/metrics.rs`
-- `tests/physics.rs`
-- `tests/config_io_terrain.rs`
-- `docs/validation_data_schema.md`
-
-Deliverables:
-
-- Metric helpers or call sites that distinguish empty input, malformed JSON sidecars, and missing observed data from valid zero-valued metrics.
-- Warning, validity-flag, or blocked-status propagation into affected validation reports and manifests without breaking unrelated valid cases.
-- Focused Rust tests covering empty metric inputs, malformed stop-state or terrain/material count maps, and legitimate zero-valued metrics.
-- A documentation note describing how consumers should interpret invalid or unavailable metric fields.
-
-Definition of done:
-
-- Empty or malformed validation evidence can no longer silently produce valid-looking `0.0` or empty-count summaries, focused tests pass, and existing standard validation cases retain expected scientific statuses.
-
-Boundaries: No metric retuning, no benchmark reinterpretation, no default physics change, and no broad validation-file refactor beyond the affected paths.
-
 ### TB-197: Python Execution Policy Normalization
 
 Goal: Normalize repository Python invocation guidance and PyYAML dependency messages around the project-local `uv` workflow used by agents and local checks.

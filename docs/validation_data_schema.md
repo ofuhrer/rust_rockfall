@@ -57,6 +57,15 @@ legacy-compatible for now.
 case-status records containing `completion_status`, `execution_status`,
 `scientific_status`, warnings, failures, and metrics.
 
+Consumers should treat missing metric fields as unavailable evidence, not as
+numeric zero. When observed inputs are empty or absent, the runner now emits a
+warning and omits the dependent metric instead of fabricating a `0.0` summary.
+When a metric is present with value `0.0`, that remains a real computed zero.
+For stop-state summaries, `significant_impact_terrain_class_counts_valid` must
+be `true` before the aggregate count map is treated as usable; `false` means
+one or more per-row JSON count strings were malformed and excluded from the
+summary.
+
 Restitution coefficients must be finite values in `[0, 1]`. Values above
 `1.0` are rejected instead of being silently clamped by the contact solver,
 so reported case parameters match the active physics. Friction and the

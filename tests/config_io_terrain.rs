@@ -1584,6 +1584,81 @@ outputs:
 }
 
 #[test]
+fn validation_warns_when_deposition_observations_are_missing() {
+    let case_path = temp_path("missing_deposition_observations_case.yaml");
+    let release_points = temp_path("missing_deposition_observations_release_points.csv");
+    let deposition_points = temp_path("missing_deposition_observations_deposition_points.csv");
+    let diagnostics = temp_path("missing_deposition_observations_metrics.json");
+    let trajectory = temp_path("missing_deposition_observations_output.csv");
+
+    fs::write(
+        &release_points,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,vx_mps,vy_mps,vz_mps,mass_kg,radius_m\n\
+         obs_release,synthetic,0.0,0.0,2.0,1.0,0.0,0.0,10.0,0.5\n",
+    )
+    .unwrap();
+    fs::write(
+        &deposition_points,
+        "trajectory_id,experiment_id,x_m,y_m,z_m,release_x_m,release_y_m,release_z_m,observed_runout_m\n",
+    )
+    .unwrap();
+    fs::write(
+        &case_path,
+        format!(
+            r#"case_id: missing_deposition_observations
+terrain:
+  type: plane
+  parameters: {{ z0_m: 0.0, slope_x: 0.0, slope_y: 0.0 }}
+block: {{ mass: 10.0, radius: 0.5 }}
+release:
+  position: [0.0, 0.0, 2.0]
+  velocity: [1.0, 0.0, 0.0]
+simulation: {{ dt: 0.05, t_max: 0.1, stop_velocity: 0.01 }}
+random: {{ seed: 11, ensemble_size: 2 }}
+observations:
+  release_points_csv: {}
+  deposition_points_csv: {}
+expected:
+  metrics:
+    - validation_release_count
+    - validation_simulated_trajectory_count
+    - ensemble_mean_runout_m
+outputs:
+  diagnostics_json: {}
+  trajectory_csv: {}
+"#,
+            release_points.display(),
+            deposition_points.display(),
+            diagnostics.display(),
+            trajectory.display()
+        ),
+    )
+    .unwrap();
+
+    let report = run_case_file(&case_path).unwrap();
+
+    assert_eq!(report.status, CaseStatus::Passed);
+    assert_eq!(report.metrics["validation_release_count"], 1.0);
+    assert_eq!(report.metrics["validation_simulated_trajectory_count"], 2.0);
+    assert!(report.metrics.contains_key("ensemble_mean_runout_m"));
+    assert!(report
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("deposition_points_csv contained no rows")));
+    assert!(report
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("deposition cloud metrics were omitted")));
+    assert!(!report.metrics.contains_key("deposition_point_error_m"));
+
+    fs::remove_file(case_path).unwrap();
+    fs::remove_file(release_points).unwrap();
+    fs::remove_file(deposition_points).unwrap();
+    fs::remove_file(diagnostics).unwrap();
+    fs::remove_file(trajectory).unwrap();
+}
+
+#[test]
 fn tschamut_validation_fixture_runs_reproducibly() {
     let output = PathBuf::from("validation/results/tschamut_basic_metrics.json");
     let trajectory = PathBuf::from("validation/results/tschamut_basic_trajectory.csv");
@@ -2558,6 +2633,10 @@ fn swissalti3d_release_zone_pilot_writes_release_manifest_and_points() {
         manifest_json["stop_state_summary"]["path"],
         "validation/results/swissalti3d_release_zone_deposition_stop_state.csv"
     );
+    assert_eq!(
+        manifest_json["stop_state_summary"]["significant_impact_terrain_class_counts_valid"],
+        true
+    );
     assert!(manifest_json["outputs"]
         .as_array()
         .unwrap()
@@ -2801,6 +2880,10 @@ fn swissalti3d_terrain_class_pilot_writes_class_manifest() {
             .as_object()
             .unwrap()
             .is_empty()
+    );
+    assert_eq!(
+        manifest_json["stop_state_summary"]["significant_impact_terrain_class_counts_valid"],
+        true
     );
     assert_ne!(
         stop_state_row["significant_impact_terrain_class_counts"],

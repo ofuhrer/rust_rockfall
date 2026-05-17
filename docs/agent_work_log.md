@@ -3495,3 +3495,30 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no reducer redesign, no probability-semantics change, no output-profile default change, no large fixture regeneration, and no GIS/COG claim upgrade.
 - Next task: `TB-196`
+
+### TB-196: Explicit Missing-Data Validity Semantics In Validation Metrics
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: replace silent empty-input and malformed-summary fallbacks in validation metrics with explicit warnings and validity flags so missing evidence is not mistaken for a real zero-valued result.
+- Files changed: `src/manifest.rs`, `src/validation.rs`, `src/validation/metric_math.rs`, `src/validation/metrics.rs`, `src/validation/runner.rs`, `tests/config_io_terrain.rs`, `docs/validation_data_schema.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a warning path for missing observed deposition inputs so empty deposition sidecars no longer produce silent metric omissions.
+  - Added a validity flag and error note to the stop-state summary manifest, and changed stop-state count-map aggregation to report malformed JSON instead of collapsing it into an empty aggregate.
+  - Added focused regression tests for legitimate zero-valued metric handling, empty deposition-observation warnings, malformed stop-state count-map parsing, and existing observed-data validation flows.
+  - Documented how consumers should interpret omitted metrics and invalid summary fields.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test cloud_metrics_handle_empty_and_symmetric_nearest_cases`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test stop_state_summary_marks_malformed_count_maps_invalid`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test config_io_terrain validation_warns_when_deposition_observations_are_missing -- --exact`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test config_io_terrain validation_compares_observed_trajectory_shape_and_energy -- --exact`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test config_io_terrain swissalti3d_terrain_class_pilot_writes_class_manifest -- --exact`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test validation_reports_raw_and_significant_impact_counts_separately`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no metric retuning, no benchmark reinterpretation, no default physics change, and no broad validation-file refactor beyond the affected paths.
+- Next task: `TB-197`

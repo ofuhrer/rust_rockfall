@@ -1726,6 +1726,7 @@ fn build_terrain_config(terrain: &CaseTerrain) -> Result<TerrainConfig, Validati
 }
 
 struct MetricContext<'a> {
+    case: &'a BenchmarkCase,
     samples: &'a [TrajectorySample],
     impact_events: &'a [ImpactEvent],
     first: &'a TrajectorySample,
@@ -1734,9 +1735,11 @@ struct MetricContext<'a> {
     block: &'a SphereBlock,
     observations: &'a [DepositionPoint],
     expected: &'a ExpectedConfig,
+    warnings: &'a mut Vec<String>,
 }
 
 fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
+    let case = context.case;
     let samples = context.samples;
     let impact_events = context.impact_events;
     let first = context.first;
@@ -1745,6 +1748,7 @@ fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
     let block = context.block;
     let observations = context.observations;
     let expected = context.expected;
+    let warnings = context.warnings;
     let mut metrics = BTreeMap::new();
     let dx = last.x_m - first.x_m;
     let dy = last.y_m - first.y_m;
@@ -1877,7 +1881,19 @@ fn compute_metrics(context: MetricContext<'_>) -> BTreeMap<String, f64> {
         }
     }
 
-    if let Some(observed) = observations.first() {
+    if observations.is_empty() {
+        if case
+            .observations
+            .as_ref()
+            .and_then(|config| config.deposition_points_csv.as_ref())
+            .is_some()
+        {
+            warnings.push(
+                "observed deposition metrics were omitted because deposition_points_csv contained no rows"
+                    .to_string(),
+            );
+        }
+    } else if let Some(observed) = observations.first() {
         let odx = last.x_m - observed.x_m;
         let ody = last.y_m - observed.y_m;
         let odz = last.z_m - observed.z_m;
@@ -2137,7 +2153,18 @@ fn compute_validation_ensemble_metrics(
         stop_state_summary,
         terrain_material_exposure_summary,
     } = context;
-    if observations.release_points.is_empty() || observations.deposition_points.is_empty() {
+    if observations.release_points.is_empty() {
+        if case
+            .observations
+            .as_ref()
+            .and_then(|config| config.release_points_csv.as_ref())
+            .is_some()
+        {
+            warnings.push(
+                "validation ensemble metrics were omitted because release_points_csv contained no rows"
+                    .to_string(),
+            );
+        }
         return Ok(());
     }
 
@@ -2203,6 +2230,7 @@ fn compute_validation_ensemble_metrics(
         *stop_state_summary = Some(stop_state_summary_manifest(
             Some(&stop_state_path),
             &stop_state_rows,
+            warnings,
         ));
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
@@ -2264,7 +2292,16 @@ fn compute_validation_ensemble_metrics(
         }
     }
 
-    compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
+    compute_deposition_cloud_metrics(
+        &runs,
+        observations,
+        case.observations
+            .as_ref()
+            .and_then(|config| config.deposition_points_csv.as_ref())
+            .is_some(),
+        metrics,
+        warnings,
+    );
     metrics.insert(
         "validation_release_count".to_string(),
         observations.release_points.len() as f64,
@@ -2402,6 +2439,7 @@ fn compute_release_zone_metrics(
         *stop_state_summary = Some(stop_state_summary_manifest(
             Some(&stop_state_path),
             &stop_state_rows,
+            warnings,
         ));
         timing.output_write_seconds += output_started.elapsed().as_secs_f64();
         output_entries.push(file_output_manifest(
@@ -2481,7 +2519,16 @@ fn compute_release_zone_metrics(
         "release_zone_max_runout_m".to_string(),
         runouts.last().copied().unwrap_or(0.0),
     );
-    compute_deposition_cloud_metrics(&runs, observations, metrics, warnings);
+    compute_deposition_cloud_metrics(
+        &runs,
+        observations,
+        case.observations
+            .as_ref()
+            .and_then(|config| config.deposition_points_csv.as_ref())
+            .is_some(),
+        metrics,
+        warnings,
+    );
     Ok(Some(release_zone_manifest(
         Some(release_zone_config),
         release_zone,
@@ -2495,8 +2542,20 @@ fn compute_observed_trajectory_metrics(
     contact_parameters: Option<&dyn ContactParameterProvider>,
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
+    warnings: &mut Vec<String>,
 ) -> Result<(), ValidationError> {
     if observations.trajectory_samples.is_empty() {
+        if case
+            .observations
+            .as_ref()
+            .and_then(|config| config.trajectory_csv.as_ref())
+            .is_some()
+        {
+            warnings.push(
+                "observed trajectory metrics were omitted because trajectory_csv contained no rows"
+                    .to_string(),
+            );
+        }
         return Ok(());
     }
 
@@ -2659,8 +2718,20 @@ fn compute_observed_contact_metrics(
     contact_parameters: Option<&dyn ContactParameterProvider>,
     observations: &ObservationData,
     metrics: &mut BTreeMap<String, f64>,
+    warnings: &mut Vec<String>,
 ) -> Result<(), ValidationError> {
     if observations.contact_events.is_empty() {
+        if case
+            .observations
+            .as_ref()
+            .and_then(|config| config.contact_events_csv.as_ref())
+            .is_some()
+        {
+            warnings.push(
+                "observed contact metrics were omitted because contact_events_csv contained no rows"
+                    .to_string(),
+            );
+        }
         return Ok(());
     }
 
@@ -2946,6 +3017,7 @@ fn write_ensemble_stop_state_csv(
 fn stop_state_summary_manifest(
     path: Option<&Path>,
     rows: &[EnsembleStopStateRow],
+    warnings: &mut Vec<String>,
 ) -> StopStateSummaryManifest {
     let mut stop_reason_counts = BTreeMap::new();
     let mut final_contact_state_counts = BTreeMap::new();
@@ -2960,6 +3032,8 @@ fn stop_state_summary_manifest(
     let mut last_significant_impact_terrain_class_counts = BTreeMap::new();
     let mut significant_impact_terrain_class_counts = BTreeMap::new();
     let mut significant_impact_terrain_class_unavailable_count = 0_usize;
+    let mut significant_impact_terrain_class_counts_valid = true;
+    let mut significant_impact_terrain_class_counts_error = None;
     for row in rows {
         if let Some(reason) = &row.stop_reason {
             explicit_stop_state_count += 1;
@@ -2999,10 +3073,23 @@ fn stop_state_summary_manifest(
                 .entry(label)
                 .or_insert(0) += 1;
         }
-        for (label, count) in parse_json_count_map(&row.significant_impact_terrain_class_counts) {
-            *significant_impact_terrain_class_counts
-                .entry(label)
-                .or_insert(0) += count;
+        match parse_json_count_map(&row.significant_impact_terrain_class_counts) {
+            Ok(parsed) => {
+                for (label, count) in parsed {
+                    *significant_impact_terrain_class_counts
+                        .entry(label)
+                        .or_insert(0) += count;
+                }
+            }
+            Err(error) => {
+                let warning = format!(
+                    "stop-state significant_impact_terrain_class_counts could not be parsed as JSON: {error}"
+                );
+                warnings.push(warning);
+                significant_impact_terrain_class_counts_valid = false;
+                significant_impact_terrain_class_counts_error =
+                    Some("one or more significant_impact_terrain_class_counts values were malformed JSON and were excluded from the aggregate".to_string());
+            }
         }
         significant_impact_terrain_class_unavailable_count +=
             row.significant_impact_terrain_class_unavailable_count;
@@ -3025,6 +3112,8 @@ fn stop_state_summary_manifest(
         final_terrain_class_counts,
         last_significant_impact_terrain_class_counts,
         significant_impact_terrain_class_counts,
+        significant_impact_terrain_class_counts_valid,
+        significant_impact_terrain_class_counts_error,
         significant_impact_terrain_class_unavailable_count,
         limitations: vec![
             "aggregate is diagnostic only and does not change validation metrics".to_string(),
@@ -3035,8 +3124,8 @@ fn stop_state_summary_manifest(
     }
 }
 
-fn parse_json_count_map(text: &str) -> BTreeMap<String, usize> {
-    serde_json::from_str(text).unwrap_or_default()
+fn parse_json_count_map(text: &str) -> Result<BTreeMap<String, usize>, serde_json::Error> {
+    serde_json::from_str(text)
 }
 
 fn terrain_class_label(class_id: Option<i32>, class_name: &Option<String>) -> Option<String> {
@@ -4115,10 +4204,17 @@ fn scarring_depth_source_csv(source: ScarringDepthSource) -> &'static str {
 fn compute_deposition_cloud_metrics(
     runs: &[TrajectoryRun],
     observations: &ObservationData,
+    observed_deposition_configured: bool,
     metrics: &mut BTreeMap<String, f64>,
     warnings: &mut Vec<String>,
 ) {
-    metrics::compute_deposition_cloud_metrics(runs, observations, metrics, warnings)
+    metrics::compute_deposition_cloud_metrics(
+        runs,
+        observations,
+        observed_deposition_configured,
+        metrics,
+        warnings,
+    )
 }
 
 fn compute_roughness_comparison_metrics(
@@ -4480,5 +4576,69 @@ mod tests {
         warnings.clear();
         warn_large_debug_outputs(&case, OUTPUT_FILE_HIGH_WARNING_THRESHOLD, &mut warnings);
         assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn stop_state_summary_marks_malformed_count_maps_invalid() {
+        fn row(label_json: &str) -> EnsembleStopStateRow {
+            EnsembleStopStateRow {
+                release_id: "release".to_string(),
+                trajectory_id: "trajectory".to_string(),
+                seed: Some(1),
+                stop_reason: Some("explicit_stopped_state".to_string()),
+                final_contact_state: Some("stopped".to_string()),
+                final_speed_mps: Some(0.0),
+                final_kinetic_j: Some(0.0),
+                termination_low_velocity: Some(true),
+                termination_max_steps: Some(false),
+                termination_t_max: Some(false),
+                termination_domain_exit: Some(false),
+                termination_terrain_error: Some(false),
+                last_significant_impact_time_s: None,
+                last_significant_impact_x_m: None,
+                last_significant_impact_y_m: None,
+                last_significant_impact_z_m: None,
+                distance_last_significant_impact_to_final_m: None,
+                significant_impact_count: Some(0),
+                low_energy_contact_count: Some(0),
+                terrain_normal_x: None,
+                terrain_normal_y: None,
+                terrain_normal_z: None,
+                terrain_slope_abs: None,
+                terrain_material_context_available: false,
+                final_terrain_class_id: None,
+                final_terrain_class_name: None,
+                final_terrain_class_source: None,
+                last_significant_impact_terrain_class_id: None,
+                last_significant_impact_terrain_class_name: None,
+                last_significant_impact_terrain_class_source: None,
+                significant_impact_terrain_class_counts: label_json.to_string(),
+                significant_impact_terrain_class_sequence_head: String::new(),
+                significant_impact_terrain_class_sequence_tail: String::new(),
+                significant_impact_terrain_class_sequence_truncated: false,
+                significant_impact_terrain_class_unavailable_count: 0,
+                terrain_material_instrumentation_gaps: String::new(),
+                runout_m: 0.0,
+            }
+        }
+
+        let rows = vec![row(r#"{"rock":2}"#), row("{not json}")];
+        let mut warnings = Vec::new();
+        let summary = stop_state_summary_manifest(None, &rows, &mut warnings);
+
+        assert_eq!(summary.trajectory_count, 2);
+        assert!(!summary.significant_impact_terrain_class_counts_valid);
+        assert!(summary
+            .significant_impact_terrain_class_counts_error
+            .as_deref()
+            .unwrap()
+            .contains("malformed JSON"));
+        assert_eq!(
+            summary.significant_impact_terrain_class_counts.get("rock"),
+            Some(&2)
+        );
+        assert!(warnings
+            .iter()
+            .any(|warning| warning.contains("could not be parsed as JSON")));
     }
 }

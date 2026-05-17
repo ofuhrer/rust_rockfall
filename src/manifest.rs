@@ -216,6 +216,10 @@ fn default_normalization_convention() -> String {
     "unweighted_current_outputs".to_string()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OutputManifest {
     pub kind: String,
@@ -281,6 +285,10 @@ pub struct StopStateSummaryManifest {
     pub last_significant_impact_terrain_class_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub significant_impact_terrain_class_counts: BTreeMap<String, usize>,
+    #[serde(default = "default_true")]
+    pub significant_impact_terrain_class_counts_valid: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub significant_impact_terrain_class_counts_error: Option<String>,
     #[serde(default)]
     pub significant_impact_terrain_class_unavailable_count: usize,
     pub limitations: Vec<String>,

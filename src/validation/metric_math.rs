@@ -114,7 +114,8 @@ mod tests {
         let left = [(0.0, 0.0), (2.0, 0.0)];
         let right = [(1.0, 0.0), (3.0, 0.0)];
 
-        assert_eq!(mean(&[]), 0.0);
+        assert_eq!(mean(&[0.0, 0.0]), 0.0);
+        assert_eq!(nonempty_mean(&[0.0, 0.0]), Some(0.0));
         assert_eq!(nonempty_mean(&[]), None);
         assert_eq!(centroid2(&left), (1.0, 0.0));
         assert_eq!(distance2((0.0, 0.0), (3.0, 4.0)), 5.0);
