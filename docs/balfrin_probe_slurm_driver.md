@@ -38,13 +38,26 @@ execution reproducible and metadata-friendly on Balfrin.
 
 - `--submit`
   - Writes artifacts and calls `sbatch` with `--parsable`.
-  - Implemented but not exercised in this task.
+  - Exercised for the authorized TB-168 target-area probe as job `4329024`.
 
 - `--collect`
   - Reads an existing run root and emits a compact summary JSON.
 
 - `--local-command-plan`
   - Regenerates and prints the command plan only.
+
+## Balfrin checkout and scratch boundary
+
+Run submission commands from the Balfrin checkout:
+
+`/users/olifu/work/rust_rockfall`
+
+Do not assume a git checkout exists under `/scratch/mch/olifu/rust_rockfall/main`.
+The `/scratch/mch/olifu/rust_rockfall/...` tree is reserved for generated run roots,
+the shared Cargo target directory, caches, and other ignored execution artifacts.
+Before a live submission, fast-forward the checkout and run readiness checks from
+`/users/olifu/work/rust_rockfall`; then write the deterministic run root under
+scratch.
 
 ## Run directory and file layout
 
@@ -78,6 +91,8 @@ The frozen target-area demonstration contract is
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
 Its `balfrin_execution_boundary.command_plan_hook.command` is the read-only
 hook for inspecting the frozen Balfrin command plan without launching a job.
+Its `balfrin_execution_boundary.remote_repo_root` records the canonical Balfrin
+checkout path used for live submission.
 
 Target-area public-geodata readiness for that frozen contract is currently
 `ready_for_frozen_target_area_demo` at the tracked contract level:
@@ -93,6 +108,21 @@ Target-area public-geodata readiness for that frozen contract is currently
   demonstration contract. It is separate from the Chant Sura / Fluelapass
   second-site public-context readiness track, which remains blocked or
   deferred until real second-site inputs are staged.
+
+The TB-168 authorized target-area probe used:
+
+- `job_id=4329024`
+- `run_root=/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`
+- `partition=postproc`
+- `--cpus-per-task=16`, `--time=00:30:00`
+- SLURM state `COMPLETED`, exit `0:0`, elapsed `00:00:43`
+- `output_file_count=58`
+- `output_bytes=192,350,243`
+- `conditional_curve_row_count=729600`
+
+The probe was measured, but the metrics contract still reports missing peak
+memory and split validation/hazard output counts and bytes. Those completeness
+gaps are intentionally left to the next metrics task rather than backfilled.
 
 ## SBATCH defaults and constraints
 

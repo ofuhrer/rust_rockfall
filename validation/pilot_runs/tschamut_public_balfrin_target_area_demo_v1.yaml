@@ -44,6 +44,7 @@ output_mode:
 
 balfrin_execution_boundary:
   execution_boundary: single_job_balfrin_slurm
+  remote_repo_root: /users/olifu/work/rust_rockfall
   run_id_policy: deterministic_frozen_run_id
   run_id: tschamut_public_balfrin_target_area_demo_v1
   probe_manifest_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
@@ -77,6 +78,7 @@ balfrin_execution_boundary:
     - validation/private/tschamut_public_pilot/target_gate_v1_summary_only
     - hazard/results/tschamut_public_pilot/target_gate_v1
   execution_notes:
+    - run the submit helper from /users/olifu/work/rust_rockfall on Balfrin; scratch is for run roots and generated artifacts, not the git checkout
     - keep the same run id and run root for any later replay of this frozen contract
     - exactly one bounded single-job Balfrin submission is authorized for TB-168 by the 2026-05-17 user request
     - reruns require renewed authorization

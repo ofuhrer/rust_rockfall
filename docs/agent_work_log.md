@@ -2157,7 +2157,7 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 ### TB-129: Map Balfrin Demo Evidence To Physical-Credibility Gaps
 
 - Date: 2026-05-17
-- Commit: local
+- Commit: `7546bf9`
 - Objective: map the measured Balfrin demo outputs to the existing physical-credibility, validation, and calibration evidence requirements without conflating the demo with calibration, validation, annual-frequency, or operational evidence.
 - Files changed: `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -2919,11 +2919,14 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Date: 2026-05-17
 - Commit: local
 - Objective: submit the single authorized bounded Balfrin probe for the frozen Tschamut target-area contract, or record the precise scheduler/runtime gate if the remote environment could not support that one submission.
-- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Files changed: `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, `docs/balfrin_probe_slurm_driver.md`, `tests/test_balfrin_target_area_demo_contract.py`, `docs/agent_work_log.md`
 - Implementation summary:
-  - Confirmed the frozen authorization record at `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml` exposes a single authorized submit command and a fixed run root for `tschamut_public_balfrin_target_area_demo_v1`.
-  - Attempted the required Balfrin SSH handoff checks, but the expected clone path `/scratch/mch/olifu/rust_rockfall/main` did not exist on Balfrin and the authorized run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517` was also absent, so no submission was issued.
-  - Removed TB-168 from the active backlog and recorded the blocked execution state instead of fabricating a job id or completion evidence.
+  - Fixed the Balfrin handoff path assumption: the live checkout is `/users/olifu/work/rust_rockfall`, while `/scratch/mch/olifu/rust_rockfall/...` is for generated run roots and caches.
+  - Fast-forwarded the Balfrin checkout to `0f55940`, generated the authorized submission package, and consumed the single TB-168 submission authorization exactly once.
+  - Submitted SLURM job `4329024` on `postproc`; it completed with `COMPLETED`, exit `0:0`, and SLURM elapsed time `00:00:43`.
+  - Collected the probe metrics under `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
+  - Measured outputs: `output_file_count=58`, `output_bytes=192350243`, collector wall time `12.611904342891648` seconds, conditional curve rows `729600`, trajectory decisions `executed: 4`, reducer decisions `executed: 2` and `reused_completed_state: 2`.
+  - Metrics completeness remains a downstream TB-169 gap: peak memory and split validation/hazard output counts/bytes are still missing from the current metrics contract.
 - Checks run:
   - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-168 --format json`
   - `rg -n "^### TB-168:" docs/task_backlog.md`
@@ -2937,7 +2940,12 @@ review triage entries live in `docs/agent_work_log_archive.md`.
   - `ssh balfrin 'set -euo pipefail; cd /scratch/mch/olifu/rust_rockfall/main; git pull --ff-only origin main; git status --short --branch; test -f validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml; test -f validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml; test -f scripts/submit_balfrin_probe.py; test -d /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 && echo run_root_exists=1 || echo run_root_exists=0'`
   - `ssh balfrin 'set -euo pipefail; pwd; ls /scratch || true; find /scratch -maxdepth 3 -type d -name .git 2>/dev/null | sed -n "1,20p"; find /scratch -maxdepth 4 -type d -path "*/rust_rockfall/*" 2>/dev/null | sed -n "1,40p"'`
   - `ssh balfrin 'set -euo pipefail; for d in /scratch/mch/jkeiser /scratch/mch/jkeiser/rust_rockfall /scratch/mch/jkeiser/rust_rockfall/main /scratch/mch/jkeiser/rust_rockfall/probes /scratch/mch/jkeiser/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1 /scratch/mch/jkeiser/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517; do if [ -e "$d" ]; then printf "exists %s\n" "$d"; else printf "missing %s\n" "$d"; fi; done'`
-- Result/status: implemented_blocked_report
-- Blocked output: `bash: line 0: cd: /scratch/mch/olifu/rust_rockfall/main: No such file or directory`
-- Boundaries: no Balfrin submission, no measured run, no second submission attempt, no scale-up authorization, and no operational or physical-probability claim.
+  - `ssh balfrin 'set -euo pipefail; cd /users/olifu/work/rust_rockfall; git pull --ff-only origin main; git status --short --branch; git rev-parse HEAD; test -f validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml && echo contract=present'`
+  - `ssh balfrin 'set -euo pipefail; cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/check_balfrin_tschamut_readiness.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --format json'`
+  - `ssh balfrin 'set -euo pipefail; cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --run-id tschamut_public_balfrin_target_area_demo_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only'`
+  - `ssh balfrin 'set -euo pipefail; cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --run-id tschamut_public_balfrin_target_area_demo_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit'`
+  - `ssh balfrin 'sacct -j 4329024 --format=JobID,JobName%30,State,ExitCode,Elapsed,MaxRSS,ReqMem,NCPUS -P'`
+  - `ssh balfrin 'set -euo pipefail; cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517; PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --output-json /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517/balfrin_probe_metrics.json'`
+- Result/status: implemented_measured
+- Boundaries: exactly one Balfrin submission was issued under the TB-168 authorization; no second submission attempt, no scale-up authorization, and no operational or physical-probability claim.
 - Next task: `TB-169`

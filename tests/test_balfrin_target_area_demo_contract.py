@@ -35,6 +35,7 @@ class BalfrinTargetAreaDemoContractTests(unittest.TestCase):
         self.assertEqual(contract["output_mode"]["gis_package_mode"], "pilot_gis_package")
         self.assertTrue(contract["output_mode"]["pilot_gis_package"])
         self.assertEqual(contract["balfrin_execution_boundary"]["execution_boundary"], "single_job_balfrin_slurm")
+        self.assertEqual(contract["balfrin_execution_boundary"]["remote_repo_root"], "/users/olifu/work/rust_rockfall")
         self.assertEqual(contract["balfrin_execution_boundary"]["run_id_policy"], "deterministic_frozen_run_id")
         self.assertIn("--local-command-plan", contract["balfrin_execution_boundary"]["command_plan_hook"]["command"])
         authorization = contract["balfrin_execution_boundary"]["execution_authorization"]
