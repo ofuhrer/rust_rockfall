@@ -3592,3 +3592,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no physics change, no public runtime promotion of `shape_contact_v0`, no sweeping refactor of all `expect` calls, and no change to analytic-test convenience behavior.
 - Next task: `TB-200`
+
+### TB-200: GitHub Python Test Clean-Checkout Stabilization
+
+- Date: 2026-05-18
+- Commit: `89181ac`
+- Objective: Make the Python planning and evidence helpers return explicit blocked or fixture-backed metadata when ignored same-scale, Balfrin, or second-site artifacts are absent in clean-checkout runs.
+- Files changed: `scripts/check_hazard_rebuild_output_profile.py`, `scripts/plan_balfrin_single_release_zone_case_dry_run.py`, `tests/test_balfrin_single_release_zone_case_plan_dry_run.py`, `tests/test_chant_sura_fluelapass_dry_run_case_skeleton.py`, `tests/test_hazard_rebuild_output_profile.py`, `tests/test_pilot_command_plan.py`
+- Implementation summary:
+  - Surfaced `blocked_missing_inputs` at the hazard-rebuild output-profile top level when any default profile manifest/root is missing, so the command plan no longer implies measured scope on a clean checkout.
+  - Added a structured blocked report path to the Balfrin dry-run planner and covered it with a JSON CLI test that exercises missing committed inputs.
+  - Staged a minimal AOI tile catalog in the Chant Sura test fixture, added a `/tmp` repo-root ready-path test, and added a blocked-missing-input CLI test for the same helper.
+  - Extended the output-profile and command-plan tests so missing manifests stay explicit and bounded instead of silently inheriting measured metadata.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_pilot_command_plan tests.test_swiss_wide_execution_envelope tests.test_balfrin_single_release_zone_case_plan_dry_run tests.test_chant_sura_fluelapass_dry_run_case_skeleton tests.test_hazard_rebuild_output_profile`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no public-data download, no generated ignored-artifact commit, no fabricated measured evidence, no Balfrin access requirement, and no scale-up or operational claim.
+- Next task: `TB-201`
