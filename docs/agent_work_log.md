@@ -3188,3 +3188,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no release-zone validation claim, no threshold tuning, no field-evidence claim, no operational release-zone claim, no Balfrin job submission, and no generated GIS or raster outputs committed.
 - Next task: `TB-182`
+
+### TB-182: Large Deterministic Scenario Table Generation Stress Test
+
+- Date: 2026-05-17
+- Commit: `6547e90`
+- Objective: generate a deterministic stress-test scenario table from candidate release-point rows, measure cardinality/runtime/storage pressure, and report TB-183 planning-input readiness.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a scratch-root-only candidate source-zone stress helper that expands release-point candidates across the frozen Tschamut block-family policy and writes a manifest-rich scenario table plus bounded report.
+  - Recorded scenario cardinality summaries by candidate, source-zone family, block family, and scenario-family template, along with runtime and storage measurements and an explicit first-bottleneck report.
+  - Added focused regressions for deterministic manifest/row summaries and fail-closed missing-input handling, then removed TB-182 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py tests/test_candidate_source_zone_scenario_stress.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no annual-frequency semantics, no physical probability semantics, no parameter tuning, no ensemble execution, and no generated large tables committed to git.
+- Next task: `TB-183`
