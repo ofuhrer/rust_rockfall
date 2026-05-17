@@ -9,15 +9,25 @@ Current crate/model version: `v0.6.1`.
 ## Current Status
 
 The repository currently supports a reproducible, non-operational conditional
-Tschamut diagnostic workflow. Same-scale artifacts, uncertainty summaries,
-rebuildable reduced output, command plans, and COG export proof paths exist, but
-scientific closure remains inconclusive and physical credibility is not
-established.
+diagnostic workflow with measured Tschamut same-scale evidence and a measured
+Balfrin single-release-zone demonstration. The current Balfrin path includes a
+frozen demonstration contract, SLURM execution evidence, a live
+interruption/resume proof, a canonical evidence bundle, replay smoke checks,
+rebuildable reduced outputs, GIS/COG scope reporting, and AOI-to-command-plan
+dry-run composition.
+
+Swiss-wide automation is still emerging. The repo now has deterministic
+dry-run helpers for AOI product discovery, terrain-driven release-zone
+candidates, block-scenario table generation, second-site acquisition planning,
+and site-level preparation, but it does not yet download all public inputs,
+run arbitrary AOIs, or generate physically annualized intensity-frequency
+products.
 
 Current products are diagnostic or sampling-weighted conditional hazard layers.
 They are not annualized, not risk maps, and not operational Swiss hazard
-products. Risk, exposure, vulnerability, warning, and regulatory semantics are
-out of scope.
+products. Scientific closure remains inconclusive and physical credibility is
+not established. Risk, exposure, vulnerability, warning, and regulatory
+semantics are out of scope.
 
 ## Quickstart
 

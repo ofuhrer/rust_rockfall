@@ -14,10 +14,10 @@ primarily swisstopo. The current execution focus is the Balfrin
 single-release-zone pilot track. That track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
-evidence bundle, a post-run scientific interpretation layer, GIS/COG scope
-classification, runtime/scaling frontier helpers, AOI/release/scenario dry-run
-automation, and a second-site acquisition trigger matrix. The measured Balfrin
-run is:
+evidence bundle, a replay smoke helper, a live interruption/resume proof, a
+post-run scientific interpretation layer, GIS/COG scope classification,
+runtime/scaling frontier helpers, AOI/release/scenario dry-run automation, and
+a second-site acquisition trigger matrix. The measured Balfrin run is:
 
 - run root:
   `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`;
@@ -52,9 +52,9 @@ until the dominant uncertainty and physical-credibility gaps below are reduced
 with measured evidence. Second-site pilots remain non-executed, but Chant Sura
 / Fluelapass now has a concrete candidate manifest, reusable public-geodata
 contract reporting, deterministic acquisition planning, a tiny synthetic
-core-input staging helper, AOI-to-prepared-pilot dry-run composition, and an
-explicit `deferred_public_context_inputs` boundary for the missing public
-context products.
+core-input staging helper, a product-by-product readiness pack,
+AOI-to-prepared-pilot dry-run composition, and explicit blocked/deferred
+boundaries for missing public-context products.
 
 Non-goals for current backlog work: operational warning systems, regulatory
 approval, risk/exposure/vulnerability modelling, annual return-period claims,
@@ -74,8 +74,8 @@ objective are:
    export path, and bounded runtime/output summaries now form an executable
    evidence chain. The earlier `Balfrin target-gate reproduction` remains
    useful single-job execution evidence, and the newer Balfrin
-   single-release-zone track is ready as dry-run automation rather than as
-   measured post-run evidence.
+   single-release-zone track now has measured execution, replayability, and live
+   restartability evidence rather than only dry-run automation.
 2. Target-vs-gate convergence remains the dominant scientific uncertainty. The
    restored Tschamut gate and target hazard manifests expose 22 shared
    cell-wise layers. TB-024 ruled out grid/CRS and scenario/source path
@@ -117,9 +117,10 @@ objective are:
    `16613900` hazard-output bytes, `2005` validation files, `46` hazard-output
    files, and `729600` conditional-curve rows. The measured Balfrin evidence
    bundle now separates measured sections from fixture-backed sections, so
-   output-tier and restartability evidence are no longer conflated. The live
-   Balfrin demo is measured; the deliberate interruption/recovery proof remains
-   fixture-backed until a fresh live resume experiment is run.
+   output-tier, metrics, and restartability evidence are no longer conflated.
+   Live interruption/resume evidence has now been recorded for the Balfrin
+   demonstration path, while smaller fixture-backed tests remain useful for
+   clean-checkout regression coverage.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow
@@ -131,18 +132,21 @@ objective are:
    deterministic release-zone candidate generation and pragmatic
    block-scenario generation from public-input contracts. The terrain candidate
    helper now also emits deterministic GIS-readable mask and polygon bundles
-   with stable candidate IDs and frozen-footprint comparison metadata. These
-   helpers do not generate production release zones, tune thresholds, or claim
-   field evidence. The remaining automation gap is moving from dry-run
-   contracts to a measured, public-context-backed second-site run only after
-   real swisstopo context is staged.
+   with stable candidate IDs and frozen-footprint comparison metadata, and the
+   scenario-table helper can reproduce the committed Tschamut summary table from
+   policy plus release metadata. These helpers do not generate production
+   release zones, tune thresholds, or claim field evidence. The remaining
+   automation gap is moving from dry-run contracts to a measured,
+   public-context-backed second-site run only after real swisstopo context is
+   staged.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
    contract, deterministic acquisition planning, a tiny synthetic core-input
-   staging path, a real-context readiness gate, a release-zone heuristic dry
-   run, a release-plan dry run, an AOI-to-prepared-pilot dry-run orchestrator,
-   and a blocked second-site case skeleton. The candidate now separates core
-   readiness from `deferred_public_context_inputs`. No second-site ensemble or
+   staging path, a real-context readiness gate, a product readiness pack, a
+   release-zone heuristic dry run, a release-plan dry run, an
+   AOI-to-prepared-pilot dry-run orchestrator, and a blocked second-site case
+   skeleton. The candidate now separates staged core fixtures, missing AOI/tile
+   inputs, and deferred public-context products. No second-site ensemble or
    hazard build is authorized, and the synthetic inputs must not be represented
    as real swisstopo evidence.
 7. Scaling direction is now anchored by both same-scale Tschamut evidence and a
@@ -158,7 +162,10 @@ objective are:
    measured Balfrin demo run root
    `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3`,
    and now surfaces explicit `no_go`, `defer`, and `allowed_next_probe`
-   labels for planning cases; it does not authorize Swiss-wide execution.
+   labels for planning cases. The bounded next-ensemble probe is currently
+   recorded as fail-closed because optional probabilistic metadata is absent
+   from the reduced-output fixture; this does not authorize Swiss-wide
+   execution.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
@@ -175,7 +182,10 @@ objective are:
    package roots. The canonical Balfrin evidence bundle now exposes a
    machine-readable `gis_cog_scope_report` with `full_scope`, `bounded_scope`,
    or `blocked_missing_inputs` semantics so demonstration GIS scope is explicit
-   rather than implied.
+   rather than implied. Spatial uncertainty confidence products now include
+   deterministic diagnostic outputs for persistent hazard, unstable regions,
+   support/nodata sensitivity, and shared-support magnitude sensitivity; these
+   remain review products, not operational hazard maps.
 9. Physical/annual frequency semantics, risk, exposure, vulnerability, and
    operational claims remain out of scope until conditional diagnostic
    convergence, source-frequency semantics, and validation/calibration
@@ -207,10 +217,11 @@ objective are:
     populated. The contract records the required independent benchmark
     manifest, geometry, provenance, and objective-function placeholders. The
     intake requirements are executable as a dry-run readiness pack that writes
-    template manifest, geometry inventory, provenance checklist, and validation
-    summary files without claiming real evidence. Benchmark-intake readiness is
-    now conceptually separate from calibration readiness, but actual benchmark
-    data and objective-function evaluation remain absent.
+    an acquisition checklist, required dataset inventory, geometry/provenance
+    templates, objective-function placeholders, a blocked no-evidence report,
+    and validation summary files without claiming real evidence. Benchmark-
+    intake readiness is now separated from calibration readiness, but actual
+    benchmark data and objective-function evaluation remain absent.
 12. Balfrin demonstration evidence has crossed from scaffolding into measured
     execution. TB-115 froze the canonical demonstration contract. TB-116 and
     TB-117 separated local scheduler failure from the SSH-accessible Balfrin
@@ -219,7 +230,7 @@ objective are:
     cancelled a healthy cold-compile job too early. TB-119 built the canonical
     evidence bundle and section provenance model. TB-120 kept restartability
     honest by preserving live interruption/recovery as fixture-backed until a
-    deliberate resume experiment is run. TB-121 added the canonical scientific
+    deliberate resume experiment was run. TB-121 added the canonical scientific
     delta interpretation, which currently leaves the inconclusive diagnostic
     interpretation unchanged. TB-122 made GIS/COG scope machine-readable.
     TB-123 through TB-125 advanced deterministic release-zone, scenario, and
@@ -227,13 +238,22 @@ objective are:
     public-context trigger matrix. TB-127 and TB-128 updated practical ensemble
     and Swiss-wide planning envelopes from measured Balfrin evidence. TB-129
     mapped the measured demo to physical-credibility gaps and kept physical
-    credibility at `not_established`.
+    credibility at `not_established`. TB-130 then added the live Balfrin
+    interruption/resume proof; TB-131 tightened Balfrin metrics-contract
+    coverage; TB-132 through TB-134 advanced AOI tile discovery, deterministic
+    release-zone candidate products, and deterministic block-scenario table
+    generation; TB-135 recorded the bounded next-ensemble probe as blocked;
+    TB-136 added spatial confidence products; TB-137 and TB-138 produced
+    second-site and benchmark acquisition readiness packs; TB-139 added the
+    Balfrin replay smoke helper; and TB-140 composed the site-level
+    AOI-to-command-plan dry run.
 13. Second-site realism remains deliberately deferred. TB-114 added
     `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` and
     recorded a defer recommendation for real Chant Sura / Fluelapass public
     context. The decision pack lists the required products, cache/output roots,
-    readiness impact, and reproduction commands, but no public context was
-    downloaded and no second-site ensemble or hazard build was run.
+    readiness impact, reproduction commands, and product-by-product stage/defer
+    matrix, but no public context was downloaded and no second-site ensemble or
+    hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
     backlog is currently empty and `print_agent_task_context.py` reports
     `backlog_refill_needed=true`. The work log is chronological, archived
@@ -263,18 +283,18 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-129:
+Current high-value work after TB-140:
 
-- refill the backlog from the measured Balfrin demo state, not from the older
-  pre-execution plan;
-- decide whether the next live Balfrin work should be a deliberate
-  interruption/resume proof, a small bounded ensemble probe, or further
-  artifact hardening;
+- refill the backlog from the measured Balfrin demo and dry-run composition
+  state, not from the older pre-execution plan;
+- decide whether the next live Balfrin work should be a small bounded ensemble
+  probe, additional measured metrics capture, or public-context-backed
+  portability work;
 - use the canonical evidence bundle and scientific delta report as the
   management-facing demonstration evidence, while keeping the closure status
   inconclusive and non-operational;
-- close or explicitly defer ancillary measured-metrics gaps such as memory peak
-  and split validation/hazard file counts;
+- close or explicitly defer remaining ancillary measured-metrics gaps while
+  keeping fixture-backed regression evidence distinct from live measurements;
 - keep the Chant Sura / Fluelapass real-context decision tied to the trigger
   matrix and measured evidence, not synthetic fixtures;
 - keep physical credibility work tied to independent observed

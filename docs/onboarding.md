@@ -164,6 +164,35 @@ scripts/git-hooks/pre-commit
 diagnostic outputs. Do not stage those generated files unless a tiny fixture is
 being intentionally added and documented.
 
+## Current Workflow Orientation
+
+The current mature path is a non-operational conditional diagnostic workflow,
+not a Swiss-wide production hazard service. New contributors should assume:
+
+- Tschamut same-scale artifacts are the canonical local diagnostic evidence.
+- Balfrin now has measured single-release-zone demonstration evidence, a live
+  interruption/resume proof, a canonical evidence bundle, and a replay smoke
+  helper.
+- AOI-to-workflow automation exists as deterministic dry-run composition:
+  product discovery, terrain release-zone candidates, pragmatic scenario
+  planning, ignored output roots, and command-plan references.
+- Chant Sura / Fluelapass remains a second-site readiness/acquisition track;
+  synthetic fixtures are not public-context or validation evidence.
+- Observed runout/deposition benchmark intake is specified as a non-evidence
+  acquisition pack; actual physical validation and calibration data are still
+  absent.
+
+For current maturity, read `docs/current_maturity_snapshot.md` before adding
+new backlog tasks. For a replayability check of the Balfrin demonstration, use:
+
+```bash
+PYENV_VERSION=system uv run python \
+  scripts/summarize_balfrin_demonstration_replay_smoke.py \
+  --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root \
+  --artifact-dir /tmp/balfrin_demonstration_replay_smoke_v1 \
+  --format json
+```
+
 ## Context-Efficient Agent Workflow
 
 For roadmap implementation tasks, keep onboarding and planning narrow:
