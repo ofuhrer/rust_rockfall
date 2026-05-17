@@ -9,16 +9,31 @@ import math
 import re
 import shlex
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
-try:
-    import yaml  # type: ignore
-except ImportError as exc:  # pragma: no cover - environment setup.
-    raise SystemExit("PyYAML is required; install with `python3 -m pip install PyYAML`") from exc
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    normalize_text,
+    require as shared_require,
+    require_int as shared_require_int,
+    require_list as shared_require_list,
+    require_mapping as shared_require_mapping,
+    require_number as shared_require_number,
+    require_sha256_hex as shared_require_sha256_hex,
+    require_text as shared_require_text,
+    SHA256_HEX_RE as SHARED_SHA256_HEX_RE,
+    read_yaml as shared_read_yaml,
+    resolve_repo_path,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
+HEX_SHA256_RE = SHARED_SHA256_HEX_RE
 SUPPORTED_RUN_STATUSES = {
     "template_not_run",
     "predeclared_ready",
@@ -71,8 +86,6 @@ SELECTED_REQUIRED_PATH_ROOTS = {
     "dem_sensitivity_summary_path": "validation/",
     "scaling_summary_path": "hazard/results/",
 }
-HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 SUPPORTED_CONDITIONAL_CURVE_EXPORT_MODES = {"full", "summary-only"}
 SUPPORTED_GRID_CSV_EXPORT_MODES = {"full", "none"}
 REQUIRED_UNSUPPORTED_CLAIMS = {
@@ -98,6 +111,16 @@ class PilotRunError(ValueError):
     """User-facing pilot run validation error."""
 
 
+require = partial(shared_require, error_cls=PilotRunError)
+require_int = partial(shared_require_int, error_cls=PilotRunError)
+require_list = partial(shared_require_list, error_cls=PilotRunError)
+require_mapping = partial(shared_require_mapping, error_cls=PilotRunError)
+require_number = partial(shared_require_number, error_cls=PilotRunError)
+require_sha256_hex = partial(shared_require_sha256_hex, error_cls=PilotRunError)
+require_text = partial(shared_require_text, error_cls=PilotRunError)
+read_yaml = partial(shared_read_yaml, error_cls=PilotRunError)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_manifest", type=Path)
@@ -114,7 +137,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        manifest = read_yaml(args.run_manifest)
+        manifest = read_yaml(
+            args.run_manifest,
+            read_message="failed to read",
+            object_message="run manifest must contain a YAML mapping",
+        )
         validate_pilot_run(manifest, args.run_manifest)
         if args.print_command_plan:
             plan = build_command_plan(manifest)
@@ -125,16 +152,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pilot run validation error: {exc}", file=sys.stderr)
         return 2
     return 0
-
-
-def read_yaml(path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - path context matters for users.
-        raise PilotRunError(f"failed to read {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise PilotRunError(f"run manifest must contain a YAML mapping: {path}")
-    return data
 
 
 def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = None) -> None:
@@ -199,8 +216,16 @@ def build_command_plan(manifest: dict[str, Any]) -> dict[str, Any]:
     output_roots = require_mapping(hazard_plan["output_roots"], "hazard_output_plan.output_roots")
     grid = require_mapping(hazard_plan["explicit_grid"], "hazard_output_plan.explicit_grid")
     benchmark_case_path = require_text(input_freeze["benchmark_case_path"], "input_freeze.benchmark_case_path")
-    benchmark_case_file = repo_path(benchmark_case_path)
-    benchmark_case = read_yaml(benchmark_case_file) if benchmark_case_file.exists() else {}
+    benchmark_case_file = resolve_repo_path(ROOT, benchmark_case_path)
+    benchmark_case = (
+        read_yaml(
+            benchmark_case_file,
+            read_message="failed to read",
+            object_message="run manifest must contain a YAML mapping",
+        )
+        if benchmark_case_file.exists()
+        else {}
+    )
     outputs = (
         require_mapping(benchmark_case.get("outputs"), "benchmark_case.outputs")
         if benchmark_case
@@ -336,15 +361,18 @@ def build_hazard_command(
     run_id: str,
 ) -> list[str]:
     def normalize_token(value: Any) -> str:
-        normalized = str(value).strip().replace("\\", "/")
-        return CONTROL_CHARS_RE.sub("", normalized)
+        return normalize_text(value)
 
     benchmark_case_path_obj = Path(benchmark_case_path)
-    benchmark_case_path_abs = repo_path(benchmark_case_path)
+    benchmark_case_path_abs = resolve_repo_path(ROOT, benchmark_case_path)
     benchmark_case_id = input_freeze.get("benchmark_case_id")
     case_id = benchmark_case_id or run_id
     if not benchmark_case_id and benchmark_case_path_abs.exists():
-        benchmark_case = read_yaml(benchmark_case_path_abs)
+        benchmark_case = read_yaml(
+            benchmark_case_path_abs,
+            read_message="failed to read",
+            object_message="run manifest must contain a YAML mapping",
+        )
         case_id = require_text(benchmark_case.get("case_id"), "benchmark_case.case_id")
     command = [
         "uv",
@@ -460,7 +488,7 @@ def print_command_plan(plan: dict[str, Any], format_name: str) -> None:
 
 def validate_input_freeze(input_freeze: dict[str, Any], run_status: str) -> None:
     for key in ("geodata_manifest_path", "source_scenario_policy_path"):
-        path = repo_path(require_text(input_freeze.get(key), f"input_freeze.{key}"))
+        path = resolve_repo_path(ROOT, require_text(input_freeze.get(key), f"input_freeze.{key}"))
         require(path.exists(), f"input_freeze.{key} does not exist: {path}")
     freeze_status = require_text(input_freeze.get("freeze_status"), "input_freeze.freeze_status")
     if run_status == "template_not_run":
@@ -708,18 +736,12 @@ def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
     checksums = require_mapping(evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
     for key in REQUIRED_ARTIFACT_CHECKSUMS:
         checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
-        require(
-            HEX_SHA256_RE.fullmatch(checksum) is not None,
-            f"run_evidence.artifact_checksums.{key} must be a lowercase SHA-256 hex digest",
-        )
+        require_sha256_hex(checksum, f"run_evidence.artifact_checksums.{key}")
     for key in OPTIONAL_ARTIFACT_CHECKSUMS:
         if key not in checksums or checksums[key] is None:
             continue
         optional_checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
-        require(
-            HEX_SHA256_RE.fullmatch(optional_checksum) is not None,
-            f"run_evidence.artifact_checksums.{key} must be a lowercase SHA-256 hex digest",
-        )
+        require_sha256_hex(optional_checksum, f"run_evidence.artifact_checksums.{key}")
 
 
 def validate_selected_gate_contract(
@@ -755,7 +777,7 @@ def validate_selected_gate_contract(
     )
     report_path = require_text(report_plan.get("report_path"), "report_plan.report_path")
     try:
-        report_text = repo_path(report_path).read_text(encoding="utf-8")
+        report_text = resolve_repo_path(ROOT, report_path).read_text(encoding="utf-8")
     except OSError as exc:
         raise PilotRunError(
             f"selected gate run {run_id} requires report {SELECTED_REPORT_PATH} to be readable: {exc}"
@@ -873,47 +895,6 @@ def validate_no_go_blocker(blocker: dict[str, Any]) -> None:
     require_text(blocker.get("evidence_output_dir"), "no_go_blocker.evidence_output_dir")
     notes = "\n".join(str(note).lower() for note in require_list(blocker.get("notes"), "no_go_blocker.notes"))
     require("not a model result" in notes, "no_go_blocker.notes must say the no-go is not a model result")
-
-
-def repo_path(value: str) -> Path:
-    path = Path(value)
-    return path if path.is_absolute() else ROOT / path
-
-
-def require_mapping(value: Any, label: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise PilotRunError(f"{label} must be a mapping")
-    return value
-
-
-def require_list(value: Any, label: str) -> list[Any]:
-    if not isinstance(value, list):
-        raise PilotRunError(f"{label} must be a list")
-    return value
-
-
-def require_text(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise PilotRunError(f"{label} must be a non-empty string")
-    return value
-
-
-def require_number(value: Any, label: str) -> float:
-    if not isinstance(value, (int, float)):
-        raise PilotRunError(f"{label} must be numeric")
-    return float(value)
-
-
-def require_int(value: Any, label: str, *, minimum: int) -> int:
-    if not isinstance(value, int):
-        raise PilotRunError(f"{label} must be an integer")
-    require(value >= minimum, f"{label} must be at least {minimum}")
-    return value
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise PilotRunError(message)
 
 
 if __name__ == "__main__":

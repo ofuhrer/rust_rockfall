@@ -3452,3 +3452,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no public-data download, no Balfrin access requirement, no deletion of local ignored artifacts, no new evidence claim, and no generated heavy outputs committed.
 - Next task: `TB-194`
+
+### TB-194: Shared Python Workflow Utility Extraction
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: extract duplicated Python workflow helpers into one shared module so validator and workflow-script safety rules stop drifting apart.
+- Files changed: `scripts/lib/__init__.py`, `scripts/lib/workflow_validation.py`, `scripts/validate_source_frequency_evidence.py`, `scripts/validate_block_release_probability_evidence.py`, `scripts/validate_scalable_conditional_target_gate.py`, `scripts/validate_scalable_conditional_execution.py`, `scripts/validate_physical_frequency_reducer_preconditions.py`, `scripts/validate_annual_physical_validation_calibration_review_gate.py`, `scripts/validate_public_real_site_conditional_pilot_run.py`, `tests/test_workflow_validation_helpers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a small shared `scripts/lib/workflow_validation.py` module with YAML/JSON loading, path resolution, text normalization, SHA-256 validation, `require_*` helpers, claim-boundary field checks, misleading-text scanning, and reusable status-message rendering.
+  - Migrated six validator scripts plus the pilot-run validator to the shared helpers, keeping their CLI output and schema-specific validation logic intact while binding each script to its own exception type.
+  - Added focused helper tests for loader, checksum, normalization, claim-boundary scan, and status rendering behavior; the existing validator regression tests continue to cover the accepted and rejected fixtures.
+  - Kept schema-specific claim-boundary rules, target-gate policies, pilot-run command-plan assembly, and report checksum parsing intentionally script-local.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/lib/workflow_validation.py scripts/validate_source_frequency_evidence.py scripts/validate_block_release_probability_evidence.py scripts/validate_scalable_conditional_target_gate.py scripts/validate_scalable_conditional_execution.py scripts/validate_physical_frequency_reducer_preconditions.py scripts/validate_annual_physical_validation_calibration_review_gate.py scripts/validate_public_real_site_conditional_pilot_run.py tests/test_workflow_validation_helpers.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_workflow_validation_helpers tests.test_source_frequency_evidence tests.test_block_release_probability_evidence tests.test_scalable_conditional_target_gate tests.test_scalable_conditional_execution tests.test_physical_frequency_reducer_preconditions tests.test_annual_physical_validation_calibration_review_gate tests.test_public_real_site_conditional_pilot_run`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: bounded extraction only; no schema redesign, no claim-boundary behavior change, no mass migration of unrelated scripts, and no generated artifact commit.
+- Next task: `TB-195`

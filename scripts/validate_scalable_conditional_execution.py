@@ -12,10 +12,25 @@ import argparse
 import json
 import re
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
-import yaml
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    require_list as shared_require_list,
+    require_mapping as shared_require_mapping,
+    require_positive_int as shared_require_positive_int,
+    require_text as shared_require_text,
+    read_yaml as shared_read_yaml,
+    render_status_message,
+    scan_text_for_misleading_claims,
+)
 
 
 DECISIONS = {"design_ready_not_authorized_for_scale_up", "no_go", "inconclusive"}
@@ -64,6 +79,15 @@ class ScalableConditionalExecutionError(ValueError):
     """User-facing scalable conditional execution validation error."""
 
 
+require = partial(shared_require, error_cls=ScalableConditionalExecutionError)
+require_false_fields = partial(shared_require_false_fields, error_cls=ScalableConditionalExecutionError)
+require_list = partial(shared_require_list, error_cls=ScalableConditionalExecutionError)
+require_mapping = partial(shared_require_mapping, error_cls=ScalableConditionalExecutionError)
+require_positive_int = partial(shared_require_positive_int, error_cls=ScalableConditionalExecutionError)
+require_text = partial(shared_require_text, error_cls=ScalableConditionalExecutionError)
+read_yaml = partial(shared_read_yaml, error_cls=ScalableConditionalExecutionError)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("record", type=Path)
@@ -78,9 +102,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(
-            "scalable conditional execution record is valid: "
-            f"{args.record} ({summary['decision']}, "
-            f"blocker_count={summary['remaining_blocker_count']})"
+            render_status_message(
+                "scalable conditional execution record",
+                args.record,
+                summary,
+                "decision",
+                extra_fields=(("remaining_blocker_count", "blocker_count"),),
+            )
         )
     return 0
 
@@ -107,10 +135,19 @@ def validate_scalable_conditional_execution(record_path: Path) -> dict[str, Any]
     blockers = set(require_list(record.get("remaining_blockers_before_ensemble_increase"), "remaining_blockers_before_ensemble_increase"))
     missing_blockers = sorted(REQUIRED_REMAINING_BLOCKERS - blockers)
     require(not missing_blockers, f"remaining blockers missing: {missing_blockers}")
-    validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
+    require_false_fields(
+        require_mapping(record.get("claim_boundary"), "claim_boundary"),
+        ("annualized", "physical_probability", "return_period", "risk_or_exposure", "operational_hazard_map"),
+    )
     limitations = require_list(record.get("limitations"), "limitations")
     require(limitations, "limitations must be nonempty")
-    scan_text_for_misleading_claims(record)
+    scan_text_for_misleading_claims(
+        record,
+        require_fn=lambda condition, message: require(condition, message),
+        patterns=MISLEADING_PATTERNS,
+        skip_keys={"claim_boundary", "unsupported_current_claims"},
+        allow_markers=("unsupported", "not_", "no_", "no ", "without", "defer", "future", "out of scope", "remain"),
+    )
     return {
         "schema_version": record["schema_version"],
         "pilot_id": record["pilot_id"],
@@ -191,63 +228,13 @@ def validate_claim_boundary(boundary: dict[str, Any]) -> None:
     allowed = set(require_list(boundary.get("current_allowed_product_labels"), "current_allowed_product_labels"))
     missing_allowed = sorted(REQUIRED_ALLOWED_PRODUCTS - allowed)
     require(not missing_allowed, f"current allowed product labels missing: {missing_allowed}")
-    for field in ("annualized", "physical_probability", "return_period", "risk_or_exposure", "operational_hazard_map"):
-        require(boundary.get(field) is False, f"claim_boundary.{field} must be false")
+    require_false_fields(
+        boundary,
+        ("annualized", "physical_probability", "return_period", "risk_or_exposure", "operational_hazard_map"),
+    )
     unsupported = set(require_list(boundary.get("unsupported_current_claims"), "unsupported_current_claims"))
     for claim in ("annual_frequency", "physical_probability", "return_period", "risk_map", "operational_hazard_map"):
         require(claim in unsupported, f"unsupported_current_claims missing: {claim}")
-
-
-def scan_text_for_misleading_claims(value: Any, *, path: str = "record") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key in {"claim_boundary", "unsupported_current_claims"}:
-                continue
-            scan_text_for_misleading_claims(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            scan_text_for_misleading_claims(child, path=f"{path}[{index}]")
-    elif isinstance(value, str):
-        lower = value.lower()
-        if any(marker in lower for marker in ("unsupported", "not_", "no_", "no ", "without", "defer", "future", "out of scope", "remain")):
-            return
-        for pattern in MISLEADING_PATTERNS:
-            require(pattern.search(value) is None, f"{path} contains misleading current-product claim: {value!r}")
-
-
-def read_yaml(path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - path context matters.
-        raise ScalableConditionalExecutionError(f"failed to read YAML {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ScalableConditionalExecutionError(f"YAML document must be an object: {path}")
-    return data
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise ScalableConditionalExecutionError(message)
-
-
-def require_mapping(value: Any, field: str) -> dict[str, Any]:
-    require(isinstance(value, dict), f"{field} must be an object")
-    return value
-
-
-def require_list(value: Any, field: str) -> list[Any]:
-    require(isinstance(value, list), f"{field} must be a list")
-    return value
-
-
-def require_text(value: Any, field: str) -> str:
-    require(isinstance(value, str) and value.strip(), f"{field} must be a nonempty string")
-    return value
-
-
-def require_positive_int(value: Any, field: str) -> int:
-    require(isinstance(value, int) and value > 0, f"{field} must be a positive integer")
-    return int(value)
 
 
 if __name__ == "__main__":

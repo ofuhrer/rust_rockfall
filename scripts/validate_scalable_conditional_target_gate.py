@@ -7,10 +7,26 @@ import argparse
 import json
 import re
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
-import yaml
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    require_list as shared_require_list,
+    require_mapping as shared_require_mapping,
+    require_positive_int as shared_require_positive_int,
+    require_positive_number as shared_require_positive_number,
+    require_text as shared_require_text,
+    read_yaml as shared_read_yaml,
+    render_status_message,
+    scan_text_for_misleading_claims,
+)
 
 
 SUPPORTED_GATE_STATUSES = {"blocked_missing_inputs", "target_scale_executed", "inconclusive"}
@@ -78,6 +94,16 @@ class ScalableConditionalTargetGateError(ValueError):
     """User-facing target gate validation error."""
 
 
+require = partial(shared_require, error_cls=ScalableConditionalTargetGateError)
+require_false_fields = partial(shared_require_false_fields, error_cls=ScalableConditionalTargetGateError)
+require_list = partial(shared_require_list, error_cls=ScalableConditionalTargetGateError)
+require_mapping = partial(shared_require_mapping, error_cls=ScalableConditionalTargetGateError)
+require_positive_int = partial(shared_require_positive_int, error_cls=ScalableConditionalTargetGateError)
+require_positive_number = partial(shared_require_positive_number, error_cls=ScalableConditionalTargetGateError)
+require_text = partial(shared_require_text, error_cls=ScalableConditionalTargetGateError)
+read_yaml = partial(shared_read_yaml, error_cls=ScalableConditionalTargetGateError)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("record", type=Path)
@@ -92,9 +118,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(
-            "scalable conditional target gate record is valid: "
-            f"{args.record} ({summary['gate_status']}, "
-            f"missing_path_count={summary['missing_path_count']})"
+            render_status_message(
+                "scalable conditional target gate record",
+                args.record,
+                summary,
+                "gate_status",
+                extra_fields=(("missing_path_count", "missing_path_count"),),
+            )
         )
     return 0
 
@@ -144,7 +174,25 @@ def validate_target_gate_record(record_path: Path) -> dict[str, Any]:
     validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
     limitations = require_list(record.get("limitations"), "limitations")
     require(limitations, "limitations must be nonempty")
-    scan_text_for_misleading_claims(record)
+    scan_text_for_misleading_claims(
+        record,
+        require_fn=lambda condition, message: require(condition, message),
+        patterns=MISLEADING_PATTERNS,
+        skip_keys={"claim_boundary", "unsupported_current_claims"},
+        allow_markers=(
+            "unsupported",
+            "not_",
+            "no_",
+            "no ",
+            "without",
+            "defer",
+            "future",
+            "out of scope",
+            "remain",
+            "blocked",
+            "missing",
+        ),
+    )
     return {
         "schema_version": record["schema_version"],
         "pilot_id": record["pilot_id"],
@@ -450,83 +498,13 @@ def validate_claim_boundary(boundary: dict[str, Any]) -> None:
     allowed = set(require_list(boundary.get("current_allowed_product_labels"), "current_allowed_product_labels"))
     missing_allowed = sorted(REQUIRED_ALLOWED_PRODUCTS - allowed)
     require(not missing_allowed, f"current allowed product labels missing: {missing_allowed}")
-    for field in ("annualized", "physical_probability", "return_period", "risk_or_exposure", "operational_hazard_map"):
-        require(boundary.get(field) is False, f"claim_boundary.{field} must be false")
+    require_false_fields(
+        boundary,
+        ("annualized", "physical_probability", "return_period", "risk_or_exposure", "operational_hazard_map"),
+    )
     unsupported = set(require_list(boundary.get("unsupported_current_claims"), "unsupported_current_claims"))
     missing_unsupported = sorted(REQUIRED_UNSUPPORTED_CLAIMS - unsupported)
     require(not missing_unsupported, f"unsupported_current_claims missing: {missing_unsupported}")
-
-
-def scan_text_for_misleading_claims(value: Any, *, path: str = "record") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key in {"claim_boundary", "unsupported_current_claims"}:
-                continue
-            scan_text_for_misleading_claims(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            scan_text_for_misleading_claims(child, path=f"{path}[{index}]")
-    elif isinstance(value, str):
-        lower = value.lower()
-        if any(
-            marker in lower
-            for marker in (
-                "unsupported",
-                "not_",
-                "no_",
-                "no ",
-                "without",
-                "defer",
-                "future",
-                "out of scope",
-                "remain",
-                "blocked",
-                "missing",
-            )
-        ):
-            return
-        for pattern in MISLEADING_PATTERNS:
-            require(pattern.search(value) is None, f"{path} contains misleading current-product claim: {value!r}")
-
-
-def read_yaml(path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - keep path context.
-        raise ScalableConditionalTargetGateError(f"failed to read YAML {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ScalableConditionalTargetGateError(f"YAML document must be an object: {path}")
-    return data
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise ScalableConditionalTargetGateError(message)
-
-
-def require_mapping(value: Any, field: str) -> dict[str, Any]:
-    require(isinstance(value, dict), f"{field} must be an object")
-    return value
-
-
-def require_list(value: Any, field: str) -> list[Any]:
-    require(isinstance(value, list), f"{field} must be a list")
-    return value
-
-
-def require_text(value: Any, field: str) -> str:
-    require(isinstance(value, str) and value.strip(), f"{field} must be a nonempty string")
-    return value
-
-
-def require_positive_int(value: Any, field: str) -> int:
-    require(isinstance(value, int) and value > 0, f"{field} must be a positive integer")
-    return int(value)
-
-
-def require_positive_number(value: Any, field: str) -> float:
-    require(isinstance(value, int | float) and value > 0, f"{field} must be a positive number")
-    return float(value)
 
 
 if __name__ == "__main__":

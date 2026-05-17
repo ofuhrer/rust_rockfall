@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-194: Shared Python Workflow Utility Extraction
-
-Goal: Extract duplicated Python workflow utilities for YAML/JSON loading, path normalization, checksums, required-field validation, claim-boundary scanning, and status rendering into one shared module.
-
-Capability gap reduced: Validator and workflow-script drift caused by repeated local implementations of the same safety and parsing rules.
-
-Why this outranks alternatives: Claim-boundary and schema helpers are correctness logic; duplicated copies across validators make future scientific-safety fixes easy to miss.
-
-Inspect first:
-
-- `scripts/validate_source_frequency_evidence.py`
-- `scripts/validate_block_release_probability_evidence.py`
-- `scripts/validate_scalable_conditional_target_gate.py`
-- `scripts/validate_public_real_site_conditional_pilot_run.py`
-- `scripts/check_repo_consistency.py`
-- `tests/test_source_frequency_evidence.py`
-
-Deliverables:
-
-- A small shared Python module under a repository-local package or `scripts/lib/` with stable helpers for common loading, path, checksum, `require_*`, and claim-boundary checks.
-- Migration of at least six high-overlap validator scripts to the shared helpers without changing their CLI behavior or output schemas.
-- Focused tests for the shared helpers plus regression coverage showing migrated validators still accept and reject the existing fixtures.
-- A short migration note naming which helper patterns remain intentionally script-local.
-
-Definition of done:
-
-- Duplicate helper implementations are removed from the migrated validators, all migrated validator tests pass, and scripts remain runnable through `PYENV_VERSION=system uv run python ...`.
-
-Boundaries: Bounded extraction only; no framework rewrite, no schema redesign, no behavior change to claim boundaries, and no mass migration of every script in one task.
-
 ### TB-195: Hazard-Layer Writer And Manifest Module Split
 
 Goal: Split the lowest-risk output writer and manifest/report generation responsibilities out of `scripts/build_hazard_layers.py` while preserving CLI behavior and generated artifact schemas.

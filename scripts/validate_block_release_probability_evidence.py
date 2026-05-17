@@ -13,11 +13,25 @@ import json
 import math
 import re
 import sys
+from functools import partial
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-import yaml
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    require_list as shared_require_list,
+    require_mapping as shared_require_mapping,
+    require_text as shared_require_text,
+    read_yaml as shared_read_yaml,
+    render_status_message,
+    scan_text_for_misleading_claims,
+)
 
 
 STATUSES = {
@@ -48,6 +62,14 @@ class BlockReleaseProbabilityEvidenceError(ValueError):
     """User-facing block/release probability evidence validation error."""
 
 
+require = partial(shared_require, error_cls=BlockReleaseProbabilityEvidenceError)
+require_false_fields = partial(shared_require_false_fields, error_cls=BlockReleaseProbabilityEvidenceError)
+require_list = partial(shared_require_list, error_cls=BlockReleaseProbabilityEvidenceError)
+require_mapping = partial(shared_require_mapping, error_cls=BlockReleaseProbabilityEvidenceError)
+require_text = partial(shared_require_text, error_cls=BlockReleaseProbabilityEvidenceError)
+read_yaml = partial(shared_read_yaml, error_cls=BlockReleaseProbabilityEvidenceError)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("record", type=Path)
@@ -62,10 +84,16 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(
-            "block/release probability evidence record is valid: "
-            f"{args.record} ({summary['record_status']}, "
-            f"block_scenario_count={summary['block_scenario_count']}, "
-            f"release_cell_count={summary['release_cell_count']})"
+            render_status_message(
+                "block/release probability evidence record",
+                args.record,
+                summary,
+                "record_status",
+                extra_fields=(
+                    ("block_scenario_count", "block_scenario_count"),
+                    ("release_cell_count", "release_cell_count"),
+                ),
+            )
         )
     return 0
 
@@ -104,10 +132,23 @@ def validate_block_release_probability_evidence(record_path: Path) -> dict[str, 
     validate_uncertainty(require_mapping(record.get("uncertainty"), "uncertainty"), status)
     validate_evidence_basis(require_mapping(record.get("evidence_basis"), "evidence_basis"), status)
     validate_dataset_separation(record)
-    validate_claim_boundary(require_mapping(record.get("claim_boundary"), "claim_boundary"))
+    require_false_fields(
+        require_mapping(record.get("claim_boundary"), "claim_boundary"),
+        (
+            "annual_frequency_supported",
+            "physical_probability_supported",
+            "return_period_supported",
+            "operational_hazard_map_supported",
+            "risk_or_exposure_supported",
+        ),
+    )
     limitations = require_list(record.get("limitations"), "limitations")
     require(limitations, "limitations must be nonempty")
-    scan_text_for_misleading_claims(record)
+    scan_text_for_misleading_claims(
+        record,
+        require_fn=lambda condition, message: require(condition, message),
+        patterns=MISLEADING_PATTERNS,
+    )
 
     return {
         "schema_version": record["schema_version"],
@@ -237,67 +278,9 @@ def validate_dataset_separation(record: dict[str, Any]) -> None:
     require(not invalid_validation, f"swisstopo geodata must not be listed as validation evidence: {invalid_validation}")
 
 
-def validate_claim_boundary(boundary: dict[str, Any]) -> None:
-    for field in (
-        "annual_frequency_supported",
-        "physical_probability_supported",
-        "return_period_supported",
-        "operational_hazard_map_supported",
-        "risk_or_exposure_supported",
-    ):
-        require(boundary.get(field) is False, f"claim_boundary.{field} must be false")
-
-
-def scan_text_for_misleading_claims(value: Any, *, path: str = "record") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key == "claim_boundary":
-                continue
-            scan_text_for_misleading_claims(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            scan_text_for_misleading_claims(child, path=f"{path}[{index}]")
-    elif isinstance(value, str):
-        lower = value.lower()
-        if any(marker in lower for marker in ("unsupported", "not_", "no ", "no_", "without", "defer", "future", "out of scope", "required")):
-            return
-        for pattern in MISLEADING_PATTERNS:
-            require(pattern.search(value) is None, f"{path} contains misleading current-product claim: {value!r}")
-
-
 def require_probability_sum(value: float, field: str) -> None:
     require(math.isfinite(value), f"{field} must be finite")
     require(abs(value - 1.0) <= SUM_TOLERANCE, f"{field} must sum to 1.0")
-
-
-def read_yaml(path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - path context matters.
-        raise BlockReleaseProbabilityEvidenceError(f"failed to read YAML {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise BlockReleaseProbabilityEvidenceError(f"YAML document must be an object: {path}")
-    return data
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise BlockReleaseProbabilityEvidenceError(message)
-
-
-def require_mapping(value: Any, field: str) -> dict[str, Any]:
-    require(isinstance(value, dict), f"{field} must be an object")
-    return value
-
-
-def require_list(value: Any, field: str) -> list[Any]:
-    require(isinstance(value, list), f"{field} must be a list")
-    return value
-
-
-def require_text(value: Any, field: str) -> str:
-    require(isinstance(value, str) and value.strip(), f"{field} must be a nonempty string")
-    return value
 
 
 if __name__ == "__main__":
