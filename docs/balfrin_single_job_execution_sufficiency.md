@@ -143,6 +143,19 @@ fixture-only or blocked sections.
 When evidence is missing, it reports `blocked_missing_inputs` instead of
 fabricating a stronger claim.
 
+For a single deterministic replay smoke check, use the run-root driven helper:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_replay_smoke.py \
+  --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3 \
+  --artifact-dir /tmp/balfrin_demonstration_replay_smoke_v1
+```
+
+The smoke helper checks that the run root is present, regenerates the Balfrin
+evidence bundle and post-run interpretation outputs into the artifact
+directory, and returns `blocked_missing_inputs` when the run root is absent or
+the required replay artifacts are unavailable.
+
 ## Scientific Blockers
 
 - `conditional_hazard_convergence_not_accepted` from `conditional_convergence_protocol`: current_classification remains inconclusive in the convergence protocol

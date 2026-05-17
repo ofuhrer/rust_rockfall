@@ -2340,3 +2340,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no calibration, fitting, parameter tuning, annual frequency, risk, exposure, vulnerability, operational claim, or real benchmark evidence was introduced.
 - Next task: `TB-139`
+
+### TB-139: Build Balfrin Demonstration Replay Smoke Test
+- Date: 2026-05-17
+- Commit: local
+- Objective: add a deterministic Balfrin replay smoke helper that fails closed when the measured run root is absent and regenerates the bundle and post-run interpretation outputs when the run root is available.
+- Files changed: `scripts/summarize_balfrin_demonstration_replay_smoke.py`, `tests/test_balfrin_demonstration_replay_smoke.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a run-root driven smoke helper that collects probe metrics, rebuilds the canonical Balfrin evidence bundle, rebuilds the post-run interpretation gate, and writes a dedicated smoke report alongside the regenerated artifacts.
+  - Made the helper fail closed with `blocked_missing_inputs` when the run root is absent, while still materializing blocked bundle and gate reports for the operator handoff path.
+  - Added focused tests for present-run-root replay and missing-run-root blocked behavior, and documented the deterministic smoke command in the Balfrin sufficiency note.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_demonstration_replay_smoke.py tests/test_balfrin_demonstration_replay_smoke.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_demonstration_replay_smoke tests.test_balfrin_evidence_bundle tests.test_balfrin_post_run_interpretation_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_replay_smoke.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/balfrin_demonstration_replay_smoke_v1 --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new Slurm execution, no generated artifact commits, and no claim-boundary changes.
+- Next task: `TB-140`

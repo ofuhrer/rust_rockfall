@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-139: Build Balfrin Demonstration Replay Smoke Test
-
-Goal: Verify that the canonical Balfrin evidence bundle and interpretation can
-be regenerated from the measured run root or fail closed when the run root is
-absent.
-
-Capability gap reduced: demonstration reproducibility and handoff robustness.
-
-Why this outranks alternatives: evidence exists but management-facing replay
-should not depend on implicit local state or scattered manual commands.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Replay/smoke helper or command-plan path that checks run-root availability,
-  regenerates the bundle/interpreter outputs, and records blocked status when
-  remote artifacts are unavailable.
-- Focused tests for present-run-root and missing-run-root behavior.
-
-Definition of done:
-
-- A fresh operator can run one deterministic smoke command to verify whether
-  the current Balfrin demonstration evidence is replayable from available
-  artifacts.
-
-Boundaries: No new Slurm execution, no generated artifact commits, and no
-claim-boundary changes.
-
 ### TB-140: Compose Site-Level AOI-To-Command-Plan Dry Run
 
 Goal: Chain AOI product discovery, release-zone candidate generation,
