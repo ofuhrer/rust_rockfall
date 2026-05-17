@@ -24,42 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-158: Produce Chant Sura Real-Context Staging Checklist
-
-Goal: Convert the Chant Sura real-context acquisition decision into a concrete,
-product-by-product staging checklist with cache-verifier inputs.
-
-Capability gap reduced: Second-site realism remains deferred because real
-public-context staging is not yet operator-ready.
-
-Why this outranks alternatives: Portability cannot progress beyond synthetic
-fixtures until a worker can stage and verify real SWISSIMAGE/swissTLM3D/etc.
-products with deterministic cache manifests.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/verify_public_geodata_cache.py`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-
-Deliverables:
-
-- A staging checklist or helper output that maps each deferred public-context
-  product to cache-manifest fields, expected roots, verifier command, and
-  readiness impact.
-- Tests for missing, partially staged, and verifier-ready checklist states.
-- Documentation that the checklist is not a download or validation claim.
-
-Definition of done:
-
-- A future operator can see exactly which real public-context files and
-  metadata must be staged for Chant Sura before any second-site run is
-  considered.
-
-Boundaries: No downloads, no synthetic evidence upgrade, no second-site
-ensemble, no operational claim, and no physical validation claim.
-
 ### TB-159: Map Physical-Credibility Gaps Onto AOI Automation Outputs
 
 Goal: Show which AOI dry-run outputs remain workflow artifacts versus physical

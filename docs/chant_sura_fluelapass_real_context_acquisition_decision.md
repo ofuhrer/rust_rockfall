@@ -77,6 +77,17 @@ The product matrix above is intentionally fail-closed:
 - the `hold` row stays blocked until the AOI catalog exists;
 - the optional rows remain optional and are not evidence by themselves.
 
+## Staging Checklist
+
+The Chant Sura real-context readiness gate now emits a product-by-product
+staging checklist alongside the acquisition plan. The checklist is a dry-run
+operator aid only: it points to the cache-manifest fields, expected staging
+roots, and the verifier command for each deferred public-context product, but
+it does not download data, validate products, or authorize a second-site run.
+
+Use the checklist to see which rows are `missing`, `partially_staged`, or
+`verifier_ready` before any real-context handoff is considered.
+
 ## Required Products
 
 | Product | Required | Expected staged path | Expected data volume | Readiness impact |

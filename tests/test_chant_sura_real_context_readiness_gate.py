@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import tempfile
 import unittest
@@ -31,18 +32,80 @@ post_run_gate = _load_module(POST_RUN_GATE_SCRIPT_PATH, "summarize_balfrin_post_
 
 
 class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
+    def test_missing_real_context_staging_checklist_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            self._write_real_context_cache_manifest(repo_root, staged_categories=set())
+
+            report = gate.build_report(self._site_config_path(), repo_root=repo_root)
+
+        checklist = report["real_context_staging_checklist"]
+        self.assertEqual(report["real_context_staging_checklist_state"], "missing")
+        self.assertEqual(checklist["checklist_state"], "missing")
+        self.assertEqual(checklist["verified_product_count"], 0)
+        self.assertEqual(checklist["missing_product_count"], 5)
+        self.assertEqual(checklist["partially_staged_product_count"], 0)
+        self.assertEqual(checklist["claim_boundary_note"], gate.CHECKLIST_BOUNDARY_NOTE)
+        self.assertIn("verify_public_geodata_cache.py", checklist["verifier_command"])
+        self.assertTrue(all(entry["checklist_state"] == "missing" for entry in checklist["products"]))
+        self.assertTrue(all(entry["readiness_impact"] for entry in checklist["products"]))
+
+    def test_partially_staged_real_context_checklist_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            self._write_real_context_cache_manifest(
+                repo_root,
+                staged_categories={"swissimage_context", "swisstlm3d_context", "swisssurface3d_context"},
+                mismatched_categories={"swisssurface3d_context"},
+            )
+
+            report = gate.build_report(self._site_config_path(), repo_root=repo_root)
+
+        checklist = report["real_context_staging_checklist"]
+        self.assertEqual(report["real_context_staging_checklist_state"], "partially_staged")
+        self.assertEqual(checklist["checklist_state"], "partially_staged")
+        self.assertEqual(checklist["verified_product_count"], 2)
+        self.assertEqual(checklist["missing_product_count"], 2)
+        self.assertEqual(checklist["partially_staged_product_count"], 1)
+        row_states = {entry["category"]: entry["checklist_state"] for entry in checklist["products"]}
+        self.assertEqual(row_states["swissimage_context"], "verifier_ready")
+        self.assertEqual(row_states["swisstlm3d_context"], "verifier_ready")
+        self.assertEqual(row_states["swisssurface3d_context"], "partially_staged")
+        self.assertEqual(row_states["swisssurface3d_raster_context"], "missing")
+        self.assertEqual(row_states["swissbuildings3d_context"], "missing")
+
     def test_ready_core_inputs_and_deferred_public_context_products(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
+            self._write_real_context_cache_manifest(
+                repo_root,
+                staged_categories={
+                    "swissimage_context",
+                    "swisstlm3d_context",
+                    "swisssurface3d_context",
+                    "swisssurface3d_raster_context",
+                    "swissbuildings3d_context",
+                },
+            )
 
             report = gate.build_report(self._site_config_path(), repo_root=repo_root)
 
         self.assertEqual(report["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
         self.assertEqual(report["readiness_status"], "ready_for_real_context_acquisition")
+        self.assertEqual(report["real_context_staging_checklist_state"], "verifier_ready")
         self.assertEqual(report["core_input_status"], "ready")
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertFalse(report["synthetic_core_inputs_are_public_context_evidence"])
+        checklist = report["real_context_staging_checklist"]
+        self.assertEqual(checklist["verification_fields"], report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verification_fields"])
+        self.assertTrue(checklist["products"][0]["expected_staging_root"].endswith("/context/swissimage"))
+        self.assertEqual(
+            checklist["products"][0]["readiness_impact"],
+            "staged files and metadata are ready for deterministic cache verification",
+        )
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertIn("swissALTI3D", report["public_geodata_workflow_contract"]["swisstopo_product_classes"][0]["products"])
@@ -105,6 +168,16 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
+            self._write_real_context_cache_manifest(
+                repo_root,
+                staged_categories={
+                    "swissimage_context",
+                    "swisstlm3d_context",
+                    "swisssurface3d_context",
+                    "swisssurface3d_raster_context",
+                    "swissbuildings3d_context",
+                },
+            )
 
             report = gate.build_report(self._site_config_path(), repo_root=repo_root)
 
@@ -112,10 +185,13 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(text_report, gate.render_text_report(report))
         self.assertIn("schema_version: chant_sura_real_context_readiness_gate_v1", text_report)
         self.assertIn("real_context_readiness_gate_status: ready_for_real_context_acquisition", text_report)
+        self.assertIn("real_context_staging_checklist_state: verifier_ready", text_report)
         self.assertIn("local_core_inputs:", text_report)
         self.assertIn("deterministic_acquisition_plan:", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("next_acquisition_decisions:", text_report)
+        self.assertIn("real_context_staging_checklist:", text_report)
+        self.assertIn("claim_boundary_note: Checklist only; it does not authorize downloads", text_report)
         self.assertIn("synthetic_core_inputs_are_public_context_evidence: false", text_report)
         self.assertIn("processed_context_root", text_report)
         self.assertIn("empty_directory", text_report)
@@ -176,6 +252,79 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
     def _site_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+
+    def _write_real_context_cache_manifest(
+        self,
+        repo_root: Path,
+        *,
+        staged_categories: set[str],
+        mismatched_categories: set[str] | None = None,
+    ) -> Path:
+        mismatched_categories = mismatched_categories or set()
+        manifest_path = (
+            repo_root
+            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"
+        )
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        records = []
+        for index, category in enumerate(
+            [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+            start=1,
+        ):
+            staged_path = manifest_path.parent / f"{category}.bin"
+            metadata_path = manifest_path.parent / f"{category}.yaml"
+            expected_bytes = f"expected-{category}".encode("utf-8")
+            actual_bytes = expected_bytes if category in staged_categories and category not in mismatched_categories else None
+            if category in staged_categories:
+                staged_path.write_bytes(actual_bytes if actual_bytes is not None else f"actual-{category}".encode("utf-8"))
+                metadata = {
+                    "source_product_id": category,
+                    "source_product_name": category.replace("_", " "),
+                    "source_url": f"https://example.invalid/{category}",
+                    "product_version": "2026-05-17",
+                    "tile_id": f"tile-{index}",
+                    "crs": "EPSG:2056",
+                    "resolution_m": 1.0,
+                    "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                    "license_or_terms_reference": "example terms",
+                }
+                metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+                checksum_source = expected_bytes
+            else:
+                checksum_source = expected_bytes
+
+            records.append(
+                {
+                    "product_id": category,
+                    "source_product_id": category,
+                    "source_product_name": category.replace("_", " "),
+                    "source_url_or_download_record": f"https://example.invalid/{category}",
+                    "product_version_or_date": "2026-05-17",
+                    "tile_id_or_delivery_identifier": f"tile-{index}",
+                    "checksum_sha256": hashlib.sha256(checksum_source).hexdigest(),
+                    "crs": "EPSG:2056",
+                    "resolution_m": 1.0,
+                    "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                    "license_or_terms_reference": "example terms",
+                    "staged_path": str(staged_path),
+                    "metadata_path": str(metadata_path),
+                }
+            )
+
+        manifest = {
+            "schema_version": "public_geodata_cache_verification_manifest_v1",
+            "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+            "candidate_site_name": "Chant Sura / Flüelapass portability example",
+            "products": records,
+        }
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+        return manifest_path
 
     def _measured_balfrin_evidence(self) -> dict[str, object]:
         return {

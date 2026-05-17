@@ -10,6 +10,9 @@ The gate compares three things:
 
 The script does not download swisstopo products, run a second-site ensemble, or
 turn synthetic core fixtures into public-context evidence.
+It also surfaces a staging checklist for the deferred public-context products,
+but that checklist is a dry-run contract only and not a download or validation
+claim.
 """
 
 from __future__ import annotations
@@ -30,9 +33,14 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
+REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION = "chant_sura_real_context_staging_checklist_v1"
 BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION = "chant_sura_real_context_trigger_matrix_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_BALFRIN_EVIDENCE = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json"
+CHECKLIST_BOUNDARY_NOTE = (
+    "Checklist only; it does not authorize downloads, create staged files, or claim "
+    "validation, physical credibility, operational readiness, or scale-up."
+)
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
     "swisstlm3d_context",
@@ -150,6 +158,13 @@ def build_report(
         acquisition_manifest = PREFLIGHT.load_site_config(
             Path(preflight_report["acquisition_manifest_path"])
         ) if preflight_report.get("acquisition_manifest_status") == "ready" else {}
+        cache_contract = preflight_report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]
+        cache_manifest_path = Path(cache_contract["cache_layout"]["cache_manifest_path"])
+        cache_verification_report = (
+            PREFLIGHT.verify_public_geodata_cache(cache_manifest_path)
+            if cache_manifest_path.exists()
+            else None
+        )
         balfrin_post_run_report = build_balfrin_post_run_report(load_balfrin_evidence_override(balfrin_evidence_json))
         balfrin_trigger_matrix = build_balfrin_trigger_matrix(balfrin_post_run_report)
         balfrin_trigger_summary = build_balfrin_trigger_summary(balfrin_post_run_report, balfrin_trigger_matrix)
@@ -160,6 +175,11 @@ def build_report(
         next_acquisition_decisions = build_next_acquisition_decisions(
             deferred_public_context_products,
             balfrin_trigger_summary,
+        )
+        real_context_staging_checklist = build_real_context_staging_checklist(
+            deferred_public_context_products,
+            cache_contract,
+            cache_verification_report,
         )
 
         gate_status = determine_gate_status(
@@ -186,6 +206,8 @@ def build_report(
             "supporting_local_roots": supporting_roots,
             "deferred_public_context_products": deferred_public_context_products,
             "next_acquisition_decisions": next_acquisition_decisions,
+            "real_context_staging_checklist": real_context_staging_checklist,
+            "real_context_staging_checklist_state": real_context_staging_checklist["checklist_state"],
             "balfrin_post_run_report": balfrin_post_run_report,
             "balfrin_trigger_summary": balfrin_trigger_summary,
             "balfrin_trigger_matrix": balfrin_trigger_matrix,
@@ -409,6 +431,102 @@ def build_next_acquisition_decisions(
     return decisions
 
 
+def build_real_context_staging_checklist(
+    deferred_public_context_products: list[dict[str, Any]],
+    cache_contract: dict[str, Any],
+    cache_verification_report: dict[str, Any] | None,
+) -> dict[str, Any]:
+    verification_fields = list(cache_contract.get("verification_fields") or [])
+    verify_commands = cache_contract.get("verify_commands") or []
+    verifier_command = ""
+    if verify_commands and isinstance(verify_commands[0], dict):
+        verifier_command = str(verify_commands[0].get("command") or "")
+
+    verification_rows: dict[str, dict[str, Any]] = {}
+    if isinstance(cache_verification_report, dict):
+        for row in cache_verification_report.get("products") or []:
+            if isinstance(row, dict):
+                product_id = str(row.get("product_id") or "")
+                if product_id:
+                    verification_rows[product_id] = row
+
+    rows: list[dict[str, Any]] = []
+    verified_count = 0
+    missing_count = 0
+    partially_staged_count = 0
+
+    for product in deferred_public_context_products:
+        expected_staged_path = str(product.get("expected_staged_path") or "")
+        expected_staging_root = str(
+            product.get("expected_staging_root")
+            or (PREFLIGHT.expected_staging_root_for_text(expected_staged_path) if expected_staged_path else "")
+        )
+        verification_row = verification_rows.get(str(product.get("category") or ""))
+        if verification_row is None:
+            checklist_state = "missing"
+            readiness_impact = "cache inputs are still missing, so this row stays fail-closed"
+            missing_count += 1
+            cache_verification_status = "missing"
+        else:
+            cache_verification_status = str(verification_row.get("verification_status") or "missing")
+            if cache_verification_status == "verified":
+                checklist_state = "verifier_ready"
+                readiness_impact = "staged files and metadata are ready for deterministic cache verification"
+                verified_count += 1
+            elif cache_verification_status == "missing":
+                checklist_state = "missing"
+                readiness_impact = "required staged files or metadata are still absent"
+                missing_count += 1
+            else:
+                checklist_state = "partially_staged"
+                readiness_impact = (
+                    "some cache inputs are staged, but the verifier still fails closed until the row is complete"
+                )
+                partially_staged_count += 1
+
+        rows.append(
+            {
+                "schema_version": REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION,
+                "category": product["category"],
+                "product": product["product"],
+                "expected_staging_root": expected_staging_root,
+                "expected_staged_path": expected_staged_path,
+                "cache_manifest_path": str(cache_contract.get("cache_layout", {}).get("cache_manifest_path") or ""),
+                "cache_manifest_fields": verification_fields,
+                "verifier_command": verifier_command,
+                "checklist_state": checklist_state,
+                "cache_verification_status": cache_verification_status,
+                "missing_paths": list(verification_row.get("missing_paths") or []) if verification_row else ["staged_path", "metadata_path"],
+                "metadata_mismatches": list(verification_row.get("metadata_mismatches") or []) if verification_row else [],
+                "readiness_impact": readiness_impact,
+                "claim_boundary_note": CHECKLIST_BOUNDARY_NOTE,
+            }
+        )
+
+    if verified_count == len(rows) and rows:
+        checklist_state = "verifier_ready"
+    elif missing_count == len(rows) and rows:
+        checklist_state = "missing"
+    elif rows:
+        checklist_state = "partially_staged"
+    else:
+        checklist_state = "missing"
+
+    return {
+        "schema_version": REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION,
+        "checklist_state": checklist_state,
+        "product_count": len(rows),
+        "verified_product_count": verified_count,
+        "missing_product_count": missing_count,
+        "partially_staged_product_count": partially_staged_count,
+        "cache_manifest_path": str(cache_contract.get("cache_layout", {}).get("cache_manifest_path") or ""),
+        "verifier_command": verifier_command,
+        "verification_fields": verification_fields,
+        "claim_boundary_note": CHECKLIST_BOUNDARY_NOTE,
+        "products": rows,
+    }
+
+
 def summarize_local_staging(core_inputs: list[dict[str, Any]], supporting_roots: list[dict[str, Any]]) -> dict[str, Any]:
     ready_core_inputs = [entry["category"] for entry in core_inputs if entry["status"] == "ready"]
     ready_supporting_roots = [entry["category"] for entry in supporting_roots if entry["status"] == "ready"]
@@ -486,6 +604,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"real_context_readiness_gate_status: {report['real_context_readiness_gate_status']}",
+        f"real_context_staging_checklist_state: {report['real_context_staging_checklist_state']}",
         f"core_input_status: {report['core_input_status']}",
         f"deferred_public_context_status: {report['deferred_public_context_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
@@ -525,6 +644,19 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("next_acquisition_decisions:")
     lines.extend(render_decision_rows(report.get("next_acquisition_decisions") or []))
+
+    lines.append("")
+    lines.append("real_context_staging_checklist:")
+    checklist = report.get("real_context_staging_checklist") or {}
+    lines.append(f"- schema_version: {checklist.get('schema_version', '')}")
+    lines.append(f"- checklist_state: {checklist.get('checklist_state', '')}")
+    lines.append(f"- claim_boundary_note: {checklist.get('claim_boundary_note', '')}")
+    lines.append(f"- cache_manifest_path: {checklist.get('cache_manifest_path', '')}")
+    lines.append(f"- verifier_command: {checklist.get('verifier_command', '')}")
+    lines.append("- verification_fields:")
+    lines.extend(f"  - {field}" for field in checklist.get("verification_fields") or [])
+    lines.append("- products:")
+    lines.extend(render_checklist_rows((report.get("real_context_staging_checklist") or {}).get("products") or []))
 
     lines.append("")
     lines.append("balfrin_trigger_summary:")
@@ -587,6 +719,21 @@ def render_decision_rows(rows: list[dict[str, Any]]) -> list[str]:
             f"expected_staged_path={row['expected_staged_path']}, "
             f"balfrin_trigger_state={row.get('balfrin_trigger_state', 'unknown')}, "
             f"balfrin_next_decision={row.get('balfrin_next_decision', 'unknown')}"
+        )
+    if not rendered:
+        rendered.append("- []")
+    return rendered
+
+
+def render_checklist_rows(rows: list[dict[str, Any]]) -> list[str]:
+    rendered: list[str] = []
+    for row in rows:
+        rendered.append(
+            f"- {row['category']}: checklist_state={row['checklist_state']}, "
+            f"expected_staging_root={row['expected_staging_root']}, "
+            f"verifier_command={row['verifier_command'] or 'missing'}, "
+            f"cache_manifest_fields={', '.join(row['cache_manifest_fields']) if row.get('cache_manifest_fields') else 'none'}, "
+            f"readiness_impact={row['readiness_impact']}"
         )
     if not rendered:
         rendered.append("- []")

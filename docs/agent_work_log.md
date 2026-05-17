@@ -2716,3 +2716,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no ensemble execution, no second-site hazard build, no block-population fitting, no annual frequency, and no operational claim.
 - Next task: `TB-158`
+
+### TB-158: Produce Chant Sura Real-Context Staging Checklist
+- Date: 2026-05-17
+- Commit: local
+- Objective: convert the Chant Sura real-context acquisition decision into a concrete product-by-product staging checklist with cache-verifier inputs and explicit dry-run claim boundaries.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `real_context_staging_checklist` helper to the Chant Sura readiness gate so each deferred public-context product now carries its expected staging root, the shared cache-manifest verification fields, the deterministic verifier command, and a per-row readiness impact.
+  - Threaded the checklist into the gate report and text output with an explicit dry-run boundary note so the helper remains a staging contract and not a download, validation, operational, or physical-credibility claim.
+  - Added focused regressions for missing, partially staged, and verifier-ready cache-manifest states by staging temporary manifests and files in the test harness.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no synthetic evidence upgrade, no second-site ensemble, no operational claim, and no physical validation claim.
+- Next task: `TB-159`
