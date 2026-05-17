@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-199: Runtime-Facing Panic Path Reduction
-
-Goal: Convert the highest-risk runtime-facing terrain and validation panic paths into structured errors or tightly test-only helpers.
-
-Capability gap reduced: Crash-only behavior in DEM-facing and validation-facing paths that should produce actionable diagnostics.
-
-Why this outranks alternatives: The architecture boundary already requires fallible DEM and pilot workflows; remaining public or runtime-adjacent panics undermine clean blocked-state reporting.
-
-Inspect first:
-
-- `docs/architecture_boundaries.md`
-- `src/terrain.rs`
-- `src/dynamics.rs`
-- `src/integrator.rs`
-- `src/validation.rs`
-- `src/shape.rs`
-- `tests/terrain_edge_cases.rs`
-
-Deliverables:
-
-- An audit of panic/`expect` paths classified as test-only, compatibility-only, or runtime-facing.
-- Conversion of the highest-risk DEM-facing and validation-facing panic paths to `TerrainError`, `IntegrationError`, `SimulationError`, or `ValidationError` propagation.
-- Focused tests proving malformed DEM queries and missing validation sidecars return structured diagnostics instead of panicking.
-- Documentation or code comments marking any remaining panic-only wrappers as compatibility or test helpers.
-
-Definition of done:
-
-- New runtime-facing DEM or validation workflows use fallible paths for the audited cases, focused tests pass, and compatibility wrappers remain clearly bounded.
-
-Boundaries: No physics change, no public runtime promotion of `shape_contact_v0`, no sweeping refactor of all `expect` calls, and no change to analytic-test convenience behavior.
-
 ### TB-200: GitHub Python Test Clean-Checkout Stabilization
 
 Goal: Make the Python tests that currently fail in GitHub pass from a clean checkout without relying on ignored Tschamut, hazard, validation, swisstopo, or Balfrin scratch artifacts.

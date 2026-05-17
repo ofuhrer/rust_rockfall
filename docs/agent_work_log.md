@@ -3568,3 +3568,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no calibration run, no parameter selection change, no accepted calibration evidence, no model default change, and no annual/physical probability claim.
 - Next task: `TB-199`
+
+### TB-199: Runtime-Facing Panic Path Reduction
+
+- Date: 2026-05-18
+- Commit: `8a7b2fa`
+- Objective: convert the highest-risk runtime-adjacent DEM and validation panic paths into structured errors while leaving compatibility/test wrappers bounded.
+- Files changed: `src/terrain.rs`, `src/validation.rs`, `src/validation/runner.rs`
+- Implementation summary:
+  - Propagated DEM query failures through `ValidationError::Terrain` in observed-trajectory validation metrics instead of relying on panic-prone height access.
+  - Changed shape-manifest assembly to return `ValidationError::Case` for missing block radius instead of panicking during run-manifest construction.
+  - Added focused Rust tests for structured validation errors on malformed/out-of-bounds DEM queries and shape sidecar radius requirements.
+  - Worker completed code and push but missed backlog/work-log cleanup; this follow-up entry regularizes the task bookkeeping.
+- Checks run:
+  - `cargo test --lib observed_trajectory_metrics_propagate_dem_query_errors`
+  - `cargo test --lib shape_metadata_manifest_returns_case_error_when_block_radius_missing`
+  - `cargo test --test terrain_edge_cases dem_try_height_returns_out_of_bounds_for_query_outside_grid`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no physics change, no public runtime promotion of `shape_contact_v0`, no sweeping refactor of all `expect` calls, and no change to analytic-test convenience behavior.
+- Next task: `TB-200`
