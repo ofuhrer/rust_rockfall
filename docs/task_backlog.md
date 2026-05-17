@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-173: Interpret Target-Area Closure And Scientific Meaning
-
-Goal: Generate a target-area conditional diagnostic interpretation combining execution, uncertainty, GIS, output, and physical-credibility boundaries.
-
-Capability gap reduced: Coherent scientific interpretation for the demonstration.
-
-Why this outranks alternatives: The repo needs one answer to "what did the target-area run mean?" before management review.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
-- `scripts/summarize_tschamut_conditional_pilot_closure.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Target-area diagnostic interpretation JSON/text report.
-- Dominant blockers, satisfied workflow criteria, and claim-boundary summary.
-- Explicit comparison to current Tschamut/Balfrin baseline.
-
-Definition of done:
-
-- The target-area interpretation is deterministic, conservative, and sectioned for future demo packaging.
-
-Boundaries: No accepted diagnostic unless criteria are actually met, no operational claim, no physical credibility upgrade, and no annual-frequency semantics.
-
 ### TB-174: Demonstrate Target-Area Restartability Or Preserve Blocked Status
 
 Goal: Run or document an interruption/resume proof for the target-area Balfrin package, using measured evidence only when available.
