@@ -3385,3 +3385,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no marketing overclaim, no operational acceptance, no physical-credibility upgrade, no scale-up authorization, no annual-frequency semantics, and no generated heavy artifacts committed.
 - Next task: `TB-191`
+
+### TB-191: Balfrin Metrics And Run-Root Preservation Gate
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: define and test the Balfrin evidence-preservation gate that must pass before a future authorized live run can be treated as demonstration evidence.
+- Files changed: `scripts/summarize_balfrin_probe_preservation_gate.py`, `tests/test_balfrin_probe_preservation_gate.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/balfrin_target_area_spatial_uncertainty_stability_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated read-only preservation-gate helper that combines the collected probe metrics with run-root file checks, required SLURM accounting fields, output-family summaries, and declared GIS artifact paths.
+  - Classified complete, partial, and missing-run-root cases fail closed, with explicit missing-metric and missing-preserved-path reporting so a future live run is only treated as evidence when the contract is satisfied.
+  - Updated the operator guidance in the Balfrin sufficiency note, SLURM driver, and target-area stability note so the preservation gate is called out as the evidence-preservation check rather than relying on the metrics report alone.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_preservation_gate tests.test_balfrin_probe_metrics_report`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_probe_preservation_gate.py tests/test_balfrin_probe_preservation_gate.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no fabricated metrics.
+- Next task: `TB-192`

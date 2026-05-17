@@ -170,6 +170,12 @@ By design it captures two timing sidecars:
 - hazard-stage-only wall time (the command named `build_conditional_hazard_layers`).
 
 After execution, it runs `collect_balfrin_probe_metrics.py` to produce a summary JSON.
+The collected run must then pass `scripts/summarize_balfrin_probe_preservation_gate.py`
+before it is treated as evidence rather than only as an execution attempt.
+The preservation gate materializes a deterministic JSON/text report that lists
+the required metrics, preserved run-root files, SLURM accounting fields,
+output-family summaries, and declared GIS artifact paths for the next
+authorized live run.
 
 ## Clean-fresh SLURM baseline evidence (420×450 grid)
 

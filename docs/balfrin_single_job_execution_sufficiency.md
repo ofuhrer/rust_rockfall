@@ -144,6 +144,22 @@ keeps mandatory metrics, ancillary metrics, unavailable fields, and
 next-run-required metrics explicit, and it reports `blocked_missing_run_root`
 when the measured run root is absent.
 
+For the preservation gate that must pass before a future live run is treated
+as evidence rather than only an execution attempt, use:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py \
+  --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 \
+  --artifact-dir validation/private/tschamut_public_pilot/balfrin_probe_preservation_gate_v1
+```
+
+The helper materializes `balfrin_probe_preservation_gate_v1.json` and
+`balfrin_probe_preservation_gate_v1.txt` in that directory. Its classification
+lists the required metrics, preserved run-root files, SLURM accounting fields,
+output-family summaries, and declared GIS artifact paths that must be
+preserved for the next authorized live run, and it reports
+`blocked_missing_run_root` when the mounted run root is absent.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to
@@ -179,6 +195,10 @@ The probe-metrics section also exposes `metrics_remediation`, a deterministic
 next-run checklist that enumerates the remaining missing mandatory metrics and
 the high-value ancillary fields that must be preserved in the next measured
 run.
+The preservation gate helper above is the deterministic evidence-preservation
+check that combines that metrics contract with the preserved run-root files,
+output-family counts, and declared GIS paths. Treat a run as evidence only
+when both the metrics report and the preservation gate are complete.
 When evidence is missing, it reports `blocked_missing_inputs` instead of
 fabricating a stronger claim.
 

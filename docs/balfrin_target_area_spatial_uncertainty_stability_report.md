@@ -19,6 +19,9 @@ blocked-artifacts note, not a claim that the remote probe did not run.
   root, but the local artifact sections remain unavailable.
 - The probe-metrics section is `blocked_missing_inputs` when the preserved
   Balfrin run root is not mounted in this checkout.
+- The preservation-gate helper would also report `blocked_missing_run_root`
+  here, so the missing mount remains a blocked-artifacts condition rather than
+  a scientific finding.
 - The canonical Balfrin evidence bundle remains measured, but it is not a
   target-area spatial-uncertainty artifact and must not be treated as one.
 - `scripts/summarize_balfrin_target_area_gis_cog_scope.py` reports the target
