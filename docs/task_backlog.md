@@ -24,39 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-134: Generate Deterministic Block-Scenario Tables From Policy
-
-Goal: Turn the pragmatic block-scenario sensitivity plan into a deterministic
-scenario-table generator from release metadata and policy inputs.
-
-Capability gap reduced: handcrafted block-scenario table dependence.
-
-Why this outranks alternatives: scenario generation is the second major manual
-component after release-zone identification and is required before AOI-scale
-workflow automation is credible.
-
-Inspect first:
-
-- `scripts/plan_pragmatic_release_plan.py`
-- `scripts/generate_tschamut_same_scale_cases.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv`
-
-Deliverables:
-
-- Deterministic scenario generator, provenance-aware scenario manifest, stable
-  row IDs, configurable non-frequency scenario-family templates, and focused
-  tests.
-
-Definition of done:
-
-- Scenario tables can be regenerated deterministically from committed policy
-  and release metadata while preserving current conditional weighting
-  semantics.
-
-Boundaries: No physics changes, no annual frequency, no fitted block-size
-population model, and no operational interpretation.
-
 ### TB-135: Execute Bounded Next Ensemble Probe
 
 Goal: Run or produce a fail-closed plan for the smallest bounded next ensemble
