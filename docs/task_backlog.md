@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-167: Execute Authorized Target-Area Balfrin Probe
-
-Goal: If the target-area package is explicitly authorized and runnable, submit one bounded Balfrin probe and record measured execution evidence; otherwise emit a precise blocked report.
-
-Capability gap reduced: Measured target-area Balfrin execution realism.
-
-Why this outranks alternatives: The strongest demonstration evidence is a real measured run; if authorization or inputs are absent, the repo should say exactly why.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Measured run id, run root, exit status, runtime, and artifact pointers, or a blocked execution report.
-- Updated evidence pointers without committing generated outputs.
-- Work-log entry that distinguishes measured execution from blocked/unlaunched status.
-
-Definition of done:
-
-- The target-area probe is either measured and collectable or blocked with the exact unresolved gate.
-
-Boundaries: Execute only if existing repo contract and operator authorization allow it; no large ensemble, no distributed execution, no operational claim, and no scale-up authorization.
-
 ### TB-168: Collect Target-Area Balfrin Metrics Completeness
 
 Goal: Collect and classify target-area Balfrin runtime, output, memory, split-output, and remediation metrics from the measured run root.
