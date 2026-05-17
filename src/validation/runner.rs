@@ -99,7 +99,12 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
     timing.simulation_seconds += simulation_started.elapsed().as_secs_f64();
     timing.trajectory_count += 1;
     timing.impact_event_count += result.impact_events.len();
-    trajectory_metadata.insert_single_result(case, &result, &config.block, shape_metadata.as_ref());
+    trajectory_metadata.insert_single_result(
+        case,
+        &result,
+        &config.block,
+        shape_metadata.as_ref(),
+    )?;
     if validation_output_mode_writes_builder_facing_outputs(case) {
         if let Some(path) = &case.outputs.trajectory_csv {
             let output_started = Instant::now();
@@ -169,7 +174,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
         observations: &observations.deposition_points,
         expected: &case.expected,
         warnings: &mut warnings,
-    });
+    })?;
     compute_ensemble_metrics(EnsembleMetricContext {
         case,
         contact_parameters: class_provider,
@@ -377,7 +382,7 @@ pub(super) fn write_run_manifest(
     path: impl AsRef<Path>,
     context: RunManifestContext<'_>,
 ) -> Result<(), ValidationError> {
-    let manifest = build_run_manifest(context);
+    let manifest = build_run_manifest(context)?;
     if let Some(parent) = path.as_ref().parent() {
         fs::create_dir_all(parent)?;
     }
@@ -385,7 +390,9 @@ pub(super) fn write_run_manifest(
     Ok(())
 }
 
-pub(super) fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest {
+pub(super) fn build_run_manifest(
+    context: RunManifestContext<'_>,
+) -> Result<RunManifest, ValidationError> {
     let RunManifestContext {
         case,
         report,
@@ -400,7 +407,7 @@ pub(super) fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest
         stop_state_summary,
         terrain_material_exposure_summary,
     } = context;
-    RunManifest {
+    Ok(RunManifest {
         schema_version: RUN_MANIFEST_SCHEMA_VERSION.to_string(),
         created_unix_s: report.timestamp_unix_s,
         case_id: case.case_id.clone(),
@@ -420,7 +427,9 @@ pub(super) fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest
         terrain: terrain_manifest(&case.terrain, terrain_source),
         release_zone: release_zone.cloned(),
         terrain_classes: terrain_classes.cloned(),
-        shape_metadata: shape_metadata.map(|metadata| shape_metadata_manifest(case, metadata)),
+        shape_metadata: shape_metadata
+            .map(|metadata| shape_metadata_manifest(case, metadata))
+            .transpose()?,
         trajectory_metadata,
         ensemble_execution,
         outputs,
@@ -430,7 +439,7 @@ pub(super) fn build_run_manifest(context: RunManifestContext<'_>) -> RunManifest
         terrain_material_exposure_summary,
         validation_output_mode: case.outputs.validation_output_mode,
         warnings: report.warnings.clone(),
-    }
+    })
 }
 
 fn case_status_text(status: CaseStatus) -> &'static str {

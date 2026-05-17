@@ -529,11 +529,15 @@ impl DemGrid {
         })
     }
 
+    // Compatibility helper for legacy callers that expect a clamped, infallible
+    // DEM query. Runtime-facing code should use `try_height_clamped`.
     pub fn height_clamped(&self, x_m: f64, y_m: f64) -> f64 {
         self.try_height_clamped(x_m, y_m)
             .expect("clamped DEM query must have at least one valid cell")
     }
 
+    // Compatibility helper for legacy callers that expect a clamped, infallible
+    // DEM normal query. Runtime-facing code should use `try_normal_clamped`.
     pub fn normal_clamped(&self, x_m: f64, y_m: f64) -> Vec3 {
         self.try_normal_clamped(x_m, y_m)
             .expect("clamped DEM normal query must have at least one valid cell")
