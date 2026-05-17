@@ -3106,3 +3106,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no marketing overclaim, no operational claim, no annual-frequency claim, no physical credibility upgrade, no distributed-execution authorization, and no new Balfrin job submission.
 - Next task: `TB-177`
+
+### TB-177: Prepare Second-Site Real-Context Acquisition Execution Plan
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: turn the Chant Sura real-context staging checklist into a concrete operator execution plan with exact roots, metadata fields, verifier commands, stop conditions, and a no-download fallback report.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Expanded the Chant Sura decision pack into an operator-facing execution plan that distinguishes the stage, defer, and optional rows and names the exact verification path for each row.
+  - Corrected the public-geodata cache manifest path to the contract root under `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml` and documented the cache-verifier fields shared by the deferred public-context rows.
+  - Added a no-download fallback report that keeps the response metadata-only when credentials or local files are missing, and aligned the swisstopo strategy note with the execution-plan location.
+  - Removed TB-177 from the active backlog so the queue no longer advertises the completed task.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate -q`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no second-site ensemble, no synthetic evidence upgrade, no operational claim, and no change to the public-context defer boundary.
+- Next task: `TB-178`

@@ -44,6 +44,8 @@ Current repo-root state:
 - `missing-input`: `terrain_metadata`, `aoi_tile_catalog`, `swisstlm3d_metadata`, `source_zone_metadata`, `scenario_table`, `source_scenario_policy`.
 - `locally-stageable`: `terrain_crop`, the core input bundle, and the public-context directory layout can all be staged without unauthorized downloads, but this pack does not execute those commands.
 
+The operator execution plan below is the concrete handoff. It names the exact roots, expected metadata, verifier commands, and stop conditions, while keeping the no-download boundary in force.
+
 The current clean-checkout helpers report:
 
 - `plan_swisstopo_aoi_acquisition.py -> blocked_missing_inputs`
@@ -53,29 +55,45 @@ The current clean-checkout helpers report:
 
 ### Product Readiness Matrix
 
-| Product | Decision | Current state | Staging command | Expected root | Current preflight impact |
-|---|---|---|---|---|---|
-| swissALTI3D terrain crop | stage | ready | `stage_terrain_crop` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `ready` on the product row, but the gate still blocks on missing metadata inputs |
-| swissALTI3D terrain metadata | stage | missing | `stage_terrain_crop` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `missing` |
-| AOI tile catalog for deterministic swisstopo discovery | hold | missing | no safe local staging command in this pack; the catalog is a prerequisite for tile discovery | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `blocked_missing_inputs` |
-| SWISSIMAGE | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage` | `deferred_public_context` |
-| swissTLM3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d` | `deferred_public_context` |
-| swissTLM3D metadata | defer | missing | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` | `missing` |
-| swissSURFACE3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d` | `deferred_public_context` |
-| swissSURFACE3D Raster | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster` | `deferred_public_context` |
-| swissBUILDINGS3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d` | `deferred_public_context` |
-| barrier inventory | optional | optional | `stage_context_bundle` only if a site-specific workflow explicitly references barriers or nets | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers` | `optional` |
-| source-zone metadata | stage | missing | `stage_source_and_scenario_records` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml` | `missing` |
-| scenario table | stage | missing | `stage_source_and_scenario_records` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv` | `missing` |
-| source-scenario policy | stage | missing | `stage_source_and_scenario_records` | `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml` | `missing` |
-| release observation evidence | optional | optional | no staging command unless a site-specific QA source exists | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations` | `optional` |
+| Product | Decision | Current state | Exact root | Expected metadata | Verifier command | Stop condition |
+|---|---|---|---|---|---|---|
+| swissALTI3D terrain crop | stage | ready on the product row, but the overall gate still blocks on missing metadata inputs | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc` | `terrain_metadata.yaml` must carry `crs`, `vertical_datum`, `crop_provenance`, and `checksum` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the AOI catalog, terrain sidecar, source-zone metadata, scenario table, or policy row is still missing; the crop alone is not readiness evidence. |
+| swissALTI3D terrain metadata | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml` | `crs`, `vertical_datum`, `crop_provenance`, `checksum` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the sidecar omits LN02/CRS/checksum provenance or if the gate still reports `blocked_missing_inputs`. |
+| AOI tile catalog for deterministic swisstopo discovery | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml` | `tile_id`, `source_product`, `source_url`, `extent_lv95_m` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the catalog cannot resolve AOI tile `2793-1180` or discovery remains `blocked_missing_inputs`. |
+| SWISSIMAGE | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage` | Cache verifier fields: `source_product_id`, `source_product_name`, `source_url_or_download_record`, `product_version_or_date`, `tile_id_or_delivery_identifier`, `checksum_sha256`, `crs`, `resolution_m`, `crop_extent_lv95_m`, `license_or_terms_reference`, `raw_checksum`, `processed_checksum`, `preprocessing_command_and_timestamp` | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns anything other than `verified`; do not download to "fix" a missing row. |
+| swissTLM3D | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d` | Same cache verifier fields as above; the row also expects the staged archive contract to remain auditable | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns `missing`, `checksum_mismatch`, or `metadata_mismatch`. |
+| swissTLM3D metadata | defer | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` | `metadata.json`, `source_product`, `staged_asset_present`, plus the cache verifier fields above | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the metadata sidecar is absent or if it cannot be reconciled with the cache contract. |
+| swissSURFACE3D | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d` | Same cache verifier fields as above | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns `missing`, `checksum_mismatch`, or `metadata_mismatch`. |
+| swissSURFACE3D Raster | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster` | Same cache verifier fields as above | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns `missing`, `checksum_mismatch`, or `metadata_mismatch`. |
+| swissBUILDINGS3D | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d` | Same cache verifier fields as above | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns `missing`, `checksum_mismatch`, or `metadata_mismatch`. |
+| barrier inventory | optional | optional | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers` | Only if a site-specific workflow explicitly references barriers or nets | No verifier until the workflow names the row explicitly | Stop unless the workflow explicitly asks for barriers or nets. |
+| source-zone metadata | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml` | `source_zone_id` or equivalent site-specific release-zone identifier; LV95 polygon geometry; release-point table if present | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the release-zone geometry, identifier, or release-point table is synthetic-only or missing. |
+| scenario table | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv` | `scenario_id`, `probability`, and site-specific scenario rows | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the table is missing or the scenario family cannot be normalized without inventing annual-frequency semantics. |
+| source-scenario policy | stage | missing | `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml` | `policy_id` or equivalent site-specific policy identifier; site-specific policy content | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the policy is synthetic-only or if it cannot be tied to the staged source-zone and scenario rows. |
+| release observation evidence | optional | optional | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations` | Site-specific QA source, if any | No verifier until a site-specific QA source exists | Stop unless an independent site-specific QA source is available. |
 
 The product matrix above is intentionally fail-closed:
 
 - the `stage_*` rows describe the only local command families that would populate the required roots;
 - the `defer` rows stay deferred until the Balfrin trigger becomes `proceed`;
-- the `hold` row stays blocked until the AOI catalog exists;
+- the AOI catalog row stays stage-only until discovery metadata exists;
 - the optional rows remain optional and are not evidence by themselves.
+
+The public-context cache rows all share the same deterministic verifier fields:
+
+- `source_product_id`
+- `source_product_name`
+- `source_url_or_download_record`
+- `product_version_or_date`
+- `tile_id_or_delivery_identifier`
+- `checksum_sha256`
+- `crs`
+- `resolution_m`
+- `crop_extent_lv95_m`
+- `license_or_terms_reference`
+- `raw_checksum`
+- `processed_checksum`
+- `preprocessing_command_and_timestamp`
 
 ## Staging Checklist
 
@@ -87,6 +105,25 @@ it does not download data, validate products, or authorize a second-site run.
 
 Use the checklist to see which rows are `missing`, `partially_staged`, or
 `verifier_ready` before any real-context handoff is considered.
+
+## No-Download Fallback Report
+
+When credentials are unavailable or a required local file is missing, the
+operator response is a no-download fallback, not a retry loop.
+
+- Fallback status: `blocked_missing_inputs`
+- Current missing local inputs: AOI tile catalog metadata, terrain metadata,
+  source-zone metadata, scenario table, and source-scenario policy
+- Current deferred public-context inputs: SWISSIMAGE, swissTLM3D,
+  swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D
+- Stop condition: do not download any swisstopo product, do not submit a
+  second-site ensemble, and do not treat synthetic fixtures as evidence
+- Verifier command for the fallback state: `PYENV_VERSION=system uv run python
+  scripts/check_chant_sura_real_context_readiness_gate.py --site-config
+  tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml
+  --format json`
+- Report interpretation: the plan is still metadata-only until the required
+  local roots exist and the cache verifier can return `verified`
 
 ## Required Products
 
@@ -204,7 +241,7 @@ Current helper outputs:
 
 - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
 - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
-- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml --format json` -> `verified` with `product_count: 0`; this is only a manifest-shape check and does not prove that any products are staged.
+- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` -> `verified` with `product_count: 0`; this is only a manifest-shape check and does not prove that any products are staged.
 
 Exact missing or deferred products and paths:
 
@@ -257,7 +294,7 @@ missing-input remediation surface:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py \
-  --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml \
+  --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml \
   --format json
 
 PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py \

@@ -124,10 +124,14 @@ irrelevant.
 The public-geodata cache contract is now surfaced through
 `public_geodata_cache_contract` in the preflight helpers and through the
 deterministic `scripts/verify_public_geodata_cache.py` command. It records the
-ignored raw and processed roots, the expected cache-manifest path, the stage
-and verify commands, and the verification fields that must line up for a staged
-public product to be considered trusted. Verification fails closed on missing,
-checksum-mismatch, or metadata-mismatch states.
+ignored raw and processed roots, the expected cache-manifest path under
+`data/processed/swisstopo/<site_id>/input/public_geodata_cache_manifest.yaml`,
+the stage and verify commands, and the verification fields that must line up
+for a staged public product to be considered trusted. Verification fails
+closed on missing, checksum-mismatch, or metadata-mismatch states. The
+operator-facing execution plan and fallback report for the Chant Sura
+candidate live in
+`docs/chant_sura_fluelapass_real_context_acquisition_decision.md`.
 
 ## Minimal Ingestion Design
 
@@ -398,7 +402,9 @@ public-context staging boundary until the Balfrin demo path has been assessed
 and an explicit acquisition authorization exists. The same pack now carries a
 machine-readable Balfrin trigger matrix so measured post-run evidence can flip
 the next acquisition decision from defer to proceed without treating synthetic
-fixtures as public-context evidence.
+fixtures as public-context evidence, and it now also carries the concrete
+operator execution checklist plus the no-download fallback report for the
+second-site public-context workflow.
 
 ## Data-Size Implications
 

@@ -47,6 +47,13 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(checklist["missing_product_count"], 5)
         self.assertEqual(checklist["partially_staged_product_count"], 0)
         self.assertEqual(checklist["claim_boundary_note"], gate.CHECKLIST_BOUNDARY_NOTE)
+        expected_manifest_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"
+        expected_verifier_command = (
+            "PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py "
+            f"--cache-manifest {expected_manifest_path} --format json"
+        )
+        self.assertEqual(checklist["cache_manifest_path"], str(expected_manifest_path))
+        self.assertEqual(checklist["verifier_command"], expected_verifier_command)
         self.assertIn("verify_public_geodata_cache.py", checklist["verifier_command"])
         self.assertTrue(all(entry["checklist_state"] == "missing" for entry in checklist["products"]))
         self.assertTrue(all(entry["readiness_impact"] for entry in checklist["products"]))

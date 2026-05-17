@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-177: Prepare Second-Site Real-Context Acquisition Execution Plan
-
-Goal: Convert the Chant Sura real-context staging checklist into a concrete operator execution plan for acquiring and verifying real public-context products.
-
-Capability gap reduced: Portability realism beyond the target-area demonstration.
-
-Why this outranks alternatives: The next portability bottleneck is real public context, not more synthetic fixture planning.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/verify_public_geodata_cache.py`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Product-by-product execution checklist with exact roots, expected metadata, verifier commands, and stop conditions.
-- Clear stage/defer decision rows based on current evidence.
-- No-download fallback report when credentials or local files are absent.
-
-Definition of done:
-
-- An operator can stage real Chant Sura public context without consulting synthetic fixtures as evidence.
-
-Boundaries: No downloads unless explicitly requested and supported, no second-site ensemble, no synthetic evidence upgrade, and no operational claim.
-
 ### TB-178: Define Physical Evidence Acquisition Pack For Target Area
 
 Goal: Specify the real observed runout/deposition, release-zone, block-population, and source-frequency evidence needed to move beyond workflow credibility for the target area.
