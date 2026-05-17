@@ -22,46 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-184: AOI-To-Prepared-Pilot End-To-End Automation
-
-Goal: Given AOI extents or a bounding polygon, automatically derive the
-prepared-pilot scaffolding: tile manifests, terrain/context manifests, release
-candidates, scenario tables, command plans, and ignored-root layouts.
-
-Capability gap reduced: Missing "AOI to workflow compiler" path for future
-Swiss-wide reproducibility.
-
-Why this outranks alternatives: It collapses several existing dry-run helpers
-into one deterministic operator-facing preparation path without requiring a
-simulation run.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- One AOI preparation helper or orchestration mode that composes existing
-  product discovery, cache verification, terrain preprocessing, release
-  candidate generation, scenario generation, and command-plan output.
-- Deterministic manifests and ignored-root layout records.
-- Blocked-missing-input output that names the exact products or metadata
-  missing for clean checkouts.
-
-Definition of done:
-
-- The helper produces a deterministic prepared-pilot report for a fixture AOI,
-  reports blocked states cleanly when staged products are absent, and focused
-  tests cover both paths.
-
-Boundaries: No public-data download, no simulation, no second-site ensemble,
-no operational claim, and no synthetic fixture represented as public evidence.
-
 ### TB-185: Switzerland-Scale Runtime And Storage Projection
 
 Goal: Project runtime, output pressure, storage growth, reducer scaling, and

@@ -3232,3 +3232,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live Balfrin job submission, no scale-up authorization, no distributed execution, no operational claim, no generated artifacts committed, and no target-area bundle materialized by the package helper.
 - Next task: `TB-184`
+
+### TB-184: AOI-To-Prepared-Pilot End-To-End Automation
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: compose the AOI acquisition, cache verification, terrain preprocessing, release-candidate, scenario-generation, and portable command-plan helpers into one deterministic prepared-pilot report.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit cache-verification report and workflow step to the AOI-to-prepared-pilot orchestrator so the report now composes product discovery, cache verification, terrain preprocessing, candidate generation, scenario planning, and command-plan output in one deterministic pass.
+  - Threaded deterministic ignored-root layout records and blocked-missing-input inventories through the prepared-pilot summary and case-skeleton bundle so clean-checkout failures name the missing manifest, product, and metadata paths.
+  - Extended the focused AOI-prepared-pilot tests with a verified synthetic cache-manifest path and a blocked missing-cache path, then updated the preparation documentation to match the new orchestration shape.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier tests.test_aoi_to_prepared_pilot_dry_run -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_to_prepared_pilot_dry_run.py tests/test_aoi_to_prepared_pilot_dry_run.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no public-data download, no simulation run, no second-site ensemble, no operational claim, and no synthetic fixture was represented as public evidence.
+- Next task: `TB-185`

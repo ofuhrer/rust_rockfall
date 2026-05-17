@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import importlib.util
 import json
 import tempfile
@@ -42,6 +43,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
             release_polygon_path = self._write_release_polygon(repo_root)
+            self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
             output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
 
             first = planner.build_report(
@@ -64,6 +66,9 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["schema_version"], "aoi_to_prepared_pilot_dry_run_v1")
         self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_status"], "blocked_missing_inputs")
+        self.assertEqual(first["cache_verification"]["verification_status"], "verified")
+        self.assertEqual(first["preparation_input"]["cache_verification"]["cache_verification_status"], "ready")
+        self.assertEqual(first["preparation_input"]["cache_verification"]["blocked_missing_inputs"], [])
         self.assertEqual(first["preparation_input"]["input_mode"], "aoi_extent_with_release_polygon")
         self.assertEqual(first["preparation_input"]["release_polygon"]["geometry_type"], "Polygon")
         self.assertEqual(first["preparation_input"]["release_polygon"]["vertex_count"], 4)
@@ -135,12 +140,14 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["preparation_input"]["gis_scope_summary"]["status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_input"]["gis_scope_summary"]["cog_export_expectation"]["status"], "template_only")
         self.assertTrue(first["preparation_input"]["gis_scope_summary"]["no_hazard_layers_generated"])
+        self.assertEqual(first["preparation_input"]["gis_scope_summary"]["cache_verification"]["verification_status"], "verified")
         self.assertIn("planned_raster_products", first["preparation_input"]["gis_scope_summary"])
         self.assertIn("planned_vector_products", first["preparation_input"]["gis_scope_summary"])
         self.assertIn("template_only_products", first["preparation_input"]["gis_scope_summary"])
         self.assertIn("blocked_missing_inputs", first["preparation_input"]["gis_scope_summary"])
         self.assertTrue(any(entry["product_kind"] == "raster" for entry in first["preparation_input"]["gis_scope_summary"]["planned_products"]))
         self.assertTrue(any(entry["product_kind"] == "vector" for entry in first["preparation_input"]["gis_scope_summary"]["planned_products"]))
+        self.assertIn("public_geodata_cache_verification", [step["step_id"] for step in first["workflow_steps"]])
         self.assertTrue(
             any(path.endswith("validation/private/chant_sura_fluelapass_portability_example_v1") for path in first["ignored_output_roots"])
         )
@@ -152,12 +159,14 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("preparation_input:", text_report)
         self.assertIn("aoi_tile_discovery:", text_report)
         self.assertIn("candidate_source_zones:", text_report)
+        self.assertIn("cache_verification:", text_report)
         self.assertIn("scenario_generation_inputs:", text_report)
         self.assertIn("output_root_planning:", text_report)
         self.assertIn("terrain_manifests:", text_report)
         self.assertIn("context_manifests:", text_report)
         self.assertIn("command_plan_hooks:", text_report)
         self.assertIn("ignored_output_roots:", text_report)
+        self.assertIn("ignored_root_layout:", text_report)
         self.assertIn("generic_candidate_source_zone_provenance", text_report)
         self.assertIn("scenario_generation_handoff", text_report)
 
@@ -171,6 +180,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
             release_polygon_path = self._write_release_polygon(repo_root)
+            self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
             output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
 
             first = planner.build_report(
@@ -208,9 +218,11 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(blocked_execution["schema_version"], "aoi_to_prepared_pilot_blocked_execution_v1")
         self.assertEqual(blocked_execution["blocked_execution_status"], "blocked_missing_inputs")
         self.assertEqual(blocked_execution["case_skeleton_status"], "blocked_missing_inputs")
+        self.assertIn("public_geodata_cache_verification", [step["step_id"] for step in first["workflow_steps"]])
         self.assertEqual(case["expected_output_roots"], skeleton["expected_output_roots"])
-        self.assertEqual(len(case["command_sequence"]), 4)
+        self.assertEqual(len(case["command_sequence"]), 5)
         self.assertEqual(case["command_sequence"][0]["step_id"], "aoi_acquisition")
+        self.assertEqual(case["command_sequence"][1]["step_id"], "public_geodata_cache_verification")
         self.assertEqual(expected_output_roots["expected_output_roots"], skeleton["expected_output_roots"])
         self.assertEqual(case["scenario_generation_handoff"]["blocked_execution_status"], "deferred_public_context_inputs")
         self.assertTrue(case["scenario_generation_handoff"]["scenario_table_manifest_path"].endswith("scenario_table_manifest.json"))
@@ -239,6 +251,9 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_status"], "blocked_missing_inputs")
+        self.assertEqual(first["cache_verification"]["cache_verification_status"], "blocked_missing_inputs")
+        self.assertTrue(any("terrain_crop" in item for item in first["cache_verification"]["blocked_missing_inputs"]))
+        self.assertTrue(any("public_geodata_cache_manifest.yaml" in item for item in first["blocked_missing_inputs"]))
         self.assertEqual(first["preparation_input"]["input_mode"], "missing_inputs")
         self.assertEqual(first["preparation_input"]["candidate_site_id"], "unspecified_second_site")
         self.assertEqual(first["candidate_source_zones"]["candidate_metrics_status"], "blocked_missing_inputs")
@@ -274,6 +289,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("schema_version: aoi_to_prepared_pilot_dry_run_v1", text_report)
         self.assertIn("workflow_status: blocked_missing_inputs", text_report)
         self.assertIn("preparation_input:", text_report)
+        self.assertIn("cache_verification:", text_report)
+        self.assertIn("blocked_missing_inputs:", text_report)
         self.assertIn("candidate_source_zones:", text_report)
         self.assertIn("scenario_generation_inputs:", text_report)
         self.assertIn("gis_scope_summary:", text_report)
@@ -386,6 +403,53 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             writer = csv.DictWriter(fh, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
             writer.writerows(rows)
+
+    def _write_verified_cache_manifest(self, repo_root: Path, candidate_site_id: str) -> None:
+        cache_root = repo_root / "data/processed/swisstopo" / candidate_site_id / "input"
+        terrain_path = cache_root / "terrain.asc"
+        terrain_metadata_path = cache_root / "terrain_metadata.yaml"
+        terrain_bytes = terrain_path.read_bytes()
+        terrain_checksum = hashlib.sha256(terrain_bytes).hexdigest()
+        terrain_metadata = yaml.safe_load(terrain_metadata_path.read_text(encoding="utf-8"))
+        terrain_metadata["source_product_id"] = "swissalti3d_fixture_terrain_crop"
+        terrain_metadata["source_product_name"] = "swissALTI3D"
+        terrain_metadata["source_url_or_download_record"] = "https://example.invalid/swisstopo"
+        terrain_metadata["product_version_or_date"] = "fixture-2019"
+        terrain_metadata["tile_id_or_delivery_identifier"] = "fixture-tile-2793-1180"
+        terrain_metadata["checksum_sha256"] = terrain_checksum
+        terrain_metadata["license_or_terms_reference"] = terrain_metadata.get(
+            "license",
+            "synthetic fixture for repository tests; real swisstopo data remain subject to swisstopo terms",
+        )
+        terrain_metadata["crs"] = "EPSG:2056"
+        terrain_metadata["resolution_m"] = 2.0
+        terrain_metadata["crop_extent_lv95_m"] = terrain_metadata["extent_lv95_m"]
+        terrain_metadata_path.write_text(yaml.safe_dump(terrain_metadata, sort_keys=False), encoding="utf-8")
+
+        manifest = {
+            "schema_version": "public_geodata_cache_verification_manifest_v1",
+            "candidate_site_id": candidate_site_id,
+            "candidate_site_name": "Chant Sura / Flüelapass portability example",
+            "products": [
+                {
+                    "product_id": "terrain_crop",
+                    "source_product_id": "swissalti3d_fixture_terrain_crop",
+                    "source_product_name": "swissALTI3D",
+                    "source_url_or_download_record": "https://example.invalid/swisstopo",
+                    "product_version_or_date": "fixture-2019",
+                    "tile_id_or_delivery_identifier": "fixture-tile-2793-1180",
+                    "checksum_sha256": terrain_checksum,
+                    "crs": "EPSG:2056",
+                    "resolution_m": 2.0,
+                    "crop_extent_lv95_m": terrain_metadata["extent_lv95_m"],
+                    "license_or_terms_reference": terrain_metadata["license_or_terms_reference"],
+                    "staged_path": "terrain.asc",
+                    "metadata_path": "terrain_metadata.yaml",
+                }
+            ],
+        }
+        manifest_path = cache_root / "public_geodata_cache_manifest.yaml"
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
 
     def _rewrite_strings(self, payload: object, source: str, target: str) -> object:
         if isinstance(payload, str):

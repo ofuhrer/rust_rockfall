@@ -327,12 +327,14 @@ absent.
 
 The AOI-to-prepared-pilot dry-run helper,
 `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, composes the acquisition,
-context, release-plan, and portable command-plan dry-run helpers into one
+cache-verification, terrain-preprocessing, release-plan, and portable
+command-plan dry-run helpers into one
 preparation scaffold. Its report names the terrain manifests, public-context
-manifests, release/scenario placeholders, command-plan hooks, and ignored
-output roots that a future demonstration workflow would need, while still
-stopping short of any ensemble execution or public-context download. It also
-threads through the generic scenario-generation handoff and a planning-only GIS
+manifests, cache verification summary, release/scenario placeholders,
+command-plan hooks, and ignored output roots that a future demonstration
+workflow would need, while still stopping short of any ensemble execution or
+public-context download. It also threads through the generic scenario-generation
+handoff, deterministic ignored-root layout records, and a planning-only GIS
 scope summary so operators can see which scenario tables, raster/vector
 products, and template-only COG steps would be expected after real inputs
 exist. In its optional ignored-root output mode it writes a deterministic case

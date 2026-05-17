@@ -31,6 +31,7 @@ COMMAND_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_manifest_v1"
 EXPECTED_OUTPUT_ROOTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_output_roots_v1"
 BLOCKED_EXECUTION_SCHEMA_VERSION = "aoi_to_prepared_pilot_blocked_execution_v1"
 GIS_SCOPE_SUMMARY_SCHEMA_VERSION = "aoi_to_prepared_pilot_gis_scope_summary_v1"
+CACHE_VERIFICATION_SCHEMA_VERSION = "aoi_to_prepared_pilot_cache_verification_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -281,6 +282,7 @@ def build_prep_summary(
     synthetic_config: bool,
     has_site_config: bool,
     acquisition_report: dict[str, Any],
+    cache_verification_report: dict[str, Any],
     release_plan_report: dict[str, Any],
     generic_release_plan_report: dict[str, Any],
     candidate_generation_report: dict[str, Any],
@@ -315,8 +317,11 @@ def build_prep_summary(
     if terrain_metadata_record is not None:
         terrain_manifests.append(terrain_metadata_record)
     context_manifests = list(acquisition_report.get("public_context_acquisition_plan", []))
+    workflow_contract = acquisition_report.get("public_geodata_workflow_contract", {})
+    cache_layout = workflow_contract.get("public_geodata_cache_contract", {}).get("cache_layout", {}) if isinstance(workflow_contract, dict) else {}
     gis_scope_summary = build_gis_scope_summary(
         acquisition_report=acquisition_report,
+        cache_verification_report=cache_verification_report,
         terrain_manifests=terrain_manifests,
         context_manifests=context_manifests,
         command_plan_report=command_plan_report,
@@ -418,6 +423,8 @@ def build_prep_summary(
         "site_extent": site_extent,
         "release_polygon": release_polygon,
         "synthetic_config": synthetic_config,
+        "cache_verification": cache_verification_report,
+        "ignored_root_layout": cache_layout,
         "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
         "candidate_source_zones": candidate_source_zones,
         "scenario_generation_inputs": scenario_generation_inputs,
@@ -499,6 +506,10 @@ def build_report(
 
     with _patched_repo_root(repo_root):
         acquisition_report = AOI_ACQUISITION.build_report(config_path)
+        cache_verification_report = build_cache_verification_report(
+            acquisition_report=acquisition_report,
+            repo_root=repo_root,
+        )
         candidate_generation_report = CANDIDATE_GENERATION.build_report(repo_root=repo_root)
         release_plan_report = SCENARIO_PLAN.build_report()
         generic_release_plan_report = GENERIC_RELEASE_PLAN.build_report(config_path, repo_root=repo_root)
@@ -507,6 +518,7 @@ def build_report(
 
     steps = build_steps(
         acquisition_report=acquisition_report,
+        cache_verification_report=cache_verification_report,
         release_plan_report=release_plan_report,
         candidate_generation_report=candidate_generation_report,
         command_plan_report=command_plan_report,
@@ -523,6 +535,7 @@ def build_report(
         synthetic_config=synthetic_config,
         has_site_config=has_site_config,
         acquisition_report=acquisition_report,
+        cache_verification_report=cache_verification_report,
         release_plan_report=release_plan_report,
         generic_release_plan_report=generic_release_plan_report,
         candidate_generation_report=candidate_generation_report,
@@ -561,6 +574,7 @@ def build_report(
         "candidate_selection_rationale": acquisition_report["candidate_selection_rationale"],
         "site_extent": acquisition_report["site_extent"],
         "preparation_input": prep_summary,
+        "cache_verification": cache_verification_report,
         "terrain_manifests": prep_summary["terrain_manifests"],
         "context_manifests": prep_summary["context_manifests"],
         "gis_scope_summary": prep_summary["gis_scope_summary"],
@@ -576,6 +590,13 @@ def build_report(
         "workflow_blocker_count": len(blockers),
         "workflow_generated_output_roots": generated_output_roots,
         "workflow_ignored_output_roots": ignored_output_roots,
+        "blocked_missing_inputs": dedupe(
+            [
+                *(str(item) for item in acquisition_report.get("blocked_missing_inputs", []) if item),
+                *(str(item) for item in cache_verification_report.get("blocked_missing_inputs", []) if item),
+                *(str(item) for item in prep_summary.get("candidate_source_zones", {}).get("blocked_missing_inputs", []) if item),
+            ]
+        ),
         "expected_inputs_by_step": {step["step_id"]: step["expected_inputs"] for step in steps},
         "generated_output_roots_by_step": {
             step["step_id"]: step["generated_output_roots"] for step in steps
@@ -596,6 +617,7 @@ def build_report(
 def build_gis_scope_summary(
     *,
     acquisition_report: dict[str, Any],
+    cache_verification_report: dict[str, Any],
     terrain_manifests: list[dict[str, Any]],
     context_manifests: list[dict[str, Any]],
     command_plan_report: dict[str, Any],
@@ -612,6 +634,7 @@ def build_gis_scope_summary(
     blocked_missing_inputs = dedupe(
         [
             *(str(item) for item in acquisition_report.get("blocked_missing_inputs", []) if item),
+            *(str(item) for item in cache_verification_report.get("blocked_missing_inputs", []) if item),
             *(
                 product["expected_staged_path"]
                 for product in planned_products
@@ -661,6 +684,7 @@ def build_gis_scope_summary(
         "planned_products": planned_products,
         "planned_raster_products": [product for product in planned_products if product.get("product_kind") == "raster"],
         "planned_vector_products": [product for product in planned_products if product.get("product_kind") == "vector"],
+        "cache_verification": cache_verification_report,
         "template_only_products": template_only_products,
         "blocked_missing_inputs": blocked_missing_inputs,
         "cog_export_expectation": cog_export_expectation,
@@ -709,6 +733,7 @@ def classify_gis_product_kind(category: str, product: str) -> str:
 def build_steps(
     *,
     acquisition_report: dict[str, Any],
+    cache_verification_report: dict[str, Any],
     release_plan_report: dict[str, Any],
     candidate_generation_report: dict[str, Any],
     command_plan_report: dict[str, Any],
@@ -742,6 +767,21 @@ def build_steps(
                 acquisition_report["acquisition_boundary_status"],
                 acquisition_report.get("acquisition_manifest_expected_ignored_roots", []),
                 acquisition_report.get("deferred_public_context_categories", []),
+            ),
+        },
+        {
+            "step_id": "public_geodata_cache_verification",
+            "label": "Public geodata cache verification",
+            "status": cache_verification_step_status(cache_verification_report),
+            "blocked_reason": cache_verification_blocked_reason(cache_verification_report),
+            "expected_inputs": cache_verification_expected_inputs(cache_verification_report),
+            "generated_output_roots": [],
+            "ignored_output_roots": [],
+            "blockers": build_step_blockers(
+                "public_geodata_cache_verification",
+                cache_verification_step_status(cache_verification_report),
+                [],
+                cache_verification_report.get("blocked_missing_inputs", []),
             ),
         },
         {
@@ -863,6 +903,189 @@ def expected_inputs_from_candidate_generation(report: dict[str, Any]) -> list[st
     return dedupe(inputs)
 
 
+def build_cache_verification_report(*, acquisition_report: dict[str, Any], repo_root: Path) -> dict[str, Any]:
+    workflow_contract = acquisition_report.get("public_geodata_workflow_contract", {})
+    cache_contract = workflow_contract.get("public_geodata_cache_contract", {}) if isinstance(workflow_contract, dict) else {}
+    cache_layout = cache_contract.get("cache_layout", {}) if isinstance(cache_contract, dict) else {}
+    cache_manifest_value = cache_layout.get("cache_manifest_path")
+    expected_products = list(acquisition_report.get("required_public_geodata_products", []))
+    expected_metadata_records = list(acquisition_report.get("required_metadata_records", []))
+    if not cache_manifest_value:
+        return {
+            "schema_version": CACHE_VERIFICATION_SCHEMA_VERSION,
+            "cache_verification_status": "blocked_missing_inputs",
+            "cache_manifest_path": "",
+            "cache_manifest_status": "missing",
+            "verification_status": "missing",
+            "verification_report": None,
+            "expected_products": expected_products,
+            "expected_metadata_records": expected_metadata_records,
+            "blocked_missing_inputs": cache_expected_product_descriptions(expected_products, expected_metadata_records),
+            "cache_contract": cache_contract,
+            "read_only": True,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+        }
+    cache_manifest_path = Path(str(cache_manifest_value))
+    if not cache_manifest_path.exists():
+        return {
+            "schema_version": CACHE_VERIFICATION_SCHEMA_VERSION,
+            "cache_verification_status": "blocked_missing_inputs",
+            "cache_manifest_path": str(cache_manifest_path),
+            "cache_manifest_status": "missing",
+            "verification_status": "missing",
+            "verification_report": None,
+            "expected_products": expected_products,
+            "expected_metadata_records": expected_metadata_records,
+            "blocked_missing_inputs": cache_missing_inputs(
+                cache_manifest_path=cache_manifest_path,
+                expected_products=expected_products,
+                expected_metadata_records=expected_metadata_records,
+            ),
+            "cache_contract": cache_contract,
+            "read_only": True,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+        }
+
+    manifest = load_yaml(cache_manifest_path)
+    manifest_products = manifest.get("products") if isinstance(manifest, dict) else []
+    verification_report = AOI_ACQUISITION.PREFLIGHT.verify_public_geodata_cache(cache_manifest_path)
+    blocked_missing_inputs = []
+    if verification_report.get("verification_status") != "verified":
+        blocked_missing_inputs = cache_missing_inputs(
+            cache_manifest_path=cache_manifest_path,
+            expected_products=expected_products,
+            expected_metadata_records=expected_metadata_records,
+            manifest_products=manifest_products if isinstance(manifest_products, list) else [],
+            verification_report=verification_report,
+        )
+    return {
+        "schema_version": CACHE_VERIFICATION_SCHEMA_VERSION,
+        "cache_verification_status": cache_verification_step_status(
+            {"verification_status": verification_report.get("verification_status"), "cache_manifest_status": "ready"}
+        ),
+        "cache_manifest_path": str(cache_manifest_path),
+        "cache_manifest_status": "ready",
+        "verification_status": verification_report.get("verification_status", "missing"),
+        "verification_report": verification_report,
+        "expected_products": expected_products,
+        "expected_metadata_records": expected_metadata_records,
+        "manifest_products": manifest_products if isinstance(manifest_products, list) else [],
+        "blocked_missing_inputs": blocked_missing_inputs,
+        "cache_contract": cache_contract,
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+    }
+
+
+def cache_missing_inputs(
+    *,
+    cache_manifest_path: Path,
+    expected_products: list[dict[str, Any]],
+    expected_metadata_records: list[dict[str, Any]],
+    manifest_products: list[dict[str, Any]] | None = None,
+    verification_report: dict[str, Any] | None = None,
+) -> list[str]:
+    missing_inputs = [str(cache_manifest_path)]
+    if manifest_products is None or not manifest_products:
+        missing_inputs.extend(
+            cache_expected_product_descriptions(expected_products, expected_metadata_records)
+        )
+        return dedupe(missing_inputs)
+
+    if isinstance(verification_report, dict) and verification_report.get("verification_status") == "verified":
+        return []
+
+    verification_products = verification_report.get("products", []) if isinstance(verification_report, dict) else []
+    for index, product in enumerate(manifest_products):
+        verification_product = verification_products[index] if index < len(verification_products) and isinstance(verification_products[index], dict) else {}
+        verification_status = str(verification_product.get("verification_status") or "")
+        if verification_status == "verified":
+            continue
+        product_label = cache_product_label(product)
+        if verification_status == "missing":
+            missing_paths = verification_product.get("missing_paths") or []
+            if missing_paths:
+                missing_inputs.extend(f"{product_label}: {item}" for item in missing_paths if item)
+            else:
+                missing_inputs.append(f"{product_label}: staged product or metadata missing")
+            continue
+        metadata_mismatches = verification_product.get("metadata_mismatches") or []
+        if metadata_mismatches:
+            missing_inputs.extend(f"{product_label}: metadata {item}" for item in metadata_mismatches if item)
+    return dedupe(missing_inputs)
+
+
+def cache_expected_product_descriptions(
+    expected_products: list[dict[str, Any]],
+    expected_metadata_records: list[dict[str, Any]],
+) -> list[str]:
+    descriptions: list[str] = []
+    for row in expected_products:
+        descriptions.append(cache_product_label(row))
+        expected_path = row.get("expected_staged_path")
+        if expected_path:
+            descriptions.append(f"{cache_product_label(row)} -> {expected_path}")
+    for row in expected_metadata_records:
+        descriptions.append(cache_product_label(row))
+        expected_path = row.get("path_or_pattern") or row.get("expected_staged_path")
+        if expected_path:
+            descriptions.append(f"{cache_product_label(row)} -> {expected_path}")
+    return dedupe(descriptions)
+
+
+def cache_product_label(record: dict[str, Any]) -> str:
+    category = str(record.get("category") or record.get("kind") or "cache_product")
+    product = str(record.get("product") or record.get("product_name") or category)
+    expected_path = str(record.get("expected_staged_path") or record.get("path_or_pattern") or "")
+    if expected_path:
+        return f"{category} ({product}) @ {expected_path}"
+    return f"{category} ({product})"
+
+
+def cache_verification_step_status(report: dict[str, Any]) -> str:
+    status = str(report.get("verification_status") or report.get("cache_verification_status") or "blocked_missing_inputs")
+    if status == "verified":
+        return "ready"
+    if status == "missing" or report.get("cache_manifest_status") == "missing":
+        return "blocked_missing_inputs"
+    return status
+
+
+def cache_verification_blocked_reason(report: dict[str, Any]) -> str:
+    status = str(report.get("verification_status") or report.get("cache_verification_status") or "")
+    if status == "verified":
+        return ""
+    if report.get("cache_manifest_status") == "missing":
+        return f"missing cache manifest: {report.get('cache_manifest_path', '')}"
+    if status == "missing":
+        return "cache verification is blocked until the staged product and metadata pairs exist"
+    if status == "checksum_mismatch":
+        return "cache verification checksum mismatch"
+    if status == "metadata_mismatch":
+        return "cache verification metadata mismatch"
+    return "cache verification is blocked"
+
+
+def cache_verification_expected_inputs(report: dict[str, Any]) -> list[str]:
+    inputs = [str(report.get("cache_manifest_path") or "")]
+    for row in report.get("expected_products", []):
+        if not isinstance(row, dict):
+            continue
+        expected_path = row.get("expected_staged_path")
+        if expected_path:
+            inputs.append(str(expected_path))
+    for row in report.get("expected_metadata_records", []):
+        if not isinstance(row, dict):
+            continue
+        expected_path = row.get("path_or_pattern") or row.get("expected_staged_path")
+        if expected_path:
+            inputs.append(str(expected_path))
+    return dedupe([item for item in inputs if item])
+
+
 def expected_inputs_from_scenario_generation(report: dict[str, Any]) -> list[str]:
     inputs: list[str] = []
     source_inputs = report.get("source_inputs", {})
@@ -939,6 +1162,35 @@ def render_text_report(report: dict[str, Any]) -> str:
         polygon = prep["release_polygon"]
         for key, value in polygon.items():
             lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "cache_verification:",
+        ]
+    )
+    cache_verification = report.get("cache_verification", {})
+    lines.append(f"- schema_version: {cache_verification.get('schema_version', '')}")
+    lines.append(f"- cache_verification_status: {cache_verification.get('cache_verification_status', '')}")
+    lines.append(f"- cache_manifest_status: {cache_verification.get('cache_manifest_status', '')}")
+    lines.append(f"- cache_manifest_path: {cache_verification.get('cache_manifest_path', '')}")
+    lines.append(f"- verification_status: {cache_verification.get('verification_status', '')}")
+    if cache_verification.get("blocked_missing_inputs"):
+        lines.append("- blocked_missing_inputs:")
+        lines.extend(f"  - {item}" for item in cache_verification["blocked_missing_inputs"])
+    else:
+        lines.append("- blocked_missing_inputs: none")
+    lines.append("- expected_products:")
+    if cache_verification.get("expected_products"):
+        for row in cache_verification["expected_products"]:
+            lines.append(f"  - {cache_product_label(row)}")
+    else:
+        lines.append("  - none")
+    lines.append("- expected_metadata_records:")
+    if cache_verification.get("expected_metadata_records"):
+        for row in cache_verification["expected_metadata_records"]:
+            lines.append(f"  - {cache_product_label(row)}")
+    else:
+        lines.append("  - none")
     lines.extend(
         [
             "",
@@ -1153,6 +1405,17 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "ignored_root_layout:",
+        ]
+    )
+    if report.get("ignored_root_layout"):
+        for key, value in report["ignored_root_layout"].items():
+            lines.append(f"- {key}: {value}")
+    else:
+        lines.append("- none")
+    lines.extend(
+        [
+            "",
             "output_root_planning:",
         ]
     )
@@ -1196,6 +1459,12 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(
                 f"- {blocker['step_id']}: {blocker['status']} ({', '.join(str(item) for item in blocker['details']) if blocker['details'] else 'none'})"
             )
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("blocked_missing_inputs:")
+    if report.get("blocked_missing_inputs"):
+        lines.extend(f"- {item}" for item in report["blocked_missing_inputs"])
     else:
         lines.append("- none")
     lines.extend(
@@ -1378,7 +1647,12 @@ def build_case_skeleton_output(
             if report_inputs["workflow_status"] == "blocked_missing_inputs"
             else "dry-run only; ensemble execution is not authorized"
         ),
-        "missing_input_paths": report_inputs["prep_summary"].get("candidate_source_zones", {}).get("blocked_missing_inputs", []),
+        "missing_input_paths": dedupe(
+            [
+                *(str(item) for item in report_inputs["prep_summary"].get("blocked_missing_inputs", []) if item),
+                *(str(item) for item in report_inputs["prep_summary"].get("candidate_source_zones", {}).get("blocked_missing_inputs", []) if item),
+            ]
+        ),
         "blocked_command_ids": report_inputs["command_plan_report"].get("blocked_template_commands", []),
     }
     skeleton = {
