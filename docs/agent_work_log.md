@@ -2318,3 +2318,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no second-site ensemble, no hazard build, no unauthorized downloads, and no synthetic evidence promotion were introduced.
 - Next task: `TB-138`
+
+### TB-138: Prepare Observed Runout And Deposition Benchmark Acquisition Pack
+
+- Date: 2026-05-17
+- Commit: `d0a3b06`
+- Objective: turn the observed runout/deposition intake contract into a concrete benchmark acquisition pack with explicit non-evidence artifacts and a blocked report.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a dry-run acquisition pack that now writes an acquisition checklist, required dataset inventory, geometry template, provenance template, objective-function placeholder template, blocked no-evidence report, template manifest, and validation summary.
+  - Kept benchmark intake and calibration paths separate by representing the benchmark dataset role independently from the calibration dataset role and by preserving the calibration blocker in the no-evidence report.
+  - Extended the regression test to verify the new artifacts, the blocked report wording, and the benchmark-vs-calibration readiness split.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps tests.test_balfrin_physical_credibility_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --output-root /tmp/tb138_observed_runout_pack --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no calibration, fitting, parameter tuning, annual frequency, risk, exposure, vulnerability, operational claim, or real benchmark evidence was introduced.
+- Next task: `TB-139`
