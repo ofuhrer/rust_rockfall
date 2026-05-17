@@ -35,6 +35,13 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
             {
                 "evidence_type": "measured",
                 "partial_state": {"status": "partial"},
+                "recovery_timing": {
+                    "interrupted_job_id": 4325958,
+                    "interrupted_cancelled_at": "2026-05-17T01:08:36",
+                    "resumed_job_id": 4326021,
+                    "resumed_started_at": "2026-05-17T01:17:26",
+                    "resume_gap_seconds": 530,
+                },
                 "resume_commands": ["resume"],
                 "recovery_outcome": {
                     "reused_chunks": ["trajectory/chunk_000000"],
@@ -43,6 +50,10 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
                     "executed_chunk_counts": {"trajectory": 1},
                     "numerical_artifact_stability": {"classification": "pass_hash_stable", "changed_artifact_count": 0, "changed_paths": []},
                 },
+                "artifact_continuity": {
+                    "trajectory_merge_state": "ready",
+                    "reducer_merge_state": "ready",
+                },
                 "artifact_hygiene": {"classification": "pass_clean"},
             }
         )
@@ -50,6 +61,11 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
         self.assertEqual(report["recovery_status"], "measured")
         self.assertEqual(report["reused_chunks"], ["trajectory/chunk_000000"])
         self.assertEqual(report["executed_chunks"], ["trajectory/chunk_000001"])
+        self.assertEqual(report["recovery_timing"]["interrupted_job_id"], 4325958)
+        self.assertEqual(report["artifact_continuity"]["reducer_merge_state"], "ready")
+        rendered = recovery.render_text_report(report)
+        self.assertIn("Recovery Timing", rendered)
+        self.assertIn("Artifact Continuity", rendered)
 
     def test_missing_inputs_are_reported_as_blocked_missing_inputs(self) -> None:
         report = recovery.build_report({"missing_inputs": ["partial_state", "resume_commands"]})

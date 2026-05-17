@@ -117,10 +117,12 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "evidence_status": evidence_type or "unknown",
         "partial_state": partial_state,
         "resume_commands": resume_commands,
+        "recovery_timing": as_mapping(evidence_override.get("recovery_timing")),
         "reused_chunks": reused_chunks,
         "executed_chunks": executed_chunks,
         "reused_chunk_counts": as_mapping(recovery_outcome.get("reused_chunk_counts")),
         "executed_chunk_counts": as_mapping(recovery_outcome.get("executed_chunk_counts")),
+        "artifact_continuity": as_mapping(evidence_override.get("artifact_continuity")),
         "numerical_artifact_stability": {
             "classification": str(numerical_artifacts.get("classification") or "unknown"),
             "changed_artifact_count": safe_int(numerical_artifacts.get("changed_artifact_count")),
@@ -138,11 +140,18 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         },
     }
     if not report["explicit_limits"]:
-        report["explicit_limits"] = [
-            "fixture-backed recovery evidence only; no live interruption is claimed here.",
-            "no distributed execution authorization is implied.",
-            "no physics, sampling, or output-profile changes are introduced by this report.",
-        ]
+        if recovery_status == "measured":
+            report["explicit_limits"] = [
+                "live interrupted/resumed recovery evidence only; no fixture-backed proof is claimed here.",
+                "no distributed execution authorization is implied.",
+                "no physics, sampling, or output-profile changes are introduced by this report.",
+            ]
+        else:
+            report["explicit_limits"] = [
+                "fixture-backed recovery evidence only; no live interruption is claimed here.",
+                "no distributed execution authorization is implied.",
+                "no physics, sampling, or output-profile changes are introduced by this report.",
+            ]
     return report
 
 
@@ -155,10 +164,12 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "evidence_status": "blocked_missing_inputs",
         "partial_state": {},
         "resume_commands": [],
+        "recovery_timing": {},
         "reused_chunks": [],
         "executed_chunks": [],
         "reused_chunk_counts": {},
         "executed_chunk_counts": {},
+        "artifact_continuity": {},
         "numerical_artifact_stability": {
             "classification": "blocked_missing_inputs",
             "changed_artifact_count": None,
@@ -196,6 +207,31 @@ def render_text_report(report: dict[str, Any]) -> str:
     ]
     for command in report["resume_commands"]:
         lines.append(f"```bash\n{command}\n```")
+    recovery_timing = report.get("recovery_timing") or {}
+    if recovery_timing:
+        lines.extend(
+            [
+                "",
+                "## Recovery Timing",
+                "",
+            ]
+        )
+        for key, value in recovery_timing.items():
+            lines.append(f"- {key}: `{value}`")
+    artifact_continuity = report.get("artifact_continuity") or {}
+    if artifact_continuity:
+        lines.extend(
+            [
+                "",
+                "## Artifact Continuity",
+                "",
+            ]
+        )
+        for key, value in artifact_continuity.items():
+            if isinstance(value, dict):
+                lines.append(f"- {key}: `{json.dumps(value, sort_keys=True)}`")
+            else:
+                lines.append(f"- {key}: `{value}`")
     lines.extend(
         [
             "",

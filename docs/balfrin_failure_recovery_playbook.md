@@ -8,6 +8,11 @@ The goal is deterministic recovery, not ad-hoc debugging. Do not rerun with a
 different run root, different run id, or different command plan unless the
 recorded failure class requires it.
 
+The live measured recovery proof for this workflow is recorded in
+`docs/balfrin_restartability_recovery_report.md` and uses the interrupted
+`tschamut_public_balfrin_single_release_zone_v1` run root plus the resumed
+`tschamut_public_balfrin_single_release_zone_v3` run root.
+
 ## Shared setup
 
 ```bash

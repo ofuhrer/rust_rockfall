@@ -812,6 +812,7 @@ def evidence_sources(source_paths: dict[str, Any]) -> list[str]:
         "scripts/summarize_balfrin_post_run_interpretation_gate.py",
         "scripts/summarize_balfrin_failure_taxonomy.py",
         "scripts/audit_gis_cog_package_readiness.py",
+        "docs/balfrin_restartability_recovery_report.md",
     ]
     if source_paths:
         sources.append("validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1")

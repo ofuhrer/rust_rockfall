@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-130: Execute Live Balfrin Restartability And Resume Proof
-
-Goal: Replace fixture-backed recovery evidence with a deliberately interrupted
-and resumed Balfrin demonstration run.
-
-Capability gap reduced: live HPC restartability credibility for the measured
-Balfrin workflow.
-
-Why this outranks alternatives: the repository now has measured Balfrin
-execution, but interruption/recovery remains the largest fixture-backed
-operational evidence class.
-
-Inspect first:
-
-- `docs/balfrin_restartability_recovery_report.md`
-- `docs/balfrin_failure_recovery_playbook.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Live interrupted and resumed run evidence, or a precise blocked report if the
-  scheduler/input state prevents the experiment.
-- Measured recovery timing, reused/executed chunk counts, artifact-continuity
-  checks, and updated restartability/evidence-bundle reporting.
-
-Definition of done:
-
-- The restartability report clearly classifies the live experiment as measured
-  or blocked, and no fixture-backed proof is presented as live recovery.
-
-Boundaries: One bounded single-node Balfrin run only; no tuning, distributed
-execution, scale-up authorization, or operational claim.
-
 ### TB-131: Complete Balfrin Metrics Contract Coverage
 
 Goal: Fill or explicitly downgrade the remaining missing measured fields in the
