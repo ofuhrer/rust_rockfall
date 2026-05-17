@@ -24,6 +24,25 @@ desktop checkout. Before submitting from Balfrin, run the readiness check inside
 the Balfrin checkout and repair any missing non-git artifacts or scratch roots
 there. A clean Git clone alone is not enough evidence that the demo is runnable.
 
+For a deterministic clean-checkout proof before treating local readiness as
+measured evidence, run:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_clean_checkout_blocked_reports.py --format json
+PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py \
+  --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/<missing-run-root> \
+  --format json
+PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --format json
+```
+
+The clean-checkout helper should report `blocked_missing_inputs` for the
+same-scale and second-site helpers and `blocked_missing_run_root` for the
+Balfrin probe-metrics helper. Only after those blocked paths are understood
+should local readiness be treated as measured evidence against the live roots.
+
 ## Minimal Demo Boundary
 
 Use [`docs/balfrin_minimal_demo_vs_closure.md`](./balfrin_minimal_demo_vs_closure.md) as the short pointer for the demo boundary.

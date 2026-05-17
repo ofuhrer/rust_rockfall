@@ -3430,3 +3430,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no task execution, no command-plan regeneration, no generated artifact commit, no broad documentation rewrite, and no scale-up or operational-claim change.
 - Next task: `TB-193`
+
+### TB-193: Clean-Checkout Reproducibility Blocked-Report Mode
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: add a deterministic clean-checkout mode that proves the same-scale readiness, Balfrin probe-metrics, Balfrin target-area bundle, and second-site public-geodata helpers fail closed when ignored local artifacts and mounted run roots are absent.
+- Files changed: `scripts/summarize_clean_checkout_blocked_reports.py`, `tests/test_clean_checkout_blocked_reports.py`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only clean-checkout summary helper that runs the selected readiness and evidence helpers against an isolated temporary root, reuses the existing blocked-report contracts, and emits a compact inventory of tracked, fixture-backed, ignored-local, and unavailable evidence.
+  - Kept the same-scale helper on a temporary root with ignored output directories absent, forced the Balfrin probe-metrics helper to use a missing run root, and fed the second-site public-geodata preflight a clean-checkout config whose expected staged inputs all point at the isolated root.
+  - Added focused regression coverage for the blocked helper statuses, the inventory categories, and the helper CLI artifact-writing path; documented the command sequence to run before treating local readiness as measured evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_clean_checkout_blocked_reports.py tests/test_clean_checkout_blocked_reports.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_clean_checkout_blocked_reports -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no public-data download, no Balfrin access requirement, no deletion of local ignored artifacts, no new evidence claim, and no generated heavy outputs committed.
+- Next task: `TB-194`

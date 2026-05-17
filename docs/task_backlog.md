@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-193: Clean-Checkout Reproducibility Blocked-Report Mode
-
-Goal: Provide a deterministic clean-checkout mode that proves key readiness and evidence helpers fail closed with explicit blocked reports when ignored local artifacts are absent.
-
-Capability gap reduced: Hidden dependence on local ignored roots, mounted Balfrin run roots, and staged swisstopo artifacts.
-
-Why this outranks alternatives: Current maturity claims are disciplined, but reviewers correctly identified that large ignored roots can masquerade as repository readiness unless missing-artifact behavior is tested directly.
-
-Inspect first:
-
-- `scripts/check_same_scale_artifact_readiness.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_target_area_evidence_bundle.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/test_agent_task_context.py`
-- `.gitignore`
-
-Deliverables:
-
-- A clean-checkout test or helper mode that runs selected readiness/evidence helpers against an isolated temporary root with ignored artifact directories absent.
-- Deterministic blocked-report assertions for missing same-scale artifacts, missing Balfrin run roots, and missing second-site public-context inputs.
-- A compact report that lists which maturity evidence is tracked, fixture-backed, ignored-local, or unavailable in a clean checkout.
-- Documentation of the command workers should run before treating local readiness as measured evidence.
-
-Definition of done:
-
-- The clean-checkout mode is reproducible without local ignored artifacts, focused tests cover the blocked paths, and no helper reports `ready` solely because a default or empty local path was accepted.
-
-Boundaries: No public-data download, no Balfrin access requirement, no deletion of local ignored artifacts, no new evidence claim, and no generated heavy outputs committed.
-
 ### TB-194: Shared Python Workflow Utility Extraction
 
 Goal: Extract duplicated Python workflow utilities for YAML/JSON loading, path normalization, checksums, required-field validation, claim-boundary scanning, and status rendering into one shared module.
