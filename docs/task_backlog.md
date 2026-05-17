@@ -24,39 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-149: Prototype AOI Terrain Preprocessing From Staged Tiles
-
-Goal: Convert verified staged terrain tiles into a deterministic AOI terrain
-crop and metadata package for downstream release-zone and case planning.
-
-Capability gap reduced: missing generic preprocessing step between public tile
-staging and pilot-ready terrain inputs.
-
-Why this outranks alternatives: release-zone candidates, source metadata, and
-hazard grids cannot become AOI-generic while terrain crops remain handcrafted.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A dry-run or fixture-backed terrain preprocessing helper that records crop
-  extent, resolution, CRS, nodata, source tiles, and output roots.
-- Tests for fixture terrain, missing tile, and metadata mismatch behavior.
-- Integration fields consumed by release-zone candidate generation.
-
-Definition of done:
-
-- A fixture-backed AOI terrain package can be generated or planned
-  deterministically without Tschamut-specific paths.
-
-Boundaries: No national-scale processing, no unauthorized downloads, no
-physics changes, and no operational claim.
-
 ### TB-150: Stress-Test Release-Zone Candidate Heuristic Stability
 
 Goal: Quantify how deterministic terrain-driven release-zone candidates change

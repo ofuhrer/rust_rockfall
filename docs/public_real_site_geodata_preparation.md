@@ -250,6 +250,12 @@ swissSURFACE3D Raster, and swissBUILDINGS3D, but it still marks the public
 context as deferred until real products are staged. No downloads occur during
 that summary pass.
 
+`scripts/plan_aoi_terrain_preprocessing.py` extends that contract with a
+fixture-backed AOI terrain preprocessing report. It records the staged crop
+extent, resolution, CRS, nodata policy, source tile ids, and deterministic
+output roots, then feeds those fields into the release-zone candidate planner
+when a local AOI tile catalog is present.
+
 The current decision pack for the Chant Sura / Flüelapass candidate lives at
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It records a
 defer recommendation, the cache/output roots, the required public-context

@@ -2533,3 +2533,22 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no bulk download, no raw swisstopo commit, no hazard run, no operational claim, and no scale-up or physical-probability claim.
 - Next task: `TB-149`
+
+### TB-149
+- Date: 2026-05-17
+- Commit: local
+- Objective: prototype a deterministic AOI terrain preprocessing helper from staged tiles and feed its contract into release-zone candidate planning.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_aoi_terrain_preprocessing.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a fixture-backed AOI terrain preprocessing helper that reads a staged ESRI ASCII crop, terrain metadata sidecar, and AOI tile catalog, then records crop extent, resolution, CRS, nodata, source tiles, output roots, and a manifest path in a deterministic report.
+  - Wired the release-zone candidate planner to consume the terrain-preprocessing report when a staged AOI tile catalog is present, including explicit crop extent, resolution, CRS, nodata, and source-tile screening fields.
+  - Added regression coverage for the ready fixture case, a missing-tile failure, a metadata-mismatch failure, and the planner integration path that inherits the new terrain-package fields.
+  - Removed TB-149 from the active backlog and documented the new helper in the public real-site geodata preparation guide.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_terrain_preprocessing.py scripts/plan_terrain_release_zone_candidates.py tests/test_aoi_terrain_preprocessing.py tests/test_plan_terrain_release_zone_candidates.py scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing tests.test_plan_terrain_release_zone_candidates tests.test_swisstopo_aoi_acquisition_planner`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --repo-root /tmp --terrain-crop tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/terrain.asc --terrain-metadata tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/terrain_metadata.yaml --aoi-tile-catalog tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/aoi_tile_catalog.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --terrain-crop tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/terrain.asc --terrain-metadata tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/terrain_metadata.yaml --source-zone-metadata tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/source_zone_metadata.yaml --format json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no national-scale processing, no unauthorized downloads, no physics changes, and no operational claim.
+- Next task: `TB-150`

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import math
 import sys
@@ -43,6 +44,20 @@ NODATA_SENTINEL = -9999.0
 
 class TerrainReleaseZoneCandidateMetricsError(ValueError):
     """User-facing dry-run helper error."""
+
+
+def _load_module(module_name: str, filename: str):
+    path = ROOT / "scripts" / filename
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load helper module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+TERRAIN_PREPROCESSING = _load_module("aoi_terrain_preprocessing_planner", "plan_aoi_terrain_preprocessing.py")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -100,6 +115,7 @@ def build_report(
     terrain_crop_path = resolve_path(repo_root, terrain_crop_path)
     terrain_metadata_path = resolve_path(repo_root, terrain_metadata_path)
     source_zone_metadata_path = resolve_path(repo_root, source_zone_metadata_path)
+    terrain_catalog_path = terrain_crop_path.parent / "aoi_tile_catalog.yaml"
 
     required_inputs = [
         terrain_crop_path,
@@ -113,8 +129,22 @@ def build_report(
     terrain = read_esri_ascii_grid(terrain_crop_path)
     terrain_metadata = load_yaml(terrain_metadata_path)
     source_zone_metadata = load_yaml(source_zone_metadata_path)
+    terrain_preprocessing = build_terrain_preprocessing_report(
+        repo_root=repo_root,
+        terrain_crop_path=terrain_crop_path,
+        terrain_metadata_path=terrain_metadata_path,
+        terrain_catalog_path=terrain_catalog_path if terrain_catalog_path.exists() else None,
+    )
+    if terrain_preprocessing["terrain_preprocessing_status"] not in {"ready", "not_available"}:
+        return blocked_report(
+            repo_root=repo_root,
+            missing_inputs=missing_inputs,
+            terrain_preprocessing=terrain_preprocessing,
+            blocked_status=terrain_preprocessing["terrain_preprocessing_status"],
+        )
 
     screening = build_screening_criteria(terrain_metadata, source_zone_metadata)
+    screening.update(build_screening_criteria_from_terrain_package(terrain_preprocessing))
     candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, screening)
     terrain_summary = build_terrain_summary(terrain)
     candidate_summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, screening)
@@ -144,7 +174,11 @@ def build_report(
             "terrain_metadata_sha256": sha256_file(terrain_metadata_path),
             "terrain_download_status": terrain_metadata.get("download_status"),
             "terrain_license": terrain_metadata.get("license"),
+            "terrain_preprocessing_status": terrain_preprocessing["terrain_preprocessing_status"],
+            "terrain_preprocessing_manifest_path": terrain_preprocessing.get("terrain_preprocessing_manifest_path"),
+            "terrain_preprocessing_package": terrain_preprocessing["terrain_preprocessing_package"],
         },
+        "terrain_preprocessing": terrain_preprocessing,
         "source_zone_inputs": build_source_zone_inputs(source_zone_metadata_path, source_zone_metadata, repo_root),
         "terrain_summary": terrain_summary,
         "candidate_summary": candidate_summary,
@@ -190,10 +224,30 @@ def build_report(
     return report
 
 
-def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, Any]:
+def blocked_report(
+    *,
+    repo_root: Path,
+    missing_inputs: list[str],
+    terrain_preprocessing: dict[str, Any] | None = None,
+    blocked_status: str = "blocked_missing_inputs",
+) -> dict[str, Any]:
+    terrain_preprocessing = terrain_preprocessing or {
+        "terrain_preprocessing_status": "not_available",
+        "terrain_preprocessing_manifest_path": None,
+        "terrain_preprocessing_package": {
+            "preprocessing_status": "not_available",
+            "source_tile_ids": [],
+            "source_tiles": [],
+            "output_roots": {
+                "raw_swisstopo_cache_root": str(repo_root / "data/raw/swisstopo/tschamut_public_pilot"),
+                "processed_input_root": str(default_repo_path(repo_root, DEFAULT_TERRAIN_CROP).parent),
+                "output_root": str(default_repo_path(repo_root, DEFAULT_TERRAIN_CROP).parent),
+            },
+        },
+    }
     return {
         "schema_version": SCHEMA_VERSION,
-        "candidate_metrics_status": "blocked_missing_inputs",
+        "candidate_metrics_status": blocked_status,
         "candidate_release_zone_set_status": "not_emitted",
         "candidate_release_zone_interpretation": "not_claimed",
         "candidate_site_id": "tschamut_public_pilot",
@@ -208,12 +262,16 @@ def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, A
         "terrain_inputs": {
             "terrain_crop_path": display_path(default_repo_path(repo_root, DEFAULT_TERRAIN_CROP), repo_root),
             "terrain_metadata_path": display_path(default_repo_path(repo_root, DEFAULT_TERRAIN_METADATA), repo_root),
+            "terrain_preprocessing_status": terrain_preprocessing["terrain_preprocessing_status"],
+            "terrain_preprocessing_manifest_path": terrain_preprocessing.get("terrain_preprocessing_manifest_path"),
+            "terrain_preprocessing_package": terrain_preprocessing["terrain_preprocessing_package"],
         },
         "source_zone_inputs": {
             "source_zone_metadata_path": display_path(
                 default_repo_path(repo_root, DEFAULT_SOURCE_ZONE_METADATA), repo_root
             ),
         },
+        "terrain_preprocessing": terrain_preprocessing,
         "terrain_summary": {},
         "candidate_summary": {},
         "excluded_area_summary": [],
@@ -237,7 +295,11 @@ def blocked_report(*, repo_root: Path, missing_inputs: list[str]) -> dict[str, A
             ],
         },
         "blocked_missing_inputs": missing_inputs,
-        "blocked_reason": "required public inputs are missing: " + ", ".join(missing_inputs),
+        "blocked_reason": (
+            terrain_preprocessing.get("blocked_reason")
+            if terrain_preprocessing["terrain_preprocessing_status"] not in {"not_available", "ready"}
+            else "required public inputs are missing: " + ", ".join(missing_inputs)
+        ),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
         "candidate_release_zone_products": {
@@ -271,6 +333,60 @@ def build_screening_criteria(terrain_metadata: dict[str, Any], source_zone_metad
         }
     )
     return criteria
+
+
+def build_screening_criteria_from_terrain_package(terrain_preprocessing: dict[str, Any]) -> dict[str, Any]:
+    if terrain_preprocessing.get("terrain_preprocessing_status") == "not_available":
+        return {}
+    package = terrain_preprocessing.get("terrain_preprocessing_package") or {}
+    if not isinstance(package, dict):
+        return {}
+    return {
+        "terrain_crop_extent_lv95_m": package.get("crop_extent_lv95_m", {}),
+        "terrain_resolution_m": package.get("resolution_m"),
+        "terrain_crs_epsg": package.get("crs_epsg"),
+        "terrain_nodata": package.get("nodata"),
+        "terrain_source_tile_ids": package.get("source_tile_ids", []),
+    }
+
+
+def build_terrain_preprocessing_report(
+    *,
+    repo_root: Path,
+    terrain_crop_path: Path,
+    terrain_metadata_path: Path,
+    terrain_catalog_path: Path | None,
+) -> dict[str, Any]:
+    if terrain_catalog_path is None:
+        return {
+            "terrain_preprocessing_status": "not_available",
+            "terrain_preprocessing_manifest_path": None,
+            "terrain_preprocessing_package": {
+                "preprocessing_status": "not_available",
+                "crop_extent_lv95_m": {},
+                "resolution_m": None,
+                "crs_epsg": None,
+                "nodata": None,
+                "source_tile_ids": [],
+                "source_tiles": [],
+                "output_roots": {
+                    "raw_swisstopo_cache_root": str(repo_root / "data/raw/swisstopo/tschamut_public_pilot"),
+                    "processed_input_root": str(terrain_crop_path.parent),
+                    "output_root": str(terrain_crop_path.parent),
+                },
+                "output_paths": {},
+                "source_tile_count": 0,
+                "manifest_path": None,
+            },
+            "blocked_reason": "AOI tile catalog is not staged next to the terrain crop",
+        }
+
+    return TERRAIN_PREPROCESSING.build_report(
+        repo_root=repo_root,
+        terrain_crop_path=terrain_crop_path,
+        terrain_metadata_path=terrain_metadata_path,
+        aoi_tile_catalog_path=terrain_catalog_path,
+    )
 
 
 def build_terrain_summary(terrain: dict[str, Any]) -> dict[str, Any]:
@@ -940,8 +1056,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_site_name: {report['candidate_site_name']}",
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         "",
-        "screening_criteria:",
+        "terrain_preprocessing:",
     ]
+    lines.extend(render_mapping(report.get("terrain_preprocessing") or {}))
+    lines.append("")
+    lines.append("screening_criteria:")
     lines.extend(f"- {key}: {value}" for key, value in report["screening_criteria"].items())
     lines.append("")
     lines.append("terrain_summary:")
