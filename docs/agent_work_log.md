@@ -3613,3 +3613,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no public-data download, no generated ignored-artifact commit, no fabricated measured evidence, no Balfrin access requirement, and no scale-up or operational claim.
 - Next task: `TB-201`
+
+### TB-201: Ignored-Artifact Dependency Audit For Python Tests
+
+- Date: 2026-05-18
+- Commit: `caf3902`
+- Objective: add a repository-consistency audit that catches Python tests which hard-read ignored artifact roots without using committed fixtures, temporary fixtures, or explicit blocked-state expectations.
+- Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_claim_hygiene.py`, `tests/test_balfrin_target_area_scenario_tables.py`, `tests/test_swiss_wide_execution_envelope.py`, `tests/test_tschamut_block_scenario_table_generation.py`, `tests/fixtures/tschamut_public_input/release_points_lv95.csv`, `tests/fixtures/tschamut_public_input/tschamut_public_scenario_table_v1.csv`, `tests/fixtures/tschamut_public_input/tschamut_public_source_zone_metadata_v1.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added ignored-artifact dependency classification to repository consistency, including violations for new hard reads from `hazard/results`, `validation/private`, `data/processed/swisstopo`, and `/scratch` paths.
+  - Added regression coverage for current classifications, hard-read rejection, and accepted temporary/tracked-fixture reads.
+  - Moved scenario-table tests away from ignored Tschamut input roots by adding tracked fixture inputs under `tests/fixtures/tschamut_public_input`.
+  - Reworked the Swiss-wide execution envelope smoke test to use mocked measured evidence rather than live local ignored artifacts.
+  - Worker completed code and push but missed backlog/work-log cleanup; this follow-up entry regularizes the task bookkeeping.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene tests.test_balfrin_target_area_scenario_tables tests.test_tschamut_block_scenario_table_generation tests.test_swiss_wide_execution_envelope`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no broad test rewrite, no deletion of local artifacts, no generated fixtures outside `tests/fixtures`, no scientific evidence reclassification, and no scale-up or operational claim.
+- Next task: `TB-202`

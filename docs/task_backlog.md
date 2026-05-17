@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-201: Ignored-Artifact Dependency Audit For Python Tests
-
-Goal: Add an automated audit that identifies Python tests and helper smoke paths that read ignored artifact roots without creating committed fixtures, temporary fixtures, or explicit blocked-report expectations.
-
-Capability gap reduced: Hidden test coupling to local-only artifacts that makes CI and clean clones diverge from developer workstations.
-
-Why this outranks alternatives: Copilot found concrete failures, but a broader scan shows many tests reference ignored roots; the suite needs a guard so new hard dependencies do not reappear after the immediate CI fixes.
-
-Inspect first:
-
-- `tests/test_same_scale_artifact_readiness.py`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_swiss_wide_execution_envelope.py`
-- `tests/test_balfrin_probe_metrics_report.py`
-- `tests/test_balfrin_tschamut_readiness.py`
-- `scripts/check_repo_consistency.py`
-- `.gitignore`
-
-Deliverables:
-
-- A repository-consistency or dedicated test-audit helper that scans Python tests for hard dependencies on `hazard/results/**`, `validation/private/**`, `data/processed/swisstopo/*/`, and `/scratch/**`.
-- An allowlist format that permits references only when the test creates temporary fixture data, uses tracked `tests/fixtures/**`, or asserts an explicit blocked state.
-- Initial audit classifications for the current test files that reference ignored roots, including which are fixture-backed, blocked-state tests, or cleanup candidates.
-- Focused tests showing the audit rejects a new hard read from an ignored root and accepts a temporary fixture or tracked fixture path.
-
-Definition of done:
-
-- The audit runs in CI or repository consistency checks, current tests are classified without false failures, and a new hard dependency on ignored local artifacts is caught before merge.
-
-Boundaries: Audit and classification only; no broad rewrite of all tests, no deletion of local artifacts, no new generated fixtures outside `tests/fixtures`, and no scientific evidence reclassification.
-
 ### TB-202: CI Git History And Output-Root Portability Guard
 
 Goal: Remove CI-only failures caused by shallow Git history and by output-root allowlists that treat repository paths under `/tmp` as safe scratch paths.
