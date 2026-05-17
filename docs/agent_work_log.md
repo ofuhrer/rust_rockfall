@@ -2993,3 +2993,23 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no operational claim, no physical-credibility upgrade, no generated-output commit, and no annual-frequency semantics.
 - Next task: `TB-171`
+
+### TB-171: Produce Target-Area GIS And COG Scope Audit
+
+- Date: 2026-05-17
+- Commit: `local`
+- Objective: audit the committed target-area GIS package against a scratch COG conversion, report layer parity and missing layers, and keep the target-area demonstration boundaries explicit.
+- Files changed: `scripts/summarize_balfrin_target_area_gis_cog_scope.py`, `tests/test_balfrin_target_area_gis_cog_scope.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated target-area GIS/COG scope helper that composes the committed target package audit, an optional scratch COG conversion, and the frozen handoff scope summary.
+  - Classified the current measured target package as COG-blocked on the committed root, while the scratch conversion reports full-scope parity with zero omitted or extra layers.
+  - Kept the demo-usability and non-operational boundaries explicit so the report stays diagnostic rather than operational.
+  - Added focused tests for the full-scope scratch conversion path and the blocked missing-conversion path.
+  - Updated the geodata-preparation documentation to point at the new target-area scope audit helper.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_gis_cog_scope tests.test_gis_cog_package_readiness`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_gis_cog_scope.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --converted-package-root /tmp/tb171_target_gate_v1_cog_export --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_gis_cog_scope.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --converted-package-root /tmp/tb171_target_gate_v1_cog_export --format text`
+- Result/status: implemented_measured
+- Boundaries: no operational GIS claim, no QGIS sign-off claim, no generated raster commit, no risk/exposure/vulnerability semantics, and the committed target root remains distinct from the scratch COG proof.
+- Next task: `TB-172`

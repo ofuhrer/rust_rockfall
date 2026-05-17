@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-171: Produce Target-Area GIS And COG Scope Audit
-
-Goal: Audit the target-area GIS products, COG conversion scope, missing layers, and demonstration usability.
-
-Capability gap reduced: GIS demonstration readiness.
-
-Why this outranks alternatives: GIS output is management-visible, but it must remain bounded and not imply operational hazard products.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Target-area GIS/COG audit or blocked missing-products report.
-- Explicit full-scope, bounded-scope, or blocked classification.
-- Layer parity and missing-layer summary.
-
-Definition of done:
-
-- GIS readiness for the target-area demonstration is machine-readable and visually useful boundaries are explicit.
-
-Boundaries: No operational GIS claim, no QGIS sign-off claim, no generated raster commit, and no risk/exposure/vulnerability semantics.
-
 ### TB-172: Summarize Target-Area Spatial Uncertainty And Stability
 
 Goal: Produce uncertainty, stability-zone, persistence, and hotspot summaries for the target-area run or report why they are unavailable.

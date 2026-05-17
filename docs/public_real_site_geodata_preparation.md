@@ -196,6 +196,14 @@ The GIS/COG audit now also accepts explicit converted-sample paths and ignored
 converted package roots while keeping the current committed packages marked as
 COG-blocked.
 
+The frozen target-area Balfrin demo now has a dedicated scope audit helper,
+`scripts/summarize_balfrin_target_area_gis_cog_scope.py`, that compares the
+committed 22-layer target package against a scratch COG conversion and keeps
+the handoff boundaries explicit. In the current measured state, the committed
+target package is still COG-blocked, the scratch conversion is full-scope, and
+the package remains a local diagnostic review artifact rather than an
+operational map.
+
 AOI handoff reports now carry a separate machine-readable GIS scope summary
 that names planned raster/vector products, template-only downstream export
 expectations, and unavailable inputs. That summary is a planning artifact, not
