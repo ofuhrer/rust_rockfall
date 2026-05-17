@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-137: Prepare Chant Sura Real-Context Acquisition Readiness Pack
-
-Goal: Convert the Chant Sura real-context trigger matrix into a precise
-proceed/defer/stage readiness package for public-context products.
-
-Capability gap reduced: second-site realism beyond synthetic core fixtures.
-
-Why this outranks alternatives: portability remains metadata-level until the
-project can state exactly which real public-context products should be staged
-next and under which measured trigger.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-
-Deliverables:
-
-- Product-by-product acquisition decision report, staging commands, expected
-  roots, and resulting preflight impact.
-- Optional local staging only if required public products already exist and the
-  trigger explicitly allows it; otherwise a blocked/deferred report.
-
-Definition of done:
-
-- Chant Sura has a deterministic readiness pack that separates proceed,
-  defer, missing-input, and locally-stageable states without treating synthetic
-  fixtures as public-context evidence.
-
-Boundaries: No second-site ensemble, no hazard build, no unauthorized
-downloads, and no synthetic evidence promotion.
-
 ### TB-138: Prepare Observed Runout And Deposition Benchmark Acquisition Pack
 
 Goal: Turn physical-credibility gaps into a concrete benchmark acquisition

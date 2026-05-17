@@ -2303,3 +2303,18 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: diagnostic uncertainty products only; no operational hazard, annual-frequency, physical-probability, or scale-up claim was introduced.
 - Next task: `TB-137`
+
+### TB-137: Prepare Chant Sura Real-Context Acquisition Readiness Pack
+- Date: 2026-05-17
+- Commit: local
+- Objective: convert the Chant Sura trigger matrix into a fail-closed readiness pack that separates proceed, defer, missing-input, and locally-stageable states for public-context products.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Recast the Chant Sura decision document into a readiness pack with an explicit product-by-product matrix, current state labels, staging command families, expected roots, and current preflight impact.
+  - Updated the current repo-root status to `blocked_missing_inputs` so the pack now matches the live helpers rather than the earlier staged-core-input scenario.
+  - Kept the package fail-closed: the Balfrin trigger remains `defer`, the AOI tile catalog is still missing, and no synthetic fixture was promoted to public-context evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner tests.test_second_site_public_geodata_preflight tests.test_chant_sura_real_context_readiness_gate -v`
+- Result/status: implemented_blocked_report
+- Boundaries: no second-site ensemble, no hazard build, no unauthorized downloads, and no synthetic evidence promotion were introduced.
+- Next task: `TB-138`

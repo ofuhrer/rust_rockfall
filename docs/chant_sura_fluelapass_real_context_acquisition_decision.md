@@ -1,6 +1,6 @@
 # Chant Sura / Flüelapass Real-Context Acquisition Decision
 
-Status: deferred real public-context staging.
+Status: deferred real public-context staging; current repo-root readiness is blocked_missing_inputs.
 
 This decision pack is read-only. It does not download swisstopo products, run a
 second-site ensemble, or treat synthetic fixtures as evidence.
@@ -22,8 +22,8 @@ decision_rationale: >-
   authorization exists after the Balfrin demo path is assessed.
 readiness_impact:
   planner_boundary: blocked_missing_inputs
-  public_context_boundary: deferred_public_context_inputs
-  real_context_readiness_gate: ready_for_real_context_acquisition
+  public_context_boundary: blocked_missing_inputs
+  real_context_readiness_gate: blocked_missing_inputs
   second_site_ensemble: blocked
   operational_claims_allowed: false
   scale_up_authorized: false
@@ -34,6 +34,48 @@ expected_cache_roots:
   - validation/private/chant_sura_fluelapass_portability_example_v1
   - hazard/results/chant_sura_fluelapass_portability_example_v1
 ```
+
+## Readiness Pack
+
+Current repo-root state:
+
+- `proceed`: none. The Balfrin trigger matrix only reaches `proceed` when measured conditional-diagnostic evidence is present.
+- `defer`: `SWISSIMAGE`, `swissTLM3D`, `swissSURFACE3D`, `swissSURFACE3D Raster`, `swissBUILDINGS3D`.
+- `missing-input`: `terrain_metadata`, `aoi_tile_catalog`, `swisstlm3d_metadata`, `source_zone_metadata`, `scenario_table`, `source_scenario_policy`.
+- `locally-stageable`: `terrain_crop`, the core input bundle, and the public-context directory layout can all be staged without unauthorized downloads, but this pack does not execute those commands.
+
+The current clean-checkout helpers report:
+
+- `plan_swisstopo_aoi_acquisition.py -> blocked_missing_inputs`
+- `check_second_site_public_geodata_preflight.py -> blocked_missing_inputs`
+- `check_chant_sura_real_context_readiness_gate.py -> blocked_missing_inputs`
+- `plan_aoi_to_prepared_pilot_dry_run.py -> blocked_missing_inputs`
+
+### Product Readiness Matrix
+
+| Product | Decision | Current state | Staging command | Expected root | Current preflight impact |
+|---|---|---|---|---|---|
+| swissALTI3D terrain crop | stage | ready | `stage_terrain_crop` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `ready` on the product row, but the gate still blocks on missing metadata inputs |
+| swissALTI3D terrain metadata | stage | missing | `stage_terrain_crop` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `missing` |
+| AOI tile catalog for deterministic swisstopo discovery | hold | missing | no safe local staging command in this pack; the catalog is a prerequisite for tile discovery | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input` | `blocked_missing_inputs` |
+| SWISSIMAGE | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage` | `deferred_public_context` |
+| swissTLM3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d` | `deferred_public_context` |
+| swissTLM3D metadata | defer | missing | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` | `missing` |
+| swissSURFACE3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d` | `deferred_public_context` |
+| swissSURFACE3D Raster | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster` | `deferred_public_context` |
+| swissBUILDINGS3D | defer | deferred_public_context | `stage_context_bundle` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d` | `deferred_public_context` |
+| barrier inventory | optional | optional | `stage_context_bundle` only if a site-specific workflow explicitly references barriers or nets | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers` | `optional` |
+| source-zone metadata | stage | missing | `stage_source_and_scenario_records` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml` | `missing` |
+| scenario table | stage | missing | `stage_source_and_scenario_records` | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv` | `missing` |
+| source-scenario policy | stage | missing | `stage_source_and_scenario_records` | `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml` | `missing` |
+| release observation evidence | optional | optional | no staging command unless a site-specific QA source exists | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations` | `optional` |
+
+The product matrix above is intentionally fail-closed:
+
+- the `stage_*` rows describe the only local command families that would populate the required roots;
+- the `defer` rows stay deferred until the Balfrin trigger becomes `proceed`;
+- the `hold` row stays blocked until the AOI catalog exists;
+- the optional rows remain optional and are not evidence by themselves.
 
 ## Required Products
 
@@ -129,12 +171,13 @@ products:
 ## Readiness Impact
 
 - The helper set is enough to say the candidate is structurally ready for
-  real-context acquisition review, but the AOI planner still reports
-  `blocked_missing_inputs` in a clean checkout and the public-context bundle
-  remains intentionally deferred until it is explicitly authorized.
+  real-context acquisition review, but the clean-checkout planner and gate now
+  both report `blocked_missing_inputs` because the AOI catalog and site-specific
+  metadata records are not fully staged.
 - The decision remains `defer` because the task boundary forbids real downloads
   and the repo should not treat metadata-only fixtures as evidence for a second
-  site.
+  site. The public-context rows remain deferred even after the core bundle is
+  staged.
 - The immediate effect is that the next actionable step is documentation or
   authorization review, not a download or ensemble run.
 
@@ -168,6 +211,6 @@ workflow blocked rather than authorizing a second-site ensemble.
 Observed current statuses:
 
 - `plan_swisstopo_aoi_acquisition.py` -> `blocked_missing_inputs`
-- `check_second_site_public_geodata_preflight.py` -> `deferred_public_context_inputs`
-- `check_chant_sura_real_context_readiness_gate.py` -> `ready_for_real_context_acquisition`
+- `check_second_site_public_geodata_preflight.py` -> `blocked_missing_inputs`
+- `check_chant_sura_real_context_readiness_gate.py` -> `blocked_missing_inputs`
 - `plan_aoi_to_prepared_pilot_dry_run.py` -> `blocked_missing_inputs`
