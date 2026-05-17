@@ -168,9 +168,10 @@ objective are:
    block-scenario generation from public-input contracts. The terrain candidate
    helper now emits deterministic GIS-readable mask and polygon bundles with
    stable candidate IDs, frozen-footprint comparison metadata, and a bounded
-   sensitivity report that compares small threshold and preprocessing
-   perturbations. That report separates stable from heuristic-sensitive
-   candidate regions, and the measured real-terrain sweep wrapper now adds
+   sensitivity report that compares threshold, smoothing, terrain-resolution,
+   and AOI-boundary perturbations. That report separates stable, unstable,
+   and heuristic-sensitive candidate regions, adds a sensitivity matrix and
+   persistence metrics, and the measured real-terrain sweep wrapper now adds
    component-area distributions, slope/topography thresholds, scratch-root
    output counts, runtime measurements, and an explicit multi-zone stress-test
    readiness signal. None of that validates any release-zone output. The

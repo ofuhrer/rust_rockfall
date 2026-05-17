@@ -22,43 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-189: Release-Zone Candidate Stability And Sensitivity
-
-Goal: Measure how stable automatically generated release-zone candidates are
-under slope thresholds, terrain resolution, smoothing, and AOI boundary
-changes.
-
-Capability gap reduced: Unknown reproducibility and uncertainty of automated
-release-zone generation.
-
-Why this outranks alternatives: Candidate generation is only useful for
-Swiss-wide workflows if the sensitivity of the heuristic is measured and
-reported instead of hidden.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A sensitivity matrix across slope threshold, smoothing, terrain resolution,
-  and AOI boundary perturbations.
-- Stable, unstable, and heuristic-sensitive candidate-region classifications.
-- Candidate persistence metrics and GIS-readable scratch outputs where
-  supported.
-
-Definition of done:
-
-- The stability report is deterministic, includes measurable sensitivity
-  metrics, and focused tests cover perturbation summaries and fail-closed
-  missing-input behavior.
-
-Boundaries: No release-zone validation, no threshold tuning for acceptance, no
-operational source-zone claim, and no generated GIS outputs committed.
-
 ### TB-190: Full Balfrin Demonstration Evidence Package
 
 Goal: Produce one coherent technical evidence package for the full

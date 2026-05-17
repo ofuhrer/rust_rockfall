@@ -139,6 +139,7 @@ def build_report(
     candidate_sensitivity_report = candidate_report["candidate_sensitivity_report"]
     stable_region = candidate_sensitivity_report["stable_candidate_region"]
     unstable_region = candidate_sensitivity_report["unstable_candidate_region"]
+    heuristic_sensitive_region = candidate_sensitivity_report["heuristic_sensitive_candidate_region"]
     sweep_measurements = candidate_sweep_measurements(output_root, candidate_report, sweep_runtime_seconds)
     multi_zone_readiness = multi_zone_stress_test_readiness(candidate_report, sweep_measurements)
 
@@ -182,9 +183,16 @@ def build_report(
             "candidate_count_range": candidate_sensitivity_report["candidate_count_range"],
             "candidate_area_range_m2": candidate_sensitivity_report["candidate_area_range_m2"],
             "stable_candidate_region": stable_region,
-            "heuristic_sensitive_candidate_region": unstable_region,
+            "unstable_candidate_region": unstable_region,
+            "heuristic_sensitive_candidate_region": heuristic_sensitive_region,
+            "candidate_region_classifications": candidate_sensitivity_report["candidate_region_classifications"],
+            "candidate_sensitivity_matrix": candidate_sensitivity_report["candidate_sensitivity_matrix"],
+            "candidate_persistence_metrics": candidate_sensitivity_report["candidate_persistence_metrics"],
             "pairwise_overlap_summary": candidate_sensitivity_report["pairwise_overlap_summary"],
         },
+        "candidate_region_classifications": candidate_sensitivity_report["candidate_region_classifications"],
+        "candidate_sensitivity_matrix": candidate_sensitivity_report["candidate_sensitivity_matrix"],
+        "candidate_persistence_metrics": candidate_sensitivity_report["candidate_persistence_metrics"],
         "candidate_sweep_summary": {
             "sweep_status": candidate_report["candidate_metrics_status"],
             "sweep_mode": "real_terrain_candidate_sweep",
@@ -222,6 +230,13 @@ def build_report(
         "gis_readable_candidate_outputs_supported": True,
         "gis_readable_candidate_outputs_emitted": bool(output_root is not None),
     }
+    report["candidate_stability_report_path"] = None
+    if output_root is not None:
+        output_root = Path(output_root)
+        output_root.mkdir(parents=True, exist_ok=True)
+        stability_report_path = output_root / "candidate_stability_report.json"
+        report["candidate_stability_report_path"] = display_path(stability_report_path)
+        stability_report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return report
 
 
@@ -263,7 +278,9 @@ def candidate_sweep_measurements(
         }
 
     output_root = Path(output_root)
-    output_files = [path for path in output_root.rglob("*") if path.is_file()]
+    output_files = [
+        path for path in output_root.rglob("*") if path.is_file() and path.name != "candidate_stability_report.json"
+    ]
     return {
         "runtime_seconds": float(sweep_runtime_seconds),
         "output_root": display_path(output_root),
@@ -440,6 +457,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Candidate release-zone output status: `{report['candidate_release_zone_products']['output_status']}`",
         f"- Candidate release-zone output mode: `{report['candidate_release_zone_products']['output_mode']}`",
         f"- Stable region class: `{report['candidate_stability_summary'].get('stable_candidate_region', {}).get('region_class', 'unknown')}`",
+        f"- Unstable region class: `{report['candidate_stability_summary'].get('unstable_candidate_region', {}).get('region_class', 'unknown')}`",
         f"- Heuristic-sensitive region class: `{report['candidate_stability_summary'].get('heuristic_sensitive_candidate_region', {}).get('region_class', 'unknown')}`",
         "",
         "## Target Area",
@@ -462,18 +480,49 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Candidate count range: `{report['candidate_stability_summary'].get('candidate_count_range', {})}`",
         f"- Candidate area range m2: `{report['candidate_stability_summary'].get('candidate_area_range_m2', {})}`",
         "",
-        "## Sweep Measurements",
+        "## Persistence Metrics",
         "",
-        f"- Sweep status: `{report['candidate_sweep_summary'].get('sweep_status', 'n/a')}`",
-        f"- Sweep runtime seconds: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('runtime_seconds', 'n/a')}`",
-        f"- Output file count: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_file_count', 'n/a')}`",
-        f"- Output total bytes: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_total_bytes', 'n/a')}`",
-        f"- Multi-zone stress-test readiness: `{report['candidate_sweep_summary'].get('multi_zone_stress_test_readiness', {}).get('status', 'n/a')}`",
+        f"- Stable fraction of union cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_union_candidate_cells', 'n/a')}`",
+        f"- Stable fraction of baseline cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_baseline_candidate_cells', 'n/a')}`",
+        f"- Heuristic-sensitive fraction of union cells: `{report['candidate_persistence_metrics'].get('heuristic_sensitive_fraction_of_union_candidate_cells', 'n/a')}`",
+        f"- Pairwise Jaccard range: `{report['candidate_persistence_metrics'].get('pairwise_jaccard_index_range', {})}`",
         "",
-        "## Candidate Outputs",
+        "## Sensitivity Matrix",
         "",
-        f"- Manifest: `{report['candidate_release_zone_products']['manifest_path']}`",
     ]
+    for row in report["candidate_sensitivity_matrix"]:
+        lines.append(
+            f"- {row['sensitivity_dimension']}: variants={row['variant_ids']}, "
+            f"candidate_count_range={row['candidate_count_range']}, jaccard_range={row['jaccard_index_range']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Region Classifications",
+            "",
+        ]
+    )
+    for row in report["candidate_region_classifications"]:
+        lines.append(
+            f"- {row['region_class']}: cell_count={row['cell_count']}, area_m2={row['area_m2']}, "
+            f"component_count={row['component_count']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Sweep Measurements",
+            "",
+            f"- Sweep status: `{report['candidate_sweep_summary'].get('sweep_status', 'n/a')}`",
+            f"- Sweep runtime seconds: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('runtime_seconds', 'n/a')}`",
+            f"- Output file count: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_file_count', 'n/a')}`",
+            f"- Output total bytes: `{report['candidate_sweep_summary'].get('sweep_measurements', {}).get('output_total_bytes', 'n/a')}`",
+            f"- Multi-zone stress-test readiness: `{report['candidate_sweep_summary'].get('multi_zone_stress_test_readiness', {}).get('status', 'n/a')}`",
+            "",
+            "## Candidate Outputs",
+            "",
+            f"- Manifest: `{report['candidate_release_zone_products']['manifest_path']}`",
+        ]
+    )
     outputs = report["candidate_release_zone_products"].get("outputs") or {}
     for key in ("polygon", "mask", "manifest"):
         if key in outputs:

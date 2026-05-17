@@ -233,8 +233,9 @@ conditional diagnostic workflow.
    release-zone candidates. Use the bounded sensitivity report to distinguish
    stable heuristic agreement from heuristic-sensitive regions, and use the
    measured sweep report to track component-area distributions, output counts,
-   runtime, and topography thresholds; do not treat either class as validated
-   release-zone evidence.
+   runtime, topography thresholds, and the sensitivity matrix across slope
+   threshold, smoothing, terrain resolution, and AOI boundary perturbations;
+   do not treat either class as validated release-zone evidence.
 9. Generate deterministic release rows and conditional block-scenario rows
    from candidate source-zone metadata plus a policy template. Keep sampling
    weights conditional-only and leave annual frequency fields empty.
@@ -392,10 +393,11 @@ portable command plan now carries a template-only second-site execution entry
 that remains blocked until public context is present.
 
 The terrain candidate helper now also emits a bounded sensitivity report that
-compares small threshold and footprint-buffer perturbations, then separates
-stable agreement regions from heuristic-sensitive regions. That report is a
-stability characterization only; it does not validate either region as a
-release zone or authorize operational interpretation.
+compares threshold, smoothing, terrain resolution, and AOI-boundary
+perturbations, then separates stable, unstable, and heuristic-sensitive
+candidate regions. That report is a stability characterization only; it does
+not validate any region as a release zone or authorize operational
+interpretation.
 
 The current decision pack for the Chant Sura / Flüelapass candidate is
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It keeps the

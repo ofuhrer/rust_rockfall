@@ -55,27 +55,63 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertLessEqual(first["candidate_summary"]["candidate_slope_max_deg"], 55.0)
             self.assertEqual(first["candidate_sensitivity_report"]["sensitivity_status"], "ready")
             self.assertEqual(first["candidate_sensitivity_report"]["baseline_variant_id"], "baseline")
-            self.assertEqual(first["candidate_sensitivity_report"]["variant_count"], 4)
+            self.assertEqual(first["candidate_sensitivity_report"]["variant_count"], 6)
             self.assertEqual(
                 [row["variant_id"] for row in first["candidate_sensitivity_report"]["variant_summaries"]],
                 [
                     "baseline",
                     "tight_threshold_band",
                     "wide_threshold_band",
-                    "buffered_footprint",
+                    "smoothed_3x3_mean",
+                    "coarsened_2x2_mean_reexpanded",
+                    "trimmed_aoi_boundary_1_cell",
                 ],
             )
             self.assertEqual(first["candidate_sensitivity_report"]["candidate_count_range"], {"min": 22793, "max": 36751})
             self.assertEqual(first["candidate_sensitivity_report"]["candidate_area_range_m2"], {"min": 91172.0, "max": 147004.0})
             self.assertEqual(first["candidate_sensitivity_report"]["baseline_candidate_cell_count"], 29499)
-            self.assertEqual(first["candidate_sensitivity_report"]["union_candidate_cell_count"], 36751)
-            self.assertEqual(first["candidate_sensitivity_report"]["stable_candidate_region"]["cell_count"], 22770)
-            self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["cell_count"], 13981)
+            self.assertEqual(first["candidate_sensitivity_report"]["union_candidate_cell_count"], 37787)
+            self.assertEqual(first["candidate_sensitivity_report"]["stable_candidate_region"]["cell_count"], 21279)
+            self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["region_class"], "unstable_across_bounded_heuristics")
+            self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["cell_count"], 16508)
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["region_class"],
+                "heuristic_sensitive_across_bounded_heuristics",
+            )
+            self.assertEqual(first["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["cell_count"], 16508)
             self.assertGreater(first["candidate_sensitivity_report"]["stable_candidate_region"]["component_count"], 0)
             self.assertGreater(first["candidate_sensitivity_report"]["unstable_candidate_region"]["component_count"], 0)
             self.assertLess(first["candidate_sensitivity_report"]["stable_candidate_region"]["coverage_fraction_of_union_candidate_cells"], 1.0)
             self.assertGreater(first["candidate_sensitivity_report"]["unstable_candidate_region"]["coverage_fraction_of_union_candidate_cells"], 0.0)
-            self.assertEqual(len(first["candidate_sensitivity_report"]["pairwise_overlap_summary"]), 6)
+            self.assertEqual(len(first["candidate_sensitivity_report"]["pairwise_overlap_summary"]), 15)
+            self.assertEqual(
+                [row["sensitivity_dimension"] for row in first["candidate_sensitivity_report"]["candidate_sensitivity_matrix"]],
+                ["slope_threshold", "smoothing", "terrain_resolution", "aoi_boundary"],
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_sensitivity_matrix"][0]["variant_ids"],
+                ["tight_threshold_band", "wide_threshold_band"],
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_sensitivity_matrix"][1]["variant_ids"],
+                ["smoothed_3x3_mean"],
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_sensitivity_matrix"][2]["variant_ids"],
+                ["coarsened_2x2_mean_reexpanded"],
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_sensitivity_matrix"][3]["variant_ids"],
+                ["trimmed_aoi_boundary_1_cell"],
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_persistence_metrics"]["stable_candidate_cell_count"],
+                21279,
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["candidate_persistence_metrics"]["heuristic_sensitive_candidate_cell_count"],
+                16508,
+            )
             self.assertTrue(first["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"])
             self.assertEqual(first["candidate_footprint_comparison"]["candidate_and_frozen_footprint_intersection_cell_count"], 0)
             self.assertIn(
@@ -84,6 +120,10 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             )
             self.assertIn(
                 "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
+                " ".join(first["candidate_sensitivity_report"]["claim_boundaries"]["notes"]),
+            )
+            self.assertIn(
+                "heuristic-sensitive regions are candidate-persistence summaries, not validated release zones",
                 " ".join(first["candidate_sensitivity_report"]["claim_boundaries"]["notes"]),
             )
             self.assertEqual(

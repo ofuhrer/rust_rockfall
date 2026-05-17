@@ -3339,3 +3339,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads, no second-site ensemble execution, no synthetic public-context evidence, no operational claim, no physical validation claim, and the tiny ensemble handoff remains permission-gated.
 - Next task: `TB-189`
+
+### TB-189: Release-Zone Candidate Stability And Sensitivity
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: measure deterministic stability of automatically generated release-zone candidates across slope-threshold, smoothing, terrain-resolution, and AOI-boundary perturbations, and surface stable, unstable, and heuristic-sensitive classifications with persistence metrics.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/summarize_balfrin_target_area_candidate_stability.py`, `docs/current_maturity_snapshot.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Expanded the terrain-candidate sensitivity helper to sweep six deterministic variants: baseline, bounded slope thresholds, 3x3 smoothing, 2x2 coarsened/reexpanded resolution, and a one-cell AOI-boundary trim proxy.
+  - Added an explicit sensitivity matrix, persistence metrics, and stable/unstable/heuristic-sensitive region classifications, then exposed them through the Balfrin target-area stability report and a scratch report JSON under the provided output root.
+  - Kept the candidate product bundle GIS-readable, filtered the scratch stability report out of output-count measurements so repeated runs stay deterministic, and updated the maturity/data-strategy prose plus focused regressions to cover the new perturbation summaries and fail-closed missing-input behavior.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_balfrin_target_area_candidate_stability -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/summarize_balfrin_target_area_candidate_stability.py tests/test_plan_terrain_release_zone_candidates.py tests/test_balfrin_target_area_candidate_stability.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_candidate_stability.py --output-root /tmp/tb189_candidate_products --format json >/tmp/tb189_candidate_stability_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no release-zone validation, no threshold tuning for acceptance, no operational source-zone claim, no generated GIS outputs committed, and the sensitivity report remains a heuristic stability characterization only.
+- Next task: `TB-190`

@@ -52,6 +52,10 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
                 "stable_across_bounded_heuristics",
             )
             self.assertEqual(
+                first["candidate_stability_summary"]["unstable_candidate_region"]["region_class"],
+                "unstable_across_bounded_heuristics",
+            )
+            self.assertEqual(
                 first["candidate_stability_summary"]["heuristic_sensitive_candidate_region"]["region_class"],
                 "heuristic_sensitive_across_bounded_heuristics",
             )
@@ -78,19 +82,36 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_products"]["component_count"], 390)
             self.assertEqual(first["candidate_summary"]["candidate_cell_count"], 29499)
             self.assertEqual(first["candidate_summary"]["screenable_cell_count"], 89915)
-            self.assertEqual(first["candidate_stability_summary"]["variant_count"], 4)
+            self.assertEqual(first["candidate_stability_summary"]["variant_count"], 6)
             self.assertEqual(first["candidate_stability_summary"]["baseline_variant_id"], "baseline")
             self.assertEqual(first["candidate_stability_summary"]["candidate_count_range"], {"min": 22793, "max": 36751})
             self.assertEqual(first["candidate_stability_summary"]["candidate_area_range_m2"], {"min": 91172.0, "max": 147004.0})
+            self.assertEqual(
+                [row["sensitivity_dimension"] for row in first["candidate_sensitivity_matrix"]],
+                ["slope_threshold", "smoothing", "terrain_resolution", "aoi_boundary"],
+            )
+            self.assertEqual(
+                first["candidate_persistence_metrics"]["stable_candidate_cell_count"],
+                21279,
+            )
+            self.assertEqual(
+                first["candidate_persistence_metrics"]["heuristic_sensitive_candidate_cell_count"],
+                16508,
+            )
+            self.assertEqual(len(first["candidate_region_classifications"]), 3)
             self.assertFalse(first["scale_up_authorized"])
             self.assertFalse(first["operational_claims_allowed"])
             self.assertTrue(first["gis_readable_candidate_outputs_supported"])
             self.assertTrue(first["gis_readable_candidate_outputs_emitted"])
             self.assertIn("Balfrin Target-Area Candidate Stability Summary", report_text)
             self.assertIn("stable_across_bounded_heuristics", report_text)
+            self.assertIn("unstable_across_bounded_heuristics", report_text)
             self.assertIn("heuristic_sensitive_across_bounded_heuristics", report_text)
+            self.assertIn("Persistence Metrics", report_text)
+            self.assertIn("Sensitivity Matrix", report_text)
             self.assertIn("Sweep Measurements", report_text)
             self.assertIn("candidate_release_zone_products", json.dumps(report_json, sort_keys=True))
+            self.assertTrue(Path(first["candidate_stability_report_path"]).exists())
             self.assertEqual(contract["target_area"]["target_area_id"], first["target_area"]["target_area_id"])
             self.assertEqual(
                 contract["input_freeze"]["source_zone_metadata_path"],

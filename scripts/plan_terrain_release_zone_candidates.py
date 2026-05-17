@@ -644,6 +644,65 @@ def compute_candidate_masks(
     return candidate_mask, terrain_masks
 
 
+def clone_terrain_with_values(terrain: dict[str, Any], values: np.ndarray) -> dict[str, Any]:
+    variant_values = np.array(values, dtype=float, copy=True)
+    return {
+        **terrain,
+        "values": variant_values,
+        "valid_mask": np.isfinite(variant_values),
+    }
+
+
+def smooth_terrain_3x3_mean(terrain: dict[str, Any]) -> np.ndarray:
+    values = terrain["values"]
+    smoothed = np.full_like(values, np.nan, dtype=float)
+    nrows, ncols = values.shape
+    for row in range(nrows):
+        for col in range(ncols):
+            center = values[row, col]
+            if not np.isfinite(center):
+                continue
+            neighbourhood = values[
+                max(0, row - 1) : min(nrows, row + 2),
+                max(0, col - 1) : min(ncols, col + 2),
+            ]
+            finite_neighbourhood = neighbourhood[np.isfinite(neighbourhood)]
+            if finite_neighbourhood.size:
+                smoothed[row, col] = float(np.mean(finite_neighbourhood))
+    return smoothed
+
+
+def coarsen_terrain_2x2_mean_reexpanded(terrain: dict[str, Any]) -> np.ndarray:
+    values = terrain["values"]
+    reexpanded = np.full_like(values, np.nan, dtype=float)
+    nrows, ncols = values.shape
+    for row_start in range(0, nrows, 2):
+        for col_start in range(0, ncols, 2):
+            block = values[row_start : min(row_start + 2, nrows), col_start : min(col_start + 2, ncols)]
+            finite_block = block[np.isfinite(block)]
+            if finite_block.size == 0:
+                continue
+            block_value = float(np.mean(finite_block))
+            for row in range(row_start, min(row_start + 2, nrows)):
+                for col in range(col_start, min(col_start + 2, ncols)):
+                    if np.isfinite(values[row, col]):
+                        reexpanded[row, col] = block_value
+    return reexpanded
+
+
+def trim_aoi_boundary_values(terrain: dict[str, Any], trim_cells: int = 1) -> np.ndarray:
+    values = np.array(terrain["values"], dtype=float, copy=True)
+    if trim_cells <= 0:
+        return values
+    if trim_cells * 2 >= values.shape[0] or trim_cells * 2 >= values.shape[1]:
+        return np.full_like(values, np.nan, dtype=float)
+    values[:trim_cells, :] = np.nan
+    values[-trim_cells:, :] = np.nan
+    values[:, :trim_cells] = np.nan
+    values[:, -trim_cells:] = np.nan
+    return values
+
+
 def build_candidate_sensitivity_report(
     *,
     terrain: dict[str, Any],
@@ -656,30 +715,74 @@ def build_candidate_sensitivity_report(
         {
             "variant_id": "baseline",
             "variant_kind": "reference",
+            "sensitivity_dimension": "baseline",
+            "terrain_transform": "identity",
             "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
             "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
             "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"],
+            "terrain_smoothing_window_cells": 0,
+            "aoi_boundary_trim_cells": 0,
         },
         {
             "variant_id": "tight_threshold_band",
             "variant_kind": "threshold_perturbation",
+            "sensitivity_dimension": "slope_threshold",
+            "terrain_transform": "identity",
             "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]) + HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
             "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]) - HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
             "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"],
+            "terrain_smoothing_window_cells": 0,
+            "aoi_boundary_trim_cells": 0,
         },
         {
             "variant_id": "wide_threshold_band",
             "variant_kind": "threshold_perturbation",
+            "sensitivity_dimension": "slope_threshold",
+            "terrain_transform": "identity",
             "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]) - HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
             "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]) + HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
             "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"],
+            "terrain_smoothing_window_cells": 0,
+            "aoi_boundary_trim_cells": 0,
         },
         {
-            "variant_id": "buffered_footprint",
-            "variant_kind": "preprocessing_perturbation",
+            "variant_id": "smoothed_3x3_mean",
+            "variant_kind": "smoothing_perturbation",
+            "sensitivity_dimension": "smoothing",
+            "terrain_transform": "smoothed_3x3_mean",
             "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
             "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
-            "frozen_release_zone_footprint_buffer_cells": HEURISTIC_SENSITIVITY_FOOTPRINT_BUFFER_CELLS,
+            "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"],
+            "terrain_smoothing_window_cells": 3,
+            "aoi_boundary_trim_cells": 0,
+        },
+        {
+            "variant_id": "coarsened_2x2_mean_reexpanded",
+            "variant_kind": "terrain_resolution_perturbation",
+            "sensitivity_dimension": "terrain_resolution",
+            "terrain_transform": "coarsened_2x2_mean_reexpanded",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
+            "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"] * 2.0,
+            "terrain_smoothing_window_cells": 0,
+            "aoi_boundary_trim_cells": 0,
+        },
+        {
+            "variant_id": "trimmed_aoi_boundary_1_cell",
+            "variant_kind": "aoi_boundary_perturbation",
+            "sensitivity_dimension": "aoi_boundary",
+            "terrain_transform": "trimmed_aoi_boundary_1_cell",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
+            "frozen_release_zone_footprint_buffer_cells": 0,
+            "terrain_resolution_m": terrain["cellsize"],
+            "terrain_smoothing_window_cells": 0,
+            "aoi_boundary_trim_cells": 1,
         },
     ]
 
@@ -695,13 +798,25 @@ def build_candidate_sensitivity_report(
                 "frozen_release_zone_footprint_buffer_cells": spec["frozen_release_zone_footprint_buffer_cells"],
             }
         )
+        if spec["terrain_transform"] == "smoothed_3x3_mean":
+            variant_terrain = clone_terrain_with_values(terrain, smooth_terrain_3x3_mean(terrain))
+        elif spec["terrain_transform"] == "coarsened_2x2_mean_reexpanded":
+            variant_terrain = clone_terrain_with_values(terrain, coarsen_terrain_2x2_mean_reexpanded(terrain))
+        elif spec["terrain_transform"] == "trimmed_aoi_boundary_1_cell":
+            variant_terrain = clone_terrain_with_values(terrain, trim_aoi_boundary_values(terrain, 1))
+        else:
+            variant_terrain = terrain
         if spec["variant_id"] == "baseline":
             candidate_mask = baseline_candidate_mask
             terrain_masks = baseline_terrain_masks
         else:
-            candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, variant_screening)
+            candidate_mask, terrain_masks = compute_candidate_masks(
+                variant_terrain,
+                source_zone_metadata,
+                variant_screening,
+            )
         variant_masks[spec["variant_id"]] = candidate_mask
-        summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, variant_screening)
+        summary = build_candidate_summary(variant_terrain, candidate_mask, terrain_masks, variant_screening)
         baseline_overlap_mask = candidate_mask & baseline_variant_mask
         baseline_union_mask = candidate_mask | baseline_variant_mask
         baseline_overlap_count = int(baseline_overlap_mask.sum())
@@ -711,6 +826,11 @@ def build_candidate_sensitivity_report(
             {
                 "variant_id": spec["variant_id"],
                 "variant_kind": spec["variant_kind"],
+                "sensitivity_dimension": spec["sensitivity_dimension"],
+                "terrain_transform": spec["terrain_transform"],
+                "terrain_resolution_m": spec["terrain_resolution_m"],
+                "terrain_smoothing_window_cells": spec["terrain_smoothing_window_cells"],
+                "aoi_boundary_trim_cells": spec["aoi_boundary_trim_cells"],
                 "candidate_overlap_with_baseline_cell_count": baseline_overlap_count,
                 "candidate_overlap_with_baseline_area_m2": baseline_overlap_count * (terrain["cellsize"] ** 2),
                 "candidate_overlap_fraction_of_baseline_cells": fraction(baseline_overlap_count, baseline_count),
@@ -730,7 +850,12 @@ def build_candidate_sensitivity_report(
     baseline_candidate_count = int(baseline_variant_mask.sum())
     union_candidate_count = int(union_mask.sum())
     stable_region_summary = summarize_region_mask(stable_mask, terrain, "stable_across_bounded_heuristics")
-    unstable_region_summary = summarize_region_mask(unstable_mask, terrain, "heuristic_sensitive_across_bounded_heuristics")
+    unstable_region_summary = summarize_region_mask(unstable_mask, terrain, "unstable_across_bounded_heuristics")
+    heuristic_sensitive_region_summary = summarize_region_mask(
+        unstable_mask,
+        terrain,
+        "heuristic_sensitive_across_bounded_heuristics",
+    )
     stable_region_summary["coverage_fraction_of_union_candidate_cells"] = fraction(
         stable_region_summary["cell_count"], union_candidate_count
     )
@@ -742,6 +867,12 @@ def build_candidate_sensitivity_report(
     )
     unstable_region_summary["coverage_fraction_of_baseline_candidate_cells"] = fraction(
         unstable_region_summary["cell_count"], baseline_candidate_count
+    )
+    heuristic_sensitive_region_summary["coverage_fraction_of_union_candidate_cells"] = fraction(
+        heuristic_sensitive_region_summary["cell_count"], union_candidate_count
+    )
+    heuristic_sensitive_region_summary["coverage_fraction_of_baseline_candidate_cells"] = fraction(
+        heuristic_sensitive_region_summary["cell_count"], baseline_candidate_count
     )
 
     pairwise_overlap_summary: list[dict[str, Any]] = []
@@ -768,9 +899,26 @@ def build_candidate_sensitivity_report(
 
     candidate_counts = [summary["candidate_cell_count"] for summary in variant_summaries]
     candidate_areas = [summary["candidate_area_m2"] for summary in variant_summaries]
+    baseline_comparison_summaries = [summary for summary in variant_summaries if summary["variant_id"] != "baseline"]
+    sensitivity_matrix = build_candidate_sensitivity_matrix(baseline_comparison_summaries)
+    candidate_persistence_metrics = build_candidate_persistence_metrics(
+        baseline_variant_id="baseline",
+        baseline_candidate_count=baseline_candidate_count,
+        union_candidate_count=union_candidate_count,
+        stable_region_summary=stable_region_summary,
+        unstable_region_summary=unstable_region_summary,
+        heuristic_sensitive_region_summary=heuristic_sensitive_region_summary,
+        variant_summaries=baseline_comparison_summaries,
+        pairwise_overlap_summary=pairwise_overlap_summary,
+    )
+    candidate_region_classifications = [
+        stable_region_summary,
+        unstable_region_summary,
+        heuristic_sensitive_region_summary,
+    ]
     return {
         "sensitivity_status": "ready",
-        "sensitivity_scope": "bounded_threshold_and_preprocessing_perturbations",
+        "sensitivity_scope": "bounded_threshold_smoothing_resolution_and_boundary_perturbations",
         "baseline_variant_id": "baseline",
         "variant_count": len(variant_summaries),
         "variant_summaries": variant_summaries,
@@ -788,6 +936,10 @@ def build_candidate_sensitivity_report(
         "union_candidate_area_m2": union_candidate_count * (terrain["cellsize"] ** 2),
         "stable_candidate_region": stable_region_summary,
         "unstable_candidate_region": unstable_region_summary,
+        "heuristic_sensitive_candidate_region": heuristic_sensitive_region_summary,
+        "candidate_region_classifications": candidate_region_classifications,
+        "candidate_sensitivity_matrix": sensitivity_matrix,
+        "candidate_persistence_metrics": candidate_persistence_metrics,
         "pairwise_overlap_summary": pairwise_overlap_summary,
         "claim_boundaries": {
             "heuristic_stability_characterization_only": True,
@@ -800,6 +952,7 @@ def build_candidate_sensitivity_report(
                 "bounded perturbations only characterize heuristic agreement and disagreement",
                 "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
                 "unstable regions are heuristic-sensitive regions, not invalidated release zones",
+                "heuristic-sensitive regions are candidate-persistence summaries, not validated release zones",
             ],
         },
     }
@@ -820,6 +973,130 @@ def summarize_region_mask(mask: np.ndarray, terrain: dict[str, Any], region_clas
         "region_bbox_lv95_m": mask_bbox(mask, terrain),
         "coverage_fraction_of_union_candidate_cells": None,
         "coverage_fraction_of_baseline_candidate_cells": None,
+    }
+
+
+def build_candidate_sensitivity_matrix(variant_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for summary in variant_summaries:
+        grouped.setdefault(summary["sensitivity_dimension"], []).append(summary)
+
+    matrix: list[dict[str, Any]] = []
+    for sensitivity_dimension in ("slope_threshold", "smoothing", "terrain_resolution", "aoi_boundary"):
+        dimension_summaries = grouped.get(sensitivity_dimension, [])
+        if not dimension_summaries:
+            matrix.append(
+                {
+                    "sensitivity_dimension": sensitivity_dimension,
+                    "variant_count": 0,
+                    "variant_ids": [],
+                    "candidate_count_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "candidate_area_range_m2": {"min": None, "max": None, "mean": None, "median": None},
+                    "candidate_delta_cell_count_vs_baseline_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "candidate_delta_area_m2_vs_baseline_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "candidate_overlap_fraction_of_baseline_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "candidate_overlap_fraction_of_variant_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "jaccard_index_range": {"min": None, "max": None, "mean": None, "median": None},
+                    "terrain_transform_types": [],
+                }
+            )
+            continue
+
+        matrix.append(
+            {
+                "sensitivity_dimension": sensitivity_dimension,
+                "variant_count": len(dimension_summaries),
+                "variant_ids": [summary["variant_id"] for summary in dimension_summaries],
+                "candidate_count_range": summarize_distribution(
+                    [summary["candidate_cell_count"] for summary in dimension_summaries]
+                ),
+                "candidate_area_range_m2": summarize_distribution(
+                    [summary["candidate_area_m2"] for summary in dimension_summaries]
+                ),
+                "candidate_delta_cell_count_vs_baseline_range": summarize_distribution(
+                    [summary["candidate_delta_cell_count_vs_baseline"] for summary in dimension_summaries]
+                ),
+                "candidate_delta_area_m2_vs_baseline_range": summarize_distribution(
+                    [summary["candidate_delta_area_m2_vs_baseline"] for summary in dimension_summaries]
+                ),
+                "candidate_overlap_fraction_of_baseline_range": summarize_distribution(
+                    [summary["candidate_overlap_fraction_of_baseline_cells"] for summary in dimension_summaries]
+                ),
+                "candidate_overlap_fraction_of_variant_range": summarize_distribution(
+                    [summary["candidate_overlap_fraction_of_variant_cells"] for summary in dimension_summaries]
+                ),
+                "jaccard_index_range": summarize_distribution(
+                    [summary["candidate_overlap_jaccard_index_with_baseline"] for summary in dimension_summaries]
+                ),
+                "terrain_transform_types": sorted({summary["terrain_transform"] for summary in dimension_summaries}),
+            }
+        )
+    return matrix
+
+
+def build_candidate_persistence_metrics(
+    *,
+    baseline_variant_id: str,
+    baseline_candidate_count: int,
+    union_candidate_count: int,
+    stable_region_summary: dict[str, Any],
+    unstable_region_summary: dict[str, Any],
+    heuristic_sensitive_region_summary: dict[str, Any],
+    variant_summaries: list[dict[str, Any]],
+    pairwise_overlap_summary: list[dict[str, Any]],
+) -> dict[str, Any]:
+    baseline_comparison_jaccard = [
+        summary["candidate_overlap_jaccard_index_with_baseline"] for summary in variant_summaries
+    ]
+    baseline_comparison_candidate_overlap = [
+        summary["candidate_overlap_fraction_of_baseline_cells"] for summary in variant_summaries
+    ]
+    baseline_comparison_variant_overlap = [
+        summary["candidate_overlap_fraction_of_variant_cells"] for summary in variant_summaries
+    ]
+    return {
+        "baseline_variant_id": baseline_variant_id,
+        "baseline_candidate_cell_count": baseline_candidate_count,
+        "union_candidate_cell_count": union_candidate_count,
+        "stable_candidate_cell_count": stable_region_summary["cell_count"],
+        "unstable_candidate_cell_count": unstable_region_summary["cell_count"],
+        "heuristic_sensitive_candidate_cell_count": heuristic_sensitive_region_summary["cell_count"],
+        "stable_fraction_of_union_candidate_cells": stable_region_summary["coverage_fraction_of_union_candidate_cells"],
+        "stable_fraction_of_baseline_candidate_cells": stable_region_summary["coverage_fraction_of_baseline_candidate_cells"],
+        "unstable_fraction_of_union_candidate_cells": unstable_region_summary["coverage_fraction_of_union_candidate_cells"],
+        "unstable_fraction_of_baseline_candidate_cells": unstable_region_summary["coverage_fraction_of_baseline_candidate_cells"],
+        "heuristic_sensitive_fraction_of_union_candidate_cells": heuristic_sensitive_region_summary[
+            "coverage_fraction_of_union_candidate_cells"
+        ],
+        "heuristic_sensitive_fraction_of_baseline_candidate_cells": heuristic_sensitive_region_summary[
+            "coverage_fraction_of_baseline_candidate_cells"
+        ],
+        "baseline_comparison_jaccard_range": summarize_distribution(baseline_comparison_jaccard),
+        "baseline_comparison_candidate_overlap_range": summarize_distribution(
+            baseline_comparison_candidate_overlap
+        ),
+        "baseline_comparison_variant_overlap_range": summarize_distribution(
+            baseline_comparison_variant_overlap
+        ),
+        "pairwise_jaccard_index_range": summarize_distribution(
+            [summary["jaccard_index"] for summary in pairwise_overlap_summary]
+        ),
+        "pairwise_candidate_overlap_fraction_range": summarize_distribution(
+            [summary["left_overlap_fraction"] for summary in pairwise_overlap_summary]
+        ),
+    }
+
+
+def summarize_distribution(values: list[float]) -> dict[str, float | None]:
+    finite_values = [value for value in values if value is not None]
+    if not finite_values:
+        return {"min": None, "max": None, "mean": None, "median": None}
+    array = np.asarray(finite_values, dtype=float)
+    return {
+        "min": float(np.min(array)),
+        "max": float(np.max(array)),
+        "mean": float(np.mean(array)),
+        "median": float(np.median(array)),
     }
 
 
@@ -858,7 +1135,7 @@ def dilate_mask(mask: np.ndarray, buffer_cells: int) -> np.ndarray:
 def candidate_sensitivity_report_stub() -> dict[str, Any]:
     return {
         "sensitivity_status": "blocked_missing_inputs",
-        "sensitivity_scope": "bounded_threshold_and_preprocessing_perturbations",
+        "sensitivity_scope": "bounded_threshold_smoothing_resolution_and_boundary_perturbations",
         "baseline_variant_id": "baseline",
         "variant_count": 0,
         "variant_summaries": [],
@@ -880,6 +1157,17 @@ def candidate_sensitivity_report_stub() -> dict[str, Any]:
             "coverage_fraction_of_baseline_candidate_cells": None,
         },
         "unstable_candidate_region": {
+            "region_class": "unstable_across_bounded_heuristics",
+            "cell_count": 0,
+            "area_m2": 0.0,
+            "component_count": 0,
+            "largest_component_cell_count": 0,
+            "largest_component_area_m2": 0.0,
+            "region_bbox_lv95_m": {"crs": "EPSG:2056", "xmin": 0.0, "ymin": 0.0, "xmax": 0.0, "ymax": 0.0},
+            "coverage_fraction_of_union_candidate_cells": None,
+            "coverage_fraction_of_baseline_candidate_cells": None,
+        },
+        "heuristic_sensitive_candidate_region": {
             "region_class": "heuristic_sensitive_across_bounded_heuristics",
             "cell_count": 0,
             "area_m2": 0.0,
@@ -890,6 +1178,9 @@ def candidate_sensitivity_report_stub() -> dict[str, Any]:
             "coverage_fraction_of_union_candidate_cells": None,
             "coverage_fraction_of_baseline_candidate_cells": None,
         },
+        "candidate_region_classifications": [],
+        "candidate_sensitivity_matrix": [],
+        "candidate_persistence_metrics": {},
         "pairwise_overlap_summary": [],
         "claim_boundaries": {
             "heuristic_stability_characterization_only": True,
@@ -902,6 +1193,7 @@ def candidate_sensitivity_report_stub() -> dict[str, Any]:
                 "bounded perturbations only characterize heuristic agreement and disagreement",
                 "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
                 "unstable regions are heuristic-sensitive regions, not invalidated release zones",
+                "heuristic-sensitive regions are candidate-persistence summaries, not validated release zones",
             ],
         },
     }
