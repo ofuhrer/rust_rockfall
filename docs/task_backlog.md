@@ -22,45 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-188: Real Chant Sura Workflow Dry Run
-
-Goal: Run a non-Tschamut workflow dry run for Chant Sura / Flüelapass covering
-AOI preparation, terrain staging checks, release-candidate generation,
-scenario generation, command planning, and an optional tiny bounded ensemble
-only if all real-context gates are satisfied and explicitly permitted.
-
-Capability gap reduced: Portability remains mostly metadata-level and
-fixture-backed; the repo needs a real second-site workflow reality check.
-
-Why this outranks alternatives: A non-Tschamut dry run is the fastest way to
-separate reusable workflow assumptions from Tschamut-specific heuristics.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
-
-Deliverables:
-
-- A Chant Sura dry-run report that composes public-context readiness, AOI
-  preparation, release-candidate generation, scenario generation, and command
-  planning.
-- Exact blocked-missing-input or ready-for-next-step classification.
-- Optional tiny ensemble handoff only if real staged inputs exist and the task
-  records explicit permission; otherwise report the blocked state.
-
-Definition of done:
-
-- The dry run is deterministic, distinguishes real public context from
-  synthetic fixtures, and focused tests cover ready and blocked fixture paths.
-
-Boundaries: No downloads, no second-site ensemble by default, no synthetic
-public-context evidence, no operational claim, and no physical validation
-claim.
-
 ### TB-189: Release-Zone Candidate Stability And Sensitivity
 
 Goal: Measure how stable automatically generated release-zone candidates are

@@ -3315,3 +3315,27 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin job, no distributed reducer, no MPI/GPU, no physics change, no operational hazard claim, and no generated heavy outputs committed.
 - Next task: `TB-188`
+
+### TB-188: Real Chant Sura Workflow Dry Run
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: build a deterministic Chant Sura / Flüelapass dry-run report that composes the real-context readiness gate, AOI preparation, release-candidate generation, scenario generation, command planning, and a permission-gated tiny bounded ensemble handoff without downloading public data or claiming operational readiness.
+- Files changed: `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only Chant Sura dry-run reporter that threads together the real-context readiness gate, the Chant Sura dry-run case-skeleton helper, the terrain release-candidate generator, the pragmatic scenario-plan helper, and the portable command-plan helper.
+  - Classified the default checkout as `blocked_missing_inputs`, the staged fixture path as `ready_for_next_step`, and the tiny bounded ensemble handoff as permission-gated so the report stays fail-closed unless explicit permission is recorded.
+  - Added focused regressions for the blocked path, the ready fixture path, and the permission-gated tiny handoff, then removed TB-188 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_fluelapass_workflow_dry_run_report -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate tests.test_plan_terrain_release_zone_candidates tests.test_plan_pragmatic_release_plan tests.test_pilot_command_plan tests.test_chant_sura_fluelapass_workflow_dry_run_report -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_chant_sura_fluelapass_dry_run_report.py tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_chant_sura_fluelapass_dry_run_report.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads, no second-site ensemble execution, no synthetic public-context evidence, no operational claim, no physical validation claim, and the tiny ensemble handoff remains permission-gated.
+- Next task: `TB-189`
