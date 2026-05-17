@@ -24,39 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-138: Prepare Observed Runout And Deposition Benchmark Acquisition Pack
-
-Goal: Turn physical-credibility gaps into a concrete benchmark acquisition
-package for Balfrin/Tschamut evidence.
-
-Capability gap reduced: missing validation and physical-credibility evidence.
-
-Why this outranks alternatives: measured workflow credibility has improved, so
-the dominant scientific credibility gap is now independent runout/deposition
-evidence rather than another status matrix.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Acquisition checklist, required dataset inventory, geometry/provenance
-  templates, objective-function placeholders, and blocked no-evidence report.
-- Tests that keep benchmark-intake readiness separate from calibration
-  readiness.
-
-Definition of done:
-
-- A field or data-acquisition worker can see exactly which independent
-  benchmark artifacts are required before physical credibility can improve.
-
-Boundaries: No calibration, fitting, parameter tuning, annual frequency, risk,
-exposure, vulnerability, or operational claim.
-
 ### TB-139: Build Balfrin Demonstration Replay Smoke Test
 
 Goal: Verify that the canonical Balfrin evidence bundle and interpretation can
