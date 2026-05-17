@@ -47,6 +47,15 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertEqual(report["public_geodata_workflow_contract"]["required_aoi_metadata"][2]["field"], "site_extent.crs")
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["schema_version"], "swiss_public_geodata_cache_contract_v1")
+        self.assertIn(
+            "prepare_<site_id>_public_benchmark.py",
+            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"][0]["command"],
+        )
+        self.assertIn(
+            "verify_public_geodata_cache.py",
+            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verify_commands"][0]["command"],
+        )
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
@@ -127,6 +136,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "public_context_acquisition_summary",
                 "public_context_boundary_status",
                 "public_context_product_requirements",
+                "public_geodata_cache_contract",
                 "portability_preflight_status",
                 "readiness_status",
                 "second_site_manifest_status",
@@ -180,6 +190,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         )
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
+        self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verification_statuses"][0], "verified")
         self.assertEqual(
             report["public_geodata_workflow_contract"]["cache_paths"]["raw_swisstopo_cache_root"],
             str(root / "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1"),

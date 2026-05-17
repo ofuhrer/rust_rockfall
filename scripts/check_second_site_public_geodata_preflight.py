@@ -11,6 +11,7 @@ Swiss site.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -25,6 +26,8 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "second_site_public_geodata_preflight_v1"
 PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_workflow_contract_v1"
+PUBLIC_GEODATA_CACHE_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_cache_contract_v1"
+PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION = "swiss_public_geodata_cache_verification_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
 DEFAULT_AOI_TILE_CATALOG = (
     ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml"
@@ -201,6 +204,11 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
             for entry in acquisition_manifest.get("expected_products") or []
             if isinstance(entry, dict)
         ],
+        "public_geodata_cache_contract": build_public_geodata_cache_contract(
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            paths=paths,
+        ),
         "source_zone_scenario_contract": source_zone_scenario_contract,
         "reusable_workflow_components": reusable_workflow_components(),
         "site_specific_required_inputs": [req for req in requirements if req["required"]],
@@ -796,6 +804,14 @@ def normalize_resolution_m(value: Any) -> float | int | None:
     return int(numeric) if numeric.is_integer() else numeric
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def catalog_tile_sort_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     return (
         entry.get("tile_id") or "",
@@ -873,6 +889,11 @@ def build_public_geodata_workflow_contract(
         "synthetic_fixture_profile": fixture_profile or "none",
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
+        "public_geodata_cache_contract": build_public_geodata_cache_contract(
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            paths=paths,
+        ),
         "required_aoi_metadata": build_required_aoi_metadata(site_extent, source_zone_scenario_contract),
         "crs_grid_assumptions": build_crs_grid_assumptions(site_extent),
         "swisstopo_product_classes": build_swisstopo_product_classes(),
@@ -1015,6 +1036,11 @@ def build_cache_paths(candidate_site_id: str, paths: dict[str, Path]) -> dict[st
 def build_provenance_requirements() -> list[dict[str, Any]]:
     return [
         {
+            "field": "source_product_id",
+            "required": True,
+            "purpose": "identify the exact swisstopo product id used for the AOI",
+        },
+        {
             "field": "source_product_name",
             "required": True,
             "purpose": "identify the exact swisstopo product family used for the AOI",
@@ -1033,6 +1059,26 @@ def build_provenance_requirements() -> list[dict[str, Any]]:
             "field": "source_url_or_download_record",
             "required": True,
             "purpose": "record where the public geodata was acquired or documented",
+        },
+        {
+            "field": "checksum_sha256",
+            "required": True,
+            "purpose": "prove the staged file was not silently altered",
+        },
+        {
+            "field": "crs",
+            "required": True,
+            "purpose": "bind the cache record to an explicit coordinate reference system",
+        },
+        {
+            "field": "resolution_m",
+            "required": True,
+            "purpose": "bind the cache record to a declared grid resolution",
+        },
+        {
+            "field": "crop_extent_lv95_m",
+            "required": True,
+            "purpose": "record the crop extent used for the staged public product",
         },
         {
             "field": "raw_checksum",
@@ -1055,6 +1101,213 @@ def build_provenance_requirements() -> list[dict[str, Any]]:
             "purpose": "make the crop or conversion step reproducible",
         },
     ]
+
+
+def build_public_geodata_cache_contract(
+    *,
+    candidate_site_id: str,
+    candidate_site_name: str,
+    paths: dict[str, Path],
+) -> dict[str, Any]:
+    cache_paths = build_cache_paths(candidate_site_id, paths)
+    cache_manifest_path = paths["processed_input_root"] / "public_geodata_cache_manifest.yaml"
+    stage_command = (
+        "PYENV_VERSION=system uv run python scripts/prepare_<site_id>_public_benchmark.py "
+        "--output-root data/processed/swisstopo/<site_id> --padding-m <buffer> --force"
+    )
+    verify_command = (
+        "PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py "
+        f"--cache-manifest {cache_manifest_path} --format json"
+    )
+    return {
+        "schema_version": PUBLIC_GEODATA_CACHE_CONTRACT_SCHEMA_VERSION,
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "cache_layout": {
+            "raw_swisstopo_cache_root": cache_paths["raw_swisstopo_cache_root"],
+            "processed_input_root": cache_paths["processed_input_root"],
+            "processed_context_root": cache_paths["processed_context_root"],
+            "validation_private_root": cache_paths["validation_private_root"],
+            "hazard_results_root": cache_paths["hazard_results_root"],
+            "cache_manifest_path": str(cache_manifest_path),
+            "raw_product_leaf_pattern": "data/raw/swisstopo/<site_id>/<source_product_id>/<product_version>/<tile_id>",
+            "processed_product_leaf_pattern": "data/processed/swisstopo/<site_id>/input/<product_id>",
+            "metadata_sidecar_pattern": "data/processed/swisstopo/<site_id>/input/<product_id>.yaml",
+        },
+        "stage_commands": [
+            {
+                "command_id": "stage_public_terrain_crop",
+                "command": stage_command,
+                "purpose": "stage a public AOI crop and metadata sidecar into the ignored processed cache",
+            },
+            {
+                "command_id": "stage_public_context_bundle",
+                "command": (
+                    "mkdir -p data/processed/swisstopo/<site_id>/context/"
+                    "{swissimage,swisstlm3d,swisssurface3d,swisssurface3d_raster,swissbuildings3d}"
+                ),
+                "purpose": "stage context bundles into the ignored processed cache when required",
+            },
+        ],
+        "verify_commands": [
+            {
+                "command_id": "verify_public_geodata_cache",
+                "command": verify_command,
+                "purpose": "deterministically compare staged files and metadata against the cache contract",
+            },
+            {
+                "command_id": "validate_public_real_site_geodata_manifest",
+                "command": (
+                    "PYENV_VERSION=system uv run python scripts/validate_public_real_site_geodata_manifest.py "
+                    "data/processed/swisstopo/public_real_site_pilot_manifest_template.yaml"
+                ),
+                "purpose": "gate share-safe manifest fields before staged public products are consumed",
+            },
+        ],
+        "verification_fields": [
+            "source_product_id",
+            "source_product_name",
+            "source_url_or_download_record",
+            "product_version_or_date",
+            "tile_id_or_delivery_identifier",
+            "checksum_sha256",
+            "crs",
+            "resolution_m",
+            "crop_extent_lv95_m",
+            "license_or_terms_reference",
+            "raw_checksum",
+            "processed_checksum",
+            "preprocessing_command_and_timestamp",
+        ],
+        "verification_statuses": [
+            "verified",
+            "missing",
+            "checksum_mismatch",
+            "metadata_mismatch",
+        ],
+        "claim_boundaries": claim_boundaries(),
+    }
+
+
+def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
+    manifest = load_site_config(manifest_path)
+    if not isinstance(manifest, dict):
+        manifest = {}
+    products = [verify_public_geodata_cache_product(record, manifest_path.parent) for record in manifest.get("products") or [] if isinstance(record, dict)]
+    overall_status = "verified"
+    for product in products:
+        status = text_value(product.get("verification_status")) or "missing"
+        if status == "missing":
+            overall_status = "missing"
+            break
+        if status == "checksum_mismatch" and overall_status == "verified":
+            overall_status = status
+        if status == "metadata_mismatch" and overall_status not in {"missing", "checksum_mismatch"}:
+            overall_status = status
+    return {
+        "schema_version": PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION,
+        "verification_status": overall_status,
+        "cache_manifest_path": str(manifest_path),
+        "product_count": len(products),
+        "verification_fields": build_public_geodata_cache_contract(
+            candidate_site_id=text_value(manifest.get("candidate_site_id")) or "unspecified_second_site",
+            candidate_site_name=text_value(manifest.get("candidate_site_name")) or "unspecified",
+            paths={
+                "raw_swisstopo_cache_root": manifest_path.parent,
+                "processed_input_root": manifest_path.parent,
+                "processed_context_root": manifest_path.parent,
+                "validation_case_root": manifest_path.parent,
+                "hazard_results_root": manifest_path.parent,
+            },
+        )["verification_fields"],
+        "products": products,
+    }
+
+
+def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: Path) -> dict[str, Any]:
+    staged_path = resolve_repo_path(text_value(record.get("staged_path")) or text_value(record.get("expected_staged_path")), base=manifest_base)
+    metadata_path = resolve_repo_path(text_value(record.get("metadata_path")) or text_value(record.get("expected_metadata_path")), base=manifest_base)
+    expected_checksum = text_value(record.get("checksum_sha256")) or text_value(record.get("processed_checksum"))
+    expected_source_product_id = text_value(record.get("source_product_id"))
+    expected_source_product_name = text_value(record.get("source_product_name"))
+    expected_source_url = text_value(record.get("source_url_or_download_record")) or text_value(record.get("source_url"))
+    expected_product_version = text_value(record.get("product_version_or_date")) or text_value(record.get("product_version"))
+    expected_tile_id = text_value(record.get("tile_id_or_delivery_identifier")) or text_value(record.get("tile_id"))
+    expected_crs = text_value(record.get("crs"))
+    expected_resolution = normalize_resolution_m(record.get("resolution_m"))
+    expected_crop_extent = record.get("crop_extent_lv95_m") if isinstance(record.get("crop_extent_lv95_m"), dict) else {}
+    expected_license = text_value(record.get("license_or_terms_reference")) or text_value(record.get("license_note"))
+    actual = {
+        "staged_path": str(staged_path),
+        "metadata_path": str(metadata_path),
+        "checksum_sha256": sha256_file(staged_path) if staged_path.exists() and staged_path.is_file() else "",
+        "metadata": {},
+    }
+    if metadata_path.exists():
+        metadata = load_site_config(metadata_path)
+        actual["metadata"] = metadata if isinstance(metadata, dict) else {}
+    missing_paths = [name for name, path in (("staged_path", staged_path), ("metadata_path", metadata_path)) if not path.exists()]
+    if missing_paths:
+        return {
+            "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+            "verification_status": "missing",
+            "missing_paths": missing_paths,
+            "checksum_match": False,
+            "metadata_mismatches": [],
+            "expected": cache_expected_record(record),
+            "actual": actual,
+        }
+    metadata = actual["metadata"] if isinstance(actual["metadata"], dict) else {}
+    metadata_mismatches: list[str] = []
+    checksum_match = bool(expected_checksum and actual["checksum_sha256"] == expected_checksum)
+    if expected_source_product_id and text_value(metadata.get("source_product_id")) != expected_source_product_id:
+        metadata_mismatches.append("source_product_id")
+    if expected_source_product_name and text_value(metadata.get("source_product_name")) != expected_source_product_name:
+        metadata_mismatches.append("source_product_name")
+    if expected_source_url and text_value(metadata.get("source_url")) != expected_source_url and text_value(metadata.get("source_url_or_download_record")) != expected_source_url:
+        metadata_mismatches.append("source_url_or_download_record")
+    if expected_product_version and text_value(metadata.get("product_version")) != expected_product_version and text_value(metadata.get("product_version_or_date")) != expected_product_version:
+        metadata_mismatches.append("product_version_or_date")
+    if expected_tile_id and text_value(metadata.get("tile_id")) != expected_tile_id and text_value(metadata.get("tile_id_or_delivery_identifier")) != expected_tile_id:
+        metadata_mismatches.append("tile_id_or_delivery_identifier")
+    if expected_crs and text_value(metadata.get("crs")) != expected_crs:
+        metadata_mismatches.append("crs")
+    if expected_resolution is not None and normalize_resolution_m(metadata.get("resolution_m")) != expected_resolution:
+        metadata_mismatches.append("resolution_m")
+    if expected_crop_extent and metadata.get("crop_extent_lv95_m") != expected_crop_extent:
+        metadata_mismatches.append("crop_extent_lv95_m")
+    if expected_license and text_value(metadata.get("license_or_terms_reference")) != expected_license and text_value(metadata.get("license_note")) != expected_license:
+        metadata_mismatches.append("license_or_terms_reference")
+    if not checksum_match:
+        verification_status = "checksum_mismatch"
+    elif metadata_mismatches:
+        verification_status = "metadata_mismatch"
+    else:
+        verification_status = "verified"
+    return {
+        "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+        "verification_status": verification_status,
+        "missing_paths": [],
+        "checksum_match": checksum_match,
+        "metadata_mismatches": metadata_mismatches,
+        "expected": cache_expected_record(record),
+        "actual": actual,
+    }
+
+
+def cache_expected_record(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_product_id": text_value(record.get("source_product_id")),
+        "source_product_name": text_value(record.get("source_product_name")),
+        "source_url_or_download_record": text_value(record.get("source_url_or_download_record")) or text_value(record.get("source_url")),
+        "product_version_or_date": text_value(record.get("product_version_or_date")) or text_value(record.get("product_version")),
+        "tile_id_or_delivery_identifier": text_value(record.get("tile_id_or_delivery_identifier")) or text_value(record.get("tile_id")),
+        "checksum_sha256": text_value(record.get("checksum_sha256")) or text_value(record.get("processed_checksum")),
+        "crs": text_value(record.get("crs")),
+        "resolution_m": normalize_resolution_m(record.get("resolution_m")),
+        "crop_extent_lv95_m": record.get("crop_extent_lv95_m") if isinstance(record.get("crop_extent_lv95_m"), dict) else {},
+        "license_or_terms_reference": text_value(record.get("license_or_terms_reference")) or text_value(record.get("license_note")),
+    }
 
 
 def build_deferred_optional_context(paths: dict[str, Path]) -> list[dict[str, Any]]:
@@ -1862,6 +2115,8 @@ def _render_public_geodata_workflow_contract(contract: dict[str, Any]) -> list[s
     lines.append("- cache_paths:")
     for key, value in contract["cache_paths"].items():
         lines.append(f"  - {key}: {value}")
+    lines.append("- public_geodata_cache_contract:")
+    lines.extend(_render_public_geodata_cache_contract(contract["public_geodata_cache_contract"]))
     lines.append("- provenance_requirements:")
     for entry in contract["provenance_requirements"]:
         lines.append(f"  - {entry['field']}: required={str(entry['required']).lower()}, purpose={entry['purpose']}")
@@ -1872,6 +2127,30 @@ def _render_public_geodata_workflow_contract(contract: dict[str, Any]) -> list[s
         )
     lines.append("- claim_boundaries:")
     lines.extend(f"  - {key}: {str(value).lower()}" for key, value in contract["claim_boundaries"].items())
+    return lines
+
+
+def _render_public_geodata_cache_contract(contract: dict[str, Any]) -> list[str]:
+    lines = [
+        f"  - schema_version: {contract['schema_version']}",
+        f"  - candidate_site_id: {contract['candidate_site_id']}",
+        f"  - candidate_site_name: {contract['candidate_site_name']}",
+        "  - cache_layout:",
+    ]
+    for key, value in contract["cache_layout"].items():
+        lines.append(f"    - {key}: {value}")
+    lines.append("  - stage_commands:")
+    for entry in contract["stage_commands"]:
+        lines.append(f"    - {entry['command_id']}: {entry['command']} ({entry['purpose']})")
+    lines.append("  - verify_commands:")
+    for entry in contract["verify_commands"]:
+        lines.append(f"    - {entry['command_id']}: {entry['command']} ({entry['purpose']})")
+    lines.append("  - verification_fields:")
+    lines.extend(f"    - {field}" for field in contract["verification_fields"])
+    lines.append("  - verification_statuses:")
+    lines.extend(f"    - {status}" for status in contract["verification_statuses"])
+    lines.append("  - claim_boundaries:")
+    lines.extend(f"    - {key}: {str(value).lower()}" for key, value in contract["claim_boundaries"].items())
     return lines
 
 

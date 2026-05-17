@@ -161,6 +161,14 @@ processed crop, generated cases, validation outputs, and later hazard outputs
 remain ignored. The Tschamut terrain package is input geodata for workflow
 development; it is not validation evidence by itself.
 
+The selected public pilot cache contract is expressed by
+`public_geodata_cache_contract` in the preflight helper output. It fixes the
+ignored raw cache root, processed input/context roots, the cache-manifest path,
+the deterministic stage command, and the verification command
+`scripts/verify_public_geodata_cache.py`. That verifier checks source URL/id,
+product version, checksum, CRS, resolution, tile id, crop extent, and
+license/provenance note fields before staged public products are consumed.
+
 The same-scale hazard outputs are now also audited as GIS packages. The
 current roots have complete map-package and pilot-GIS manifests with GeoTIFFs
 present, but the audited GeoTIFF layout is still strip-organized with no

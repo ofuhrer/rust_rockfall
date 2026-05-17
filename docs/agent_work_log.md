@@ -2512,3 +2512,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no license-sensitive raw data commits, no ensemble, no operational claim, and no scale-up or probability claim.
 - Next task: `TB-148`
+
+### TB-148
+- Date: 2026-05-17
+- Commit: local
+- Objective: define a deterministic public-geodata cache contract with explicit provenance fields, stage/verify command templates, and fail-closed verification states for staged AOI products.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/verify_public_geodata_cache.py`, `tests/test_public_geodata_cache_verifier.py`, `tests/test_second_site_public_geodata_preflight.py`, `docs/swisstopo_data_strategy.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a machine-readable `public_geodata_cache_contract` to the preflight workflow contract so the ignored raw cache root, processed roots, cache-manifest path, stage command, verify command, and required provenance fields are surfaced together.
+  - Implemented `scripts/verify_public_geodata_cache.py` with shared preflight logic so staged public products fail closed as `missing`, `checksum_mismatch`, or `metadata_mismatch` instead of being treated as trusted by default.
+  - Added focused regression coverage for verified, missing, checksum-mismatch, and metadata-mismatch cache states using temporary staged files and metadata sidecars.
+  - Updated the swisstopo strategy and public real-site preparation notes to point at the cache contract and verifier command, then removed TB-148 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier tests.test_second_site_public_geodata_preflight tests.test_swisstopo_aoi_acquisition_planner -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no bulk download, no raw swisstopo commit, no hazard run, no operational claim, and no scale-up or physical-probability claim.
+- Next task: `TB-149`

@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-148: Define Public Geodata Cache And Provenance Contract
-
-Goal: Define the deterministic cache layout, checksum/provenance fields, and
-stage/verify commands needed before real AOI products can be used safely.
-
-Capability gap reduced: missing bridge between no-download AOI planning and
-trusted local public-geodata staging.
-
-Why this outranks alternatives: without a cache/provenance contract, future
-downloads or manually staged products cannot be audited or reproduced.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-
-Deliverables:
-
-- A machine-readable cache/provenance schema or helper output for staged public
-  products.
-- Verification fields for source URL/id, product version, checksum, CRS,
-  resolution, tile id, crop extent, and license/provenance note.
-- Tests for verified, missing, checksum-mismatch, and metadata-mismatch states.
-
-Definition of done:
-
-- A future data worker can stage public geodata into an ignored cache and run a
-  deterministic verification command before any pilot preparation uses it.
-
-Boundaries: No actual bulk downloads, no raw swisstopo commits, no hazard run,
-and no operational claim.
-
 ### TB-149: Prototype AOI Terrain Preprocessing From Staged Tiles
 
 Goal: Convert verified staged terrain tiles into a deterministic AOI terrain

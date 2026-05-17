@@ -121,6 +121,14 @@ approval; it only prevents DEM-only conditional outputs from being interpreted
 as evidence that vegetation, roads, buildings, barriers, or channels are
 irrelevant.
 
+The public-geodata cache contract is now surfaced through
+`public_geodata_cache_contract` in the preflight helpers and through the
+deterministic `scripts/verify_public_geodata_cache.py` command. It records the
+ignored raw and processed roots, the expected cache-manifest path, the stage
+and verify commands, and the verification fields that must line up for a staged
+public product to be considered trusted. Verification fails closed on missing,
+checksum-mismatch, or metadata-mismatch states.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the
