@@ -251,3 +251,30 @@ The combined stability-frontier helper,
 now folds the same-scale uncertainty, bounded runtime/output, bounded
 next-probe feasibility, and closure-gap evidence into one conservative
 recommendation for whether another small probe would still be informative.
+
+## TB-144 Minimal Bounded Probe Status
+
+The minimal bounded Balfrin follow-up probe remains fail-closed in
+`scripts/summarize_bounded_next_ensemble_feasibility_probe.py`.
+
+- Probe status: `blocked_missing_optional_probabilistic_metadata`
+- Planning blocker: the smallest useful probe requires optional probabilistic
+  metadata fields that are still missing
+- Exact missing fields:
+  - `probabilistic_metadata.source_zone_metadata_path`
+  - `probabilistic_metadata.scenario_table_path`
+  - `probabilistic_metadata.map_product_id`
+  - `probabilistic_metadata.probability_mode`
+  - `probabilistic_metadata.normalization_scope`
+  - `probabilistic_metadata.scenario_id`
+  - `hazard_probability.probability_model`
+  - `hazard_probability.metadata_path`
+  - `hazard_probability.weight_column`
+  - `hazard_probability.normalization_convention`
+  - `hazard_probability.filters.source_zone_ids`
+  - `hazard_probability.filters.scenario_ids`
+
+Because the bounded feasibility helper is blocked, the practical frontier
+helper `scripts/summarize_balfrin_ensemble_frontier.py` also stays in
+`blocked_missing_inputs` status instead of upgrading the closure or authorizing
+any larger ensemble by assertion.

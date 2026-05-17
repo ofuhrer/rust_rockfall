@@ -24,43 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-144: Execute Or Block Minimal Bounded Balfrin Ensemble Probe
-
-Goal: Run the smallest bounded Balfrin follow-up probe, or produce a precise
-blocked report if the metadata, artifacts, or authorization are still
-insufficient.
-
-Capability gap reduced: lack of measured uncertainty/runtime tradeoff evidence
-beyond the current single-release-zone demonstration.
-
-Why this outranks alternatives: after TB-143, the next major question is
-whether a small additional measured probe materially changes uncertainty
-interpretation enough to justify further execution.
-
-Inspect first:
-
-- `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- Measured probe evidence and metrics, or a fail-closed blocked report with the
-  exact missing prerequisites.
-- Updated ensemble-frontier input artifacts or documentation showing the
-  comparison basis.
-- Focused tests for the new measured/blocked status path.
-
-Definition of done:
-
-- The repo records whether a minimal bounded Balfrin probe was measured or why
-  it remains blocked, without changing closure status by assertion.
-
-Boundaries: No large production ensemble, no parameter tuning, no scale-up
-authorization, and no operational claim.
-
 ### TB-145: Interpret Bounded Probe Against Same-Scale Uncertainty
 
 Goal: Compare any new bounded Balfrin probe evidence against the existing

@@ -58,6 +58,25 @@ class BalfrinEnsembleFrontierTests(unittest.TestCase):
         self.assertEqual(report["minimum_useful_ensemble_recommendation"], {})
         self.assertEqual(report["frontier_summary"], [])
 
+    def test_blocked_feasibility_helper_blocks_the_frontier_report(self) -> None:
+        with patch.object(MODULE, "SCIENTIFIC") as scientific_module, patch.object(MODULE, "SINGLE_JOB") as single_job_module, patch.object(MODULE, "FEASIBILITY") as feasibility_module, patch.object(MODULE, "STABILITY") as stability_module:
+            scientific_module.build_report.return_value = self.scientific_report()
+            single_job_module.build_summary.return_value = self.single_job_summary()
+            feasibility_module.build_report.return_value = {
+                "schema_version": "bounded_next_ensemble_feasibility_probe_v1",
+                "probe_status": "blocked_missing_optional_probabilistic_metadata",
+                "planning_status": "blocked_missing_optional_probabilistic_metadata",
+            }
+            stability_module.build_report.return_value = self.stability_report()
+
+            report = MODULE.build_report()
+
+        self.assertEqual(report["frontier_status"], "blocked_missing_inputs")
+        self.assertEqual(report["recommendation_class"], "blocked_pending_helper_contract")
+        self.assertIn("feasibility_probe_status=blocked_missing_optional_probabilistic_metadata", report["recommendation_reason"])
+        self.assertEqual(report["minimum_useful_ensemble_recommendation"], {})
+        self.assertEqual(report["frontier_summary"], [])
+
     def test_cli_emits_text_and_json_for_measured_report(self) -> None:
         with patch.object(MODULE, "SCIENTIFIC") as scientific_module, patch.object(MODULE, "SINGLE_JOB") as single_job_module, patch.object(MODULE, "FEASIBILITY") as feasibility_module, patch.object(MODULE, "STABILITY") as stability_module:
             scientific_module.build_report.return_value = self.scientific_report()

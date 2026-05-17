@@ -2440,3 +2440,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no new ensemble run, no tuning, no scale-up authorization, no operational claim, and no physical-probability claim.
 - Next task: `TB-144`
+
+### TB-144
+- Date: 2026-05-17
+- Commit: local
+- Objective: record the smallest bounded Balfrin follow-up probe as a fail-closed blocked report when the optional probabilistic metadata contract is still incomplete.
+- Files changed: `tests/test_balfrin_ensemble_frontier.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a focused frontier regression that proves the practical Balfrin ensemble helper blocks when the feasibility helper reports `blocked_missing_optional_probabilistic_metadata`.
+  - Documented the exact missing optional probabilistic metadata fields in the Balfrin sufficiency note so the blocked comparison basis is visible in the repo.
+  - Removed the completed TB-144 entry from the active backlog after recording the fail-closed outcome instead of forcing execution.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_ensemble_frontier -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json`
+- Result/status: implemented_blocked_report
+- Boundaries: no ensemble execution, no parameter tuning, no scale-up authorization, and no operational claim.
+- Next task: `TB-145`
