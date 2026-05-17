@@ -2888,3 +2888,28 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no Balfrin job submission, no scale-up authorization, no distributed execution, and no generated artifact commit.
 - Next task: `TB-167`
+
+### TB-167: Execute Authorized Target-Area Balfrin Probe
+
+- Date: 2026-05-17
+- Commit: `5f169f4`
+- Objective: determine whether the frozen target-area Balfrin probe could be launched, or else record the exact unresolved gate without submitting a job.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified that the frozen target-area contract at `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml` is only a read-only handoff and explicitly states that no job submission is authorized by the record.
+  - Preserved the unlaunched Balfrin submission-package state from TB-166 at `validation/private/tschamut_public_pilot/balfrin_submission_package_v1` and did not submit a job or materialize any measured run root.
+  - Removed TB-167 from the active backlog and recorded this blocked execution report instead of fabricating execution evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-167 --format json`
+  - `rg -n "^### TB-167:" docs/task_backlog.md`
+  - `sed -n '/^### TB-167:/,/^### TB-168:/p' docs/task_backlog.md`
+  - `sed -n '1,260p' validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_demo_contract tests.test_balfrin_probe_driver`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: blocked
+- Boundaries: no Balfrin submission, no measured run, no scale-up authorization, no distributed execution, and no operational or physical-probability claim.
+- Next task: `TB-168`
