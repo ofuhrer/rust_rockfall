@@ -73,6 +73,13 @@ should carry metadata equivalent to:
 - license/terms reference;
 - project role and operational status.
 
+AOI tile catalogs used for dry-run discovery should retain the same
+deterministic provenance fields at catalog level: `product_id`, `tile_id`,
+CRS, resolution, delivery date/version, expected staging root, and source
+filename. That keeps no-download planners able to emit stable manifests for
+realistic catalog shapes without turning missing metadata into an implicit
+match.
+
 The sample metadata fixture lives at
 `data/processed/swisstopo/sample_swissalti3d_tile_metadata.yaml`. It is metadata
 only and does not imply that the referenced raw swisstopo tile is present.

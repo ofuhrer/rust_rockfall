@@ -2490,3 +2490,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no operational claim, no annual-frequency claim, no physical-probability claim, no validation claim, no scale-up authorization, and no generated large-artifact commit.
 - Next task: `TB-147`
+
+### TB-147
+- Date: 2026-05-17
+- Commit: local
+- Objective: harden the AOI tile-discovery dry run so realistic swisstopo catalog shapes, product variants, and blocked/no-catalog states produce stable no-download manifests instead of brittle fixture-only matches.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/plan_swisstopo_aoi_acquisition.py`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/aoi_tile_catalog.yaml`, `tests/fixtures/second_site_public_geodata_preflight/catalog_shapes/blocked_missing_metadata.yaml`, `tests/fixtures/second_site_public_geodata_preflight/catalog_shapes/nested_product_variants.yaml`
+- Implementation summary:
+  - Added a deterministic catalog flattener that preserves product ids, tile ids, CRS, resolution, product version/date, and expected staging roots while supporting both flat `tiles:` catalogs and nested `products:`/variant catalogs.
+  - Extended the AOI discovery report with product/tile manifests, catalog blockers, and no-download summary rows so the planner can compose stable dry-run output without authorizing downloads.
+  - Added fixture-backed regression coverage for the current flat catalog, a nested multi-variant catalog, and an explicit blocked catalog so missing metadata fails closed instead of being silently treated as a match.
+  - Updated the swisstopo data strategy note to document the stronger catalog provenance contract used by the dry-run planner.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no license-sensitive raw data commits, no ensemble, no operational claim, and no scale-up or probability claim.
+- Next task: `TB-148`

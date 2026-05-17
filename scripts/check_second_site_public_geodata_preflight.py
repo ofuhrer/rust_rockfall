@@ -375,15 +375,11 @@ def build_aoi_tile_discovery(
     catalog_ready = catalog_path.exists()
     catalog = load_aoi_tile_catalog(catalog_path) if catalog_ready else {}
     wanted_tile_ids = tile_catalog_ids_for_extent(site_extent)
+    catalog_status = catalog_state(catalog, catalog_ready)
+    catalog_blockers = tile_catalog_blockers(wanted_tile_ids, catalog_path, catalog, catalog_ready, catalog_status)
     catalog_tile_entries = tile_catalog_entries_for_extent(wanted_tile_ids, catalog) if catalog_ready else []
-    missing_catalog_inputs: list[str] = []
-    if not catalog_ready:
-        missing_catalog_inputs.append(str(catalog_path))
-    missing_catalog_inputs.extend(
-        candidate
-        for candidate in tile_catalog_missing_inputs(wanted_tile_ids, catalog)
-        if candidate not in missing_catalog_inputs
-    )
+    catalog_product_entries = catalog_product_entries_for_extent(wanted_tile_ids, catalog) if catalog_ready else []
+    missing_catalog_inputs = list(catalog_blockers)
 
     product_entries: list[dict[str, Any]] = []
     for entry in acquisition_manifest.get("expected_products") or []:
@@ -401,21 +397,27 @@ def build_aoi_tile_discovery(
         if category == "terrain_crop":
             coverage_descriptor = "AOI-intersecting 1 km swissALTI3D tiles"
             tile_candidates = catalog_tile_entries
+            product_candidates = catalog_product_entries
         elif category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
             coverage_descriptor = "deferred public-context directory bundle"
             tile_candidates = []
+            product_candidates = []
         elif category == "aoi_tile_catalog":
             coverage_descriptor = "catalog-backed metadata input for tile discovery"
             tile_candidates = []
+            product_candidates = []
         elif category in {"terrain_metadata", "source_zone_metadata", "scenario_table", "source_scenario_policy"}:
             coverage_descriptor = "metadata file contract"
             tile_candidates = []
+            product_candidates = []
         elif category in {"barrier_inventory", "release_observation_evidence"}:
             coverage_descriptor = "optional site-specific directory bundle"
             tile_candidates = []
+            product_candidates = []
         else:
             coverage_descriptor = "site-specific staging contract"
             tile_candidates = []
+            product_candidates = []
         product_entries.append(
             {
                 "category": category,
@@ -425,23 +427,29 @@ def build_aoi_tile_discovery(
                 "coverage_descriptor": coverage_descriptor,
                 "tile_candidates": tile_candidates,
                 "tile_candidate_count": len(tile_candidates),
+                "product_candidates": product_candidates,
+                "product_candidate_count": len(product_candidates),
                 "staging_mode": "metadata_file" if expected_path_obj is not None and expected_path_obj.suffix else "directory_bundle" if expected_path else "unknown",
                 "missing_catalog_inputs": missing_catalog_inputs if category == "terrain_crop" else [],
                 "download_boundary": no_download_boundary(),
             }
         )
 
-    discovery_ready = bool(catalog_ready and not missing_catalog_inputs and catalog_tile_entries)
+    discovery_ready = bool(catalog_ready and not catalog_blockers and catalog_tile_entries)
     return {
-        "schema_version": "swisstopo_aoi_tile_discovery_v1",
+        "schema_version": "swisstopo_aoi_tile_discovery_v2",
         "discovery_status": "ready" if discovery_ready else "blocked_missing_inputs",
         "candidate_site_id": candidate_site_id,
         "aoi_extent": site_extent if site_extent else "placeholder_extent_missing",
         "catalog_path": str(catalog_path),
-        "catalog_status": "ready" if catalog_ready else "blocked_missing_inputs",
+        "catalog_status": catalog_status,
+        "catalog_blockers": catalog_blockers,
+        "catalog_manifest": catalog_manifest(catalog, catalog_path, catalog_tile_entries, catalog_product_entries, wanted_tile_ids),
         "tile_catalog_status": "ready" if catalog_tile_entries else "blocked_missing_inputs",
         "tile_candidates": catalog_tile_entries,
         "tile_candidate_count": len(catalog_tile_entries),
+        "product_candidates": catalog_product_entries,
+        "product_candidate_count": len(catalog_product_entries),
         "required_products": product_entries,
         "missing_catalog_inputs": missing_catalog_inputs,
         "no_download_boundary": no_download_boundary(),
@@ -466,6 +474,46 @@ def load_aoi_tile_catalog(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def catalog_state(catalog: dict[str, Any], catalog_ready: bool) -> str:
+    if not catalog_ready:
+        return "blocked_missing_inputs"
+    status = text_value(catalog.get("catalog_status"))
+    if status in {"blocked", "blocked_missing_inputs", "blocked_no_catalog_metadata", "missing_metadata"}:
+        return status
+    if catalog_tile_records(catalog):
+        return status or "ready"
+    return "blocked_missing_inputs"
+
+
+def catalog_manifest(
+    catalog: dict[str, Any],
+    catalog_path: Path,
+    tile_entries: list[dict[str, Any]],
+    product_entries: list[dict[str, Any]],
+    wanted_tile_ids: list[str],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "swisstopo_aoi_tile_catalog_manifest_v2",
+        "catalog_path": str(catalog_path),
+        "catalog_status": text_value(catalog.get("catalog_status")) or "unknown",
+        "catalog_source_product": text_value(catalog.get("source_product")) or text_value(catalog.get("product_id")),
+        "catalog_product_id": text_value(catalog.get("product_id")) or text_value(catalog.get("source_product")),
+        "catalog_product_version": text_value(catalog.get("product_version")),
+        "catalog_product_date": text_value(catalog.get("product_date")),
+        "catalog_crs": text_value(catalog.get("crs")) or text_value(catalog.get("coordinate_reference_system")),
+        "catalog_resolution_m": normalize_resolution_m(
+            catalog.get("resolution_m")
+            if catalog.get("resolution_m") not in (None, "")
+            else catalog.get("resolution")
+            if catalog.get("resolution") not in (None, "")
+            else catalog.get("cell_size_m")
+        ),
+        "wanted_tile_ids": wanted_tile_ids,
+        "product_candidate_count": len(product_entries),
+        "tile_candidate_count": len(tile_entries),
+    }
+
+
 def expected_staging_root(path: Path) -> Path:
     return path.parent if path.suffix else path
 
@@ -488,48 +536,311 @@ def tile_catalog_ids_for_extent(site_extent: dict[str, Any]) -> list[str]:
 
 
 def tile_catalog_entries_for_extent(wanted_tile_ids: list[str], catalog: dict[str, Any]) -> list[dict[str, Any]]:
-    catalog_tiles = catalog_tiles_by_id(catalog)
-    return [catalog_tiles[tile_id] for tile_id in wanted_tile_ids if tile_id in catalog_tiles]
+    wanted = set(wanted_tile_ids)
+    entries = [entry for entry in catalog_tile_records(catalog) if entry["tile_id"] in wanted]
+    return sorted(entries, key=catalog_tile_sort_key)
 
 
 def tile_catalog_missing_inputs(wanted_tile_ids: list[str], catalog: dict[str, Any]) -> list[str]:
     if not catalog:
         return []
-    catalog_tile_ids = {text_value(entry.get("tile_id")) for entry in catalog_entries(catalog) if text_value(entry.get("tile_id"))}
+    catalog_tile_ids = {entry["tile_id"] for entry in catalog_tile_records(catalog) if entry.get("tile_id")}
     missing = sorted(tile_id for tile_id in wanted_tile_ids if tile_id not in catalog_tile_ids)
     return [f"swissALTI3D tile catalog missing AOI candidate tile {tile_id}" for tile_id in missing]
 
 
 def catalog_entries(catalog: dict[str, Any]) -> list[dict[str, Any]]:
-    for key in ("tiles", "terrain_tiles", "swissalti3d_tiles"):
-        entries = catalog.get(key)
-        if isinstance(entries, list):
-            return [entry for entry in entries if isinstance(entry, dict)]
-    swissalti3d = catalog.get("swissalti3d")
-    if isinstance(swissalti3d, dict):
-        entries = swissalti3d.get("tiles")
-        if isinstance(entries, list):
-            return [entry for entry in entries if isinstance(entry, dict)]
-    return []
+    return catalog_leaf_records(catalog)
 
 
-def catalog_tiles_by_id(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    tiles: dict[str, dict[str, Any]] = {}
-    for entry in catalog_entries(catalog):
-        tile_id = text_value(entry.get("tile_id"))
-        if not tile_id:
+def catalog_tile_records(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    visit_catalog_node(catalog, {}, records)
+    return records
+
+
+def catalog_product_entries_for_extent(wanted_tile_ids: list[str], catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    tiles = tile_catalog_entries_for_extent(wanted_tile_ids, catalog)
+    grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for entry in tiles:
+        key = (
+            entry.get("product_id"),
+            entry.get("source_product"),
+            entry.get("crs"),
+            entry.get("resolution_m"),
+            entry.get("product_version"),
+            entry.get("product_date"),
+            entry.get("expected_staging_root"),
+        )
+        bucket = grouped.setdefault(
+            key,
+            {
+                "product_id": entry.get("product_id"),
+                "source_product": entry.get("source_product"),
+                "crs": entry.get("crs"),
+                "resolution_m": entry.get("resolution_m"),
+                "product_version": entry.get("product_version"),
+                "product_date": entry.get("product_date"),
+                "expected_staging_root": entry.get("expected_staging_root"),
+                "expected_staged_path": entry.get("expected_staged_path"),
+                "tile_ids": [],
+                "tile_count": 0,
+                "source_filenames": [],
+                "source_urls": [],
+                "licenses": [],
+            },
+        )
+        bucket["tile_ids"].append(entry.get("tile_id"))
+        bucket["tile_count"] += 1
+        if entry.get("source_filename"):
+            bucket["source_filenames"].append(entry.get("source_filename"))
+        if entry.get("source_url"):
+            bucket["source_urls"].append(entry.get("source_url"))
+        if entry.get("license"):
+            bucket["licenses"].append(entry.get("license"))
+    products: list[dict[str, Any]] = []
+    for entry in grouped.values():
+        entry["tile_ids"] = sorted({tile_id for tile_id in entry["tile_ids"] if tile_id})
+        entry["source_filenames"] = sorted({value for value in entry["source_filenames"] if value})
+        entry["source_urls"] = sorted({value for value in entry["source_urls"] if value})
+        entry["licenses"] = sorted({value for value in entry["licenses"] if value})
+        products.append(entry)
+    return sorted(products, key=catalog_product_sort_key)
+
+
+def catalog_leaf_records(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    visit_catalog_node(catalog, {}, records)
+    return records
+
+
+CATALOG_CONTAINER_KEYS = {
+    "catalog",
+    "items",
+    "product_catalog",
+    "product_entries",
+    "products",
+    "records",
+    "terrain_tiles",
+    "tile_entries",
+    "tiles",
+    "variants",
+    "swissalti3d",
+    "swissalti3d_tiles",
+}
+
+
+def visit_catalog_node(node: Any, inherited: dict[str, Any], records: list[dict[str, Any]]) -> None:
+    if isinstance(node, list):
+        for item in node:
+            visit_catalog_node(item, inherited, records)
+        return
+    if not isinstance(node, dict):
+        return
+
+    context = dict(inherited)
+    context.update(catalog_context(node))
+
+    if looks_like_catalog_tile_record(node, context):
+        normalized = normalize_catalog_tile_record(node, context)
+        if normalized is not None:
+            records.append(normalized)
+
+    for key, value in node.items():
+        if key == "extent_lv95_m":
             continue
-        tiles[tile_id] = {
-            "tile_id": tile_id,
-            "source_product": text_value(entry.get("source_product")) or "swissALTI3D",
-            "source_filename": text_value(entry.get("source_filename")),
-            "product_version": text_value(entry.get("product_version")),
-            "product_date": text_value(entry.get("product_date")),
-            "source_url": text_value(entry.get("source_url")),
-            "license": text_value(entry.get("license")),
-            "extent_lv95_m": entry.get("extent_lv95_m") if isinstance(entry.get("extent_lv95_m"), dict) else {},
-        }
-    return tiles
+        if key in CATALOG_CONTAINER_KEYS or (isinstance(value, dict) and looks_like_catalog_container(value)):
+            visit_catalog_node(value, context, records)
+
+
+def looks_like_catalog_container(node: dict[str, Any]) -> bool:
+    return any(
+        key in node
+        for key in CATALOG_CONTAINER_KEYS
+        | {"tile_id", "product_id", "source_product", "expected_staging_root", "expected_staged_path"}
+    )
+
+
+def catalog_context(node: dict[str, Any]) -> dict[str, Any]:
+    context: dict[str, Any] = {}
+    product_id = text_value(node.get("product_id")) or text_value(node.get("product_variant_id")) or text_value(node.get("variant_id"))
+    source_product = text_value(node.get("source_product")) or text_value(node.get("product_name")) or text_value(node.get("product"))
+    if product_id:
+        context["product_id"] = product_id
+    if source_product:
+        context["source_product"] = source_product
+
+    crs = text_value(node.get("crs")) or text_value(node.get("coordinate_reference_system")) or text_value(node.get("srs"))
+    if crs:
+        context["crs"] = crs
+
+    resolution = normalize_resolution_m(
+        node.get("resolution_m")
+        if node.get("resolution_m") not in (None, "")
+        else node.get("resolution")
+        if node.get("resolution") not in (None, "")
+        else node.get("cell_size_m")
+        if node.get("cell_size_m") not in (None, "")
+        else node.get("cell_size")
+        if node.get("cell_size") not in (None, "")
+        else node.get("grid_resolution_m")
+    )
+    if resolution is not None:
+        context["resolution_m"] = resolution
+
+    product_version = text_value(node.get("product_version")) or text_value(node.get("version"))
+    if product_version:
+        context["product_version"] = product_version
+    product_date = text_value(node.get("product_date")) or text_value(node.get("delivery_date")) or text_value(node.get("date"))
+    if product_date:
+        context["product_date"] = product_date
+
+    staging_root = text_value(node.get("expected_staging_root")) or text_value(node.get("staging_root"))
+    if staging_root:
+        context["expected_staging_root"] = staging_root
+    staged_path = text_value(node.get("expected_staged_path")) or text_value(node.get("staged_path"))
+    if staged_path:
+        context["expected_staged_path"] = staged_path
+
+    if isinstance(node.get("extent_lv95_m"), dict):
+        context["extent_lv95_m"] = node["extent_lv95_m"]
+    return context
+
+
+def looks_like_catalog_tile_record(node: dict[str, Any], context: dict[str, Any]) -> bool:
+    tile_id = text_value(node.get("tile_id")) or text_value(node.get("tile_code")) or text_value(node.get("tile"))
+    product_id = text_value(node.get("product_id")) or text_value(node.get("source_product")) or text_value(context.get("product_id"))
+    return bool(tile_id and product_id)
+
+
+def normalize_catalog_tile_record(
+    node: dict[str, Any],
+    inherited: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    inherited = inherited or {}
+    tile_id = text_value(node.get("tile_id")) or text_value(node.get("tile_code")) or text_value(node.get("tile"))
+    product_id = (
+        text_value(node.get("product_id"))
+        or text_value(inherited.get("product_id"))
+        or text_value(node.get("source_product"))
+        or text_value(inherited.get("source_product"))
+    )
+    if not tile_id or not product_id:
+        return None
+
+    source_product = text_value(node.get("source_product")) or text_value(inherited.get("source_product")) or product_id
+    source_filename = text_value(node.get("source_filename")) or text_value(node.get("filename"))
+    source_url = text_value(node.get("source_url")) or text_value(node.get("url"))
+    product_version = text_value(node.get("product_version")) or text_value(inherited.get("product_version"))
+    product_date = text_value(node.get("product_date")) or text_value(inherited.get("product_date"))
+    crs = text_value(node.get("crs")) or text_value(inherited.get("crs")) or text_value(node.get("coordinate_reference_system"))
+    resolution_m = normalize_resolution_m(
+        node.get("resolution_m")
+        if node.get("resolution_m") not in (None, "")
+        else node.get("resolution")
+        if node.get("resolution") not in (None, "")
+        else node.get("cell_size_m")
+        if node.get("cell_size_m") not in (None, "")
+        else node.get("cell_size")
+        if node.get("cell_size") not in (None, "")
+        else inherited.get("resolution_m")
+    )
+    expected_staged_path = text_value(node.get("expected_staged_path")) or text_value(inherited.get("expected_staged_path"))
+    expected_staging_root = text_value(node.get("expected_staging_root")) or text_value(inherited.get("expected_staging_root"))
+    if not expected_staging_root and expected_staged_path:
+        expected_staging_root = str(expected_staging_root_for_text(expected_staged_path))
+    if not expected_staged_path and expected_staging_root:
+        expected_staged_path = expected_staging_root
+    extent_lv95_m = node.get("extent_lv95_m") if isinstance(node.get("extent_lv95_m"), dict) else {}
+    if not extent_lv95_m and isinstance(inherited.get("extent_lv95_m"), dict):
+        extent_lv95_m = inherited.get("extent_lv95_m")
+
+    return {
+        "product_id": product_id,
+        "source_product": source_product,
+        "tile_id": tile_id,
+        "source_filename": source_filename,
+        "source_url": source_url,
+        "product_version": product_version,
+        "product_date": product_date,
+        "crs": crs,
+        "resolution_m": resolution_m,
+        "expected_staging_root": expected_staging_root,
+        "expected_staged_path": expected_staged_path,
+        "license": text_value(node.get("license")) or text_value(inherited.get("license")),
+        "extent_lv95_m": extent_lv95_m,
+    }
+
+
+def expected_staging_root_for_text(value: str) -> Path:
+    path = Path(value)
+    return path.parent if path.suffix else path
+
+
+def normalize_resolution_m(value: Any) -> float | int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else value
+    text = text_value(value).lower()
+    for token in ("meters", "metres", "meter", "metre", "m"):
+        text = text.replace(token, "")
+    try:
+        numeric = float(text.strip())
+    except ValueError:
+        return None
+    return int(numeric) if numeric.is_integer() else numeric
+
+
+def catalog_tile_sort_key(entry: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        entry.get("tile_id") or "",
+        entry.get("product_id") or "",
+        entry.get("source_product") or "",
+        entry.get("resolution_m") if entry.get("resolution_m") is not None else float("inf"),
+        entry.get("product_version") or "",
+        entry.get("product_date") or "",
+        entry.get("source_filename") or "",
+    )
+
+
+def catalog_product_sort_key(entry: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        entry.get("product_id") or "",
+        entry.get("source_product") or "",
+        entry.get("resolution_m") if entry.get("resolution_m") is not None else float("inf"),
+        entry.get("crs") or "",
+        entry.get("product_version") or "",
+        entry.get("product_date") or "",
+        entry.get("expected_staging_root") or "",
+    )
+
+
+def tile_catalog_blockers(
+    wanted_tile_ids: list[str],
+    catalog_path: Path,
+    catalog: dict[str, Any],
+    catalog_ready: bool,
+    catalog_status: str,
+) -> list[str]:
+    blockers: list[str] = []
+    if not catalog_ready:
+        blockers.append(f"missing AOI tile catalog metadata at {catalog_path}")
+        return blockers
+    if catalog_status in {"blocked", "blocked_missing_inputs", "blocked_no_catalog_metadata", "missing_metadata"}:
+        blockers.append(f"AOI tile catalog reports catalog_status={catalog_status}")
+    records = catalog_tile_records(catalog)
+    if not records:
+        blockers.append(f"AOI tile catalog at {catalog_path} contains no tile records")
+        return blockers
+    catalog_tile_ids = {entry["tile_id"] for entry in records if entry.get("tile_id")}
+    missing = sorted(tile_id for tile_id in wanted_tile_ids if tile_id not in catalog_tile_ids)
+    blockers.extend(f"swissALTI3D tile catalog missing AOI candidate tile {tile_id}" for tile_id in missing)
+    return blockers
 
 
 def tile_grid_floor(value: float) -> int:
@@ -1476,8 +1787,11 @@ def _render_aoi_tile_discovery(report: dict[str, Any]) -> list[str]:
         f"- discovery_status: {report.get('discovery_status', '')}",
         f"- catalog_path: {report.get('catalog_path', '')}",
         f"- catalog_status: {report.get('catalog_status', '')}",
+        f"- catalog_blockers: {', '.join(report.get('catalog_blockers') or []) if report.get('catalog_blockers') else 'none'}",
+        f"- catalog_manifest: {report.get('catalog_manifest', {})}",
         f"- tile_catalog_status: {report.get('tile_catalog_status', '')}",
         f"- tile_candidate_count: {report.get('tile_candidate_count', 0)}",
+        f"- product_candidate_count: {report.get('product_candidate_count', 0)}",
     ]
     if report.get("missing_catalog_inputs"):
         lines.append("- missing_catalog_inputs:")
@@ -1488,17 +1802,30 @@ def _render_aoi_tile_discovery(report: dict[str, Any]) -> list[str]:
         lines.append("- tile_candidates:")
         for entry in report["tile_candidates"]:
             lines.append(
-                f"  - {entry.get('tile_id', '')}: {entry.get('source_product', '')}, "
-                f"source_filename={entry.get('source_filename', '')}"
+                f"  - {entry.get('tile_id', '')}: product_id={entry.get('product_id', '')}, "
+                f"source_product={entry.get('source_product', '')}, resolution_m={entry.get('resolution_m', '')}, "
+                f"crs={entry.get('crs', '')}, source_filename={entry.get('source_filename', '')}"
             )
     else:
         lines.append("- tile_candidates: none")
+    if report.get("product_candidates"):
+        lines.append("- product_candidates:")
+        for entry in report["product_candidates"]:
+            lines.append(
+                f"  - {entry.get('product_id', '')}: tile_ids={', '.join(entry.get('tile_ids') or []) or 'none'}, "
+                f"resolution_m={entry.get('resolution_m', '')}, crs={entry.get('crs', '')}, "
+                f"expected_staging_root={entry.get('expected_staging_root', '')}"
+            )
+    else:
+        lines.append("- product_candidates: none")
     if report.get("required_products"):
         lines.append("- required_products:")
         for entry in report["required_products"]:
             lines.append(
                 f"  - {entry.get('category', '')}: {entry.get('coverage_descriptor', '')}, "
-                f"staging_root={entry.get('expected_staging_root', '')}"
+                f"staging_root={entry.get('expected_staging_root', '')}, "
+                f"tile_candidate_count={entry.get('tile_candidate_count', 0)}, "
+                f"product_candidate_count={entry.get('product_candidate_count', 0)}"
             )
     else:
         lines.append("- required_products: none")

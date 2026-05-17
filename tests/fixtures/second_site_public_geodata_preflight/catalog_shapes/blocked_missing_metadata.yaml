@@ -1,0 +1,5 @@
+schema_version: swisstopo_aoi_tile_catalog_v1
+catalog_status: blocked_missing_inputs
+source_product: swissALTI3D
+product_id: swissalti3d_catalog_missing
+reason: AOI tile catalog metadata has not been staged.

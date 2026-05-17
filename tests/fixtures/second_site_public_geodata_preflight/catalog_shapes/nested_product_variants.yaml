@@ -1,0 +1,41 @@
+schema_version: swisstopo_aoi_tile_catalog_v1
+catalog_status: metadata_only
+source_product: swissALTI3D
+product_family: swissALTI3D
+products:
+  - product_id: swissalti3d_2m
+    source_product: swissALTI3D
+    crs: EPSG:2056
+    resolution_m: 2
+    product_version: 2026.1
+    product_date: 2026-03-01
+    expected_staging_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/variant_2m
+    tiles:
+      - tile_id: 2793-1180
+        source_product: swissALTI3D
+        source_filename: swissalti3d_2026_2793-1180_2m_cog.tif
+        source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+        license: swisstopo terms of use; verify current terms before any redistribution
+        extent_lv95_m:
+          xmin: 2793000.0
+          ymin: 1180000.0
+          xmax: 2794000.0
+          ymax: 1181000.0
+  - product_id: swissalti3d_0_5m
+    source_product: swissALTI3D
+    crs: EPSG:2056
+    resolution_m: 0.5
+    product_version: 2026.1
+    product_date: 2026-03-01
+    expected_staging_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/variant_0_5m
+    tiles:
+      - tile_id: 2793-1180
+        source_product: swissALTI3D
+        source_filename: swissalti3d_2026_2793-1180_0_5m_cog.tif
+        source_url: https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+        license: swisstopo terms of use; verify current terms before any redistribution
+        extent_lv95_m:
+          xmin: 2793000.0
+          ymin: 1180000.0
+          xmax: 2794000.0
+          ymax: 1181000.0

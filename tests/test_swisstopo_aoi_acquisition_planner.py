@@ -13,6 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_swisstopo_aoi_acquisition.py"
 PREFLIGHT_SCRIPT_PATH = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
+NESTED_CATALOG_FIXTURE = (
+    ROOT / "tests/fixtures/second_site_public_geodata_preflight/catalog_shapes/nested_product_variants.yaml"
+)
+BLOCKED_CATALOG_FIXTURE = (
+    ROOT / "tests/fixtures/second_site_public_geodata_preflight/catalog_shapes/blocked_missing_metadata.yaml"
+)
 
 
 def _load_module(path: Path, name: str):
@@ -61,6 +67,14 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2793-1180")
+        self.assertEqual(report["aoi_tile_discovery"]["catalog_manifest"]["catalog_product_id"], "swissalti3d_2m")
+        self.assertEqual(report["aoi_tile_discovery"]["product_candidate_count"], 1)
+        self.assertEqual(report["aoi_tile_discovery"]["product_candidates"][0]["product_id"], "swissalti3d_2m")
+        self.assertTrue(
+            report["aoi_tile_discovery"]["product_candidates"][0]["expected_staging_root"].endswith(
+                "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1"
+            )
+        )
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
@@ -136,8 +150,85 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertIn("public_context_acquisition_plan:", text_report)
         self.assertIn("unresolved_acquisition_decisions:", text_report)
         self.assertIn("deferred_public_context_categories:", text_report)
+        self.assertIn("catalog_blockers:", text_report)
+        self.assertIn("product_candidates:", text_report)
 
-    def _write_site_config(self, repo_root: Path) -> Path:
+    def test_nested_catalog_variants_report_multiple_product_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._set_catalog_fixture(config_path, NESTED_CATALOG_FIXTURE)
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path)
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
+
+        discovery = report["aoi_tile_discovery"]
+        self.assertEqual(discovery["discovery_status"], "ready")
+        self.assertEqual(discovery["tile_candidate_count"], 2)
+        self.assertEqual(discovery["product_candidate_count"], 2)
+        self.assertEqual(
+            [entry["product_id"] for entry in discovery["product_candidates"]],
+            ["swissalti3d_0_5m", "swissalti3d_2m"],
+        )
+        self.assertEqual([entry["resolution_m"] for entry in discovery["product_candidates"]], [0.5, 2])
+        self.assertEqual([entry["tile_id"] for entry in discovery["tile_candidates"]], ["2793-1180", "2793-1180"])
+        self.assertEqual([entry["product_id"] for entry in discovery["tile_candidates"]], ["swissalti3d_0_5m", "swissalti3d_2m"])
+        self.assertTrue(
+            discovery["product_candidates"][0]["expected_staging_root"].endswith(
+                "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/variant_0_5m"
+            )
+        )
+        self.assertTrue(
+            discovery["product_candidates"][1]["expected_staging_root"].endswith(
+                "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/variant_2m"
+            )
+        )
+
+    def test_blocked_catalog_fixture_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._set_catalog_fixture(config_path, BLOCKED_CATALOG_FIXTURE)
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path)
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
+
+        discovery = report["aoi_tile_discovery"]
+        self.assertEqual(discovery["discovery_status"], "blocked_missing_inputs")
+        self.assertEqual(discovery["catalog_status"], "blocked_missing_inputs")
+        self.assertTrue(discovery["catalog_blockers"])
+        self.assertEqual(discovery["tile_candidate_count"], 0)
+        self.assertEqual(discovery["product_candidate_count"], 0)
+        self.assertEqual(discovery["tile_candidates"], [])
+        self.assertEqual(discovery["product_candidates"], [])
+        self.assertEqual(report["planner_status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_boundary_status"], "deferred_public_context_inputs")
+
+    def _write_site_config(self, repo_root: Path, catalog_fixture: Path | None = None) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
         config_data = yaml.safe_load(config_source.read_text(encoding="utf-8"))
         config_data["acquisition_manifest_path"] = str(
@@ -146,6 +237,11 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
+
+    def _set_catalog_fixture(self, config_path: Path, catalog_fixture: Path) -> None:
+        config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        config_data["expected_aoi_tile_catalog_path"] = str(catalog_fixture)
+        config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-147: Harden AOI Tile Discovery Against Real Swisstopo Catalog Shapes
-
-Goal: Make AOI-to-product discovery robust to realistic swisstopo catalog
-records, product variants, and blocked/no-catalog states.
-
-Capability gap reduced: Swiss-wide workflow automation still depends on
-catalog assumptions that have only been fixture-tested narrowly.
-
-Why this outranks alternatives: every future AOI workflow starts with product
-and tile discovery; brittle discovery blocks portability before simulation can
-begin.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `data/datasets.yaml`
-- `docs/swisstopo_data_strategy.md`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-
-Deliverables:
-
-- Expanded deterministic catalog parsing for product ids, tile ids, CRS,
-  resolution, date/version, and expected staging roots.
-- Fixture-backed tests for multiple product shapes and clean blocked states.
-- No-download command output suitable for AOI-to-prepared-pilot composition.
-
-Definition of done:
-
-- AOI tile discovery produces stable product/tile manifests for realistic
-  catalog fixtures and fails closed when catalog metadata is absent.
-
-Boundaries: No downloads, no license-sensitive raw data commits, no ensemble,
-and no operational claim.
-
 ### TB-148: Define Public Geodata Cache And Provenance Contract
 
 Goal: Define the deterministic cache layout, checksum/provenance fields, and

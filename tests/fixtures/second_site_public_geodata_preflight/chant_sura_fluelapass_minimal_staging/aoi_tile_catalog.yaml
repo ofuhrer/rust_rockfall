@@ -1,6 +1,10 @@
 schema_version: swisstopo_aoi_tile_catalog_v1
 catalog_status: metadata_only
 source_product: swissALTI3D
+product_id: swissalti3d_2m
+crs: EPSG:2056
+resolution_m: 2
+expected_staging_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1
 tile_size_m: 1000
 tiles:
   - tile_id: 2699-1179

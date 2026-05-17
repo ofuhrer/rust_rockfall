@@ -353,8 +353,11 @@ def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
         f"- discovery_status: {report.get('discovery_status', '')}",
         f"- catalog_path: {report.get('catalog_path', '')}",
         f"- catalog_status: {report.get('catalog_status', '')}",
+        f"- catalog_blockers: {', '.join(report.get('catalog_blockers') or []) if report.get('catalog_blockers') else 'none'}",
+        f"- catalog_manifest: {report.get('catalog_manifest', {})}",
         f"- tile_catalog_status: {report.get('tile_catalog_status', '')}",
         f"- tile_candidate_count: {report.get('tile_candidate_count', 0)}",
+        f"- product_candidate_count: {report.get('product_candidate_count', 0)}",
     ]
     if report.get("missing_catalog_inputs"):
         rendered.append("- missing_catalog_inputs:")
@@ -365,17 +368,30 @@ def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
         rendered.append("- tile_candidates:")
         for entry in report["tile_candidates"]:
             rendered.append(
-                f"  - {entry.get('tile_id', '')}: {entry.get('source_product', '')}, "
-                f"source_filename={entry.get('source_filename', '')}"
+                f"  - {entry.get('tile_id', '')}: product_id={entry.get('product_id', '')}, "
+                f"source_product={entry.get('source_product', '')}, resolution_m={entry.get('resolution_m', '')}, "
+                f"crs={entry.get('crs', '')}, source_filename={entry.get('source_filename', '')}"
             )
     else:
         rendered.append("- tile_candidates: none")
+    if report.get("product_candidates"):
+        rendered.append("- product_candidates:")
+        for entry in report["product_candidates"]:
+            rendered.append(
+                f"  - {entry.get('product_id', '')}: tile_ids={', '.join(entry.get('tile_ids') or []) or 'none'}, "
+                f"resolution_m={entry.get('resolution_m', '')}, crs={entry.get('crs', '')}, "
+                f"expected_staging_root={entry.get('expected_staging_root', '')}"
+            )
+    else:
+        rendered.append("- product_candidates: none")
     if report.get("required_products"):
         rendered.append("- required_products:")
         for entry in report["required_products"]:
             rendered.append(
                 f"  - {entry.get('category', '')}: {entry.get('coverage_descriptor', '')}, "
-                f"staging_root={entry.get('expected_staging_root', '')}"
+                f"staging_root={entry.get('expected_staging_root', '')}, "
+                f"tile_candidate_count={entry.get('tile_candidate_count', 0)}, "
+                f"product_candidate_count={entry.get('product_candidate_count', 0)}"
             )
     else:
         rendered.append("- required_products: none")
