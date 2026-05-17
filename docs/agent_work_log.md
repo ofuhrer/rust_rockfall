@@ -2575,3 +2575,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no threshold tuning to match outcomes, no field-validation claim, no operational release-zone claim, no ensemble run, and no scale-up authorization.
 - Next task: `TB-151`
+
+### TB-151
+- Date: 2026-05-17
+- Commit: local
+- Objective: generalize deterministic block-scenario generation so candidate source-zone metadata and a policy template can produce provenance-aware tables without Tschamut-only identifiers.
+- Files changed: `scripts/generate_tschamut_block_scenario_tables.py`, `tests/test_tschamut_block_scenario_table_generation.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a generic candidate-source-zone report path and CLI aliases while keeping the Tschamut defaults as a compatibility wrapper.
+  - Introduced provenance-aware manifests with resolved source-zone ids, scenario-family ids, and explicit conditional-only weighting flags for both the legacy summary table and the policy-family table.
+  - Added regression coverage for the frozen Tschamut summary, the existing policy-family expansion, and a synthetic non-Tschamut candidate that does not depend on the committed Tschamut reference table.
+  - Removed TB-151 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_tschamut_block_scenario_tables.py tests/test_tschamut_block_scenario_table_generation.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: no block-population fitting, no annual-frequency semantics, no physics changes, and no operational claim.
+- Next task: `TB-152`

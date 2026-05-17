@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-151: Generalize Scenario Generation To Candidate Source Zones
-
-Goal: Generate deterministic block-scenario tables for generic candidate source
-zones rather than only the frozen Tschamut policy/table pair.
-
-Capability gap reduced: handcrafted scenario semantics still limit AOI and
-second-site workflow portability.
-
-Why this outranks alternatives: AOI preparation needs release-zone and scenario
-generation to compose without Tschamut-only identifiers.
-
-Inspect first:
-
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/plan_pragmatic_release_plan.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `tests/test_tschamut_block_scenario_table_generation.py`
-
-Deliverables:
-
-- A site-agnostic scenario-generation path or wrapper that accepts candidate
-  source-zone metadata and a policy template.
-- Provenance-aware scenario manifests with stable ids and explicit
-  conditional-only weighting semantics.
-- Tests for Tschamut compatibility and a synthetic non-Tschamut candidate.
-
-Definition of done:
-
-- Scenario tables can be generated deterministically for a generic candidate
-  source zone while preserving non-frequency and non-operational boundaries.
-
-Boundaries: No block-population fitting, no annual frequency, no physics
-changes, and no operational claim.
-
 ### TB-152: Emit Runnable Case Skeletons From AOI Dry Run
 
 Goal: Extend the site-level AOI-to-command-plan dry run so it can emit

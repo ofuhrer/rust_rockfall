@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Generate deterministic Tschamut block-scenario tables from policy inputs.
+"""Generate deterministic candidate-source-zone block-scenario tables.
 
-This helper stays inside the non-frequency boundary. It reconstructs the
+This helper stays inside the non-frequency boundary. It can reconstruct the
 checked-in Tschamut scenario table from committed policy plus release metadata
-and can also emit alternate non-frequency scenario-family templates that keep
-conditional sampling semantics explicit.
+and can also emit deterministic block-scenario family tables for a generic
+candidate source zone plus a policy template.
 
 The default template reproduces the current single-row summary table by
 aggregating the committed release-point metadata. A policy-family template is
-also available for deterministic block-scenario expansion from the same policy
-record without introducing annual frequency, physical probability, or fitted
-population models.
+also available for deterministic block-scenario expansion from a candidate
+source-zone record without introducing annual frequency, physical probability,
+or fitted population models.
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_VERSION = "tschamut_block_scenario_table_generation_v1"
-MANIFEST_SCHEMA_VERSION = "tschamut_block_scenario_table_generation_manifest_v1"
-DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
-DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
+SCHEMA_VERSION = "candidate_source_zone_block_scenario_generation_v1"
+MANIFEST_SCHEMA_VERSION = "candidate_source_zone_block_scenario_generation_manifest_v1"
+DEFAULT_POLICY_TEMPLATE = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+DEFAULT_CANDIDATE_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
 DEFAULT_RELEASE_POINTS = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv"
 DEFAULT_SCENARIO_TABLE = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
 
@@ -67,10 +67,18 @@ AVAILABLE_TEMPLATES = {
     "observed_rows_summary_v1": "single-row summary from deterministic release metadata aggregation",
     "policy_block_family_v1": "one row per policy block scenario with conditional weights preserved",
 }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
-    parser.add_argument("--source-zone-metadata", type=Path, default=DEFAULT_SOURCE_ZONE_METADATA)
+    parser.add_argument("--policy", "--policy-template", dest="policy_template", type=Path, default=DEFAULT_POLICY_TEMPLATE)
+    parser.add_argument(
+        "--source-zone-metadata",
+        "--candidate-source-zone-metadata",
+        dest="candidate_source_zone_metadata",
+        type=Path,
+        default=DEFAULT_CANDIDATE_SOURCE_ZONE_METADATA,
+    )
     parser.add_argument("--release-points", type=Path, default=DEFAULT_RELEASE_POINTS)
     parser.add_argument("--reference-scenario-table", type=Path, default=DEFAULT_SCENARIO_TABLE)
     parser.add_argument("--template", choices=tuple(AVAILABLE_TEMPLATES.keys()), default="observed_rows_summary_v1")
@@ -80,8 +88,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = build_report(
-        policy_path=args.policy,
-        source_zone_metadata_path=args.source_zone_metadata,
+        policy_template_path=args.policy_template,
+        candidate_source_zone_metadata_path=args.candidate_source_zone_metadata,
         release_points_path=args.release_points,
         reference_scenario_table_path=args.reference_scenario_table,
         template_id=args.template,
@@ -107,38 +115,75 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_report(
     *,
-    policy_path: Path = DEFAULT_POLICY,
-    source_zone_metadata_path: Path = DEFAULT_SOURCE_ZONE_METADATA,
+    policy_path: Path = DEFAULT_POLICY_TEMPLATE,
+    source_zone_metadata_path: Path = DEFAULT_CANDIDATE_SOURCE_ZONE_METADATA,
+    release_points_path: Path = DEFAULT_RELEASE_POINTS,
+    reference_scenario_table_path: Path = DEFAULT_SCENARIO_TABLE,
+    template_id: str = "observed_rows_summary_v1",
+) -> dict[str, Any]:
+    return build_candidate_source_zone_report(
+        policy_template_path=policy_path,
+        candidate_source_zone_metadata_path=source_zone_metadata_path,
+        release_points_path=release_points_path,
+        reference_scenario_table_path=reference_scenario_table_path,
+        template_id=template_id,
+    )
+
+
+def build_candidate_source_zone_report(
+    *,
+    policy_template_path: Path = DEFAULT_POLICY_TEMPLATE,
+    candidate_source_zone_metadata_path: Path = DEFAULT_CANDIDATE_SOURCE_ZONE_METADATA,
     release_points_path: Path = DEFAULT_RELEASE_POINTS,
     reference_scenario_table_path: Path = DEFAULT_SCENARIO_TABLE,
     template_id: str = "observed_rows_summary_v1",
 ) -> dict[str, Any]:
     missing_inputs = [
         display_path(path)
-        for path in (policy_path, source_zone_metadata_path, release_points_path)
+        for path in (
+            policy_template_path,
+            candidate_source_zone_metadata_path,
+            *(
+                (release_points_path,)
+                if template_id == "observed_rows_summary_v1"
+                else ()
+            ),
+        )
         if not path.exists()
     ]
     if missing_inputs:
         return blocked_report(
             missing_inputs,
-            policy_path=policy_path,
-            source_zone_metadata_path=source_zone_metadata_path,
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
             release_points_path=release_points_path,
             reference_scenario_table_path=reference_scenario_table_path,
             template_id=template_id,
         )
 
-    policy = load_yaml(policy_path)
-    source_zone_metadata = load_yaml(source_zone_metadata_path)
-    release_rows = load_csv_rows(release_points_path)
+    policy = load_yaml(policy_template_path)
+    candidate_source_zone_metadata = load_yaml(candidate_source_zone_metadata_path)
+    release_rows = load_csv_rows(release_points_path) if template_id == "observed_rows_summary_v1" and release_points_path.exists() else []
 
-    source_zone_id = text_value(source_zone_metadata.get("source_zone_id"))
-    policy_source_zone_id = text_value(get_nested_value(policy, ("source_zone_policy", "source_zone_id")))
-    if source_zone_id != policy_source_zone_id:
+    source_zone_id, policy_source_zone_id, candidate_source_zone_id = resolve_source_zone_ids(
+        policy,
+        candidate_source_zone_metadata,
+    )
+    if not source_zone_id:
         return blocked_report(
-            [f"source zone mismatch between metadata ({source_zone_id!r}) and policy ({policy_source_zone_id!r})"],
-            policy_path=policy_path,
-            source_zone_metadata_path=source_zone_metadata_path,
+            ["candidate source-zone metadata must define source_zone_id"],
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
+            release_points_path=release_points_path,
+            reference_scenario_table_path=reference_scenario_table_path,
+            template_id=template_id,
+            blocked_reason="missing source zone id",
+        )
+    if policy_source_zone_id and candidate_source_zone_id and policy_source_zone_id != candidate_source_zone_id:
+        return blocked_report(
+            [f"source zone mismatch between metadata ({candidate_source_zone_id!r}) and policy ({policy_source_zone_id!r})"],
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
             release_points_path=release_points_path,
             reference_scenario_table_path=reference_scenario_table_path,
             template_id=template_id,
@@ -149,8 +194,8 @@ def build_report(
     if text_value(release_sampling.get("sampling_weight_semantics")) not in ("", "conditional_sampling_only"):
         return blocked_report(
             ["policy release sampling semantics must remain conditional_sampling_only"],
-            policy_path=policy_path,
-            source_zone_metadata_path=source_zone_metadata_path,
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
             release_points_path=release_points_path,
             reference_scenario_table_path=reference_scenario_table_path,
             template_id=template_id,
@@ -160,45 +205,47 @@ def build_report(
     if text_value(get_nested_value(policy, ("block_scenario_policy", "sampling_weight_semantics"))) not in ("", "conditional_sampling_only"):
         return blocked_report(
             ["policy block sampling semantics must remain conditional_sampling_only"],
-            policy_path=policy_path,
-            source_zone_metadata_path=source_zone_metadata_path,
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
             release_points_path=release_points_path,
             reference_scenario_table_path=reference_scenario_table_path,
             template_id=template_id,
             blocked_reason="block sampling semantics changed",
         )
 
-    expected_release_count = source_zone_metadata.get("release_sampling_policy", {}).get("release_count")
-    if isinstance(expected_release_count, int) and expected_release_count != len(release_rows):
+    expected_release_count = candidate_source_zone_metadata.get("release_sampling_policy", {}).get("release_count")
+    if template_id == "observed_rows_summary_v1" and isinstance(expected_release_count, int) and expected_release_count != len(release_rows):
         return blocked_report(
             [
                 f"release row count mismatch: metadata expects {expected_release_count}, release_points.csv has {len(release_rows)} rows"
             ],
-            policy_path=policy_path,
-            source_zone_metadata_path=source_zone_metadata_path,
+            policy_template_path=policy_template_path,
+            candidate_source_zone_metadata_path=candidate_source_zone_metadata_path,
             release_points_path=release_points_path,
             reference_scenario_table_path=reference_scenario_table_path,
             template_id=template_id,
             blocked_reason="release metadata count mismatch",
         )
 
-    release_stats = summarize_release_rows(release_rows)
+    release_stats = summarize_release_rows(release_rows) if template_id == "observed_rows_summary_v1" else {}
     rows = build_rows(
         template_id=template_id,
         policy=policy,
-        source_zone_metadata=source_zone_metadata,
+        source_zone_metadata=candidate_source_zone_metadata,
         release_stats=release_stats,
+        source_zone_id=source_zone_id,
     )
     scenario_manifest = build_manifest(
         template_id=template_id,
         policy=policy,
-        policy_path=policy_path,
-        source_zone_metadata=source_zone_metadata,
-        source_zone_metadata_path=source_zone_metadata_path,
+        policy_path=policy_template_path,
+        source_zone_metadata=candidate_source_zone_metadata,
+        source_zone_metadata_path=candidate_source_zone_metadata_path,
         release_points_path=release_points_path,
         release_stats=release_stats,
         rows=rows,
         reference_scenario_table_path=reference_scenario_table_path,
+        source_zone_id=source_zone_id,
     )
 
     scenario_table_status = "ready"
@@ -231,8 +278,8 @@ def build_report(
             ),
         },
         "source_inputs": {
-            "source_scenario_policy_path": display_path(policy_path),
-            "source_zone_metadata_path": display_path(source_zone_metadata_path),
+            "policy_template_path": display_path(policy_template_path),
+            "candidate_source_zone_metadata_path": display_path(candidate_source_zone_metadata_path),
             "release_points_path": display_path(release_points_path),
             "reference_scenario_table_path": display_path(reference_scenario_table_path),
         },
@@ -243,8 +290,8 @@ def build_report(
 def blocked_report(
     missing_inputs: list[str],
     *,
-    policy_path: Path,
-    source_zone_metadata_path: Path,
+    policy_template_path: Path,
+    candidate_source_zone_metadata_path: Path,
     release_points_path: Path,
     reference_scenario_table_path: Path,
     template_id: str,
@@ -274,8 +321,8 @@ def blocked_report(
             "operational_claims_allowed": False,
             "scale_up_authorized": False,
             "source_inputs": {
-                "source_scenario_policy_path": display_path(policy_path),
-                "source_zone_metadata_path": display_path(source_zone_metadata_path),
+                "policy_template_path": display_path(policy_template_path),
+                "candidate_source_zone_metadata_path": display_path(candidate_source_zone_metadata_path),
                 "release_points_path": display_path(release_points_path),
                 "reference_scenario_table_path": display_path(reference_scenario_table_path),
             },
@@ -289,8 +336,8 @@ def blocked_report(
             "normalized_sampling_share_total": 0.0,
         },
         "source_inputs": {
-            "source_scenario_policy_path": display_path(policy_path),
-            "source_zone_metadata_path": display_path(source_zone_metadata_path),
+            "policy_template_path": display_path(policy_template_path),
+            "candidate_source_zone_metadata_path": display_path(candidate_source_zone_metadata_path),
             "release_points_path": display_path(release_points_path),
             "reference_scenario_table_path": display_path(reference_scenario_table_path),
         },
@@ -303,8 +350,8 @@ def build_rows(
     policy: dict[str, Any],
     source_zone_metadata: dict[str, Any],
     release_stats: dict[str, Any],
+    source_zone_id: str,
 ) -> list[dict[str, Any]]:
-    source_zone_id = text_value(source_zone_metadata.get("source_zone_id"))
     release_sampling = get_nested_mapping(policy, ("source_zone_policy", "release_sampling"))
     block_policy = get_nested_mapping(policy, ("block_scenario_policy",))
     policy_prefix = policy_root_prefix(policy)
@@ -321,8 +368,8 @@ def build_rows(
                 "block_scenario_id": f"{policy_prefix}_{SUMMARY_BLOCK_SCENARIO_SUFFIX}",
                 "block_size_class": SUMMARY_BLOCK_SIZE_CLASS,
                 "block_shape_class": SUMMARY_BLOCK_SHAPE_CLASS,
-                "block_radius_m": release_stats["mean_block_radius_m"],
-                "block_mass_kg": release_stats["mean_block_mass_kg"],
+                "block_radius_m": release_stats.get("mean_block_radius_m", ""),
+                "block_mass_kg": release_stats.get("mean_block_mass_kg", ""),
                 "block_density_kgpm3": "",
                 "release_probability": "",
                 "scenario_probability": "",
@@ -381,6 +428,7 @@ def build_manifest(
     release_stats: dict[str, Any],
     rows: list[dict[str, Any]],
     reference_scenario_table_path: Path,
+    source_zone_id: str,
 ) -> dict[str, Any]:
     source_zone_policy = get_nested_mapping(policy, ("source_zone_policy",))
     release_sampling = get_nested_mapping(source_zone_policy, ("release_sampling",))
@@ -396,21 +444,27 @@ def build_manifest(
         "template_id": template_id,
         "template_description": AVAILABLE_TEMPLATES[template_id],
         "supported_templates": template_summary(),
+        "scenario_family_id": build_scenario_family_id(template_id, policy, source_zone_id),
         "row_count": len(rows),
         "row_ids": [text_value(row.get("scenario_id")) for row in rows],
         "block_scenario_ids": [text_value(row.get("block_scenario_id")) for row in rows],
         "row_id_strategy": row_id_strategy(template_id, policy),
+        "source_zone_provenance": build_source_zone_provenance(
+            candidate_source_zone_metadata=source_zone_metadata,
+            candidate_source_zone_metadata_path=source_zone_metadata_path,
+            policy=policy,
+            source_zone_id=source_zone_id,
+        ),
         "release_metadata_provenance": {
-            "source_zone_id": text_value(source_zone_metadata.get("source_zone_id")),
             "release_sampling_mode": text_value(release_sampling.get("mode")),
             "release_sampling_seed": release_sampling.get("seed"),
             "release_sampling_policy": text_value(release_sampling.get("sampling_weight_semantics")) or "conditional_sampling_only",
-            "release_point_count": release_stats["release_point_count"],
-            "release_point_ids": list(release_stats["release_point_ids"]),
-            "release_mass_kg_mean": release_stats["mean_block_mass_kg"],
-            "release_radius_m_mean": release_stats["mean_block_radius_m"],
-            "release_mass_kg_total": release_stats["sum_block_mass_kg"],
-            "release_radius_m_total": release_stats["sum_block_radius_m"],
+            "release_point_count": release_stats.get("release_point_count", 0),
+            "release_point_ids": list(release_stats.get("release_point_ids", [])),
+            "release_mass_kg_mean": release_stats.get("mean_block_mass_kg", ""),
+            "release_radius_m_mean": release_stats.get("mean_block_radius_m", ""),
+            "release_mass_kg_total": release_stats.get("sum_block_mass_kg", ""),
+            "release_radius_m_total": release_stats.get("sum_block_radius_m", ""),
             "release_point_source_path": display_path(release_points_path),
         },
         "policy_provenance": {
@@ -423,6 +477,7 @@ def build_manifest(
             "source_zone_id": text_value(source_zone_policy.get("source_zone_id")),
             "source_zone_geometry_type": text_value(get_nested_value(source_zone_policy, ("geometry", "type"))),
             "block_population_status": text_value(block_policy.get("block_population_status")),
+            "conditional_only_weighting": True,
             "source_policy_claim_boundary": {
                 "current_allowed_products": list(claim_boundary.get("current_allowed_products", [])),
                 "unsupported_current_claims": list(claim_boundary.get("unsupported_current_claims", [])),
@@ -446,6 +501,7 @@ def build_manifest(
             "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
             "sampling_weights_are_not_physical_probability": True,
             "sampling_weights_are_not_annual_frequency": True,
+            "conditional_only_weighting": True,
         },
         "row_provenance": [
             {
@@ -455,6 +511,8 @@ def build_manifest(
                 "sampling_weight": row.get("sampling_weight"),
                 "normalized_sampling_share": row.get("normalized_sampling_share"),
                 "row_id": text_value(row.get("scenario_id")),
+                "scenario_family_id": build_scenario_family_id(template_id, policy, source_zone_id),
+                "source_zone_id": source_zone_id,
                 "non_frequency_columns": [
                     "release_probability",
                     "scenario_probability",
@@ -465,8 +523,8 @@ def build_manifest(
             for row in rows
         ],
         "source_inputs": {
-            "source_scenario_policy_path": display_path(policy_path),
-            "source_zone_metadata_path": display_path(source_zone_metadata_path),
+            "policy_template_path": display_path(policy_path),
+            "candidate_source_zone_metadata_path": display_path(source_zone_metadata_path),
             "release_points_path": display_path(release_points_path),
             "reference_scenario_table_path": display_path(reference_scenario_table_path),
         },
@@ -493,6 +551,7 @@ def build_manifest(
                 **row,
                 "row_id": text_value(row.get("scenario_id")),
                 "row_kind": template_row_kind(template_id),
+                "scenario_family_id": build_scenario_family_id(template_id, policy, source_zone_id),
                 "non_frequency_columns": [
                     "release_probability",
                     "scenario_probability",
@@ -506,6 +565,7 @@ def build_manifest(
             "path": display_path(reference_scenario_table_path),
             "available": reference_scenario_table_path.exists(),
         },
+        "conditional_only_weighting": True,
     }
 
 
@@ -522,6 +582,53 @@ def summarize_release_rows(release_rows: list[dict[str, str]]) -> dict[str, Any]
         "sum_block_radius_m": round(sum(radius_values), 6),
         "mean_block_mass_kg": round(sum(mass_values) / len(mass_values), 6),
         "mean_block_radius_m": round(sum(radius_values) / len(radius_values), 6),
+    }
+
+
+def resolve_source_zone_ids(
+    policy: dict[str, Any],
+    candidate_source_zone_metadata: dict[str, Any],
+) -> tuple[str, str, str]:
+    policy_source_zone_id = text_value(get_nested_value(policy, ("source_zone_policy", "source_zone_id")))
+    candidate_source_zone_id = text_value(candidate_source_zone_metadata.get("source_zone_id"))
+    resolved_source_zone_id = policy_source_zone_id or candidate_source_zone_id
+    return resolved_source_zone_id, policy_source_zone_id, candidate_source_zone_id
+
+
+def build_scenario_family_id(template_id: str, policy: dict[str, Any], source_zone_id: str) -> str:
+    policy_id = policy_root_prefix(policy) or "scenario"
+    resolved_source_zone_id = text_value(source_zone_id) or "source_zone"
+    return f"{resolved_source_zone_id}__{policy_id}__{template_id}"
+
+
+def build_source_zone_provenance(
+    *,
+    candidate_source_zone_metadata: dict[str, Any],
+    candidate_source_zone_metadata_path: Path,
+    policy: dict[str, Any],
+    source_zone_id: str,
+) -> dict[str, Any]:
+    policy_source_zone_id = text_value(get_nested_value(policy, ("source_zone_policy", "source_zone_id")))
+    candidate_source_zone_id = text_value(candidate_source_zone_metadata.get("source_zone_id"))
+    source_zone_id_source = "candidate_source_zone_metadata"
+    if policy_source_zone_id and candidate_source_zone_id and policy_source_zone_id == candidate_source_zone_id:
+        source_zone_id_source = "policy_and_candidate_match"
+    elif policy_source_zone_id:
+        source_zone_id_source = "policy_template"
+
+    release_sampling_policy = candidate_source_zone_metadata.get("release_sampling_policy", {})
+    geometry = candidate_source_zone_metadata.get("geometry", {})
+    return {
+        "candidate_source_zone_metadata_path": display_path(candidate_source_zone_metadata_path),
+        "candidate_source_zone_id": candidate_source_zone_id,
+        "resolved_source_zone_id": text_value(source_zone_id),
+        "source_zone_id_source": source_zone_id_source,
+        "candidate_source_zone_geometry_type": text_value(geometry.get("type")) if isinstance(geometry, dict) else "",
+        "candidate_source_zone_crs_epsg": candidate_source_zone_metadata.get("crs_epsg"),
+        "candidate_source_zone_vertical_datum": text_value(candidate_source_zone_metadata.get("vertical_datum")),
+        "release_sampling_mode": text_value(release_sampling_policy.get("mode")) if isinstance(release_sampling_policy, dict) else "",
+        "release_sampling_seed": release_sampling_policy.get("seed") if isinstance(release_sampling_policy, dict) else None,
+        "release_sampling_policy": text_value(release_sampling_policy.get("mode")) if isinstance(release_sampling_policy, dict) else "",
     }
 
 
@@ -635,7 +742,7 @@ def display_path(path: Path) -> str:
 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
-        "Tschamut Block-Scenario Table Generation",
+        "Candidate Source-Zone Block-Scenario Table Generation",
         "",
         f"- Schema version: `{report['schema_version']}`",
         f"- Table status: `{report['scenario_table_status']}`",
@@ -644,10 +751,26 @@ def render_text_report(report: dict[str, Any]) -> str:
     ]
     if report.get("blocked_reason"):
         lines.append(f"- Blocked reason: {report['blocked_reason']}")
+    lines.extend(["", "Scenario Family"])
+    lines.append(f"- scenario_family_id: `{report.get('scenario_table_manifest', {}).get('scenario_family_id', '')}`")
     lines.extend(["", "Summary"])
     summary = report.get("scenario_table_summary", {})
     for key in ("row_count", "row_ids", "block_scenario_ids", "policy_sampling_weight_total", "normalized_sampling_share_total"):
         lines.append(f"- {key}: `{summary.get(key)}`")
+    lines.extend(["", "Source Zone Provenance"])
+    provenance = report.get("scenario_table_manifest", {}).get("source_zone_provenance", {})
+    for key in (
+        "candidate_source_zone_metadata_path",
+        "candidate_source_zone_id",
+        "resolved_source_zone_id",
+        "source_zone_id_source",
+        "candidate_source_zone_geometry_type",
+        "candidate_source_zone_crs_epsg",
+        "candidate_source_zone_vertical_datum",
+        "release_sampling_mode",
+        "release_sampling_seed",
+    ):
+        lines.append(f"- {key}: `{provenance.get(key, '')}`")
     lines.extend(["", "Source Inputs"])
     for key, value in report.get("source_inputs", {}).items():
         lines.append(f"- {key}: `{value}`")
