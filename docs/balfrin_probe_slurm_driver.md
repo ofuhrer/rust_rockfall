@@ -74,6 +74,11 @@ any later launch, because they record the exact run root, the bounded
 next-probe recommendation, the reduced-output controls, the metrics collection
 command, and the stop/resume boundary.
 
+The frozen target-area demonstration contract is
+`validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
+Its `balfrin_execution_boundary.command_plan_hook.command` is the read-only
+hook for inspecting the frozen Balfrin command plan without launching a job.
+
 ## SBATCH defaults and constraints
 
 Default submit behavior:

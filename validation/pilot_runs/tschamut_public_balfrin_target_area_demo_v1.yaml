@@ -1,0 +1,100 @@
+schema_version: balfrin_target_area_demo_v1
+pilot_id: tschamut_public_pilot
+run_id: tschamut_public_balfrin_target_area_demo_v1
+contract_status: ready_for_balfrin_target_area_demo
+operational_status: research_diagnostic
+
+target_area:
+  target_area_id: tschamut_public_pilot
+  target_area_name: Tschamut public pilot
+  target_area_label: Tschamut selected-domain Balfrin demonstration area
+  site_extent:
+    crs: EPSG:2056
+    xmin: 2696376.0
+    ymin: 1167384.0
+    xmax: 2696976.0
+    ymax: 1167684.0
+  geodata_manifest_path: data/processed/swisstopo/tschamut_public_pilot_manifest.yaml
+
+input_freeze:
+  target_gate_reproduction_record_path: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+  target_gate_execution_contract_path: validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+  conditional_pilot_gate_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
+  release_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv
+  deposition_points_csv: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+  source_scenario_policy_path: validation/policies/tschamut_public_source_scenario_policy_v1.yaml
+  scenario_family_records:
+    - validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+    - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
+    - validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml
+  scenario_family_basis: conditional_sampling_only
+  scenario_probability_semantics: normalized within a block family; no annual frequency claim
+
+output_mode:
+  validation_output_mode: scalable_conditional
+  hazard_output_profile: scalable_conditional
+  gis_package_mode: pilot_gis_package
+  conditional_curve_export: summary-only
+  grid_csv_export: none
+  export_geotiff: true
+  pilot_gis_package: true
+  no_plots: true
+
+balfrin_execution_boundary:
+  execution_boundary: single_job_balfrin_slurm
+  run_id_policy: deterministic_frozen_run_id
+  run_id: tschamut_public_balfrin_target_area_demo_v1
+  probe_manifest_path: validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml
+  command_plan_hook:
+    helper: scripts/submit_balfrin_probe.py
+    mode: local_command_plan
+    command: PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --local-command-plan
+    purpose: Inspect the frozen Balfrin command plan without launching a job.
+  expected_ignored_output_roots:
+    - validation/private/tschamut_public_pilot/target_gate_v1
+    - validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced
+    - validation/private/tschamut_public_pilot/target_gate_v1_summary_only
+    - hazard/results/tschamut_public_pilot/target_gate_v1
+  execution_notes:
+    - keep the same run id and run root for any later replay of this frozen contract
+    - no job submission is authorized by this record
+    - no new ensemble is authorized by this record
+    - the command-plan hook is read-only and does not launch Balfrin
+
+claim_boundary:
+  current_allowed_product_labels:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  generated_outputs_committed: false
+  raw_geodata_committed: false
+  changes_physics: false
+  changes_defaults: false
+  changes_sampling_weights: false
+  annualized: false
+  physical_probability: false
+  return_period: false
+  risk_or_exposure: false
+  operational_hazard_map: false
+  validated_hazard_map: false
+  operational_claims_allowed: false
+  annual_frequency_claims_allowed: false
+  physical_probability_claims_allowed: false
+  risk_exposure_vulnerability_claims_allowed: false
+  scale_up_authorized: false
+  distributed_execution_authorized: false
+  unsupported_current_claims:
+    - annual_frequency
+    - physical_probability
+    - return_period
+    - risk_map
+    - operational_hazard_map
+
+contract_boundary_summary:
+  - the target area is frozen as the Tschamut selected domain
+  - the release-zone record is the target-gate reproduction evidence set
+  - the scenario family stays conditional and conditional-only
+  - scalable conditional output is retained, but it remains non-operational
+  - no job submission, no new ensemble, and no scale-up authorization are granted

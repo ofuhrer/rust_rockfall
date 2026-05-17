@@ -24,34 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-161: Freeze Target-Area Balfrin Demonstration Inputs
-
-Goal: Define the exact target area, release-zone record, scenario-family basis, output mode, and Balfrin execution boundary for the next full-scale demonstration pass.
-
-Capability gap reduced: Demonstration scope control for a given target area.
-
-Why this outranks alternatives: Downstream execution, metrics, GIS, and interpretation tasks need one frozen target-area contract before they can be reproducible.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`
-
-Deliverables:
-
-- A deterministic target-area demonstration contract or blocked contract report.
-- Expected ignored roots, run id policy, output mode, GIS package mode, and claim boundaries.
-- A command-plan hook for the selected target-area contract.
-
-Definition of done:
-
-- The selected target-area inputs and execution boundary are machine-readable and future tasks can reference them without guessing.
-
-Boundaries: No job submission, no new ensemble, no operational claim, no physical-probability claim, and no scale-up authorization.
-
 ### TB-162: Verify Target-Area Public-Geodata Readiness
 
 Goal: Check whether the frozen target area has all required public geodata, cache manifests, terrain metadata, and context products staged for execution.

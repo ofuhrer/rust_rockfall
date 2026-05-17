@@ -128,6 +128,12 @@ objective are:
    Live interruption/resume evidence has now been recorded for the Balfrin
    demonstration path, while smaller fixture-backed tests remain useful for
    clean-checkout regression coverage.
+   TB-161 freezes the next target-area demonstration contract at
+   `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`,
+   including the Tschamut selected domain, the target-gate reproduction
+   record, the conditional-only scenario-family basis, the scalable
+   conditional output mode, and the single-job Balfrin boundary with a
+   read-only command-plan hook.
 4. Forest and obstacle context is no longer an absent-cache problem; it is a
    limiting interpretation problem. Public context is staged and measured at
    corridor level, and hazard-context overlap has been measured for a narrow

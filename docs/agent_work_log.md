@@ -2766,3 +2766,19 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no hazard build, no generated raster commit, no operational GIS claim, no risk/exposure/vulnerability semantics, and no scale-up claim.
 - Next task: backlog refill needed
+
+### TB-161: Freeze Target-Area Balfrin Demonstration Inputs
+- Date: 2026-05-17
+- Commit: local
+- Objective: freeze the exact Tschamut target area, release-zone record, scenario-family basis, output mode, and single-job Balfrin execution boundary for the next full-scale demonstration pass.
+- Files changed: `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, `tests/test_balfrin_target_area_demo_contract.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a machine-readable target-area demonstration contract with the selected Tschamut domain, frozen target-gate reproduction record, scenario-family basis, output mode, run-id policy, expected ignored roots, and command-plan hook.
+  - Added a focused regression that loads the frozen contract and checks the target area, run-id policy, output mode, ignored roots, and claim-boundary booleans remain stable.
+  - Threaded a short driver note and maturity-snapshot note so later Balfrin tasks can find the frozen target-area contract without guessing its location or boundary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_demo_contract`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml --local-command-plan`
+- Result/status: implemented_fixture_backed
+- Boundaries: no job submission, no new ensemble, no operational claim, no physical-probability claim, and no scale-up authorization.
+- Next task: `TB-162`
