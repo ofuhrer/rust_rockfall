@@ -2130,3 +2130,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: completed
 - Boundaries: no production ensemble was run, no physics or scale-up was changed, and the recommendation stays read-only and non-operational.
 - Next task: `TB-128`
+
+### TB-128: Update Swiss-Wide Envelope From Measured Balfrin Demo
+
+- Date: 2026-05-17
+- Commit: `dd65ca5`
+- Objective: recompute the Swiss-wide planning envelope from measured Balfrin demo evidence while keeping scale-up authorization false.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit planning labels for `no_go`, `defer`, and `allowed_next_probe`, and carried the measured Balfrin demo run root into the report provenance.
+  - Kept the Swiss-wide envelope read-only with `scale_up_authorized=false`, while still projecting runtime, storage, file-count, memory, and job-count bands from measured Balfrin and same-scale evidence.
+  - Strengthened regression coverage for the measured no-go projection, the blocked-missing-inputs path, and the Balfrin provenance fields.
+  - Updated the maturity snapshot and removed TB-128 from the active backlog after the envelope helper change landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py tests/test_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_reducer_runtime_scaling tests.test_balfrin_single_job_execution -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: the envelope remains a planning aid only; no Swiss-wide execution, distributed execution, production ensemble, or operational hazard claim was authorized.
+- Next task: `TB-129`
