@@ -183,9 +183,23 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             ["output_write_kind_bytes", "output_write_kind_seconds", "validation_output_mode"],
         )
         self.assertEqual(report["probe_metrics"]["metric_statuses"]["blocked"], [])
+        self.assertEqual(report["probe_metrics"]["metrics_remediation"]["missing_mandatory_metrics"], [])
+        self.assertEqual(
+            report["probe_metrics"]["metrics_remediation"]["unavailable_ancillary_metrics"],
+            ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
+        )
+        self.assertEqual(
+            report["probe_metrics"]["metrics_remediation"]["next_run_required_metrics"],
+            ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
+        )
+        self.assertEqual(
+            [item["metric"] for item in report["probe_metrics"]["metrics_remediation"]["next_run_collection_checklist"]],
+            ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],
+        )
         self.assertIn("ancillary unavailable states", report["bundle_summary"]["summary"])
         self.assertIn("metric_statuses:", bundle.render_text_report(report))
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
+        self.assertIn("metrics_remediation:", bundle.render_text_report(report))
 
     def test_fixture_backed_override_stays_fixture_backed(self) -> None:
         fixture_path = "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"

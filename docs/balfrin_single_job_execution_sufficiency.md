@@ -122,6 +122,10 @@ boundaries explicit:
 - `metric_statuses.measured`: measured mandatory fields plus any ancillary fields recovered from the live run-root summary
 - `metric_statuses.unavailable`: ancillary fields that the canonical bundle cannot recover from the preserved single-job summary alone
 - `metric_statuses.blocked`: mandatory fields missing from the measured evidence chain
+- `metrics_remediation`: machine-readable next-run collection contract with ordered
+  `missing_mandatory_metrics`, `unavailable_ancillary_metrics`,
+  `next_run_required_metrics`, and `next_run_collection_checklist` entries
+  for every field that remains absent from the preserved evidence chain
 - Restartability metadata must include stable trajectory and reducer plan IDs, plus the observed decision counts for completed chunks.
 - If any mandatory field is absent, the collector reports the run as blocked rather than treating it as feasibility evidence.
 
@@ -156,6 +160,10 @@ mandatory, ancillary, measured, unavailable, and blocked fields explicit so a
 reader can see which fields are measured in the live run-root collector and
 which fields are unavailable in the canonical summary because the preserved
 bundle does not retain the run-root `output_root.scaling_summary` tree.
+The probe-metrics section also exposes `metrics_remediation`, a deterministic
+next-run checklist that enumerates the remaining missing mandatory metrics and
+the high-value ancillary fields that must be preserved in the next measured
+run.
 When evidence is missing, it reports `blocked_missing_inputs` instead of
 fabricating a stronger claim.
 

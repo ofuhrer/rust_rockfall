@@ -24,41 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-156: Add Balfrin Metrics Completeness Remediation Plan
-
-Goal: Turn remaining unavailable or ancillary Balfrin metrics into an explicit
-next-run collection contract.
-
-Capability gap reduced: Measured Balfrin evidence still has gaps around memory
-and split-output provenance when summaries are unavailable.
-
-Why this outranks alternatives: Future Balfrin runs should capture missing
-metrics by design instead of relying on post-hoc reconstruction.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- A machine-readable metrics-remediation section listing missing, unavailable,
-  and next-run-required fields.
-- Collector or evidence-bundle tests proving missing metrics remain explicit
-  rather than silently passing.
-- Updated Balfrin documentation describing what the next measured run must
-  preserve.
-
-Definition of done:
-
-- The evidence bundle exposes a deterministic next-run metrics collection
-  checklist for every unavailable mandatory or high-value ancillary field.
-
-Boundaries: No new run, no synthetic measured metrics, no scale-up claim, and
-no operational claim.
-
 ### TB-157: Connect AOI Case Skeleton To Generic Scenario Generation
 
 Goal: Ensure the AOI case-skeleton dry run can reference the generic

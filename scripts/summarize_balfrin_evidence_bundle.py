@@ -353,6 +353,27 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"      source: {reduced_counts.get('source', 'unknown')}")
             if reduced_counts.get("reason"):
                 lines.append(f"      reason: {reduced_counts.get('reason')}")
+    metrics_remediation = report["probe_metrics"].get("metrics_remediation") or {}
+    if metrics_remediation:
+        lines.append("  metrics_remediation:")
+        lines.append(f"    status: {metrics_remediation.get('status', 'unknown')}")
+        lines.append(f"    missing_mandatory_metrics: {metrics_remediation.get('missing_mandatory_metrics', [])}")
+        lines.append(
+            f"    unavailable_ancillary_metrics: {metrics_remediation.get('unavailable_ancillary_metrics', [])}"
+        )
+        lines.append(
+            f"    next_run_required_metrics: {metrics_remediation.get('next_run_required_metrics', [])}"
+        )
+        checklist = metrics_remediation.get("next_run_collection_checklist") or []
+        if checklist:
+            lines.append("    next_run_collection_checklist:")
+            for item in checklist:
+                lines.append(
+                    "      - "
+                    f"{item.get('metric', 'unknown')}: "
+                    f"{item.get('group', 'unknown')} | "
+                    f"{item.get('status', 'unknown')}"
+                )
     lines.extend(
         [
             "ancillary_metrics:",
@@ -587,6 +608,63 @@ def _metric_status_from_value(
     return payload
 
 
+def _build_metrics_remediation(metric_statuses: dict[str, Any]) -> dict[str, Any]:
+    mandatory_statuses = metric_statuses.get("mandatory", {}) if isinstance(metric_statuses, dict) else {}
+    ancillary_statuses = metric_statuses.get("ancillary", {}) if isinstance(metric_statuses, dict) else {}
+    ordered_fields = [
+        ("mandatory", "wall_time_seconds"),
+        ("mandatory", "memory_peak_mb"),
+        ("mandatory", "validation_output.file_count"),
+        ("mandatory", "validation_output.bytes"),
+        ("mandatory", "hazard_output.file_count"),
+        ("mandatory", "hazard_output.bytes"),
+        ("mandatory", "conditional_curve_row_count"),
+        ("mandatory", "restartability_metadata.trajectory_plan_id"),
+        ("mandatory", "restartability_metadata.reducer_plan_id"),
+        ("mandatory", "restartability_metadata.trajectory_decision_counts"),
+        ("mandatory", "restartability_metadata.reducer_decision_counts"),
+        ("ancillary", "validation_output_mode"),
+        ("ancillary", "output_write_kind_seconds"),
+        ("ancillary", "output_write_kind_bytes"),
+    ]
+    checklist: list[dict[str, Any]] = []
+    missing_mandatory_metrics: list[str] = []
+    unavailable_ancillary_metrics: list[str] = []
+    next_run_required_metrics: list[str] = []
+
+    for group_name, metric_name in ordered_fields:
+        group_statuses = mandatory_statuses if group_name == "mandatory" else ancillary_statuses
+        entry = group_statuses.get(metric_name, {}) if isinstance(group_statuses, dict) else {}
+        status = str(entry.get("status") or "unknown")
+        if status not in {"blocked", "unavailable"}:
+            continue
+        checklist.append(
+            {
+                "metric": metric_name,
+                "group": group_name,
+                "status": status,
+                "source": entry.get("source"),
+                "reason": entry.get("reason", ""),
+                "next_run_required": True,
+            }
+        )
+        next_run_required_metrics.append(metric_name)
+        if group_name == "mandatory":
+            missing_mandatory_metrics.append(metric_name)
+        else:
+            unavailable_ancillary_metrics.append(metric_name)
+
+    remediation_status = "complete" if not next_run_required_metrics else "action_required"
+    return {
+        "schema_version": "balfrin_probe_metrics_remediation_v1",
+        "status": remediation_status,
+        "missing_mandatory_metrics": missing_mandatory_metrics,
+        "unavailable_ancillary_metrics": unavailable_ancillary_metrics,
+        "next_run_required_metrics": next_run_required_metrics,
+        "next_run_collection_checklist": checklist,
+    }
+
+
 def _derive_metric_statuses(
     *,
     mandatory: dict[str, Any],
@@ -757,6 +835,9 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
     metric_statuses = metrics.get("metric_statuses")
     if not isinstance(metric_statuses, dict):
         metric_statuses = _derive_metric_statuses(mandatory=mandatory, ancillary_metrics=ancillary_metrics)
+    metrics_remediation = metrics.get("metrics_remediation")
+    if not isinstance(metrics_remediation, dict):
+        metrics_remediation = _build_metrics_remediation(metric_statuses)
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
         "wall_time_seconds": wall_time.get("value"),
@@ -775,6 +856,7 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
         "ancillary_metrics": ancillary_metrics,
         "ancillary_unavailable_metrics": ancillary_unavailable_metrics,
         "metric_statuses": metric_statuses,
+        "metrics_remediation": metrics_remediation,
         "output_write_kind_seconds": ancillary_metrics.get("output_write_kind_seconds", {}).get("value", {}),
         "output_write_kind_bytes": ancillary_metrics.get("output_write_kind_bytes", {}).get("value", {}),
     }
@@ -1025,7 +1107,7 @@ def summarize_bundle(
     if bundle_status == "measured":
         return (
             "Balfrin readiness, metrics, outputs, GIS / COG status, ancillary unavailable states, "
-            "restartability, and interpretation checks are measured and bundled with claim boundaries intact."
+            "restartability, interpretation checks, and next-run remediation fields are measured and bundled with claim boundaries intact."
         )
     if bundle_status == "fixture_backed":
         return "Balfrin evidence is fixture-backed rather than measured; the bundle keeps that distinction explicit."

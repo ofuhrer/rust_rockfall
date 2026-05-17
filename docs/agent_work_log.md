@@ -2680,3 +2680,24 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no job submission, no ensemble execution, no distributed execution, no scale-up authorization, and no operational or physical-probability claims.
 - Next task: `TB-156`
+
+### TB-156: Add Balfrin Metrics Completeness Remediation Plan
+- Date: 2026-05-17
+- Commit: local
+- Objective: turn the remaining unavailable or ancillary Balfrin probe metrics into an explicit next-run collection contract.
+- Files changed: `scripts/collect_balfrin_probe_metrics.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_probe_driver.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a machine-readable `metrics_remediation` contract to the probe collector so missing mandatory fields, unavailable ancillary fields, and the ordered next-run-required checklist stay explicit in the JSON output.
+  - Mirrored the same remediation contract into the canonical Balfrin evidence bundle and rendered it in the text summary so the review artifact exposes the same next-run collection checklist.
+  - Updated the Balfrin sufficiency note and focused tests to describe and assert the deterministic preservation contract for the next measured run.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_parses_synthetic_outputs tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_collect_probe_metrics_reports_blocked_incomplete_root tests.test_balfrin_probe_driver.BalfrinProbeDriverTests.test_metrics_contract_marks_ancillary_fields_unavailable_without_blocking_complete_run`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle.BalfrinEvidenceBundleTests.test_current_report_is_measured_and_tracks_section_provenance`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new Balfrin run, no synthetic measured metrics, no scale-up claim, and no operational claim.
+- Next task: `TB-157`

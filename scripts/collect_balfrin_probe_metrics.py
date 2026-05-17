@@ -219,6 +219,66 @@ def _missing_metrics(metrics: dict[str, Any]) -> list[str]:
     return missing
 
 
+def _metrics_remediation(
+    *,
+    metric_statuses: dict[str, Any],
+) -> dict[str, Any]:
+    mandatory_statuses = metric_statuses.get("mandatory", {}) if isinstance(metric_statuses, dict) else {}
+    ancillary_statuses = metric_statuses.get("ancillary", {}) if isinstance(metric_statuses, dict) else {}
+    ordered_fields = [
+        ("mandatory", "wall_time_seconds"),
+        ("mandatory", "memory_peak_mb"),
+        ("mandatory", "validation_output.file_count"),
+        ("mandatory", "validation_output.bytes"),
+        ("mandatory", "hazard_output.file_count"),
+        ("mandatory", "hazard_output.bytes"),
+        ("mandatory", "conditional_curve_row_count"),
+        ("mandatory", "restartability_metadata.trajectory_plan_id"),
+        ("mandatory", "restartability_metadata.reducer_plan_id"),
+        ("mandatory", "restartability_metadata.trajectory_decision_counts"),
+        ("mandatory", "restartability_metadata.reducer_decision_counts"),
+        ("ancillary", "validation_output_mode"),
+        ("ancillary", "output_write_kind_seconds"),
+        ("ancillary", "output_write_kind_bytes"),
+    ]
+    checklist: list[dict[str, Any]] = []
+    missing_mandatory_metrics: list[str] = []
+    unavailable_ancillary_metrics: list[str] = []
+    next_run_required_metrics: list[str] = []
+
+    for group_name, metric_name in ordered_fields:
+        group_statuses = mandatory_statuses if group_name == "mandatory" else ancillary_statuses
+        entry = group_statuses.get(metric_name, {}) if isinstance(group_statuses, dict) else {}
+        status = str(entry.get("status") or "unknown")
+        if status not in {"blocked", "unavailable"}:
+            continue
+        checklist.append(
+            {
+                "metric": metric_name,
+                "group": group_name,
+                "status": status,
+                "source": entry.get("source"),
+                "reason": entry.get("reason", ""),
+                "next_run_required": True,
+            }
+        )
+        next_run_required_metrics.append(metric_name)
+        if group_name == "mandatory":
+            missing_mandatory_metrics.append(metric_name)
+        else:
+            unavailable_ancillary_metrics.append(metric_name)
+
+    remediation_status = "complete" if not next_run_required_metrics else "action_required"
+    return {
+        "schema_version": "balfrin_probe_metrics_remediation_v1",
+        "status": remediation_status,
+        "missing_mandatory_metrics": missing_mandatory_metrics,
+        "unavailable_ancillary_metrics": unavailable_ancillary_metrics,
+        "next_run_required_metrics": next_run_required_metrics,
+        "next_run_collection_checklist": checklist,
+    }
+
+
 def _build_metrics_contract(
     *,
     performance: dict[str, Any],
@@ -468,6 +528,7 @@ def _build_metrics_contract(
             ]
         ),
     }
+    metrics_remediation = _metrics_remediation(metric_statuses=metric_statuses)
     missing = _missing_metrics(metrics)
     return {
         "status": "complete" if not missing else "blocked_missing_inputs",
@@ -477,6 +538,7 @@ def _build_metrics_contract(
             "probe_metrics": str((Path("balfrin_probe_metrics.json")).as_posix()) if probe_metrics else None,
         },
         "metric_statuses": metric_statuses,
+        "metrics_remediation": metrics_remediation,
         **metrics,
     }
 
@@ -623,6 +685,8 @@ def collect_run_metrics(
         "metrics_contract_blocked_reason": metrics_contract["blocked_reason"],
         "metrics_contract_missing_metrics": metrics_contract["missing_metrics"],
         "metrics_contract_ancillary_unavailable_metrics": metrics_contract["ancillary_unavailable_metrics"],
+        "metrics_remediation": metrics_contract["metrics_remediation"],
+        "metrics_contract_remediation": metrics_contract["metrics_remediation"],
         "metric_statuses": metrics_contract["metric_statuses"],
         "ancillary_metrics": metrics_contract["ancillary_metrics"],
         "metrics_contract": metrics_contract,

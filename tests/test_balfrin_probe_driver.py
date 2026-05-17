@@ -523,6 +523,11 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertEqual(summary["metric_statuses"]["ancillary"]["output_write_kind_bytes"]["status"], "measured")
         self.assertEqual(summary["metric_statuses"]["unavailable"], ["validation_output_mode"])
         self.assertEqual(summary["metric_statuses"]["blocked"], [])
+        self.assertEqual(summary["metrics_remediation"]["missing_mandatory_metrics"], [])
+        self.assertEqual(summary["metrics_remediation"]["unavailable_ancillary_metrics"], ["validation_output_mode"])
+        self.assertEqual(summary["metrics_remediation"]["next_run_required_metrics"], ["validation_output_mode"])
+        self.assertEqual(summary["metrics_remediation"]["next_run_collection_checklist"][0]["metric"], "validation_output_mode")
+        self.assertEqual(summary["metrics_remediation"]["next_run_collection_checklist"][0]["group"], "ancillary")
         self.assertIn("reduced-output family counts", summary["metric_statuses"]["ancillary"]["validation_output_mode"]["reason"])
         self.assertEqual(summary["output_write_kind_seconds"]["geotiff"], 0.4)
         self.assertEqual(summary["output_write_kind_bytes"]["manifest_json"], 3400)
@@ -578,6 +583,10 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertEqual(summary["reducer_plan_id"], None)
         self.assertEqual(summary["trajectory_decision_counts"], {})
         self.assertEqual(summary["reducer_decision_counts"], {})
+        self.assertIn("memory_peak_mb", summary["metrics_remediation"]["missing_mandatory_metrics"])
+        self.assertIn("validation_output_mode", summary["metrics_remediation"]["unavailable_ancillary_metrics"])
+        self.assertIn("validation_output_mode", summary["metrics_remediation"]["next_run_required_metrics"])
+        self.assertIn("memory_peak_mb", summary["metrics_remediation"]["next_run_required_metrics"])
         self.assertEqual(
             summary["log_audit"],
             {
