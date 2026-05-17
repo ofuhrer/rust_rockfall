@@ -202,11 +202,17 @@ def read_backlog(root: Path = ROOT) -> str:
 
 def parse_active_tasks(backlog_text: str) -> list[ActiveTask]:
     active_match = re.search(r"^## Active Tasks\s*$", backlog_text, re.MULTILINE)
-    deferred_match = re.search(r"^## Deferred Backlog\s*$", backlog_text, re.MULTILINE)
-    if not active_match or not deferred_match or deferred_match.start() <= active_match.end():
+    if not active_match:
         return []
 
-    active_text = backlog_text[active_match.end() : deferred_match.start()]
+    boundary_matches = [
+        match
+        for match in re.finditer(r"^## (?:Backlog Protocol|Deferred Backlog)\s*$", backlog_text, re.MULTILINE)
+        if match.start() > active_match.end()
+    ]
+    if not boundary_matches:
+        return []
+    active_text = backlog_text[active_match.end() : boundary_matches[0].start()]
     headings = list(re.finditer(r"^###\s+(TB-\d+):?\s+(.+?)\s*$", active_text, re.MULTILINE))
     tasks: list[ActiveTask] = []
     for index, heading in enumerate(headings):

@@ -52,6 +52,26 @@ Expected work:
         self.assertEqual(tasks[0].priority, "P0")
         self.assertEqual(tasks[0].inspect_first, ["docs/example.md", "scripts/example.py"])
 
+    def test_extracts_active_tasks_before_backlog_protocol(self) -> None:
+        backlog = """
+# Task Backlog
+
+## Active Tasks
+
+### TB-998: Compact Backlog Task
+
+Inspect first:
+
+- `docs/example.md`
+
+## Backlog Protocol
+"""
+        tasks = agent_context.parse_active_tasks(backlog)
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0].task_id, "TB-998")
+        self.assertEqual(tasks[0].title, "Compact Backlog Task")
+        self.assertEqual(tasks[0].inspect_first, ["docs/example.md"])
+
     def test_report_contains_required_json_fields_without_live_checks(self) -> None:
         report = agent_context.build_report(run_checks=False)
 
