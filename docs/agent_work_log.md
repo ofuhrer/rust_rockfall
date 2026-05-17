@@ -3362,3 +3362,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no release-zone validation, no threshold tuning for acceptance, no operational source-zone claim, no generated GIS outputs committed, and the sensitivity report remains a heuristic stability characterization only.
 - Next task: `TB-190`
+
+### TB-190: Full Balfrin Demonstration Evidence Package
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: build one deterministic Balfrin management package that separates measured, fixture-backed, blocked, and unavailable evidence, and answers whether the current architecture is plausibly extensible toward Swiss-wide workflows without turning that answer into an authorization.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Expanded the management package to include explicit AOI automation, release/scenario automation, blocked target-area probe metrics, the measured canonical target-area bundle, the measured physical-credibility gap report, and a dedicated Swiss-wide extension answer section.
+  - Kept runtime, replay, restartability, GIS scope, uncertainty, scaling, and claim-boundary sections separate while preserving section-level provenance counts for measured, fixture-backed, unavailable, and blocked evidence.
+  - Updated the focused regressions to pin the expanded section set, the management-facing no-go answer, and the deterministic regeneration command list, and removed TB-190 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package tests.test_balfrin_target_area_evidence_bundle tests.test_balfrin_physical_credibility_evidence_gaps`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_management_demo_package.py tests/test_balfrin_management_demo_package.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/balfrin_management_demo_package_v1 --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: no marketing overclaim, no operational acceptance, no physical-credibility upgrade, no scale-up authorization, no annual-frequency semantics, and no generated heavy artifacts committed.
+- Next task: `TB-191`

@@ -22,48 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-190: Full Balfrin Demonstration Evidence Package
-
-Goal: Produce one coherent technical evidence package for the full
-demonstration workflow, including runtime, uncertainty, GIS/COG, restartability,
-scaling, AOI automation, release/scenario automation, and claim boundaries.
-
-Capability gap reduced: Demonstration evidence is spread across many helpers
-and reports, making it harder to answer whether the workflow plausibly scales
-toward Swiss-wide automation.
-
-Why this outranks alternatives: After the automation and stress-test tasks, a
-single package is needed to show what is measured, what is fixture-backed, what
-is blocked, and what remains scientifically unresolved.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_target_area_evidence_bundle.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-
-Deliverables:
-
-- Canonical JSON/text package summarizing the current full demonstration
-  workflow and evidence provenance.
-- Section-level provenance for measured, fixture-backed, blocked, and
-  unavailable evidence.
-- Explicit management-facing answer to whether the current architecture is
-  plausibly extensible toward Swiss-wide workflows, with blockers named.
-
-Definition of done:
-
-- The package can be regenerated deterministically, focused tests cover its
-  required sections and claim boundaries, and the report does not collapse
-  blocked or fixture-backed evidence into measured completion.
-
-Boundaries: No marketing overclaim, no operational acceptance, no physical
-credibility upgrade, no scale-up authorization, no annual-frequency semantics,
-and no generated heavy artifacts committed.
-
 ### TB-191: Balfrin Metrics And Run-Root Preservation Gate
 
 Goal: Define and test the metrics/run-root preservation gate that must pass

@@ -22,7 +22,9 @@ if __package__ in {None, ""}:
 from scripts import audit_gis_cog_package_readiness as gis_cog
 from scripts import summarize_balfrin_demonstration_replay_smoke as replay_smoke
 from scripts import summarize_balfrin_evidence_bundle as bundle
+from scripts import summarize_balfrin_physical_credibility_evidence_gaps as physical_gaps
 from scripts import summarize_balfrin_post_run_interpretation_gate as post_run_gate
+from scripts import summarize_balfrin_target_area_evidence_bundle as target_bundle
 from scripts import summarize_balfrin_single_job_execution as single_job
 
 
@@ -30,6 +32,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_management_demo_package_v1"
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_management_demo_package_v1"
 DEFAULT_REPLAY_RUN_ROOT = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+DEFAULT_TARGET_AREA_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_evidence_bundle_v1"
+DEFAULT_PHYSICAL_CREDIBILITY_GAP_DIR = (
+    ROOT / "validation/private/tschamut_public_pilot/balfrin_physical_credibility_evidence_gaps_v1"
+)
 
 
 class BalfrinManagementDemoPackageError(ValueError):
@@ -146,6 +152,8 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
 
     bundle_report = bundle.build_current_report()
     smoke_report = replay_smoke.build_report(run_root=run_root, artifact_dir=artifact_dir / "replay_smoke_v1")
+    target_area_bundle_report = target_bundle.build_current_report()
+    physical_credibility_report = physical_gaps.build_report()
     post_run_report = dict(bundle_report.get("post_run_interpretation_gate_report") or {})
     if not post_run_report:
         post_run_report = post_run_gate.build_report(
@@ -162,15 +170,26 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
     return assemble_package_report(
         runtime_section=build_runtime_section(bundle_report),
         replay_section=build_replay_section(smoke_report),
+        target_area_aoi_automation_section=build_target_area_aoi_automation_section(target_area_bundle_report),
+        target_area_release_scenario_section=build_target_area_release_scenario_section(target_area_bundle_report),
+        target_area_probe_metrics_section=build_target_area_probe_metrics_section(target_area_bundle_report),
+        target_area_canonical_bundle_section=build_target_area_canonical_bundle_section(target_area_bundle_report),
         restartability_section=build_restartability_section(bundle_report),
         gis_scope_section=build_gis_scope_section(bundle_report),
         uncertainty_section=build_uncertainty_section(bundle_report, smoke_report),
         claim_boundary_section=build_claim_boundary_section(post_run_report),
         scaling_section=build_scaling_section(bundle_report, post_run_report),
+        physical_credibility_section=build_physical_credibility_section(physical_credibility_report),
+        swiss_wide_extension_section=build_swiss_wide_extension_section(
+            bundle_report=bundle_report,
+            physical_credibility_report=physical_credibility_report,
+        ),
         next_decision_section=build_next_decision_section(bundle_report, post_run_report),
         source_artifacts=build_source_artifacts(
             bundle_report=bundle_report,
             smoke_report=smoke_report,
+            target_area_bundle_report=target_area_bundle_report,
+            physical_credibility_report=physical_credibility_report,
             package_artifact_dir=artifact_dir,
             run_root=run_root,
         ),
@@ -184,11 +203,17 @@ def assemble_package_report(
     *,
     runtime_section: dict[str, Any],
     replay_section: dict[str, Any],
+    target_area_aoi_automation_section: dict[str, Any],
+    target_area_release_scenario_section: dict[str, Any],
+    target_area_probe_metrics_section: dict[str, Any],
+    target_area_canonical_bundle_section: dict[str, Any],
     restartability_section: dict[str, Any],
     gis_scope_section: dict[str, Any],
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
     scaling_section: dict[str, Any],
+    physical_credibility_section: dict[str, Any],
+    swiss_wide_extension_section: dict[str, Any],
     next_decision_section: dict[str, Any],
     source_artifacts: dict[str, Any],
     regeneration_commands: list[str],
@@ -198,11 +223,41 @@ def assemble_package_report(
     sections = [
         ("runtime_section", runtime_section, build_section_source_paths(runtime_section)),
         ("replay_section", replay_section, build_section_source_paths(replay_section)),
+        (
+            "target_area_aoi_automation_section",
+            target_area_aoi_automation_section,
+            build_section_source_paths(target_area_aoi_automation_section),
+        ),
+        (
+            "target_area_release_scenario_section",
+            target_area_release_scenario_section,
+            build_section_source_paths(target_area_release_scenario_section),
+        ),
+        (
+            "target_area_probe_metrics_section",
+            target_area_probe_metrics_section,
+            build_section_source_paths(target_area_probe_metrics_section),
+        ),
+        (
+            "target_area_canonical_bundle_section",
+            target_area_canonical_bundle_section,
+            build_section_source_paths(target_area_canonical_bundle_section),
+        ),
         ("restartability_section", restartability_section, build_section_source_paths(restartability_section)),
         ("gis_scope_section", gis_scope_section, build_section_source_paths(gis_scope_section)),
         ("uncertainty_section", uncertainty_section, build_section_source_paths(uncertainty_section)),
         ("claim_boundary_section", claim_boundary_section, build_section_source_paths(claim_boundary_section)),
         ("scaling_section", scaling_section, build_section_source_paths(scaling_section)),
+        (
+            "physical_credibility_section",
+            physical_credibility_section,
+            build_section_source_paths(physical_credibility_section),
+        ),
+        (
+            "swiss_wide_extension_section",
+            swiss_wide_extension_section,
+            build_section_source_paths(swiss_wide_extension_section),
+        ),
         ("next_decision_section", next_decision_section, build_section_source_paths(next_decision_section)),
     ]
     section_provenance_profile = []
@@ -223,9 +278,15 @@ def assemble_package_report(
             package_status,
             runtime_section,
             replay_section,
+            target_area_aoi_automation_section,
+            target_area_release_scenario_section,
+            target_area_probe_metrics_section,
+            target_area_canonical_bundle_section,
             uncertainty_section,
             claim_boundary_section,
             scaling_section,
+            physical_credibility_section,
+            swiss_wide_extension_section,
             next_decision_section,
         ),
         "section_counts": section_provenance_counts(section_provenance_profile),
@@ -239,11 +300,17 @@ def assemble_package_report(
         "package_summary": package_summary,
         "runtime_section": runtime_section,
         "replay_section": replay_section,
+        "target_area_aoi_automation_section": target_area_aoi_automation_section,
+        "target_area_release_scenario_section": target_area_release_scenario_section,
+        "target_area_probe_metrics_section": target_area_probe_metrics_section,
+        "target_area_canonical_bundle_section": target_area_canonical_bundle_section,
         "restartability_section": restartability_section,
         "gis_scope_section": gis_scope_section,
         "uncertainty_section": uncertainty_section,
         "claim_boundary_section": claim_boundary_section,
         "scaling_section": scaling_section,
+        "physical_credibility_section": physical_credibility_section,
+        "swiss_wide_extension_section": swiss_wide_extension_section,
         "next_decision_section": next_decision_section,
         "claim_boundaries": claim_boundary_section.get("claim_boundaries", post_run_gate.claim_boundaries()),
         "section_provenance_profile": section_provenance_profile,
@@ -264,11 +331,17 @@ def blocked_report(
     section_names = (
         "runtime_section",
         "replay_section",
+        "target_area_aoi_automation_section",
+        "target_area_release_scenario_section",
+        "target_area_probe_metrics_section",
+        "target_area_canonical_bundle_section",
         "restartability_section",
         "gis_scope_section",
         "uncertainty_section",
         "claim_boundary_section",
         "scaling_section",
+        "physical_credibility_section",
+        "swiss_wide_extension_section",
         "next_decision_section",
     )
     section_provenance_profile = [
@@ -293,6 +366,10 @@ def blocked_report(
         },
         "runtime_section": {"status": "blocked_missing_inputs"},
         "replay_section": {"status": "blocked_missing_inputs", "missing_inputs": list(missing_inputs)},
+        "target_area_aoi_automation_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "target_area_release_scenario_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "target_area_probe_metrics_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "target_area_canonical_bundle_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "restartability_section": {"status": "blocked_missing_inputs"},
         "gis_scope_section": {"status": "blocked_missing_inputs"},
         "uncertainty_section": {"status": "blocked_missing_inputs"},
@@ -301,12 +378,16 @@ def blocked_report(
             "claim_boundaries": claim_boundaries,
         },
         "scaling_section": {"status": "blocked_missing_inputs"},
+        "physical_credibility_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "swiss_wide_extension_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "next_decision_section": {"status": "blocked_missing_inputs"},
         "claim_boundaries": claim_boundaries,
         "section_provenance_profile": section_provenance_profile,
         "source_artifacts": {
             "package_artifact_dir": str(artifact_dir),
             "run_root": str(run_root),
+            "target_area_bundle_artifact_dir": str(DEFAULT_TARGET_AREA_BUNDLE_DIR),
+            "physical_credibility_artifact_dir": str(DEFAULT_PHYSICAL_CREDIBILITY_GAP_DIR),
         },
         "regeneration_commands": build_regeneration_commands(run_root=run_root, package_artifact_dir=artifact_dir),
         "evidence_sources": evidence_sources({"run_root": str(run_root)}),
@@ -356,6 +437,95 @@ def build_replay_section(smoke_report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_target_area_aoi_automation_section(target_area_bundle_report: dict[str, Any]) -> dict[str, Any]:
+    handoff_report = dict(target_area_bundle_report.get("target_area_demo_handoff_report") or {})
+    source_paths = dict(target_area_bundle_report.get("source_paths") or {})
+    return {
+        "status": str(handoff_report.get("bundle_status") or handoff_report.get("status") or "blocked_missing_inputs"),
+        "evidence_type": "unavailable",
+        "summary": (
+            "AOI automation stays template-only: the frozen handoff records the case skeleton and output-root contract, but it does not authorize execution."
+        ),
+        "bundle_status": handoff_report.get("bundle_status"),
+        "bundle_execution_boundary": handoff_report.get("bundle_execution_boundary"),
+        "case_skeleton_path": handoff_report.get("case_skeleton_path"),
+        "expected_output_roots_path": handoff_report.get("expected_output_roots_path"),
+        "command_manifest_path": handoff_report.get("command_manifest_path"),
+        "scenario_generation_handoff_path": handoff_report.get("scenario_generation_handoff_path"),
+        "source_paths": {
+            "target_area_demo_handoff_report_path": source_paths.get("target_area_demo_handoff_report_path"),
+            "case_skeleton_path": handoff_report.get("case_skeleton_path"),
+            "expected_output_roots_path": handoff_report.get("expected_output_roots_path"),
+        },
+    }
+
+
+def build_target_area_release_scenario_section(target_area_bundle_report: dict[str, Any]) -> dict[str, Any]:
+    handoff_report = dict(target_area_bundle_report.get("target_area_demo_handoff_report") or {})
+    source_paths = dict(target_area_bundle_report.get("source_paths") or {})
+    return {
+        "status": str(handoff_report.get("bundle_status") or handoff_report.get("status") or "blocked_missing_inputs"),
+        "evidence_type": "unavailable",
+        "summary": (
+            "Release/scenario automation stays template-only: the frozen handoff captures the command manifest, scenario-generation handoff, and GIS scope summary, but it does not emit a live release plan."
+        ),
+        "bundle_status": handoff_report.get("bundle_status"),
+        "bundle_execution_boundary": handoff_report.get("bundle_execution_boundary"),
+        "command_manifest_path": handoff_report.get("command_manifest_path"),
+        "scenario_generation_handoff_path": handoff_report.get("scenario_generation_handoff_path"),
+        "gis_scope_summary_path": handoff_report.get("gis_scope_summary_path"),
+        "case_skeleton_path": handoff_report.get("case_skeleton_path"),
+        "source_paths": {
+            "target_area_demo_handoff_report_path": source_paths.get("target_area_demo_handoff_report_path"),
+            "command_manifest_path": handoff_report.get("command_manifest_path"),
+            "scenario_generation_handoff_path": handoff_report.get("scenario_generation_handoff_path"),
+            "gis_scope_summary_path": handoff_report.get("gis_scope_summary_path"),
+        },
+    }
+
+
+def build_target_area_probe_metrics_section(target_area_bundle_report: dict[str, Any]) -> dict[str, Any]:
+    probe_report = dict(target_area_bundle_report.get("probe_metrics_report") or {})
+    source_paths = dict(target_area_bundle_report.get("source_paths") or {})
+    return {
+        "status": str(probe_report.get("report_status") or probe_report.get("metrics_contract_status") or "blocked_missing_inputs"),
+        "evidence_type": "blocked",
+        "summary": (
+            "Target-area probe metrics remain blocked because the preserved run root is not mounted locally; the blocked state stays separate from the measured canonical bundle."
+        ),
+        "report_status": probe_report.get("report_status"),
+        "metrics_contract_status": probe_report.get("metrics_contract_status"),
+        "run_root_status": probe_report.get("run_root_status"),
+        "run_root": probe_report.get("run_root"),
+        "missing_run_root_reason": probe_report.get("missing_run_root_reason"),
+        "missing_inputs": probe_report.get("missing_inputs", []),
+        "source_paths": {
+            "probe_metrics_report_path": source_paths.get("probe_metrics_report_path"),
+            "probe_metrics_report_sources": source_paths.get("probe_metrics_report_sources", {}),
+        },
+    }
+
+
+def build_target_area_canonical_bundle_section(target_area_bundle_report: dict[str, Any]) -> dict[str, Any]:
+    canonical_report = dict(target_area_bundle_report.get("canonical_evidence_bundle") or {})
+    source_paths = dict(target_area_bundle_report.get("source_paths") or {})
+    return {
+        "status": str(canonical_report.get("bundle_status") or canonical_report.get("status") or "blocked_missing_inputs"),
+        "evidence_type": "measured",
+        "summary": (
+            "The canonical target-area bundle is measured, but it remains separate from the target-area handoff and probe-metrics gaps."
+        ),
+        "bundle_status": canonical_report.get("bundle_status"),
+        "bundle_provenance_status": canonical_report.get("bundle_provenance_status"),
+        "section_counts": dict((canonical_report.get("bundle_summary") or {}).get("section_counts") or {}),
+        "claim_boundaries": dict(canonical_report.get("claim_boundaries") or {}),
+        "source_paths": {
+            "canonical_bundle_path": source_paths.get("canonical_bundle_path"),
+            "canonical_bundle_sources": source_paths.get("canonical_bundle_sources", {}),
+        },
+    }
+
+
 def build_restartability_section(bundle_report: dict[str, Any]) -> dict[str, Any]:
     single_job_summary = dict(bundle_report.get("single_job_execution_summary") or {})
     restartability = dict((single_job_summary.get("restartability_evidence") or {}))
@@ -380,6 +550,94 @@ def build_restartability_section(bundle_report: dict[str, Any]) -> dict[str, Any
         .get("mandatory_metrics", {})
         .get("restartability_metadata", {}),
         "source_paths": build_runtime_source_paths(bundle_report),
+    }
+
+
+def build_physical_credibility_section(physical_credibility_report: dict[str, Any]) -> dict[str, Any]:
+    validation_state = dict(physical_credibility_report.get("validation_calibration_state") or {})
+    source_paths = dict(physical_credibility_report.get("current_evidence_sources") or {})
+    return {
+        "status": str(physical_credibility_report.get("balfrin_evidence_gap_status") or "blocked_missing_inputs"),
+        "evidence_type": "measured",
+        "summary": (
+            "Measured diagnostic evidence exists, but physical credibility is not established; calibration is missing and the validation evidence remains partial."
+        ),
+        "balfrin_demo_evidence_status": physical_credibility_report.get("balfrin_demo_evidence_status"),
+        "physical_credibility_state": physical_credibility_report.get("physical_credibility_state"),
+        "validation_calibration_state": validation_state,
+        "diagnostic_reproducibility_only_requirements": list(
+            physical_credibility_report.get("diagnostic_reproducibility_only_requirements") or []
+        ),
+        "missing_physical_requirements": list(physical_credibility_report.get("missing_physical_requirements") or []),
+        "claim_boundaries": dict(physical_credibility_report.get("claim_boundaries") or {}),
+        "source_paths": source_paths,
+    }
+
+
+def build_swiss_wide_extension_section(
+    *,
+    bundle_report: dict[str, Any],
+    physical_credibility_report: dict[str, Any],
+) -> dict[str, Any]:
+    single_job_summary = dict(bundle_report.get("single_job_execution_summary") or {})
+    claim_boundaries = dict(bundle_report.get("claim_boundaries") or post_run_gate.claim_boundaries())
+    no_go_labels = [
+        "aoi_count_exceeds_measured_support",
+        "total_job_count_exceeds_measured_single_job_support",
+    ]
+    planning_labels = {
+        "no_go": "no_go_extrapolated_beyond_measured_evidence",
+        "defer": "defer_scale_up_authorized_false",
+        "allowed_next_probe": "allowed_next_probe_measured_existing_artifacts",
+    }
+    blockers = [
+        "aoi_count_exceeds_measured_support",
+        "total_job_count_exceeds_measured_single_job_support",
+        "distributed_execution_authorized remains false",
+        "physical_credibility_status is not_established",
+        "calibration_status is missing",
+        "validation_status is partial",
+        "observed_runout_deposition_intake_status is blocked_missing_inputs",
+        "source_frequency_and_temporal_frequency_evidence remains missing",
+    ]
+    summary = (
+        "The architecture is plausibly extensible at the workflow level, but Swiss-wide execution is a no-go on the current evidence because the measured support only covers a single-job, single-AOI boundary and the physical-credibility / calibration gaps remain open."
+    )
+    return {
+        "status": "no_go_extrapolated_beyond_measured_evidence",
+        "evidence_type": "measured",
+        "summary": summary,
+        "architecture_plausibility": "plausibly_extensible",
+        "answer": "Plausibly extensible in architecture, but not authorized for Swiss-wide execution.",
+        "measurement_status": "measured_existing_artifacts",
+        "single_job_sufficient_for_next_step": bool(single_job_summary.get("single_job_sufficient_for_next_step")),
+        "no_go_labels": no_go_labels,
+        "planning_labels": planning_labels,
+        "blockers": blockers,
+        "measured_support": {
+            "aoi_count": 1,
+            "release_zone_count": 10,
+            "trajectory_count": 6,
+            "single_job_boundary": "one-job",
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": bool(claim_boundaries.get("operational_claims_allowed", False)),
+            "physical_probability_claims_allowed": bool(claim_boundaries.get("physical_probability_claims_allowed", False)),
+            "annual_frequency_claims_allowed": bool(claim_boundaries.get("annual_frequency_claims_allowed", False)),
+            "risk_exposure_vulnerability_claims_allowed": bool(claim_boundaries.get("risk_exposure_vulnerability_claims_allowed", False)),
+            "scale_up_authorized": bool(claim_boundaries.get("scale_up_authorized", False)),
+            "distributed_execution_authorized": bool(claim_boundaries.get("distributed_execution_authorized", False)),
+        },
+        "physical_credibility_state": physical_credibility_report.get("physical_credibility_state"),
+        "validation_calibration_state": physical_credibility_report.get("validation_calibration_state"),
+        "source_paths": {
+            "management_summary_sources": [
+                "docs/balfrin_single_job_execution_sufficiency.md",
+                "docs/current_maturity_snapshot.md",
+                "scripts/summarize_balfrin_physical_credibility_evidence_gaps.py",
+                "scripts/estimate_swiss_wide_execution_envelope.py",
+            ],
+        },
     }
 
 
@@ -491,6 +749,8 @@ def build_source_artifacts(
     *,
     bundle_report: dict[str, Any],
     smoke_report: dict[str, Any],
+    target_area_bundle_report: dict[str, Any],
+    physical_credibility_report: dict[str, Any],
     package_artifact_dir: Path,
     run_root: Path,
 ) -> dict[str, Any]:
@@ -498,15 +758,26 @@ def build_source_artifacts(
         "package_artifact_dir": str(package_artifact_dir),
         "bundle_artifact_dir": str(Path(bundle_report.get("canonical_bundle_path") or DEFAULT_ARTIFACT_DIR / "balfrin_evidence_bundle_v1")),
         "smoke_artifact_dir": str(smoke_report.get("artifact_dir") or (package_artifact_dir / "replay_smoke_v1")),
+        "target_area_bundle_artifact_dir": str(
+            Path(
+                target_area_bundle_report.get("canonical_bundle_path")
+                or DEFAULT_TARGET_AREA_BUNDLE_DIR
+            )
+        ),
+        "physical_credibility_artifact_dir": str(DEFAULT_PHYSICAL_CREDIBILITY_GAP_DIR),
         "replay_run_root": str(run_root),
         "bundle_canonical_path": str(bundle_report.get("canonical_bundle_path") or ""),
         "smoke_run_root_provenance": smoke_report.get("run_root_provenance"),
+        "target_area_bundle_status": target_area_bundle_report.get("bundle_status"),
+        "physical_credibility_status": physical_credibility_report.get("balfrin_evidence_gap_status"),
     }
 
 
 def build_regeneration_commands(*, run_root: Path, package_artifact_dir: Path) -> list[str]:
     bundle_artifact_dir = package_artifact_dir / "balfrin_evidence_bundle_v1"
     smoke_artifact_dir = package_artifact_dir / "balfrin_demonstration_replay_smoke_v1"
+    target_area_bundle_artifact_dir = package_artifact_dir / "balfrin_target_area_evidence_bundle_v1"
+    physical_credibility_artifact_dir = package_artifact_dir / "balfrin_physical_credibility_evidence_gaps_v1"
     return [
         " ".join(
             [
@@ -540,6 +811,32 @@ def build_regeneration_commands(*, run_root: Path, package_artifact_dir: Path) -
                 "uv",
                 "run",
                 "python",
+                "scripts/summarize_balfrin_target_area_evidence_bundle.py",
+                "--artifact-dir",
+                str(target_area_bundle_artifact_dir),
+                "--format",
+                "json",
+            ]
+        ),
+        " ".join(
+            [
+                "PYENV_VERSION=system",
+                "uv",
+                "run",
+                "python",
+                "scripts/summarize_balfrin_physical_credibility_evidence_gaps.py",
+                "--format",
+                "json",
+                "--json-output",
+                str(physical_credibility_artifact_dir / f"{physical_gaps.SCHEMA_VERSION}.json"),
+            ]
+        ),
+        " ".join(
+            [
+                "PYENV_VERSION=system",
+                "uv",
+                "run",
+                "python",
                 "scripts/summarize_balfrin_management_demo_package.py",
                 "--run-root",
                 str(run_root),
@@ -565,7 +862,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  summary: {report['package_summary']['summary']}",
         "  section_counts:",
     ]
-    for key in ("measured", "fixture_backed", "blocked_missing_inputs"):
+    for key in ("measured", "fixture_backed", "unavailable", "blocked_missing_inputs"):
         if key in report["package_summary"]["section_counts"]:
             lines.append(f"    {key}: {report['package_summary']['section_counts'][key]}")
     lines.extend(
@@ -579,6 +876,18 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['replay_section'].get('status', 'unknown')}",
             f"  run_root_provenance: {report['replay_section'].get('run_root_provenance', 'unknown')}",
             f"  run_root_status: {report['replay_section'].get('run_root_status', 'unknown')}",
+            "target_area_aoi_automation_section:",
+            f"  status: {report['target_area_aoi_automation_section'].get('status', 'unknown')}",
+            f"  bundle_status: {report['target_area_aoi_automation_section'].get('bundle_status', 'unknown')}",
+            "target_area_release_scenario_section:",
+            f"  status: {report['target_area_release_scenario_section'].get('status', 'unknown')}",
+            f"  command_manifest_path: {report['target_area_release_scenario_section'].get('command_manifest_path', 'unknown')}",
+            "target_area_probe_metrics_section:",
+            f"  status: {report['target_area_probe_metrics_section'].get('status', 'unknown')}",
+            f"  report_status: {report['target_area_probe_metrics_section'].get('report_status', 'unknown')}",
+            "target_area_canonical_bundle_section:",
+            f"  status: {report['target_area_canonical_bundle_section'].get('status', 'unknown')}",
+            f"  bundle_status: {report['target_area_canonical_bundle_section'].get('bundle_status', 'unknown')}",
             "restartability_section:",
             f"  status: {report['restartability_section'].get('status', 'unknown')}",
             f"  repeat_reuse_classification: {report['restartability_section'].get('repeat_reuse_classification', 'unknown')}",
@@ -606,6 +915,13 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  scale_up_authorized: {report['scaling_section'].get('scale_up_authorized', False)}",
             f"  distributed_execution_authorized: {report['scaling_section'].get('distributed_execution_authorized', False)}",
             f"  scaling_implication: {report['scaling_section'].get('scaling_implication', 'unknown')}",
+            "physical_credibility_section:",
+            f"  status: {report['physical_credibility_section'].get('status', 'unknown')}",
+            f"  physical_credibility_state: {report['physical_credibility_section'].get('physical_credibility_state', 'unknown')}",
+            "swiss_wide_extension_section:",
+            f"  status: {report['swiss_wide_extension_section'].get('status', 'unknown')}",
+            f"  answer: {report['swiss_wide_extension_section'].get('answer', 'unknown')}",
+            f"  no_go_labels: {report['swiss_wide_extension_section'].get('no_go_labels', [])}",
             "next_decision_section:",
             f"  status: {report['next_decision_section'].get('status', 'unknown')}",
             f"  recommended_next_authorized_step: {report['next_decision_section'].get('recommended_next_authorized_step', 'unknown')}",
@@ -656,10 +972,15 @@ def section_status(section_payload: dict[str, Any]) -> str:
 
 def classify_evidence_type(section_payload: dict[str, Any], source_paths: list[str]) -> str:
     status = section_status(section_payload)
+    evidence_type = str(section_payload.get("evidence_type") or "").strip()
+    if evidence_type in {"measured", "fixture_backed", "unavailable", "blocked"}:
+        return evidence_type
+    if evidence_type == "blocked_missing_inputs":
+        return "blocked"
     if status.startswith("blocked") or status == "missing":
         return "blocked"
-    if section_payload.get("evidence_type") in {"measured", "fixture_backed"}:
-        return str(section_payload["evidence_type"])
+    if evidence_type:
+        return evidence_type
     if any(bundle.is_fixture_path(path) for path in source_paths):
         return "fixture_backed"
     return "measured"
@@ -667,12 +988,14 @@ def classify_evidence_type(section_payload: dict[str, Any], source_paths: list[s
 
 def derive_package_status(section_provenance_profile: list[dict[str, Any]]) -> str:
     evidence_types = {str(section.get("evidence_type") or "blocked") for section in section_provenance_profile}
-    if "blocked" in evidence_types:
+    if evidence_types == {"blocked"}:
         return "blocked_missing_inputs"
     if "measured" in evidence_types and "fixture_backed" in evidence_types:
         return "mixed_provenance"
     if evidence_types == {"fixture_backed"}:
         return "fixture_backed"
+    if "unavailable" in evidence_types or "blocked" in evidence_types:
+        return "mixed_provenance"
     return "measured"
 
 
@@ -680,37 +1003,57 @@ def summarize_package(
     package_status: str,
     runtime_section: dict[str, Any],
     replay_section: dict[str, Any],
+    target_area_aoi_automation_section: dict[str, Any],
+    target_area_release_scenario_section: dict[str, Any],
+    target_area_probe_metrics_section: dict[str, Any],
+    target_area_canonical_bundle_section: dict[str, Any],
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
     scaling_section: dict[str, Any],
+    physical_credibility_section: dict[str, Any],
+    swiss_wide_extension_section: dict[str, Any],
     next_decision_section: dict[str, Any],
 ) -> str:
     if package_status == "blocked_missing_inputs":
         return "Balfrin management package is blocked because one or more required sections are missing."
     replay_status = str(replay_section.get("run_root_provenance") or "unknown")
+    aoi_status = str(target_area_aoi_automation_section.get("status") or "unknown").replace("_", "-")
+    release_status = str(target_area_release_scenario_section.get("status") or "unknown").replace("_", "-")
+    probe_status = str(target_area_probe_metrics_section.get("status") or "unknown").replace("_", "-")
+    physical_state = str(
+        physical_credibility_section.get("physical_credibility_state")
+        or physical_credibility_section.get("status")
+        or "unknown"
+    )
+    swiss_wide_answer = str(swiss_wide_extension_section.get("answer") or "Swiss-wide extension remains deferred.")
     scaling_implication = str(scaling_section.get("scaling_implication") or "Scaling stays bounded by the single-job path.")
     next_step = str(next_decision_section.get("recommended_next_authorized_step") or "management review of this package")
     if package_status == "mixed_provenance":
         return (
-            f"Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; replay is fixture-backed so the package stays reproducible without collapsing provenance. {scaling_implication} The next authorized step is {next_step}."
+            "Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; "
+            f"replay is fixture-backed, AOI automation is {aoi_status}, release/scenario automation is {release_status}, "
+            f"target-area probe metrics are {probe_status}, and target-area canonical evidence remains measured. "
+            f"{swiss_wide_answer} Physical credibility is {physical_state}. {scaling_implication} The next authorized step is {next_step}."
         )
     if package_status == "fixture_backed":
         return (
             f"All package sections are fixture-backed, so the manifest is replayable but does not represent live measured evidence. {scaling_implication} The next authorized step is {next_step}."
         )
     return (
-        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false. {scaling_implication} The next authorized step is {next_step}."
+        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false. {swiss_wide_answer} {scaling_implication} The next authorized step is {next_step}."
     )
 
 
 def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
-    counts = {"measured": 0, "fixture_backed": 0, "blocked_missing_inputs": 0}
+    counts = {"measured": 0, "fixture_backed": 0, "unavailable": 0, "blocked_missing_inputs": 0}
     for section in profile:
         evidence_type = str(section.get("evidence_type") or "blocked")
         if evidence_type == "measured":
             counts["measured"] += 1
         elif evidence_type == "fixture_backed":
             counts["fixture_backed"] += 1
+        elif evidence_type == "unavailable":
+            counts["unavailable"] += 1
         else:
             counts["blocked_missing_inputs"] += 1
     return counts
@@ -765,10 +1108,15 @@ def evidence_sources(source_artifacts: dict[str, Any]) -> list[str]:
     sources = [
         "scripts/summarize_balfrin_evidence_bundle.py",
         "scripts/summarize_balfrin_demonstration_replay_smoke.py",
+        "scripts/summarize_balfrin_target_area_evidence_bundle.py",
+        "scripts/summarize_balfrin_physical_credibility_evidence_gaps.py",
         "scripts/summarize_balfrin_post_run_interpretation_gate.py",
         "scripts/summarize_balfrin_single_job_execution.py",
         "scripts/audit_gis_cog_package_readiness.py",
         "docs/balfrin_single_job_execution_sufficiency.md",
+        "docs/current_maturity_snapshot.md",
+        "docs/target_area_physical_evidence_acquisition_pack.md",
+        "scripts/estimate_swiss_wide_execution_envelope.py",
     ]
     if source_artifacts:
         sources.append(str(source_artifacts.get("package_artifact_dir") or DEFAULT_ARTIFACT_DIR))
