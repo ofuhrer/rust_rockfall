@@ -134,9 +134,12 @@ objective are:
    helper now also emits deterministic GIS-readable mask and polygon bundles
    with stable candidate IDs and frozen-footprint comparison metadata, and the
    scenario-table helper can reproduce the committed Tschamut summary table from
-   policy plus release metadata. These helpers do not generate production
-   release zones, tune thresholds, or claim field evidence. The remaining
-   automation gap is moving from dry-run contracts to a measured,
+   policy plus release metadata. TB-150 adds a bounded sensitivity report that
+   compares small threshold and preprocessing perturbations, separates stable
+   from heuristic-sensitive candidate regions, and still does not validate any
+   release-zone output. These helpers do not generate production release zones,
+   tune thresholds, or claim field evidence. The remaining automation gap is
+   moving from dry-run contracts to a measured,
    public-context-backed second-site run only after real swisstopo context is
    staged.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a

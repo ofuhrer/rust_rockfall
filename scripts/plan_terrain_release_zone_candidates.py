@@ -18,6 +18,7 @@ import importlib.util
 import json
 import math
 import sys
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,8 @@ DEFAULT_OUTPUT_MODE = "both"
 
 MIN_CANDIDATE_SLOPE_DEG = 30.0
 MAX_CANDIDATE_SLOPE_DEG = 55.0
+HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG = 2.0
+HEURISTIC_SENSITIVITY_FOOTPRINT_BUFFER_CELLS = 1
 NODATA_SENTINEL = -9999.0
 
 
@@ -148,6 +151,13 @@ def build_report(
     candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, screening)
     terrain_summary = build_terrain_summary(terrain)
     candidate_summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, screening)
+    candidate_sensitivity_report = build_candidate_sensitivity_report(
+        terrain=terrain,
+        source_zone_metadata=source_zone_metadata,
+        screening=screening,
+        baseline_candidate_mask=candidate_mask,
+        baseline_terrain_masks=terrain_masks,
+    )
     excluded_area_summary = build_excluded_area_summary(terrain_masks, terrain, screening)
     frozen_footprint_summary = build_frozen_footprint_summary(terrain, source_zone_metadata, terrain_masks)
     candidate_footprint_comparison = build_candidate_footprint_comparison(terrain, terrain_masks)
@@ -182,6 +192,7 @@ def build_report(
         "source_zone_inputs": build_source_zone_inputs(source_zone_metadata_path, source_zone_metadata, repo_root),
         "terrain_summary": terrain_summary,
         "candidate_summary": candidate_summary,
+        "candidate_sensitivity_report": candidate_sensitivity_report,
         "excluded_area_summary": excluded_area_summary,
         "frozen_source_zone_footprint": frozen_footprint_summary,
         "candidate_footprint_comparison": candidate_footprint_comparison,
@@ -195,6 +206,9 @@ def build_report(
             "operational_claims_allowed": False,
             "notes": [
                 "candidate cells are heuristic workflow inputs, not validated release zones",
+                "bounded threshold and preprocessing perturbations only characterize heuristic stability",
+                "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
+                "unstable regions are heuristic-sensitive regions, not invalidated release zones",
                 "slope screening is fixed and deterministic",
                 "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
             ],
@@ -274,6 +288,7 @@ def blocked_report(
         "terrain_preprocessing": terrain_preprocessing,
         "terrain_summary": {},
         "candidate_summary": {},
+        "candidate_sensitivity_report": candidate_sensitivity_report_stub(),
         "excluded_area_summary": [],
         "frozen_source_zone_footprint": {},
         "candidate_footprint_comparison": {
@@ -290,6 +305,9 @@ def blocked_report(
             "operational_claims_allowed": False,
             "notes": [
                 "candidate cells are heuristic workflow inputs, not validated release zones",
+                "bounded threshold and preprocessing perturbations only characterize heuristic stability",
+                "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
+                "unstable regions are heuristic-sensitive regions, not invalidated release zones",
                 "slope screening is fixed and deterministic",
                 "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
             ],
@@ -316,6 +334,7 @@ def screening_criteria_stub() -> dict[str, Any]:
         "minimum_finite_neighborhood": "3x3",
         "candidate_slope_min_deg": MIN_CANDIDATE_SLOPE_DEG,
         "candidate_slope_max_deg": MAX_CANDIDATE_SLOPE_DEG,
+        "frozen_release_zone_footprint_buffer_cells": 0,
         "exclude_nodata": True,
         "exclude_incomplete_neighborhood": True,
         "exclude_frozen_release_zone_footprint": True,
@@ -468,6 +487,7 @@ def build_candidate_summary(
             "candidate_slope_min_deg": screening["candidate_slope_min_deg"],
             "candidate_slope_max_deg": screening["candidate_slope_max_deg"],
             "slope_algorithm": screening["slope_algorithm"],
+            "frozen_release_zone_footprint_buffer_cells": screening.get("frozen_release_zone_footprint_buffer_cells", 0),
         },
     }
 
@@ -583,6 +603,9 @@ def compute_candidate_masks(
     incomplete_neighborhood_mask = np.ones_like(valid_mask, dtype=bool)
     incomplete_neighborhood_mask[1:-1, 1:-1] = False
     footprint_mask = point_in_polygon_mask(terrain, extract_polygon_vertices(source_zone_metadata))
+    footprint_buffer_cells = int(screening.get("frozen_release_zone_footprint_buffer_cells", 0) or 0)
+    if footprint_buffer_cells > 0:
+        footprint_mask = dilate_mask(footprint_mask, footprint_buffer_cells)
 
     for row in range(1, nrows - 1):
         for col in range(1, ncols - 1):
@@ -601,9 +624,11 @@ def compute_candidate_masks(
             slope_deg[row, col] = math.degrees(math.atan(math.hypot(dzdx, dzdy)))
 
     screenable_mask = valid_interior_mask & ~footprint_mask
-    candidate_mask = screenable_mask & (slope_deg >= MIN_CANDIDATE_SLOPE_DEG) & (slope_deg <= MAX_CANDIDATE_SLOPE_DEG)
-    low_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg < MIN_CANDIDATE_SLOPE_DEG)
-    high_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg > MAX_CANDIDATE_SLOPE_DEG)
+    min_slope_deg = float(screening.get("candidate_slope_min_deg", MIN_CANDIDATE_SLOPE_DEG))
+    max_slope_deg = float(screening.get("candidate_slope_max_deg", MAX_CANDIDATE_SLOPE_DEG))
+    candidate_mask = screenable_mask & (slope_deg >= min_slope_deg) & (slope_deg <= max_slope_deg)
+    low_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg < min_slope_deg)
+    high_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg > max_slope_deg)
 
     terrain_masks = {
         "slope_deg": slope_deg,
@@ -617,6 +642,269 @@ def compute_candidate_masks(
         "high_slope_mask": high_slope_mask,
     }
     return candidate_mask, terrain_masks
+
+
+def build_candidate_sensitivity_report(
+    *,
+    terrain: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    screening: dict[str, Any],
+    baseline_candidate_mask: np.ndarray,
+    baseline_terrain_masks: dict[str, np.ndarray],
+) -> dict[str, Any]:
+    variant_specs = [
+        {
+            "variant_id": "baseline",
+            "variant_kind": "reference",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
+            "frozen_release_zone_footprint_buffer_cells": 0,
+        },
+        {
+            "variant_id": "tight_threshold_band",
+            "variant_kind": "threshold_perturbation",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]) + HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]) - HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
+            "frozen_release_zone_footprint_buffer_cells": 0,
+        },
+        {
+            "variant_id": "wide_threshold_band",
+            "variant_kind": "threshold_perturbation",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]) - HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]) + HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG,
+            "frozen_release_zone_footprint_buffer_cells": 0,
+        },
+        {
+            "variant_id": "buffered_footprint",
+            "variant_kind": "preprocessing_perturbation",
+            "candidate_slope_min_deg": float(screening["candidate_slope_min_deg"]),
+            "candidate_slope_max_deg": float(screening["candidate_slope_max_deg"]),
+            "frozen_release_zone_footprint_buffer_cells": HEURISTIC_SENSITIVITY_FOOTPRINT_BUFFER_CELLS,
+        },
+    ]
+
+    baseline_variant_mask = baseline_candidate_mask
+    variant_masks: dict[str, np.ndarray] = {"baseline": baseline_variant_mask}
+    variant_summaries: list[dict[str, Any]] = []
+    for spec in variant_specs:
+        variant_screening = dict(screening)
+        variant_screening.update(
+            {
+                "candidate_slope_min_deg": spec["candidate_slope_min_deg"],
+                "candidate_slope_max_deg": spec["candidate_slope_max_deg"],
+                "frozen_release_zone_footprint_buffer_cells": spec["frozen_release_zone_footprint_buffer_cells"],
+            }
+        )
+        if spec["variant_id"] == "baseline":
+            candidate_mask = baseline_candidate_mask
+            terrain_masks = baseline_terrain_masks
+        else:
+            candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, variant_screening)
+        variant_masks[spec["variant_id"]] = candidate_mask
+        summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, variant_screening)
+        baseline_overlap_mask = candidate_mask & baseline_variant_mask
+        baseline_union_mask = candidate_mask | baseline_variant_mask
+        baseline_overlap_count = int(baseline_overlap_mask.sum())
+        candidate_count = int(candidate_mask.sum())
+        baseline_count = int(baseline_variant_mask.sum())
+        summary.update(
+            {
+                "variant_id": spec["variant_id"],
+                "variant_kind": spec["variant_kind"],
+                "candidate_overlap_with_baseline_cell_count": baseline_overlap_count,
+                "candidate_overlap_with_baseline_area_m2": baseline_overlap_count * (terrain["cellsize"] ** 2),
+                "candidate_overlap_fraction_of_baseline_cells": fraction(baseline_overlap_count, baseline_count),
+                "candidate_overlap_fraction_of_variant_cells": fraction(baseline_overlap_count, candidate_count),
+                "candidate_overlap_jaccard_index_with_baseline": fraction(
+                    baseline_overlap_count, int(baseline_union_mask.sum())
+                ),
+                "candidate_delta_cell_count_vs_baseline": candidate_count - baseline_count,
+                "candidate_delta_area_m2_vs_baseline": (candidate_count - baseline_count) * (terrain["cellsize"] ** 2),
+            }
+        )
+        variant_summaries.append(summary)
+
+    union_mask = np.logical_or.reduce(list(variant_masks.values()))
+    stable_mask = np.logical_and.reduce(list(variant_masks.values()))
+    unstable_mask = union_mask & ~stable_mask
+    baseline_candidate_count = int(baseline_variant_mask.sum())
+    union_candidate_count = int(union_mask.sum())
+    stable_region_summary = summarize_region_mask(stable_mask, terrain, "stable_across_bounded_heuristics")
+    unstable_region_summary = summarize_region_mask(unstable_mask, terrain, "heuristic_sensitive_across_bounded_heuristics")
+    stable_region_summary["coverage_fraction_of_union_candidate_cells"] = fraction(
+        stable_region_summary["cell_count"], union_candidate_count
+    )
+    stable_region_summary["coverage_fraction_of_baseline_candidate_cells"] = fraction(
+        stable_region_summary["cell_count"], baseline_candidate_count
+    )
+    unstable_region_summary["coverage_fraction_of_union_candidate_cells"] = fraction(
+        unstable_region_summary["cell_count"], union_candidate_count
+    )
+    unstable_region_summary["coverage_fraction_of_baseline_candidate_cells"] = fraction(
+        unstable_region_summary["cell_count"], baseline_candidate_count
+    )
+
+    pairwise_overlap_summary: list[dict[str, Any]] = []
+    for left, right in combinations(variant_summaries, 2):
+        left_mask = variant_masks[left["variant_id"]]
+        right_mask = variant_masks[right["variant_id"]]
+        shared_mask = left_mask & right_mask
+        shared_count = int(shared_mask.sum())
+        union_count = int((left_mask | right_mask).sum())
+        cell_area_m2 = terrain["cellsize"] ** 2
+        pairwise_overlap_summary.append(
+            {
+                "left_variant_id": left["variant_id"],
+                "right_variant_id": right["variant_id"],
+                "shared_cell_count": shared_count,
+                "shared_area_m2": shared_count * cell_area_m2,
+                "union_cell_count": union_count,
+                "union_area_m2": union_count * cell_area_m2,
+                "left_overlap_fraction": fraction(shared_count, int(left_mask.sum())),
+                "right_overlap_fraction": fraction(shared_count, int(right_mask.sum())),
+                "jaccard_index": fraction(shared_count, union_count),
+            }
+        )
+
+    candidate_counts = [summary["candidate_cell_count"] for summary in variant_summaries]
+    candidate_areas = [summary["candidate_area_m2"] for summary in variant_summaries]
+    return {
+        "sensitivity_status": "ready",
+        "sensitivity_scope": "bounded_threshold_and_preprocessing_perturbations",
+        "baseline_variant_id": "baseline",
+        "variant_count": len(variant_summaries),
+        "variant_summaries": variant_summaries,
+        "candidate_count_range": {
+            "min": min(candidate_counts),
+            "max": max(candidate_counts),
+        },
+        "candidate_area_range_m2": {
+            "min": min(candidate_areas),
+            "max": max(candidate_areas),
+        },
+        "baseline_candidate_cell_count": baseline_candidate_count,
+        "baseline_candidate_area_m2": baseline_candidate_count * (terrain["cellsize"] ** 2),
+        "union_candidate_cell_count": union_candidate_count,
+        "union_candidate_area_m2": union_candidate_count * (terrain["cellsize"] ** 2),
+        "stable_candidate_region": stable_region_summary,
+        "unstable_candidate_region": unstable_region_summary,
+        "pairwise_overlap_summary": pairwise_overlap_summary,
+        "claim_boundaries": {
+            "heuristic_stability_characterization_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "notes": [
+                "bounded perturbations only characterize heuristic agreement and disagreement",
+                "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
+                "unstable regions are heuristic-sensitive regions, not invalidated release zones",
+            ],
+        },
+    }
+
+
+def summarize_region_mask(mask: np.ndarray, terrain: dict[str, Any], region_class: str) -> dict[str, Any]:
+    cell_count = int(mask.sum())
+    cell_area_m2 = terrain["cellsize"] ** 2
+    components = connected_candidate_components(mask)
+    component_sizes = [len(component) for component in components]
+    return {
+        "region_class": region_class,
+        "cell_count": cell_count,
+        "area_m2": cell_count * cell_area_m2,
+        "component_count": len(components),
+        "largest_component_cell_count": max(component_sizes) if component_sizes else 0,
+        "largest_component_area_m2": (max(component_sizes) if component_sizes else 0) * cell_area_m2,
+        "region_bbox_lv95_m": mask_bbox(mask, terrain),
+        "coverage_fraction_of_union_candidate_cells": None,
+        "coverage_fraction_of_baseline_candidate_cells": None,
+    }
+
+
+def mask_bbox(mask: np.ndarray, terrain: dict[str, Any]) -> dict[str, float]:
+    rows, cols = np.where(mask)
+    if len(rows) == 0:
+        return {"crs": "EPSG:2056", "xmin": 0.0, "ymin": 0.0, "xmax": 0.0, "ymax": 0.0}
+    xmin = terrain["xllcorner"] + int(cols.min()) * terrain["cellsize"]
+    xmax = terrain["xllcorner"] + (int(cols.max()) + 1) * terrain["cellsize"]
+    ymin = terrain["yllcorner"] + (terrain["nrows"] - int(rows.max()) - 1) * terrain["cellsize"]
+    ymax = terrain["yllcorner"] + (terrain["nrows"] - int(rows.min())) * terrain["cellsize"]
+    return {
+        "crs": "EPSG:2056",
+        "xmin": xmin,
+        "ymin": ymin,
+        "xmax": xmax,
+        "ymax": ymax,
+    }
+
+
+def dilate_mask(mask: np.ndarray, buffer_cells: int) -> np.ndarray:
+    if buffer_cells <= 0:
+        return mask.copy()
+    dilated = mask.copy()
+    rows, cols = np.where(mask)
+    nrows, ncols = mask.shape
+    for row, col in zip(rows, cols):
+        row_min = max(0, row - buffer_cells)
+        row_max = min(nrows - 1, row + buffer_cells)
+        col_min = max(0, col - buffer_cells)
+        col_max = min(ncols - 1, col + buffer_cells)
+        dilated[row_min : row_max + 1, col_min : col_max + 1] = True
+    return dilated
+
+
+def candidate_sensitivity_report_stub() -> dict[str, Any]:
+    return {
+        "sensitivity_status": "blocked_missing_inputs",
+        "sensitivity_scope": "bounded_threshold_and_preprocessing_perturbations",
+        "baseline_variant_id": "baseline",
+        "variant_count": 0,
+        "variant_summaries": [],
+        "candidate_count_range": {"min": None, "max": None},
+        "candidate_area_range_m2": {"min": None, "max": None},
+        "baseline_candidate_cell_count": 0,
+        "baseline_candidate_area_m2": 0.0,
+        "union_candidate_cell_count": 0,
+        "union_candidate_area_m2": 0.0,
+        "stable_candidate_region": {
+            "region_class": "stable_across_bounded_heuristics",
+            "cell_count": 0,
+            "area_m2": 0.0,
+            "component_count": 0,
+            "largest_component_cell_count": 0,
+            "largest_component_area_m2": 0.0,
+            "region_bbox_lv95_m": {"crs": "EPSG:2056", "xmin": 0.0, "ymin": 0.0, "xmax": 0.0, "ymax": 0.0},
+            "coverage_fraction_of_union_candidate_cells": None,
+            "coverage_fraction_of_baseline_candidate_cells": None,
+        },
+        "unstable_candidate_region": {
+            "region_class": "heuristic_sensitive_across_bounded_heuristics",
+            "cell_count": 0,
+            "area_m2": 0.0,
+            "component_count": 0,
+            "largest_component_cell_count": 0,
+            "largest_component_area_m2": 0.0,
+            "region_bbox_lv95_m": {"crs": "EPSG:2056", "xmin": 0.0, "ymin": 0.0, "xmax": 0.0, "ymax": 0.0},
+            "coverage_fraction_of_union_candidate_cells": None,
+            "coverage_fraction_of_baseline_candidate_cells": None,
+        },
+        "pairwise_overlap_summary": [],
+        "claim_boundaries": {
+            "heuristic_stability_characterization_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "notes": [
+                "bounded perturbations only characterize heuristic agreement and disagreement",
+                "stable regions are agreement regions across bounded heuristic settings, not validated release zones",
+                "unstable regions are heuristic-sensitive regions, not invalidated release zones",
+            ],
+        },
+    }
 
 
 def emit_candidate_products(
@@ -1068,6 +1356,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("candidate_summary:")
     lines.extend(render_mapping(report["candidate_summary"]))
+    lines.append("")
+    lines.append("candidate_sensitivity_report:")
+    lines.extend(render_mapping(report["candidate_sensitivity_report"]))
     lines.append("")
     lines.append("frozen_source_zone_footprint:")
     lines.extend(render_mapping(report["frozen_source_zone_footprint"]))

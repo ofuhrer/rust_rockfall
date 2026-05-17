@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-150: Stress-Test Release-Zone Candidate Heuristic Stability
-
-Goal: Quantify how deterministic terrain-driven release-zone candidates change
-under bounded threshold and preprocessing perturbations.
-
-Capability gap reduced: release-zone automation is currently deterministic but
-not yet stability-characterized.
-
-Why this outranks alternatives: heuristic release zones dominate downstream
-uncertainty, so their robustness must be measured before trusting AOI-scale
-automation.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A deterministic sensitivity report for candidate count, area, overlap, and
-  stable/unstable candidate regions across bounded heuristic settings.
-- Fixture tests for stable and unstable heuristic outcomes.
-- Clear non-validation boundary language.
-
-Definition of done:
-
-- The repo can distinguish robust terrain candidates from heuristic-sensitive
-  candidates without claiming either is a validated release zone.
-
-Boundaries: No threshold tuning to match outcomes, no field-validation claim,
-no operational release-zone claim, and no ensemble run.
-
 ### TB-151: Generalize Scenario Generation To Candidate Source Zones
 
 Goal: Generate deterministic block-scenario tables for generic candidate source
