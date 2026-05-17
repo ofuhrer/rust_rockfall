@@ -22,35 +22,7 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-_Active TB tasks remain below._
-
-### TB-179: Refill Or Close Post-Demonstration Backlog
-
-Goal: After the target-area demonstration sequence, reassess maturity and refill only the next highest-value tasks.
-
-Capability gap reduced: Backlog relevance after new measured or blocked evidence.
-
-Why this outranks alternatives: The sequence above can change priorities substantially; the next queue should be evidence-driven rather than pre-generated too far ahead.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/agent_work_log.md`
-- `docs/task_backlog.md`
-- `scripts/print_agent_task_context.py`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Updated maturity snapshot if evidence changed.
-- Either a concise new active backlog or a clear backlog-refill-needed state.
-- Summary of tasks completed, blocked, deferred, or superseded.
-
-Definition of done:
-
-- The backlog reflects the actual post-demonstration state and does not retain stale completed or impossible tasks.
-
-Boundaries: No implementation of scientific/execution tasks inside the refill itself, no roadmap bloat, and no claim-boundary changes without measured evidence.
+Backlog refill needed after TB-178; no active TB tasks are queued.
 
 ## Backlog Protocol
 

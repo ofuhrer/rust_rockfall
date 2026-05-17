@@ -322,7 +322,7 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
-    backlog is currently empty after TB-160 and `print_agent_task_context.py` reports
+    backlog is currently empty after TB-178 and `print_agent_task_context.py` reports
     `backlog_refill_needed=true`. The work log is chronological, archived
     history is separated, and repo consistency checks now reject unreachable or
     self-referential work-log commit hashes. File-backed worker logs reduced
@@ -350,7 +350,7 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-160:
+Current high-value work after TB-178:
 
 - refill the backlog from the measured Balfrin demo, the now-unblocked but
   unauthorized bounded-probe package handoff, explicit replay/metrics

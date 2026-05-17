@@ -3147,3 +3147,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no calibration was performed, no validation evidence was fabricated, no annual-frequency or physical-probability claim was added, and no operational or risk/exposure/vulnerability claim was introduced.
 - Next task: `TB-179`
+
+### TB-179: Refill Or Close Post-Demonstration Backlog
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: reassess the post-demonstration state and decide whether the active queue should be refilled or left empty until new evidence justifies another worker-sized task.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the post-demonstration backlog should stay empty for now rather than being padded with speculative follow-on work.
+  - Updated the maturity snapshot to state that the active backlog is empty after TB-178 and that `backlog_refill_needed=true` is the current worker-context state.
+  - Replaced the TB-179 placeholder in the active backlog with a concise refill-needed note so the queue no longer advertises a fake executable task.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_agent_task_context tests.test_repo_consistency_claim_hygiene -q`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `rg -n "^### TB-[0-9]{3}:" docs/task_backlog.md`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no scientific or execution task was launched, no Balfrin job was submitted, and no claim-boundary or roadmap expansion was introduced without measured evidence.
+- Next task: backlog refill needed; see `docs/task_backlog.md`.
