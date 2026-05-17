@@ -417,6 +417,49 @@ Boundaries: No marketing overclaim, no operational acceptance, no physical
 credibility upgrade, no scale-up authorization, no annual-frequency semantics,
 and no generated heavy artifacts committed.
 
+### TB-191: Balfrin Metrics And Run-Root Preservation Gate
+
+Goal: Define and test the metrics/run-root preservation gate that must pass
+before any future authorized live Balfrin multi-zone or metrics-completion run
+is treated as demonstration evidence.
+
+Capability gap reduced: Previous measured Balfrin probes left peak-memory,
+split validation/hazard output, and mounted-run-root availability incomplete or
+fragile.
+
+Why this outranks alternatives: A future multi-zone run will be expensive and
+hard to repeat; it should not reproduce the same evidence gaps already exposed
+by the target-area probe.
+
+Inspect first:
+
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_probe_metrics_report.py`
+- `scripts/submit_balfrin_probe.py`
+- `docs/balfrin_probe_slurm_driver.md`
+- `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/balfrin_target_area_spatial_uncertainty_stability_report.md`
+
+Deliverables:
+
+- A deterministic preflight or report that lists required metrics, preserved
+  run-root files, SLURM accounting fields, output-family summaries, and
+  spatial/GIS artifact paths for the next authorized live run.
+- A fail-closed classification for missing peak memory, split validation/hazard
+  output bytes/counts, conditional-curve rows, reducer state, COG/GIS scope
+  paths, or unavailable mounted run roots.
+- Updated operator guidance for what must be collected before a live run is
+  considered evidence rather than only an execution attempt.
+
+Definition of done:
+
+- Focused tests cover complete, partial, and missing-run-root cases; the gate
+  can be run without submitting a job; and the report clearly states whether a
+  future live run would satisfy the evidence-preservation contract.
+
+Boundaries: No live Balfrin submission, no scale-up authorization, no
+distributed execution, no operational claim, and no fabricated metrics.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

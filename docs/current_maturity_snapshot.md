@@ -338,15 +338,14 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. The active
-    backlog is currently empty after TB-179 and `print_agent_task_context.py` reports
-    `backlog_refill_needed=true`. The work log is chronological, archived
+    backlog has been refilled after TB-179 around multi-zone automation,
+    Balfrin dry-run packaging, AOI-to-prepared-pilot composition, reducer/GIS
+    stress tests, second-site dry-run realism, and evidence preservation for
+    future authorized live runs. The work log is chronological, archived
     history is separated, and repo consistency checks now reject unreachable or
     self-referential work-log commit hashes. File-backed worker logs reduced
     orchestration token pressure and exposed a concrete pitfall: workers must
-    not cancel healthy Slurm jobs solely because cold compilation is quiet. The
-    next backlog refill should start from this measured Balfrin maturity state
-    rather than resurrecting stale same-scale-only or pre-execution Balfrin
-    tasks.
+    not cancel healthy Slurm jobs solely because cold compilation is quiet.
 
 ## Backlog Quality Assessment
 
@@ -368,13 +367,17 @@ Over-procedural areas to avoid:
 
 Current high-value work after TB-179:
 
-- refill the backlog from the measured Balfrin single-release-zone and
-  target-area evidence, the explicit replay/metrics remediation status, and
-  completed AOI dry-run composition state, not from the older pre-execution
-  plan;
-- decide whether any next live Balfrin work should be explicitly authorized as
-  a metrics-completion rerun, a bounded ensemble probe, or deferred in favor of
-  public-context-backed portability work;
+- execute the active TB-181 through TB-191 queue in dependency order, starting
+  with deterministic release-candidate and scenario stress evidence before any
+  multi-zone Balfrin handoff;
+- keep TB-183 as a dry-run/package milestone by default; any live multi-zone
+  Balfrin execution remains a separate explicit authorization event;
+- preserve peak-memory, split validation/hazard output, run-root, reducer, and
+  GIS artifact evidence before treating any future live run as demonstration
+  evidence;
+- decide after the dry-run and preservation-gate work whether any next live
+  Balfrin work should be a metrics-completion rerun, a bounded multi-zone probe,
+  or deferred in favor of public-context-backed portability work;
 - decide whether the next portability step is real Chant Sura public-context
   acquisition, a measured second-site dry run after staging, or further
   fixture-backed AOI automation;
