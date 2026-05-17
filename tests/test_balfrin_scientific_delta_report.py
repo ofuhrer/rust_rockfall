@@ -38,11 +38,19 @@ class BalfrinScientificDeltaReportTests(unittest.TestCase):
         self.assertIn("does not reclassify the current inconclusive diagnostic interpretation", report["canonical_interpretation"]["interpretation_delta"]["summary"])
         self.assertEqual(report["balfrin_post_run_interpretation_gate_report"]["interpretation_status"], "measured_conditional_diagnostic")
         self.assertEqual(report["same_scale_uncertainty_report"]["spatial_uncertainty_status"], "measured_existing_artifacts")
+        self.assertEqual(report["bounded_probe_interpretation_report"]["probe_interpretation_status"], "blocked_missing_inputs")
         self.assertEqual(report["same_scale_stability_frontier_report"]["frontier_status"], "measured_existing_artifacts")
         self.assertEqual(report["closure_gap_deltas_report"]["closure_gap_status"], "measured_gaps_remain")
         self.assertEqual(report["hotspot_provenance_report"]["hotspot_provenance_status"], "measured_existing_artifacts")
         self.assertGreater(len(report["scientific_delta_summary"]["confirmed"]), 0)
         self.assertIn("same-scale uncertainty envelope", report["scientific_delta_summary"]["comparisons"][0]["summary"])
+        self.assertEqual(
+            report["scientific_delta_summary"]["same_scale_focus"]["bounded_probe_interpretation"]["status"],
+            "blocked_missing_inputs",
+        )
+        self.assertTrue(
+            report["scientific_delta_summary"]["same_scale_focus"]["bounded_probe_interpretation"]["keep_closure_inconclusive"]
+        )
         self.assertEqual(report["machine_readable_blockers"]["closure_limiting_layers"]["layer_keys"], ["max_kinetic_energy", "max_jump_height"])
         self.assertEqual(report["machine_readable_blockers"]["gis_product_scope"]["status"], "gis_product_scope_blocked")
         self.assertEqual(report["machine_readable_blockers"]["runtime_output_sufficiency"]["status"], "bounded_runtime_sufficient_output_blocked")
@@ -87,6 +95,7 @@ class BalfrinScientificDeltaReportTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Balfrin Scientific Delta Report", buffer.getvalue())
             self.assertIn("scientific_delta_status: measured_existing_artifacts", buffer.getvalue())
+            self.assertIn("bounded_probe_interpretation_status:", buffer.getvalue())
 
             buffer = io.StringIO()
             with redirect_stdout(buffer):

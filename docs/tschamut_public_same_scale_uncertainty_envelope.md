@@ -188,6 +188,12 @@ diagnostic-only wrappers around the measured stable/unstable region summaries;
 they keep the claim boundary explicit and do not introduce a new hazard or
 probability interpretation.
 
+For the bounded Balfrin probe comparison against this same-scale envelope, use
+`scripts/summarize_balfrin_bounded_probe_interpretation.py`. It compares the
+bounded probe evidence against the same-scale uncertainty, stability-frontier,
+and closure-gap reports, and it keeps the closure status inconclusive unless a
+closure criterion genuinely changes.
+
 ## Remaining Uncertainty
 - seed sensitivity remains structurally limiting on the shared grid
 - `max_kinetic_energy` still dominates the envelope

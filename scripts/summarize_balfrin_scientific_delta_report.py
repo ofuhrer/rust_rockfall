@@ -35,8 +35,13 @@ def _load_module(module_name: str, filename: str):
 POST_RUN = _load_module("balfrin_scientific_delta_post_run", "summarize_balfrin_post_run_interpretation_gate.py")
 SPATIAL = _load_module("balfrin_scientific_delta_spatial", "summarize_spatial_same_scale_uncertainty.py")
 STABILITY = _load_module("balfrin_scientific_delta_stability", "summarize_same_scale_stability_frontier.py")
+FEASIBILITY = _load_module("balfrin_scientific_delta_feasibility", "summarize_bounded_next_ensemble_feasibility_probe.py")
 CLOSURE_GAP = _load_module("balfrin_scientific_delta_closure_gap", "summarize_tschamut_closure_gap_deltas.py")
 HOTSPOT = _load_module("balfrin_scientific_delta_hotspot", "summarize_tschamut_hotspot_provenance.py")
+BOUNDED_PROBE = _load_module(
+    "balfrin_scientific_delta_bounded_probe",
+    "summarize_balfrin_bounded_probe_interpretation.py",
+)
 
 
 class BalfrinScientificDeltaReportError(ValueError):
@@ -120,6 +125,21 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "closure_gap_deltas_report",
         CLOSURE_GAP.build_report,
     )
+    bounded_probe_interpretation_report = section_or_build(
+        evidence_override,
+        "bounded_probe_interpretation_report",
+        lambda: BOUNDED_PROBE.build_report(
+            {
+                "bounded_probe_report": (
+                    dict(same_scale_stability_frontier_report.get("bounded_probe_feasibility") or {})
+                    or FEASIBILITY.build_report()
+                ),
+                "same_scale_uncertainty_report": same_scale_uncertainty_report,
+                "same_scale_stability_frontier_report": same_scale_stability_frontier_report,
+                "closure_gap_deltas_report": closure_gap_deltas_report,
+            }
+        ),
+    )
     hotspot_provenance_report = section_or_build(
         evidence_override,
         "hotspot_provenance_report",
@@ -147,6 +167,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     scientific_delta_summary = summarize_scientific_delta(
         post_run_report=post_run_report,
         same_scale_uncertainty_report=same_scale_uncertainty_report,
+        bounded_probe_interpretation_report=bounded_probe_interpretation_report,
         same_scale_stability_frontier_report=same_scale_stability_frontier_report,
         closure_gap_deltas_report=closure_gap_deltas_report,
         hotspot_provenance_report=hotspot_provenance_report,
@@ -155,6 +176,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     canonical_interpretation = build_canonical_interpretation(
         post_run_report=post_run_report,
         same_scale_uncertainty_report=same_scale_uncertainty_report,
+        bounded_probe_interpretation_report=bounded_probe_interpretation_report,
         same_scale_stability_frontier_report=same_scale_stability_frontier_report,
         closure_gap_deltas_report=closure_gap_deltas_report,
         hotspot_provenance_report=hotspot_provenance_report,
@@ -167,6 +189,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "scientific_delta_status": report_status,
         "balfrin_post_run_interpretation_gate_report": post_run_report,
         "same_scale_uncertainty_report": same_scale_uncertainty_report,
+        "bounded_probe_interpretation_report": bounded_probe_interpretation_report,
         "same_scale_stability_frontier_report": same_scale_stability_frontier_report,
         "closure_gap_deltas_report": closure_gap_deltas_report,
         "hotspot_provenance_report": hotspot_provenance_report,
@@ -178,6 +201,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "measurement_commands": {
             "post_run_interpretation_gate": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json",
             "same_scale_uncertainty": "PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json",
+            "bounded_probe_interpretation": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_bounded_probe_interpretation.py --format json",
             "same_scale_stability_frontier": "PYENV_VERSION=system uv run python scripts/summarize_same_scale_stability_frontier.py --format json",
             "closure_gap_deltas": "PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json",
             "hotspot_provenance": "PYENV_VERSION=system uv run python scripts/summarize_tschamut_hotspot_provenance.py --format json",
@@ -196,6 +220,7 @@ def build_canonical_interpretation(
     *,
     post_run_report: dict[str, Any],
     same_scale_uncertainty_report: dict[str, Any],
+    bounded_probe_interpretation_report: dict[str, Any],
     same_scale_stability_frontier_report: dict[str, Any],
     closure_gap_deltas_report: dict[str, Any],
     hotspot_provenance_report: dict[str, Any],
@@ -205,6 +230,7 @@ def build_canonical_interpretation(
     interpretation_status = str(post_run_report.get("interpretation_status") or "unknown")
     closure_status = str(closure_gap_deltas_report.get("current_closure_status") or "unknown")
     closure_gap_status = str(closure_gap_deltas_report.get("closure_gap_status") or "unknown")
+    bounded_probe_status = str(bounded_probe_interpretation_report.get("probe_interpretation_status") or "unknown")
     interpretation_delta = derive_interpretation_delta(
         report_status=report_status,
         closure_gap_status=closure_gap_status,
@@ -214,6 +240,7 @@ def build_canonical_interpretation(
     blockers = build_machine_readable_blockers(
         post_run_report=post_run_report,
         same_scale_uncertainty_report=same_scale_uncertainty_report,
+        bounded_probe_interpretation_report=bounded_probe_interpretation_report,
         same_scale_stability_frontier_report=same_scale_stability_frontier_report,
         closure_gap_deltas_report=closure_gap_deltas_report,
         hotspot_provenance_report=hotspot_provenance_report,
@@ -226,10 +253,16 @@ def build_canonical_interpretation(
     return {
         "schema_version": "balfrin_scientific_delta_interpretation_v1",
         "interpretation_delta": interpretation_delta,
+        "bounded_probe_interpretation": {
+            "status": bounded_probe_status,
+            "summary": bounded_probe_interpretation_report.get("comparison_summary", {}).get("summary"),
+            "keep_closure_inconclusive": bounded_probe_interpretation_report.get("keep_closure_inconclusive", True),
+        },
         "closure_semantics": {
             "current_closure_status": closure_status,
             "current_interpretation_status": interpretation_status,
             "closure_gap_status": closure_gap_status,
+            "bounded_probe_interpretation_status": bounded_probe_status,
         },
         "blockers": blockers,
         "boundaries": boundaries,
@@ -238,6 +271,7 @@ def build_canonical_interpretation(
             "summary": interpretation_delta["summary"],
             "closure_limiting_layers": list(scientific_delta_summary.get("same_scale_focus", {}).get("closure_limiting_layers", [])),
             "deferrable_layers": list(scientific_delta_summary.get("same_scale_focus", {}).get("deferrable_layers", [])),
+            "bounded_probe_interpretation": dict(scientific_delta_summary.get("bounded_probe_interpretation") or {}),
         },
     }
 
@@ -278,6 +312,7 @@ def build_machine_readable_blockers(
     *,
     post_run_report: dict[str, Any],
     same_scale_uncertainty_report: dict[str, Any],
+    bounded_probe_interpretation_report: dict[str, Any],
     same_scale_stability_frontier_report: dict[str, Any],
     closure_gap_deltas_report: dict[str, Any],
     hotspot_provenance_report: dict[str, Any],
@@ -302,6 +337,9 @@ def build_machine_readable_blockers(
             "same_scale_interpretation": str(same_scale_uncertainty_report.get("spatial_interpretation") or "unknown"),
             "closure_gap_status": str(closure_gap_deltas_report.get("closure_gap_status") or "unknown"),
             "current_closure_status": str(closure_gap_deltas_report.get("current_closure_status") or "unknown"),
+            "bounded_probe_interpretation_status": str(
+                bounded_probe_interpretation_report.get("probe_interpretation_status") or "unknown"
+            ),
         },
         "gis_product_scope": {
             "status": gis_product_scope_status(blocker_index),
@@ -491,6 +529,7 @@ def summarize_scientific_delta(
     *,
     post_run_report: dict[str, Any],
     same_scale_uncertainty_report: dict[str, Any],
+    bounded_probe_interpretation_report: dict[str, Any],
     same_scale_stability_frontier_report: dict[str, Any],
     closure_gap_deltas_report: dict[str, Any],
     hotspot_provenance_report: dict[str, Any],
@@ -502,6 +541,7 @@ def summarize_scientific_delta(
     deferrable_layers = [item.get("layer_key") for item in closure_gap_deltas_report.get("deferrable_layers", []) if item.get("layer_key")]
     hotspot_classes = dict(hotspot_provenance_report.get("hotspot_provenance_classes") or {})
     hotspot_limitations = list(hotspot_provenance_report.get("attribution_limits", {}).get("cannot_attribute", []))
+    probe_summary = dict(bounded_probe_interpretation_report.get("comparison_summary") or {})
 
     comparisons = [
         {
@@ -523,6 +563,13 @@ def summarize_scientific_delta(
             "summary": "The measured Balfrin run does not convert the closure-gap deltas into accepted closure evidence.",
         },
         {
+            "topic": "bounded_probe_interpretation",
+            "source_status": bounded_probe_interpretation_report.get("probe_interpretation_status"),
+            "delta_class": probe_summary.get("status", "unknown"),
+            "summary": probe_summary.get("summary")
+            or "The bounded Balfrin probe is compared against the current same-scale evidence without changing the closure boundary.",
+        },
+        {
             "topic": "hotspot_provenance",
             "source_status": hotspot_provenance_report.get("hotspot_provenance_status"),
             "delta_class": "run_level_traceable_cell_level_unknown",
@@ -539,6 +586,7 @@ def summarize_scientific_delta(
         unchanged = [
             "Same-scale uncertainty remains closure-limiting where the existing helpers already classify it as closure-limiting.",
             "The closure-gap interpretation remains closer to deferred than to no-go.",
+            "The bounded probe comparison keeps the closure status inconclusive unless a closure criterion actually changes.",
             "Hotspot provenance remains committed-source-zone and scenario traceable, but cell-level lineage is still unavailable.",
         ]
     else:
@@ -566,6 +614,16 @@ def summarize_scientific_delta(
             "deferrable_layers": deferrable_layers,
             "hotspot_classes": hotspot_classes,
             "hotspot_limitations": hotspot_limitations,
+            "bounded_probe_interpretation": {
+                "status": probe_summary.get("status", bounded_probe_interpretation_report.get("probe_interpretation_status", "unknown")),
+                "closure_criterion_changed": bool(probe_summary.get("closure_criterion_changed", False)),
+                "keep_closure_inconclusive": bool(
+                    probe_summary.get(
+                        "keep_closure_inconclusive",
+                        bounded_probe_interpretation_report.get("keep_closure_inconclusive", True),
+                    )
+                ),
+            },
         },
     }
 
@@ -598,6 +656,28 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "schema_version": SPATIAL.SCHEMA_VERSION,
             "spatial_uncertainty_status": "blocked_missing_inputs",
         },
+        "bounded_probe_interpretation_report": {
+            "schema_version": BOUNDED_PROBE.SCHEMA_VERSION,
+            "probe_interpretation_status": "blocked_missing_inputs",
+            "bounded_probe_status": "blocked_missing_inputs",
+            "same_scale_uncertainty_status": "blocked_missing_inputs",
+            "same_scale_stability_frontier_status": "blocked_missing_inputs",
+            "closure_gap_status": "blocked_missing_inputs",
+            "closure_status": "blocked_missing_inputs",
+            "closure_interpretation_status": "blocked_missing_inputs",
+            "keep_closure_inconclusive": True,
+            "comparison_summary": {
+                "status": "blocked_missing_inputs",
+                "summary": "Measured Balfrin bounded-probe evidence is incomplete, so no interpretation delta can be stated.",
+                "closure_status": "blocked_missing_inputs",
+                "closure_criterion_changed": False,
+                "keep_closure_inconclusive": True,
+            },
+            "probe_evidence": {},
+            "same_scale_evidence": {},
+            "claim_boundaries": POST_RUN.claim_boundaries(),
+            "blocked_reason": "required evidence inputs are missing",
+        },
         "same_scale_stability_frontier_report": {
             "schema_version": STABILITY.SCHEMA_VERSION,
             "frontier_status": "blocked_missing_inputs",
@@ -617,6 +697,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "not_addressed": [],
             "comparisons": [],
             "same_scale_focus": {},
+            "bounded_probe_interpretation": {},
         },
         "canonical_interpretation": {
             "schema_version": "balfrin_scientific_delta_interpretation_v1",
@@ -631,6 +712,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
                 "current_closure_status": "blocked_missing_inputs",
                 "current_interpretation_status": "blocked_missing_inputs",
                 "closure_gap_status": "blocked_missing_inputs",
+                "bounded_probe_interpretation_status": "blocked_missing_inputs",
             },
             "blockers": {
                 "closure_limiting_layers": {
@@ -672,6 +754,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
                 "summary": "Measured Balfrin evidence is incomplete, so no diagnostic delta can be stated.",
                 "closure_limiting_layers": [],
                 "deferrable_layers": [],
+                "bounded_probe_interpretation": {},
             },
         },
         "machine_readable_blockers": {
@@ -695,6 +778,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         "measurement_commands": {
             "post_run_interpretation_gate": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --format json",
             "same_scale_uncertainty": "PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json",
+            "bounded_probe_interpretation": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_bounded_probe_interpretation.py --format json",
             "same_scale_stability_frontier": "PYENV_VERSION=system uv run python scripts/summarize_same_scale_stability_frontier.py --format json",
             "closure_gap_deltas": "PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json",
             "hotspot_provenance": "PYENV_VERSION=system uv run python scripts/summarize_tschamut_hotspot_provenance.py --format json",
@@ -716,6 +800,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"scientific_delta_status: {report['scientific_delta_status']}",
         f"post_run_interpretation_status: {report['balfrin_post_run_interpretation_gate_report'].get('interpretation_status', 'unknown')}",
         f"same_scale_uncertainty_status: {report['same_scale_uncertainty_report'].get('spatial_uncertainty_status', 'unknown')}",
+        f"bounded_probe_interpretation_status: {report['bounded_probe_interpretation_report'].get('probe_interpretation_status', 'unknown')}",
         f"same_scale_stability_frontier_status: {report['same_scale_stability_frontier_report'].get('frontier_status', 'unknown')}",
         f"closure_gap_status: {report['closure_gap_deltas_report'].get('closure_gap_status', 'unknown')}",
         f"hotspot_provenance_status: {report['hotspot_provenance_report'].get('hotspot_provenance_status', 'unknown')}",
@@ -742,6 +827,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"- dominant_layers_by_mean_range: {', '.join(focus.get('dominant_layers_by_mean_range', []))}")
     lines.append(f"- closure_limiting_layers: {', '.join(focus.get('closure_limiting_layers', []))}")
     lines.append(f"- deferrable_layers: {', '.join(focus.get('deferrable_layers', []))}")
+    lines.append(f"- bounded_probe_interpretation: {json.dumps(focus.get('bounded_probe_interpretation', {}), sort_keys=True)}")
     if focus.get("hotspot_classes"):
         lines.append(f"- hotspot_classes: {json.dumps(focus['hotspot_classes'], sort_keys=True)}")
     lines.extend(["", "## Canonical Interpretation"])

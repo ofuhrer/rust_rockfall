@@ -24,40 +24,6 @@ later prompts. Full sequential-loop guidance lives in
 
 _Active TB tasks remain below._
 
-### TB-145: Interpret Bounded Probe Against Same-Scale Uncertainty
-
-Goal: Compare any new bounded Balfrin probe evidence against the existing
-same-scale uncertainty, stability, and closure-gap evidence.
-
-Capability gap reduced: scientific meaning of additional execution evidence.
-
-Why this outranks alternatives: new runtime evidence is only useful if it
-changes, confirms, or sharply bounds the current uncertainty interpretation.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- A deterministic comparison report for unchanged, improved, worsened, or
-  blocked uncertainty interpretation.
-- Updated text/JSON fields that keep closure inconclusive unless the evidence
-  genuinely changes a closure criterion.
-- Focused tests for measured, no-change, and missing-probe cases.
-
-Definition of done:
-
-- A reviewer can see whether the bounded probe materially reduced scientific
-  uncertainty, merely confirmed current blockers, or remained unavailable.
-
-Boundaries: No closure upgrade by assertion, no physics tuning, no operational
-claim, and no physical-probability claim.
-
 ### TB-146: Freeze Management Demonstration Evidence Package
 
 Goal: Produce a compact, replayable Balfrin demonstration package intended for

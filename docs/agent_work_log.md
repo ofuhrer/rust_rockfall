@@ -2456,3 +2456,20 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_blocked_report
 - Boundaries: no ensemble execution, no parameter tuning, no scale-up authorization, and no operational claim.
 - Next task: `TB-145`
+
+### TB-145
+- Date: 2026-05-17
+- Commit: local
+- Objective: compare the bounded Balfrin probe against the existing same-scale uncertainty, stability, and closure-gap evidence without upgrading closure by assertion.
+- Files changed: `scripts/summarize_balfrin_bounded_probe_interpretation.py`, `scripts/summarize_balfrin_scientific_delta_report.py`, `tests/test_balfrin_bounded_probe_interpretation.py`, `tests/test_balfrin_scientific_delta_report.py`, `docs/tschamut_public_same_scale_uncertainty_envelope.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated bounded-probe comparison helper that classifies unchanged, improved, worsened, and blocked interpretation states while keeping the closure status explicit and conservative.
+  - Wired the new bounded-probe comparison into the Balfrin scientific delta report as a reusable sidecar field so the canonical summary now exposes the probe comparison without turning a blocked probe into a broader scientific failure.
+  - Updated the same-scale uncertainty envelope note to point at the new comparator and preserve the current inconclusive closure boundary.
+  - Added focused regression coverage for the measured, no-change, and missing-probe states plus an integration assertion that the scientific delta report surfaces the bounded-probe comparison fields.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_bounded_probe_interpretation tests.test_balfrin_scientific_delta_report -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_bounded_probe_interpretation.py scripts/summarize_balfrin_scientific_delta_report.py tests/test_balfrin_bounded_probe_interpretation.py tests/test_balfrin_scientific_delta_report.py`
+- Result/status: implemented_measured
+- Boundaries: no closure upgrade by assertion, no physics tuning, no operational claim, no physical-probability claim, and no scale-up authorization.
+- Next task: `TB-146`
