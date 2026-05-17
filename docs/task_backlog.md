@@ -22,7 +22,400 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-Backlog refill needed after TB-179; no active TB tasks are queued.
+### TB-181: Automated Release-Zone Candidate Sweep On Real Terrain
+
+Goal: Run deterministic release-zone candidate generation across a larger real
+terrain AOI instead of only a handcrafted or frozen single-zone pilot.
+
+Capability gap reduced: Manual release-zone dependence in the Swiss-wide
+workflow.
+
+Why this outranks alternatives: Plausible terrain-derived release candidates
+are the largest remaining automation blocker before multi-zone workflows can
+be tested honestly.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_target_area_candidate_stability.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`
+- `docs/current_maturity_snapshot.md`
+- `docs/swisstopo_data_strategy.md`
+
+Deliverables:
+
+- Deterministic large-AOI release-candidate sweep using staged real terrain.
+- Candidate masks or polygon outputs written only to ignored/scratch roots.
+- Candidate statistics: count, area distribution, slope/topography thresholds,
+  stable-vs-sensitive classes, and runtime/output measurements.
+- A short report that states whether the helper is ready for multi-zone
+  scenario-generation stress tests.
+
+Definition of done:
+
+- The sweep is reproducible from tracked inputs plus ignored terrain artifacts,
+  focused tests cover deterministic output shape and blocked-missing-input
+  behavior, and no generated GIS or raster outputs are committed.
+
+Boundaries: No release-zone validation claim, no tuning to match Tschamut, no
+field-evidence claim, no operational release-zone claim, and no Balfrin job
+submission.
+
+### TB-182: Large Deterministic Scenario Table Generation Stress Test
+
+Goal: Generate and measure a realistic large deterministic scenario table from
+automatically generated release candidates.
+
+Capability gap reduced: Unknown scenario-space cardinality, manifest pressure,
+and scenario-generation practicality for many release candidates.
+
+Why this outranks alternatives: Multi-zone Balfrin planning is not meaningful
+until the repo can quantify how many conditional scenario rows its automated
+candidate generation produces.
+
+Inspect first:
+
+- `scripts/generate_balfrin_target_area_scenario_tables.py`
+- `scripts/generate_candidate_source_zone_scenarios.py`
+- `scripts/plan_release_plan_dry_run.py`
+- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
+- `docs/swisstopo_data_strategy.md`
+
+Deliverables:
+
+- A deterministic stress-test path that consumes candidate release-zone records
+  and emits large scenario tables into ignored/scratch roots.
+- Scenario cardinality metrics by candidate, source-zone family, block family,
+  and scenario-family template.
+- Runtime, storage, and manifest-size measurements for the generated tables.
+- A bounded report naming the first scenario-generation scaling bottleneck.
+
+Definition of done:
+
+- Scenario generation is deterministic and provenance-aware, focused tests cover
+  cardinality/manifest summaries and missing-input failure, and the report
+  states whether TB-183 has enough planning input to proceed.
+
+Boundaries: No annual-frequency semantics, no physical probability semantics,
+no parameter tuning, no ensemble execution, and no generated large tables in
+git.
+
+### TB-183: Multi-Release-Zone Balfrin Dry-Run Demonstration
+
+Goal: Build a bounded multi-release-zone Balfrin demonstration package from
+automatic release candidates, deterministic scenarios, reduced-output settings,
+and uncertainty-aware post-processing commands.
+
+Capability gap reduced: The architecture is only measured for single-release-
+zone Balfrin execution; multi-zone orchestration, output pressure, reducer
+pressure, and restartability remain untested.
+
+Why this outranks alternatives: This is the highest-leverage next
+demonstration milestone because it tests whether the current workflow shape can
+survive beyond the single-zone comfort zone.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/generate_balfrin_target_area_demo_handoff.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/balfrin_probe_slurm_driver.md`
+- `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- A multi-zone command-plan and SBATCH handoff package in an ignored/scratch
+  root.
+- Estimated runtime, output pressure, reducer/chunk pressure, and restartability
+  checkpoints for the package.
+- A blocked-or-ready submission classification that explicitly states whether
+  live execution requires new human authorization.
+- A follow-up recommendation for the smallest measured multi-zone Balfrin run.
+
+Definition of done:
+
+- The dry-run package is reproducible and reviewable, package generation is
+  covered by focused tests, and no live Balfrin submission occurs unless the
+  task is explicitly re-authorized in the conversation before execution.
+
+Boundaries: Dry-run/package by default; no live Balfrin job, no scale-up
+authorization, no distributed execution, no operational claim, and no generated
+artifacts committed.
+
+### TB-184: AOI-To-Prepared-Pilot End-To-End Automation
+
+Goal: Given AOI extents or a bounding polygon, automatically derive the
+prepared-pilot scaffolding: tile manifests, terrain/context manifests, release
+candidates, scenario tables, command plans, and ignored-root layouts.
+
+Capability gap reduced: Missing "AOI to workflow compiler" path for future
+Swiss-wide reproducibility.
+
+Why this outranks alternatives: It collapses several existing dry-run helpers
+into one deterministic operator-facing preparation path without requiring a
+simulation run.
+
+Inspect first:
+
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/verify_public_geodata_cache.py`
+- `scripts/plan_aoi_terrain_preprocessing.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- One AOI preparation helper or orchestration mode that composes existing
+  product discovery, cache verification, terrain preprocessing, release
+  candidate generation, scenario generation, and command-plan output.
+- Deterministic manifests and ignored-root layout records.
+- Blocked-missing-input output that names the exact products or metadata
+  missing for clean checkouts.
+
+Definition of done:
+
+- The helper produces a deterministic prepared-pilot report for a fixture AOI,
+  reports blocked states cleanly when staged products are absent, and focused
+  tests cover both paths.
+
+Boundaries: No public-data download, no simulation, no second-site ensemble,
+no operational claim, and no synthetic fixture represented as public evidence.
+
+### TB-185: Switzerland-Scale Runtime And Storage Projection
+
+Goal: Project runtime, output pressure, storage growth, reducer scaling, and
+rebuildability cost for 10 release zones, 100 release zones, regional workflows,
+and a Switzerland-scale planning envelope.
+
+Capability gap reduced: National feasibility is currently extrapolated from
+single-zone and target-area evidence without a multi-zone planning model.
+
+Why this outranks alternatives: It turns measured Balfrin output pressure and
+candidate/scenario cardinality into explicit no-go/defer/next-probe planning
+labels before larger runs are attempted.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_probe_metrics_report.py`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- Runtime/storage/file-count/rebuildability projections for 10-zone, 100-zone,
+  regional, and Swiss-wide planning cases.
+- Sensitivity bands using measured single-zone, target-area, and generated
+  scenario-table evidence where available.
+- Explicit bottleneck labels for validation output, hazard output, reducer
+  merge, manifest count, memory, and scheduler practicality.
+
+Definition of done:
+
+- The projection helper/report is deterministic, fails closed when measured
+  inputs are absent, and states which scale levels are no-go, deferred, or
+  eligible only for an explicitly authorized next probe.
+
+Boundaries: Projection only; no scale-up authorization, no distributed
+execution, no Swiss-wide run, and no annual-frequency or operational claim.
+
+### TB-186: Large-AOI GIS Packaging Stress Test
+
+Goal: Stress-test GIS package generation, manifest generation, COG conversion,
+and raster packaging for a realistically large AOI or synthetic large-AOI
+fixture derived from current target-area outputs.
+
+Capability gap reduced: Unknown GIS/COG packaging pressure for larger AOIs and
+multi-zone products.
+
+Why this outranks alternatives: GIS product usability is secondary to
+scientific evidence, but large-AOI packaging can become the first practical
+demonstration bottleneck once multi-zone outputs exist.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/convert_same_scale_package_to_cog.py`
+- `scripts/summarize_balfrin_target_area_gis_cog_scope.py`
+- `docs/pilot_gis_package.md`
+
+Deliverables:
+
+- A bounded GIS/COG stress-test helper or mode using scratch/ignored outputs.
+- Package runtime, COG conversion timing, raster count, manifest size, layer
+  parity, and missing-layer summaries.
+- A report that distinguishes standard-root COG-blocked status from converted
+  scratch package readiness.
+
+Definition of done:
+
+- Focused tests cover the stress-test summary and blocked-missing-input path,
+  and the report identifies the first GIS packaging bottleneck without
+  committing generated rasters.
+
+Boundaries: No operational GIS product claim, no manual QGIS acceptance claim,
+no generated raster commit, and no claim that scratch COG readiness upgrades
+standard roots.
+
+### TB-187: Multi-Zone Reducer And Merge Scaling Probe
+
+Goal: Measure reducer pressure, chunk scaling, deterministic merge ordering,
+manifest scaling, and output pressure for many simultaneous release zones using
+fixture-backed or scratch multi-zone inputs.
+
+Capability gap reduced: Reducer/runtime evidence remains mostly single-zone
+and may not represent aggregation costs for multi-zone workflows.
+
+Why this outranks alternatives: Before live multi-zone Balfrin execution, the
+repo needs a local or fixture-backed reducer stress path that exposes manifest
+and merge-order bottlenecks.
+
+Inspect first:
+
+- `scripts/summarize_bounded_reducer_runtime_scaling.py`
+- `scripts/build_hazard_layers.py`
+- `scripts/summarize_balfrin_output_tier_audit.py`
+- `src/validation/runner.rs`
+- `docs/tschamut_public_bounded_validation_output_profile.md`
+
+Deliverables:
+
+- Deterministic multi-zone reducer stress fixture or scratch input generator.
+- Measurements for chunk count, merge order, reducer wall time, manifest size,
+  file count, and bytes by output family.
+- A scaling report with bottleneck labels and recommended reducer constraints
+  for TB-183.
+
+Definition of done:
+
+- The probe is reproducible without relying on ignored live artifacts, focused
+  tests cover deterministic merge ordering and summary fields, and the report
+  states whether reducer pressure blocks a multi-zone Balfrin dry run.
+
+Boundaries: No distributed reducer, no MPI/GPU, no live Balfrin job, no physics
+change, and no generated heavy outputs committed.
+
+### TB-188: Real Chant Sura Workflow Dry Run
+
+Goal: Run a non-Tschamut workflow dry run for Chant Sura / Flüelapass covering
+AOI preparation, terrain staging checks, release-candidate generation,
+scenario generation, command planning, and an optional tiny bounded ensemble
+only if all real-context gates are satisfied and explicitly permitted.
+
+Capability gap reduced: Portability remains mostly metadata-level and
+fixture-backed; the repo needs a real second-site workflow reality check.
+
+Why this outranks alternatives: A non-Tschamut dry run is the fastest way to
+separate reusable workflow assumptions from Tschamut-specific heuristics.
+
+Inspect first:
+
+- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
+- `scripts/check_chant_sura_real_context_readiness_gate.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
+
+Deliverables:
+
+- A Chant Sura dry-run report that composes public-context readiness, AOI
+  preparation, release-candidate generation, scenario generation, and command
+  planning.
+- Exact blocked-missing-input or ready-for-next-step classification.
+- Optional tiny ensemble handoff only if real staged inputs exist and the task
+  records explicit permission; otherwise report the blocked state.
+
+Definition of done:
+
+- The dry run is deterministic, distinguishes real public context from
+  synthetic fixtures, and focused tests cover ready and blocked fixture paths.
+
+Boundaries: No downloads, no second-site ensemble by default, no synthetic
+public-context evidence, no operational claim, and no physical validation
+claim.
+
+### TB-189: Release-Zone Candidate Stability And Sensitivity
+
+Goal: Measure how stable automatically generated release-zone candidates are
+under slope thresholds, terrain resolution, smoothing, and AOI boundary
+changes.
+
+Capability gap reduced: Unknown reproducibility and uncertainty of automated
+release-zone generation.
+
+Why this outranks alternatives: Candidate generation is only useful for
+Swiss-wide workflows if the sensitivity of the heuristic is measured and
+reported instead of hidden.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_target_area_candidate_stability.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `docs/swisstopo_data_strategy.md`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- A sensitivity matrix across slope threshold, smoothing, terrain resolution,
+  and AOI boundary perturbations.
+- Stable, unstable, and heuristic-sensitive candidate-region classifications.
+- Candidate persistence metrics and GIS-readable scratch outputs where
+  supported.
+
+Definition of done:
+
+- The stability report is deterministic, includes measurable sensitivity
+  metrics, and focused tests cover perturbation summaries and fail-closed
+  missing-input behavior.
+
+Boundaries: No release-zone validation, no threshold tuning for acceptance, no
+operational source-zone claim, and no generated GIS outputs committed.
+
+### TB-190: Full Balfrin Demonstration Evidence Package
+
+Goal: Produce one coherent technical evidence package for the full
+demonstration workflow, including runtime, uncertainty, GIS/COG, restartability,
+scaling, AOI automation, release/scenario automation, and claim boundaries.
+
+Capability gap reduced: Demonstration evidence is spread across many helpers
+and reports, making it harder to answer whether the workflow plausibly scales
+toward Swiss-wide automation.
+
+Why this outranks alternatives: After the automation and stress-test tasks, a
+single package is needed to show what is measured, what is fixture-backed, what
+is blocked, and what remains scientifically unresolved.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/summarize_balfrin_target_area_evidence_bundle.py`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `docs/current_maturity_snapshot.md`
+- `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/target_area_physical_evidence_acquisition_pack.md`
+
+Deliverables:
+
+- Canonical JSON/text package summarizing the current full demonstration
+  workflow and evidence provenance.
+- Section-level provenance for measured, fixture-backed, blocked, and
+  unavailable evidence.
+- Explicit management-facing answer to whether the current architecture is
+  plausibly extensible toward Swiss-wide workflows, with blockers named.
+
+Definition of done:
+
+- The package can be regenerated deterministically, focused tests cover its
+  required sections and claim boundaries, and the report does not collapse
+  blocked or fixture-backed evidence into measured completion.
+
+Boundaries: No marketing overclaim, no operational acceptance, no physical
+credibility upgrade, no scale-up authorization, no annual-frequency semantics,
+and no generated heavy artifacts committed.
 
 ## Backlog Protocol
 
