@@ -2782,3 +2782,26 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_fixture_backed
 - Boundaries: no job submission, no new ensemble, no operational claim, no physical-probability claim, and no scale-up authorization.
 - Next task: `TB-162`
+
+### TB-162: Verify Target-Area Public-Geodata Readiness
+
+- Date: 2026-05-17
+- Commit: `ed53bbc`
+- Objective: verify whether the frozen Chant Sura / Flüelapass target area has all required public geodata, cache-manifest inputs, terrain metadata, and context products staged for execution.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a TB-162 readiness snapshot to the Chant Sura / Flüelapass acquisition decision doc with the current helper outputs, exact missing and deferred paths, and the cache-verifier caveat.
+  - Removed TB-162 from `docs/task_backlog.md` after recording the blocked readiness classification.
+  - Kept the report metadata-only and fail-closed: the target area remains `blocked_missing_inputs` until the AOI catalog, terrain, source-zone, scenario, and policy inputs are staged.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1_cache_manifest.yaml --format json`
+  - `PYENV_VERSION=system uv run python -m pytest tests/test_public_geodata_cache_verifier.py tests/test_second_site_public_geodata_preflight.py tests/test_chant_sura_real_context_readiness_gate.py tests/test_multisite_source_scenario_contract.py -q`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: blocked
+- Boundaries: no downloads, no synthetic evidence upgrade, no ensemble execution, and no operational or physical-probability claim.
+- Next task: `TB-163`
