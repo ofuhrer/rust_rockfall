@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import unittest
+import tempfile
 from pathlib import Path
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "check_repo_consistency.py"
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = ROOT / "scripts" / "check_repo_consistency.py"
 SPEC = importlib.util.spec_from_file_location("check_repo_consistency", SCRIPT_PATH)
 assert SPEC is not None
 check_repo_consistency = importlib.util.module_from_spec(SPEC)
@@ -31,6 +33,63 @@ class HazardClaimHygieneTests(unittest.TestCase):
 
     def test_task_backlog_and_work_log_hygiene_is_clean(self) -> None:
         self.assertEqual(check_repo_consistency.check_task_backlog_and_work_log_hygiene(), [])
+
+    def test_active_backlog_inspect_first_paths_are_resolvable(self) -> None:
+        backlog_text = (ROOT / "docs/task_backlog.md").read_text()
+
+        self.assertEqual(
+            check_repo_consistency.find_missing_active_backlog_inspect_first_paths(backlog_text, root=ROOT),
+            [],
+        )
+
+    def test_active_backlog_inspect_first_paths_detect_missing_file(self) -> None:
+        backlog_text = """## Active Tasks
+
+### TB-999: Example Task
+
+Inspect first:
+
+- `docs/example.md`
+- `scripts/missing_reference.py`
+- `external: /tmp/external-reference.pdf`
+
+## Backlog Protocol
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "scripts").mkdir()
+            (root / "docs/example.md").write_text("example", encoding="utf-8")
+
+            errors = check_repo_consistency.find_missing_active_backlog_inspect_first_paths(backlog_text, root=root)
+
+        self.assertEqual(
+            errors,
+            ["docs/task_backlog.md TB-999 inspect-first path missing: scripts/missing_reference.py"],
+        )
+
+    def test_command_plan_script_reference_audit_detects_stale_reference(self) -> None:
+        report = {
+            "commands": [
+                {
+                    "command": "PYENV_VERSION=system uv run python scripts/does_not_exist.py --format json",
+                    "blocked_reason": "",
+                }
+            ]
+        }
+
+        errors = check_repo_consistency.find_command_plan_script_reference_errors(
+            report,
+            label="fake command plan",
+        )
+
+        self.assertEqual(
+            errors,
+            [
+                "fake command plan references missing tracked script scripts/does_not_exist.py "
+                "at fake command plan.commands[0].command"
+            ],
+        )
 
     def test_task_hygiene_detects_unsorted_duplicate_or_stale_entries(self) -> None:
         backlog_text = """## Active Tasks

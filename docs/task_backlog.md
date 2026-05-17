@@ -10,6 +10,7 @@ the task template, and deferred non-goals. Detailed maturity framing lives in
 Worker rule: when a task is completed and committed, remove it from this file.
 Append completed TB work to the bottom of `docs/agent_work_log.md` using that
 file's template. Record durable decisions in `docs/decision_log.md`.
+Inspect first entries must resolve to tracked repository files unless explicitly marked `external:` or `generated scratch:`.
 
 Progress rule: each task should produce executable or measured progress, not
 only labels, validators, or roadmap/status churn.
@@ -21,35 +22,6 @@ later prompts. Full sequential-loop guidance lives in
 `docs/orchestration_strategy.md`.
 
 ## Active Tasks
-
-### TB-192: Backlog And Command-Plan Reference Integrity Checker
-
-Goal: Add an automated integrity check that fails when active backlog `Inspect first` paths or generated command-plan script references point at files that do not exist.
-
-Capability gap reduced: Worker autonomy and orchestration reliability when docs, backlog entries, and command-plan helpers drift apart.
-
-Why this outranks alternatives: A stale reference can misdirect the next worker before any scientific or engineering task begins, so the repo needs a cheap fail-fast guard before adding more workflow surface.
-
-Inspect first:
-
-- `docs/task_backlog.md`
-- `scripts/check_repo_consistency.py`
-- `scripts/print_agent_task_context.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A repository-consistency check that verifies every active backlog `Inspect first` file path exists unless it is explicitly marked as an external or generated scratch path.
-- A command-plan reference audit that verifies script paths emitted by tracked command-plan and handoff helpers resolve to tracked repository scripts.
-- Focused tests covering a valid backlog, a missing inspect-first path, and a stale command-plan script reference.
-- A short note in the backlog protocol or agent guidance explaining that new tasks must use resolvable inspect-first paths.
-
-Definition of done:
-
-- `scripts/check_repo_consistency.py` fails on stale active-backlog and command-plan script references, focused tests pass, and the existing active backlog validates cleanly.
-
-Boundaries: No task execution, no command-plan regeneration requirement, no generated artifact commit, and no broad documentation rewrite.
 
 ### TB-193: Clean-Checkout Reproducibility Blocked-Report Mode
 

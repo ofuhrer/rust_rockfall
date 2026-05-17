@@ -3408,3 +3408,25 @@ review triage entries live in `docs/agent_work_log_archive.md`.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no fabricated metrics.
 - Next task: `TB-192`
+
+### TB-192: Backlog And Command-Plan Reference Integrity Checker
+
+- Date: 2026-05-17
+- Commit: local
+- Objective: add a fail-fast repository-consistency check that rejects stale active-backlog `Inspect first` paths and stale command-plan or handoff script references before the next worker starts.
+- Files changed: `scripts/check_repo_consistency.py`, `docs/task_backlog.md`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an active-backlog path audit that reads each active task's `Inspect first` list, allows only explicitly marked external or generated-scratch references to bypass repo resolution, and fails when a listed repository path no longer exists.
+  - Added a command-plan and handoff reference audit that walks the emitted helper reports, validates real script references against tracked repository files, and skips template-only command entries so the current backlog remains clean.
+  - Added focused regressions for the valid backlog case, a missing `Inspect first` path, and a stale script reference, then updated the backlog protocol note so future tasks keep their inspect-first paths resolvable.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_repo_consistency.py tests/test_repo_consistency_claim_hygiene.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene -v`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no task execution, no command-plan regeneration, no generated artifact commit, no broad documentation rewrite, and no scale-up or operational-claim change.
+- Next task: `TB-193`

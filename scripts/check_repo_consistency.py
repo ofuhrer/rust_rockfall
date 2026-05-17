@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,15 @@ ALLOWED_GENERATED = {
     "calibration/results/.gitkeep",
     "hazard/results/.gitkeep",
 }
+SCRIPT_REF_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_./-])(?P<ref>(?:\./)?scripts/[A-Za-z0-9_./-]+\.py)\b"
+)
+EXPLICIT_INSPECT_FIRST_PREFIXES = (
+    "external:",
+    "generated scratch:",
+    "generated_scratch:",
+    "scratch:",
+)
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
 KNOWN_SOIL_INTERACTION_MODELS = {"none", "scarring_contact_v1"}
@@ -140,6 +150,8 @@ def main() -> int:
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_roadmap_target_authority())
     errors.extend(check_task_backlog_and_work_log_hygiene())
+    errors.extend(check_active_backlog_inspect_first_paths())
+    errors.extend(check_command_plan_reference_integrity())
     errors.extend(check_worker_output_compression_guidance())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
@@ -2022,6 +2034,7 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
         "Do not put priority, status, owner, or tags in the heading.",
         "Do not keep completed tasks here.",
         "Append completed TB work to the bottom of `docs/agent_work_log.md`",
+        "Inspect first entries must resolve to tracked repository files unless explicitly marked `external:` or `generated scratch:`.",
     )
     for term in required_backlog_terms:
         if term not in backlog_text:
@@ -2077,6 +2090,169 @@ def check_task_backlog_and_work_log_hygiene() -> list[str]:
                 errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
 
     return errors
+
+
+def check_active_backlog_inspect_first_paths() -> list[str]:
+    backlog_path = ROOT / "docs/task_backlog.md"
+    if not backlog_path.exists():
+        return ["docs/task_backlog.md is missing"]
+    return find_missing_active_backlog_inspect_first_paths(backlog_path.read_text(), root=ROOT)
+
+
+def find_missing_active_backlog_inspect_first_paths(backlog_text: str, *, root: Path = ROOT) -> list[str]:
+    errors: list[str] = []
+    active_text = _section_between(backlog_text, "## Active Tasks", "## Backlog Protocol")
+    if not active_text:
+        return errors
+
+    for task_id, block in _extract_tb_blocks(active_text):
+        for item in _extract_inspect_first_paths(block):
+            if _is_explicit_external_or_generated_scratch_path(item):
+                continue
+            if not (root / item).exists():
+                errors.append(f"docs/task_backlog.md TB-{task_id:03d} inspect-first path missing: {item}")
+    return errors
+
+
+def _extract_inspect_first_paths(section: str) -> list[str]:
+    match = re.search(r"^Inspect first:\s*$", section, re.MULTILINE)
+    if not match:
+        return []
+    rest = section[match.end() :]
+    items: list[str] = []
+    for line in rest.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            if items:
+                break
+            continue
+        if not stripped.startswith("- "):
+            if items:
+                break
+            continue
+        item = stripped[2:].strip()
+        if item.startswith("`") and item.endswith("`"):
+            item = item[1:-1]
+        items.append(item)
+    return items
+
+
+def _is_explicit_external_or_generated_scratch_path(item: str) -> bool:
+    lowered = item.strip().lower()
+    return any(lowered.startswith(prefix) for prefix in EXPLICIT_INSPECT_FIRST_PREFIXES)
+
+
+def check_command_plan_reference_integrity() -> list[str]:
+    errors: list[str] = []
+    helper_reports: list[tuple[str, Any]] = [
+        (
+            "scripts/print_agent_task_context.py",
+            _load_script_module("repo_consistency_print_agent_task_context", "print_agent_task_context.py").build_report(
+                run_checks=False,
+                detail="full",
+            ),
+        ),
+        (
+            "scripts/generate_pilot_command_plan.py",
+            _load_script_module("repo_consistency_generate_pilot_command_plan", "generate_pilot_command_plan.py").build_report(
+                "all",
+                ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+            ),
+        ),
+        (
+            "scripts/plan_aoi_to_prepared_pilot_dry_run.py",
+            _load_script_module("repo_consistency_plan_aoi_to_prepared_pilot_dry_run", "plan_aoi_to_prepared_pilot_dry_run.py").build_report(
+                ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                repo_root=ROOT,
+            ),
+        ),
+        (
+            "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+            _load_script_module(
+                "repo_consistency_generate_balfrin_multi_release_zone_demo_handoff",
+                "generate_balfrin_multi_release_zone_demo_handoff.py",
+            ).build_report(),
+        ),
+    ]
+
+    for label, report in helper_reports:
+        errors.extend(find_command_plan_script_reference_errors(report, label=label))
+    return errors
+
+
+def find_command_plan_script_reference_errors(payload: Any, *, label: str) -> list[str]:
+    refs = _collect_script_reference_candidates(payload, label=label)
+    errors: list[str] = []
+    for ref, origin in sorted(set(refs)):
+        path = ROOT / ref
+        if not path.exists():
+            errors.append(f"{label} references missing tracked script {ref} at {origin}")
+            continue
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", ref],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if tracked.returncode != 0:
+            errors.append(f"{label} references untracked script {ref} at {origin}")
+    return errors
+
+
+def _collect_script_reference_candidates(
+    value: Any,
+    *,
+    label: str,
+    origin: str | None = None,
+) -> list[tuple[str, str]]:
+    refs: list[tuple[str, str]] = []
+    current_origin = label if origin is None else origin
+
+    if isinstance(value, dict):
+        blocked_command = bool(value.get("blocked_reason"))
+        for key, item in value.items():
+            child_origin = f"{current_origin}.{key}"
+            if isinstance(item, str):
+                if key == "command" and blocked_command:
+                    continue
+                refs.extend((ref, child_origin) for ref in _extract_script_refs(item))
+            else:
+                refs.extend(
+                    _collect_script_reference_candidates(item, label=label, origin=child_origin)
+                )
+        return refs
+
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            refs.extend(
+                _collect_script_reference_candidates(item, label=label, origin=f"{current_origin}[{index}]")
+            )
+        return refs
+
+    if isinstance(value, str):
+        refs.extend((ref, current_origin) for ref in _extract_script_refs(value))
+    return refs
+
+
+def _extract_script_refs(text: str) -> list[str]:
+    refs: list[str] = []
+    for match in SCRIPT_REF_PATTERN.finditer(text):
+        ref = match.group("ref").removeprefix("./")
+        if ref not in refs:
+            refs.append(ref)
+    return refs
+
+
+def _load_script_module(module_name: str, filename: str):
+    path = ROOT / "scripts" / filename
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load helper module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def check_worker_output_compression_guidance() -> list[str]:
