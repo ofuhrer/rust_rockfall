@@ -5,6 +5,8 @@ import unittest
 import tempfile
 from pathlib import Path
 
+from scripts.lib import repo_consistency_backlog as backlog_hygiene
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_repo_consistency.py"
@@ -226,12 +228,12 @@ Inspect first:
         )
 
     def test_task_hygiene_reports_shallow_history_for_work_log_reachability(self) -> None:
-        original = check_repo_consistency._git_repository_is_shallow
+        original = backlog_hygiene._git_repository_is_shallow
         try:
-            check_repo_consistency._git_repository_is_shallow = lambda: True
+            backlog_hygiene._git_repository_is_shallow = lambda: True
             errors = check_repo_consistency.check_task_backlog_and_work_log_hygiene()
         finally:
-            check_repo_consistency._git_repository_is_shallow = original
+            backlog_hygiene._git_repository_is_shallow = original
 
         self.assertTrue(
             any("shallow clone" in error for error in errors),

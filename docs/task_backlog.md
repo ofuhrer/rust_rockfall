@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-216: Repository Consistency Checker Responsibility Split
-
-Goal: Split the largest responsibility clusters in `scripts/check_repo_consistency.py` into importable checker modules while preserving the CLI contract.
-
-Capability gap reduced: The consistency checker is becoming a second orchestration system whose growth makes every cleanup require risky edits to one large file.
-
-Why this outranks alternatives: The checker protects useful boundaries, but its size and scope now increase maintainability risk; extracting responsibility groups makes future guards easier to reason about.
-
-Inspect first:
-
-- `scripts/check_repo_consistency.py`
-- `docs/script_inventory.md`
-- `docs/task_backlog.md`
-- `docs/agent_work_log.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/lib/workflow_validation.py`
-
-Deliverables:
-
-- A proposed module boundary or first extraction for two checker families, such as backlog/work-log hygiene and claim/status hygiene.
-- CLI-preserving tests showing `scripts/check_repo_consistency.py` still reports the same pass/fail state for clean fixtures and targeted failure fixtures.
-- A no-new-policy guarantee: extracted modules must move existing behavior before adding new checks.
-- A short architecture note naming which checker responsibilities remain in the entrypoint.
-
-Definition of done:
-
-- The consistency checker has smaller testable surfaces for at least two responsibility families, with no loss of existing guard coverage.
-
-Boundaries: Refactor only; no new broad policy checks, no backlog edits except task completion, no generated evidence claims, and no unrelated script cleanup.
-
 ### TB-217: Scalable Command-Plan Output Profile Enforcement
 
 Goal: Enforce scalable output defaults in multi-zone and Balfrin command plans, including summary-only conditional curves and disabled full-grid CSV exports unless explicitly overridden.

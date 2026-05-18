@@ -12,8 +12,75 @@ import tomllib
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+try:
+    from lib.repo_consistency_backlog import (
+        EXPLICIT_INSPECT_FIRST_PREFIXES,
+        WORK_LOG_META_PATHS,
+        _extract_inspect_first_paths,
+        _extract_tb_blocks,
+        _extract_tb_headings,
+        _extract_work_log_files_changed,
+        _find_unreachable_work_log_commits,
+        _find_work_log_commits_without_task_file_changes,
+        _git_commit_changed_files,
+        _git_commit_is_ancestor_of_head,
+        _git_repository_is_shallow,
+        _is_explicit_external_or_generated_scratch_path,
+        _looks_like_repo_path,
+        _section_between,
+        _tb_heading_lines,
+        check_active_backlog_inspect_first_paths,
+        check_task_backlog_and_work_log_hygiene,
+        find_missing_active_backlog_inspect_first_paths,
+    )
+    from lib.repo_consistency_claims import (
+        CLAIM_HYGIENE_ALLOWLIST_TERMS,
+        DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS,
+        INTENSITY_FREQUENCY_ALLOWLIST_TERMS,
+        INTENSITY_FREQUENCY_PATTERN,
+        MISLEADING_HAZARD_CLAIM_PATTERNS,
+        _claim_hygiene_window,
+        _has_claim_hygiene_allowance,
+        check_hazard_claim_hygiene,
+        find_hazard_claim_hygiene_errors,
+    )
+except ModuleNotFoundError:
+    from scripts.lib.repo_consistency_backlog import (
+        EXPLICIT_INSPECT_FIRST_PREFIXES,
+        WORK_LOG_META_PATHS,
+        _extract_inspect_first_paths,
+        _extract_tb_blocks,
+        _extract_tb_headings,
+        _extract_work_log_files_changed,
+        _find_unreachable_work_log_commits,
+        _find_work_log_commits_without_task_file_changes,
+        _git_commit_changed_files,
+        _git_commit_is_ancestor_of_head,
+        _git_repository_is_shallow,
+        _is_explicit_external_or_generated_scratch_path,
+        _looks_like_repo_path,
+        _section_between,
+        _tb_heading_lines,
+        check_active_backlog_inspect_first_paths,
+        check_task_backlog_and_work_log_hygiene,
+        find_missing_active_backlog_inspect_first_paths,
+    )
+    from scripts.lib.repo_consistency_claims import (
+        CLAIM_HYGIENE_ALLOWLIST_TERMS,
+        DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS,
+        INTENSITY_FREQUENCY_ALLOWLIST_TERMS,
+        INTENSITY_FREQUENCY_PATTERN,
+        MISLEADING_HAZARD_CLAIM_PATTERNS,
+        _claim_hygiene_window,
+        _has_claim_hygiene_allowance,
+        check_hazard_claim_hygiene,
+        find_hazard_claim_hygiene_errors,
+    )
+
 
 ROOT = Path(__file__).resolve().parents[1]
+# Backlog/work-log hygiene and hazard claim hygiene live in importable modules.
+# The entrypoint keeps orchestration plus the remaining cross-document guards.
 GENERATED_PREFIXES = (
     "verification/results/",
     "validation/results/",
@@ -82,12 +149,6 @@ IGNORED_ARTIFACT_TEST_CLASSIFICATION_ALLOWLIST = {
 }
 SCRIPT_REF_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_./-])(?P<ref>(?:\./)?scripts/[A-Za-z0-9_./-]+\.py)\b"
-)
-EXPLICIT_INSPECT_FIRST_PREFIXES = (
-    "external:",
-    "generated scratch:",
-    "generated_scratch:",
-    "scratch:",
 )
 KNOWN_CONTACT_MODELS = {"translational_v0", "sphere_rotational_v1"}
 KNOWN_ROUGHNESS_MODELS = {"none", "stochastic_contact_v1"}
@@ -2239,151 +2300,6 @@ def find_script_inventory_coverage_errors(
     return errors
 
 
-def check_task_backlog_and_work_log_hygiene() -> list[str]:
-    errors: list[str] = []
-    backlog_path = ROOT / "docs/task_backlog.md"
-    work_log_path = ROOT / "docs/agent_work_log.md"
-    backlog_text = backlog_path.read_text()
-    work_log_text = work_log_path.read_text()
-
-    active_backlog = _section_between(backlog_text, "## Active Tasks", "## Backlog Protocol")
-    backlog_entries = _extract_tb_headings(active_backlog)
-    work_log_entries = _extract_tb_headings(work_log_text)
-
-    for line_number, line in _tb_heading_lines(backlog_text):
-        if not re.match(r"^### TB-\d{3}: [^ ].+", line):
-            errors.append(
-                f"docs/task_backlog.md:{line_number} task heading must be exactly '### TB-XXX: Short Description'"
-            )
-        if re.match(r"^### TB-\d{3}\s+\(P\d+\):", line):
-            errors.append(f"docs/task_backlog.md:{line_number} must not put priority in the task heading")
-
-    backlog_ids = [task_id for task_id, _title in backlog_entries]
-    if backlog_ids != sorted(backlog_ids):
-        errors.append("docs/task_backlog.md active TB tasks must be sorted by numeric task id")
-    duplicate_backlog_ids = sorted({task_id for task_id in backlog_ids if backlog_ids.count(task_id) > 1})
-    if duplicate_backlog_ids:
-        errors.append(f"docs/task_backlog.md contains duplicate active TB ids: {duplicate_backlog_ids}")
-
-    required_backlog_terms = (
-        "Task headings must always be exactly:",
-        "Do not put priority, status, owner, or tags in the heading.",
-        "Do not keep completed tasks here.",
-        "Append completed TB work to the bottom of `docs/agent_work_log.md`",
-        "Inspect first entries must resolve to tracked repository files unless explicitly marked `external:` or `generated scratch:`.",
-    )
-    for term in required_backlog_terms:
-        if term not in backlog_text:
-            errors.append(f"docs/task_backlog.md omits backlog hygiene instruction {term!r}")
-
-    work_log_ids = [task_id for task_id, _title in work_log_entries]
-    if work_log_ids != sorted(work_log_ids):
-        errors.append("docs/agent_work_log.md TB entries must be sorted in ascending order")
-    duplicate_work_log_ids = sorted({task_id for task_id in work_log_ids if work_log_ids.count(task_id) > 1})
-    if duplicate_work_log_ids:
-        errors.append(f"docs/agent_work_log.md contains duplicate TB ids: {duplicate_work_log_ids}")
-
-    overlap = sorted(set(backlog_ids) & set(work_log_ids))
-    if overlap:
-        errors.append(
-            "completed TB entries must not remain active in docs/task_backlog.md: "
-            + ", ".join(f"TB-{task_id:03d}" for task_id in overlap)
-        )
-
-    required_work_log_terms = (
-        "Always append new entries at the bottom of this file.",
-        "Use one `### TB-XXX: Short Title` heading per completed task.",
-        "Keep the TB entries in ascending order.",
-        "## Entry Template",
-    )
-    for term in required_work_log_terms:
-        if term not in work_log_text:
-            errors.append(f"docs/agent_work_log.md omits work-log hygiene instruction {term!r}")
-
-    if re.search(r"(?mi)^- Commit:\s*pending\b", work_log_text):
-        errors.append("docs/agent_work_log.md contains stale 'Commit: pending' placeholder")
-    if re.search(r"(?mi)^- Checks run:\s*pending\b", work_log_text):
-        errors.append("docs/agent_work_log.md contains stale 'Checks run: pending' placeholder")
-    if re.search(r"(?mi)^- Next task:\s*none\b", work_log_text):
-        errors.append("docs/agent_work_log.md should say 'backlog refill needed' instead of 'Next task: none'")
-
-    if _git_repository_is_shallow():
-        errors.append(
-            "docs/agent_work_log.md work-log reachability checks require full git history; "
-            "shallow clone detected"
-        )
-    else:
-        errors.extend(_find_unreachable_work_log_commits(work_log_text))
-    errors.extend(_find_work_log_commits_without_task_file_changes(work_log_text))
-
-    for task_id, block in _extract_tb_blocks(work_log_text):
-        for field in (
-            "Date",
-            "Commit",
-            "Objective",
-            "Files changed",
-            "Implementation summary",
-            "Checks run",
-            "Result/status",
-            "Boundaries",
-            "Next task",
-        ):
-            if not re.search(rf"(?m)^- {re.escape(field)}:", block):
-                errors.append(f"docs/agent_work_log.md TB-{task_id:03d} omits required field {field!r}")
-
-    return errors
-
-
-def check_active_backlog_inspect_first_paths() -> list[str]:
-    backlog_path = ROOT / "docs/task_backlog.md"
-    if not backlog_path.exists():
-        return ["docs/task_backlog.md is missing"]
-    return find_missing_active_backlog_inspect_first_paths(backlog_path.read_text(), root=ROOT)
-
-
-def find_missing_active_backlog_inspect_first_paths(backlog_text: str, *, root: Path = ROOT) -> list[str]:
-    errors: list[str] = []
-    active_text = _section_between(backlog_text, "## Active Tasks", "## Backlog Protocol")
-    if not active_text:
-        return errors
-
-    for task_id, block in _extract_tb_blocks(active_text):
-        for item in _extract_inspect_first_paths(block):
-            if _is_explicit_external_or_generated_scratch_path(item):
-                continue
-            if not (root / item).exists():
-                errors.append(f"docs/task_backlog.md TB-{task_id:03d} inspect-first path missing: {item}")
-    return errors
-
-
-def _extract_inspect_first_paths(section: str) -> list[str]:
-    match = re.search(r"^Inspect first:\s*$", section, re.MULTILINE)
-    if not match:
-        return []
-    rest = section[match.end() :]
-    items: list[str] = []
-    for line in rest.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            if items:
-                break
-            continue
-        if not stripped.startswith("- "):
-            if items:
-                break
-            continue
-        item = stripped[2:].strip()
-        if item.startswith("`") and item.endswith("`"):
-            item = item[1:-1]
-        items.append(item)
-    return items
-
-
-def _is_explicit_external_or_generated_scratch_path(item: str) -> bool:
-    lowered = item.strip().lower()
-    return any(lowered.startswith(prefix) for prefix in EXPLICIT_INSPECT_FIRST_PREFIXES)
-
-
 def check_command_plan_reference_integrity() -> list[str]:
     errors: list[str] = []
     helper_reports: list[tuple[str, Any]] = [
@@ -2540,145 +2456,6 @@ def check_worker_output_compression_guidance() -> list[str]:
         if term not in tests:
             errors.append(f"tests/test_agent_task_context.py omits worker-output coverage {term!r}")
     return errors
-
-
-WORK_LOG_META_PATHS = {"docs/agent_work_log.md", "docs/task_backlog.md"}
-
-
-def _find_unreachable_work_log_commits(
-    work_log_text: str,
-    is_ancestor: Callable[[str], bool] | None = None,
-) -> list[str]:
-    checker = is_ancestor or _git_commit_is_ancestor_of_head
-    errors: list[str] = []
-    for task_id, block in _extract_tb_blocks(work_log_text):
-        match = re.search(r"(?mi)^- Commit:\s*`([0-9a-f]{7,40})`", block)
-        if not match:
-            continue
-        commit_hash = match.group(1)
-        if not checker(commit_hash):
-            errors.append(
-                f"docs/agent_work_log.md TB-{task_id:03d} commit {commit_hash} is not reachable from HEAD"
-            )
-    return errors
-
-
-def _find_work_log_commits_without_task_file_changes(
-    work_log_text: str,
-    changed_files_provider: Callable[[str], set[str]] | None = None,
-) -> list[str]:
-    provider = changed_files_provider or _git_commit_changed_files
-    errors: list[str] = []
-    for task_id, block in _extract_tb_blocks(work_log_text):
-        commit_match = re.search(r"(?mi)^- Commit:\s*`([0-9a-f]{7,40})`", block)
-        if not commit_match:
-            continue
-        expected_files = _extract_work_log_files_changed(block)
-        task_files = {path for path in expected_files if path not in WORK_LOG_META_PATHS}
-        if not task_files:
-            continue
-        commit_hash = commit_match.group(1)
-        changed_files = provider(commit_hash)
-        if changed_files and task_files.isdisjoint(changed_files):
-            errors.append(
-                f"docs/agent_work_log.md TB-{task_id:03d} commit {commit_hash} does not touch listed task files"
-            )
-    return errors
-
-
-def _extract_work_log_files_changed(block: str) -> set[str]:
-    match = re.search(r"(?mi)^- Files changed:\s*(.+)$", block)
-    if not match:
-        return set()
-    value = match.group(1).strip()
-    backtick_paths = re.findall(r"`([^`]+)`", value)
-    if backtick_paths:
-        return {path.strip() for path in backtick_paths if _looks_like_repo_path(path.strip())}
-    return {
-        part.strip()
-        for part in value.split(",")
-        if _looks_like_repo_path(part.strip())
-    }
-
-
-def _looks_like_repo_path(value: str) -> bool:
-    return "/" in value and not value.startswith("see ")
-
-
-def _git_commit_is_ancestor_of_head(commit_hash: str) -> bool:
-    result = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", commit_hash, "HEAD"],
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    return result.returncode == 0
-
-
-def _git_repository_is_shallow() -> bool:
-    result = subprocess.run(
-        ["git", "rev-parse", "--is-shallow-repository"],
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-        check=False,
-    )
-    return result.returncode == 0 and result.stdout.strip() == "true"
-
-
-def _git_commit_changed_files(commit_hash: str) -> set[str]:
-    result = subprocess.run(
-        ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", commit_hash],
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return set()
-    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
-
-
-def _section_between(text: str, start_heading: str, end_heading: str) -> str:
-    start = text.find(start_heading)
-    if start == -1:
-        return ""
-    start += len(start_heading)
-    end = text.find(end_heading, start)
-    return text[start:] if end == -1 else text[start:end]
-
-
-def _tb_heading_lines(text: str) -> list[tuple[int, str]]:
-    lines: list[tuple[int, str]] = []
-    in_fence = False
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        if line.startswith("```"):
-            in_fence = not in_fence
-            continue
-        if not in_fence and line.startswith("### TB-"):
-            lines.append((line_number, line))
-    return lines
-
-
-def _extract_tb_headings(text: str) -> list[tuple[int, str]]:
-    entries: list[tuple[int, str]] = []
-    for _line_number, line in _tb_heading_lines(text):
-        match = re.match(r"^### TB-(\d{3}): (.+)$", line)
-        if match:
-            entries.append((int(match.group(1)), match.group(2).strip()))
-    return entries
-
-
-def _extract_tb_blocks(text: str) -> list[tuple[int, str]]:
-    matches = list(re.finditer(r"(?m)^### TB-(\d{3}): .*$", text))
-    blocks: list[tuple[int, str]] = []
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        blocks.append((int(match.group(1)), text[match.start():end]))
-    return blocks
 
 
 def check_strict_case_schema_audit() -> list[str]:
@@ -3266,167 +3043,6 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         if not outputs.get("ensemble_trajectories_dir"):
             errors.append("swissalti3d hazard-statistics pilot must write ensemble_trajectories_dir")
     return errors
-
-
-MISLEADING_HAZARD_CLAIM_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("annual frequency claim", r"\bannual(?:ized)?\s+(?:exceedance\s+)?frequenc(?:y|ies)\b"),
-    ("annual probability claim", r"\bannual\s+probabilit(?:y|ies)\b"),
-    ("annual unit claim", r"\b1\s*/\s*year\b|\bper\s+year\b"),
-    ("return-period claim", r"\breturn[- ]period\b|\b(?:10|30|100)[- ]year\b"),
-    ("risk-map claim", r"\brisk[- ]map(?:s)?\b"),
-    (
-        "operational hazard-map claim",
-        r"\boperational(?:ly)?\s+(?:validated\s+)?hazard[- ]map(?:s)?\b",
-    ),
-    ("official hazard-map claim", r"\bofficial\s+hazard[- ]map(?:s)?\b"),
-    ("validated hazard-map claim", r"\bvalidated\s+hazard[- ]map(?:s)?\b"),
-)
-
-INTENSITY_FREQUENCY_PATTERN = re.compile(r"\bintensity[- ]frequency\b", re.IGNORECASE)
-
-CLAIM_HYGIENE_ALLOWLIST_TERMS = (
-    "future",
-    "unsupported",
-    "disallowed",
-    "not ",
-    "no ",
-    "do not",
-    "does not",
-    "must not",
-    "without",
-    "requires",
-    "require ",
-    "reserved",
-    "later",
-    "deferred",
-    "schema-visible",
-    "inactive",
-    "excluded",
-    "out of scope",
-    "before",
-    "only when",
-    "once ",
-    "explicit",
-    "reject",
-    "rejection",
-    "deferral",
-    "target",
-    "until",
-    "design",
-    "fields",
-    "physical probability",
-    "documentation-only",
-)
-
-INTENSITY_FREQUENCY_ALLOWLIST_TERMS = CLAIM_HYGIENE_ALLOWLIST_TERMS + (
-    "annual",
-    "physical",
-    "source-frequency",
-    "reserve",
-    "prototype",
-)
-
-DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS = (
-    ("operational claim-boundary flag", r"\boperational_claims_allowed\b[^\n]{0,40}\btrue\b"),
-    ("physical-probability claim-boundary flag", r"\bphysical_probability_claims_allowed\b[^\n]{0,40}\btrue\b"),
-    ("annual frequency claim-boundary flag", r"\bannual_frequency_claims_allowed\b[^\n]{0,40}\btrue\b"),
-    (
-        "risk/exposure/vulnerability claim-boundary flag",
-        r"\brisk_exposure_vulnerability_claims_allowed\b[^\n]{0,40}\btrue\b",
-    ),
-    ("scale-up authorization flag", r"\bscale_up_authorized\b[^\n]{0,40}\btrue\b"),
-    (
-        "distributed execution authorization flag",
-        r"\bdistributed_execution_authorized\b[^\n]{0,40}\btrue\b",
-    ),
-)
-
-
-def check_hazard_claim_hygiene() -> list[str]:
-    """Reject unsupported hazard-product claims in user-facing text.
-
-    The check is intentionally narrow: it allows future, unsupported, disallowed,
-    and explicit boundary language, while flagging bare labels or true claim
-    boundary flags that could make a current product look annualized,
-    return-period based, operational, or risk oriented.
-    """
-
-    paths = [
-        ROOT / "README.md",
-        ROOT / "hazard/README.md",
-        ROOT / "docs/hazard_layers.md",
-        ROOT / "docs/hazard_map_semantics.md",
-        ROOT / "docs/stochastic_sampling_rng_stream_audit.md",
-        ROOT / "docs/conditional_hazard_convergence_acceptance_protocol.md",
-        ROOT / "docs/roadmap_hazard_mapping.md",
-        ROOT / "docs/validation_plan.md",
-        ROOT / "docs/dataset_strategy.md",
-        ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md",
-        ROOT / "docs/probabilistic_scenario_model_design.md",
-        ROOT / "docs/physical_source_frequency_design_gate.md",
-        ROOT / "docs/source_frequency_evidence_contract.md",
-        ROOT / "docs/block_release_probability_evidence_contract.md",
-        ROOT / "docs/physical_frequency_reducer_preconditions.md",
-        ROOT / "docs/annual_physical_validation_calibration_review_gate.md",
-        ROOT / "docs/validation_maturity_framework.md",
-        ROOT / "docs/pilot_gis_package.md",
-        ROOT / "docs/balfrin_post_run_interpretation_gate.md",
-        ROOT / "docs/balfrin_minimal_demo_vs_closure.md",
-        ROOT / "docs/tschamut_public_conditional_pilot_gate_report.md",
-        ROOT / "scripts/summarize_balfrin_failure_taxonomy.py",
-        ROOT / "scripts/summarize_balfrin_post_run_interpretation_gate.py",
-        ROOT / "scripts/summarize_tschamut_conditional_diagnostic_interpretation.py",
-    ]
-    errors: list[str] = []
-    for path in paths:
-        if not path.exists():
-            errors.append(f"claim-hygiene path is missing: {path.relative_to(ROOT)}")
-            continue
-        errors.extend(
-            find_hazard_claim_hygiene_errors(
-                path.read_text(),
-                path.relative_to(ROOT).as_posix(),
-            )
-        )
-    return errors
-
-
-def find_hazard_claim_hygiene_errors(text: str, label: str) -> list[str]:
-    errors: list[str] = []
-    lines = text.splitlines()
-    for index, line in enumerate(lines, start=1):
-        window = _claim_hygiene_window(lines, index)
-        for claim_label, pattern in MISLEADING_HAZARD_CLAIM_PATTERNS:
-            if re.search(pattern, line, re.IGNORECASE) and not _has_claim_hygiene_allowance(
-                window,
-                CLAIM_HYGIENE_ALLOWLIST_TERMS,
-            ):
-                errors.append(
-                    f"{label}:{index}: unsupported bare {claim_label}: {line.strip()}"
-                )
-        if INTENSITY_FREQUENCY_PATTERN.search(line) and not _has_claim_hygiene_allowance(
-            window,
-            INTENSITY_FREQUENCY_ALLOWLIST_TERMS,
-        ):
-            errors.append(
-                f"{label}:{index}: intensity-frequency must be reserved for future physical/annual products: {line.strip()}"
-            )
-        for claim_label, pattern in DEMO_CLAIM_BOUNDARY_TRUE_FLAG_PATTERNS:
-            if re.search(pattern, line, re.IGNORECASE):
-                errors.append(
-                    f"{label}:{index}: unsupported demo claim-boundary flag {claim_label}: {line.strip()}"
-                )
-    return errors
-
-
-def _claim_hygiene_window(lines: list[str], one_based_index: int) -> str:
-    start = max(0, one_based_index - 6)
-    end = min(len(lines), one_based_index + 4)
-    return "\n".join(lines[start:end]).lower()
-
-
-def _has_claim_hygiene_allowance(text: str, terms: tuple[str, ...]) -> bool:
-    return any(term in text for term in terms)
 
 
 def check_contact_model_docs() -> list[str]:
