@@ -1474,3 +1474,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: synthesis only; no live execution, no physical-credibility upgrade, no annual-frequency semantics, no operational claim, and no replacement of source evidence reports.
 - Next task: `TB-245`
+
+### TB-245: Current Multi-Zone Handoff Budget Recheck
+
+- Date: 2026-05-18
+- Commit: `d92f4e2`
+- Objective: remeasure the current multi-zone handoff projection after command-plan contract consolidation and record whether the budget still requires manifest reduction before any pruning work.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit budget-recheck classification to the handoff projection so the current command-plan shape reports `budget_passes_no_reduction_needed`, `blocked_budget_reduction_needed`, or `blocked_replay_contract_ambiguity` deterministically.
+  - Surfaced the replay-critical field inventory for the projection, constraint thresholds, and smallest-run replay fields so the report can say exactly which fields must stay stable for the recheck.
+  - Added a contract-spy regression that proves the handoff consumes the shared command-plan helper, plus a no-mutation regression that keeps the command plan and projection semantics stable across rechecks.
+  - Refreshed the reducer-pressure and output-budget docs with the current blocked handoff projection and removed TB-245 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_multi_zone_reducer_pressure_gate tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: measurement/recheck only; no pruning, no live Balfrin job, no output-schema change, no distributed reducer, no scale-up claim, and no operational claim.
+- Next task: `TB-246`
