@@ -43,6 +43,7 @@ DEFAULT_MULTI_ZONE_ARTIFACT_DIR = Path("/tmp/rust_rockfall/balfrin_multi_release
 
 METRICS_COMPLETE = "metrics_complete"
 METRICS_UNRECOVERABLE_DEFERRED = "metrics_unrecoverable_deferred"
+METRICS_INCOMPLETE = "metrics_incomplete"
 BLOCKED_NO_NEW_MEASURED_EVIDENCE = "blocked_no_new_measured_evidence"
 DEFAULT_METRICS_COMPLETION_SOURCE = "blocked_missing_metrics"
 DEFAULT_SPATIAL_ARTIFACT_STATUS = "not_evaluated_in_closure_refresh"
@@ -109,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
     else:
         print(render_text_report(report))
-    return 0 if not str(report.get("closure_status") or "").startswith("blocked") else 2
+    return 0 if report.get("closure_status") == METRICS_COMPLETE else 2
 
 
 def load_evidence_override(path: Path | None) -> dict[str, Any] | None:
@@ -291,6 +292,8 @@ def build_metrics_closure_section(
     *,
     status: str = BLOCKED_NO_NEW_MEASURED_EVIDENCE,
     metrics_completion_source: str = DEFAULT_METRICS_COMPLETION_SOURCE,
+    metrics_completion_outcome: str | None = None,
+    metrics_completion_attempt_status: str | None = None,
     metrics_contract_status: str = "blocked_missing_inputs",
     summary: str | None = None,
     source_paths: list[str] | None = None,
@@ -305,6 +308,10 @@ def build_metrics_closure_section(
             summary = (
                 "Target-area metrics remain unrecovered but explicitly deferred, so the closure refresh can rank the next measured action without fabricating missing evidence."
             )
+        elif status == METRICS_INCOMPLETE:
+            summary = (
+                "The metrics-completion attempt is incomplete: no preservation-checked measured run-root evidence was supplied."
+            )
         else:
             summary = (
                 "No new measured or recovered target-area metrics were supplied, so the closure package remains blocked."
@@ -312,6 +319,16 @@ def build_metrics_closure_section(
     section = {
         "status": status,
         "metrics_completion_source": metrics_completion_source,
+        "metrics_completion_outcome": metrics_completion_outcome or (
+            "measured"
+            if status == METRICS_COMPLETE and metrics_completion_source == "new_metrics_completion_rerun"
+            else "recovered"
+            if status == METRICS_COMPLETE and metrics_completion_source == "recovered_existing_run_root"
+            else "incomplete"
+            if status == METRICS_INCOMPLETE
+            else "blocked"
+        ),
+        "metrics_completion_attempt_status": metrics_completion_attempt_status,
         "metrics_contract_status": metrics_contract_status,
         "summary": summary,
         "source_paths": list(source_paths or []),
@@ -392,7 +409,7 @@ def build_next_measured_action_section(
     decision_gate_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     closure_status = str(metrics_closure_section.get("status") or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
-    if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
+    if closure_status in {BLOCKED_NO_NEW_MEASURED_EVIDENCE, METRICS_INCOMPLETE}:
         section = {
             "status": DEFAULT_NEXT_ACTION_STATUS,
             "metrics_closure_status": closure_status,
@@ -481,6 +498,23 @@ def build_new_measured_evidence_section(metrics_closure_section: dict[str, Any])
             }
         )
         return annotate_section(section, "unavailable")
+    if closure_status == METRICS_INCOMPLETE:
+        section = {
+            "status": METRICS_INCOMPLETE,
+            "source_type": None,
+            "preservation_checked": False,
+            "preservation_gate_status": METRICS_INCOMPLETE,
+            "authorization_status": "blocked_before_submission",
+            "summary": (
+                "The metrics-completion attempt stopped before live submission, so no measured evidence record is present."
+            ),
+            "source_paths": [
+                "docs/agent_work_log.md",
+                "scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py",
+            ],
+        }
+        section["closure_input_compatibility"] = evaluate_new_measured_evidence_compatibility(section)
+        return annotate_section(section, "blocked")
     section = {
         "status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
         "source_type": None,
@@ -720,7 +754,7 @@ def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
 def derive_closure_status(report: dict[str, Any]) -> str:
     metrics_section = dict(report.get("metrics_closure_section") or {})
     status = str(metrics_section.get("status") or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
-    if status in {METRICS_COMPLETE, METRICS_UNRECOVERABLE_DEFERRED, BLOCKED_NO_NEW_MEASURED_EVIDENCE}:
+    if status in {METRICS_COMPLETE, METRICS_UNRECOVERABLE_DEFERRED, METRICS_INCOMPLETE, BLOCKED_NO_NEW_MEASURED_EVIDENCE}:
         return status
     return BLOCKED_NO_NEW_MEASURED_EVIDENCE
 
@@ -733,6 +767,10 @@ def build_reviewer_answer(closure_status: str) -> str:
     if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
         return (
             "Not yet. The target-area metrics are explicitly unrecoverable and deferred, so the closure refresh can rank the next measured action but cannot upgrade maturity labels."
+        )
+    if closure_status == METRICS_INCOMPLETE:
+        return (
+            "No. The metrics-completion attempt is incomplete because no live job, run-root metrics, sacct fields, or preservation-gate output were promoted."
         )
     if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
         return (
@@ -756,6 +794,10 @@ def summarize_package(report: dict[str, Any]) -> str:
     if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
         return (
             f"Target-area metrics are explicitly unrecoverable and deferred; {measured} sections are measured, {blocked} remain blocked, spatial artifacts stay separate ({spatial_section.get('status', 'unknown')}), and the next measured action is {next_action.get('selected_action_id', 'unknown')}."
+        )
+    if closure_status == METRICS_INCOMPLETE:
+        return (
+            f"Target-area metrics completion is incomplete; {measured} sections are measured, {blocked} remain blocked, and no next measured action is promoted."
         )
     if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
         return (
@@ -859,6 +901,8 @@ def render_text_report(report: dict[str, Any]) -> str:
             "metrics_closure_section:",
             f"  status: {report.get('metrics_closure_section', {}).get('status', 'unknown')}",
             f"  metrics_completion_source: {report.get('metrics_closure_section', {}).get('metrics_completion_source', 'unknown')}",
+            f"  metrics_completion_outcome: {report.get('metrics_closure_section', {}).get('metrics_completion_outcome', 'unknown')}",
+            f"  metrics_completion_attempt_status: {report.get('metrics_closure_section', {}).get('metrics_completion_attempt_status', 'unknown')}",
             f"  metrics_contract_status: {report.get('metrics_closure_section', {}).get('metrics_contract_status', 'unknown')}",
             "target_area_spatial_artifact_section:",
             f"  status: {report.get('target_area_spatial_artifact_section', {}).get('status', 'unknown')}",

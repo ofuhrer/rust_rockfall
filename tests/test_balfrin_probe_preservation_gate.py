@@ -28,6 +28,7 @@ class BalfrinProbePreservationGateTests(unittest.TestCase):
         self.assertTrue(report["future_live_run_would_satisfy_evidence_preservation_contract"])
         self.assertEqual(report["run_root_status"], "measured_run_root")
         self.assertEqual(report["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertEqual(report["metrics_completion_outcome"], "recovered")
         self.assertEqual(report["metrics_contract_status"], "complete")
         self.assertEqual(report["required_run_root_entries_status"], "complete")
         self.assertEqual(report["missing_run_root_entries"], [])
@@ -56,6 +57,7 @@ class BalfrinProbePreservationGateTests(unittest.TestCase):
         self.assertFalse(report["future_live_run_would_satisfy_evidence_preservation_contract"])
         self.assertEqual(report["run_root_status"], "measured_run_root")
         self.assertEqual(report["metrics_completion_source"], "blocked_missing_metrics")
+        self.assertEqual(report["metrics_completion_outcome"], "blocked")
         self.assertEqual(report["metrics_contract_status"], "blocked_missing_inputs")
         self.assertIn("memory_peak_mb", report["metrics_contract_missing_metrics"])
         self.assertIn("validation_output.file_count", report["metrics_contract_missing_metrics"])
@@ -78,11 +80,28 @@ class BalfrinProbePreservationGateTests(unittest.TestCase):
         self.assertEqual(report["gate_status"], "blocked_missing_run_root")
         self.assertEqual(report["run_root_status"], "missing_run_root")
         self.assertEqual(report["metrics_completion_source"], "blocked_missing_metrics")
+        self.assertEqual(report["metrics_completion_outcome"], "blocked")
         self.assertFalse(report["future_live_run_would_satisfy_evidence_preservation_contract"])
         self.assertIn(str(run_root), report["missing_run_root_reason"])
         self.assertEqual(report["missing_run_root_entries"], [entry["path"] for entry in report["required_run_root_entries"]])
         self.assertEqual(report["output_family_summaries"]["status"], "blocked_missing_run_root")
         self.assertEqual(report["spatial_gis_artifact_paths"]["status"], "blocked_missing_run_root")
+
+    def test_tb264_no_submission_attempt_is_incomplete_and_not_preserved(self) -> None:
+        run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/does-not-exist"
+        report = MODULE.build_report(
+            {
+                "run_root": str(run_root),
+                "metrics_completion_source": "blocked_missing_metrics",
+                "metrics_completion_attempt_status": "blocked_remote_checkout_dirty",
+                "metrics_contract_status": "blocked_missing_inputs",
+            }
+        )
+
+        self.assertEqual(report["gate_status"], "blocked_missing_run_root")
+        self.assertEqual(report["metrics_completion_outcome"], "incomplete")
+        self.assertEqual(report["metrics_completion_attempt_status"], "blocked_remote_checkout_dirty")
+        self.assertFalse(report["future_live_run_would_satisfy_evidence_preservation_contract"])
 
     def test_cli_writes_gate_artifacts_without_needing_submission(self) -> None:
         run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"

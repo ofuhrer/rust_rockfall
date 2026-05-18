@@ -28,6 +28,12 @@ ALLOWED_METRICS_COMPLETION_SOURCES = {
     "new_metrics_completion_rerun",
     "blocked_missing_metrics",
 }
+ALLOWED_METRICS_COMPLETION_OUTCOMES = {
+    "measured",
+    "recovered",
+    "blocked",
+    "incomplete",
+}
 METRICS_COMPLETION_RERUN_MARKERS = (
     "metrics_completion",
     "metrics-completion",
@@ -120,6 +126,33 @@ def classify_metrics_completion_source(
     return "recovered_existing_run_root"
 
 
+def classify_metrics_completion_outcome(
+    *,
+    report_status: str,
+    metrics_contract_status: str,
+    metrics_completion_source: str,
+    explicit_outcome: str | None = None,
+    attempt_status: str | None = None,
+) -> str:
+    if explicit_outcome in ALLOWED_METRICS_COMPLETION_OUTCOMES:
+        return explicit_outcome
+    if attempt_status in {
+        "blocked_before_submission",
+        "blocked_remote_checkout_dirty",
+        "no_slurm_job_submitted",
+        "incomplete_no_submission",
+    }:
+        return "incomplete"
+    if report_status == "complete" and metrics_contract_status == "complete":
+        if metrics_completion_source == "new_metrics_completion_rerun":
+            return "measured"
+        if metrics_completion_source == "recovered_existing_run_root":
+            return "recovered"
+    if report_status in {"blocked_missing_run_root", "blocked_missing_inputs"}:
+        return "blocked"
+    return "blocked"
+
+
 def _sorted_metrics_by_status(group_statuses: dict[str, Any], status: str) -> list[str]:
     metrics: list[str] = []
     for metric_name in sorted(group_statuses):
@@ -194,14 +227,28 @@ def build_report(
         if isinstance(evidence.get("metrics_completion_source"), str)
         else None,
     )
+    metrics_completion_outcome = classify_metrics_completion_outcome(
+        report_status=report_status,
+        metrics_contract_status=str(evidence.get("metrics_contract_status") or "unknown"),
+        metrics_completion_source=metrics_completion_source,
+        explicit_outcome=str(evidence.get("metrics_completion_outcome"))
+        if isinstance(evidence.get("metrics_completion_outcome"), str)
+        else None,
+        attempt_status=str(evidence.get("metrics_completion_attempt_status"))
+        if isinstance(evidence.get("metrics_completion_attempt_status"), str)
+        else None,
+    )
     evidence_with_source = dict(evidence)
     evidence_with_source["metrics_completion_source"] = metrics_completion_source
+    evidence_with_source["metrics_completion_outcome"] = metrics_completion_outcome
     report = {
         "schema_version": SCHEMA_VERSION,
         "report_status": report_status,
         "run_root_status": "measured_run_root" if run_root is None or run_root.exists() else "missing_run_root",
         "run_root": str(run_root) if run_root is not None else evidence.get("run_root"),
         "metrics_completion_source": metrics_completion_source,
+        "metrics_completion_outcome": metrics_completion_outcome,
+        "metrics_completion_attempt_status": evidence.get("metrics_completion_attempt_status"),
         "metrics_contract_status": evidence.get("metrics_contract_status"),
         "metrics_contract_missing_metrics": _safe_list(evidence.get("metrics_contract_missing_metrics")),
         "metrics_contract_ancillary_unavailable_metrics": _safe_list(
@@ -233,6 +280,8 @@ def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
         "run_root_status": "missing_run_root",
         "run_root": str(run_root),
         "metrics_completion_source": "blocked_missing_metrics",
+        "metrics_completion_outcome": "blocked",
+        "metrics_completion_attempt_status": None,
         "missing_run_root_reason": f"run root does not exist: {run_root}",
         "metrics_contract_status": "blocked_missing_run_root",
         "metrics_contract_missing_metrics": [],
@@ -281,7 +330,8 @@ def summarize_report(
         f"{len(mandatory_blocked)} mandatory metrics blocked, "
         f"{len(ancillary_unavailable)} ancillary metrics unavailable, "
         f"{len(next_run_required)} next-run-required metrics, "
-        f"metrics_completion_source={metrics_completion_source}."
+        f"metrics_completion_source={metrics_completion_source}, "
+        f"metrics_completion_outcome={evidence.get('metrics_completion_outcome', 'unknown')}."
     )
 
 
@@ -298,6 +348,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"run_root_status: {report.get('run_root_status', 'unknown')}",
         f"run_root: {report.get('run_root', 'unknown')}",
         f"metrics_completion_source: {report.get('metrics_completion_source', 'unknown')}",
+        f"metrics_completion_outcome: {report.get('metrics_completion_outcome', 'unknown')}",
+        f"metrics_completion_attempt_status: {report.get('metrics_completion_attempt_status', 'unknown')}",
         f"metrics_contract_status: {report.get('metrics_contract_status', 'unknown')}",
         f"metrics_contract_missing_metrics: {report.get('metrics_contract_missing_metrics', [])}",
         f"metrics_contract_ancillary_unavailable_metrics: {report.get('metrics_contract_ancillary_unavailable_metrics', [])}",

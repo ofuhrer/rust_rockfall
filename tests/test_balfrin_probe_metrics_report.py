@@ -66,6 +66,7 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
         self.assertEqual(report["report_status"], "blocked_missing_run_root")
         self.assertEqual(report["run_root_status"], "missing_run_root")
         self.assertEqual(report["metrics_completion_source"], "blocked_missing_metrics")
+        self.assertEqual(report["metrics_completion_outcome"], "blocked")
         self.assertEqual(report["metrics_remediation"]["status"], "blocked_missing_run_root")
         self.assertEqual(report["classification"]["next_run_required_metrics"], [])
         self.assertIn(str(run_root), report["missing_run_root_reason"])
@@ -76,6 +77,7 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
 
         self.assertEqual(report["report_status"], "complete")
         self.assertEqual(report["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertEqual(report["metrics_completion_outcome"], "recovered")
         self.assertIn("metrics_completion_source=recovered_existing_run_root", report["summary"])
         self.assertIn("metrics_completion_source:", MODULE.render_text_report(report))
 
@@ -83,10 +85,34 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
         run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
         report = MODULE.build_report(None, run_root=run_root)
         report["metrics_completion_source"] = "new_metrics_completion_rerun"
+        report.pop("metrics_completion_outcome", None)
 
         rebuilt = MODULE.build_report(report)
 
         self.assertEqual(rebuilt["metrics_completion_source"], "new_metrics_completion_rerun")
+        self.assertEqual(rebuilt["metrics_completion_outcome"], "measured")
+
+    def test_tb264_no_submission_attempt_is_incomplete_not_measured(self) -> None:
+        evidence = self.live_like_summary()
+        evidence.update(
+            {
+                "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v2",
+                "metrics_completion_source": "blocked_missing_metrics",
+                "metrics_completion_attempt_status": "blocked_remote_checkout_dirty",
+                "tb_reference": "TB-264",
+                "slurm_job_id": None,
+                "sacct_fields_collected": False,
+            }
+        )
+
+        report = MODULE.build_report(evidence)
+
+        self.assertEqual(report["report_status"], "blocked_missing_inputs")
+        self.assertEqual(report["metrics_completion_source"], "blocked_missing_metrics")
+        self.assertEqual(report["metrics_completion_outcome"], "incomplete")
+        self.assertEqual(report["metrics_completion_attempt_status"], "blocked_remote_checkout_dirty")
+        self.assertIn("memory_peak_mb", report["classification"]["missing_mandatory_metrics"])
+        self.assertIn("metrics_completion_outcome=incomplete", report["summary"])
 
     def test_cli_writes_json_and_text_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

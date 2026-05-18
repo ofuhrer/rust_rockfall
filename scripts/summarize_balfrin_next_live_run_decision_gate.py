@@ -233,6 +233,7 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     missing_metrics = _safe_list(metrics.get("metrics_contract_missing_metrics"))
     next_run_required = _safe_list(metrics.get("metrics_remediation", {}).get("next_run_required_metrics"))
     metrics_completion_source = _status(metrics.get("metrics_completion_source"), "blocked_missing_metrics")
+    metrics_completion_outcome = _status(metrics.get("metrics_completion_outcome"), "blocked")
     preservation_ready = preservation.get("gate_status") == "ready_for_demonstration_evidence"
     reducer_blocked = _bool(reducer.get("multi_zone_dry_run_blocked"))
     output_pressure = _copy_mapping(package.get("pressure_checkpoints", {}).get("output_pressure"))
@@ -247,10 +248,13 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
             "status": "missing" if missing_metrics else "complete",
             "metrics_contract_status": _status(metrics.get("metrics_contract_status")),
             "metrics_completion_source": metrics_completion_source,
+            "metrics_completion_outcome": metrics_completion_outcome,
             "missing_mandatory_metrics": missing_metrics,
             "next_run_required_metrics": next_run_required,
             "summary": (
-                "Target-area metrics remain incomplete and can be closed by the next measured rerun."
+                "The latest metrics-completion attempt is incomplete; target-area metrics remain blocked until a preservation-checked measured run is supplied."
+                if metrics_completion_outcome == "incomplete"
+                else "Target-area metrics remain incomplete and can be closed by the next measured rerun."
                 if missing_metrics
                 else (
                     "The target-area metrics contract is complete "
@@ -836,6 +840,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  - {key}: {entry.get('status', 'unknown')}")
         if key == "missing_target_area_metrics":
             lines.append(f"    metrics_completion_source: {entry.get('metrics_completion_source', 'unknown')}")
+            lines.append(f"    metrics_completion_outcome: {entry.get('metrics_completion_outcome', 'unknown')}")
             lines.append(f"    missing_mandatory_metrics: {entry.get('missing_mandatory_metrics', [])}")
             lines.append(f"    next_run_required_metrics: {entry.get('next_run_required_metrics', [])}")
         if key == "reducer_pressure":

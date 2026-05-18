@@ -233,7 +233,15 @@ def build_report(
         if run_root is None:
             return blocked_missing_run_root_report(Path("missing-run-root"))
         if not run_root.exists():
-            return blocked_missing_run_root_report(run_root)
+            return blocked_missing_run_root_report(
+                run_root,
+                metrics_completion_attempt_status=evidence.get("metrics_completion_attempt_status")
+                if isinstance(evidence.get("metrics_completion_attempt_status"), str)
+                else None,
+                metrics_completion_outcome=evidence.get("metrics_completion_outcome")
+                if isinstance(evidence.get("metrics_completion_outcome"), str)
+                else None,
+            )
 
     run_root = run_root.resolve()
     output_tier_report = output_tier.build_report(evidence)
@@ -245,6 +253,27 @@ def build_report(
         evidence,
         report_status=str(evidence.get("report_status") or "unknown"),
         metrics_contract_status=metrics_contract_status,
+    )
+    metrics_completion_attempt_status = (
+        evidence.get("metrics_completion_attempt_status")
+        if isinstance(evidence.get("metrics_completion_attempt_status"), str)
+        else None
+    )
+    evidence_report_status = str(evidence.get("report_status") or "")
+    metrics_completion_report_status = (
+        "complete"
+        if metrics_contract_status == "complete" and evidence_report_status in {"", "measured_run_root"}
+        else evidence_report_status
+        or metrics_contract_status
+    )
+    metrics_completion_outcome = metrics_report.classify_metrics_completion_outcome(
+        report_status=metrics_completion_report_status,
+        metrics_contract_status=metrics_contract_status,
+        metrics_completion_source=metrics_completion_source,
+        explicit_outcome=evidence.get("metrics_completion_outcome")
+        if isinstance(evidence.get("metrics_completion_outcome"), str)
+        else None,
+        attempt_status=metrics_completion_attempt_status,
     )
     gate_status = "ready_for_demonstration_evidence"
     if not _is_complete_gate(
@@ -290,6 +319,8 @@ def build_report(
         "run_root_status": "measured_run_root",
         "run_root": str(run_root),
         "metrics_completion_source": metrics_completion_source,
+        "metrics_completion_outcome": metrics_completion_outcome,
+        "metrics_completion_attempt_status": metrics_completion_attempt_status,
         "metrics_contract_status": metrics_contract_status,
         "metrics_contract_missing_metrics": metrics_contract_missing,
         "metrics_contract_ancillary_unavailable_metrics": metrics_contract_ancillary_unavailable,
@@ -367,8 +398,20 @@ def build_report(
     return report
 
 
-def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
+def blocked_missing_run_root_report(
+    run_root: Path,
+    *,
+    metrics_completion_attempt_status: str | None = None,
+    metrics_completion_outcome: str | None = None,
+) -> dict[str, Any]:
     required_run_root = _require_run_root_entries(run_root)
+    outcome = metrics_report.classify_metrics_completion_outcome(
+        report_status="blocked_missing_run_root",
+        metrics_contract_status="blocked_missing_run_root",
+        metrics_completion_source="blocked_missing_metrics",
+        explicit_outcome=metrics_completion_outcome,
+        attempt_status=metrics_completion_attempt_status,
+    )
     report = {
         "schema_version": SCHEMA_VERSION,
         "gate_status": "blocked_missing_run_root",
@@ -377,6 +420,8 @@ def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
         "run_root_status": "missing_run_root",
         "run_root": str(run_root),
         "metrics_completion_source": "blocked_missing_metrics",
+        "metrics_completion_outcome": outcome,
+        "metrics_completion_attempt_status": metrics_completion_attempt_status,
         "missing_run_root_reason": f"run root does not exist: {run_root}",
         "metrics_contract_status": "blocked_missing_run_root",
         "metrics_contract_missing_metrics": [],
@@ -490,6 +535,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"run_root_status: {report.get('run_root_status', 'unknown')}",
         f"run_root: {report.get('run_root', 'unknown')}",
         f"metrics_completion_source: {report.get('metrics_completion_source', 'unknown')}",
+        f"metrics_completion_outcome: {report.get('metrics_completion_outcome', 'unknown')}",
+        f"metrics_completion_attempt_status: {report.get('metrics_completion_attempt_status', 'unknown')}",
         f"metrics_contract_status: {report.get('metrics_contract_status', 'unknown')}",
         f"summary: {report.get('summary', '')}",
     ]

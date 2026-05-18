@@ -21,6 +21,7 @@ if __package__ in {None, ""}:
 
 from scripts import audit_gis_cog_package_readiness as gis_cog
 from scripts import summarize_balfrin_failure_taxonomy as failure_taxonomy
+from scripts import summarize_balfrin_probe_metrics_report as metrics_report
 from scripts import summarize_balfrin_post_run_interpretation_gate as post_run_gate
 from scripts import summarize_balfrin_single_job_execution as single_job
 
@@ -360,6 +361,8 @@ def render_text_report(report: dict[str, Any]) -> str:
             "probe_metrics:",
             f"  status: {report['probe_metrics'].get('status', 'unknown')}",
             f"  metrics_completion_source: {report['probe_metrics'].get('metrics_completion_source', 'unknown')}",
+            f"  metrics_completion_outcome: {report['probe_metrics'].get('metrics_completion_outcome', 'unknown')}",
+            f"  metrics_completion_attempt_status: {report['probe_metrics'].get('metrics_completion_attempt_status', 'unknown')}",
             f"  wall_time_seconds: {report['probe_metrics'].get('wall_time_seconds', 'unknown')}",
             f"  memory_peak_mb: {report['probe_metrics'].get('memory_peak_mb', 'unknown')}",
             f"  reduced_output_family_counts: {report['probe_metrics'].get('reduced_output_family_counts', {})}",
@@ -880,9 +883,24 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
         single_job_summary,
         str(metrics.get("status") or "blocked_missing_inputs"),
     )
+    metrics_completion_outcome = metrics_report.classify_metrics_completion_outcome(
+        report_status="complete"
+        if metrics.get("status") == "complete"
+        else str(metrics.get("status") or "blocked_missing_inputs"),
+        metrics_contract_status=str(metrics.get("status") or "blocked_missing_inputs"),
+        metrics_completion_source=metrics_completion_source,
+        explicit_outcome=metrics.get("metrics_completion_outcome")
+        if isinstance(metrics.get("metrics_completion_outcome"), str)
+        else None,
+        attempt_status=metrics.get("metrics_completion_attempt_status")
+        if isinstance(metrics.get("metrics_completion_attempt_status"), str)
+        else None,
+    )
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
         "metrics_completion_source": metrics_completion_source,
+        "metrics_completion_outcome": metrics_completion_outcome,
+        "metrics_completion_attempt_status": metrics.get("metrics_completion_attempt_status"),
         "wall_time_seconds": wall_time.get("value"),
         "memory_peak_mb": memory_peak.get("value"),
         "validation_output": {

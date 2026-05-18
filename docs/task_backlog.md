@@ -37,37 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-265: Metrics Completion Evidence Integration And Decision Refresh
-
-Goal: Integrate the TB-264 Balfrin run result into the canonical metrics report, preservation gate, evidence bundle, closure package, and next-action decision.
-
-Capability gap reduced: A measured run only moves the project forward if the repository consumes it consistently and stops ranking metrics completion as the top unresolved action.
-
-Why this outranks alternatives: This turns live execution into durable evidence rather than another unconnected run root.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `tests/test_balfrin_probe_metrics_report.py`
-- `tests/test_balfrin_demonstration_closure_package.py`
-
-Deliverables:
-
-- Updated canonical reports or fixtures that classify the TB-264 result as measured, recovered, blocked, or incomplete.
-- A refreshed next-action decision that ranks the smallest multi-zone measurement, AOI workflow work, physical evidence, or second-site staging after metrics completion.
-- Tests proving incomplete TB-264 evidence remains blocked and complete evidence updates downstream decisions without claim upgrades.
-
-Definition of done:
-
-- The canonical Balfrin evidence state reflects the measured metrics-completion outcome and preserves all non-operational claim boundaries.
-
-Boundaries: Evidence integration only; no additional live submission, no physical credibility upgrade, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
-
 ### TB-266: Smallest Multi-Zone Handoff Budget Repair
 
 Goal: Repair or tighten the smallest multi-zone handoff so its projected manifest, sidecar, and reducer budget can pass or fail with an actionable reason.

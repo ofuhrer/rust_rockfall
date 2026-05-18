@@ -60,6 +60,7 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
         self.assertEqual(report["closure_status"], "metrics_complete")
         self.assertTrue(report["maturity_label_update_allowed"])
         self.assertEqual(report["metrics_closure_section"]["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertEqual(report["metrics_closure_section"]["metrics_completion_outcome"], "recovered")
         self.assertEqual(report["metrics_closure_section"]["evidence_type"], "measured")
         self.assertEqual(report["target_area_spatial_artifact_section"]["status"], "spatial_artifacts_deferred")
         self.assertEqual(report["target_area_spatial_artifact_section"]["spatial_artifact_classification"], "not_required_for_execution_metrics_closure")
@@ -84,6 +85,40 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
             report["new_measured_evidence_section"]["closure_input_compatibility"]["status"],
             "compatible",
         )
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["annual_frequency_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
+
+    def test_tb264_incomplete_attempt_keeps_closure_and_decision_blocked(self) -> None:
+        report = MODULE.build_report(self.tb264_incomplete_override())
+
+        self.assertEqual(report["closure_status"], "metrics_incomplete")
+        self.assertFalse(report["maturity_label_update_allowed"])
+        self.assertEqual(report["metrics_closure_section"]["metrics_completion_outcome"], "incomplete")
+        self.assertEqual(
+            report["metrics_closure_section"]["metrics_completion_attempt_status"],
+            "blocked_remote_checkout_dirty",
+        )
+        self.assertEqual(report["next_measured_action_section"]["status"], "blocked")
+        self.assertIsNone(report["next_measured_action_section"]["selected_action_id"])
+        self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "blocked")
+        self.assertEqual(
+            report["new_measured_evidence_section"]["closure_input_compatibility"]["status"],
+            "blocked_missing_inputs",
+        )
+        self.assertIn("no live job", report["reviewer_answer"].lower())
+
+    def test_complete_decision_gate_ranks_metrics_completion_as_closed(self) -> None:
+        decision_gate_report = DECISION_GATE.build_report(self.load_fixture("defer_bundle.json"))
+
+        self.assertEqual(decision_gate_report["option_assessments"]["metrics_completion_rerun"]["status"], "complete")
+        self.assertEqual(decision_gate_report["criteria"]["missing_target_area_metrics"]["status"], "complete")
+        self.assertNotEqual(
+            decision_gate_report["recommended_next_action"]["action_id"],
+            "metrics_completion_rerun",
+        )
+        self.assertFalse(decision_gate_report["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(decision_gate_report["claim_boundaries"]["annual_frequency_claims_allowed"])
 
     def test_metrics_unrecoverable_deferred_branch_keeps_spatial_deferral_explicit(self) -> None:
         report = MODULE.build_report(
@@ -188,6 +223,27 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
             "target_area_spatial_artifact_section": spatial_artifact_section,
             "next_measured_action_section": next_action_section,
             "new_measured_evidence_section": new_evidence_section,
+        }
+        return {"section_overrides": section_overrides}
+
+    def tb264_incomplete_override(self) -> dict[str, object]:
+        metrics_closure_section = MODULE.build_metrics_closure_section(
+            status=MODULE.METRICS_INCOMPLETE,
+            metrics_completion_source="blocked_missing_metrics",
+            metrics_completion_outcome="incomplete",
+            metrics_completion_attempt_status="blocked_remote_checkout_dirty",
+            metrics_contract_status="blocked_missing_inputs",
+            source_paths=["docs/agent_work_log.md"],
+        )
+        section_overrides = {
+            "metrics_closure_section": metrics_closure_section,
+            "new_measured_evidence_section": MODULE.build_new_measured_evidence_section(metrics_closure_section),
+            "next_measured_action_section": MODULE.build_next_measured_action_section(metrics_closure_section),
+            "preservation_section": {
+                "status": "blocked_missing_run_root",
+                "evidence_type": "blocked",
+                "metrics_completion_outcome": "incomplete",
+            },
         }
         return {"section_overrides": section_overrides}
 

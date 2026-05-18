@@ -1906,3 +1906,28 @@ scan thousands of lines of completed history.
 - Result/status: blocked_unresolved
 - Boundaries: fail-closed checkout blocker only; no live Balfrin submission, no retry, no multi-zone run, no distributed execution, no scale-up, no physical-probability claim, no annual-frequency claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-265`
+
+### TB-265: Metrics Completion Evidence Integration And Decision Refresh
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: integrate the TB-264 Balfrin metrics-completion result into canonical evidence reports and downstream next-action decisions without fabricating measured evidence.
+- Files changed: `scripts/summarize_balfrin_probe_metrics_report.py`, `scripts/summarize_balfrin_probe_preservation_gate.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_probe_metrics_report.py`, `tests/test_balfrin_probe_preservation_gate.py`, `tests/test_balfrin_demonstration_closure_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a canonical `metrics_completion_outcome` classification that separates `measured`, `recovered`, `blocked`, and `incomplete` from the existing source label.
+  - Classified the TB-264 no-submission path as `incomplete` when a metrics-completion attempt stopped before a live SLURM job, run-root metrics, `sacct` fields, or preservation-gate output existed.
+  - Propagated the outcome through the metrics report, preservation gate, evidence bundle probe-metrics section, closure package, and next live-run decision criteria.
+  - Kept complete evidence ranked past the metrics-completion rerun while incomplete TB-264-style evidence remains blocked and does not promote a next measured action.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_probe_metrics_report.py scripts/summarize_balfrin_probe_preservation_gate.py scripts/summarize_balfrin_evidence_bundle.py scripts/summarize_balfrin_demonstration_closure_package.py scripts/summarize_balfrin_next_live_run_decision_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_metrics_report tests.test_balfrin_probe_preservation_gate tests.test_balfrin_demonstration_closure_package -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: evidence integration only; no live Balfrin submission, no retry, no generated heavy outputs, no physical credibility upgrade, no annual-frequency claim, no risk/exposure/vulnerability claim, no distributed-execution or scale-up claim, and no operational claim.
+- Next task: `TB-266`
