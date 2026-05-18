@@ -616,3 +616,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-206`
+
+### TB-206: Target-Area Metrics Completion Rerun Package
+
+- Date: 2026-05-18
+- Commit: `62126c5`
+- Objective: prepare a bounded Balfrin rerun package whose only purpose is closing the missing target-area peak-memory and split validation/hazard output metrics.
+- Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated dry-run rerun-package helper that emits the rerun command plan, SBATCH package text, preservation checklist, replay metadata, comparison basis, and hashes for the recorded target-area run.
+  - Kept the preservation checklist fail-closed around the missing peak-memory and split validation/hazard output metrics, plus the declared run-root files and replay metadata fields needed to preserve the package.
+  - Added focused tests for the complete, partial, and missing-package classifications, along with a CLI artifact smoke test.
+  - Registered the new helper in the script inventory, documented it in the Balfrin SLURM / single-job notes, and removed TB-206 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_balfrin_target_area_metrics_completion_rerun_package tests.test_balfrin_probe_metrics_report tests.test_balfrin_probe_preservation_gate`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
+- Next task: `TB-207`
