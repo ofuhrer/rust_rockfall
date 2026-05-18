@@ -101,6 +101,61 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertIn("required_tests", report["recommendation"]["proposal"])
             self.assertIn("reason", report["recommendation"])
 
+    def test_profile_report_schema_stability_across_modes(self) -> None:
+        expected_report_keys = {
+            "analysis_notes",
+            "bottleneck",
+            "cog_gis_pressure",
+            "fixture",
+            "hazard_manifest",
+            "hazard_manifest_path",
+            "output_pressure",
+            "profile_id",
+            "profile_root",
+            "profile_scale",
+            "profile_status",
+            "recommendation",
+            "runs",
+            "schema_version",
+            "timings",
+        }
+        expected_phase_keys = {
+            "trajectory_read_seconds",
+            "bounds_discovery_seconds",
+            "accumulation_seconds",
+            "reducer_merge_seconds",
+            "raster_write_seconds",
+            "manifest_seconds",
+            "report_render_seconds",
+        }
+        expected_run_keys = {
+            "hazard_manifest",
+            "hazard_manifest_path",
+            "output_pressure",
+            "profile_scale",
+            "timings",
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            smoke_root = Path(tmpdir) / "smoke"
+            representative_root = Path(tmpdir) / "representative"
+            MODULE.materialize_fixture_root(smoke_root, profile_spec=MODULE.PROFILE_SPECS[MODULE.SMOKE_PROFILE_ID])
+            MODULE.materialize_fixture_root(representative_root)
+            smoke_report = MODULE.build_report(smoke_root)
+            representative_report = MODULE.build_report(representative_root)
+
+            for report in (smoke_report, representative_report):
+                self.assertEqual(set(report), expected_report_keys)
+                self.assertEqual(set(report["timings"]["phase_seconds"]), expected_phase_keys)
+                self.assertTrue(set(report["runs"]).issubset({"explicit", "auto"}))
+                for run in report["runs"].values():
+                    self.assertEqual(set(run), expected_run_keys)
+                    self.assertEqual(set(run["timings"]["phase_seconds"]), expected_phase_keys)
+
+            self.assertEqual(set(smoke_report["runs"]), {"explicit"})
+            self.assertEqual(set(representative_report["runs"]), {"auto", "explicit"})
+            self.assertEqual(smoke_report["schema_version"], MODULE.SCHEMA_VERSION)
+            self.assertEqual(representative_report["schema_version"], MODULE.SCHEMA_VERSION)
+
     def test_smoke_profile_remains_routine_and_uses_explicit_run_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             profile_root = Path(tmpdir) / "profile"

@@ -1161,3 +1161,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no physics change, no hazard semantics change, no output-schema change, no operational claim, and no scale-up or distributed-execution claim.
 - Next task: `TB-230`
+
+### TB-230: Post-Optimization Multi-Zone Throughput Reprofile
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: reprofile the representative multi-zone hazard-builder fixture after TB-229, compare it with the rejected accumulator spike, and tighten schema-stability coverage for the profiler report.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reprofiled the smoke and representative multi-zone scratch fixtures and recorded the current-vs-baseline evidence in the throughput report.
+  - Confirmed that smoke remains a routine guardrail while the representative profile still reports trajectory accumulation as the dominant explicit-grid phase.
+  - Added regression coverage that locks the profiler report schema across smoke and representative modes, including the stable top-level keys, phase timing keys, and run-summary keys.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --profile smoke --materialize-root /tmp/rust_rockfall/tb230_smoke --format json --json-output /tmp/rust_rockfall/tb230_smoke_report.json --markdown-output /tmp/rust_rockfall/tb230_smoke_report.md`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb230_representative --format json --json-output /tmp/rust_rockfall/tb230_representative_report.json --markdown-output /tmp/rust_rockfall/tb230_representative_report.md`
+- Result/status: implemented_measured
+- Boundaries: profiling and report updating only; no new physics, no distributed execution, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-231`

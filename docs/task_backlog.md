@@ -23,33 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-230: Post-Optimization Multi-Zone Throughput Reprofile
-
-Goal: Reprofile the representative multi-zone hazard-builder fixture after TB-229 and update the throughput report with retained or rejected optimization evidence.
-
-Capability gap reduced: A code optimization without a follow-up profile can hide noise, regress output pressure, or overstate scaling improvement.
-
-Why this outranks alternatives: Throughput work should remain evidence-driven and should not become speculative performance churn.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `tests/test_multi_zone_hazard_throughput_profile.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `scripts/build_hazard_layers.py`
-
-Deliverables:
-
-- A before/after or current-versus-baseline report for smoke and representative profiles.
-- Updated bottleneck classification that says whether trajectory accumulation is still dominant.
-- Focused regression coverage for profile schema stability.
-
-Definition of done:
-
-- The report distinguishes real improvement, noise, and regressions, and records the next bounded target only if evidence supports one.
-
-Boundaries: Profiling only unless TB-229 retained code changes; no new physics, no distributed execution, no operational claim, and no heavy outputs committed.
-
 ### TB-231: Chant Sura Public-Context Acquisition Package Freeze
 
 Goal: Freeze a concrete real-input acquisition package for Chant Sura / Fluelapass that separates required swisstopo products, expected local roots, and fixture-only paths.

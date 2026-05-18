@@ -279,3 +279,48 @@ Decision:
 
 Before/after profile artifacts were written only to `/tmp` and were not
 committed.
+
+## TB-230 Post-Optimization Reprofile
+
+TB-229 left the accumulator unchanged, so this follow-up reprofile checked the
+current profiler output against the rejected baseline slice rather than
+introducing new hazard behavior.
+
+Smoke profile current state:
+
+- 2 release zones, explicit-only run
+- 18 output files / 824030 bytes
+- `raster_write_seconds`: `0.024798` s
+- `accumulation_seconds`: `0.007730` s
+- bottleneck: `raster_write_seconds`
+
+Representative profile current state:
+
+- 12 release zones, auto + explicit runs
+- 25 output files / 957723 bytes
+- `bounds_discovery_seconds`: `0.000990` s
+- `accumulation_seconds`: `0.073202` s
+- `raster_write_seconds`: `0.026340` s
+- bottleneck: `accumulation_seconds`
+
+Baseline comparison against TB-229:
+
+- TB-229 baseline accumulation: `0.068822` s
+- TB-229 rejected after-state accumulation: `0.070471` s
+- TB-230 current accumulation: `0.073202` s
+- current minus baseline: `+0.004380` s
+- current minus rejected after-state: `+0.002731` s
+
+Interpretation:
+
+- The smoke profile is a guardrail, not an optimization target. Its smaller
+  scale pushes the bottleneck to raster writes, so it does not overturn the
+  representative result.
+- The representative profile still reports trajectory accumulation as the
+  dominant explicit-grid phase.
+- The TB-229 buffering slice is therefore rejected as a retained optimization.
+  The current run is slower than both the baseline and the rejected
+  after-state, so the evidence supports noise or regression, not improvement.
+- The next bounded target remains trajectory batching or vectorization only if
+  a later measured slice can beat this baseline without changing hazard
+  semantics.
