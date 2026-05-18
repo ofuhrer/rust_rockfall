@@ -62,10 +62,11 @@ worktree is clean and the completed task is absent from the backlog.
 
 Workers may access Balfrin over SSH when the selected task explicitly requires
 Balfrin inspection, evidence collection, or a user-authorized Balfrin run.
-Balfrin-capable workers should use a stronger model than the default small
-implementation worker, for example `gpt-5.5` or the strongest available
-coding/research model, because these tasks combine remote state, scheduler
-semantics, ignored artifacts, and scientific claim boundaries.
+Balfrin-capable read-only inspection and evidence-collection workers should use
+a stronger model than the default small implementation worker because these
+tasks combine remote state, scheduler semantics, ignored artifacts, and
+scientific claim boundaries. Live submissions are stricter: they must use a
+GPT-5.5 Balfrin worker under the authorization protocol below.
 
 Balfrin SSH access is time-limited and may expire. If SSH authentication,
 permissions, or mounted non-git artifacts are unavailable, the worker must fail
@@ -75,6 +76,31 @@ fixture-backed report as a measured Balfrin result. Live Balfrin submission
 still requires explicit task-level or user authorization; read-only inspection
 and collection from already-authorized run roots may proceed when SSH access is
 available.
+
+## Live Balfrin Run Authorization
+
+No current backlog task, dry-run package, generated SBATCH script, readiness
+label, preflight result, or documentation update authorizes a new live Balfrin
+submission by itself. A future live Balfrin run is authorized only when the user
+gives an explicit instruction for that specific run, after reviewing the bounded
+run shape. The instruction must name the intended Balfrin target or package,
+confirm that live submission is allowed, and keep the scope to the stated
+single-job or otherwise explicitly bounded run. General statements such as
+"continue", "run the next task", "prepare the package", "ready for
+authorization review", "generate-only", or "collect evidence" are not
+authorization to call `sbatch`.
+
+When such an instruction exists, the orchestrator must route the work to a
+Balfrin-capable GPT-5.5 worker, and the prompt must include the exact user
+authorization text, the selected package/manifest/run root, and the required
+preflights. The worker must still fail closed unless all applicable gates pass:
+fast-forwarded Balfrin checkout, clean local context, Balfrin access preflight,
+package-specific readiness or authorization preflight, reviewed handoff package
+when required, reduced-output/output-budget gates, preservation checklist, and
+post-run evidence collection. Passing those gates permits only the named run; it
+does not authorize retries, scale-up, distributed execution, second-site
+execution, annual-frequency products, physical-probability claims, risk,
+exposure, vulnerability, regulatory use, or operational claims.
 
 ## Outcome Taxonomy
 

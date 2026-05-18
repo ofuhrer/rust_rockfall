@@ -39,6 +39,9 @@ execution reproducible and metadata-friendly on Balfrin.
 - `--submit`
   - Writes artifacts and calls `sbatch` with `--parsable`.
   - Exercised for the authorized TB-168 target-area probe as job `4329024`.
+  - Must not be used for a future live run unless the user has explicitly
+    authorized that exact bounded run and a GPT-5.5 Balfrin worker is executing
+    the submission after the required preflights pass.
 
 - `--authorized-submit`
   - Writes artifacts and calls `sbatch` only after a reviewed handoff package
@@ -46,6 +49,9 @@ execution reproducible and metadata-friendly on Balfrin.
   - This is the fail-closed path for the smallest bounded multi-zone Balfrin
     probe; it returns `blocked_missing_authorization` or
     `blocked_missing_inputs` instead of submitting when either gate is absent.
+  - The authorization record is necessary but not sufficient: the user must also
+    explicitly instruct the worker to submit the exact run in the current
+    orchestration context.
 
 - `--collect`
   - Reads an existing run root and emits a compact summary JSON.
@@ -65,6 +71,34 @@ the shared Cargo target directory, caches, and other ignored execution artifacts
 Before a live submission, fast-forward the checkout and run readiness checks from
 `/users/olifu/work/rust_rockfall`; then write the deterministic run root under
 scratch.
+
+## Live-run authorization protocol
+
+This repository does not carry standing authorization for additional live
+Balfrin runs. A future live run can proceed only under all of the following
+conditions:
+
+- the user explicitly instructs the agent to submit the exact bounded Balfrin
+  run, naming the target package, manifest, run root, or probe;
+- the orchestrator routes the task to a GPT-5.5 Balfrin worker;
+- the worker includes the exact authorization text in its task context and does
+  not broaden the scope beyond that single named run;
+- the Balfrin checkout is fast-forwarded, the local worktree context is clean,
+  and the access preflight, package-specific readiness or authorization
+  preflight, reviewed handoff package, reduced-output/output-budget checks, and
+  any preservation or post-run evidence gates required by the package all pass;
+- the final report records the job id, run root, gates run, and scientific
+  boundary note.
+
+The following are not live-run authorization: `--dry-run`, `--generate-only`, a
+generated `probe.sbatch`, a ready command plan, a preflight status such as
+`ready_for_authorization_review`, a backlog task that asks for package
+preparation, a request to inspect or collect existing evidence, or a previous
+authorization for a different Balfrin run. Authorization for one run does not
+authorize retries, larger ensembles, multi-node or distributed execution,
+second-site execution, Swiss-wide scale-up, annual-frequency products, physical
+probability claims, risk/exposure/vulnerability products, regulatory use, or
+operational claims.
 
 ## Run directory and file layout
 

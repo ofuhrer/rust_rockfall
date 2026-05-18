@@ -21,6 +21,11 @@ Balfrin as SLURM job `4329024` under
 It provides measured runtime/output evidence for the frozen target-area
 contract, while peak-memory and split validation/hazard output metrics remain
 incomplete. No further Balfrin execution is authorized by default.
+Future live Balfrin submission requires an explicit user instruction for the
+exact bounded run, GPT-5.5 Balfrin-worker routing, and the existing access,
+readiness, authorization, output-budget, preservation, and evidence gates.
+Generated packages, ready preflights, and previous approvals do not authorize a
+new run.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
 dry-run helpers for AOI product discovery, public-geodata cache verification,

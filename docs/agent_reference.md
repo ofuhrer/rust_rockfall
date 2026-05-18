@@ -58,6 +58,14 @@ changed JSON/TOML/Markdown with available local tools.
   rebuildable reduced outputs. Treat additional Balfrin runs, distributed
   execution, and Swiss-wide scale-up as separate authorization steps, not as
   automatic consequences of a successful probe.
+- A future live Balfrin submission requires an explicit user instruction for
+  the exact bounded run and GPT-5.5 Balfrin-worker routing. Dry-run packages,
+  generated SBATCH files, readiness/preflight labels, reviewed handoffs, and
+  previous run approvals are not authorization by themselves. Even when the
+  user authorizes one run, all existing Balfrin access, package readiness,
+  authorization, output-budget, preservation, and evidence gates still apply,
+  and the authorization does not permit retries, scale-up, distributed
+  execution, annual/physical/risk semantics, or operational claims.
 
 ## Versioning Rules
 
@@ -101,6 +109,15 @@ For execution and measurement tasks, do not treat a blocked-state report or
 fixture-backed proof as equivalent to the requested measured capability. Use the
 taxonomy in `docs/orchestration_strategy.md`, and make the smallest follow-up
 unblock task visible before starting dependent synthesis work.
+
+For backlog and guidance work, avoid creating process artifacts as first-class
+progress. A new validator, gate, report, checklist, or management package must
+either enable a concrete command, recover or measure evidence, protect a
+workflow-critical boundary, or replace duplicated stale surfaces. Prefer
+capability-first tasks: release/scenario/AOI automation, restartability,
+runtime/output scaling, reducer-pressure measurement, real-input staging,
+uncertainty interpretation, physical-evidence acquisition, or simplification of
+the Python orchestration shell.
 
 ## Test Coverage Expectations
 

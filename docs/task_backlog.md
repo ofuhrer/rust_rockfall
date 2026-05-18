@@ -15,11 +15,25 @@ Inspect first entries must resolve to tracked repository files unless explicitly
 Progress rule: each task should produce executable or measured progress, not
 only labels, validators, or roadmap/status churn.
 
+Capability filter: a task whose main deliverable is a report, gate, validator,
+YAML record, checklist, or evidence package is acceptable only when it names the
+specific command it unblocks, measurement it produces, workflow coupling it
+removes, or stale surface it replaces. Otherwise the task should be rewritten as
+bounded execution, recovery, automation, scaling measurement, real-evidence
+acquisition, or consolidation of an existing helper.
+
 Orchestrator rule: execute active tasks sequentially by numeric order. Launch
 one worker, verify clean `main` and task removal after it finishes, then continue
 to the next task. Stop on any failure or dirty worktree; do not pre-generate
 later prompts. Full sequential-loop guidance lives in
 `docs/orchestration_strategy.md`.
+
+Live Balfrin rule: a task may prepare, review, or preflight a Balfrin submission
+package, but it may not submit a new live run unless the user gives an explicit
+instruction for that exact run. The orchestrator must route any authorized live
+run to a GPT-5.5 Balfrin worker and require the existing Balfrin access,
+readiness, authorization, output-budget, preservation, and evidence gates. A
+ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
@@ -44,7 +58,9 @@ Goal: One sentence describing why the task matters now.
 Capability gap reduced: The concrete capability gap this task reduces.
 
 Why this outranks alternatives: One sentence explaining why this is high
-leverage now.
+leverage now, preferably tied to a measured blocker, an executable workflow
+boundary, real evidence acquisition, output/runtime scaling, or simplification
+of duplicated orchestration.
 
 Inspect first:
 
@@ -52,15 +68,21 @@ Inspect first:
 
 Deliverables:
 
-- Concrete executable, analysis, test, or measured output.
+- Concrete executable, analysis, test, or measured output. If the deliverable is
+  mainly a report, gate, validator, checklist, or package, state the exact run,
+  recovery, acquisition, reproducibility, or consolidation action it enables.
 
 Definition of done:
 
 - Focused checks pass, the capability outcome is explicit, and the task is
   removed from this backlog only when the definition of done is genuinely met.
+  A new blocked/deferred classification is not enough unless it eliminates a
+  real ambiguity and names the next unblock action or explicit deferral.
 
-Boundaries: No tuning, operational claims, scale-up authorization, or other
-phase changes unless the task explicitly allows them.
+Boundaries: No live Balfrin submission, tuning, operational claims, scale-up
+authorization, or other phase changes unless the task explicitly allows them
+and, for live Balfrin submission, the user has separately authorized the exact
+run.
 ```
 
 Workers should start with compact task context and a targeted backlog lookup:

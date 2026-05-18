@@ -56,13 +56,31 @@ large JSON, diffs, and logs to `/tmp` and summarize the result. Preserve the
 final relevant error block on failure. Use `docs/orchestration_strategy.md` for
 the full file-backed monitoring pattern.
 
+For a live Balfrin run, a backlog task or ready preflight is not enough. The
+user must explicitly authorize the exact bounded run in the current
+conversation, and the orchestrator must route it to a GPT-5.5 Balfrin worker
+with the existing access, readiness, authorization, output-budget,
+preservation, and evidence gates in the prompt. Do not submit, retry, scale up,
+or broaden Balfrin execution from prior approvals or generated packages.
+
 ## Work Rules
 
 - Prefer executable progress over process artifacts: implemented behavior,
   measured analysis, reproducibility improvements, focused bug fixes, or tests.
+- Do not add a new gate, report, wrapper, validator, YAML record, or synthesis
+  package unless it removes a concrete execution/reproducibility blocker,
+  produces a new measurement, or consolidates duplicated workflow logic.
+- Prefer extending an existing helper or deleting a stale cue over creating a
+  parallel status vocabulary. New status labels need a clear downstream command
+  or decision that existing labels cannot express.
 - Distinguish measured completion from fixture-backed proofs and blocked-state
   reports. A blocked report is useful evidence, but it is not the same as
-  achieving the task's measured capability.
+  achieving the task's measured capability. Do not chain blocked reports; the
+  next task should either unblock the input, run/recover/measure something, or
+  explicitly defer the path.
+- Treat management-facing summaries and closure packages as secondary outputs.
+  They are justified only after executable evidence changes or when they
+  replace multiple stale summaries with one canonical surface.
 - Keep edits scoped to the task and existing module boundaries.
 - Add or update focused tests for behavior, parser, CLI, output, and bug-fix
   changes.

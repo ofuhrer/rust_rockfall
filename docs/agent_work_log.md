@@ -16,7 +16,9 @@ review triage entries live in `docs/archive/agent_work_log_archive.md`.
 - Do not add backlog-refill notes, review triage, planning notes, or
   non-task narrative here. Put durable planning in `docs/task_backlog.md` or
   `docs/decision_log.md`; archive older non-TB history only in
-  `docs/archive/agent_work_log_archive.md`.
+  `docs/archive/agent_work_log_archive.md`. If a user explicitly requests a
+  non-TB guidance-cleanup work-log note, keep it in the compact guidance-notes
+  section and do not format it as a `TB-XXX` entry.
 - Prefer concise entries. Link to generated helpers, docs, and commits rather
   than pasting long command transcripts.
 - Do not leave `Commit: pending` in a committed entry. Use a two-commit
@@ -1688,3 +1690,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: acquisition triage only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no physical-probability claim, no risk/exposure semantics, no distributed-execution change, and no operational claim.
 - Next task: backlog refill needed
+
+## Guidance Notes
+
+### 2026-05-18: Procedural Drift Reduction
+
+- Scope: repository guidance, backlog semantics, and worker-facing incentives.
+- Procedural patterns reduced: tasks whose primary output is another gate,
+  checklist, YAML record, blocked/deferred report, closure package, or
+  management summary without a named execution, measurement, acquisition,
+  reproducibility, or consolidation payoff.
+- Desired worker behavior: prefer bounded runs or recovery, real-input staging,
+  release/scenario/AOI automation, restartability proof, runtime/output scaling
+  measurements, uncertainty-localization evidence, and simplification of
+  duplicated orchestration surfaces.
+- Boundary retained: scientific honesty, claim boundaries, fail-closed evidence
+  discipline, and Balfrin authorization requirements remain intact.

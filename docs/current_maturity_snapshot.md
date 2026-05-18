@@ -92,7 +92,11 @@ worth authorizing from the now-preflighted options?" Metrics completion,
 smallest bounded multi-zone measurement, real second-site public-context
 progress, physical-evidence acquisition, and hazard-builder optimization all
 now have sharper blockers or preconditions, but none authorizes a claim
-upgrade from the current demonstration.
+upgrade from the current demonstration or a new live Balfrin submission. Any
+future live Balfrin run still requires a fresh explicit user instruction for the
+exact bounded run, GPT-5.5 Balfrin-worker routing, and the applicable access,
+readiness, authorization, output-budget, preservation, and post-run evidence
+gates.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -258,7 +262,11 @@ objective are:
    complete optional-metadata contract and still fails closed when optional
    metadata is absent. One bounded target-area probe has now been explicitly
    authorized and measured on Balfrin; future generated submission packages are
-   operator handoffs, not execution approval. A metrics-remediation contract
+   operator handoffs, not execution approval. Labels such as `allowed_next_probe`
+   or `ready_for_authorization_review` are planning states only; they do not
+   authorize `sbatch` without a later user instruction for the exact run and
+   GPT-5.5 Balfrin-worker routing through the live-run protocol. A
+   metrics-remediation contract
    records missing mandatory, unavailable ancillary, and next-run-required
    fields. TB-170 now wraps the frozen target-area handoff report, the
    preserved probe-metrics report, and the measured canonical bundle into one
@@ -425,22 +433,31 @@ The current backlog should be judged by whether it creates new measurements,
 analysis capabilities, reproducibility, or execution capacity. The strongest
 tasks are those that turn the existing Tschamut/Balfrin artifacts into
 actionable scientific evidence or remove a measured execution blocker.
+Synthesis, closure semantics, and additional blocked-state vocabulary should
+follow evidence changes, not substitute for them.
 
 Over-procedural areas to avoid:
 
 - repeated reclassification of the same `inconclusive` evidence without a new
   analysis or run;
-- additional YAML records or validators that do not enable execution,
-  measurement, or reproducibility;
+- additional YAML records, validators, gates, or intake reports that do not
+  enable execution, measurement, reproducibility, real-evidence acquisition, or
+  consolidation of duplicated logic;
 - roadmap/status maintenance that does not change what a worker can run or
   learn;
+- management-style closure or evidence packaging that duplicates an existing
+  canonical summary without replacing stale surfaces;
+- chains of blocked/deferred reports where the next action is still another
+  classification step rather than staging input, recovering evidence,
+  measuring runtime/output pressure, or explicitly deferring the path;
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
 Current high-value work after TB-254:
 
 - run a scoped gap-analysis/backlog-refill pass before launching another
-  implementation worker;
+  implementation worker, using the backlog capability filter to reject tasks
+  that mainly add wrappers around known blocked states;
 - decide whether a future authorized Balfrin action should be the
   metrics-completion rerun, the smallest bounded multi-zone measurement, or
   no live run until access and preservation conditions improve;
@@ -463,9 +480,10 @@ Current high-value work after TB-254:
   authorizes frequency semantics;
 - continue workflow-shell consolidation only where it removes concrete
   coupling without changing public CLI schemas or status vocabulary;
-- use the canonical evidence bundle and scientific delta report as the
-  management-facing demonstration evidence, while keeping the closure status
-  inconclusive and non-operational;
+- use existing canonical evidence summaries for management-facing
+  demonstration evidence, while keeping the closure status inconclusive and
+  non-operational; add another summary only if it replaces stale summaries or is
+  needed to support a bounded authorization/recovery decision;
 - close or explicitly defer remaining ancillary measured-metrics gaps while
   keeping fixture-backed regression evidence distinct from live measurements;
 - treat the AOI case-skeleton, scenario-generation handoff, and GIS scope
