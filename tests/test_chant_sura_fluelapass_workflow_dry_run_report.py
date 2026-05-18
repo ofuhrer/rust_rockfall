@@ -54,6 +54,8 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(first["workflow_classification"], "ready_for_next_step")
         self.assertEqual(second["workflow_classification"], "ready_for_next_step")
         self.assertEqual(first, repeat)
+        self.assertEqual(first["prepared_pilot_provenance"]["status"], "real_staged")
+        self.assertEqual(first["blocked_fixture_backed_inputs"], [])
         self.assertEqual(first["public_context_readiness"]["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
         self.assertEqual(first["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
         self.assertEqual(first["aoi_preparation"]["case_skeleton_status"], "ready")
@@ -85,10 +87,46 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         text_report = reporter.render_text_report(first)
         self.assertEqual(text_report, reporter.render_text_report(first))
         self.assertIn("workflow_classification: ready_for_next_step", text_report)
+        self.assertIn("prepared_pilot_provenance:", text_report)
         self.assertIn("public_context_readiness:", text_report)
         self.assertIn("real_context_product_readiness_status: ready", text_report)
         self.assertIn("tiny_bounded_ensemble_handoff:", text_report)
         self.assertIn("ready_for_next_step:", text_report)
+
+    def test_fixture_backed_inputs_fail_closed_even_when_paths_are_staged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            site_config = self._write_site_config(repo_root)
+            config_data = yaml.safe_load(site_config.read_text(encoding="utf-8"))
+            config_data["fixture_profile"] = "minimal_synthetic_aoi_v1"
+            site_config.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=site_config,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._write_real_context_cache_manifest(
+                repo_root,
+            )
+
+            report = reporter.build_report(site_config, repo_root=repo_root)
+
+        self.assertEqual(report["workflow_classification"], "blocked_fixture_backed_inputs")
+        self.assertEqual(report["prepared_pilot_provenance"]["status"], "fixture_backed")
+        self.assertEqual(report["prepared_pilot_provenance"]["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
+        self.assertEqual(report["blocked_missing_inputs"], [])
+        self.assertTrue(report["blocked_fixture_backed_inputs"])
+        self.assertIn("synthetic fixture inputs are not public evidence", report["blocked_fixture_backed_inputs"][0])
+        self.assertEqual(report["ready_for_next_step"]["status"], "blocked_fixture_backed_inputs")
+        self.assertEqual(report["ready_for_next_step"]["next_step"], "none")
+        self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_fixture_backed_inputs")
+        self.assertIn("synthetic fixture inputs are not public evidence", report["tiny_bounded_ensemble_handoff"]["blocked_reason"])
+
+        text_report = reporter.render_text_report(report)
+        self.assertIn("workflow_classification: blocked_fixture_backed_inputs", text_report)
+        self.assertIn("prepared_pilot_provenance:", text_report)
+        self.assertIn("blocked_fixture_backed_inputs:", text_report)
+        self.assertIn("synthetic fixture inputs are not public evidence", text_report)
 
     def test_missing_fixture_inputs_fail_closed_as_blocked_missing_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,8 +146,8 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertIn("missing", report["aoi_preparation"]["blocked_reason"])
         self.assertIn("blocked_missing_inputs", report["ready_for_next_step"]["status"])
 
-    def _write_site_config(self, repo_root: Path) -> Path:
-        config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+    def _write_site_config(self, repo_root: Path, *, config_source: Path | None = None) -> Path:
+        config_source = config_source or ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
         config_data = yaml.safe_load(config_source.read_text(encoding="utf-8"))
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -118,11 +156,14 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
 
-    def _write_real_context_cache_manifest(self, repo_root: Path) -> None:
-        manifest_path = (
-            repo_root
-            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"
-        )
+    def _write_real_context_cache_manifest(
+        self,
+        repo_root: Path,
+        *,
+        candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1",
+        candidate_site_name: str = "Chant Sura / Flüelapass portability example",
+    ) -> None:
+        manifest_path = repo_root / f"data/processed/swisstopo/{candidate_site_id}/input/public_geodata_cache_manifest.yaml"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         records = []
         product_ids = [
@@ -169,8 +210,8 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
             )
         manifest = {
             "schema_version": "public_geodata_cache_verification_manifest_v1",
-            "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
-            "candidate_site_name": "Chant Sura / Flüelapass portability example",
+            "candidate_site_id": candidate_site_id,
+            "candidate_site_name": candidate_site_name,
             "products": records,
         }
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")

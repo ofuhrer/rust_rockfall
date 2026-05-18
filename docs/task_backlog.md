@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-212: Real Second-Site Prepared-Pilot Dry Run
-
-Goal: Compose a real Chant Sura / Fluelapass prepared-pilot dry run from staged public-context inputs when they exist, while emitting a deterministic blocked report when they do not.
-
-Capability gap reduced: Tschamut-specific coupling remains unresolved until a real second-site path can run beyond synthetic fixtures and metadata-only readiness.
-
-Why this outranks alternatives: `TB-207` verifies whether real second-site inputs are staged; this task uses those verified inputs to exercise the AOI preparation, release-candidate, scenario, command-plan, and optional tiny handoff path without claiming operational readiness.
-
-Inspect first:
-
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-
-Deliverables:
-
-- A deterministic second-site prepared-pilot report using real staged terrain/context/source/scenario metadata when available.
-- Release-candidate, scenario-table, command-plan, ignored-root layout, and blocked-input summaries that preserve real-versus-fixture provenance.
-- A permission-gated tiny execution handoff only if all required staged inputs are real and the user explicitly authorizes it.
-- Focused tests for clean-checkout blocked, fixture-backed blocked, staged-real-like dry run, and forbidden output-root behavior.
-
-Definition of done:
-
-- Chant Sura / Fluelapass can be classified as real-staged dry-run ready or explicitly blocked using the same workflow shape as the Balfrin/Tschamut path, without treating synthetic fixtures as public evidence.
-
-Boundaries: No downloads, no ensemble execution without explicit authorization, no synthetic public-context evidence, no physical-validation claim, no operational claim, and no claim that Chant Sura is ready when required real inputs are absent.
-
 ### TB-213: Evidence-Gated Balfrin Demonstration Closure Package
 
 Goal: Produce one coherent Balfrin demonstration closure package only after new measured evidence from a metrics-completion rerun or authorized multi-zone probe exists.

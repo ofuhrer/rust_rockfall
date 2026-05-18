@@ -155,6 +155,10 @@ def build_report(
         repo_root=repo_root,
         readiness_report=readiness_report,
     )
+    prep_summary = {
+        "site_config_path": str(site_config),
+        "synthetic_config": bool(PREFLIGHT.text_value(config.get("fixture_profile"))),
+    }
 
     blocked_missing_inputs = collect_blocked_missing_inputs(
         readiness_report=readiness_report,
@@ -164,8 +168,15 @@ def build_report(
         command_plan_report=command_plan_report,
         case_skeleton_report=case_skeleton_report,
     )
+    prepared_pilot_provenance = build_prepared_pilot_provenance(preflight_report, prep_summary)
+    blocked_fixture_backed_inputs = collect_blocked_fixture_backed_inputs(
+        readiness_report=readiness_report,
+        preflight_report=preflight_report,
+        prepared_pilot_provenance=prepared_pilot_provenance,
+    )
+    prep_summary["prepared_pilot_provenance"] = prepared_pilot_provenance
 
-    workflow_classification = "blocked_missing_inputs" if blocked_missing_inputs else "ready_for_next_step"
+    workflow_classification = classify_workflow(blocked_missing_inputs, blocked_fixture_backed_inputs)
     tiny_handoff_status = build_tiny_bounded_ensemble_handoff_status(
         workflow_classification=workflow_classification,
         allow_tiny_ensemble_handoff=allow_tiny_ensemble_handoff,
@@ -205,9 +216,11 @@ def build_report(
         "tiny_bounded_ensemble_handoff": tiny_handoff_report,
         "workflow_steps": workflow_steps,
         "blocked_missing_inputs": blocked_missing_inputs,
+        "blocked_fixture_backed_inputs": blocked_fixture_backed_inputs,
+        "prepared_pilot_provenance": prepared_pilot_provenance,
         "ready_for_next_step": {
             "status": workflow_classification,
-            "next_step": "tiny_bounded_ensemble_handoff",
+            "next_step": "tiny_bounded_ensemble_handoff" if workflow_classification == "ready_for_next_step" else "none",
             "requires_explicit_permission": True,
             "permission_recorded": allow_tiny_ensemble_handoff,
             "permission_note": tiny_ensemble_note,
@@ -258,6 +271,17 @@ def blocked_report(
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_extent": "placeholder_extent_missing",
+        "prepared_pilot_provenance": {
+            "schema_version": "chant_sura_prepared_pilot_provenance_v1",
+            "status": "blocked_missing_inputs",
+            "candidate_site_id": candidate_site_id,
+            "candidate_site_name": candidate_site_name,
+            "synthetic_fixture_readiness_status": "blocked_missing_inputs",
+            "synthetic_fixture_profile": "none",
+            "site_config_path": str(site_config),
+            "synthetic_config": False,
+            "source": "missing site config",
+        },
         "public_context_readiness": {"real_context_readiness_gate_status": "blocked_missing_inputs"},
         "aoi_preparation": {
             "case_skeleton_status": "blocked_missing_inputs",
@@ -316,6 +340,7 @@ def blocked_report(
             },
         ],
         "blocked_missing_inputs": [blocked_reason],
+        "blocked_fixture_backed_inputs": [],
         "ready_for_next_step": {
             "status": "blocked_missing_inputs",
             "next_step": "none",
@@ -464,11 +489,68 @@ def collect_blocked_missing_inputs(
     return dedupe(blocked)
 
 
+def build_prepared_pilot_provenance(
+    preflight_report: dict[str, Any],
+    prep_summary: dict[str, Any],
+) -> dict[str, Any]:
+    contract = preflight_report.get("public_geodata_workflow_contract", {})
+    synthetic_fixture_readiness_status = str(contract.get("synthetic_fixture_readiness_status") or "not_applicable")
+    synthetic_fixture_profile = str(contract.get("synthetic_fixture_profile") or "none")
+    provenance_status = "fixture_backed" if synthetic_fixture_readiness_status == "ready" else "real_staged"
+    return {
+        "schema_version": "chant_sura_prepared_pilot_provenance_v1",
+        "status": provenance_status,
+        "candidate_site_id": preflight_report.get("candidate_site_id", ""),
+        "candidate_site_name": preflight_report.get("candidate_site_name", ""),
+        "synthetic_fixture_readiness_status": synthetic_fixture_readiness_status,
+        "synthetic_fixture_profile": synthetic_fixture_profile,
+        "site_config_path": prep_summary.get("site_config_path", ""),
+        "synthetic_config": bool(prep_summary.get("synthetic_config")),
+        "source": "public_geodata_workflow_contract.synthetic_fixture_readiness_status",
+    }
+
+
+def collect_blocked_fixture_backed_inputs(
+    *,
+    readiness_report: dict[str, Any],
+    preflight_report: dict[str, Any],
+    prepared_pilot_provenance: dict[str, Any],
+) -> list[str]:
+    if readiness_report.get("real_context_readiness_gate_status") == "blocked_missing_inputs":
+        return []
+    if prepared_pilot_provenance.get("status") != "fixture_backed":
+        return []
+    contract = preflight_report.get("public_geodata_workflow_contract", {})
+    synthetic_fixture_profile = str(contract.get("synthetic_fixture_profile") or "unknown_fixture_profile")
+    candidate_site_id = str(
+        prepared_pilot_provenance.get("candidate_site_id")
+        or preflight_report.get("candidate_site_id")
+        or "unspecified_second_site"
+    )
+    return [
+        f"{candidate_site_id}: synthetic fixture inputs are not public evidence",
+        f"{candidate_site_id}: fixture_profile={synthetic_fixture_profile}",
+    ]
+
+
+def classify_workflow(
+    blocked_missing_inputs: list[str],
+    blocked_fixture_backed_inputs: list[str],
+) -> str:
+    if blocked_missing_inputs:
+        return "blocked_missing_inputs"
+    if blocked_fixture_backed_inputs:
+        return "blocked_fixture_backed_inputs"
+    return "ready_for_next_step"
+
+
 def build_tiny_bounded_ensemble_handoff_status(
     *,
     workflow_classification: str,
     allow_tiny_ensemble_handoff: bool,
 ) -> str:
+    if workflow_classification == "blocked_fixture_backed_inputs":
+        return "blocked_fixture_backed_inputs"
     if workflow_classification != "ready_for_next_step":
         return "blocked_missing_inputs"
     return "ready" if allow_tiny_ensemble_handoff else "blocked_missing_permission"
@@ -497,6 +579,9 @@ def build_tiny_bounded_ensemble_handoff(
         "requires_explicit_permission": True,
         "permission_note": tiny_ensemble_note,
         "blocked_reason": (
+            "synthetic fixture inputs are not public evidence"
+            if tiny_handoff_status == "blocked_fixture_backed_inputs"
+            else
             "explicit permission not recorded"
             if tiny_handoff_status == "blocked_missing_permission"
             else "required real-context inputs are missing"
@@ -576,6 +661,7 @@ def dedupe(items: list[str]) -> list[str]:
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    provenance = report.get("prepared_pilot_provenance", {})
     lines = [
         f"schema_version: {report['schema_version']}",
         f"workflow_classification: {report['workflow_classification']}",
@@ -583,6 +669,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_site_name: {report['candidate_site_name']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
+        "",
+        "prepared_pilot_provenance:",
+        f"- status: {provenance.get('status', '')}",
+        f"- synthetic_fixture_readiness_status: {provenance.get('synthetic_fixture_readiness_status', '')}",
+        f"- synthetic_fixture_profile: {provenance.get('synthetic_fixture_profile', '')}",
+        f"- synthetic_config: {provenance.get('synthetic_config', False)}",
         "",
         "public_context_readiness:",
         f"- real_context_readiness_gate_status: {report['public_context_readiness'].get('real_context_readiness_gate_status', '')}",
@@ -623,6 +715,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     if report.get("blocked_missing_inputs"):
         lines.extend(["", "blocked_missing_inputs:"])
         lines.extend(f"- {item}" for item in report["blocked_missing_inputs"])
+    if report.get("blocked_fixture_backed_inputs"):
+        lines.extend(["", "blocked_fixture_backed_inputs:"])
+        lines.extend(f"- {item}" for item in report["blocked_fixture_backed_inputs"])
     lines.extend(["", "ready_for_next_step:"])
     ready = report.get("ready_for_next_step", {})
     lines.append(f"- status: {ready.get('status', '')}")

@@ -229,6 +229,28 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("generate_tschamut_block_scenario_tables.py", case["scenario_generation_handoff"]["command"])
         self.assertTrue(case["scenario_generation_handoff"]["conditional_only_weighting"])
 
+    def test_forbidden_output_root_blocks_dry_run_bundle_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            release_polygon_path = self._write_release_polygon(repo_root)
+            self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
+
+            with self.assertRaises(ValueError) as ctx:
+                planner.build_report(
+                    config_path,
+                    repo_root=repo_root,
+                    release_polygon_path=release_polygon_path,
+                    skeleton_output_root=repo_root / "not_allowed",
+                )
+
+        self.assertIn("output root must stay under /tmp or validation/private", str(ctx.exception))
+
     def test_missing_inputs_remain_blocked_and_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
