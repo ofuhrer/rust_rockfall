@@ -639,3 +639,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
 - Next task: `TB-207`
+
+### TB-207: Real Chant Sura Public-Context Staging Verification
+
+- Date: 2026-05-18
+- Commit: `fa191b8`
+- Objective: verify real staged Chant Sura / Flüelapass public-context inputs when present while keeping clean-checkout and fixture-backed states deterministic and fail-closed.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `scripts/plan_terrain_release_zone_candidates.py`, `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a real-context product-readiness matrix to the Chant Sura gate so AOI catalog, terrain, source-zone, scenario, policy, and public-context rows are classified as `ready`, `missing`, `deferred`, or `metadata_mismatch` with exact paths and required fields.
+  - Reworked the Chant Sura staging checklist to derive from the new matrix, tightened the gate so staged checksum or metadata failures fail closed, and preserved deterministic deferred behavior when the cache manifest is absent.
+  - Threaded the new readiness summary into the Chant Sura dry-run report and removed the NaN-driven nondeterminism in the candidate-sensitivity summary so repeated dry-runs compare cleanly.
+  - Added focused tests for clean-checkout blocked, fixture-backed deferred, staged partial mismatch, and staged-ready paths, then removed TB-207 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate tests.test_chant_sura_fluelapass_workflow_dry_run_report tests.test_public_geodata_cache_verifier`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_aoi_to_prepared_pilot_dry_run`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical validation claim.
+- Next task: `TB-208`
