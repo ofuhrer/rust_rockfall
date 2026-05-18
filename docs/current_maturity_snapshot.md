@@ -10,15 +10,19 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-238 have now completed the post-review
-queue that refreshed the Balfrin next-measured-action decision, tightened
-metrics-completion and multi-zone authorization preflights, rehearsed post-run
-evidence collection, profiled and rejected one narrow hazard-accumulation
-optimization, froze the Chant Sura real-input gate, expanded physical-evidence
-intake blockers, and consolidated a bounded slice of workflow-shell mechanics.
-The active backlog now includes TB-239+ orchestration tasks, so the next step
-is to keep the maturity snapshot aligned with the live queue rather than an
-empty-backlog assumption. The
+primarily swisstopo. TB-222 through TB-254 have now completed the latest
+post-review queue: Balfrin next-action and metrics-completion preflights were
+sharpened; read-only target-area metric and spatial-artifact recovery paths
+were added; multi-zone handoff budgets and authorization gates were refreshed;
+the Chant Sura real-input gate now distinguishes real, fixture-backed,
+partial, missing, and metadata-mismatched inputs; the prepared-pilot dry run
+fails closed unless real core inputs are ready; and physical-evidence intake
+now separates observed benchmark candidates, accepted/rejected intake
+packages, release-zone provenance, block-population evidence, and
+source-frequency records. The active backlog is currently empty and
+`scripts/print_agent_task_context.py` reports `backlog_refill_needed=true`;
+the next action should therefore be a scoped gap-analysis/backlog-refill pass,
+not ad hoc implementation. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -383,9 +387,16 @@ objective are:
     context. The decision pack lists the required products, cache/output roots,
     readiness impact, reproduction commands, and product-by-product stage/defer
     matrix, but no public context was downloaded and no second-site ensemble or
-    hazard build was run.
+    hazard build was run. TB-249 through TB-251 tightened this boundary: the
+    real-context readiness gate now reports fixture-backed, partial-real,
+    metadata-mismatch, missing-row, and missing-file cases separately; the
+    no-download acquisition handoff gives a concrete next action such as
+    `stage_local_existing_input`, `request_download_authorization`,
+    `defer_second_site`, or `ready_no_handoff_needed`; and the Chant Sura
+    prepared-pilot dry-run report emits `blocked_missing_real_core_inputs`
+    rather than treating fixture scaffolding as real workflow evidence.
 14. Backlog and worker-context hygiene have improved materially. TB-181 through
-    TB-238 completed the post-TB-179 execution queues: deterministic
+    TB-254 completed the post-TB-179 execution queues: deterministic
     release-candidate stress evidence, multi-zone reducer pressure,
     second-site dry-run realism, shared validator helpers, dependency
     guidance, calibration failure diagnostics, runtime-facing panic-path
@@ -400,10 +411,13 @@ objective are:
     preflights, post-run collector rehearsal, handoff-derived output-budget
     projection, real-input Chant Sura gates, observed-intake acceptance smoke,
     release-zone provenance intake, block-population/source-frequency blocker
-    mapping, workflow-shell helper extraction, and command-plan manifest
-    consolidation. The active backlog now includes TB-239+ tasks; the next
-    work should continue from the live queue, with the maturity snapshot kept
-    synchronized as tasks complete.
+    mapping, workflow-shell helper extraction, command-plan manifest
+    consolidation, read-only Balfrin recovery/authorization handoffs, stricter
+    Chant Sura real-core dry-run gating, observed benchmark candidate triage,
+    deterministic real-input intake acceptance/rejection, and physical-evidence
+    triage for release-zone provenance, block-population evidence, and
+    source-frequency records. No active implementation tasks remain; the
+    backlog now needs a new prioritized refill before further worker execution.
 
 ## Backlog Quality Assessment
 
@@ -423,7 +437,7 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-238:
+Current high-value work after TB-254:
 
 - run a scoped gap-analysis/backlog-refill pass before launching another
   implementation worker;
@@ -437,11 +451,16 @@ Current high-value work after TB-238:
   performance churn and require a new measured hypothesis before touching the
   hazard accumulator again;
 - advance Chant Sura only from real staged inputs named by the frozen
-  acquisition package and prepared-pilot gate, not from fixtures;
-- use the observed runout/deposition operator package and acceptance smoke as
+  acquisition package and prepared-pilot gate, not from fixtures; use the
+  TB-250 handoff recommendation before attempting a real-input dry run;
+- use the observed runout/deposition operator package, candidate-acquisition
+  report, and real-input intake acceptance/rejection logic as
   acquisition/schema machinery only, not physical validation;
 - keep release-zone provenance, block-population evidence, and source-frequency
-  evidence separated from conditional scenario weights;
+  evidence separated from conditional scenario weights; release-zone
+  provenance and block-population evidence are acquisition candidates, while
+  source-frequency records remain deferred until a later phase explicitly
+  authorizes frequency semantics;
 - continue workflow-shell consolidation only where it removes concrete
   coupling without changing public CLI schemas or status vocabulary;
 - use the canonical evidence bundle and scientific delta report as the

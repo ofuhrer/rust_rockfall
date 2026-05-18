@@ -411,6 +411,15 @@ fixtures as public-context evidence, and it also carries the concrete operator
 execution checklist plus the no-download fallback report for the second-site
 public-context workflow.
 
+The follow-on Chant Sura gate is stricter than a path-existence check. It now
+classifies real core inputs as real staged, fixture-backed, partial-real,
+missing, or metadata-mismatched, and it reports a no-download acquisition
+handoff for the first unresolved input. The prepared-pilot dry-run path uses
+that classification and stays blocked with `blocked_missing_real_core_inputs`
+until terrain, AOI tile catalog, source-zone metadata, scenario table, and
+source/scenario policy records are genuinely staged as real inputs. Synthetic
+fixtures remain useful regression scaffolding only.
+
 ## Data-Size Implications
 
 swissALTI3D and SWISSIMAGE are tile-based national products with full-coverage

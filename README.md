@@ -32,6 +32,14 @@ run arbitrary AOIs, execute second-site ensembles, produce hazard layers from
 AOI handoff bundles, or generate physically annualized intensity-frequency
 products.
 
+Post-TB-254, the second-site and physical-evidence boundaries are stricter:
+Chant Sura / Fluelapass real-core inputs are classified as real, fixture-backed,
+partial, missing, or metadata-mismatched before any prepared-pilot dry run can
+look ready; observed benchmark intake now accepts or rejects real packages
+deterministically; and release-zone provenance, block-population evidence, and
+source-frequency records are triaged separately from conditional sampling
+weights.
+
 Current products are diagnostic or sampling-weighted conditional hazard layers.
 They are not annualized, not risk maps, and not operational Swiss hazard
 products. Scientific closure remains inconclusive and physical credibility is
@@ -79,6 +87,8 @@ backlog-refill pass before launching implementation workers.
 - `docs/agent_work_log.md` - chronological completed TB history.
 - `docs/swisstopo_data_strategy.md` - public geodata strategy and boundaries.
 - `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` - second-site public-context staging decision.
+- `docs/target_area_physical_evidence_acquisition_pack.md` - physical-evidence acquisition and claim-boundary pack.
+- `docs/orchestration_strategy.md` - sequential worker orchestration and log-monitoring strategy.
 - `docs/validation_maturity_framework.md` - claim levels and validation maturity.
 
 ## Local Git Hooks

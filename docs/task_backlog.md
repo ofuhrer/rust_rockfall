@@ -23,6 +23,8 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
+Backlog refill needed. No active executable tasks remain after TB-254.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

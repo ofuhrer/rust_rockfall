@@ -408,6 +408,18 @@ acquisition package, not from the mere presence of staged fixture files, so
 the second-site handoff cannot look ready while the real inputs are still
 fixture-backed or only partially real.
 
+The real-context gate now also emits a `real_input_acquisition_handoff` block.
+That handoff is intentionally no-download: it names the first missing or
+fixture-backed real core input, the expected local path, required metadata
+fields, and the next operator action (`stage_local_existing_input`,
+`request_download_authorization`, `defer_second_site`, or
+`ready_no_handoff_needed`). The prepared-pilot dry-run helper consumes the same
+classification and reports `blocked_missing_real_core_inputs` when the real
+core inputs are absent, fixture-backed, partial, or metadata-mismatched. This
+keeps Chant Sura portability evidence separate from synthetic scaffolding and
+prevents a second-site command plan from looking executable before real core
+inputs are staged.
+
 A tiny staging helper,
 `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`, copies the
 synthetic core fixture set from
