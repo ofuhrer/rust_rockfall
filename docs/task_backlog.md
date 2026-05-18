@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-214: Workflow-Shell Coupling Inventory
-
-Goal: Build an executable inventory of implicit coupling across Python scripts, command-plan strings, ignored artifact roots, generated reports, and validator-specific status semantics.
-
-Capability gap reduced: Hidden workflow-shell drift where scripts, docs, command plans, and ignored local roots can disagree while broad consistency checks still pass.
-
-Why this outranks alternatives: The reviewer identified workflow-shell complexity as the most underestimated risk; before more refactors, the repo needs a concrete map of the coupling that causes stale references and local-state dependence.
-
-Inspect first:
-
-- `docs/script_inventory.md`
-- `scripts/check_repo_consistency.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/check_same_scale_artifact_readiness.py`
-- `scripts/lib/workflow_validation.py`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- A deterministic coupling-inventory helper or report that lists dynamic import-by-path usage, command-plan script references, ignored-root path assumptions, generated report dependencies, and duplicated status vocabularies.
-- A severity classification for each coupling family: `stable_contract`, `needs_shared_helper`, `stale_reference_risk`, or `hidden_local_state_risk`.
-- A small fixture-backed test that proves the inventory catches a stale script reference and an ignored-root-only dependency without requiring real ignored artifacts.
-- A prioritized extraction shortlist limited to bounded follow-up work, not a broad rewrite.
-
-Definition of done:
-
-- The repo can regenerate a coupling inventory from tracked files and use it to decide which workflow-shell refactors reduce real drift rather than cosmetic script count.
-
-Boundaries: Inventory and prioritization only; no broad script moves, no deletion campaign, no new evidence package, and no changes to live command behavior.
-
 ### TB-215: Workflow Utility Migration Batch For Status And Provenance
 
 Goal: Migrate a bounded set of high-churn validators and summarizers onto shared status, checksum, manifest, blocked-report, and claim-boundary helpers.

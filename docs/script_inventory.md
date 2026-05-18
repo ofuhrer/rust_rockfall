@@ -64,6 +64,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/audit_case_schema.py`
 - `scripts/audit_local_artifacts.py`
 - `scripts/check_repo_consistency.py`
+- `scripts/inventory_workflow_shell_coupling.py`
 - `scripts/performance_ci_tracking.py`
 - `scripts/print_agent_task_context.py`
 
