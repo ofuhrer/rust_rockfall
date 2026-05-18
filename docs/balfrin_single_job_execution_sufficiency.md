@@ -166,6 +166,22 @@ peak-memory and split validation/hazard output metrics, use
 It keeps the rerun plan, SBATCH handoff, preservation checklist, and recorded
 target-area comparison separate without authorizing a live submission.
 
+Before requesting that rerun, use the read-only recovery helper against the
+preserved target-area run root:
+
+```bash
+PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_metrics_from_run_root.py \
+  --balfrin-access-json /tmp/balfrin_access_preflight.json \
+  --format json \
+  --artifact-dir validation/private/tschamut_public_pilot/balfrin_target_area_metrics_recovery_v1
+```
+
+The helper consumes the TB-223 access preflight, reads the existing authorized
+run root, classifies each required metrics-completion field as `recovered`,
+`still_missing`, `unavailable_from_preserved_root`, or `blocked_access`, and
+compares the result against the current metrics-completion rerun package. It
+does not submit jobs, write remote files, or upgrade claim boundaries.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to

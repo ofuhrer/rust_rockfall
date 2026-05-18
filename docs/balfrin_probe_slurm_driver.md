@@ -232,6 +232,15 @@ It stays read-only, emits the dry-run rerun plan and SBATCH package, and keeps
 the comparison against the recorded target-area run separate from any live
 submission path.
 
+Before requesting that rerun, use
+`scripts/recover_balfrin_target_area_metrics_from_run_root.py` with the TB-223
+access preflight JSON. The recovery helper targets the existing authorized
+target-area run root, runs only read-only collection, and reports whether each
+rerun target metric is `recovered`, `still_missing`,
+`unavailable_from_preserved_root`, or `blocked_access`. The comparison section
+states whether the metrics-completion rerun is still necessary; it does not
+authorize or launch a job.
+
 ## Clean-fresh SLURM baseline evidence (420×450 grid)
 
 A fresh baseline on balfrin used the tracked 420×450 grid probe manifest:

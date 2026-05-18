@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-240: Read-Only Target-Area Metrics Recovery From Balfrin Run Root
-
-Goal: Attempt to recover the missing target-area peak-memory and split validation/hazard metrics from the existing authorized Balfrin target-area run root before requesting any rerun.
-
-Capability gap reduced: The current Balfrin target-area evidence still has mandatory metrics gaps, but remote read-only access is available and may allow recovery without another live job.
-
-Why this outranks alternatives: Recovering preserved evidence is cheaper and less risky than launching another metrics-completion run, and it directly addresses the current top-ranked next action.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A read-only remote recovery helper or helper mode that consumes the TB-223 Balfrin access preflight and targets the existing authorized target-area run root.
-- A deterministic recovery report classifying each missing metric as `recovered`, `still_missing`, `unavailable_from_preserved_root`, or `blocked_access`.
-- A comparison against the current metrics-completion rerun package showing whether the rerun is still necessary.
-- Focused tests using fixture run roots for recovered, still-missing, and access-blocked cases.
-
-Definition of done:
-
-- The repo can determine whether the existing target-area run root closes the metrics gap without live execution, and any unrecovered fields remain explicit blockers.
-
-Boundaries: Read-only collection only; no live Balfrin submission, no remote mutation, no authorization grant, no fabricated metrics, no claim upgrade, and no operational claim.
-
 ### TB-241: Target-Area Metrics Completion Authorization Handoff
 
 Goal: If TB-240 cannot recover all required metrics, produce a minimal authorization-ready handoff for the target-area metrics-completion rerun.

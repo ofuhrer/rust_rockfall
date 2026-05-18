@@ -1364,3 +1364,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation/context hygiene only; no remote-cluster access attempt, no scientific claim upgrade, and no operational claim.
 - Next task: `TB-240`
+
+### TB-240: Read-Only Target-Area Metrics Recovery From Balfrin Run Root
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: add a read-only recovery path that checks whether the preserved authorized Balfrin target-area run root can close the missing peak-memory and split validation/hazard metrics before requesting a rerun.
+- Files changed: `scripts/recover_balfrin_target_area_metrics_from_run_root.py`, `tests/test_balfrin_target_area_metrics_recovery.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a recovery CLI that consumes the Balfrin access preflight, targets the existing authorized target-area run root, and classifies each required metrics-completion field as `recovered`, `still_missing`, `unavailable_from_preserved_root`, or `blocked_access`.
+  - Added a rerun-package comparison section that reports recovered and unrecovered metrics and states whether the existing metrics-completion rerun remains necessary.
+  - Exercised the live read-only preflight and remote recovery path against the preserved Balfrin root; access was ready, collection completed, and all five required target metrics remained unrecovered as `still_missing`, so the rerun remains necessary.
+  - Added fixture-backed tests for recovered, still-missing, access-blocked, and artifact-writing cases, then removed TB-240 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/recover_balfrin_target_area_metrics_from_run_root.py tests/test_balfrin_target_area_metrics_recovery.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_recovery -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb240_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_metrics_from_run_root.py --balfrin-access-json /tmp/tb240_balfrin_access_preflight.json --format json > /tmp/tb240_balfrin_target_area_metrics_recovery.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_recovery tests.test_balfrin_target_area_metrics_completion_rerun_package tests.test_balfrin_probe_metrics_report -v`
+- Result/status: implemented_measured
+- Boundaries: read-only recovery only; no live Balfrin submission, no remote mutation, no authorization grant, no fabricated metrics, no claim upgrade, no scale-up claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-241`
