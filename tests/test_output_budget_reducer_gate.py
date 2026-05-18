@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import importlib.util
 import tempfile
 import unittest
@@ -25,6 +27,20 @@ class OutputBudgetReducerGateTests(unittest.TestCase):
 
         self.assertEqual(summary["current_classification"], "blocked_before_scale_up")
         self.assertEqual(summary["qa_status"], "diagnostic_incomplete")
+
+    def test_text_output_uses_shared_status_renderer(self) -> None:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exit_code = validator.main(
+                ["validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml", "--format", "text"]
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            buffer.getvalue().strip(),
+            "output/reducer gate record is valid: validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml "
+            "(blocked_before_scale_up, qa_status=diagnostic_incomplete)",
+        )
 
     def test_rejects_missing_validation_output_budget(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

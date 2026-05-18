@@ -20,6 +20,7 @@ DEFAULT_CLAIM_BOUNDARY_FIELDS = (
 DEFAULT_MISLEADING_ALLOW_MARKERS = (
     "unsupported",
     "not_",
+    "not ",
     "no ",
     "no_",
     "without",
@@ -32,7 +33,7 @@ DEFAULT_MISLEADING_PATTERNS = (
     re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
     re.compile(r"\boperational(?:ly)?\s+(?:approved|validated|ready|hazard)\b", re.IGNORECASE),
 )
-DEFAULT_SKIP_KEYS = frozenset({"claim_boundary"})
+DEFAULT_SKIP_KEYS = frozenset({"claim_boundary", "claim_boundaries", "does_not_verify", "does_not_support"})
 
 
 def read_yaml(
@@ -74,6 +75,71 @@ def read_json(
 def resolve_repo_path(root: Path, value: str | Path) -> Path:
     path = Path(value)
     return path if path.is_absolute() else root / path
+
+
+def require_paths_exist(
+    paths: Mapping[str, str | Path],
+    error_cls: type[Exception],
+    *,
+    root: Path | None = None,
+    label_prefix: str = "required_path",
+) -> dict[str, Path]:
+    resolved: dict[str, Path] = {}
+    for name, raw_path in paths.items():
+        path = resolve_repo_path(root, raw_path) if root is not None else Path(raw_path)
+        require(path.exists(), f"{label_prefix}.{name} does not exist: {path}", error_cls)
+        resolved[name] = path
+    return resolved
+
+
+def missing_repo_paths(paths: Mapping[str, str | Path], *, root: Path | None = None) -> list[str]:
+    missing: list[str] = []
+    for raw_path in paths.values():
+        path = resolve_repo_path(root, raw_path) if root is not None else Path(raw_path)
+        if not path.exists():
+            missing.append(str(path))
+    return missing
+
+
+def require_checksum_fields(
+    record: Mapping[str, Any],
+    fields: Sequence[str],
+    error_cls: type[Exception],
+    *,
+    label_prefix: str = "artifact_checksums",
+    allow_none: bool = False,
+) -> dict[str, str | None]:
+    validated: dict[str, str | None] = {}
+    for field in fields:
+        value = record.get(field)
+        if value is None:
+            require(allow_none, f"{label_prefix}.{field} must be a lowercase SHA-256 hex digest", error_cls)
+            validated[field] = None
+            continue
+        checksum = require_text(value, f"{label_prefix}.{field}", error_cls)
+        require_sha256_hex(checksum, f"{label_prefix}.{field}", error_cls)
+        validated[field] = checksum
+    return validated
+
+
+def build_blocked_report(
+    *,
+    schema_version: str,
+    status_key: str,
+    missing_inputs: Sequence[str],
+    blocked_reason: str,
+    blocked_status: str = "blocked_missing_inputs",
+    extra_fields: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    report = {
+        "schema_version": schema_version,
+        status_key: blocked_status,
+        "blocked_reason": blocked_reason,
+        "missing_inputs": sorted({str(item).strip() for item in missing_inputs if str(item).strip()}),
+    }
+    if extra_fields:
+        report.update(extra_fields)
+    return report
 
 
 def normalize_text(value: Any) -> str:

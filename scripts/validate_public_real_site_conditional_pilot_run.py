@@ -24,11 +24,14 @@ from lib.workflow_validation import (
     require_list as shared_require_list,
     require_mapping as shared_require_mapping,
     require_number as shared_require_number,
-    require_sha256_hex as shared_require_sha256_hex,
+    require_paths_exist as shared_require_paths_exist,
+    require_checksum_fields as shared_require_checksum_fields,
     require_text as shared_require_text,
+    render_status_message,
     SHA256_HEX_RE as SHARED_SHA256_HEX_RE,
     read_yaml as shared_read_yaml,
     resolve_repo_path,
+    scan_text_for_misleading_claims as shared_scan_text_for_misleading_claims,
 )
 
 
@@ -116,7 +119,6 @@ require_int = partial(shared_require_int, error_cls=PilotRunError)
 require_list = partial(shared_require_list, error_cls=PilotRunError)
 require_mapping = partial(shared_require_mapping, error_cls=PilotRunError)
 require_number = partial(shared_require_number, error_cls=PilotRunError)
-require_sha256_hex = partial(shared_require_sha256_hex, error_cls=PilotRunError)
 require_text = partial(shared_require_text, error_cls=PilotRunError)
 read_yaml = partial(shared_read_yaml, error_cls=PilotRunError)
 
@@ -147,7 +149,15 @@ def main(argv: list[str] | None = None) -> int:
             plan = build_command_plan(manifest)
             print_command_plan(plan, args.format)
         else:
-            print(f"public real-site conditional pilot run contract is valid: {args.run_manifest}")
+            print(
+                render_status_message(
+                    "public real-site conditional pilot run contract",
+                    args.run_manifest,
+                    manifest,
+                    "run_status",
+                    extra_fields=(("operational_status", "operational_status"),),
+                )
+            )
     except PilotRunError as exc:
         print(f"pilot run validation error: {exc}", file=sys.stderr)
         return 2
@@ -194,6 +204,11 @@ def validate_pilot_run(manifest: dict[str, Any], manifest_path: Path | None = No
     )
     if run_status == "no_go":
         validate_no_go_blocker(require_mapping(manifest.get("no_go_blocker"), "no_go_blocker"))
+
+    shared_scan_text_for_misleading_claims(
+        manifest,
+        require_fn=require,
+    )
 
     if manifest_path is not None and run_status == "template_not_run":
         require(
@@ -487,9 +502,18 @@ def print_command_plan(plan: dict[str, Any], format_name: str) -> None:
 
 
 def validate_input_freeze(input_freeze: dict[str, Any], run_status: str) -> None:
-    for key in ("geodata_manifest_path", "source_scenario_policy_path"):
-        path = resolve_repo_path(ROOT, require_text(input_freeze.get(key), f"input_freeze.{key}"))
-        require(path.exists(), f"input_freeze.{key} does not exist: {path}")
+    shared_require_paths_exist(
+        {
+            "geodata_manifest_path": require_text(input_freeze.get("geodata_manifest_path"), "input_freeze.geodata_manifest_path"),
+            "source_scenario_policy_path": require_text(
+                input_freeze.get("source_scenario_policy_path"),
+                "input_freeze.source_scenario_policy_path",
+            ),
+        },
+        PilotRunError,
+        root=ROOT,
+        label_prefix="input_freeze",
+    )
     freeze_status = require_text(input_freeze.get("freeze_status"), "input_freeze.freeze_status")
     if run_status == "template_not_run":
         require(freeze_status == "not_frozen", "template run freeze_status must be not_frozen")
@@ -699,8 +723,25 @@ def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
         evidence.get("validation_manifest_path"),
         "run_evidence.validation_manifest_path",
     )
+    hazard_manifest_path = require_text(evidence.get("hazard_manifest_path"), "run_evidence.hazard_manifest_path")
+    conditional_curve_table_path = require_text(
+        evidence.get("conditional_curve_table_path"),
+        "run_evidence.conditional_curve_table_path",
+    )
+    map_package_manifest_path = require_text(
+        evidence.get("map_package_manifest_path"),
+        "run_evidence.map_package_manifest_path",
+    )
+    pilot_gis_package_manifest_path = require_text(
+        evidence.get("pilot_gis_package_manifest_path"),
+        "run_evidence.pilot_gis_package_manifest_path",
+    )
+    reducer_chunk_manifest_dir = require_text(
+        evidence.get("reducer_chunk_manifest_dir"),
+        "run_evidence.reducer_chunk_manifest_dir",
+    )
     require(
-        validation_manifest_path.startswith("validation/"),
+        resolve_repo_path(ROOT, validation_manifest_path).is_relative_to(ROOT / "validation"),
         "run_evidence.validation_manifest_path must stay under validation/",
     )
     for key in (
@@ -710,8 +751,19 @@ def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
         "pilot_gis_package_manifest_path",
         "reducer_chunk_manifest_dir",
     ):
-        value = require_text(evidence.get(key), f"run_evidence.{key}")
-        require(value.startswith("hazard/results/"), f"run_evidence.{key} must stay under hazard/results/")
+        require(
+            resolve_repo_path(
+                ROOT,
+                {
+                    "hazard_manifest_path": hazard_manifest_path,
+                    "conditional_curve_table_path": conditional_curve_table_path,
+                    "map_package_manifest_path": map_package_manifest_path,
+                    "pilot_gis_package_manifest_path": pilot_gis_package_manifest_path,
+                    "reducer_chunk_manifest_dir": reducer_chunk_manifest_dir,
+                }[key],
+            ).is_relative_to(ROOT / "hazard/results"),
+            f"run_evidence.{key} must stay under hazard/results/",
+        )
 
     for key in ("runtime_seconds", "memory_peak_mb"):
         value = require_number(evidence.get(key), f"run_evidence.{key}")
@@ -734,14 +786,19 @@ def validate_completed_run_evidence(evidence: dict[str, Any]) -> None:
         require_text(note, f"run_evidence.convergence_diagnostics.notes[{index}]")
 
     checksums = require_mapping(evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
-    for key in REQUIRED_ARTIFACT_CHECKSUMS:
-        checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
-        require_sha256_hex(checksum, f"run_evidence.artifact_checksums.{key}")
-    for key in OPTIONAL_ARTIFACT_CHECKSUMS:
-        if key not in checksums or checksums[key] is None:
-            continue
-        optional_checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
-        require_sha256_hex(optional_checksum, f"run_evidence.artifact_checksums.{key}")
+    shared_require_checksum_fields(
+        checksums,
+        REQUIRED_ARTIFACT_CHECKSUMS,
+        PilotRunError,
+        label_prefix="run_evidence.artifact_checksums",
+    )
+    shared_require_checksum_fields(
+        checksums,
+        OPTIONAL_ARTIFACT_CHECKSUMS,
+        PilotRunError,
+        label_prefix="run_evidence.artifact_checksums",
+        allow_none=True,
+    )
 
 
 def validate_selected_gate_contract(
@@ -776,8 +833,14 @@ def validate_selected_gate_contract(
         f"selected gate run {run_id} requires run_evidence.evidence_status gate_run_completed",
     )
     report_path = require_text(report_plan.get("report_path"), "report_plan.report_path")
+    report_file = shared_require_paths_exist(
+        {"report_path": report_path},
+        PilotRunError,
+        root=ROOT,
+        label_prefix="report_plan",
+    )["report_path"]
     try:
-        report_text = resolve_repo_path(ROOT, report_path).read_text(encoding="utf-8")
+        report_text = report_file.read_text(encoding="utf-8")
     except OSError as exc:
         raise PilotRunError(
             f"selected gate run {run_id} requires report {SELECTED_REPORT_PATH} to be readable: {exc}"
@@ -791,12 +854,13 @@ def validate_selected_gate_contract(
         f"selected gate run {run_id} requires map_product_id to match run_id",
     )
     checksums = require_mapping(run_evidence.get("artifact_checksums"), "run_evidence.artifact_checksums")
+    shared_require_checksum_fields(
+        checksums,
+        REQUIRED_ARTIFACT_CHECKSUMS + OPTIONAL_ARTIFACT_CHECKSUMS,
+        PilotRunError,
+        label_prefix="run_evidence.artifact_checksums",
+    )
     report_checksums = parse_report_artifact_checksums(report_text)
-    for key in OPTIONAL_ARTIFACT_CHECKSUMS:
-        require(
-            key in checksums and checksums[key] is not None,
-            f"selected gate run {run_id} requires run_evidence.artifact_checksums.{key}",
-        )
     for key, label in SELECTED_REPORT_ARTIFACT_CHECKSUMS:
         selected_checksum = require_text(checksums.get(key), f"run_evidence.artifact_checksums.{key}")
         report_checksum = report_checksums.get(normalize_report_artifact_label(label))
@@ -877,6 +941,30 @@ def validate_claim_boundary(boundary: dict[str, Any]) -> None:
     notes = "\n".join(str(note).lower() for note in require_list(boundary.get("notes"), "claim_boundary.notes"))
     require("not validation evidence" in notes, "claim_boundary notes must keep input provenance out of validation evidence")
     require("sampling-weighted conditional" in notes, "claim_boundary notes must keep current products conditional")
+    shared_scan_text_for_misleading_claims(
+        boundary,
+        require_fn=require,
+        patterns=(
+            re.compile(r"\breturn[- ]?period\b", re.IGNORECASE),
+            re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
+            re.compile(r"\boperational(?:ly)?\s+(?:approved|validated|ready|hazard)\b", re.IGNORECASE),
+            re.compile(r"\bannual(?:ized)?\s+(?:frequency|probability|rate)\b", re.IGNORECASE),
+        ),
+        skip_keys=(),
+        allow_markers=(
+            "unsupported",
+            "not_",
+            "no_",
+            "no ",
+            "without",
+            "defer",
+            "future",
+            "out of scope",
+            "remain",
+            "blocked",
+            "missing",
+        ),
+    )
 
 
 def validate_no_go_blocker(blocker: dict[str, Any]) -> None:

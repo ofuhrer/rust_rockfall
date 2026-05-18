@@ -821,3 +821,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: inventory and prioritization only, no broad script moves, no deletion campaign, no new evidence package, and no live command behavior changes.
 - Next task: `TB-215`
+
+### TB-215: Workflow Utility Migration Batch For Status And Provenance
+
+- Date: 2026-05-18
+- Commit: TBD
+- Objective: migrate a bounded set of high-churn validators and summarizers onto shared status, checksum, manifest, blocked-report, and claim-boundary helpers.
+- Files changed: `scripts/lib/workflow_validation.py`, `scripts/validate_output_budget_reducer_gate.py`, `scripts/validate_public_real_site_conditional_pilot_run.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `scripts/summarize_observed_runout_deposition_intake_contract.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_workflow_validation_helpers.py`, `docs/decision_log.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added shared helpers for required-path validation, checksum-field validation, and blocked-report construction, and widened the claim-scan helper to ignore explicit negation blocks such as `does_not_verify`.
+  - Migrated the output-budget reducer gate and public real-site pilot validator to shared status rendering, false-field checks, checksum validation, and claim-boundary scanning while keeping their public outputs and selected status vocabulary stable.
+  - Migrated the physical-credibility mapper, observed-runout intake summarizer, and validation-gap report builder to the shared blocked-report, false-field, path-check, and scan helpers, preserving their JSON/text schemas and blocked-state semantics.
+  - Added focused helper tests plus downstream regressions that cover checksum handling, required-path checks, blocked-report construction, and the preserved public status vocabulary.
+  - Removed TB-215 from the active backlog and added a compatibility note in the decision log so downstream report labels stay stable while mechanics move into the shared helper layer.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/lib/workflow_validation.py scripts/validate_output_budget_reducer_gate.py scripts/validate_public_real_site_conditional_pilot_run.py scripts/map_physical_credibility_evidence_requirements.py scripts/summarize_observed_runout_deposition_intake_contract.py scripts/assess_validation_calibration_evidence_gaps.py tests/test_workflow_validation_helpers.py tests/test_output_budget_reducer_gate.py tests/test_public_real_site_conditional_pilot_run.py tests/test_physical_credibility_evidence_requirements.py tests/test_observed_runout_deposition_intake_contract.py tests/test_validation_calibration_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_workflow_validation_helpers tests.test_output_budget_reducer_gate tests.test_public_real_site_conditional_pilot_run tests.test_physical_credibility_evidence_requirements tests.test_observed_runout_deposition_intake_contract tests.test_validation_calibration_evidence_gaps`
+  - `git diff --check`
+- Result/status: implemented_fixture_backed
+- Boundaries: bounded helper migration only, no domain-schema collapse, no broad packaging rewrite, no claim upgrade, and no unrelated validator churn.
+- Next task: `TB-216`

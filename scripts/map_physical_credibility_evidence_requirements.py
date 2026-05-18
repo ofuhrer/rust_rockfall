@@ -11,12 +11,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
     import yaml  # type: ignore
@@ -25,9 +29,23 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 from scripts import assess_validation_calibration_evidence_gaps as assessment
 from scripts import summarize_chant_sura_holdout_evidence as chant_holdout
+from lib.workflow_validation import (
+    build_blocked_report as shared_build_blocked_report,
+    missing_repo_paths as shared_missing_repo_paths,
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    scan_text_for_misleading_claims as shared_scan_text_for_misleading_claims,
+)
 
 
 SCHEMA_VERSION = "physical_credibility_evidence_requirements_v1"
+
+
+class PhysicalCredibilityEvidenceRequirementsError(ValueError):
+    """User-facing physical-credibility evidence error."""
+
+
+require = partial(shared_require, error_cls=PhysicalCredibilityEvidenceRequirementsError)
 
 REQUIRED_INPUT_PATHS = (
     ROOT / "data/datasets.yaml",
@@ -210,7 +228,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         }
     )
 
-    return {
+    report = {
         "schema_version": SCHEMA_VERSION,
         "physical_credibility_requirements_status": "mapped_current_gaps",
         "current_physical_credibility_status": gap_report.get("physical_credibility_status", "unknown"),
@@ -231,38 +249,62 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "missing_inputs": [],
         "current_evidence_summary": current_evidence_summary(gap_report, holdout_report),
     }
+    validate_report_claim_boundaries(report["claim_boundaries"])
+    shared_scan_text_for_misleading_claims(report, require_fn=require)
+    return report
 
 
 def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "physical_credibility_requirements_status": "blocked_missing_inputs",
-        "current_physical_credibility_status": "blocked_missing_inputs",
-        "calibration_status": "blocked_missing_inputs",
-        "validation_status": "blocked_missing_inputs",
-        "evidence_requirement_categories": [],
-        "evidence_acquisition_matrix": [],
-        "candidate_data_sources": [],
-        "missing_acquisition_classes": [],
-        "calibration_split_requirements": [],
-        "holdout_validation_requirements": [],
-        "source_frequency_requirements": [],
-        "intensity_frequency_status": "blocked_missing_inputs",
-        "layer_credibility_boundaries": [],
-        "evidence_acquisition_summary": {
-            "first_actionable_category": None,
-            "deferred_category": None,
-            "priority_order": [],
+    report = shared_build_blocked_report(
+        schema_version=SCHEMA_VERSION,
+        status_key="physical_credibility_requirements_status",
+        missing_inputs=missing_inputs,
+        blocked_reason="required evidence inputs are missing",
+        extra_fields={
+            "current_physical_credibility_status": "blocked_missing_inputs",
+            "calibration_status": "blocked_missing_inputs",
+            "validation_status": "blocked_missing_inputs",
+            "evidence_requirement_categories": [],
+            "evidence_acquisition_matrix": [],
+            "candidate_data_sources": [],
+            "missing_acquisition_classes": [],
+            "calibration_split_requirements": [],
+            "holdout_validation_requirements": [],
+            "source_frequency_requirements": [],
+            "intensity_frequency_status": "blocked_missing_inputs",
+            "layer_credibility_boundaries": [],
+            "evidence_acquisition_summary": {
+                "first_actionable_category": None,
+                "deferred_category": None,
+                "priority_order": [],
+            },
+            "claim_boundaries": claim_boundaries(),
+            "current_evidence_summary": [],
         },
-        "claim_boundaries": claim_boundaries(),
-        "blocked_reason": "required evidence inputs are missing",
-        "missing_inputs": sorted(set(missing_inputs)),
-        "current_evidence_summary": [],
-    }
+    )
+    validate_report_claim_boundaries(report["claim_boundaries"])
+    shared_scan_text_for_misleading_claims(report, require_fn=require)
+    return report
+
+
+def validate_report_claim_boundaries(boundaries: dict[str, Any]) -> None:
+    shared_require_false_fields(
+        boundaries,
+        (
+            "annual_frequency_claims_allowed",
+            "physical_probability_claims_allowed",
+            "risk_exposure_vulnerability_claims_allowed",
+            "operational_claims_allowed",
+            "scale_up_authorized",
+            "distributed_execution_authorized",
+        ),
+        PhysicalCredibilityEvidenceRequirementsError,
+        label_prefix="claim_boundaries",
+    )
 
 
 def missing_required_inputs() -> list[str]:
-    return [str(path) for path in REQUIRED_INPUT_PATHS if not path.exists()]
+    return shared_missing_repo_paths({f"required_input_{index}": path for index, path in enumerate(REQUIRED_INPUT_PATHS)})
 
 
 def load_yaml(path: Path) -> dict[str, Any]:

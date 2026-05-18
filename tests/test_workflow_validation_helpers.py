@@ -59,6 +59,57 @@ class WorkflowValidationHelperTests(unittest.TestCase):
             with self.assertRaisesRegex(self.HelperError, "SHA-256"):
                 helpers.require_sha256_hex("not-a-digest", "checksum", self.HelperError)
 
+    def test_required_path_and_checksum_helpers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "input.yaml"
+            path.write_text("schema: v1\n", encoding="utf-8")
+            resolved = helpers.require_paths_exist(
+                {"input": "input.yaml"},
+                self.HelperError,
+                root=root,
+                label_prefix="record",
+            )
+            self.assertEqual(resolved["input"], path)
+
+            checksums = helpers.require_checksum_fields(
+                {
+                    "required_sha": "a" * 64,
+                    "optional_sha": None,
+                },
+                ("required_sha", "optional_sha"),
+                self.HelperError,
+                label_prefix="artifact_checksums",
+                allow_none=True,
+            )
+            self.assertEqual(checksums["required_sha"], "a" * 64)
+            self.assertIsNone(checksums["optional_sha"])
+
+            with self.assertRaisesRegex(self.HelperError, "record\\.missing"):
+                helpers.require_paths_exist({"missing": "missing.txt"}, self.HelperError, root=root, label_prefix="record")
+
+            with self.assertRaisesRegex(self.HelperError, "artifact_checksums\\.required_sha"):
+                helpers.require_checksum_fields(
+                    {"required_sha": "invalid"},
+                    ("required_sha",),
+                    self.HelperError,
+                )
+
+    def test_blocked_report_helper(self) -> None:
+        report = helpers.build_blocked_report(
+            schema_version="example_v1",
+            status_key="example_status",
+            missing_inputs=["", "b", "a", "a"],
+            blocked_reason="missing inputs",
+            extra_fields={"notes": []},
+        )
+
+        self.assertEqual(report["schema_version"], "example_v1")
+        self.assertEqual(report["example_status"], "blocked_missing_inputs")
+        self.assertEqual(report["missing_inputs"], ["a", "b"])
+        self.assertEqual(report["blocked_reason"], "missing inputs")
+        self.assertEqual(report["notes"], [])
+
     def test_claim_boundary_and_text_scan_helpers(self) -> None:
         helpers.require_false_fields(
             {

@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-215: Workflow Utility Migration Batch For Status And Provenance
-
-Goal: Migrate a bounded set of high-churn validators and summarizers onto shared status, checksum, manifest, blocked-report, and claim-boundary helpers.
-
-Capability gap reduced: Repeated workflow mechanics across validators and summarizers that create drift in blocked-state semantics, provenance labels, checksum handling, and report rendering.
-
-Why this outranks alternatives: `scripts/lib/workflow_validation.py` is the right consolidation direction, but the reviewer found the extraction is still partial and future validators should not keep copying bespoke mechanics.
-
-Inspect first:
-
-- `scripts/lib/workflow_validation.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `scripts/validate_public_real_site_conditional_pilot_run.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A migration of at least five high-use scripts to shared helper calls for status rendering, required-path checks, checksum/provenance fields, and claim-boundary scanning.
-- A compatibility note documenting any status vocabulary preserved for downstream reports.
-- Focused tests proving migrated scripts keep their output schema stable while using the shared helper layer.
-- A short remaining-duplication list for the next migration batch.
-
-Definition of done:
-
-- The selected scripts stop duplicating core workflow validation mechanics, their public JSON/text outputs remain stable where expected, and future status changes have one obvious helper location.
-
-Boundaries: Bounded helper migration only; no domain-schema collapse, no broad packaging rewrite, no claim upgrade, and no unrelated validator churn.
-
 ### TB-216: Repository Consistency Checker Responsibility Split
 
 Goal: Split the largest responsibility clusters in `scripts/check_repo_consistency.py` into importable checker modules while preserving the CLI contract.

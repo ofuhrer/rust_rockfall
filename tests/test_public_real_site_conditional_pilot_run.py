@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import copy
+import io
 import importlib.util
 import unittest
 from pathlib import Path
@@ -26,6 +28,19 @@ class PublicRealSiteConditionalPilotRunTests(unittest.TestCase):
 
     def test_template_run_contract_is_valid(self) -> None:
         validator.validate_pilot_run(self.load_template())
+
+    def test_text_output_uses_shared_status_renderer(self) -> None:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exit_code = validator.main(["validation/templates/public_real_site_conditional_pilot_run_v1.yaml"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            buffer.getvalue().strip(),
+            "public real-site conditional pilot run contract is valid: "
+            "validation/templates/public_real_site_conditional_pilot_run_v1.yaml "
+            "(template_not_run, operational_status=research_diagnostic)",
+        )
 
     def test_non_template_run_requires_frozen_inputs(self) -> None:
         manifest = self.load_template()

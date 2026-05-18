@@ -10,18 +10,37 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
+from functools import partial
 
 try:
     import yaml  # type: ignore
 except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    missing_repo_paths as shared_missing_repo_paths,
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    scan_text_for_misleading_claims as shared_scan_text_for_misleading_claims,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "validation_calibration_evidence_gaps_v1"
 ALLOWED_CLASSIFICATIONS = {"present", "partial", "missing", "out_of_scope", "not_inferred"}
+
+
+class ValidationCalibrationEvidenceGapsError(ValueError):
+    """User-facing validation/calibration evidence gap error."""
+
+
+require = partial(shared_require, error_cls=ValidationCalibrationEvidenceGapsError)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -168,6 +187,8 @@ def build_report() -> dict[str, Any]:
         ],
         "current_evidence_sources": sources,
     }
+    validate_report_boundaries(report)
+    shared_scan_text_for_misleading_claims(report, require_fn=require)
     return report
 
 
@@ -207,6 +228,7 @@ def assess_candidate_portability(candidate_manifest: dict[str, Any]) -> dict[str
         "processed_input_root": candidate_manifest.get("expected_processed_input_root"),
         "processed_context_root": candidate_manifest.get("expected_processed_context_root"),
     }
+    resolved_required_paths: dict[str, Path] = {}
     missing_input_categories: list[str] = []
     missing_input_paths_or_patterns: list[str] = []
     for category, raw_path in required_path_items.items():
@@ -216,9 +238,11 @@ def assess_candidate_portability(candidate_manifest: dict[str, Any]) -> dict[str
             missing_input_paths_or_patterns.append(f"<missing:{category}>")
             continue
         path = ROOT / path_text if not Path(path_text).is_absolute() else Path(path_text)
+        resolved_required_paths[category] = path
+    missing_input_paths_or_patterns.extend(shared_missing_repo_paths(resolved_required_paths))
+    for category, path in resolved_required_paths.items():
         if not path.exists():
             missing_input_categories.append(category)
-            missing_input_paths_or_patterns.append(str(path))
 
     if not all(
         part in site_extent and site_extent.get(part) not in (None, "")
@@ -914,6 +938,20 @@ def render_text_report(report: dict[str, Any]) -> str:
         if evidence_classes:
             lines.append(f"  evidence_classes_needed: {evidence_classes}")
     return "\n".join(lines)
+
+
+def validate_report_boundaries(report: dict[str, Any]) -> None:
+    shared_require_false_fields(
+        report,
+        (
+            "annual_frequency_claims_allowed",
+            "operational_claims_allowed",
+            "risk_exposure_vulnerability_claims_allowed",
+            "scale_up_authorized",
+        ),
+        ValidationCalibrationEvidenceGapsError,
+        label_prefix="report",
+    )
 
 
 def _stringify_list(values: list[Any]) -> list[str]:

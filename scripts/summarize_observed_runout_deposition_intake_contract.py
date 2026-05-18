@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,19 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from scripts import map_physical_credibility_evidence_requirements as physical_credibility_requirements
+from lib.workflow_validation import (
+    build_blocked_report as shared_build_blocked_report,
+    missing_repo_paths as shared_missing_repo_paths,
+    require as shared_require,
+    require_false_fields as shared_require_false_fields,
+    require_paths_exist as shared_require_paths_exist,
+    scan_text_for_misleading_claims as shared_scan_text_for_misleading_claims,
+)
 
 SCHEMA_VERSION = "observed_runout_deposition_intake_contract_v1"
 EXPECTED_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
@@ -43,6 +55,13 @@ EXPECTED_BENCHMARK_INPUTS = (
     EXPECTED_BENCHMARK_MANIFEST,
     EXPECTED_BENCHMARK_GEOMETRY,
 )
+
+
+class ObservedRunoutDepositionIntakeContractError(ValueError):
+    """User-facing observed runout/deposition intake contract error."""
+
+
+require = partial(shared_require, error_cls=ObservedRunoutDepositionIntakeContractError)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -81,26 +100,40 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
         pack_root=None,
     )
 
-    report: dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
-        "observed_runout_deposition_intake_status": (
-            "blocked_missing_inputs" if benchmark_missing_inputs else "ready"
-        ),
-        "benchmark_intake_contract": contract,
-        "benchmark_intake_manifest": benchmark_intake_manifest,
-        "field_requirement_map": field_requirement_map,
-        "current_repo_state": current_state,
-        "physical_credibility_gap_update": physical_credibility_gap_update,
-        "dataset_role_classification": dataset_role_classification,
-        "claim_boundaries": claim_boundaries(),
-        "blocked_reason": (
-            "no independent observed runout/deposition benchmark intake is staged in the repo"
-            if benchmark_missing_inputs
-            else None
-        ),
-        "missing_inputs": benchmark_missing_inputs,
-        "current_state_summary": current_state_summary(current_state),
-    }
+    if benchmark_missing_inputs:
+        report: dict[str, Any] = shared_build_blocked_report(
+            schema_version=SCHEMA_VERSION,
+            status_key="observed_runout_deposition_intake_status",
+            missing_inputs=benchmark_missing_inputs,
+            blocked_reason="no independent observed runout/deposition benchmark intake is staged in the repo",
+            extra_fields={
+                "benchmark_intake_contract": contract,
+                "benchmark_intake_manifest": benchmark_intake_manifest,
+                "field_requirement_map": field_requirement_map,
+                "current_repo_state": current_state,
+                "physical_credibility_gap_update": physical_credibility_gap_update,
+                "dataset_role_classification": dataset_role_classification,
+                "claim_boundaries": claim_boundaries(),
+                "current_state_summary": current_state_summary(current_state),
+            },
+        )
+    else:
+        report = {
+            "schema_version": SCHEMA_VERSION,
+            "observed_runout_deposition_intake_status": "ready",
+            "benchmark_intake_contract": contract,
+            "benchmark_intake_manifest": benchmark_intake_manifest,
+            "field_requirement_map": field_requirement_map,
+            "current_repo_state": current_state,
+            "physical_credibility_gap_update": physical_credibility_gap_update,
+            "dataset_role_classification": dataset_role_classification,
+            "claim_boundaries": claim_boundaries(),
+            "blocked_reason": None,
+            "missing_inputs": [],
+            "current_state_summary": current_state_summary(current_state),
+        }
+    validate_claim_boundaries(report["claim_boundaries"])
+    shared_scan_text_for_misleading_claims(report, require_fn=require)
     if output_root is not None:
         readiness_pack = build_readiness_pack(output_root=output_root, report=report)
         report["readiness_pack"] = readiness_pack
@@ -590,21 +623,27 @@ def validate_readiness_pack(
         "template_manifest": template_manifest_path,
         "benchmark_intake_manifest": benchmark_intake_manifest_path,
     }
-    missing = [name for name, path in required_paths.items() if not path.exists()]
+    validated_paths = shared_require_paths_exist(
+        required_paths,
+        ObservedRunoutDepositionIntakeContractError,
+        root=None,
+        label_prefix="readiness_pack",
+    )
+    missing: list[str] = []
     unexpected = [
         str(path.relative_to(pack_root))
         for path in pack_root.iterdir()
         if path.is_file() and path.name not in {p.name for p in required_paths.values()}
     ]
     return {
-        "validation_status": "ready" if not missing and not unexpected else "blocked_missing_inputs",
+        "validation_status": "ready" if not unexpected else "blocked_missing_inputs",
         "artifact_classification": "template_non_evidence",
         "pack_root": str(pack_root),
-        "required_files_present": not missing,
-        "missing_files": missing,
+        "required_files_present": True,
+        "missing_files": [],
         "unexpected_files": unexpected,
         "validation_boundary": "template_non_evidence_only",
-        "checked_files": {name: str(path) for name, path in required_paths.items()},
+        "checked_files": {name: str(path) for name, path in validated_paths.items()},
     }
 
 
@@ -851,8 +890,13 @@ def field_requirement(field_path: str, requirement_category: str, why_it_matters
 
 
 def build_current_state() -> dict[str, Any]:
-    benchmark_missing_inputs = [str(path) for path in EXPECTED_BENCHMARK_INPUTS if not path.exists()]
-    calibration_missing_inputs = [str(EXPECTED_CALIBRATION_ROOT)] if not EXPECTED_CALIBRATION_ROOT.exists() else []
+    benchmark_missing_inputs = shared_missing_repo_paths(
+        {
+            "manifest": EXPECTED_BENCHMARK_MANIFEST,
+            "geometry": EXPECTED_BENCHMARK_GEOMETRY,
+        }
+    )
+    calibration_missing_inputs = shared_missing_repo_paths({"calibration_root": EXPECTED_CALIBRATION_ROOT})
     adjacent_diagnostic_materials = [
         {
             "path": str(ROOT / "data/processed/tschamut2014/observed_deposition.csv"),
@@ -908,6 +952,21 @@ def claim_boundaries() -> dict[str, bool]:
         "risk_exposure_vulnerability_claims_allowed": False,
         "operational_claims_allowed": False,
     }
+
+
+def validate_claim_boundaries(boundaries: dict[str, Any]) -> None:
+    shared_require_false_fields(
+        boundaries,
+        (
+            "calibration_claims_allowed",
+            "physical_probability_claims_allowed",
+            "annual_frequency_claims_allowed",
+            "risk_exposure_vulnerability_claims_allowed",
+            "operational_claims_allowed",
+        ),
+        ObservedRunoutDepositionIntakeContractError,
+        label_prefix="claim_boundaries",
+    )
 
 
 def render_text_report(report: dict[str, Any]) -> str:

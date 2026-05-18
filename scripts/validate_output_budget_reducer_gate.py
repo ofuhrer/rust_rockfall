@@ -7,11 +7,26 @@ import argparse
 import json
 import re
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
-import yaml
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
+from lib.workflow_validation import (
+    read_yaml as shared_read_yaml,
+    render_status_message,
+    require as shared_require,
+    require_checksum_fields as shared_require_checksum_fields,
+    require_false_fields as shared_require_false_fields,
+    require_list as shared_require_list,
+    require_mapping as shared_require_mapping,
+    require_paths_exist as shared_require_paths_exist,
+    require_text as shared_require_text,
+    scan_text_for_misleading_claims as shared_scan_text_for_misleading_claims,
+)
 
 ALLOWED_CLASSIFICATIONS = {
     "passed",
@@ -52,10 +67,21 @@ PROHIBITED_PATTERNS = [
     re.compile(r"\boutput\s+default\s+change\b", re.IGNORECASE),
     re.compile(r"\bensemble\s+size\s+increase\b", re.IGNORECASE),
 ]
+LEGACY_SUCCESS_MESSAGE = "output/reducer gate record is valid"
+# Compatibility note: downstream reports preserve the current_classification and qa_status vocabulary
+# (`passed`, `diagnostic_incomplete`, `blocked_before_scale_up`, `no_go`) so existing consumers do not need
+# to remap labels during this helper migration.
 
 
 class OutputBudgetReducerGateError(ValueError):
     """User-facing validation error for DT-08 records."""
+
+
+require = partial(shared_require, error_cls=OutputBudgetReducerGateError)
+require_list = partial(shared_require_list, error_cls=OutputBudgetReducerGateError)
+require_mapping = partial(shared_require_mapping, error_cls=OutputBudgetReducerGateError)
+require_text = partial(shared_require_text, error_cls=OutputBudgetReducerGateError)
+read_yaml = partial(shared_read_yaml, error_cls=OutputBudgetReducerGateError)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,9 +98,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(
-            "output/reducer gate record is valid: "
-            f"{args.record} ({summary['current_classification']}, "
-            f"qa_status={summary['qa_status']})"
+            render_status_message(
+                "output/reducer gate record",
+                args.record,
+                summary,
+                "current_classification",
+                extra_fields=(("qa_status", "qa_status"),),
+            )
         )
     return 0
 
@@ -96,22 +126,34 @@ def validate_output_budget_reducer_gate(record_path: Path) -> dict[str, Any]:
     require(qa_status in {"diagnostic_incomplete", "passed", "blocked_before_scale_up", "no_go"}, "qa_status must be conservative")
     require(record.get("scale_up_authorized") is False, "scale_up_authorized must be false")
 
-    for field in (
-        "physics_changes_claimed",
-        "reducer_behavior_changes_claimed",
-        "output_default_changes_claimed",
-        "ensemble_size_increase_claimed",
-        "annual_or_physical_claimed",
-        "risk_exposure_or_operational_claimed",
-    ):
-        require(record.get(field) is False, f"{field} must be false")
+    shared_require_false_fields(
+        record,
+        (
+            "physics_changes_claimed",
+            "reducer_behavior_changes_claimed",
+            "output_default_changes_claimed",
+            "ensemble_size_increase_claimed",
+            "annual_or_physical_claimed",
+            "risk_exposure_or_operational_claimed",
+        ),
+        OutputBudgetReducerGateError,
+        label_prefix="record",
+    )
 
     selected_dt04 = require_mapping(record.get("selected_dt04_output_evidence"), "selected_dt04_output_evidence")
+    shared_require_paths_exist(
+        {
+            "target_gate_record_path": selected_dt04["target_gate_record_path"],
+            "balfrin_reproduction_record_path": selected_dt04["balfrin_reproduction_record_path"],
+            "ensemble_feasibility_record_path": selected_dt04["ensemble_feasibility_record_path"],
+            "scaling_review_doc_path": selected_dt04["scaling_review_doc_path"],
+            "selected_manifest_path": assessed["selected_manifest_path"],
+        },
+        OutputBudgetReducerGateError,
+        root=Path(__file__).resolve().parents[1],
+        label_prefix="selected_dt04_output_evidence",
+    )
     for field in (
-        "target_gate_record_path",
-        "balfrin_reproduction_record_path",
-        "ensemble_feasibility_record_path",
-        "scaling_review_doc_path",
         "validation_output_file_count",
         "validation_output_bytes",
         "hazard_output_file_count",
@@ -169,8 +211,12 @@ def validate_output_budget_reducer_gate(record_path: Path) -> dict[str, Any]:
 
     checksum_evidence = require_mapping(record.get("checksum_evidence"), "checksum_evidence")
     require_text(checksum_evidence.get("status"), "checksum_evidence.status")
-    require_text(checksum_evidence.get("validation_manifest_sha256"), "checksum_evidence.validation_manifest_sha256")
-    require_text(checksum_evidence.get("hazard_manifest_sha256"), "checksum_evidence.hazard_manifest_sha256")
+    shared_require_checksum_fields(
+        checksum_evidence,
+        ("validation_manifest_sha256", "hazard_manifest_sha256"),
+        OutputBudgetReducerGateError,
+        label_prefix="checksum_evidence",
+    )
 
     references = require_list(record.get("referenced_records"), "referenced_records")
     reference_values = [require_text(reference, f"referenced_records[{index}]") for index, reference in enumerate(references)]
@@ -220,62 +266,40 @@ def validate_budget_block(section: dict[str, Any], field: str) -> dict[str, Any]
 
 
 def validate_claim_boundary(boundary: dict[str, Any]) -> None:
-    for field in (
-        "physics_changes_claimed",
-        "reducer_behavior_changes_claimed",
-        "output_default_changes_claimed",
-        "ensemble_size_increase_claimed",
-        "distributed_execution_claimed",
-        "annual_or_physical_claimed",
-        "risk_exposure_or_operational_claimed",
-        "return_period_claimed",
-        "validated_hazard_map_claimed",
-        "full_curve_csv_default_claimed",
-        "grid_csv_default_claimed",
-    ):
-        require(boundary.get(field) is False, f"claim_boundary.{field} must be false")
+    shared_require_false_fields(
+        boundary,
+        (
+            "physics_changes_claimed",
+            "reducer_behavior_changes_claimed",
+            "output_default_changes_claimed",
+            "ensemble_size_increase_claimed",
+            "distributed_execution_claimed",
+            "annual_or_physical_claimed",
+            "risk_exposure_or_operational_claimed",
+            "return_period_claimed",
+            "validated_hazard_map_claimed",
+            "full_curve_csv_default_claimed",
+            "grid_csv_default_claimed",
+        ),
+        OutputBudgetReducerGateError,
+        label_prefix="claim_boundary",
+    )
+    shared_scan_text_for_misleading_claims(
+        boundary,
+        require_fn=require,
+        patterns=PROHIBITED_PATTERNS,
+        skip_keys=(),
+        allow_markers=(),
+    )
 
 
 def scan_text_for_prohibited_claims(value: Any, *, path: str = "record") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            scan_text_for_prohibited_claims(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            scan_text_for_prohibited_claims(child, path=f"{path}[{index}]")
-    elif isinstance(value, str):
-        for pattern in PROHIBITED_PATTERNS:
-            require(pattern.search(value) is None, f"{path} contains prohibited current-product claim: {value!r}")
-
-
-def read_yaml(path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - path context matters.
-        raise OutputBudgetReducerGateError(f"failed to read YAML {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise OutputBudgetReducerGateError(f"YAML document must be an object: {path}")
-    return data
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise OutputBudgetReducerGateError(message)
-
-
-def require_mapping(value: Any, field: str) -> dict[str, Any]:
-    require(isinstance(value, dict), f"{field} must be an object")
-    return value
-
-
-def require_list(value: Any, field: str) -> list[Any]:
-    require(isinstance(value, list), f"{field} must be a list")
-    return value
-
-
-def require_text(value: Any, field: str) -> str:
-    require(isinstance(value, str) and value.strip(), f"{field} must be a nonempty string")
-    return value
+    shared_scan_text_for_misleading_claims(
+        value,
+        require_fn=require,
+        patterns=PROHIBITED_PATTERNS,
+        path=path,
+    )
 
 
 if __name__ == "__main__":

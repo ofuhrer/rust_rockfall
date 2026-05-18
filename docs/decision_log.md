@@ -48,6 +48,25 @@ only another gate recommendation.
 Detailed sources: `../AGENTS.md`, `task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### Workflow Status Vocabulary Compatibility
+
+Decision: preserve the downstream status vocabulary emitted by the migrated
+validators and summarizers while consolidating their mechanics in shared
+helpers.
+
+Current status: active. The helper migration changes where status, checksum,
+path, and blocked-report checks live, but it does not rename the report labels
+consumed by downstream scripts and summaries.
+
+Rationale: report readers already depend on vocabulary such as
+`blocked_missing_inputs`, `mapped_current_gaps`, `not_established`,
+`diagnostic_only`, `partial`, and `present`. Centralizing the mechanics should
+make future status changes easier to manage, not surprise downstream consumers
+with a label rewrite.
+
+Detailed sources: `task_backlog.md`, `agent_work_log.md`,
+`scripts/lib/workflow_validation.py`.
+
 ### Backlog Tied To Capability Gaps
 
 Decision: backlog changes must be justified by concrete capability-gap
