@@ -374,6 +374,7 @@ def release_zone_gap(
         ],
         "what_exists": [
             "Tschamut source-zone metadata and policy are frozen and deterministic",
+            "Release-zone provenance intake bridge labels workflow_generated, field_supported, mixed_provenance, and blocked_missing_provenance records without converting sampling weights into probabilities",
             "The candidate Chant Sura / Flüelapass manifest declares a source-zone contract shape",
         ],
         "what_is_missing": [

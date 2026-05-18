@@ -142,6 +142,10 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
         )
         self.assertIn(
+            "Release-zone provenance intake bridge",
+            {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
             "Release-candidate physical-meaning firewall",
             {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
         )

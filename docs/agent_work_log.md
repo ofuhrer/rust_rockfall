@@ -1256,3 +1256,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no real evidence claim, no calibration, no parameter fitting, no validation upgrade, no annual-frequency claim, no physical-probability claim, no operational claim, and no generated acquisition files committed.
 - Next task: `TB-235`
+
+### TB-235: Release-Zone Provenance Intake Bridge
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: define a small intake path for field-supported release-zone provenance that stays separate from workflow-generated release candidates.
+- Files changed: `scripts/lib/workflow_validation.py`, `scripts/plan_terrain_release_zone_candidates.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a shared release-zone provenance intake helper that canonicalizes `workflow_generated`, `field_supported`, `mixed_provenance`, and `blocked_missing_provenance` labels and reuses the same normalization path in the release-candidate firewall.
+  - Threaded the intake bridge into the terrain candidate planner so source-zone provenance is reported separately from workflow-generated candidate rows.
+  - Extended scenario generation to carry a nested provenance intake record and verified that field-supported provenance still keeps sampling weights conditional-only instead of turning them into occurrence probabilities.
+  - Updated the physical-credibility evidence map and gap report to recognize the intake bridge as workflow evidence while keeping the release-zone evidence gap open.
+  - Removed TB-235 from the active backlog after the new intake bridge and tests were verified.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_physical_credibility_evidence_requirements -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no release-zone validation claim, no threshold tuning, no source-frequency semantics, no annual-frequency claim, no operational claim, and no probability conversion for sampling weights.
+- Next task: `TB-236`

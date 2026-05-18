@@ -29,37 +29,6 @@ Definition of done:
 
 Boundaries: Fixture-backed schema smoke only, no real evidence claim, no calibration, no parameter fitting, no validation upgrade, and no operational claim.
 
-### TB-235: Release-Zone Provenance Intake Bridge
-
-Goal: Define a small intake path for field-supported release-zone provenance that remains separate from workflow-generated release candidates.
-
-Capability gap reduced: Release-zone automation is improving, but physical meaning remains weak until field-supported provenance can be ingested and kept distinct.
-
-Why this outranks alternatives: Without this bridge, automated candidates can continue to look more physically credible than their evidence supports.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/lib/workflow_validation.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_physical_credibility_evidence_requirements.py`
-- `docs/source_zone_block_scenario_policy_v1.md`
-
-Deliverables:
-
-- A minimal release-zone provenance intake schema or helper path that labels `field_supported`, `workflow_generated`, `mixed_provenance`, and `blocked_missing_provenance` consistently.
-- Tests showing scenario generation preserves conditional sampling semantics even when field-supported provenance is present.
-- A physical-credibility evidence-map update if the intake changes the gap report.
-
-Definition of done:
-
-- Field-supported release-zone provenance can be represented without converting sampling weights into occurrence probabilities.
-
-Boundaries: No release-zone validation claim, no threshold tuning, no source-frequency semantics, no annual-frequency claim, and no operational claim.
-
 ### TB-236: Block-Population And Source-Frequency Acquisition Deferral Map
 
 Goal: Convert block-population and source-frequency rows in the physical-evidence matrix into exact acquisition blockers and future-gate prerequisites.

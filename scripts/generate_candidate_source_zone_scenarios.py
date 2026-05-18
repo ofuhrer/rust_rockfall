@@ -29,6 +29,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from lib.workflow_validation import (
     build_release_candidate_physical_meaning_firewall,
+    build_release_zone_provenance_intake,
     validate_release_candidate_physical_meaning_firewall,
 )
 
@@ -375,6 +376,7 @@ def build_candidate_release_zone_records(
     release_points_path: Path,
     candidate_repeat_count: int,
     source_zone_id: str,
+    release_zone_provenance_intake: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for repeat_index in range(candidate_repeat_count):
@@ -384,6 +386,14 @@ def build_candidate_release_zone_records(
             family_id = f"release_block_{block_id}" if block_id else "release_block_unknown"
             candidate_release_zone_record_id = (
                 release_point_id if candidate_repeat_count == 1 else f"{release_point_id}__repeat_{repeat_index:03d}"
+            )
+            intake = build_release_zone_provenance_intake(
+                release_zone_provenance_intake,
+                workflow_generated=True if release_zone_provenance_intake is None else None,
+                field_supported=False if release_zone_provenance_intake is None else None,
+                blocked_missing_provenance=False if release_zone_provenance_intake is None else None,
+                provenance_note="deterministic release-point CSV expansion",
+                provenance_source=display_path(release_points_path),
             )
             records.append(
                 {
@@ -399,11 +409,13 @@ def build_candidate_release_zone_records(
                     "release_point_source_path": display_path(release_points_path),
                     "release_point_source_row_index": source_index,
                     "source_record_kind": "release_point_candidate",
-                    "candidate_release_zone_record_kind": "workflow_generated",
-                    "workflow_generated": True,
-                    "field_supported": False,
-                    "blocked_missing_provenance": False,
-                    "provenance_note": "deterministic release-point CSV expansion",
+                    "release_zone_provenance_intake": intake,
+                    "candidate_release_zone_record_kind": intake["release_candidate_provenance_state"],
+                    "workflow_generated": bool(intake["workflow_generated"]),
+                    "field_supported": bool(intake["field_supported"]),
+                    "blocked_missing_provenance": bool(intake["blocked_missing_provenance"]),
+                    "release_candidate_provenance_state": intake["release_candidate_provenance_state"],
+                    "provenance_note": intake["provenance_note"],
                 }
             )
     return records
@@ -424,6 +436,10 @@ def build_rows(
         release_point_id = text_value(candidate_record.get("release_point_id"))
         source_zone_family_id = text_value(candidate_record.get("source_zone_family_id"))
         repeat_index = candidate_record.get("candidate_repeat_index")
+        provenance_state = candidate_record.get(
+            "release_candidate_provenance_state",
+            candidate_record.get("candidate_release_zone_record_kind", "workflow_generated"),
+        )
 
         for template_id in template_ids:
             if template_id == "candidate_release_point_summary_v1":
@@ -450,7 +466,7 @@ def build_rows(
                         "scenario_probability": "",
                         "annual_frequency_per_year": "",
                         "time_horizon_years": "",
-                        "release_candidate_provenance_state": candidate_record.get("candidate_release_zone_record_kind", "workflow_generated"),
+                        "release_candidate_provenance_state": provenance_state,
                     }
                 )
                 continue
@@ -483,7 +499,7 @@ def build_rows(
                             "scenario_probability": "",
                             "annual_frequency_per_year": "",
                             "time_horizon_years": "",
-                            "release_candidate_provenance_state": candidate_record.get("candidate_release_zone_record_kind", "workflow_generated"),
+                            "release_candidate_provenance_state": provenance_state,
                         }
                     )
                 continue

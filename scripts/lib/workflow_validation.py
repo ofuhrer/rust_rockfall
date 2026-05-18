@@ -239,6 +239,70 @@ def classify_release_candidate_provenance_state(
     return "workflow_generated"
 
 
+def build_release_zone_provenance_intake(
+    provenance: Mapping[str, Any] | None = None,
+    *,
+    workflow_generated: bool | None = None,
+    field_supported: bool | None = None,
+    blocked_missing_provenance: bool | None = None,
+    provenance_note: str | None = None,
+    provenance_source: str | None = None,
+) -> dict[str, Any]:
+    raw_provenance = provenance if isinstance(provenance, dict) else {}
+    if workflow_generated is None and "workflow_generated" in raw_provenance:
+        workflow_generated = bool(raw_provenance.get("workflow_generated"))
+    if field_supported is None and "field_supported" in raw_provenance:
+        field_supported = bool(raw_provenance.get("field_supported"))
+    if blocked_missing_provenance is None and "blocked_missing_provenance" in raw_provenance:
+        blocked_missing_provenance = bool(raw_provenance.get("blocked_missing_provenance"))
+    provenance_state = raw_provenance.get("release_zone_provenance_state") or raw_provenance.get("release_candidate_provenance_state") or raw_provenance.get("provenance_state")
+    if provenance_state is not None:
+        provenance_state = str(provenance_state).strip()
+        if provenance_state not in RELEASE_CANDIDATE_PROVENANCE_STATES:
+            raise ValueError(
+                f"release_zone_provenance_state must be one of {sorted(RELEASE_CANDIDATE_PROVENANCE_STATES)}"
+            )
+        workflow_generated = provenance_state in {"workflow_generated", "mixed_provenance"}
+        field_supported = provenance_state in {"field_supported", "mixed_provenance"}
+        blocked_missing_provenance = provenance_state == "blocked_missing_provenance"
+
+    if workflow_generated is None and field_supported is None and blocked_missing_provenance is None:
+        if raw_provenance:
+            workflow_generated = True
+            field_supported = False
+            blocked_missing_provenance = False
+        else:
+            workflow_generated = False
+            field_supported = False
+            blocked_missing_provenance = True
+
+    workflow_generated = bool(workflow_generated)
+    field_supported = bool(field_supported)
+    blocked_missing_provenance = bool(blocked_missing_provenance)
+
+    normalized_state = classify_release_candidate_provenance_state(
+        workflow_generated=workflow_generated,
+        field_supported=field_supported,
+        blocked_missing_provenance=blocked_missing_provenance,
+    )
+    notes = raw_provenance.get("notes")
+    if provenance_note is None:
+        if isinstance(notes, list):
+            provenance_note = "; ".join(str(item).strip() for item in notes if str(item).strip())
+        else:
+            provenance_note = str(raw_provenance.get("source") or "").strip()
+
+    return {
+        "release_zone_provenance_state": normalized_state,
+        "release_candidate_provenance_state": normalized_state,
+        "workflow_generated": workflow_generated,
+        "field_supported": field_supported,
+        "blocked_missing_provenance": blocked_missing_provenance,
+        "provenance_note": str(provenance_note or "").strip(),
+        "provenance_source": str(provenance_source or raw_provenance.get("source") or "").strip(),
+    }
+
+
 def build_release_candidate_physical_meaning_firewall(
     records: Sequence[Mapping[str, Any]],
     *,
@@ -247,14 +311,18 @@ def build_release_candidate_physical_meaning_firewall(
     profile: list[dict[str, Any]] = []
     counts = {state: 0 for state in RELEASE_CANDIDATE_PROVENANCE_STATES}
     for index, record in enumerate(records):
-        workflow_generated = bool(record.get("workflow_generated"))
-        field_supported = bool(record.get("field_supported"))
-        blocked_missing_provenance = bool(record.get("blocked_missing_provenance"))
-        provenance_state = classify_release_candidate_provenance_state(
-            workflow_generated=workflow_generated,
-            field_supported=field_supported,
-            blocked_missing_provenance=blocked_missing_provenance,
+        intake = build_release_zone_provenance_intake(
+            record.get("release_zone_provenance_intake"),
+            workflow_generated=record.get("workflow_generated"),
+            field_supported=record.get("field_supported"),
+            blocked_missing_provenance=record.get("blocked_missing_provenance"),
+            provenance_note=str(record.get("provenance_note") or "").strip(),
+            provenance_source=str(record.get("release_zone_provenance_source") or "").strip(),
         )
+        workflow_generated = bool(intake["workflow_generated"])
+        field_supported = bool(intake["field_supported"])
+        blocked_missing_provenance = bool(intake["blocked_missing_provenance"])
+        provenance_state = str(intake["release_zone_provenance_state"])
         counts[provenance_state] += 1
         profile.append(
             {
@@ -265,7 +333,8 @@ def build_release_candidate_physical_meaning_firewall(
                 "field_supported": field_supported,
                 "blocked_missing_provenance": blocked_missing_provenance,
                 "provenance_state": provenance_state,
-                "provenance_note": str(record.get("provenance_note") or "").strip(),
+                "provenance_note": str(intake["provenance_note"]),
+                "release_zone_provenance_state": str(intake["release_zone_provenance_state"]),
             }
         )
 

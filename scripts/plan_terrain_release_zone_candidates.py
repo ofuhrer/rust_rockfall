@@ -61,6 +61,7 @@ def _load_module(module_name: str, filename: str):
 
 
 TERRAIN_PREPROCESSING = _load_module("aoi_terrain_preprocessing_planner", "plan_aoi_terrain_preprocessing.py")
+WORKFLOW_VALIDATION = _load_module("release_zone_workflow_validation", "lib/workflow_validation.py")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -442,6 +443,7 @@ def build_source_zone_inputs(
     repo_root: Path,
 ) -> dict[str, Any]:
     vertices = extract_polygon_vertices(source_zone_metadata)
+    provenance = source_zone_metadata.get("provenance", {})
     return {
         "source_zone_metadata_path": display_path(source_zone_metadata_path, repo_root),
         "source_zone_metadata_sha256": sha256_file(source_zone_metadata_path),
@@ -449,7 +451,11 @@ def build_source_zone_inputs(
         "crs_epsg": source_zone_metadata.get("crs_epsg"),
         "vertical_datum": source_zone_metadata.get("vertical_datum"),
         "release_sampling_policy": source_zone_metadata.get("release_sampling_policy", {}),
-        "provenance": source_zone_metadata.get("provenance", {}),
+        "provenance": provenance,
+        "release_zone_provenance_intake": WORKFLOW_VALIDATION.build_release_zone_provenance_intake(
+            provenance,
+            provenance_source=display_path(source_zone_metadata_path, repo_root),
+        ),
         "footprint": {
             "polygon_area_m2_exact": polygon_area(vertices),
             "vertex_count": len(vertices),

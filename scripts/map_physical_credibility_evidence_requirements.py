@@ -447,6 +447,13 @@ def build_evidence_requirement_categories(
                     "notes": "Labels candidate rows as workflow_generated, field_supported, mixed_provenance, or blocked_missing_provenance and keeps sampling weights conditional-only rather than source probabilities.",
                 },
                 {
+                    "label": "Release-zone provenance intake bridge",
+                    "reference": "scripts/lib/workflow_validation.py#build_release_zone_provenance_intake",
+                    "status": "partial",
+                    "role": "workflow intake boundary for release-zone provenance",
+                    "notes": "Normalizes field_supported, workflow_generated, mixed_provenance, and blocked_missing_provenance labels while keeping scenario weights conditional-only.",
+                },
+                {
                     "label": "Chant Sura / Flüelapass candidate acquisition manifest",
                     "reference": "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
                     "status": "partial",

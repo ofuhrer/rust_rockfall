@@ -14,6 +14,7 @@ RELEASE_POINTS_PATH = ROOT / "data/processed/swisstopo/tschamut_public_pilot/inp
 
 from scripts.lib.workflow_validation import (
     build_release_candidate_physical_meaning_firewall,
+    build_release_zone_provenance_intake,
     validate_release_candidate_physical_meaning_firewall,
 )
 
@@ -119,6 +120,66 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertEqual(report["candidate_release_zone_record_count"], 0)
         self.assertEqual(report["scenario_row_count"], 0)
         self.assertEqual(report["tb_183_planning_input"]["status"], "blocked_missing_inputs")
+
+    def test_field_supported_provenance_stays_conditional_only(self) -> None:
+        field_supported_intake = build_release_zone_provenance_intake(
+            {
+                "release_zone_provenance_state": "field_supported",
+                "provenance_note": "field-supported release-zone intake",
+                "provenance_source": "field notebook",
+            }
+        )
+        policy = MODULE.load_yaml(POLICY_PATH)
+        candidate_records = MODULE.build_candidate_release_zone_records(
+            release_points=[
+                {
+                    "trajectory_id": "field_point_001",
+                    "mass_kg": "12.0",
+                    "radius_m": "0.4",
+                    "block_id": "field",
+                }
+            ],
+            release_points_path=RELEASE_POINTS_PATH,
+            candidate_repeat_count=1,
+            source_zone_id="field_supported_source_zone",
+            release_zone_provenance_intake=field_supported_intake,
+        )
+        rows = MODULE.build_rows(
+            candidate_records=candidate_records,
+            block_scenarios=[
+                {
+                    "block_scenario_id": "field_block_small",
+                    "block_size_class": "field_small",
+                    "block_shape_class": "sphere",
+                    "block_radius_m": 0.12,
+                    "block_mass_kg": 18.0,
+                    "sampling_weight": 2.5,
+                }
+            ],
+            template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+            policy=policy,
+        )
+        MODULE.normalize_row_shares(rows)
+        firewall = MODULE.build_release_candidate_firewall(candidate_records=candidate_records, rows=rows)
+
+        self.assertEqual(candidate_records[0]["release_zone_provenance_intake"]["release_zone_provenance_state"], "field_supported")
+        self.assertEqual(candidate_records[0]["release_candidate_provenance_state"], "field_supported")
+        self.assertEqual(rows[0]["release_candidate_provenance_state"], "field_supported")
+        self.assertEqual(firewall["release_candidate_provenance_state"], "field_supported")
+        self.assertEqual(firewall["sampling_weight_semantics"], "conditional_sampling_only")
+        self.assertEqual(
+            firewall["sampling_weight_boundary"],
+            "not occurrence probability, physical probability, annual frequency, return period, or risk",
+        )
+        self.assertTrue(all(row["release_probability"] == "" for row in rows))
+        self.assertTrue(all(row["scenario_probability"] == "" for row in rows))
+        self.assertTrue(all(row["annual_frequency_per_year"] == "" for row in rows))
+        self.assertTrue(all(row["time_horizon_years"] == "" for row in rows))
+        self.assertTrue(all(row["normalized_sampling_share"] is not None for row in rows))
+        validate_release_candidate_physical_meaning_firewall(
+            firewall,
+            error_cls=MODULE.CandidateSourceZoneScenarioStressError,
+        )
 
     def test_release_candidate_firewall_labels_supported_states_and_blocks_overclaims(self) -> None:
         firewall = build_release_candidate_physical_meaning_firewall(
