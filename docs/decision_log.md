@@ -606,3 +606,10 @@ historical snapshots.
 - Decision: authorize exactly one bounded single-job Balfrin target-area probe for `TB-168` using the frozen Tschamut target-area contract and the deterministic run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
 - Rationale: TB-166 produced an unlaunched submission package, but the previous contract correctly blocked submission. The user explicitly authorized one bounded probe, so the repo now records a narrow execution authorization without changing scale-up, distributed-execution, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability boundaries.
 - Sources: `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, `docs/task_backlog.md`, `scripts/submit_balfrin_probe.py`, `docs/balfrin_probe_slurm_driver.md`.
+
+## TB-215 Workflow-Status Vocabulary Compatibility Note
+
+- Date: 2026-05-18
+- Decision: preserve downstream status vocabulary while migrating workflow mechanics into shared helpers; the `current_classification`, `qa_status`, and `run_status` labels used by the migrated scripts stay unchanged so existing report consumers do not need a label remap.
+- Rationale: the helper-layer migration is meant to reduce duplicated validation mechanics, not to force a status-vocabulary change on downstream JSON or text consumers.
+- Sources: `scripts/validate_output_budget_reducer_gate.py`, `scripts/validate_public_real_site_conditional_pilot_run.py`, `scripts/lib/workflow_validation.py`.
