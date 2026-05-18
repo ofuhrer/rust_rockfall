@@ -1024,3 +1024,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only SSH and remote artifact preflight only; no Balfrin job launch, no remote mutation, no generated remote artifact claim, no operational claim, no scale-up or distributed-execution claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-224`
+
+### TB-224: Balfrin Worker Routing In Task Context
+
+- Date: 2026-05-18
+- Commit: `09a3e7c`
+- Objective: teach the task-context helper to mark Balfrin SSH/live-evidence tasks as requiring a stronger Balfrin-capable worker and the access preflight from TB-223.
+- Files changed: `scripts/print_agent_task_context.py`, `tests/test_agent_task_context.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added Balfrin-aware routing metadata to compact task summaries, including `balfrin_access_required`, `recommended_worker_model`, `balfrin_access_preflight_command`, and a short access-expiry note.
+  - Added a Balfrin access preflight helper entry and routing keyword detection so compact task context surfaces the stronger-worker recommendation when a task mentions Balfrin SSH, live run, remote run root, or evidence collection.
+  - Preserved full-detail helper output while extending the report text renderer to print the routing fields inline for Balfrin tasks.
+  - Added focused tests for Balfrin and non-Balfrin tasks, then removed TB-224 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/print_agent_task_context.py tests/test_agent_task_context.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_agent_task_context -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: helper/context routing only; no live SSH call, no worker launch automation change, no task-priority fields, and no claim upgrade.
+- Next task: `TB-225`
