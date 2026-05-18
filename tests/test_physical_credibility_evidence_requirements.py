@@ -142,7 +142,15 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
         )
         self.assertIn(
+            "Release-candidate physical-meaning firewall",
+            {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
             "AOI scenario-table dry-run plan",
+            {source["label"] for source in categories["source_frequency_and_temporal_frequency_evidence"]["current_repo_evidence_sources"]},
+        )
+        self.assertIn(
+            "Candidate source-zone scenario stress report",
             {source["label"] for source in categories["source_frequency_and_temporal_frequency_evidence"]["current_repo_evidence_sources"]},
         )
         self.assertIn(
@@ -162,6 +170,7 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertIn("layer_credibility_boundaries", text)
         self.assertIn("max_kinetic_energy", text)
         self.assertIn("workflow_provenance_only", text)
+        self.assertIn("Release-candidate and scenario-table firewalls", text)
 
     def test_missing_inputs_return_blocked_status(self) -> None:
         report = helper.build_report({"missing_inputs": ["docs/missing.json"]})

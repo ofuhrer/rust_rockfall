@@ -440,6 +440,13 @@ def build_evidence_requirement_categories(
                     "notes": "Provides deterministic release semantics for the pilot.",
                 },
                 {
+                    "label": "Release-candidate physical-meaning firewall",
+                    "reference": "scripts/generate_candidate_source_zone_scenarios.py#release_candidate_physical_meaning_firewall",
+                    "status": "partial",
+                    "role": "workflow-generated release-candidate provenance boundary",
+                    "notes": "Labels candidate rows as workflow_generated, field_supported, mixed_provenance, or blocked_missing_provenance and keeps sampling weights conditional-only rather than source probabilities.",
+                },
+                {
                     "label": "Chant Sura / Flüelapass candidate acquisition manifest",
                     "reference": "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
                     "status": "partial",
@@ -603,6 +610,13 @@ def build_evidence_requirement_categories(
                     "status": "partial",
                     "role": "conditional scenario workflow",
                     "notes": "Scenario rows are conditional workflow records with explicit non-frequency semantics.",
+                },
+                {
+                    "label": "Candidate source-zone scenario stress report",
+                    "reference": "scripts/generate_candidate_source_zone_scenarios.py",
+                    "status": "partial",
+                    "role": "workflow-generated scenario-table boundary",
+                    "notes": "Scenario sampling weights stay conditional and are not occurrence probabilities, annual frequencies, return periods, or risk.",
                 },
                 {
                     "label": "AOI scenario-generation handoff",
@@ -981,6 +995,7 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
             "current_repo_evidence": [
                 f"{tschamut_name} is a conditional deposition/runout benchmark, not a source-occurrence catalogue.",
                 f"{chant_name} is a trajectory/contact benchmark, not a source-occurrence catalogue.",
+                "Release-candidate scenario tables remain conditional workflow outputs because the provenance firewall labels them workflow_generated, field_supported, mixed_provenance, or blocked_missing_provenance.",
             ],
             "required_artifact_class": "historical_rockfall_event_catalogue",
         },
@@ -1034,6 +1049,10 @@ def current_evidence_summary(gap_report: dict[str, Any], holdout_report: dict[st
         {
             "summary": "Source-frequency semantics remain unsupported and deferred.",
             "status": "deferred_unsupported",
+        },
+        {
+            "summary": "Release-candidate and scenario-table firewalls keep workflow-generated rows and sampling weights out of probability language.",
+            "status": "workflow_provenance_only",
         },
         {
             "summary": "Multi-site portability remains metadata-only until public-context products are staged.",

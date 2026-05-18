@@ -274,6 +274,12 @@ git:
 - release sampling: ten deterministic release cells from the policy;
 - block scenarios: three representative conditional block scenarios from the
   policy;
+- release-candidate and scenario-table automation now carries an explicit
+  physical-meaning firewall: candidate rows are labeled
+  `workflow_generated`, `field_supported`, `mixed_provenance`, or
+  `blocked_missing_provenance`, and scenario sampling weights stay
+  conditional-only rather than occurrence probabilities, annual frequencies,
+  return periods, or risk;
 - physics defaults: unchanged simulator behavior, `translational_v0`, no
   soil-interaction model, opt-in `stochastic_contact_v1` roughness as recorded
   in the frozen generated local benchmark case;

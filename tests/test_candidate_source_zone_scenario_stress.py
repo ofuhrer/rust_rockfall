@@ -12,6 +12,11 @@ SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 POLICY_PATH = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 RELEASE_POINTS_PATH = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv"
 
+from scripts.lib.workflow_validation import (
+    build_release_candidate_physical_meaning_firewall,
+    validate_release_candidate_physical_meaning_firewall,
+)
+
 
 def _load_module(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -63,6 +68,13 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertEqual(first["scenario_row_count"], 120)
         self.assertTrue(first["tb_183_planning_input"]["ready_for_tb_183"])
         self.assertEqual(first["tb_183_planning_input"]["status"], "ready")
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state"], "workflow_generated")
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["firewall_status"], "workflow_generated")
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state_counts"]["workflow_generated"], 30)
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["scenario_row_count"], 120)
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["sampling_weight_semantics"], "conditional_sampling_only")
+        self.assertEqual(first["scenario_table_manifest"]["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state"], "workflow_generated")
+        self.assertEqual(first["scenario_table_manifest"]["row_summaries"][0]["release_candidate_provenance_state"], "workflow_generated")
         self.assertGreater(first["storage_measurements"]["csv_bytes"], 0)
         self.assertGreater(first["storage_measurements"]["manifest_bytes"], first["storage_measurements"]["csv_bytes"])
         self.assertGreater(first["runtime_measurements"]["total_seconds"], 0.0)
@@ -84,6 +96,8 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         ])
         self.assertEqual(manifest["row_ids"][0], "v004__repeat_000__candidate_release_point_summary")
         self.assertTrue(csv_text.startswith("scenario_id,"))
+        self.assertIn("release_candidate_physical_meaning_firewall", report_text)
+        self.assertIn("workflow_generated", report_text)
         self.assertIn("candidate_release_point_summary_v1", report_text)
         self.assertIn("policy_block_family_v1", report_text)
 
@@ -105,6 +119,70 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertEqual(report["candidate_release_zone_record_count"], 0)
         self.assertEqual(report["scenario_row_count"], 0)
         self.assertEqual(report["tb_183_planning_input"]["status"], "blocked_missing_inputs")
+
+    def test_release_candidate_firewall_labels_supported_states_and_blocks_overclaims(self) -> None:
+        firewall = build_release_candidate_physical_meaning_firewall(
+            [
+                {
+                    "candidate_release_zone_record_id": "workflow",
+                    "candidate_release_zone_record_kind": "workflow_generated",
+                    "workflow_generated": True,
+                    "field_supported": False,
+                    "blocked_missing_provenance": False,
+                    "provenance_note": "workflow-generated candidate",
+                },
+                {
+                    "candidate_release_zone_record_id": "field",
+                    "candidate_release_zone_record_kind": "field_supported",
+                    "workflow_generated": False,
+                    "field_supported": True,
+                    "blocked_missing_provenance": False,
+                    "provenance_note": "field-supported candidate",
+                },
+                {
+                    "candidate_release_zone_record_id": "mixed",
+                    "candidate_release_zone_record_kind": "mixed_provenance",
+                    "workflow_generated": True,
+                    "field_supported": True,
+                    "blocked_missing_provenance": False,
+                    "provenance_note": "mixed provenance candidate",
+                },
+                {
+                    "candidate_release_zone_record_id": "blocked",
+                    "candidate_release_zone_record_kind": "blocked_missing_provenance",
+                    "workflow_generated": False,
+                    "field_supported": False,
+                    "blocked_missing_provenance": True,
+                    "provenance_note": "missing provenance",
+                },
+            ]
+        )
+        self.assertEqual(firewall["release_candidate_provenance_state"], "blocked_missing_provenance")
+        self.assertEqual(
+            firewall["release_candidate_provenance_state_counts"],
+            {
+                "workflow_generated": 1,
+                "field_supported": 1,
+                "mixed_provenance": 1,
+                "blocked_missing_provenance": 1,
+            },
+        )
+        self.assertEqual(firewall["release_candidate_provenance_profile"][0]["provenance_state"], "workflow_generated")
+        self.assertEqual(firewall["release_candidate_provenance_profile"][1]["provenance_state"], "field_supported")
+        self.assertEqual(firewall["release_candidate_provenance_profile"][2]["provenance_state"], "mixed_provenance")
+        self.assertEqual(firewall["release_candidate_provenance_profile"][3]["provenance_state"], "blocked_missing_provenance")
+        validate_release_candidate_physical_meaning_firewall(
+            firewall,
+            error_cls=MODULE.CandidateSourceZoneScenarioStressError,
+        )
+
+        overclaim = dict(firewall)
+        overclaim["sampling_weight_boundary"] = "occurrence probability"
+        with self.assertRaises(MODULE.CandidateSourceZoneScenarioStressError):
+            validate_release_candidate_physical_meaning_firewall(
+                overclaim,
+                error_cls=MODULE.CandidateSourceZoneScenarioStressError,
+            )
 
 
 if __name__ == "__main__":  # pragma: no cover

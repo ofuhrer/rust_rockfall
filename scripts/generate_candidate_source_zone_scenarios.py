@@ -23,6 +23,15 @@ try:
 except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.workflow_validation import (
+    build_release_candidate_physical_meaning_firewall,
+    validate_release_candidate_physical_meaning_firewall,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "candidate_source_zone_scenario_stress_test_v1"
@@ -155,6 +164,7 @@ def build_report(
         policy=policy,
     )
     normalize_row_shares(rows)
+    release_candidate_firewall = build_release_candidate_firewall(candidate_records=candidate_records, rows=rows)
 
     manifest = build_manifest(
         policy=policy,
@@ -165,6 +175,7 @@ def build_report(
         rows=rows,
         block_scenarios=block_scenarios,
         template_ids=template_ids,
+        release_candidate_firewall=release_candidate_firewall,
     )
     build_seconds = time.perf_counter() - build_started
 
@@ -218,6 +229,7 @@ def build_report(
         "scenario_row_count": len(rows),
         "generated_scenario_table_rows": rows,
         "scenario_table_manifest": manifest,
+        "release_candidate_physical_meaning_firewall": release_candidate_firewall,
         "runtime_measurements": runtime_measurements,
         "storage_measurements": storage_measurements,
         "first_scaling_bottleneck": first_scaling_bottleneck,
@@ -257,6 +269,30 @@ def blocked_report(
         "candidate_repeat_count": candidate_repeat_count,
         "candidate_release_zone_record_count": 0,
         "scenario_row_count": 0,
+        "release_candidate_physical_meaning_firewall": {
+            "firewall_status": "blocked_missing_provenance",
+            "release_candidate_provenance_state": "blocked_missing_provenance",
+            "release_candidate_provenance_state_counts": {
+                "workflow_generated": 0,
+                "field_supported": 0,
+                "mixed_provenance": 0,
+                "blocked_missing_provenance": 0,
+            },
+            "release_candidate_provenance_profile": [],
+            "sampling_weight_semantics": "conditional_sampling_only",
+            "sampling_weight_boundary": "not occurrence probability, physical probability, annual frequency, return period, or risk",
+            "sampling_weight_not_occurrence_probability": True,
+            "sampling_weight_not_physical_probability": True,
+            "sampling_weight_not_annual_frequency": True,
+            "sampling_weight_not_return_period": True,
+            "sampling_weight_not_risk": True,
+            "physical_probability_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "return_period_claims_allowed": False,
+            "risk_claims_allowed": False,
+            "scenario_row_provenance_profile": [],
+            "scenario_row_count": 0,
+        },
         "scenario_table_manifest": {
             "schema_version": MANIFEST_SCHEMA_VERSION,
             "table_status": "blocked_missing_inputs",
@@ -278,6 +314,30 @@ def blocked_report(
                 "release_points_path": display_path(release_points_path),
             },
             "supported_templates": template_summary(template_ids),
+            "release_candidate_physical_meaning_firewall": {
+                "firewall_status": "blocked_missing_provenance",
+                "release_candidate_provenance_state": "blocked_missing_provenance",
+                "release_candidate_provenance_state_counts": {
+                    "workflow_generated": 0,
+                    "field_supported": 0,
+                    "mixed_provenance": 0,
+                    "blocked_missing_provenance": 0,
+                },
+                "release_candidate_provenance_profile": [],
+                "sampling_weight_semantics": "conditional_sampling_only",
+                "sampling_weight_boundary": "not occurrence probability, physical probability, annual frequency, return period, or risk",
+                "sampling_weight_not_occurrence_probability": True,
+                "sampling_weight_not_physical_probability": True,
+                "sampling_weight_not_annual_frequency": True,
+                "sampling_weight_not_return_period": True,
+                "sampling_weight_not_risk": True,
+                "physical_probability_claims_allowed": False,
+                "annual_frequency_claims_allowed": False,
+                "return_period_claims_allowed": False,
+                "risk_claims_allowed": False,
+                "scenario_row_provenance_profile": [],
+                "scenario_row_count": 0,
+            },
         },
         "runtime_measurements": {
             "build_seconds": 0.0,
@@ -339,6 +399,11 @@ def build_candidate_release_zone_records(
                     "release_point_source_path": display_path(release_points_path),
                     "release_point_source_row_index": source_index,
                     "source_record_kind": "release_point_candidate",
+                    "candidate_release_zone_record_kind": "workflow_generated",
+                    "workflow_generated": True,
+                    "field_supported": False,
+                    "blocked_missing_provenance": False,
+                    "provenance_note": "deterministic release-point CSV expansion",
                 }
             )
     return records
@@ -385,6 +450,7 @@ def build_rows(
                         "scenario_probability": "",
                         "annual_frequency_per_year": "",
                         "time_horizon_years": "",
+                        "release_candidate_provenance_state": candidate_record.get("candidate_release_zone_record_kind", "workflow_generated"),
                     }
                 )
                 continue
@@ -417,6 +483,7 @@ def build_rows(
                             "scenario_probability": "",
                             "annual_frequency_per_year": "",
                             "time_horizon_years": "",
+                            "release_candidate_provenance_state": candidate_record.get("candidate_release_zone_record_kind", "workflow_generated"),
                         }
                     )
                 continue
@@ -441,6 +508,7 @@ def build_manifest(
     rows: list[dict[str, Any]],
     block_scenarios: list[dict[str, Any]],
     template_ids: list[str],
+    release_candidate_firewall: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate_cardinality = summarize_candidate_cardinality(candidate_records, rows, template_ids, block_scenarios)
     source_zone_family_cardinality = summarize_group_cardinality(rows, "source_zone_family_id")
@@ -455,6 +523,7 @@ def build_manifest(
             "block_family_id": text_value(row.get("block_family_id")),
             "sampling_weight": row.get("sampling_weight"),
             "normalized_sampling_share": row.get("normalized_sampling_share"),
+            "release_candidate_provenance_state": text_value(row.get("release_candidate_provenance_state")),
         }
         for row in rows
     ]
@@ -484,11 +553,13 @@ def build_manifest(
         "row_summaries": row_summaries,
         "conditional_weighting_semantics": {
             "sampling_weight_semantics": "conditional_sampling_only",
-            "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+            "scenario_probability_semantics": "normalized within a block family; not occurrence probability, physical probability, annual frequency, return period, or risk",
             "sampling_weights_are_not_physical_probability": True,
             "sampling_weights_are_not_annual_frequency": True,
             "conditional_only_weighting": True,
         },
+        "release_candidate_physical_meaning_firewall": release_candidate_firewall
+        or build_release_candidate_firewall(candidate_records=candidate_records, rows=rows),
         "first_scaling_bottleneck": first_scaling_bottleneck,
         "tb_183_planning_input": build_tb_183_planning_input(
             candidate_record_count=len(candidate_records),
@@ -602,6 +673,29 @@ def build_tb_183_planning_input(
         "scenario_family_template_count": template_count,
         "ready_for_tb_183": ready,
     }
+
+
+def build_release_candidate_firewall(
+    *,
+    candidate_records: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    firewall = build_release_candidate_physical_meaning_firewall(candidate_records)
+    firewall["scenario_row_provenance_profile"] = [
+        {
+            "row_id": text_value(row.get("scenario_id")),
+            "candidate_release_zone_record_id": text_value(row.get("candidate_release_zone_record_id")),
+            "release_candidate_provenance_state": text_value(row.get("release_candidate_provenance_state")),
+            "sampling_weight": row.get("sampling_weight"),
+            "normalized_sampling_share": row.get("normalized_sampling_share"),
+            "sampling_weight_semantics": "conditional_sampling_only",
+            "sampling_weight_boundary": "not occurrence probability, physical probability, annual frequency, return period, or risk",
+        }
+        for row in rows
+    ]
+    firewall["scenario_row_count"] = len(rows)
+    validate_release_candidate_physical_meaning_firewall(firewall, error_cls=CandidateSourceZoneScenarioStressError)
+    return firewall
 
 
 def candidate_repeat_count_from_records(candidate_records: list[dict[str, Any]]) -> int:
@@ -762,8 +856,37 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Candidate release-zone record count: `{report['candidate_release_zone_record_count']}`",
         f"- Scenario row count: `{report['scenario_row_count']}`",
         "",
-        "Planning Input",
+        "Release Candidate Physical-Meaning Firewall",
     ]
+    firewall = report.get("release_candidate_physical_meaning_firewall", {})
+    lines.append(f"- release_candidate_provenance_state: `{firewall.get('release_candidate_provenance_state', '')}`")
+    lines.append(f"- firewall_status: `{firewall.get('firewall_status', '')}`")
+    lines.append(f"- sampling_weight_semantics: `{firewall.get('sampling_weight_semantics', '')}`")
+    lines.append(f"- sampling_weight_boundary: `{firewall.get('sampling_weight_boundary', '')}`")
+    lines.append(f"- physical_probability_claims_allowed: `{firewall.get('physical_probability_claims_allowed', '')}`")
+    lines.append(f"- annual_frequency_claims_allowed: `{firewall.get('annual_frequency_claims_allowed', '')}`")
+    lines.append(f"- return_period_claims_allowed: `{firewall.get('return_period_claims_allowed', '')}`")
+    lines.append(f"- risk_claims_allowed: `{firewall.get('risk_claims_allowed', '')}`")
+    lines.append("- release_candidate_provenance_state_counts:")
+    for key, value in (firewall.get("release_candidate_provenance_state_counts") or {}).items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("- release_candidate_provenance_profile:")
+    for entry in firewall.get("release_candidate_provenance_profile", []):
+        lines.append(f"  - {entry.get('candidate_release_zone_record_id', '')}: {entry.get('provenance_state', '')}")
+        lines.append(f"    workflow_generated: {entry.get('workflow_generated', '')}")
+        lines.append(f"    field_supported: {entry.get('field_supported', '')}")
+        lines.append(f"    blocked_missing_provenance: {entry.get('blocked_missing_provenance', '')}")
+    lines.append("- scenario_row_provenance_profile:")
+    for entry in firewall.get("scenario_row_provenance_profile", []):
+        lines.append(f"  - {entry.get('row_id', '')}: {entry.get('release_candidate_provenance_state', '')}")
+        lines.append(f"    sampling_weight: {entry.get('sampling_weight', '')}")
+        lines.append(f"    normalized_sampling_share: {entry.get('normalized_sampling_share', '')}")
+    lines.extend(
+        [
+            "",
+            "Planning Input",
+        ]
+    )
     planning = report.get("tb_183_planning_input", {})
     lines.append(f"- status: `{planning.get('status', '')}`")
     lines.append(f"- reason: `{planning.get('reason', '')}`")

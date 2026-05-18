@@ -90,10 +90,15 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         boundary_map = {entry["boundary"]: entry for entry in report["claim_boundary_matrix"]}
         self.assertEqual(boundary_map["workflow_reproducibility"]["classification"], "present")
         self.assertEqual(boundary_map["conditional_diagnostic_interpretation"]["classification"], "present")
+        self.assertEqual(boundary_map["release_candidate_physical_meaning"]["classification"], "present")
         self.assertEqual(boundary_map["physical_probability"]["classification"], "missing")
         self.assertEqual(boundary_map["annual_frequency"]["classification"], "out_of_scope")
         self.assertEqual(boundary_map["risk_exposure_vulnerability"]["classification"], "out_of_scope")
         self.assertEqual(boundary_map["operational_use"]["classification"], "out_of_scope")
+        self.assertIn(
+            "workflow_generated",
+            " ".join(boundary_map["release_candidate_physical_meaning"]["evidence"]),
+        )
 
     def test_diagnostic_vs_calibration_and_holdout_distinction(self) -> None:
         report = assessment.build_report()

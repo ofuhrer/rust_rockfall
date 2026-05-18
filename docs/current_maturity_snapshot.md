@@ -268,7 +268,10 @@ objective are:
     verification contracts, AOI terrain preprocessing, release-zone stability
     reporting, generic scenario generation, AOI-to-prepared-pilot dry-run
     composition, blocked case-skeleton handoff bundles with scenario-generation
-    and GIS scope summaries, the Balfrin pilot
+    and GIS scope summaries, and the release-candidate physical-meaning
+    firewall that labels `workflow_generated`, `field_supported`,
+    `mixed_provenance`, or `blocked_missing_provenance` candidate rows while
+    keeping sampling weights conditional-only, the Balfrin pilot
     contract, case plan, measured single-release-zone run, metrics contract,
     evidence bundle, scientific interpretation layer, and Swiss-wide execution
     envelope now distinguish completed dry-run automation from measured

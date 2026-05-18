@@ -33,6 +33,19 @@ DEFAULT_MISLEADING_PATTERNS = (
     re.compile(r"\brisk[- ]?map\b", re.IGNORECASE),
     re.compile(r"\boperational(?:ly)?\s+(?:approved|validated|ready|hazard)\b", re.IGNORECASE),
 )
+RELEASE_CANDIDATE_OVERCLAIM_PATTERNS = (
+    re.compile(r"\boccurrence probability\b", re.IGNORECASE),
+    re.compile(r"\bphysical probability\b", re.IGNORECASE),
+    re.compile(r"\bannual frequency\b", re.IGNORECASE),
+    re.compile(r"\breturn[- ]?period\b", re.IGNORECASE),
+    re.compile(r"\brisk\b", re.IGNORECASE),
+)
+RELEASE_CANDIDATE_PROVENANCE_STATES = (
+    "workflow_generated",
+    "field_supported",
+    "mixed_provenance",
+    "blocked_missing_provenance",
+)
 DEFAULT_SKIP_KEYS = frozenset({"claim_boundary", "claim_boundaries", "does_not_verify", "does_not_support"})
 
 
@@ -209,6 +222,143 @@ def require_false_fields(
 ) -> None:
     for field in fields:
         require(record.get(field) is False, f"{label_prefix}.{field} must be false", error_cls)
+
+
+def classify_release_candidate_provenance_state(
+    *,
+    workflow_generated: bool,
+    field_supported: bool,
+    blocked_missing_provenance: bool = False,
+) -> str:
+    if blocked_missing_provenance or (not workflow_generated and not field_supported):
+        return "blocked_missing_provenance"
+    if workflow_generated and field_supported:
+        return "mixed_provenance"
+    if field_supported:
+        return "field_supported"
+    return "workflow_generated"
+
+
+def build_release_candidate_physical_meaning_firewall(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    label_prefix: str = "release_candidate_physical_meaning_firewall",
+) -> dict[str, Any]:
+    profile: list[dict[str, Any]] = []
+    counts = {state: 0 for state in RELEASE_CANDIDATE_PROVENANCE_STATES}
+    for index, record in enumerate(records):
+        workflow_generated = bool(record.get("workflow_generated"))
+        field_supported = bool(record.get("field_supported"))
+        blocked_missing_provenance = bool(record.get("blocked_missing_provenance"))
+        provenance_state = classify_release_candidate_provenance_state(
+            workflow_generated=workflow_generated,
+            field_supported=field_supported,
+            blocked_missing_provenance=blocked_missing_provenance,
+        )
+        counts[provenance_state] += 1
+        profile.append(
+            {
+                "row_index": index,
+                "candidate_release_zone_record_id": str(record.get("candidate_release_zone_record_id") or "").strip(),
+                "candidate_release_zone_record_kind": str(record.get("candidate_release_zone_record_kind") or "").strip(),
+                "workflow_generated": workflow_generated,
+                "field_supported": field_supported,
+                "blocked_missing_provenance": blocked_missing_provenance,
+                "provenance_state": provenance_state,
+                "provenance_note": str(record.get("provenance_note") or "").strip(),
+            }
+        )
+
+    if counts["blocked_missing_provenance"]:
+        aggregate_state = "blocked_missing_provenance"
+    elif counts["mixed_provenance"]:
+        aggregate_state = "mixed_provenance"
+    elif counts["field_supported"]:
+        aggregate_state = "field_supported"
+    elif counts["workflow_generated"]:
+        aggregate_state = "workflow_generated"
+    else:
+        aggregate_state = "blocked_missing_provenance"
+
+    firewall = {
+        "firewall_status": aggregate_state,
+        "release_candidate_provenance_state": aggregate_state,
+        "release_candidate_provenance_state_counts": counts,
+        "release_candidate_provenance_profile": profile,
+        "sampling_weight_semantics": "conditional_sampling_only",
+        "sampling_weight_boundary": "not occurrence probability, physical probability, annual frequency, return period, or risk",
+        "sampling_weight_not_occurrence_probability": True,
+        "sampling_weight_not_physical_probability": True,
+        "sampling_weight_not_annual_frequency": True,
+        "sampling_weight_not_return_period": True,
+        "sampling_weight_not_risk": True,
+        "physical_probability_claims_allowed": False,
+        "annual_frequency_claims_allowed": False,
+        "return_period_claims_allowed": False,
+        "risk_claims_allowed": False,
+    }
+    return firewall
+
+
+def validate_release_candidate_physical_meaning_firewall(
+    firewall: Mapping[str, Any],
+    *,
+    error_cls: type[Exception],
+    label_prefix: str = "release_candidate_physical_meaning_firewall",
+) -> None:
+    require_mapping(firewall, label_prefix, error_cls)
+    require(
+        firewall.get("release_candidate_provenance_state") in RELEASE_CANDIDATE_PROVENANCE_STATES,
+        f"{label_prefix}.release_candidate_provenance_state must be one of {sorted(RELEASE_CANDIDATE_PROVENANCE_STATES)}",
+        error_cls,
+    )
+    require_false_fields(
+        firewall,
+        (
+            "physical_probability_claims_allowed",
+            "annual_frequency_claims_allowed",
+            "return_period_claims_allowed",
+            "risk_claims_allowed",
+        ),
+        error_cls,
+        label_prefix=label_prefix,
+    )
+    counts = require_mapping(firewall.get("release_candidate_provenance_state_counts"), f"{label_prefix}.release_candidate_provenance_state_counts", error_cls)
+    for state in RELEASE_CANDIDATE_PROVENANCE_STATES:
+        require(
+            counts.get(state) is not None,
+            f"{label_prefix}.release_candidate_provenance_state_counts must include {state}",
+            error_cls,
+        )
+        require(
+            isinstance(counts.get(state), int) and counts.get(state) >= 0,
+            f"{label_prefix}.release_candidate_provenance_state_counts.{state} must be a nonnegative integer",
+            error_cls,
+        )
+    profile = require_list(firewall.get("release_candidate_provenance_profile"), f"{label_prefix}.release_candidate_provenance_profile", error_cls)
+    for index, raw in enumerate(profile):
+        entry = require_mapping(raw, f"{label_prefix}.release_candidate_provenance_profile[{index}]", error_cls)
+        require(
+            entry.get("provenance_state") in RELEASE_CANDIDATE_PROVENANCE_STATES,
+            f"{label_prefix}.release_candidate_provenance_profile[{index}].provenance_state must be one of {sorted(RELEASE_CANDIDATE_PROVENANCE_STATES)}",
+            error_cls,
+        )
+        require(
+            entry.get("workflow_generated") is not None,
+            f"{label_prefix}.release_candidate_provenance_profile[{index}].workflow_generated must be present",
+            error_cls,
+        )
+        require(
+            entry.get("field_supported") is not None,
+            f"{label_prefix}.release_candidate_provenance_profile[{index}].field_supported must be present",
+            error_cls,
+        )
+    scan_text_for_misleading_claims(
+        firewall,
+        require_fn=lambda condition, message: require(condition, message, error_cls),
+        patterns=RELEASE_CANDIDATE_OVERCLAIM_PATTERNS,
+        path=label_prefix,
+    )
 
 
 def scan_text_for_misleading_claims(

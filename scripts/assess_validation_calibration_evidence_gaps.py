@@ -105,6 +105,15 @@ def build_report() -> dict[str, Any]:
             "why_it_matters": "Supports diagnostic interpretation only.",
         },
         {
+            "boundary": "release_candidate_physical_meaning",
+            "classification": "present",
+            "evidence": [
+                "workflow-generated release candidates are labeled workflow_generated, field_supported, mixed_provenance, or blocked_missing_provenance",
+                "scenario sampling weights are conditional only and are not occurrence probabilities, annual frequencies, return periods, or risk",
+            ],
+            "why_it_matters": "Prevents release-zone and scenario automation from being overread as field-supported source probability evidence.",
+        },
+        {
             "boundary": "physical_probability",
             "classification": "missing",
             "evidence": [

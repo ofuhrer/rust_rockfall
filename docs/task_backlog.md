@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-220: Release-Zone And Scenario Physical-Meaning Firewall
-
-Goal: Add an explicit interpretation firewall that prevents workflow-generated release candidates, scenario tables, and sampling weights from being represented as field-supported source probabilities.
-
-Capability gap reduced: Deterministic workflow maturity can be mistaken for physical credibility, especially around release-zone provenance and scenario sampling semantics.
-
-Why this outranks alternatives: The reviewer ranked the scientific credibility gap as the most dangerous risk; the repo should protect against overreading release/scenario automation before physical evidence exists.
-
-Inspect first:
-
-- `docs/source_zone_block_scenario_policy_v1.md`
-- `docs/current_maturity_snapshot.md`
-- `docs/tschamut_public_conditional_pilot_gate_report.md`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-
-Deliverables:
-
-- A validator or report section that labels release candidates as `workflow_generated`, `field_supported`, `mixed_provenance`, or `blocked_missing_provenance`.
-- Explicit checks that scenario sampling weights are not described as occurrence probabilities, annual frequencies, return periods, or risk.
-- Focused tests with allowed workflow-language examples and blocked overclaim examples.
-- Updates to relevant generated summaries so the provenance firewall appears wherever release/scenario automation is reported.
-
-Definition of done:
-
-- Future release-zone and scenario outputs carry machine-readable physical-meaning boundaries and fail closed on probability or field-support overclaims.
-
-Boundaries: Claim-boundary hardening only; no calibration, no annual-frequency semantics, no operational claim, no new physical evidence, and no source-zone heuristic change.
-
 ### TB-221: Observed Runout And Deposition Acquisition Blocker Matrix
 
 Goal: Convert the physical-evidence intake gap into a concrete acquisition blocker matrix for observed runout/deposition, release-zone provenance, block-population evidence, calibration inputs, validation inputs, and holdout data.
