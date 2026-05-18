@@ -62,11 +62,14 @@ operator acquisition package, fixture-backed intake acceptance smoke tests, a
 release-zone provenance intake bridge, and separate block-population and
 source-frequency acquisition blocker fields. Those reports keep measured,
 unavailable, blocked, dry-run, unauthorized, historical, template, and
-fixture-backed provenance separate. Peak-memory and split validation/hazard
-output metrics remain incomplete for the preserved target-area evidence until
-a future authorized metrics-completion run is performed, and local target-area
-spatial-uncertainty artifacts are still unavailable unless the Balfrin run
-root is mounted.
+fixture-backed provenance separate. The target-area metrics-completion source
+label now distinguishes recovered existing run-root metrics from rerun or
+blocked branches. The TB-243 read-only spatial-artifact inventory recovered
+the run-root-referenced hazard manifest plus standard and pilot GIS package
+manifests from the preserved Balfrin root, but the target-area cellwise
+spatial layers and derived spatial uncertainty products remain explicit
+`unavailable_from_preserved_root` deferrals. Those spatial deferrals are not
+execution-metrics blockers and are not physical validation evidence.
 
 These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic

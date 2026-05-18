@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-243: Target-Area Spatial Artifact Recovery Or Deferral
-
-Goal: Determine whether unavailable local target-area spatial-uncertainty artifacts can be recovered from the existing Balfrin run root or must remain an explicit deferred blocker.
-
-Capability gap reduced: Target-area closure still has spatial-artifact availability ambiguity separate from execution-metrics completeness.
-
-Why this outranks alternatives: A closure refresh is only useful if it distinguishes missing metrics from missing spatial interpretation artifacts instead of collapsing both into generic incompleteness.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_target_area_interpretation.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A read-only artifact-recovery or artifact-inventory helper path for the target-area Balfrin run root.
-- A deterministic report classifying required spatial artifacts as `recovered`, `not_required_for_execution_metrics_closure`, `unavailable_from_preserved_root`, or `blocked_access`.
-- Tests or fixtures proving unavailable spatial artifacts remain explicit and are not treated as physical validation evidence.
-
-Definition of done:
-
-- The closure path can distinguish execution-metrics completeness from target-area spatial-artifact availability, with any unrecovered artifacts recorded as blockers or explicit deferrals.
-
-Boundaries: Read-only artifact inspection only; no live Balfrin execution, no generated heavy-output commit, no new spatial interpretation claim, no physical-credibility upgrade, and no operational claim.
-
 ### TB-244: Post-Metrics Balfrin Demonstration Closure Refresh
 
 Goal: Recompute the Balfrin demonstration closure package after target-area metrics are complete or explicitly unrecoverable, and produce the next measured-action recommendation from that updated state.

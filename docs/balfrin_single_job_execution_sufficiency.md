@@ -187,6 +187,25 @@ run root, classifies each required metrics-completion field as `recovered`,
 compares the result against the current metrics-completion rerun package. It
 does not submit jobs, write remote files, or upgrade claim boundaries.
 
+For the separate target-area spatial-artifact availability question, use the
+read-only inventory helper:
+
+```bash
+PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py \
+  --balfrin-access-json /tmp/balfrin_access_preflight.json \
+  --format json \
+  --artifact-dir validation/private/tschamut_public_pilot/balfrin_target_area_spatial_artifact_recovery_v1
+```
+
+The helper inspects the preserved run root and classifies each required
+spatial artifact as `recovered`, `not_required_for_execution_metrics_closure`,
+`unavailable_from_preserved_root`, or `blocked_access`. The TB-243 read-only
+run recovered the run-root-referenced hazard manifest plus the standard and pilot GIS package
+manifests, while the target-area cellwise spatial layers and derived spatial
+uncertainty products remained `unavailable_from_preserved_root`. Those missing
+products stay explicit spatial deferrals and are not physical validation
+evidence.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to

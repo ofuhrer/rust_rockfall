@@ -1430,3 +1430,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence integration only; no live submission, no physical-credibility upgrade, no annual-frequency or risk semantics, and no operational claim.
 - Next task: `TB-243`
+
+### TB-243: Target-Area Spatial Artifact Recovery Or Deferral
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: determine whether target-area spatial-uncertainty artifacts can be recovered from the preserved Balfrin run root or must remain explicit deferrals separate from execution metrics.
+- Files changed: `scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py`, `tests/test_balfrin_target_area_spatial_artifact_recovery.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only spatial artifact recovery CLI that consumes the Balfrin access preflight, supports local fixtures or precollected inventory JSON, and inspects the existing authorized target-area run root without remote mutation.
+  - Classified required spatial artifacts as `recovered`, `unavailable_from_preserved_root`, or `blocked_access`, while recording `not_required_for_execution_metrics_closure` for the execution-metrics separation path.
+  - Exercised the live read-only Balfrin path; access was ready, collection completed, the run-root-referenced hazard manifest plus standard and pilot GIS package manifests were recovered, and the cellwise spatial layers plus derived spatial uncertainty products remained `unavailable_from_preserved_root`.
+  - Added fixture-backed tests proving unavailable spatial artifacts remain explicit deferrals and are not treated as physical validation evidence, then removed TB-243 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py tests/test_balfrin_target_area_spatial_artifact_recovery.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_spatial_artifact_recovery -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb243_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py --balfrin-access-json /tmp/tb243_balfrin_access_preflight.json --format json --json-output /tmp/tb243_balfrin_target_area_spatial_artifact_recovery.json --text-output /tmp/tb243_balfrin_target_area_spatial_artifact_recovery.txt > /tmp/tb243_balfrin_target_area_spatial_artifact_recovery.stdout`
+- Result/status: implemented_measured
+- Boundaries: read-only artifact inspection only; no live Balfrin submission, no remote mutation, no generated artifact commit, no new spatial interpretation claim, no physical-credibility upgrade, no scale-up claim, no physical-probability/risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-244`
