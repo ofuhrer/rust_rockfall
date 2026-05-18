@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-257: AOI Swisstopo Product Resolver And Cache Manifest
-
-Goal: Resolve the required swisstopo products and tile ids for a bootstrapped AOI into a deterministic acquisition/cache manifest.
-
-Capability gap reduced: The workflow still lacks a concrete user path from AOI geometry to exact public-data products, tile ids, checksums, versions, and staging paths.
-
-Why this outranks alternatives: Users cannot move quickly to a hazard map until the data acquisition step is machine-readable and resumable rather than prose-driven.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-
-Deliverables:
-
-- A resolver mode that consumes the AOI manifest and emits product rows for swissALTI3D, SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D with expected tile ids or explicit unresolved-tile blockers.
-- A cache manifest template with checksum, version/date, license, raw path, processed path, and retry/resume metadata fields.
-- Tests for resolved fixture tiles, unresolved product rows, and deterministic no-download behavior.
-
-Definition of done:
-
-- The user-facing workflow can tell exactly which public products must be staged for an AOI and which rows remain unresolved before any download or copy is attempted.
-
-Boundaries: Resolver and manifest generation only; no download unless a later task explicitly adds and tests it, no simulation, no operational claim, and no generated public data committed.
-
 ### TB-258: Local Public-Geodata Staging And Verification Command
 
 Goal: Add a user-facing staging command that validates locally supplied swisstopo files against the AOI cache manifest and records verified staged inputs.

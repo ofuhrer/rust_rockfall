@@ -1744,3 +1744,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: manifest/bootstrap only; no geodata download, no simulation, no hazard-map claim, no annual-frequency semantics, and no committed generated AOI roots.
 - Next task: backlog refill needed
+
+### TB-257: AOI Swisstopo Product Resolver And Cache Manifest
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: resolve the bootstrapped AOI into deterministic swisstopo product rows and a resumable cache-manifest template without introducing any download path.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/plan_swisstopo_aoi_acquisition.py`, `docs/swisstopo_data_strategy.md`, `docs/public_real_site_geodata_preparation.md`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a resolver layer that emits one AOI product row each for swissALTI3D, SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, with swissALTI3D resolving to the AOI catalog tile id and the remaining public-context rows carrying explicit unresolved-tile blockers.
+  - Added a cache-manifest template surface to the public-geodata contract with checksum, version/date, license, raw path, processed path, and retry/resume placeholders so the no-download planner can describe the future staging contract deterministically.
+  - Updated the planner text/JSON output and focused tests so the resolved terrain tile, unresolved context rows, and no-download behavior are all asserted from the same fixture-backed path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner tests.test_second_site_public_geodata_preflight tests.test_public_geodata_cache_verifier`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: resolver and manifest generation only; no download, no simulation, no operational claim, and no generated public data committed.
+- Next task: `TB-258`

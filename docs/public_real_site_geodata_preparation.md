@@ -131,6 +131,12 @@ identity, product version/date, source and processed SHA-256 digests, processed
 DEM dimensions, nodata, crop extent, and that template manifests do not pretend
 raw or processed geodata are present.
 
+The public-geodata cache contract used by the second-site planner also carries
+a deterministic template surface for the future cache manifest. That template
+keeps checksum, version/date, license, raw path, processed path, and
+retry/resume placeholders explicit so the no-download planner can describe
+what still needs to be staged without inventing a download step.
+
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
 does not prove scientific skill; it only gates provenance and claim hygiene.

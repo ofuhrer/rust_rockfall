@@ -75,6 +75,39 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
                 "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1"
             )
         )
+        self.assertEqual(report["aoi_tile_discovery"]["resolver_status"], "ready")
+        resolution_rows = {entry["category"]: entry for entry in report["aoi_tile_discovery"]["product_resolution_rows"]}
+        self.assertEqual(
+            list(resolution_rows),
+            [
+                "terrain_crop",
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+        )
+        self.assertEqual(resolution_rows["terrain_crop"]["tile_resolution_status"], "resolved")
+        self.assertEqual(resolution_rows["terrain_crop"]["expected_tile_ids"], ["2793-1180"])
+        self.assertIn("<product_version_or_date>", resolution_rows["terrain_crop"]["raw_path"])
+        self.assertIn("<tile_id_or_delivery_identifier>", resolution_rows["terrain_crop"]["raw_path"])
+        self.assertEqual(resolution_rows["swissimage_context"]["tile_resolution_status"], "blocked_unresolved_tile_ids")
+        self.assertTrue(resolution_rows["swissimage_context"]["tile_blockers"])
+        cache_template = report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["cache_manifest_template"]
+        self.assertEqual(cache_template["schema_version"], "swiss_public_geodata_cache_manifest_template_v1")
+        self.assertEqual(cache_template["retry_resume_fields"], [
+            "attempt_count",
+            "last_attempt_at",
+            "resume_token",
+            "resume_status",
+            "retry_authorized",
+            "resume_authorized",
+        ])
+        self.assertEqual(cache_template["products"][0]["product_label"], "swissALTI3D")
+        self.assertEqual(cache_template["products"][0]["checksum_sha256"], "")
+        self.assertEqual(cache_template["products"][0]["retry_resume"]["attempt_count"], 0)
+        self.assertFalse(Path(cache_template["cache_manifest_path"]).exists())
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
@@ -145,6 +178,9 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("aoi_tile_discovery:", text_report)
+        self.assertIn("resolver_status:", text_report)
+        self.assertIn("product_resolution_rows:", text_report)
+        self.assertIn("cache_manifest_template:", text_report)
         self.assertIn("public_geodata_contract_readiness_status: ready", text_report)
         self.assertIn("required_public_geodata_products:", text_report)
         self.assertIn("public_context_acquisition_plan:", text_report)

@@ -28,6 +28,7 @@ SCHEMA_VERSION = "second_site_public_geodata_preflight_v1"
 PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_workflow_contract_v1"
 PUBLIC_GEODATA_CACHE_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_cache_contract_v1"
 PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION = "swiss_public_geodata_cache_verification_v1"
+PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION = "swiss_public_geodata_cache_manifest_template_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
 DEFAULT_AOI_TILE_CATALOG = (
     ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml"
@@ -80,6 +81,72 @@ PUBLIC_CONTEXT_PRODUCT_METADATA_REQUIREMENTS = {
         "only if a site policy explicitly references barriers or nets",
     ],
 }
+
+AOI_RESOLUTION_PRODUCT_SPECS = [
+    {
+        "category": "terrain_crop",
+        "product_label": "swissALTI3D",
+        "source_product_id": "swissalti3d_2m",
+        "source_product_name": "swissALTI3D",
+        "resolution_m": 2.0,
+        "resolver_status": "resolved",
+        "tile_resolution_strategy": "resolved_from_aoi_tile_catalog",
+    },
+    {
+        "category": "swissimage_context",
+        "product_label": "SWISSIMAGE",
+        "source_product_id": "swissimage",
+        "source_product_name": "SWISSIMAGE",
+        "resolution_m": None,
+        "resolver_status": "blocked_unresolved_tile_ids",
+        "tile_resolution_strategy": "requires_product_specific_tile_catalog",
+    },
+    {
+        "category": "swisstlm3d_context",
+        "product_label": "swissTLM3D",
+        "source_product_id": "swisstlm3d",
+        "source_product_name": "swissTLM3D",
+        "resolution_m": None,
+        "resolver_status": "blocked_unresolved_tile_ids",
+        "tile_resolution_strategy": "requires_product_specific_delivery_record",
+    },
+    {
+        "category": "swisssurface3d_context",
+        "product_label": "swissSURFACE3D",
+        "source_product_id": "swisssurface3d",
+        "source_product_name": "swissSURFACE3D",
+        "resolution_m": None,
+        "resolver_status": "blocked_unresolved_tile_ids",
+        "tile_resolution_strategy": "requires_product_specific_tile_catalog",
+    },
+    {
+        "category": "swisssurface3d_raster_context",
+        "product_label": "swissSURFACE3D Raster",
+        "source_product_id": "swisssurface3d_raster",
+        "source_product_name": "swissSURFACE3D Raster",
+        "resolution_m": None,
+        "resolver_status": "blocked_unresolved_tile_ids",
+        "tile_resolution_strategy": "requires_product_specific_tile_catalog",
+    },
+    {
+        "category": "swissbuildings3d_context",
+        "product_label": "swissBUILDINGS3D",
+        "source_product_id": "swissbuildings3d",
+        "source_product_name": "swissBUILDINGS3D",
+        "resolution_m": None,
+        "resolver_status": "blocked_unresolved_tile_ids",
+        "tile_resolution_strategy": "requires_product_specific_tile_catalog",
+    },
+]
+
+PUBLIC_GEODATA_CACHE_TEMPLATE_RETRY_RESUME_FIELDS = [
+    "attempt_count",
+    "last_attempt_at",
+    "resume_token",
+    "resume_status",
+    "retry_authorized",
+    "resume_authorized",
+]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -250,6 +317,13 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
     }
+    report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["cache_manifest_template"] = build_public_geodata_cache_manifest_template(
+        candidate_site_id=candidate_site_id,
+        candidate_site_name=candidate_site_name,
+        paths=paths,
+        acquisition_manifest=acquisition_manifest,
+        aoi_tile_discovery=aoi_tile_discovery,
+    )
     return report
 
 
@@ -445,10 +519,17 @@ def build_aoi_tile_discovery(
             }
         )
 
+    product_resolution_rows = build_aoi_product_resolution_rows(
+        acquisition_manifest=acquisition_manifest,
+        tile_candidates=catalog_tile_entries,
+        product_candidates=catalog_product_entries,
+        paths=paths,
+    )
     discovery_ready = bool(catalog_ready and not catalog_blockers and catalog_tile_entries)
     return {
         "schema_version": "swisstopo_aoi_tile_discovery_v2",
         "discovery_status": "ready" if discovery_ready else "blocked_missing_inputs",
+        "resolver_status": "ready" if discovery_ready else "blocked_missing_inputs",
         "candidate_site_id": candidate_site_id,
         "aoi_extent": site_extent if site_extent else "placeholder_extent_missing",
         "catalog_path": str(catalog_path),
@@ -461,9 +542,120 @@ def build_aoi_tile_discovery(
         "product_candidates": catalog_product_entries,
         "product_candidate_count": len(catalog_product_entries),
         "required_products": product_entries,
+        "product_resolution_rows": product_resolution_rows,
         "missing_catalog_inputs": missing_catalog_inputs,
         "no_download_boundary": no_download_boundary(),
     }
+
+
+def build_aoi_product_resolution_rows(
+    *,
+    acquisition_manifest: dict[str, Any],
+    tile_candidates: list[dict[str, Any]],
+    product_candidates: list[dict[str, Any]],
+    paths: dict[str, Path],
+) -> list[dict[str, Any]]:
+    manifest_entries = {
+        text_value(entry.get("category")): entry for entry in acquisition_manifest.get("expected_products") or [] if isinstance(entry, dict)
+    }
+    product_candidate_by_id = {
+        text_value(entry.get("product_id")): entry for entry in product_candidates if text_value(entry.get("product_id"))
+    }
+    tile_ids = [text_value(entry.get("tile_id")) for entry in tile_candidates if text_value(entry.get("tile_id"))]
+    site_extent = acquisition_manifest.get("site_extent") if isinstance(acquisition_manifest.get("site_extent"), dict) else {}
+    candidate_site_id = text_value(acquisition_manifest.get("candidate_site_id")) or DEFAULT_CANDIDATE_SITE_ID
+    resolved_rows: list[dict[str, Any]] = []
+
+    for spec in AOI_RESOLUTION_PRODUCT_SPECS:
+        manifest_entry = manifest_entries.get(spec["category"], {})
+        expected_staged_path = text_value(manifest_entry.get("expected_staged_path")) or str(
+            paths.get(spec["category"], paths["processed_input_root"] if spec["category"] == "terrain_crop" else paths["processed_context_root"])
+        )
+        expected_staging_root = str(expected_staging_root_for_text(expected_staged_path)) if expected_staged_path else ""
+        tile_blockers: list[str] = []
+        expected_tile_ids: list[str] = []
+        source_url_or_download_record = ""
+        product_version_or_date = ""
+        license_or_terms_reference = ""
+        checksum_sha256 = ""
+        raw_path = raw_path_pattern(candidate_site_id, spec["source_product_id"])
+        processed_path = expected_staged_path
+        metadata_path = cache_template_metadata_path(spec["category"], expected_staged_path)
+        tile_resolution_status = spec["resolver_status"]
+        if spec["category"] == "terrain_crop":
+            terrain_product_candidate = product_candidate_by_id.get(spec["source_product_id"])
+            if tile_ids and terrain_product_candidate:
+                expected_tile_ids = tile_ids
+                source_url_or_download_record = text_value(
+                    terrain_product_candidate.get("source_urls", [None])[0] if terrain_product_candidate.get("source_urls") else None
+                )
+                product_version_or_date = text_value(
+                    terrain_product_candidate.get("product_version") or terrain_product_candidate.get("product_date")
+                )
+                license_or_terms_reference = text_value(
+                    terrain_product_candidate.get("licenses", [None])[0] if terrain_product_candidate.get("licenses") else None
+                )
+                tile_resolution_status = "resolved"
+            else:
+                tile_resolution_status = "blocked_missing_inputs"
+                tile_blockers.append("AOI tile catalog did not resolve swissALTI3D tile ids for the site extent")
+        else:
+            tile_blockers.append(f"no deterministic tile catalog is committed for {spec['product_label']} yet")
+
+        if not manifest_entry:
+            tile_blockers.append(f"acquisition manifest is missing a {spec['category']} row")
+        if not expected_staged_path:
+            tile_blockers.append(f"missing expected staged path for {spec['category']}")
+
+        resolved_rows.append(
+            {
+                "product_label": spec["product_label"],
+                "category": spec["category"],
+                "source_product_id": spec["source_product_id"],
+                "source_product_name": spec["source_product_name"],
+                "expected_tile_ids": expected_tile_ids,
+                "tile_resolution_status": tile_resolution_status,
+                "tile_resolution_strategy": spec["tile_resolution_strategy"],
+                "tile_blockers": tile_blockers,
+                "source_url_or_download_record": source_url_or_download_record,
+                "product_version_or_date": product_version_or_date,
+                "license_or_terms_reference": license_or_terms_reference,
+                "checksum_sha256": checksum_sha256,
+                "raw_path": raw_path,
+                "processed_path": processed_path,
+                "staged_path": processed_path,
+                "metadata_path": metadata_path,
+                "crop_extent_lv95_m": site_extent if site_extent else {},
+                "raw_checksum": "",
+                "processed_checksum": "",
+                "preprocessing_command_and_timestamp": "",
+                "retry_resume": {
+                    "attempt_count": 0,
+                    "last_attempt_at": None,
+                    "resume_token": "",
+                    "resume_status": "not_started",
+                    "retry_authorized": False,
+                    "resume_authorized": False,
+                },
+                "expected_staging_root": expected_staging_root,
+                "resolver_status": "resolved" if tile_resolution_status == "resolved" else "blocked_unresolved_tile_ids",
+            }
+        )
+
+    return resolved_rows
+
+
+def raw_path_pattern(candidate_site_id: str, source_product_id: str) -> str:
+    return f"data/raw/swisstopo/{candidate_site_id}/{source_product_id}/<product_version_or_date>/<tile_id_or_delivery_identifier>"
+
+
+def cache_template_metadata_path(category: str, expected_staged_path: str) -> str:
+    path = Path(expected_staged_path)
+    if category == "swisstlm3d_context":
+        return str(path / "metadata.json")
+    if path.suffix:
+        return str(path.with_name(f"{path.stem}_metadata.yaml"))
+    return str(path / "metadata.yaml")
 
 
 def no_download_boundary() -> dict[str, Any]:
@@ -1167,19 +1359,7 @@ def build_public_geodata_cache_contract(
             },
         ],
         "verification_fields": [
-            "source_product_id",
-            "source_product_name",
-            "source_url_or_download_record",
-            "product_version_or_date",
-            "tile_id_or_delivery_identifier",
-            "checksum_sha256",
-            "crs",
-            "resolution_m",
-            "crop_extent_lv95_m",
-            "license_or_terms_reference",
-            "raw_checksum",
-            "processed_checksum",
-            "preprocessing_command_and_timestamp",
+            *public_geodata_cache_verification_fields(),
         ],
         "verification_statuses": [
             "verified",
@@ -1188,6 +1368,52 @@ def build_public_geodata_cache_contract(
             "metadata_mismatch",
         ],
         "claim_boundaries": claim_boundaries(),
+    }
+
+
+def public_geodata_cache_verification_fields() -> list[str]:
+    return [
+        "source_product_id",
+        "source_product_name",
+        "source_url_or_download_record",
+        "product_version_or_date",
+        "tile_id_or_delivery_identifier",
+        "checksum_sha256",
+        "crs",
+        "resolution_m",
+        "crop_extent_lv95_m",
+        "license_or_terms_reference",
+        "raw_checksum",
+        "processed_checksum",
+        "preprocessing_command_and_timestamp",
+    ]
+
+
+def build_public_geodata_cache_manifest_template(
+    *,
+    candidate_site_id: str,
+    candidate_site_name: str,
+    paths: dict[str, Path],
+    acquisition_manifest: dict[str, Any],
+    aoi_tile_discovery: dict[str, Any],
+) -> dict[str, Any]:
+    cache_paths = build_cache_paths(candidate_site_id, paths)
+    return {
+        "schema_version": PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION,
+        "template_status": "dry_run_only",
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "cache_manifest_path": str(paths["processed_input_root"] / "public_geodata_cache_manifest.yaml"),
+        "cache_paths": cache_paths,
+        "verification_fields": public_geodata_cache_verification_fields(),
+        "retry_resume_fields": list(PUBLIC_GEODATA_CACHE_TEMPLATE_RETRY_RESUME_FIELDS),
+        "download_boundary": no_download_boundary(),
+        "products": aoi_tile_discovery.get("product_resolution_rows") or build_aoi_product_resolution_rows(
+            acquisition_manifest=acquisition_manifest,
+            tile_candidates=aoi_tile_discovery.get("tile_candidates") or [],
+            product_candidates=aoi_tile_discovery.get("product_candidates") or [],
+            paths=paths,
+        ),
     }
 
 
@@ -2044,6 +2270,7 @@ def _render_aoi_tile_discovery(report: dict[str, Any]) -> list[str]:
     lines = [
         f"- schema_version: {report.get('schema_version', '')}",
         f"- discovery_status: {report.get('discovery_status', '')}",
+        f"- resolver_status: {report.get('resolver_status', '')}",
         f"- catalog_path: {report.get('catalog_path', '')}",
         f"- catalog_status: {report.get('catalog_status', '')}",
         f"- catalog_blockers: {', '.join(report.get('catalog_blockers') or []) if report.get('catalog_blockers') else 'none'}",
@@ -2088,6 +2315,17 @@ def _render_aoi_tile_discovery(report: dict[str, Any]) -> list[str]:
             )
     else:
         lines.append("- required_products: none")
+    if report.get("product_resolution_rows"):
+        lines.append("- product_resolution_rows:")
+        for entry in report["product_resolution_rows"]:
+            lines.append(
+                f"  - {entry.get('product_label', '')}: tile_resolution_status={entry.get('tile_resolution_status', '')}, "
+                f"expected_tile_ids={', '.join(entry.get('expected_tile_ids') or []) or 'none'}, "
+                f"raw_path={entry.get('raw_path', '')}, processed_path={entry.get('processed_path', '')}, "
+                f"blockers={', '.join(entry.get('tile_blockers') or []) or 'none'}"
+            )
+    else:
+        lines.append("- product_resolution_rows: none")
     lines.append("- no_download_boundary:")
     for key, value in (report.get("no_download_boundary") or {}).items():
         lines.append(f"  - {key}: {value}")
@@ -2155,6 +2393,24 @@ def _render_public_geodata_cache_contract(contract: dict[str, Any]) -> list[str]
     lines.extend(f"    - {field}" for field in contract["verification_fields"])
     lines.append("  - verification_statuses:")
     lines.extend(f"    - {status}" for status in contract["verification_statuses"])
+    if contract.get("cache_manifest_template"):
+        template = contract["cache_manifest_template"]
+        lines.append("  - cache_manifest_template:")
+        lines.append(f"    - schema_version: {template.get('schema_version', '')}")
+        lines.append(f"    - template_status: {template.get('template_status', '')}")
+        lines.append(f"    - cache_manifest_path: {template.get('cache_manifest_path', '')}")
+        lines.append("    - retry_resume_fields:")
+        lines.extend(f"      - {field}" for field in template.get("retry_resume_fields") or [])
+        lines.append("    - products:")
+        for entry in template.get("products") or []:
+            if not isinstance(entry, dict):
+                continue
+            lines.append(
+                f"      - {entry.get('product_label', '')}: tile_resolution_status={entry.get('tile_resolution_status', '')}, "
+                f"expected_tile_ids={', '.join(entry.get('expected_tile_ids') or []) or 'none'}, "
+                f"raw_path={entry.get('raw_path', '')}, processed_path={entry.get('processed_path', '')}, "
+                f"blockers={', '.join(entry.get('tile_blockers') or []) or 'none'}"
+            )
     lines.append("  - claim_boundaries:")
     lines.extend(f"    - {key}: {str(value).lower()}" for key, value in contract["claim_boundaries"].items())
     return lines

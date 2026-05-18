@@ -297,6 +297,14 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, but
 it does not download anything and it does not convert the deferred public
 context into readiness.
 
+The AOI resolver now also emits per-product rows for the selected swisstopo
+bundle, with the swissALTI3D terrain row resolving to tile ids from the AOI
+catalog and the other public-context rows remaining explicit tile blockers
+until product-specific catalogs or delivery records are staged. The paired
+cache-manifest template keeps checksum, version/date, license, raw path,
+processed path, and retry/resume placeholders visible so the acquisition path
+stays machine-readable before any download or copy is attempted.
+
 The tiny synthetic staging fixture under
 `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/`
 is a local scaffolding helper only. It exercises the contract and staging

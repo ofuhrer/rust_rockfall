@@ -89,6 +89,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     paths = PREFLIGHT.build_paths(candidate_site_id, config, base=path_base)
     acquisition_report = PREFLIGHT.build_report(site_config)
     public_context_acquisition_plan = PREFLIGHT.build_public_context_acquisition_plan(acquisition_manifest, [])
+    workflow_contract = acquisition_report["public_geodata_workflow_contract"]
+    aoi_tile_discovery = acquisition_report["aoi_tile_discovery"]
 
     product_rows: list[dict[str, Any]] = []
     metadata_rows: list[dict[str, Any]] = []
@@ -167,19 +169,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
         "public_context_acquisition_summary": PREFLIGHT.build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
-        "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
-        "public_geodata_workflow_contract": PREFLIGHT.build_public_geodata_workflow_contract(
-            candidate_site_id=candidate_site_id,
-            candidate_site_name=candidate_site_name,
-            site_extent=site_extent,
-            paths=paths,
-            source_zone_scenario_contract=(
-                config.get("source_zone_scenario_contract")
-                if isinstance(config.get("source_zone_scenario_contract"), dict)
-                else {}
-            ),
-            fixture_profile=PREFLIGHT.text_value(config.get("fixture_profile")),
-        ),
+        "aoi_tile_discovery": aoi_tile_discovery,
+        "public_geodata_workflow_contract": workflow_contract,
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
         "expected_staging_paths": expected_staging_paths,
@@ -353,6 +344,7 @@ def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
     rendered = [
         f"- schema_version: {report.get('schema_version', '')}",
         f"- discovery_status: {report.get('discovery_status', '')}",
+        f"- resolver_status: {report.get('resolver_status', '')}",
         f"- catalog_path: {report.get('catalog_path', '')}",
         f"- catalog_status: {report.get('catalog_status', '')}",
         f"- catalog_blockers: {', '.join(report.get('catalog_blockers') or []) if report.get('catalog_blockers') else 'none'}",
@@ -397,6 +389,17 @@ def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
             )
     else:
         rendered.append("- required_products: none")
+    if report.get("product_resolution_rows"):
+        rendered.append("- product_resolution_rows:")
+        for entry in report["product_resolution_rows"]:
+            rendered.append(
+                f"  - {entry.get('product_label', '')}: tile_resolution_status={entry.get('tile_resolution_status', '')}, "
+                f"expected_tile_ids={', '.join(entry.get('expected_tile_ids') or []) or 'none'}, "
+                f"raw_path={entry.get('raw_path', '')}, processed_path={entry.get('processed_path', '')}, "
+                f"blockers={', '.join(entry.get('tile_blockers') or []) or 'none'}"
+            )
+    else:
+        rendered.append("- product_resolution_rows: none")
     rendered.append("- no_download_boundary:")
     for key, value in (report.get("no_download_boundary") or {}).items():
         rendered.append(f"  - {key}: {value}")
