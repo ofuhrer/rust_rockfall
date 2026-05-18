@@ -928,3 +928,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: profiling and target selection only, no hazard semantics or physics change, no heavy outputs committed, and no distributed or operational claims introduced.
 - Next task: `TB-220`
+
+### TB-220: Release-Zone And Scenario Physical-Meaning Firewall
+
+- Date: 2026-05-18
+- Commit: `1204948`
+- Objective: add an explicit interpretation firewall that prevents workflow-generated release candidates, scenario tables, and sampling weights from being represented as field-supported source probabilities.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/tschamut_public_conditional_pilot_gate_report.md`, `docs/task_backlog.md`, `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/lib/workflow_validation.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_physical_credibility_evidence_requirements.py`, `tests/test_validation_calibration_evidence_gaps.py`
+- Implementation summary:
+  - Added a shared release-candidate physical-meaning firewall helper that classifies candidate rows as `workflow_generated`, `field_supported`, `mixed_provenance`, or `blocked_missing_provenance` and rejects occurrence-probability, annual-frequency, return-period, and risk language.
+  - Threaded the firewall through the candidate scenario generator, the physical-credibility evidence map, and the validation/calibration gap report so release-zone and scenario automation summaries surface the boundary explicitly.
+  - Added focused tests for all supported provenance labels, blocked overclaim examples, and report-shape regressions, then updated the maturity snapshot and gate report to mention the new firewall.
+  - Removed TB-220 from the active backlog before committing the implementation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_physical_credibility_evidence_requirements tests.test_validation_calibration_evidence_gaps`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: claim-boundary hardening only; no calibration, no annual-frequency semantics, no operational claim, no new physical evidence, and no source-zone heuristic change.
+- Next task: `TB-221`
