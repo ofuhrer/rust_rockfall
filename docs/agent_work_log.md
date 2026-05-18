@@ -728,3 +728,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live execution, no claim upgrade, no operational or annual-frequency semantics, and no fabricated full-scale evidence.
 - Next task: `TB-211`
+
+### TB-211: Authorization-Gated Multi-Zone Balfrin Execution
+
+- Date: 2026-05-18
+- Commit: `d8a8580`
+- Objective: add a fail-closed multi-zone Balfrin execution path that requires a reviewed handoff package and live-run authorization record before submission, and classify measured versus incomplete run-root evidence without silently promoting partial runs.
+- Files changed: `scripts/submit_balfrin_probe.py`, `scripts/collect_balfrin_probe_metrics.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_authorized_multi_zone_submit.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a dedicated `--authorized-submit` mode to `scripts/submit_balfrin_probe.py` that refuses to submit unless a reviewed handoff package and live-run authorization record are both provided and validated, and writes a deterministic blocked report when either gate is missing.
+  - Extended the Balfrin collector with `run_root_status`, checksum summaries, manifest/reducer/restart-replay subreports, and failure-behavior classification so complete fixture roots are distinguishable from incomplete roots.
+  - Updated the multi-zone handoff generator and driver docs to advertise the explicit reviewed-package and authorization-record submit command, then removed TB-211 from the active backlog.
+  - Added focused tests for authorized fixture execution metadata, blocked-missing-authorization, blocked-missing-input, and incomplete-run-root classifications, plus a regression for the updated multi-zone handoff command shape.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorized_multi_zone_submit tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_probe_driver -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py scripts/collect_balfrin_probe_metrics.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_authorized_multi_zone_submit.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live execution, no operational claim, no distributed execution, no annual-frequency or physical-probability semantics, and no fabricated metrics.
+- Next task: `TB-212`
