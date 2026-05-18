@@ -1345,3 +1345,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live execution, no Balfrin job submission, no generated output commit, no command behavior change, no scale-up claim, no operational claim, and no physical-probability/risk/exposure/vulnerability claim.
 - Next task: backlog refill needed
+
+### TB-239: Backlog, Maturity Snapshot, And Worker-Context Alignment
+
+- Date: 2026-05-18
+- Commit: `9333ad7`
+- Objective: align the active backlog, maturity snapshot, and worker-context routing so the current queue stays synchronized with worker guidance.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `scripts/print_agent_task_context.py`, `tests/test_agent_task_context.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the maturity snapshot to state that TB-239+ tasks are active, replacing the stale empty-backlog language without changing any scientific claims.
+  - Narrowed Balfrin routing so it requires explicit Balfrin plus access/action terms, which keeps Chant Sura-only tasks from inheriting remote-cluster access just because their text mentions remote evidence.
+  - Added regression coverage for the live active-queue report and for Chant Sura text that mentions remote-cluster evidence but still stays local-only.
+  - Removed TB-239 from the active backlog after the alignment change was verified.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_agent_task_context -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_measured
+- Boundaries: documentation/context hygiene only; no remote-cluster access attempt, no scientific claim upgrade, and no operational claim.
+- Next task: `TB-240`
