@@ -1706,3 +1706,24 @@ scan thousands of lines of completed history.
   duplicated orchestration surfaces.
 - Boundary retained: scientific honesty, claim boundaries, fail-closed evidence
   discipline, and Balfrin authorization requirements remain intact.
+
+### TB-255: AOI-To-Hazard-Map Front Door CLI
+
+- Date: 2026-05-19
+- Commit: `70f7599`
+- Objective: add one user-facing entrypoint that exposes the existing AOI preparation, staging, planning, execution, collection, and map-package steps behind a coherent command surface.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/script_inventory.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only front-door helper with `status`, `prepare`, `plan`, `run-local-smoke`, `submit-balfrin`, `collect`, and `package-map` views that normalize the existing AOI dry-run, portable command-plan, and GIS/COG audit helpers into one compact JSON status object.
+  - Kept the status object fail-closed with explicit next-action, first-blocker, expected-path, and claim-boundary fields, while trimming the payload to path-level summaries instead of full command-plan inventories.
+  - Added focused tests for command dispatch, clean-checkout blocking, and fixture-backed status aggregation, then classified the new script in the repository inventory and removed TB-255 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py status --format json >/tmp/tb255_front_door_status.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: front-door orchestration only; no live Balfrin submission, no downloads, no physical-probability semantics, no operational claim, and no generated heavy outputs committed.
+- Next task: backlog refill needed
