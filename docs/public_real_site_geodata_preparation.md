@@ -136,6 +136,10 @@ a deterministic template surface for the future cache manifest. That template
 keeps checksum, version/date, license, raw path, processed path, and
 retry/resume placeholders explicit so the no-download planner can describe
 what still needs to be staged without inventing a download step.
+The staging front door is `scripts/stage_public_geodata_cache.py`; it rewrites
+the cache manifest in place after checking local staged paths and metadata
+sidecars, and it fails closed on missing files, checksum mismatch, metadata
+mismatch, or unsupported products.
 
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator

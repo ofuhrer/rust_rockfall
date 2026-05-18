@@ -60,6 +60,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/plan_terrain_release_zone_candidates.py`
 - `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
 - `scripts/submit_balfrin_probe.py`
+- `scripts/stage_public_geodata_cache.py`
 - `scripts/verify_public_geodata_cache.py`
 
 ## Repository Checks And Context Helpers

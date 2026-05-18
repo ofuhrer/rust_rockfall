@@ -56,6 +56,10 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
             "verify_public_geodata_cache.py",
             report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verify_commands"][0]["command"],
         )
+        self.assertIn(
+            "stage_public_geodata_cache.py",
+            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"][2]["command"],
+        )
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")

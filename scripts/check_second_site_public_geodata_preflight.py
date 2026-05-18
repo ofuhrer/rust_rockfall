@@ -1006,6 +1006,25 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_path(path: Path, *, exclude_paths: set[Path] | None = None) -> str:
+    if path.is_file():
+        return sha256_file(path)
+    if path.is_dir():
+        digest = hashlib.sha256()
+        excluded = {item.resolve() for item in exclude_paths or set()}
+        file_paths = sorted(
+            (child for child in path.rglob("*") if child.is_file() and child.resolve() not in excluded),
+            key=lambda child: child.relative_to(path).as_posix(),
+        )
+        for child in file_paths:
+            digest.update(child.relative_to(path).as_posix().encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(sha256_file(child).encode("utf-8"))
+            digest.update(b"\0")
+        return digest.hexdigest()
+    return ""
+
+
 def catalog_tile_sort_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     return (
         entry.get("tile_id") or "",
@@ -1342,6 +1361,14 @@ def build_public_geodata_cache_contract(
                 ),
                 "purpose": "stage context bundles into the ignored processed cache when required",
             },
+            {
+                "command_id": "stage_verified_public_geodata_cache",
+                "command": (
+                    "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+                    f"--cache-manifest {cache_manifest_path} --format json"
+                ),
+                "purpose": "validate locally supplied public geodata against the cache manifest and record verified staged inputs",
+            },
         ],
         "verify_commands": [
             {
@@ -1425,6 +1452,11 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
     overall_status = "verified"
     for product in products:
         status = text_value(product.get("verification_status")) or "missing"
+        if status == "optional_missing":
+            continue
+        if status == "unsupported_product":
+            overall_status = status
+            break
         if status == "missing":
             overall_status = "missing"
             break
@@ -1453,6 +1485,18 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
 
 
 def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: Path) -> dict[str, Any]:
+    staged_status = text_value(record.get("verification_status")) or text_value(record.get("staging_status"))
+    if staged_status == "unsupported_product":
+        return {
+            "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+            "required": bool(record.get("required", True)),
+            "verification_status": "unsupported_product",
+            "missing_paths": [],
+            "checksum_match": False,
+            "metadata_mismatches": [],
+            "expected": cache_expected_record(record),
+            "actual": {},
+        }
     staged_path = resolve_repo_path(text_value(record.get("staged_path")) or text_value(record.get("expected_staged_path")), base=manifest_base)
     metadata_path = resolve_repo_path(text_value(record.get("metadata_path")) or text_value(record.get("expected_metadata_path")), base=manifest_base)
     expected_checksum = text_value(record.get("checksum_sha256")) or text_value(record.get("processed_checksum"))
@@ -1465,10 +1509,13 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
     expected_resolution = normalize_resolution_m(record.get("resolution_m"))
     expected_crop_extent = record.get("crop_extent_lv95_m") if isinstance(record.get("crop_extent_lv95_m"), dict) else {}
     expected_license = text_value(record.get("license_or_terms_reference")) or text_value(record.get("license_note"))
+    expected_raw_checksum = text_value(record.get("raw_checksum"))
+    expected_processed_checksum = text_value(record.get("processed_checksum"))
+    expected_preprocessing = text_value(record.get("preprocessing_command_and_timestamp"))
     actual = {
         "staged_path": str(staged_path),
         "metadata_path": str(metadata_path),
-        "checksum_sha256": sha256_file(staged_path) if staged_path.exists() and staged_path.is_file() else "",
+        "checksum_sha256": sha256_path(staged_path, exclude_paths={metadata_path} if staged_path.is_dir() else None) if staged_path.exists() else "",
         "metadata": {},
     }
     if metadata_path.exists():
@@ -1476,9 +1523,11 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
         actual["metadata"] = metadata if isinstance(metadata, dict) else {}
     missing_paths = [name for name, path in (("staged_path", staged_path), ("metadata_path", metadata_path)) if not path.exists()]
     if missing_paths:
+        required = bool(record.get("required", True))
         return {
             "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
-            "verification_status": "missing",
+            "required": required,
+            "verification_status": "missing" if required else "optional_missing",
             "missing_paths": missing_paths,
             "checksum_match": False,
             "metadata_mismatches": [],
@@ -1506,6 +1555,12 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
         metadata_mismatches.append("crop_extent_lv95_m")
     if expected_license and text_value(metadata.get("license_or_terms_reference")) != expected_license and text_value(metadata.get("license_note")) != expected_license:
         metadata_mismatches.append("license_or_terms_reference")
+    if expected_raw_checksum and text_value(metadata.get("raw_checksum")) != expected_raw_checksum:
+        metadata_mismatches.append("raw_checksum")
+    if expected_processed_checksum and text_value(metadata.get("processed_checksum")) != expected_processed_checksum:
+        metadata_mismatches.append("processed_checksum")
+    if expected_preprocessing and text_value(metadata.get("preprocessing_command_and_timestamp")) != expected_preprocessing:
+        metadata_mismatches.append("preprocessing_command_and_timestamp")
     if not checksum_match:
         verification_status = "checksum_mismatch"
     elif metadata_mismatches:
@@ -1514,6 +1569,7 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
         verification_status = "verified"
     return {
         "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+        "required": bool(record.get("required", True)),
         "verification_status": verification_status,
         "missing_paths": [],
         "checksum_match": checksum_match,
@@ -1664,7 +1720,11 @@ def resolve_repo_path(value: Any, default: Path | None = None, *, base: Path | N
             raise ValueError("missing path value and no default provided")
         return default
     path = Path(text)
-    return path if path.is_absolute() else (base or ROOT) / path
+    if path.is_absolute():
+        return path
+    if path.parts and path.parts[0] in {"data", "docs", "hazard", "scripts", "target", "tests", "validation"}:
+        return ROOT / path
+    return (base or ROOT) / path
 
 
 def manifest_status(*paths: Path) -> str:

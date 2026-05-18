@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-258: Local Public-Geodata Staging And Verification Command
-
-Goal: Add a user-facing staging command that validates locally supplied swisstopo files against the AOI cache manifest and records verified staged inputs.
-
-Capability gap reduced: Users need a concrete bridge from downloaded or manually supplied public geodata files into the repository's ignored processed/raw roots.
-
-Why this outranks alternatives: The current workflow has strong verification contracts but no ergonomic staging interface for a user who already has the required local tiles.
-
-Inspect first:
-
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-
-Deliverables:
-
-- A staging helper or front-door subcommand that accepts local input paths, verifies product ids, checksums, CRS, resolution, license/provenance fields, and writes or updates the cache manifest.
-- Fail-closed statuses for missing local files, checksum mismatch, metadata mismatch, unsupported product, and verified staged input.
-- Focused tests using small fixture files only.
-
-Definition of done:
-
-- A user with local swisstopo inputs can stage and verify them deterministically without editing cache manifests by hand.
-
-Boundaries: Local staging only; no network download, no simulation, no physical validation claim, no operational claim, and no heavy geodata committed.
-
 ### TB-259: Prepared Terrain And Context Builder For AOI
 
 Goal: Build the prepared terrain crop and context QA products from verified AOI cache inputs into a deterministic prepared-input root.

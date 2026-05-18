@@ -1765,3 +1765,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: resolver and manifest generation only; no download, no simulation, no operational claim, and no generated public data committed.
 - Next task: `TB-258`
+
+### TB-258: Local Public-Geodata Staging And Verification Command
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a user-facing staging command that validates locally supplied swisstopo files against the AOI cache manifest and records verified staged inputs.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/stage_public_geodata_cache.py`, `docs/swisstopo_data_strategy.md`, `docs/public_real_site_geodata_preparation.md`, `docs/script_inventory.md`, `tests/test_public_geodata_cache_stager.py`, `tests/test_second_site_public_geodata_preflight.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a new `scripts/stage_public_geodata_cache.py` front door that rewrites the cache manifest in place after validating repo-relative or absolute staged paths, checksums, CRS, resolution, provenance, and optional rows without requiring manual cache-manifest edits.
+  - Extended the shared cache verifier to support directory checksums with metadata-sidecar exclusion, optional-missing rows, and provenance field checks so staged inputs can round-trip through the same manifest contract the readiness gate consumes.
+  - Surfaced the staging command in the second-site cache contract, updated the repo documentation and script inventory, and added focused fixture-backed tests for verified, missing, checksum-mismatch, metadata-mismatch, unsupported-product, and optional-missing paths.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_stager`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier tests.test_second_site_public_geodata_preflight tests.test_swisstopo_aoi_acquisition_planner`
+- Result/status: implemented_fixture_backed
+- Boundaries: local staging and verification only; no network download, no simulation, no physical validation claim, no operational claim, and no heavy geodata committed.
+- Next task: backlog refill needed
