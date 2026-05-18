@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-211: Authorization-Gated Multi-Zone Balfrin Execution
-
-Goal: Execute, or explicitly block, the smallest bounded multi-zone Balfrin probe only after the current decision gate and package task select it and the user gives explicit live-run authorization.
-
-Capability gap reduced: Missing measured many-release-zone Balfrin evidence beyond fixture-backed and dry-run handoff packages.
-
-Why this outranks alternatives: The external review recommendation for a true multi-zone Balfrin demonstration is scientifically important, but it should only follow the preservation, reducer-constraint, and smallest-package gates already active in `TB-203` through `TB-205`.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- An authorization-aware execution helper or mode that refuses to submit without an explicit reviewed handoff package and live-run authorization record.
-- A measured run-root report when execution is authorized, including runtime, peak memory, validation/hazard split output counts and bytes, reducer pressure, manifest pressure, restart/replay metadata, checksums, and failure behavior.
-- A deterministic `blocked_missing_authorization` or `blocked_missing_inputs` report when live execution is not authorized or required staged inputs are absent.
-- Focused tests for authorized fixture execution metadata, blocked-missing-authorization, blocked-missing-input, and incomplete-run-root classifications.
-
-Definition of done:
-
-- The first multi-zone Balfrin execution path is gated by explicit authorization, produces a preservation-checked measured run root when run, and cannot silently promote incomplete multi-zone evidence.
-
-Boundaries: No live execution without explicit authorization, no larger-than-reviewed package, no distributed execution, no operational claim, no annual-frequency or physical-probability semantics, and no fabricated metrics.
-
 ### TB-212: Real Second-Site Prepared-Pilot Dry Run
 
 Goal: Compose a real Chant Sura / Fluelapass prepared-pilot dry run from staged public-context inputs when they exist, while emitting a deterministic blocked report when they do not.

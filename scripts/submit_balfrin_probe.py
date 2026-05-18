@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -36,6 +37,7 @@ PACKAGE_BASENAME = "balfrin_submission_package"
 PACKAGE_EXECUTION_STATUS = "deferred_pending_authorization"
 SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_scheduler_submission_report_v1"
 SUBMISSION_REPORT_BASENAME = "balfrin_submission_report"
+AUTHORIZED_SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_authorized_submission_report_v1"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -104,6 +106,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Generate and submit a SLURM job (implemented, but not exercised in this task).",
     )
     parser.add_argument(
+        "--authorized-submit",
+        action="store_true",
+        help=(
+            "Generate and submit the smallest bounded multi-zone Balfrin job only after validating a reviewed "
+            "handoff package and live-run authorization record."
+        ),
+    )
+    parser.add_argument(
         "--collect",
         action="store_true",
         help="Collect metrics from an existing run root.",
@@ -119,6 +129,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=60,
         help="Timeout for sbatch submission call in seconds.",
     )
+    parser.add_argument(
+        "--reviewed-handoff-package",
+        type=Path,
+        default=None,
+        help="Reviewed handoff package JSON required for --authorized-submit.",
+    )
+    parser.add_argument(
+        "--authorization-record",
+        type=Path,
+        default=None,
+        help="Live-run authorization record YAML or JSON required for --authorized-submit.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -126,13 +148,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.dry_run,
         args.generate_only,
         args.submit,
+        args.authorized_submit,
         args.collect,
         args.local_command_plan,
     )
     if sum(1 for mode in modes if mode) != 1:
         parser.error(
-            "exactly one of --dry-run, --generate-only, --submit, --collect, "
-            "--local-command-plan is required"
+            "exactly one of --dry-run, --generate-only, --submit, --authorized-submit, "
+            "--collect, --local-command-plan is required"
         )
     if args.collect:
         if args.run_root is None:
@@ -141,6 +164,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             parser.error("--collect does not accept a probe manifest argument")
     elif args.probe_manifest is None:
         parser.error("probe_manifest is required unless --collect is used")
+    if args.authorized_submit:
+        if args.reviewed_handoff_package is None:
+            parser.error("--reviewed-handoff-package is required with --authorized-submit")
+        if args.authorization_record is None:
+            parser.error("--authorization-record is required with --authorized-submit")
 
     return args
 
@@ -169,6 +197,51 @@ def _load_collect_script() -> Any:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[union-attr]
     return module
+
+
+def _load_yaml_or_json(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"unable to read structured document: {path}: {exc}") from exc
+
+    if path.suffix.lower() in {".json"}:
+        payload = json.loads(text)
+    else:
+        payload = yaml.safe_load(text)
+
+    if not isinstance(payload, dict):
+        raise ValueError(f"structured document must be a mapping: {path}")
+    return payload
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _structured_document_status(path: Path, *, label: str) -> dict[str, Any]:
+    if not path.exists():
+        return {
+            "status": "missing",
+            "label": label,
+            "path": str(path),
+            "sha256": None,
+            "value": None,
+            "blocked_reason": f"{label} is missing: {path}",
+        }
+    payload = _load_yaml_or_json(path)
+    return {
+        "status": "loaded",
+        "label": label,
+        "path": str(path),
+        "sha256": _sha256_file(path),
+        "value": payload,
+        "blocked_reason": "",
+    }
 
 
 def _load_readiness_checker() -> Any:
@@ -783,8 +856,155 @@ def _build_scheduler_submission_report(
     return report
 
 
+def _build_blocked_authorized_submission_report(
+    *,
+    run_root: Path,
+    run_id: str,
+    probe_manifest: Path,
+    command_plan_path: Path,
+    sbatch_path: Path,
+    partition: str,
+    time_budget: str,
+    nodes: int,
+    ntasks: int,
+    cpus_per_task: int,
+    reviewed_handoff_package: Path | None,
+    authorization_record: Path | None,
+    package_report: dict[str, Any],
+    authorization_report: dict[str, Any],
+) -> dict[str, Any]:
+    blocked_reason = authorization_report.get("blocked_reason") or "live execution is missing the reviewed handoff package or authorization record"
+    report: dict[str, Any] = {
+        "schema_version": AUTHORIZED_SUBMISSION_REPORT_SCHEMA_VERSION,
+        "status": authorization_report.get("status", "blocked_missing_authorization"),
+        "submission_status": authorization_report.get("status", "blocked_missing_authorization"),
+        "failure_class": authorization_report.get("status", "blocked_missing_authorization"),
+        "probe_manifest": str(probe_manifest.resolve()),
+        "run_root": str(run_root.resolve()),
+        "run_id": run_id,
+        "command_plan_path": str(command_plan_path.resolve()),
+        "sbatch_script_path": str(sbatch_path.resolve()),
+        "submit_command": [
+            "sbatch",
+            "--parsable",
+            str(sbatch_path),
+        ],
+        "slurm": {
+            "partition": partition,
+            "time": time_budget,
+            "nodes": nodes,
+            "ntasks": ntasks,
+            "cpus_per_task": cpus_per_task,
+        },
+        "reviewed_handoff_package_path": str(reviewed_handoff_package) if reviewed_handoff_package else None,
+        "authorization_record_path": str(authorization_record) if authorization_record else None,
+        "reviewed_handoff_package_status": authorization_report.get("reviewed_handoff_package_status"),
+        "authorization_record_status": authorization_report.get("authorization_record_status"),
+        "reviewed_handoff_package_sha256": authorization_report.get("reviewed_handoff_package_sha256"),
+        "authorization_record_sha256": authorization_report.get("authorization_record_sha256"),
+        "authorization_status": authorization_report.get("authorization_status", "blocked_missing_authorization"),
+        "blocked_reason": blocked_reason,
+        "remediation": authorization_report.get(
+            "remediation",
+            "Provide the reviewed handoff package JSON and live-run authorization record before calling --authorized-submit again.",
+        ),
+        "package_report": package_report,
+        "authorization_report": authorization_report,
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+        },
+    }
+    return report
+
+
+def _validate_authorized_submission(
+    *,
+    reviewed_handoff_package: Path,
+    authorization_record: Path,
+    run_root: Path,
+) -> dict[str, Any]:
+    package_status = _structured_document_status(reviewed_handoff_package, label="reviewed handoff package")
+    authorization_status = _structured_document_status(authorization_record, label="live-run authorization record")
+
+    if package_status["status"] == "missing" or authorization_status["status"] == "missing":
+        return {
+            "status": "blocked_missing_authorization",
+            "authorization_status": "blocked_missing_authorization",
+            "reviewed_handoff_package_status": package_status["status"],
+            "authorization_record_status": authorization_status["status"],
+            "reviewed_handoff_package_sha256": package_status["sha256"],
+            "authorization_record_sha256": authorization_status["sha256"],
+            "blocked_reason": "live execution requires both a reviewed handoff package and a live-run authorization record",
+            "remediation": "Provide both files before retrying the live multi-zone submit.",
+        }
+
+    package = dict(package_status["value"] or {})
+    record = dict(authorization_status["value"] or {})
+
+    package_sha256 = package_status["sha256"]
+    record_sha256 = authorization_status["sha256"]
+    package_digest = package.get("package_sha256")
+    record_package_path = record.get("reviewed_handoff_package_path")
+    record_package_sha256 = record.get("reviewed_handoff_package_sha256")
+    authorization_value = str(record.get("authorization_status") or "").strip()
+    authorized_task = str(record.get("authorized_task") or "").strip()
+
+    missing_inputs: list[str] = []
+    if str(package.get("package_status") or "") == "blocked_missing_inputs":
+        missing_inputs.append("reviewed handoff package is blocked_missing_inputs")
+    if not package.get("live_execution_requires_new_human_authorization", False):
+        missing_inputs.append("reviewed handoff package does not record live execution authorization requirements")
+    if authorized_task not in {"TB-211", "TB-211: Authorization-Gated Multi-Zone Balfrin Execution"}:
+        missing_inputs.append("authorization record does not target TB-211")
+    if authorization_value != "authorized_for_one_bounded_probe":
+        missing_inputs.append(
+            f"authorization_status must be authorized_for_one_bounded_probe, got {authorization_value or 'missing'}"
+        )
+    if record_package_path and Path(str(record_package_path)).resolve() != reviewed_handoff_package.resolve():
+        missing_inputs.append("authorization record does not reference the reviewed handoff package path")
+    if record_package_sha256 and str(record_package_sha256) != str(package_sha256):
+        missing_inputs.append("authorization record reviewed-handoff checksum does not match")
+    if package_digest and str(package_digest) != str(package_sha256):
+        missing_inputs.append("reviewed handoff package checksum does not match the file contents")
+    if record.get("no_rerun_without_renewed_authorization") is not True:
+        missing_inputs.append("authorization record does not prohibit rerun without renewed authorization")
+
+    if missing_inputs:
+        return {
+            "status": "blocked_missing_inputs",
+            "authorization_status": "blocked_missing_inputs",
+            "reviewed_handoff_package_status": "reviewed",
+            "authorization_record_status": "reviewed",
+            "reviewed_handoff_package_sha256": package_sha256,
+            "authorization_record_sha256": record_sha256,
+            "blocked_reason": "; ".join(missing_inputs),
+            "remediation": "Correct the reviewed handoff package and authorization record before retrying.",
+        }
+
+    return {
+        "status": "authorized",
+        "authorization_status": "authorized",
+        "reviewed_handoff_package_status": "reviewed",
+        "authorization_record_status": "reviewed",
+        "reviewed_handoff_package_sha256": package_sha256,
+        "authorization_record_sha256": record_sha256,
+        "blocked_reason": "",
+        "remediation": "",
+        "authorization_record_path": str(authorization_record.resolve()),
+        "reviewed_handoff_package_path": str(reviewed_handoff_package.resolve()),
+        "authorization_record": record,
+        "reviewed_handoff_package": package,
+    }
+
+
 def _write_submission_report(run_root: Path, report: dict[str, Any]) -> Path:
     report_path = run_root / f"{SUBMISSION_REPORT_BASENAME}.json"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return report_path
 
@@ -1030,6 +1250,80 @@ def main(argv: list[str] | None = None) -> int:
         print(f"sbatch_script_path={sbatch_path}")
         print(script)
         return 0
+
+    package_report: dict[str, Any] | None = None
+
+    if args.authorized_submit:
+        package_report = _build_submission_package_report(
+            run_root=run_root,
+            probe_manifest=args.probe_manifest,
+            command_plan=command_plan,
+            partition=args.partition,
+            time_budget=args.time,
+            nodes=args.nodes,
+            ntasks=args.ntasks,
+            cpus_per_task=args.cpus_per_task,
+        )
+        if package_report.get("input_checks", {}).get("status") == "blocked_for_balfrin_readiness" or package_report.get(
+            "input_checks", {}
+        ).get("status") == "blocked_missing_inputs":
+            authorization_report = {
+                "status": "blocked_missing_inputs",
+                "authorization_status": "blocked_missing_inputs",
+                "reviewed_handoff_package_status": "reviewed",
+                "authorization_record_status": "reviewed",
+                "reviewed_handoff_package_sha256": None,
+                "authorization_record_sha256": None,
+                "blocked_reason": "required inputs are missing for the selected Balfrin probe",
+                "remediation": "Resolve the staged-input blockers before attempting the authorized multi-zone submit.",
+            }
+            report = _build_blocked_authorized_submission_report(
+                run_root=run_root,
+                run_id=run_id,
+                probe_manifest=args.probe_manifest,
+                command_plan_path=run_root / "command_plan.json",
+                sbatch_path=sbatch_path,
+                partition=args.partition,
+                time_budget=args.time,
+                nodes=args.nodes,
+                ntasks=args.ntasks,
+                cpus_per_task=args.cpus_per_task,
+                reviewed_handoff_package=args.reviewed_handoff_package,
+                authorization_record=args.authorization_record,
+                package_report=package_report,
+                authorization_report=authorization_report,
+            )
+            report_path = _write_submission_report(run_root, report)
+            print(json.dumps(report, indent=2, sort_keys=True))
+            print(f"submission_report_path={report_path}", file=sys.stderr)
+            return 2
+
+        authorization_report = _validate_authorized_submission(
+            reviewed_handoff_package=args.reviewed_handoff_package,
+            authorization_record=args.authorization_record,
+            run_root=run_root,
+        )
+        if authorization_report["status"] != "authorized":
+            report = _build_blocked_authorized_submission_report(
+                run_root=run_root,
+                run_id=run_id,
+                probe_manifest=args.probe_manifest,
+                command_plan_path=run_root / "command_plan.json",
+                sbatch_path=sbatch_path,
+                partition=args.partition,
+                time_budget=args.time,
+                nodes=args.nodes,
+                ntasks=args.ntasks,
+                cpus_per_task=args.cpus_per_task,
+                reviewed_handoff_package=args.reviewed_handoff_package,
+                authorization_record=args.authorization_record,
+                package_report=package_report,
+                authorization_report=authorization_report,
+            )
+            report_path = _write_submission_report(run_root, report)
+            print(json.dumps(report, indent=2, sort_keys=True))
+            print(f"submission_report_path={report_path}", file=sys.stderr)
+            return 2
 
     command_plan_path, sbatch_path = _write_outputs(
         run_root=run_root,

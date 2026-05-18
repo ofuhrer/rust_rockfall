@@ -40,6 +40,13 @@ execution reproducible and metadata-friendly on Balfrin.
   - Writes artifacts and calls `sbatch` with `--parsable`.
   - Exercised for the authorized TB-168 target-area probe as job `4329024`.
 
+- `--authorized-submit`
+  - Writes artifacts and calls `sbatch` only after a reviewed handoff package
+    and live-run authorization record are both supplied and validated.
+  - This is the fail-closed path for the smallest bounded multi-zone Balfrin
+    probe; it returns `blocked_missing_authorization` or
+    `blocked_missing_inputs` instead of submitting when either gate is absent.
+
 - `--collect`
   - Reads an existing run root and emits a compact summary JSON.
 
@@ -86,6 +93,11 @@ The submission package is the dry-run handoff. Inspect
 any later launch, because they record the exact run root, the bounded
 next-probe recommendation, the reduced-output controls, the metrics collection
 command, and the stop/resume boundary.
+
+For the multi-zone TB-211 path, the later submit command now uses
+`--authorized-submit` together with explicit `--reviewed-handoff-package` and
+`--authorization-record` arguments. The command will refuse to submit without
+both of those inputs.
 
 The frozen target-area demonstration contract is
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.

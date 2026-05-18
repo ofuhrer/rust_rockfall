@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -56,6 +57,14 @@ def _load_json(path: Path | None) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
     return payload
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _command_output_dir(
@@ -133,6 +142,70 @@ def _count_output_families(outputs: list[Any]) -> dict[str, int]:
             continue
         counts[kind] = counts.get(kind, 0) + 1
     return counts
+
+
+def _checksum_entry(path: Path, *, label: str) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {
+            "label": label,
+            "path": str(path),
+            "status": "missing",
+            "sha256": None,
+            "bytes": None,
+        }
+    return {
+        "label": label,
+        "path": str(path),
+        "status": "measured",
+        "sha256": _sha256_file(path),
+        "bytes": path.stat().st_size,
+    }
+
+
+def _collect_checksums(
+    *,
+    run_root: Path,
+    command_plan_path: Path,
+    output_manifest: Path | None,
+    probe_metrics_path: Path,
+    scaling_summary_path: Path | None,
+) -> dict[str, Any]:
+    entries = [
+        _checksum_entry(command_plan_path, label="command_plan"),
+        _checksum_entry(probe_metrics_path, label="probe_metrics"),
+    ]
+    if output_manifest is not None:
+        entries.append(_checksum_entry(output_manifest, label="hazard_manifest"))
+    else:
+        entries.append(
+            {
+                "label": "hazard_manifest",
+                "path": str(run_root / "output/validation_balfrin_probe_manifest.json"),
+                "status": "missing",
+                "sha256": None,
+                "bytes": None,
+            }
+        )
+    if scaling_summary_path is not None:
+        entries.append(_checksum_entry(scaling_summary_path, label="scaling_summary"))
+    else:
+        entries.append(
+            {
+                "label": "scaling_summary",
+                "path": str(run_root / "output/validation_balfrin_probe_scaling_summary.json"),
+                "status": "missing",
+                "sha256": None,
+                "bytes": None,
+            }
+        )
+
+    status = "complete" if all(entry["status"] == "measured" for entry in entries) else "blocked_missing_inputs"
+    return {
+        "status": status,
+        "entries": entries,
+        "missing_labels": [entry["label"] for entry in entries if entry["status"] != "measured"],
+        "measured_checksum_count": sum(1 for entry in entries if entry["status"] == "measured"),
+    }
 
 
 def _availability_entry(value: Any, *, source: str) -> dict[str, Any]:
@@ -620,6 +693,56 @@ def _find_optional_plan_id(path_candidates: list[Path], key: str) -> str | None:
     return None
 
 
+def _classify_run_root_status(
+    *,
+    run_root_exists: bool,
+    command_plan_exists: bool,
+    metrics_contract_status: str,
+    output_manifest_exists: bool,
+    scaling_summary_exists: bool,
+) -> str:
+    if not run_root_exists:
+        return "blocked_missing_run_root"
+    if command_plan_exists and metrics_contract_status == "complete" and output_manifest_exists and scaling_summary_exists:
+        return "measured_run_root"
+    return "incomplete_run_root"
+
+
+def _failure_behavior_summary(
+    *,
+    report_status: str,
+    log_audit: dict[str, Any],
+    metrics_contract_status: str,
+) -> dict[str, Any]:
+    warning_like = int(log_audit.get("warning_like_line_count") or 0)
+    error_like = int(log_audit.get("error_like_line_count") or 0)
+    if report_status == "blocked_missing_run_root":
+        status = "blocked_missing_run_root"
+        summary = "run root is missing"
+    elif report_status == "incomplete_run_root":
+        status = "incomplete_run_root"
+        summary = "required run-root evidence is missing"
+    elif error_like > 0:
+        status = "log_failure_signals"
+        summary = "error-like log lines were detected"
+    elif warning_like > 0:
+        status = "warning_like_logs"
+        summary = "warning-like log lines were detected without failure signals"
+    else:
+        status = "nominal"
+        summary = "no failure-like log lines were detected"
+    if metrics_contract_status != "complete" and status == "nominal":
+        status = "incomplete_run_root"
+        summary = "metrics contract is incomplete"
+    return {
+        "status": status,
+        "summary": summary,
+        "warning_like_line_count": warning_like,
+        "error_like_line_count": error_like,
+        "log_audit_status": "clean" if warning_like == 0 and error_like == 0 else "observed",
+    }
+
+
 def collect_run_metrics(
     run_root: Path,
     *,
@@ -629,11 +752,12 @@ def collect_run_metrics(
     command_plan = _load_json(run_root / "command_plan.json") or {}
     command_plan_probe_manifest = command_plan.get("input")
     command_plan_path = run_root / "command_plan.json"
+    probe_metrics_path = run_root / "balfrin_probe_metrics.json"
     output_root = _command_output_dir(command_plan, run_root=run_root) or (run_root / "output")
 
     output_manifest = _find_hazard_manifest(output_root)
     manifest = _load_json(output_manifest) if output_manifest else None
-    probe_metrics = _load_json(run_root / "balfrin_probe_metrics.json")
+    probe_metrics = _load_json(probe_metrics_path)
     performance = manifest.get("performance", {}) if isinstance(manifest, dict) else {}
     conditional_execution = manifest.get("conditional_execution", {}) if isinstance(manifest, dict) else {}
     output_budget = conditional_execution.get("output_budget", {}) if isinstance(conditional_execution, dict) else {}
@@ -641,6 +765,10 @@ def collect_run_metrics(
     reducer_execution = conditional_execution.get("reducer", {}) if isinstance(conditional_execution, dict) else {}
 
     scaling_summary = _load_scaling_summary(output_root) if output_root.exists() else {}
+    scaling_summary_path = None
+    if output_root.exists():
+        candidates = sorted(output_root.glob("*scaling_summary*.json"))
+        scaling_summary_path = candidates[0] if candidates else None
 
     trajectory_plan_candidates = sorted(output_root.glob("*trajectory_execution_plan_v1.json"))
     reducer_plan_candidates = sorted(output_root.glob("*execution_plan_v1.json"))
@@ -663,6 +791,26 @@ def collect_run_metrics(
         reducer_plan_id=reducer_plan_id,
         trajectory_decision_counts=trajectory_decision_counts,
         reducer_decision_counts=reducer_decision_counts,
+    )
+    report_status = _classify_run_root_status(
+        run_root_exists=run_root.exists(),
+        command_plan_exists=command_plan_path.exists(),
+        metrics_contract_status=str(metrics_contract["status"]),
+        output_manifest_exists=output_manifest is not None,
+        scaling_summary_exists=bool(scaling_summary_path and scaling_summary_path.exists()),
+    )
+    checksums = _collect_checksums(
+        run_root=run_root,
+        command_plan_path=command_plan_path,
+        output_manifest=output_manifest,
+        probe_metrics_path=probe_metrics_path,
+        scaling_summary_path=scaling_summary_path,
+    )
+    log_audit = _log_audit_summary(run_root / "logs")
+    failure_behavior = _failure_behavior_summary(
+        report_status=report_status,
+        log_audit=log_audit,
+        metrics_contract_status=str(metrics_contract["status"]),
     )
 
     result = {
@@ -715,7 +863,51 @@ def collect_run_metrics(
         "reducer_plan_id": reducer_plan_id,
         "trajectory_decision_counts": trajectory_decision_counts,
         "reducer_decision_counts": reducer_decision_counts,
-        "log_audit": _log_audit_summary(run_root / "logs"),
+        "log_audit": log_audit,
+        "run_root_status": report_status,
+        "report_status": report_status,
+        "report_summary": (
+            "measured run-root evidence is complete"
+            if report_status == "measured_run_root"
+            else "required run-root evidence is incomplete"
+            if report_status == "incomplete_run_root"
+            else "run root is missing"
+        ),
+        "checksums": checksums,
+        "manifest_pressure": {
+            "status": "measured" if report_status == "measured_run_root" else checksums["status"],
+            "output_file_count": _safe_int(performance.get("output_file_count") if isinstance(performance, dict) else None)
+            or _safe_int(output_budget.get("output_file_count")),
+            "output_bytes": _safe_int(performance.get("output_bytes") if isinstance(performance, dict) else None)
+            or _safe_int(output_budget.get("output_bytes")),
+            "validation_output_file_count": metrics_contract["validation_output"]["file_count"],
+            "validation_output_bytes": metrics_contract["validation_output"]["bytes"],
+            "hazard_output_file_count": metrics_contract["hazard_output"]["file_count"],
+            "hazard_output_bytes": metrics_contract["hazard_output"]["bytes"],
+            "manifest_file_count": len(manifest.get("outputs", [])) if isinstance(manifest, dict) else 0,
+        },
+        "reducer_pressure": {
+            "status": "measured" if report_status == "measured_run_root" else checksums["status"],
+            "trajectory_plan_id": trajectory_plan_id,
+            "reducer_plan_id": reducer_plan_id,
+            "trajectory_decision_counts": trajectory_decision_counts,
+            "reducer_decision_counts": reducer_decision_counts,
+            "merge_order": conditional_execution.get("reducer", {}).get("merge_order") if isinstance(conditional_execution, dict) else None,
+            "merge_order_independent": conditional_execution.get("reducer", {}).get("merge_order_independent")
+            if isinstance(conditional_execution, dict)
+            else None,
+        },
+        "restart_replay_metadata": {
+            "status": "measured" if report_status == "measured_run_root" else "incomplete",
+            "trajectory_plan_id": trajectory_plan_id,
+            "reducer_plan_id": reducer_plan_id,
+            "trajectory_decision_counts": trajectory_decision_counts,
+            "reducer_decision_counts": reducer_decision_counts,
+            "command_plan_path": str(command_plan_path),
+            "output_root": str(output_root),
+            "hazard_manifest_path": str(output_manifest) if output_manifest else None,
+        },
+        "failure_behavior": failure_behavior,
     }
     return result
 

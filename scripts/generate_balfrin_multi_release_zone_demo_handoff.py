@@ -37,6 +37,7 @@ DEFAULT_RESTARTABILITY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "restartability"
 DEFAULT_UNCERTAINTY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "uncertainty"
 DEFAULT_PRESSURE_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "multi_zone_pressure"
 DEFAULT_PRESSURE_PROBE_ROOT = Path("/tmp/rust_rockfall/tb187_multi_zone_probe")
+DEFAULT_AUTHORIZATION_RECORD_PATH = DEFAULT_ARTIFACT_DIR / "balfrin_multi_zone_live_authorization_record_v1.yaml"
 DEFAULT_PACKAGE_JSON = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.json"
 DEFAULT_PACKAGE_MD = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
 DEFAULT_COMMAND_PLAN_JSON = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_command_plan_v1.json"
@@ -1407,6 +1408,38 @@ def build_authorization_review_command() -> str:
     )
 
 
+def build_authorized_submit_command(*, reviewed_handoff_package_path: Path, authorization_record_path: Path) -> str:
+    return command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
+            rel(DEFAULT_TARGET_AREA_CONTRACT),
+            "--run-root",
+            str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+            "--run-id",
+            SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+            "--partition",
+            "postproc",
+            "--time",
+            "00:30:00",
+            "--nodes",
+            "1",
+            "--ntasks",
+            "1",
+            "--cpus-per-task",
+            "16",
+            "--authorized-submit",
+            "--reviewed-handoff-package",
+            str(reviewed_handoff_package_path),
+            "--authorization-record",
+            str(authorization_record_path),
+        ]
+    )
+
+
 def build_smallest_multi_zone_run_estimates(pressure_report: dict[str, Any]) -> dict[str, Any]:
     measured_release_zone_count = positive_int(
         pressure_report.get("release_zone_count", 1), "measured multi-zone release zone count"
@@ -1439,11 +1472,15 @@ def build_smallest_multi_zone_preservation_checklist(
     target_area_output_root: Path,
     pressure_artifact_dir: Path,
     pressure_probe_root: Path,
+    reviewed_handoff_package_path: Path,
+    authorization_record_path: Path,
     review_command: str,
 ) -> list[str]:
     return [
         "Review the package JSON and Markdown together before any later authorization request.",
         f"Confirm the package remains blocked pending authorization and keep the review command unchanged: {review_command}",
+        f"Keep the reviewed handoff package at {reviewed_handoff_package_path}.",
+        f"Keep the live-run authorization record at {authorization_record_path}.",
         f"Confirm the scratch handoff root stays under {artifact_dir} and is not committed.",
         f"Keep the command plan at {command_plan_path} and the SBATCH script at {sbatch_script_path}.",
         f"Keep the package outputs at {package_json_path} and {package_md_path}.",
@@ -1510,30 +1547,11 @@ def build_follow_up_recommendation(
 ) -> dict[str, Any]:
     readiness = dict(candidate_report.get("candidate_sweep_summary", {}).get("multi_zone_stress_test_readiness") or {})
     review_command = build_authorization_review_command()
-    review_submit_command = command_string(
-        [
-            "PYENV_VERSION=system",
-            "uv",
-            "run",
-            "python",
-            rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
-            rel(DEFAULT_TARGET_AREA_CONTRACT),
-            "--run-root",
-            str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
-            "--run-id",
-            SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
-            "--partition",
-            "postproc",
-            "--time",
-            "00:30:00",
-            "--nodes",
-            "1",
-            "--ntasks",
-            "1",
-            "--cpus-per-task",
-            "16",
-            "--submit",
-        ]
+    package_json_path = artifact_dir / DEFAULT_PACKAGE_JSON.name
+    authorization_record_path = artifact_dir / DEFAULT_AUTHORIZATION_RECORD_PATH.name
+    review_submit_command = build_authorized_submit_command(
+        reviewed_handoff_package_path=package_json_path,
+        authorization_record_path=authorization_record_path,
     )
     estimates = build_smallest_multi_zone_run_estimates(pressure_report)
     source_release_sampling = dict(source_zone_metadata.get("release_sampling_policy") or {})
@@ -1601,6 +1619,8 @@ def build_follow_up_recommendation(
                 target_area_output_root=target_area_output_root,
                 pressure_artifact_dir=pressure_artifact_dir,
                 pressure_probe_root=pressure_probe_root,
+                reviewed_handoff_package_path=package_json_path,
+                authorization_record_path=authorization_record_path,
                 review_command=review_command,
             ),
             "authorization_review_command": review_command,
@@ -1609,6 +1629,8 @@ def build_follow_up_recommendation(
             "command_plan_submit_command": review_submit_command,
             "command_plan_path": str(artifact_dir / DEFAULT_COMMAND_PLAN_JSON.name),
             "sbatch_script_path": str(artifact_dir / DEFAULT_SBATCH_PATH.name),
+            "reviewed_handoff_package_path": str(package_json_path),
+            "authorization_record_path": str(authorization_record_path),
             "output_roots": {
                 "artifact_dir": str(artifact_dir),
                 "candidate_output_root": str(candidate_output_root),
@@ -1818,6 +1840,8 @@ def build_sbatch_script(report: dict[str, Any]) -> str:
         f'echo "Blocked classification: {report.get("authorization_classification", report.get("submission_classification", "unknown"))}"',
         f'echo "Later review command: {smallest_run.get("authorization_review_command") or report.get("authorization_review_command", "unavailable")}"',
         f'echo "Later submit command: {smallest_run.get("command_plan_submit_command") or report.get("authorization_submit_command", "unavailable")}"',
+        f'echo "Reviewed handoff package: {smallest_run.get("reviewed_handoff_package_path") or report.get("reviewed_handoff_package_path", "unavailable")}"',
+        f'echo "Authorization record: {smallest_run.get("authorization_record_path") or report.get("authorization_record_path", "unavailable")}"',
         f'echo "Constraint source: {constraint_source.get("source_script", "scripts/summarize_multi_zone_reducer_pressure.py")}"',
         'echo "Command plan follows for review:"',
         'cat "${COMMAND_PLAN_PATH}"',
@@ -1955,6 +1979,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Blocked classification: `{report.get('authorization_classification', 'unknown')}`",
         f"- Review command: `{report['follow_up_recommendation']['authorization_review_command']}`",
         f"- Submit command: `{report['follow_up_recommendation']['authorization_submit_command']}`",
+        f"- Reviewed handoff package: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('reviewed_handoff_package_path')}`",
+        f"- Authorization record: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('authorization_record_path')}`",
         f"- Recommended validation output mode: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run']['output_mode']}`",
         f"- Reason: {report['follow_up_recommendation']['reason']}",
         "",
