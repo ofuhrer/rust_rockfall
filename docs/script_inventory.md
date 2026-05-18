@@ -27,6 +27,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/audit_gis_cog_package_readiness.py`
 - `scripts/audit_multisite_source_scenario_contract.py`
 - `scripts/build_hazard_layers.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
 - `scripts/check_balfrin_tschamut_readiness.py`
 - `scripts/check_chant_sura_real_context_readiness_gate.py`
 - `scripts/check_hazard_output_profile.py`

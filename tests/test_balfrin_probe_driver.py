@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import importlib.util
 import io
 import json
+import subprocess
 import tempfile
 import textwrap
 import unittest
@@ -31,6 +32,10 @@ collect_driver = _load_module(
     ROOT / "scripts/collect_balfrin_probe_metrics.py",
     "collect_balfrin_probe_metrics",
 )
+access_preflight = _load_module(
+    ROOT / "scripts/check_balfrin_remote_access_preflight.py",
+    "check_balfrin_remote_access_preflight",
+)
 
 
 def _make_json_file(path: Path, payload: dict) -> None:
@@ -49,6 +54,71 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+
+    def _preflight_runner(self, failed_check: str | None = None):
+        def _runner(command: list[str], **_kwargs: object):
+            remote_command = command[-1]
+            check_name = {
+                "true": "ssh_availability",
+                access_preflight._remote_clone_check(access_preflight.DEFAULT_REMOTE_REPO_ROOT): "remote_clone",
+                access_preflight._remote_test_directory(access_preflight.DEFAULT_RUN_ROOT): "run_root_visibility",
+                access_preflight.DEFAULT_SCHEDULER_QUERY_COMMAND: "scheduler_query",
+            }[remote_command]
+            returncode = 1 if check_name == failed_check else 0
+            stderr = f"{check_name} failed" if returncode else ""
+            return subprocess.CompletedProcess(command, returncode, stdout="", stderr=stderr)
+
+        return _runner
+
+    def test_remote_access_preflight_reports_ready_when_all_read_only_checks_pass(self) -> None:
+        report = access_preflight.collect_preflight_report(runner=self._preflight_runner())
+
+        self.assertEqual(report["status"], "ready_for_read_only_collection")
+        self.assertTrue(report["ready_for_read_only_collection"])
+        self.assertFalse(report["live_submission_authorized"])
+        self.assertEqual(report["remote_repo_root"], "/users/olifu/work/rust_rockfall")
+        self.assertEqual(
+            report["run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/"
+            "tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517",
+        )
+        self.assertEqual(
+            [check["name"] for check in report["checked_commands"]],
+            ["ssh_availability", "remote_clone", "run_root_visibility", "scheduler_query"],
+        )
+        self.assertIn("squeue", report["scheduler_query_command"])
+
+    def test_remote_access_preflight_fails_closed_when_ssh_is_unavailable(self) -> None:
+        report = access_preflight.collect_preflight_report(runner=self._preflight_runner("ssh_availability"))
+
+        self.assertEqual(report["status"], "blocked_ssh_unavailable")
+        self.assertFalse(report["ready_for_read_only_collection"])
+        self.assertEqual([check["name"] for check in report["checked_commands"]], ["ssh_availability"])
+        self.assertIn("BatchMode=yes", report["checked_commands"][0]["command"])
+
+    def test_remote_access_preflight_reports_missing_remote_clone(self) -> None:
+        report = access_preflight.collect_preflight_report(runner=self._preflight_runner("remote_clone"))
+
+        self.assertEqual(report["status"], "blocked_missing_remote_clone")
+        self.assertEqual([check["name"] for check in report["checked_commands"]], ["ssh_availability", "remote_clone"])
+        self.assertIn(access_preflight.DEFAULT_REMOTE_REPO_ROOT, report["checked_commands"][-1]["remote_command"])
+
+    def test_remote_access_preflight_reports_missing_run_root(self) -> None:
+        report = access_preflight.collect_preflight_report(runner=self._preflight_runner("run_root_visibility"))
+
+        self.assertEqual(report["status"], "blocked_missing_run_root")
+        self.assertEqual(
+            [check["name"] for check in report["checked_commands"]],
+            ["ssh_availability", "remote_clone", "run_root_visibility"],
+        )
+        self.assertIn(access_preflight.DEFAULT_RUN_ROOT, report["checked_commands"][-1]["remote_command"])
+
+    def test_remote_access_preflight_reports_scheduler_unavailable(self) -> None:
+        report = access_preflight.collect_preflight_report(runner=self._preflight_runner("scheduler_query"))
+
+        self.assertEqual(report["status"], "blocked_scheduler_unavailable")
+        self.assertEqual(report["checked_commands"][-1]["name"], "scheduler_query")
+        self.assertIn("squeue", report["checked_commands"][-1]["remote_command"])
 
     def test_sbatch_script_contains_slurm_defaults_and_scratch_env(self) -> None:
         run_root = Path("/scratch/rust_rockfall/probes/scale-test/001")

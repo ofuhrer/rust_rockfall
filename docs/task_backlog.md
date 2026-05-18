@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-223: Balfrin SSH And Remote Artifact Access Preflight
-
-Goal: Add a read-only Balfrin access preflight that checks SSH availability, expected clone path, non-git run-root visibility, and scheduler query reachability without launching jobs.
-
-Capability gap reduced: Balfrin-capable workers need a fail-closed way to distinguish expired SSH access, missing remote artifacts, missing non-git data, and actual execution blockers.
-
-Why this outranks alternatives: Remote evidence and live-run tasks should not start until access and artifact availability are machine-readable.
-
-Inspect first:
-
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/orchestration_strategy.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `tests/test_balfrin_probe_driver.py`
-
-Deliverables:
-
-- A read-only helper or preflight mode that reports `ready_for_read_only_collection`, `blocked_ssh_unavailable`, `blocked_missing_remote_clone`, `blocked_missing_run_root`, or `blocked_scheduler_unavailable`.
-- Exact remote paths and commands checked, with no secrets or private SSH material committed.
-- Tests using mocks/fixtures for available, expired-access, missing-run-root, and scheduler-unavailable paths.
-
-Definition of done:
-
-- A Balfrin-capable worker can run one command to decide whether read-only collection is possible, and expired access fails closed without modifying local evidence.
-
-Boundaries: Read-only SSH/preflight only, no live submission, no remote mutation, no generated remote artifact claim, no operational claim.
-
 ### TB-224: Balfrin Worker Routing In Task Context
 
 Goal: Teach the task-context helper to mark Balfrin SSH/live-evidence tasks as requiring a stronger Balfrin-capable worker and the access preflight from TB-223.
