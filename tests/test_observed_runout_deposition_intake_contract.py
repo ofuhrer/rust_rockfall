@@ -25,6 +25,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "acquisition_blocker_matrix",
             "next_action_recommendation",
             "physical_credibility_gap_update",
+            "fixture_acceptance_smoke",
             "dataset_role_classification",
             "claim_boundaries",
             "blocked_reason",
@@ -46,6 +47,18 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("runout_endpoint_error_m", contract["objective_function_placeholders"]["required_fields"])
         self.assertEqual(contract["objective_function_placeholders"]["objective_status"], "placeholder_only")
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
+        self.assertEqual(report["fixture_acceptance_smoke"]["fixture_status"], "fixture_backed")
+        self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
+        self.assertEqual(
+            report["fixture_acceptance_smoke"]["fixture_classification"]["calibration_validation_role"]["calibration"],
+            "not_allowed",
+        )
+        self.assertEqual(
+            report["fixture_acceptance_smoke"]["fixture_classification"]["calibration_validation_role"]["validation"],
+            "benchmark_intake_only",
+        )
+        self.assertFalse(report["fixture_acceptance_smoke"]["fixture_classification"]["holdout_eligibility"])
+        self.assertEqual(report["fixture_acceptance_smoke"]["physical_evidence_status"], "not_established")
         self.assertEqual(
             report["physical_credibility_gap_update"]["physical_credibility_requirements_status"],
             "mapped_current_gaps",
@@ -131,6 +144,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
+        self.assertEqual(report["fixture_acceptance_smoke"]["physical_evidence_status"], "not_established")
+        self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
         self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][0]["blocking_reasons"])
         self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][2]["blocking_reasons"])
         self.assertEqual(report["acquisition_blocker_matrix"][3]["acceptance_status"], "blocked_missing_inputs")
@@ -191,6 +206,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
 
         self.assertIn("observed_runout_deposition_intake_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_manifest:", text)
+        self.assertIn("fixture_acceptance_smoke:", text)
         self.assertIn("physical_credibility_gap_update:", text)
         self.assertIn("dataset_role_classification:", text)
         self.assertIn("geometry.geometry_role=runout_axis_line -> observed_runout_deposition", text)
@@ -198,6 +214,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("benchmark_intake_readiness_status: blocked_missing_inputs", text)
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_dataset_status: absent", text)
+        self.assertIn("physical_evidence_status: not_established", text)
         self.assertIn("No calibration dataset is available for objective fitting.", text)
         self.assertIn("first_acquisition_action: Stage an independent observed runout/deposition benchmark manifest", text)
         self.assertIn("acquisition_blocker_matrix:", text)
@@ -238,7 +255,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         )
 
     def test_acquisition_fixture_classifier_accepts_complete_shape(self) -> None:
-        fixture = helper.build_acquisition_fixture_template("observed_runout_deposition")
+        fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
         classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
 
         self.assertEqual(classified["acceptance_status"], "ready")
@@ -246,16 +263,27 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(classified["missing_provenance_fields"], [])
         self.assertEqual(classified["missing_uncertainty_fields"], [])
         self.assertEqual(classified["calibration_validation_role_status"], "clear")
+        self.assertEqual(classified["calibration_validation_role"]["calibration"], "not_allowed")
+        self.assertEqual(classified["calibration_validation_role"]["validation"], "benchmark_intake_only")
         self.assertFalse(classified["holdout_eligibility"])
 
     def test_acquisition_fixture_classifier_flags_missing_geometry(self) -> None:
-        fixture = helper.build_acquisition_fixture_template("observed_runout_deposition")
+        fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
         fixture["geometry"].pop("geometry_value")
         classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
 
         self.assertEqual(classified["acceptance_status"], "blocked_schema_gap")
         self.assertIn("geometry_value", classified["missing_geometry_fields"])
         self.assertIn("missing_geometry", classified["blocking_reasons"])
+
+    def test_acquisition_fixture_classifier_flags_missing_provenance(self) -> None:
+        fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
+        fixture["provenance"].pop("provenance_uri")
+        classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_schema_gap")
+        self.assertIn("provenance_uri", classified["missing_provenance_fields"])
+        self.assertIn("missing_provenance", classified["blocking_reasons"])
 
     def test_acquisition_fixture_classifier_flags_missing_uncertainty(self) -> None:
         fixture = helper.build_acquisition_fixture_template("validation_inputs")

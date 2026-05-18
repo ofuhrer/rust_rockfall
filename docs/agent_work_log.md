@@ -1239,3 +1239,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency claim, no physical-probability claim, no operational claim, and no generated acquisition files committed.
 - Next task: `TB-234`
+
+### TB-234: Observed Benchmark Intake Acceptance Smoke
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: add a fixture-backed acceptance smoke path for a complete observed runout/deposition benchmark intake and explicit schema rejections for common failure modes.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `tests/fixtures/observed_runout_deposition_intake_contract/accepted_fixture.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a committed acceptance-smoke fixture and threaded it into the observed intake report as a separate `fixture_acceptance_smoke` section so the accepted schema shape is reported independently from real physical evidence.
+  - Kept the report blocked on missing benchmark inputs while still proving that the fixture-backed intake shape is accepted with geometry, provenance, uncertainty, calibration-role, validation-role, and holdout-eligibility checks.
+  - Expanded the contract tests to load the fixture from disk, assert the accepted path, and cover missing geometry, missing provenance, missing uncertainty, ambiguous calibration role, and overclaim rejection cases.
+  - Removed TB-234 from the active backlog after the smoke path and rejection cases were verified.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: no real evidence claim, no calibration, no parameter fitting, no validation upgrade, no annual-frequency claim, no physical-probability claim, no operational claim, and no generated acquisition files committed.
+- Next task: `TB-235`

@@ -1,0 +1,41 @@
+schema_version: observed_runout_deposition_acquisition_matrix_v1
+category: observed_runout_deposition
+dataset_role: observed_runout_deposition_benchmark
+label: Independent observed runout/deposition benchmark
+geometry:
+  geometry_id: observed_runout_deposition_benchmark_2024_001
+  geometry_role: runout_axis_line
+  geometry_encoding: GeoJSON
+  geometry_crs: EPSG:2056
+  geometry_value:
+    type: LineString
+    coordinates:
+      - [2793340.0, 1180475.0]
+      - [2793465.0, 1180390.0]
+provenance:
+  event_id: observed_runout_deposition_event_2024_001
+  event_date: 2024-08-14
+  site_id: chant_sura_fluelapass_portability_example_v1
+  source_id: source_zone_chant_sura_001
+  source_name: Chant Sura observed benchmark intake
+  observer: Fixture acceptance reviewer
+  observation_method: orthophoto digitization
+  provenance_uri: https://example.invalid/observed-runout-deposition/2024-001
+  source_origin_description: Fixture-backed observed benchmark intake staged for schema smoke only
+  source_reference_frame: LV95 / LN02
+  source_geometry_reference: source_zone_chant_sura_001_geometry
+uncertainty:
+  geometry_tolerance_m: 1.5
+  position_tolerance_m: 2.0
+  timing_tolerance_days: 3
+  coverage_completeness: complete
+  qa_status: reviewed
+  uncertainty_notes: Fixture-backed acceptance smoke only; no real evidence claim
+calibration_validation_role:
+  calibration: not_allowed
+  validation: benchmark_intake_only
+  holdout: ineligible
+holdout_eligibility: false
+license:
+  status: placeholder_only
+  note: synthetic acceptance fixture for schema smoke

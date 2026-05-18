@@ -23,27 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-234: Observed Benchmark Intake Acceptance Smoke
-
-Goal: Add a fixture-backed acceptance smoke path for a complete observed runout/deposition benchmark intake and explicit rejection paths for common schema failures.
-
-Capability gap reduced: The repository has a blocker matrix but still needs a compact proof that a future real dataset can be accepted or rejected deterministically.
-
-Why this outranks alternatives: Schema repair should be proven on fixtures before any real observed dataset is acquired or reviewed.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A fixture-backed accepted-intake path with geometry, provenance, uncertainty, calibration-role, validation-role, and holdout-eligibility checks.
-- Rejection tests for missing geometry, missing provenance, missing uncertainty, ambiguous calibration role, and overclaiming.
-- Report output that keeps accepted schema shape separate from real physical evidence.
-
 Definition of done:
 
 - A complete fixture can pass the schema while the report still says physical credibility is not established unless the input is real accepted evidence.

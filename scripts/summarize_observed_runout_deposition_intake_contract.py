@@ -47,6 +47,7 @@ SCHEMA_VERSION = "observed_runout_deposition_intake_contract_v1"
 EXPECTED_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
 EXPECTED_BENCHMARK_MANIFEST = EXPECTED_BENCHMARK_ROOT / "manifest.json"
 EXPECTED_BENCHMARK_GEOMETRY = EXPECTED_BENCHMARK_ROOT / "observed_runout_deposition.geojson"
+EXPECTED_ACCEPTED_ACQUISITION_FIXTURE = ROOT / "tests/fixtures/observed_runout_deposition_intake_contract/accepted_fixture.yaml"
 EXPECTED_CALIBRATION_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_calibration"
 EXPECTED_VALIDATION_INPUT_MANIFEST = ROOT / "validation/data/processed/chant_sura_2020/metadata_contact_split.json"
 EXPECTED_VALIDATION_INPUT_CASE = ROOT / "validation/cases/chant_sura_contact.yaml"
@@ -416,6 +417,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     next_action_recommendation = build_next_action_recommendation(acquisition_blocker_matrix)
     physical_credibility_gap_update = build_physical_credibility_gap_update()
     dataset_role_classification = build_dataset_role_classification(current_state=current_state)
+    fixture_acceptance_smoke = build_fixture_acceptance_smoke()
     benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=contract,
@@ -442,6 +444,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "next_action_recommendation": next_action_recommendation,
                 "physical_credibility_gap_update": physical_credibility_gap_update,
                 "dataset_role_classification": dataset_role_classification,
+                "fixture_acceptance_smoke": fixture_acceptance_smoke,
                 "claim_boundaries": claim_boundaries(),
                 "current_state_summary": current_state_summary(current_state),
             },
@@ -458,6 +461,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "next_action_recommendation": next_action_recommendation,
             "physical_credibility_gap_update": physical_credibility_gap_update,
             "dataset_role_classification": dataset_role_classification,
+            "fixture_acceptance_smoke": fixture_acceptance_smoke,
             "claim_boundaries": claim_boundaries(),
             "blocked_reason": None,
             "missing_inputs": [],
@@ -668,6 +672,39 @@ def build_physical_credibility_gap_update() -> dict[str, Any]:
         "missing_inputs": list(report["missing_inputs"]),
         "claim_boundaries": dict(report["claim_boundaries"]),
         "evidence_acquisition_summary": dict(report["evidence_acquisition_summary"]),
+    }
+
+
+def build_fixture_acceptance_smoke() -> dict[str, Any]:
+    fixture = load_yaml_fixture(EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
+    blueprint = acquisition_blueprint("observed_runout_deposition")
+    contract = build_contract()
+    classification = classify_acquisition_fixture_row("observed_runout_deposition", fixture)
+    return {
+        "schema_version": ACQUISITION_MATRIX_SCHEMA_VERSION,
+        "fixture_path": str(EXPECTED_ACCEPTED_ACQUISITION_FIXTURE),
+        "fixture_status": "fixture_backed",
+        "accepted_schema_shape": {
+            "geometry": {
+                "required_crs": contract["geometry"]["required_crs"],
+                "required_vertical_datum": contract["geometry"]["required_vertical_datum"],
+                "allowed_geometry_roles": list(contract["geometry"]["allowed_geometry_roles"]),
+                "required_fields": list(contract["geometry"]["required_fields"]),
+            },
+            "provenance": {
+                "required_fields": list(contract["event_source_metadata"]["required_fields"]),
+                "source_metadata_required": list(contract["event_source_metadata"]["source_metadata_required"]),
+            },
+            "uncertainty": {
+                "required_fields": list(contract["uncertainty"]["required_fields"]),
+                "measurement_units": dict(contract["uncertainty"]["measurement_units"]),
+            },
+            "calibration_validation_role": dict(blueprint["calibration_validation_role"]),
+            "holdout_eligibility": blueprint["holdout_eligibility"],
+        },
+        "fixture_classification": classification,
+        "physical_evidence_status": "not_established",
+        "physical_evidence_note": "Fixture-backed schema smoke only; real physical evidence is not established by this report.",
     }
 
 
@@ -1484,6 +1521,15 @@ def acquisition_blueprint(category: str) -> dict[str, Any]:
     raise KeyError(category)
 
 
+def load_yaml_fixture(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise ObservedRunoutDepositionIntakeContractError(f"missing fixture-backed acceptance smoke fixture: {path}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ObservedRunoutDepositionIntakeContractError(f"fixture-backed acceptance smoke fixture must be a mapping: {path}")
+    return data
+
+
 def build_next_action_recommendation(acquisition_blocker_matrix: list[dict[str, Any]]) -> dict[str, Any]:
     acquisition_gap_categories = {
         "observed_runout_deposition",
@@ -1578,6 +1624,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- manifest_status: {benchmark_manifest['manifest_status']}",
         f"- dataset_roles: {', '.join(role['dataset_role'] for role in benchmark_manifest['dataset_role_classification'])}",
         f"- physical_credibility_status: {benchmark_manifest['physical_credibility_gap_update']['current_physical_credibility_status']}",
+        "",
+        "fixture_acceptance_smoke:",
+        f"- fixture_path: {report['fixture_acceptance_smoke']['fixture_path']}",
+        f"- fixture_status: {report['fixture_acceptance_smoke']['fixture_status']}",
+        f"- schema_acceptance_status: {report['fixture_acceptance_smoke']['fixture_classification']['acceptance_status']}",
+        f"- calibration_validation_role_status: {report['fixture_acceptance_smoke']['fixture_classification']['calibration_validation_role_status']}",
+        f"- holdout_eligibility: {str(report['fixture_acceptance_smoke']['fixture_classification']['holdout_eligibility']).lower()}",
+        f"- physical_evidence_status: {report['fixture_acceptance_smoke']['physical_evidence_status']}",
         "",
         "physical_credibility_gap_update:",
         f"- physical_credibility_requirements_status: {report['physical_credibility_gap_update']['physical_credibility_requirements_status']}",
