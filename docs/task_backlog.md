@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-208: Independent Physical Evidence Intake Pilot
-
-Goal: Populate one independent observed runout/deposition evidence intake package if data are available, or emit an exact blocked acquisition report if they are not.
-
-Capability gap reduced: Physical credibility remains not established because observed benchmark evidence, release-zone provenance, block-population evidence, and calibration separation are not populated.
-
-Why this outranks alternatives: Execution success no longer resolves the largest scientific gap; the project needs independent physical evidence rather than more packaging around conditional diagnostics.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/validation_data_schema.md`
-- `validation/templates/annual_physical_validation_calibration_review_gate_v1.yaml`
-
-Deliverables:
-
-- A benchmark intake artifact or blocked report with manifest, observed geometry/provenance fields, uncertainty fields, objective-function readiness, and calibration/validation separation.
-- Dataset-role classification for observed runout/deposition, release-zone provenance, block-population evidence, calibration inputs, validation inputs, and holdout data.
-- A physical-credibility gap update that remains `not_established` unless real accepted evidence is present.
-- Focused tests for accepted fixture shape, missing-evidence blocked report, and claim-boundary hygiene.
-
-Definition of done:
-
-- The intake path is executable and fail-closed, and the report clearly distinguishes real evidence, fixture shape, missing data, and future calibration requirements.
-
-Boundaries: No calibration, no parameter fitting, no validation-status upgrade without real evidence, no annual-frequency or physical-probability claim, and no operational claim.
-
 ### TB-209: Multi-Zone Hazard Builder Throughput Profile
 
 Goal: Profile hazard-layer post-processing on the multi-zone scratch fixture and identify the first concrete throughput or output-pressure bottleneck.

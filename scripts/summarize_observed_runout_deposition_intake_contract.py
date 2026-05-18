@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,11 +25,20 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts import map_physical_credibility_evidence_requirements as physical_credibility_requirements
+
 SCHEMA_VERSION = "observed_runout_deposition_intake_contract_v1"
 EXPECTED_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
 EXPECTED_BENCHMARK_MANIFEST = EXPECTED_BENCHMARK_ROOT / "manifest.json"
 EXPECTED_BENCHMARK_GEOMETRY = EXPECTED_BENCHMARK_ROOT / "observed_runout_deposition.geojson"
 EXPECTED_CALIBRATION_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_calibration"
+EXPECTED_VALIDATION_INPUT_MANIFEST = ROOT / "validation/data/processed/chant_sura_2020/metadata_contact_split.json"
+EXPECTED_VALIDATION_INPUT_CASE = ROOT / "validation/cases/chant_sura_contact.yaml"
+EXPECTED_HOLDOUT_MANIFEST = ROOT / "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json"
+EXPECTED_HOLDOUT_CASE = ROOT / "validation/cases/chant_sura_contact_heldout.yaml"
 EXPECTED_BENCHMARK_INPUTS = (
     EXPECTED_BENCHMARK_MANIFEST,
     EXPECTED_BENCHMARK_GEOMETRY,
@@ -60,7 +70,16 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     contract = build_contract()
     field_requirement_map = build_field_requirement_map()
     current_state = build_current_state()
+    physical_credibility_gap_update = build_physical_credibility_gap_update()
+    dataset_role_classification = build_dataset_role_classification(current_state=current_state)
     benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
+    benchmark_intake_manifest = build_benchmark_intake_manifest(
+        contract=contract,
+        current_state=current_state,
+        physical_credibility_gap_update=physical_credibility_gap_update,
+        dataset_role_classification=dataset_role_classification,
+        pack_root=None,
+    )
 
     report: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -68,8 +87,11 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "blocked_missing_inputs" if benchmark_missing_inputs else "ready"
         ),
         "benchmark_intake_contract": contract,
+        "benchmark_intake_manifest": benchmark_intake_manifest,
         "field_requirement_map": field_requirement_map,
         "current_repo_state": current_state,
+        "physical_credibility_gap_update": physical_credibility_gap_update,
+        "dataset_role_classification": dataset_role_classification,
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": (
             "no independent observed runout/deposition benchmark intake is staged in the repo"
@@ -96,6 +118,13 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
     objective_placeholders = build_objective_function_placeholders(report=report, pack_root=pack_root)
     blocked_no_evidence_report = build_blocked_no_evidence_report(report=report, pack_root=pack_root)
     template_manifest = build_template_manifest(report=report, pack_root=pack_root)
+    benchmark_intake_manifest = build_benchmark_intake_manifest(
+        contract=report["benchmark_intake_contract"],
+        current_state=report["current_repo_state"],
+        physical_credibility_gap_update=report["physical_credibility_gap_update"],
+        dataset_role_classification=report["dataset_role_classification"],
+        pack_root=pack_root,
+    )
 
     acquisition_checklist_path = pack_root / "acquisition_checklist.md"
     dataset_inventory_path = pack_root / "required_dataset_inventory.yaml"
@@ -104,6 +133,7 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
     objective_placeholders_path = pack_root / "objective_function_placeholders.yaml"
     blocked_no_evidence_report_path = pack_root / "blocked_no_evidence_report.md"
     template_manifest_path = pack_root / "template_manifest.yaml"
+    benchmark_intake_manifest_path = pack_root / "benchmark_intake_manifest.yaml"
     validation_summary_path = pack_root / "validation_summary.json"
 
     acquisition_checklist_path.write_text(acquisition_checklist, encoding="utf-8")
@@ -113,6 +143,7 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
     objective_placeholders_path.write_text(yaml.safe_dump(objective_placeholders, sort_keys=False), encoding="utf-8")
     blocked_no_evidence_report_path.write_text(blocked_no_evidence_report, encoding="utf-8")
     template_manifest_path.write_text(yaml.safe_dump(template_manifest, sort_keys=False), encoding="utf-8")
+    benchmark_intake_manifest_path.write_text(yaml.safe_dump(benchmark_intake_manifest, sort_keys=False), encoding="utf-8")
 
     validation_summary = validate_readiness_pack(
         pack_root=pack_root,
@@ -123,6 +154,7 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
         objective_placeholders_path=objective_placeholders_path,
         blocked_no_evidence_report_path=blocked_no_evidence_report_path,
         template_manifest_path=template_manifest_path,
+        benchmark_intake_manifest_path=benchmark_intake_manifest_path,
     )
     validation_summary_path.write_text(json.dumps(validation_summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -138,6 +170,7 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
             "objective_function_placeholders": str(objective_placeholders_path),
             "blocked_no_evidence_report": str(blocked_no_evidence_report_path),
             "template_manifest": str(template_manifest_path),
+            "benchmark_intake_manifest": str(benchmark_intake_manifest_path),
             "validation_summary": str(validation_summary_path),
         },
         "validation_summary": validation_summary,
@@ -180,6 +213,150 @@ def build_template_manifest(*, report: dict[str, Any], pack_root: Path) -> dict[
     }
 
 
+def build_benchmark_intake_manifest(
+    *,
+    contract: dict[str, Any],
+    current_state: dict[str, Any],
+    physical_credibility_gap_update: dict[str, Any],
+    dataset_role_classification: list[dict[str, Any]],
+    pack_root: Path | None,
+) -> dict[str, Any]:
+    geometry = contract["geometry"]
+    event_source_metadata = contract["event_source_metadata"]
+    uncertainty = contract["uncertainty"]
+    objective_function_placeholders = contract["objective_function_placeholders"]
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "artifact_classification": "template_non_evidence",
+        "manifest_status": "dry_run_template" if pack_root is not None else "report_only",
+        "pack_root": str(pack_root) if pack_root is not None else None,
+        "blocked_reason": (
+            "no independent observed runout/deposition benchmark intake is staged in the repo"
+            if current_state["benchmark_intake_readiness_status"] != "ready"
+            else None
+        ),
+        "observed_geometry": {
+            "required_crs": geometry["required_crs"],
+            "required_vertical_datum": geometry["required_vertical_datum"],
+            "allowed_geometry_roles": list(geometry["allowed_geometry_roles"]),
+            "required_fields": list(geometry["required_fields"]),
+            "geometry_roles": [
+                {
+                    "geometry_role": role,
+                    "required": True,
+                    "description": geometry_role_description(role),
+                }
+                for role in geometry["allowed_geometry_roles"]
+            ],
+        },
+        "provenance": {
+            "required_fields": list(event_source_metadata["required_fields"]),
+            "source_metadata_required": list(event_source_metadata["source_metadata_required"]),
+            "current_repo_state": {
+                "benchmark_intake_readiness_status": current_state["benchmark_intake_readiness_status"],
+                "calibration_readiness_status": current_state["calibration_readiness_status"],
+            },
+        },
+        "uncertainty": {
+            "required_fields": list(uncertainty["required_fields"]),
+            "measurement_units": dict(uncertainty["measurement_units"]),
+        },
+        "objective_function_readiness": {
+            "required_fields": list(objective_function_placeholders["required_fields"]),
+            "objective_status": objective_function_placeholders["objective_status"],
+            "fit_record_required": objective_function_placeholders["fit_record_required"],
+            "notes": list(objective_function_placeholders["notes"]),
+        },
+        "calibration_validation_separation": {
+            "benchmark_intake_missing_inputs": list(current_state["benchmark_intake_missing_inputs"]),
+            "calibration_missing_inputs": list(current_state["calibration_missing_inputs"]),
+            "calibration_readiness_status": current_state["calibration_readiness_status"],
+            "validation_inputs_status": dataset_role_status(dataset_role_classification, "validation_inputs"),
+            "holdout_data_status": dataset_role_status(dataset_role_classification, "holdout_data"),
+            "calibration_validation_overlap_allowed": False,
+            "no_reuse_for_fit": True,
+        },
+        "dataset_role_classification": dataset_role_classification,
+        "physical_credibility_gap_update": physical_credibility_gap_update,
+        "claim_boundaries": claim_boundaries(),
+        "notes": [
+            "Template/non-evidence manifest for a future observed runout/deposition intake.",
+            "No real benchmark data, calibration fit, or operational claim is encoded here.",
+        ],
+    }
+
+
+def build_physical_credibility_gap_update() -> dict[str, Any]:
+    report = physical_credibility_requirements.build_report()
+    return {
+        "schema_version": physical_credibility_requirements.SCHEMA_VERSION,
+        "physical_credibility_requirements_status": report["physical_credibility_requirements_status"],
+        "current_physical_credibility_status": report["current_physical_credibility_status"],
+        "calibration_status": report["calibration_status"],
+        "validation_status": report["validation_status"],
+        "blocked_reason": report["blocked_reason"],
+        "missing_inputs": list(report["missing_inputs"]),
+        "claim_boundaries": dict(report["claim_boundaries"]),
+        "evidence_acquisition_summary": dict(report["evidence_acquisition_summary"]),
+    }
+
+
+def build_dataset_role_classification(current_state: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "dataset_role": "observed_runout_deposition_benchmark",
+            "status": "present" if current_state["benchmark_intake_readiness_status"] == "ready" else "missing",
+            "required_inputs": [str(EXPECTED_BENCHMARK_MANIFEST), str(EXPECTED_BENCHMARK_GEOMETRY)],
+            "claim_boundary": "benchmark intake only; no calibration or operational claim",
+        },
+        {
+            "dataset_role": "release_zone_provenance",
+            "status": "present" if current_state["benchmark_intake_readiness_status"] == "ready" else "missing",
+            "required_inputs": [str(EXPECTED_BENCHMARK_MANIFEST), str(EXPECTED_BENCHMARK_GEOMETRY)],
+            "claim_boundary": "release-zone provenance only; no validation or calibration claim",
+        },
+        {
+            "dataset_role": "block_population_evidence",
+            "status": "missing",
+            "required_inputs": [str(ROOT / "docs/target_area_physical_evidence_acquisition_pack.md")],
+            "claim_boundary": "future physical-probability bridge only",
+        },
+        {
+            "dataset_role": "calibration_inputs",
+            "status": "present" if current_state["calibration_readiness_status"] == "ready" else "missing",
+            "required_inputs": [str(EXPECTED_CALIBRATION_ROOT)],
+            "claim_boundary": "calibration only; separated from benchmark intake and holdout data",
+        },
+        {
+            "dataset_role": "validation_inputs",
+            "status": "present" if validation_inputs_available() else "missing",
+            "required_inputs": [str(EXPECTED_VALIDATION_INPUT_MANIFEST), str(EXPECTED_VALIDATION_INPUT_CASE)],
+            "claim_boundary": "validation-only inputs; separated from calibration inputs",
+        },
+        {
+            "dataset_role": "holdout_data",
+            "status": "present" if holdout_data_available() else "missing",
+            "required_inputs": [str(EXPECTED_HOLDOUT_MANIFEST), str(EXPECTED_HOLDOUT_CASE)],
+            "claim_boundary": "holdout-only data; no reuse for tuning",
+        },
+    ]
+
+
+def dataset_role_status(dataset_roles: list[dict[str, Any]], dataset_role: str) -> str:
+    for entry in dataset_roles:
+        if entry.get("dataset_role") == dataset_role:
+            return str(entry.get("status") or "missing")
+    return "missing"
+
+
+def validation_inputs_available() -> bool:
+    return EXPECTED_VALIDATION_INPUT_MANIFEST.exists() and EXPECTED_VALIDATION_INPUT_CASE.exists()
+
+
+def holdout_data_available() -> bool:
+    return EXPECTED_HOLDOUT_MANIFEST.exists() and EXPECTED_HOLDOUT_CASE.exists()
+
+
 def build_required_dataset_inventory(*, report: dict[str, Any], pack_root: Path) -> dict[str, Any]:
     current_state = report["current_repo_state"]
     return {
@@ -201,11 +378,49 @@ def build_required_dataset_inventory(*, report: dict[str, Any], pack_root: Path)
                 ],
             },
             {
-                "dataset_role": "calibration_dataset",
+                "dataset_role": "release_zone_provenance",
+                "status": "missing" if current_state["benchmark_intake_readiness_status"] != "ready" else "present",
+                "required_inputs": [str(EXPECTED_BENCHMARK_MANIFEST), str(EXPECTED_BENCHMARK_GEOMETRY)],
+                "notes": [
+                    "Release-zone provenance must be independent from the benchmark intake and current workflow heuristics.",
+                ],
+            },
+            {
+                "dataset_role": "block_population_evidence",
+                "status": "missing",
+                "required_inputs": [str(ROOT / "docs/target_area_physical_evidence_acquisition_pack.md")],
+                "notes": [
+                    "No block-population or block-size evidence is staged in the repo.",
+                ],
+            },
+            {
+                "dataset_role": "calibration_inputs",
                 "status": "missing" if current_state["calibration_readiness_status"] != "ready" else "present",
                 "required_inputs": [str(EXPECTED_CALIBRATION_ROOT)],
                 "notes": [
                     "Kept separate so calibration readiness does not contaminate benchmark intake readiness.",
+                ],
+            },
+            {
+                "dataset_role": "validation_inputs",
+                "status": "present" if validation_inputs_available() else "missing",
+                "required_inputs": [
+                    str(EXPECTED_VALIDATION_INPUT_MANIFEST),
+                    str(EXPECTED_VALIDATION_INPUT_CASE),
+                ],
+                "notes": [
+                    "Validation inputs remain separate from calibration inputs.",
+                ],
+            },
+            {
+                "dataset_role": "holdout_data",
+                "status": "present" if holdout_data_available() else "missing",
+                "required_inputs": [
+                    str(EXPECTED_HOLDOUT_MANIFEST),
+                    str(EXPECTED_HOLDOUT_CASE),
+                ],
+                "notes": [
+                    "Holdout data remain separated from calibration and model-selection fixtures.",
                 ],
             },
         ],
@@ -311,6 +526,7 @@ def build_acquisition_checklist(*, report: dict[str, Any], pack_root: Path) -> s
 
 def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path) -> str:
     current_state = report["current_repo_state"]
+    physical_gap = report["physical_credibility_gap_update"]
     lines = [
         "# Blocked no-evidence report",
         "",
@@ -329,6 +545,19 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
             "Calibration separation:",
             f"- calibration_readiness_status: {current_state['calibration_readiness_status']}",
             f"- calibration_missing_inputs: {', '.join(current_state['calibration_missing_inputs']) if current_state['calibration_missing_inputs'] else 'none'}",
+            "",
+            "Dataset-role classification:",
+        ]
+    )
+    for role in report["dataset_role_classification"]:
+        lines.append(f"- {role['dataset_role']}: {role['status']}")
+    lines.extend(
+        [
+            "",
+            "Physical-credibility gap update:",
+            f"- physical_credibility_requirements_status: {physical_gap['physical_credibility_requirements_status']}",
+            f"- current_physical_credibility_status: {physical_gap['current_physical_credibility_status']}",
+            f"- blocked_reason: {physical_gap['blocked_reason']}",
             "",
             "This report is a blocker summary only and does not encode benchmark evidence.",
             "",
@@ -349,6 +578,7 @@ def validate_readiness_pack(
     objective_placeholders_path: Path,
     blocked_no_evidence_report_path: Path,
     template_manifest_path: Path,
+    benchmark_intake_manifest_path: Path,
 ) -> dict[str, Any]:
     required_paths = {
         "acquisition_checklist": acquisition_checklist_path,
@@ -358,6 +588,7 @@ def validate_readiness_pack(
         "objective_function_placeholders": objective_placeholders_path,
         "blocked_no_evidence_report": blocked_no_evidence_report_path,
         "template_manifest": template_manifest_path,
+        "benchmark_intake_manifest": benchmark_intake_manifest_path,
     }
     missing = [name for name, path in required_paths.items() if not path.exists()]
     unexpected = [
@@ -681,6 +912,7 @@ def claim_boundaries() -> dict[str, bool]:
 
 def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
+    benchmark_manifest = report["benchmark_intake_manifest"]
     current_state = report["current_repo_state"]
     lines = [
         f"schema_version: {report['schema_version']}",
@@ -695,8 +927,26 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- uncertainty.required_fields: {', '.join(contract['uncertainty']['required_fields'])}",
         f"- objective_function_placeholders.required_fields: {', '.join(contract['objective_function_placeholders']['required_fields'])}",
         "",
-        "field_requirement_map:",
+        "benchmark_intake_manifest:",
+        f"- manifest_status: {benchmark_manifest['manifest_status']}",
+        f"- dataset_roles: {', '.join(role['dataset_role'] for role in benchmark_manifest['dataset_role_classification'])}",
+        f"- physical_credibility_status: {benchmark_manifest['physical_credibility_gap_update']['current_physical_credibility_status']}",
+        "",
+        "physical_credibility_gap_update:",
+        f"- physical_credibility_requirements_status: {report['physical_credibility_gap_update']['physical_credibility_requirements_status']}",
+        f"- current_physical_credibility_status: {report['physical_credibility_gap_update']['current_physical_credibility_status']}",
+        f"- blocked_reason: {report['physical_credibility_gap_update']['blocked_reason']}",
+        "",
+        "dataset_role_classification:",
     ]
+    for item in report["dataset_role_classification"]:
+        lines.append(f"- {item['dataset_role']}: {item['status']}")
+    lines.extend(
+        [
+            "",
+            "field_requirement_map:",
+        ]
+    )
     for item in report["field_requirement_map"]:
         lines.append(
             f"- {item['field_path']} -> {item['physical_credibility_requirement']}: {item['why_it_matters']}"
