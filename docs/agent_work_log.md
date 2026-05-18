@@ -1879,3 +1879,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: tiny local fixture execution only; no live Balfrin submission, no operational claim, no physical-probability claim, no annual-frequency claim, no risk/exposure/vulnerability claim, and no generated heavy outputs committed.
 - Next task: `TB-264`
+
+### TB-264: Balfrin Target-Area Metrics Completion Postproc Run
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: submit the exact bounded target-area metrics-completion rerun on Balfrin postprocessing nodes, or record the exact fail-closed preflight blocker.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the Balfrin access preflight successfully: SSH, remote checkout visibility, existing target-area run-root visibility, and scheduler query all passed; the JSON output was preserved at `/tmp/tb264_balfrin_access_preflight.json`.
+  - Built the metrics-completion rerun package preflight for the exact run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v2`; it reported `preflight_status=ready_for_authorization_request`, `authorization_handoff_status=ready_for_authorization_review`, and `package_status=complete_rerun_package`, with JSON preserved at `/tmp/tb264_metrics_completion_package.json`.
+  - Fast-forwarded the Balfrin checkout to local `main` commit `a2c4831b52e34e5b772c560ad6cc4faa65886853`, then stopped before submission because the remote checkout was not clean: untracked generated files were present in the repository root, including `command_plan.json`, `probe.sbatch`, `balfrin_submission_package.json`, timing/context sidecars, `logs/`, SLURM outputs, and scratch helper scripts.
+  - No SLURM job was submitted, no job id was produced, and no run-root metrics, `sacct` fields, or preservation-gate output were promoted as evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-264 --format json`
+  - `rg -n "^### TB-264:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v2 --balfrin-access-json /tmp/tb264_balfrin_access_preflight.json --format json --artifact-dir /tmp/tb264_metrics_completion_package`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git status --short --branch && git rev-parse HEAD'`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_completion_rerun_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: blocked_unresolved
+- Boundaries: fail-closed checkout blocker only; no live Balfrin submission, no retry, no multi-zone run, no distributed execution, no scale-up, no physical-probability claim, no annual-frequency claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-265`

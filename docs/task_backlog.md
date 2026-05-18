@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-264: Balfrin Target-Area Metrics Completion Postproc Run
-
-Goal: Submit the exact bounded target-area metrics-completion rerun on Balfrin postprocessing nodes to close the missing execution-metrics gap.
-
-Capability gap reduced: The current target-area demonstration still lacks peak memory and split validation/hazard output metrics in the preserved evidence chain.
-
-Why this outranks alternatives: The decision helper ranks metrics completion first, and the user has authorized workers to execute on Balfrin postprocessing nodes for bounded tasks in this queue.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
-
-Deliverables:
-
-- A live Balfrin postproc submission for the exact metrics-completion run root `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v2`, using the frozen target-area manifest and reduced-output preservation contract.
-- Recorded SLURM job id, run root, command plan, logs, sacct fields, metrics JSON, and preservation-gate output.
-- A blocked report instead of submission if access, checkout, package, or preservation preflight fails.
-
-Definition of done:
-
-- The metrics-completion run is either submitted and collected as measured evidence, or the exact preflight blocker is recorded without partial evidence promotion.
-
-Boundaries: This task explicitly allows one bounded Balfrin `postproc` submission for the named metrics-completion run only; no retries without diagnosing the failed state, no multi-zone run, no distributed execution, no scale-up, no physical-probability semantics, and no operational claim.
-
 ### TB-265: Metrics Completion Evidence Integration And Decision Refresh
 
 Goal: Integrate the TB-264 Balfrin run result into the canonical metrics report, preservation gate, evidence bundle, closure package, and next-action decision.
