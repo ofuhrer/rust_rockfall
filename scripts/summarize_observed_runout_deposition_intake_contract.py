@@ -57,8 +57,13 @@ EXPECTED_BENCHMARK_INPUTS = (
     EXPECTED_BENCHMARK_MANIFEST,
     EXPECTED_BENCHMARK_GEOMETRY,
 )
+LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS = (
+    ROOT / "data/processed/tschamut2014/observed_deposition.csv",
+    ROOT / "validation/data/processed/tschamut/observed_deposition.csv",
+)
 
 ACQUISITION_MATRIX_SCHEMA_VERSION = "observed_runout_deposition_acquisition_matrix_v1"
+OBSERVED_RUNOUT_DEPOSITION_CANDIDATE_REPORT_SCHEMA_VERSION = "observed_runout_deposition_candidate_acquisition_report_v1"
 
 ACQUISITION_MATRIX_BLUEPRINTS: tuple[dict[str, Any], ...] = (
     {
@@ -418,6 +423,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     physical_credibility_gap_update = build_physical_credibility_gap_update()
     dataset_role_classification = build_dataset_role_classification(current_state=current_state)
     fixture_acceptance_smoke = build_fixture_acceptance_smoke()
+    candidate_acquisition_report = build_candidate_acquisition_report(current_state=current_state)
     benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=contract,
@@ -443,6 +449,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "acquisition_blocker_matrix": acquisition_blocker_matrix,
                 "next_action_recommendation": next_action_recommendation,
                 "physical_credibility_gap_update": physical_credibility_gap_update,
+                "candidate_acquisition_report": candidate_acquisition_report,
                 "dataset_role_classification": dataset_role_classification,
                 "fixture_acceptance_smoke": fixture_acceptance_smoke,
                 "claim_boundaries": claim_boundaries(),
@@ -460,6 +467,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "acquisition_blocker_matrix": acquisition_blocker_matrix,
             "next_action_recommendation": next_action_recommendation,
             "physical_credibility_gap_update": physical_credibility_gap_update,
+            "candidate_acquisition_report": candidate_acquisition_report,
             "dataset_role_classification": dataset_role_classification,
             "fixture_acceptance_smoke": fixture_acceptance_smoke,
             "claim_boundaries": claim_boundaries(),
@@ -706,6 +714,128 @@ def build_fixture_acceptance_smoke() -> dict[str, Any]:
         "physical_evidence_status": "not_established",
         "physical_evidence_note": "Fixture-backed schema smoke only; real physical evidence is not established by this report.",
     }
+
+
+def build_candidate_acquisition_report(*, current_state: dict[str, Any]) -> dict[str, Any]:
+    contract = build_contract()
+    candidate_sources = list(current_state.get("adjacent_diagnostic_materials", []))
+    available_local_candidates = [
+        summarize_local_candidate_source(source, contract=contract)
+        for source in candidate_sources
+        if str(source.get("status") or "") == "present"
+    ]
+    selected_candidate = available_local_candidates[0] if available_local_candidates else None
+
+    if selected_candidate is None:
+        recommendation = "blocked_no_candidate"
+        blocked_reason = "no local observed runout/deposition candidate source is staged"
+    elif selected_candidate["license_provenance_blockers"]:
+        recommendation = "blocked_license_or_provenance"
+        blocked_reason = "the available local candidate remains diagnostic-only and lacks a standalone benchmark package"
+    elif EXPECTED_BENCHMARK_MANIFEST.exists() and EXPECTED_BENCHMARK_GEOMETRY.exists():
+        recommendation = "stage_candidate"
+        blocked_reason = None
+    else:
+        recommendation = "defer_scientific_claim"
+        blocked_reason = "the candidate shape is present, but the staged package still does not justify a stronger scientific claim"
+
+    first_missing_geometry_fields = list(selected_candidate["first_missing_geometry_fields"]) if selected_candidate else list(contract["geometry"]["required_fields"])
+    first_missing_provenance_fields = list(selected_candidate["first_missing_provenance_fields"]) if selected_candidate else list(contract["event_source_metadata"]["required_fields"]) + list(contract["event_source_metadata"]["source_metadata_required"])
+    first_missing_uncertainty_fields = list(selected_candidate["first_missing_uncertainty_fields"]) if selected_candidate else list(contract["uncertainty"]["required_fields"])
+
+    return {
+        "schema_version": OBSERVED_RUNOUT_DEPOSITION_CANDIDATE_REPORT_SCHEMA_VERSION,
+        "candidate_acquisition_status": recommendation,
+        "recommendation": recommendation,
+        "selected_candidate_path": selected_candidate["candidate_path"] if selected_candidate else None,
+        "selected_candidate_kind": selected_candidate["candidate_kind"] if selected_candidate else None,
+        "available_local_candidates": available_local_candidates,
+        "candidate_sources": candidate_sources,
+        "required_external_acquisition_actions": candidate_required_external_actions(),
+        "licensing_provenance_blockers": candidate_licensing_provenance_blockers(selected_candidate),
+        "first_missing_geometry_fields": first_missing_geometry_fields,
+        "first_missing_geometry_field": first_missing_geometry_fields[0] if first_missing_geometry_fields else None,
+        "first_missing_provenance_fields": first_missing_provenance_fields,
+        "first_missing_provenance_field": first_missing_provenance_fields[0] if first_missing_provenance_fields else None,
+        "first_missing_uncertainty_fields": first_missing_uncertainty_fields,
+        "first_missing_uncertainty_field": first_missing_uncertainty_fields[0] if first_missing_uncertainty_fields else None,
+        "blocked_reason": blocked_reason,
+    }
+
+
+def summarize_local_candidate_source(source: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
+    path = Path(str(source.get("path") or ""))
+    metadata_path = Path(str(source.get("supporting_metadata_path") or path.with_name("metadata.json")))
+    candidate_present = path.exists()
+    metadata = load_json(metadata_path) if metadata_path.exists() else {}
+    provenance_note = str(source.get("provenance_note") or metadata.get("coordinate_system") or "").strip()
+    source_note = str(source.get("source_note") or metadata.get("terrain_proxy", {}).get("note") or "").strip()
+    required_geometry_fields = list(contract["geometry"]["required_fields"])
+    required_provenance_fields = list(contract["event_source_metadata"]["required_fields"]) + list(contract["event_source_metadata"]["source_metadata_required"])
+    required_uncertainty_fields = list(contract["uncertainty"]["required_fields"])
+    blockers = candidate_source_blockers(
+        candidate_present=candidate_present,
+        metadata_present=metadata_path.exists(),
+        candidate_kind=str(source.get("candidate_kind") or "diagnostic_observed_deposition_csv"),
+    )
+
+    return {
+        "candidate_id": str(source.get("candidate_id") or path.stem),
+        "candidate_path": str(path),
+        "candidate_kind": str(source.get("candidate_kind") or "diagnostic_observed_deposition_csv"),
+        "candidate_status": "present" if candidate_present else "missing",
+        "supporting_metadata_path": str(metadata_path),
+        "supporting_metadata_status": "present" if metadata_path.exists() else "missing",
+        "supporting_license": str(metadata.get("license") or source.get("supporting_license") or ""),
+        "provenance_note": provenance_note,
+        "source_note": source_note,
+        "required_external_acquisition_actions": candidate_required_external_actions(),
+        "license_provenance_blockers": blockers,
+        "first_missing_geometry_fields": required_geometry_fields,
+        "first_missing_provenance_fields": required_provenance_fields,
+        "first_missing_uncertainty_fields": required_uncertainty_fields,
+        "first_missing_geometry_field": required_geometry_fields[0] if required_geometry_fields else None,
+        "first_missing_provenance_field": required_provenance_fields[0] if required_provenance_fields else None,
+        "first_missing_uncertainty_field": required_uncertainty_fields[0] if required_uncertainty_fields else None,
+        "candidate_record_role": "diagnostic_only" if candidate_present else "missing",
+        "benchmark_package_status": "not_staged" if not candidate_present else "diagnostic_only",
+    }
+
+
+def candidate_required_external_actions() -> list[str]:
+    return [
+        f"Stage the observed benchmark manifest at {EXPECTED_BENCHMARK_MANIFEST}.",
+        f"Stage the observed benchmark geometry at {EXPECTED_BENCHMARK_GEOMETRY}.",
+        "Record geometry_id, geometry_role, geometry_encoding, geometry_crs, and geometry_value for the observed evidence package.",
+        "Record event_id, event_date, site_id, source_id, source_name, observer, observation_method, provenance_uri, source_origin_description, source_reference_frame, and source_geometry_reference.",
+        "Record geometry_tolerance_m, position_tolerance_m, timing_tolerance_days, coverage_completeness, qa_status, and uncertainty_notes.",
+        "Add a no-reuse separation note so the observed package is not repurposed for calibration or tuning.",
+    ]
+
+
+def candidate_source_blockers(*, candidate_present: bool, metadata_present: bool, candidate_kind: str) -> list[str]:
+    blockers: list[str] = []
+    if not candidate_present:
+        blockers.append("no_local_candidate_file_present")
+        return blockers
+    if candidate_kind == "diagnostic_observed_deposition_csv":
+        blockers.append("diagnostic_only_candidate_not_independent_benchmark_intake")
+    if not metadata_present:
+        blockers.append("supporting_metadata_missing")
+    if not EXPECTED_BENCHMARK_MANIFEST.exists():
+        blockers.append("missing_staged_benchmark_manifest")
+    if not EXPECTED_BENCHMARK_GEOMETRY.exists():
+        blockers.append("missing_staged_benchmark_geometry")
+    return blockers
+
+
+def candidate_licensing_provenance_blockers(selected_candidate: dict[str, Any] | None) -> list[str]:
+    if selected_candidate is None:
+        return ["no_local_candidate_file_present"]
+    blockers = list(selected_candidate.get("license_provenance_blockers") or [])
+    if selected_candidate.get("candidate_record_role") == "diagnostic_only":
+        blockers.append("candidate_record_is_diagnostic_only")
+    return blockers
 
 
 def build_dataset_role_classification(current_state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -955,6 +1085,7 @@ def build_acquisition_checklist(*, report: dict[str, Any], pack_root: Path) -> s
 def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path) -> str:
     current_state = report["current_repo_state"]
     physical_gap = report["physical_credibility_gap_update"]
+    candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
     next_action_recommendation = report["next_action_recommendation"]
     lines = [
@@ -983,6 +1114,14 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
         lines.append(f"- {role['dataset_role']}: {role['status']}")
     lines.extend(
         [
+            "",
+            "Candidate acquisition report:",
+            f"- recommendation: {candidate_report['recommendation']}",
+            f"- selected_candidate_path: {candidate_report['selected_candidate_path']}",
+            f"- available_local_candidate_count: {len(candidate_report['available_local_candidates'])}",
+            f"- first_missing_geometry_fields: {', '.join(candidate_report['first_missing_geometry_fields']) if candidate_report['first_missing_geometry_fields'] else 'none'}",
+            f"- first_missing_provenance_fields: {', '.join(candidate_report['first_missing_provenance_fields']) if candidate_report['first_missing_provenance_fields'] else 'none'}",
+            f"- first_missing_uncertainty_fields: {', '.join(candidate_report['first_missing_uncertainty_fields']) if candidate_report['first_missing_uncertainty_fields'] else 'none'}",
             "",
             "Acquisition blocker matrix:",
         ]
@@ -1324,18 +1463,23 @@ def build_current_state() -> dict[str, Any]:
         }
     )
     calibration_missing_inputs = shared_missing_repo_paths({"calibration_root": EXPECTED_CALIBRATION_ROOT})
-    adjacent_diagnostic_materials = [
-        {
-            "path": str(ROOT / "data/processed/tschamut2014/observed_deposition.csv"),
-            "classification": "diagnostic_only",
-            "status": "present" if (ROOT / "data/processed/tschamut2014/observed_deposition.csv").exists() else "missing",
-        },
-        {
-            "path": str(ROOT / "validation/data/processed/tschamut/observed_deposition.csv"),
-            "classification": "diagnostic_only",
-            "status": "present" if (ROOT / "validation/data/processed/tschamut/observed_deposition.csv").exists() else "missing",
-        },
-    ]
+    adjacent_diagnostic_materials = []
+    for path in LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS:
+        metadata_path = path.with_name("metadata.json")
+        metadata = load_json(metadata_path) if metadata_path.exists() else {}
+        adjacent_diagnostic_materials.append(
+            {
+                "path": str(path),
+                "classification": "diagnostic_only",
+                "status": "present" if path.exists() else "missing",
+                "supporting_metadata_path": str(metadata_path),
+                "supporting_metadata_status": "present" if metadata_path.exists() else "missing",
+                "supporting_license": str(metadata.get("license") or ""),
+                "source_dataset": str(metadata.get("dataset_id") or path.parent.name),
+                "provenance_note": str(metadata.get("coordinate_system") or "").strip(),
+                "source_note": str((metadata.get("terrain_proxy") or {}).get("note") or "").strip(),
+            }
+        )
     return {
         "benchmark_intake_readiness_status": "blocked_missing_inputs" if benchmark_missing_inputs else "ready",
         "calibration_readiness_status": "blocked_missing_inputs" if calibration_missing_inputs else "ready",
@@ -1521,6 +1665,13 @@ def acquisition_blueprint(category: str) -> dict[str, Any]:
     raise KeyError(category)
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
 def load_yaml_fixture(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise ObservedRunoutDepositionIntakeContractError(f"missing fixture-backed acceptance smoke fixture: {path}")
@@ -1605,6 +1756,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
     benchmark_manifest = report["benchmark_intake_manifest"]
     current_state = report["current_repo_state"]
+    candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
     next_action_recommendation = report["next_action_recommendation"]
     lines = [
@@ -1637,6 +1789,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- physical_credibility_requirements_status: {report['physical_credibility_gap_update']['physical_credibility_requirements_status']}",
         f"- current_physical_credibility_status: {report['physical_credibility_gap_update']['current_physical_credibility_status']}",
         f"- blocked_reason: {report['physical_credibility_gap_update']['blocked_reason']}",
+        "",
+        "candidate_acquisition_report:",
+        f"- recommendation: {candidate_report['recommendation']}",
+        f"- selected_candidate_path: {candidate_report['selected_candidate_path']}",
+        f"- available_local_candidate_count: {len(candidate_report['available_local_candidates'])}",
+        f"- first_missing_geometry_fields: {', '.join(candidate_report['first_missing_geometry_fields']) if candidate_report['first_missing_geometry_fields'] else 'none'}",
+        f"- first_missing_provenance_fields: {', '.join(candidate_report['first_missing_provenance_fields']) if candidate_report['first_missing_provenance_fields'] else 'none'}",
+        f"- first_missing_uncertainty_fields: {', '.join(candidate_report['first_missing_uncertainty_fields']) if candidate_report['first_missing_uncertainty_fields'] else 'none'}",
         "",
         "dataset_role_classification:",
     ]

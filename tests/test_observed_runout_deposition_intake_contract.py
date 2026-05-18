@@ -25,6 +25,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "acquisition_blocker_matrix",
             "next_action_recommendation",
             "physical_credibility_gap_update",
+            "candidate_acquisition_report",
             "fixture_acceptance_smoke",
             "dataset_role_classification",
             "claim_boundaries",
@@ -59,6 +60,14 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         )
         self.assertFalse(report["fixture_acceptance_smoke"]["fixture_classification"]["holdout_eligibility"])
         self.assertEqual(report["fixture_acceptance_smoke"]["physical_evidence_status"], "not_established")
+        self.assertEqual(report["candidate_acquisition_report"]["recommendation"], "blocked_license_or_provenance")
+        self.assertEqual(
+            report["candidate_acquisition_report"]["selected_candidate_path"],
+            str(helper.LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS[0]),
+        )
+        self.assertEqual(report["candidate_acquisition_report"]["first_missing_geometry_field"], "geometry_id")
+        self.assertEqual(report["candidate_acquisition_report"]["first_missing_provenance_field"], "event_id")
+        self.assertEqual(report["candidate_acquisition_report"]["first_missing_uncertainty_field"], "geometry_tolerance_m")
         self.assertEqual(
             report["physical_credibility_gap_update"]["physical_credibility_requirements_status"],
             "mapped_current_gaps",
@@ -152,6 +161,32 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(report["acquisition_blocker_matrix"][4]["acceptance_status"], "ready")
         self.assertEqual(report["acquisition_blocker_matrix"][5]["acceptance_status"], "ready")
 
+    def test_candidate_acquisition_report_reports_no_candidate(self) -> None:
+        with patch.object(helper, "LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS", tuple()):
+            report = helper.build_report()
+
+        candidate_report = report["candidate_acquisition_report"]
+        self.assertEqual(candidate_report["recommendation"], "blocked_no_candidate")
+        self.assertIsNone(candidate_report["selected_candidate_path"])
+        self.assertEqual(candidate_report["available_local_candidates"], [])
+        self.assertEqual(candidate_report["first_missing_geometry_field"], "geometry_id")
+        self.assertEqual(candidate_report["first_missing_provenance_field"], "event_id")
+        self.assertEqual(candidate_report["first_missing_uncertainty_field"], "geometry_tolerance_m")
+
+    def test_candidate_acquisition_report_tracks_local_candidates(self) -> None:
+        report = helper.build_report()
+
+        candidate_report = report["candidate_acquisition_report"]
+        self.assertEqual(candidate_report["recommendation"], "blocked_license_or_provenance")
+        self.assertGreaterEqual(len(candidate_report["available_local_candidates"]), 1)
+        self.assertEqual(candidate_report["available_local_candidates"][0]["candidate_status"], "present")
+        self.assertIn(
+            "diagnostic_only_candidate_not_independent_benchmark_intake",
+            candidate_report["licensing_provenance_blockers"],
+        )
+        self.assertIn("missing_staged_benchmark_manifest", candidate_report["licensing_provenance_blockers"])
+        self.assertIn("missing_staged_benchmark_geometry", candidate_report["licensing_provenance_blockers"])
+
     def test_benchmark_ready_without_calibration_is_reported_as_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -208,6 +243,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("benchmark_intake_manifest:", text)
         self.assertIn("fixture_acceptance_smoke:", text)
         self.assertIn("physical_credibility_gap_update:", text)
+        self.assertIn("candidate_acquisition_report:", text)
         self.assertIn("dataset_role_classification:", text)
         self.assertIn("geometry.geometry_role=runout_axis_line -> observed_runout_deposition", text)
         self.assertIn("objective_function_placeholders.runout_endpoint_error_m -> calibration_data_and_objective_functions", text)
@@ -215,6 +251,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_dataset_status: absent", text)
         self.assertIn("physical_evidence_status: not_established", text)
+        self.assertIn("recommendation: blocked_license_or_provenance", text)
         self.assertIn("No calibration dataset is available for objective fitting.", text)
         self.assertIn("first_acquisition_action: Stage an independent observed runout/deposition benchmark manifest", text)
         self.assertIn("acquisition_blocker_matrix:", text)

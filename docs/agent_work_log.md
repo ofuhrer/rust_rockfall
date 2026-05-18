@@ -1622,3 +1622,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: dry run only; no downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-252`
+
+### TB-252: Observed Benchmark Candidate Acquisition Triage
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: identify one concrete local observed runout/deposition candidate path or return a precise blocked acquisition report, while keeping the intake boundary non-operational and non-calibration.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated `candidate_acquisition_report` to the observed intake contract helper so the report now names the local candidate paths, the selected candidate path, the required external acquisition actions, the licensing/provenance blockers, and the first missing geometry/provenance/uncertainty fields.
+  - Wired the report to the local observed-deposition diagnostic CSVs under `data/processed/tschamut2014` and `validation/data/processed/tschamut`, while keeping the acceptance-smoke fixture separate as schema-only evidence.
+  - Kept the recommendation logic explicit with the task-specified `stage_candidate`, `blocked_no_candidate`, `blocked_license_or_provenance`, and `defer_scientific_claim` vocabulary.
+  - Added focused tests for the local-candidate-present branch, the no-candidate branch, and the existing missing provenance / missing uncertainty classifier cases, then verified the text report surfaces the candidate-acquisition section.
+  - Removed TB-252 from the active backlog after the triage report and tests were aligned.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -q`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: acquisition triage only; no downloads, no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
+- Next task: `TB-253`

@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-252: Observed Benchmark Candidate Acquisition Triage
-
-Goal: Identify one concrete candidate path for real observed runout/deposition benchmark evidence, or produce a precise blocked acquisition report if no candidate can be staged.
-
-Capability gap reduced: The largest scientific gap remains physical credibility, and the current observed-intake machinery is schema-ready but lacks real benchmark inputs.
-
-Why this outranks alternatives: Execution metrics and multi-zone scaling do not establish scientific credibility; the next scientific step is acquiring or explicitly failing to acquire independent observed evidence.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/validation_data_schema.md`
-- `docs/public_benchmark_framework.md`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-
-Deliverables:
-
-- A candidate-acquisition report listing available local candidates, required external acquisition actions, licensing/provenance blockers, and first missing geometry/provenance/uncertainty fields.
-- A recommendation of `stage_candidate`, `blocked_no_candidate`, `blocked_license_or_provenance`, or `defer_scientific_claim`.
-- Tests for local candidate present, no candidate, and candidate missing uncertainty/provenance cases.
-
-Definition of done:
-
-- A worker can act on one real observed-evidence candidate or see exactly why the physical-evidence path remains blocked.
-
-Boundaries: Acquisition triage only; no downloads unless separately authorized, no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
-
 ### TB-253: First Real Observed Benchmark Intake Integration
 
 Goal: If TB-252 identifies and stages a real observed benchmark candidate, integrate it through the observed runout/deposition intake contract while keeping calibration and claim boundaries explicit.
