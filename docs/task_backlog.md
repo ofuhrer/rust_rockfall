@@ -23,38 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-222: Balfrin Next Measured Action Decision Refresh
-
-Goal: Refresh the Balfrin next-action decision matrix using post-TB-221 evidence before any worker prepares a live-run request or optimization task.
-
-Capability gap reduced: The project needs a current, evidence-ranked choice among target-area metrics completion, smallest multi-zone measurement, second-site progress, physical-evidence acquisition, and hazard-builder optimization.
-
-Why this outranks alternatives: A stale decision gate would let execution momentum choose the next Balfrin step instead of measured blockers, SSH availability, and scientific value.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Updated deterministic decision helper or fixture data that includes TB-217 through TB-221 evidence.
-- A ranked recommendation that explicitly distinguishes measured, fixture-backed, blocked, unavailable, unauthorized, and SSH-access-expired paths.
-- Focused tests for metrics-completion, multi-zone, Balfrin-access-blocked, and defer-to-physical-or-portability branches.
-
-Definition of done:
-
-- The decision output names the recommended next measured action, the exact blocker for each non-selected action, and the boundary that prevents claim upgrades.
-- Focused tests pass and the task is removed only after the updated recommendation is reproducible.
-
-Boundaries: No live Balfrin submission, no authorization grant, no new maturity label, no operational claim, and no fabricated metrics.
-
 ### TB-223: Balfrin SSH And Remote Artifact Access Preflight
 
 Goal: Add a read-only Balfrin access preflight that checks SSH availability, expected clone path, non-git run-root visibility, and scheduler query reachability without launching jobs.

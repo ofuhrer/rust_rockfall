@@ -31,45 +31,95 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["decision_status"], "ready")
         self.assertEqual(report["recommended_next_action"]["action_id"], "metrics_completion_rerun")
         self.assertEqual(report["recommended_next_action"]["classification"], "ready")
-        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-206")
-        self.assertEqual(report["next_follow_up_package_task"], "TB-206")
+        self.assertEqual(report["recommended_next_action"]["path_state"], "measured")
+        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-223")
+        self.assertEqual(report["next_follow_up_package_task"], "TB-223")
         self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "ready")
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
+        self.assertEqual(report["option_assessments"]["second_site_public_context_progress"]["path_state"], "unavailable")
+        self.assertEqual(report["option_assessments"]["physical_evidence_acquisition"]["path_state"], "blocked")
+        self.assertEqual(report["option_assessments"]["hazard_builder_accumulation_optimization"]["path_state"], "fixture_backed")
         self.assertEqual(report["criteria"]["missing_target_area_metrics"]["status"], "missing")
         self.assertEqual(report["criteria"]["preservation_gate_readiness"]["status"], "ready")
+        self.assertEqual(report["criteria"]["balfrin_access"]["status"], "not_checked_not_needed_for_decision_refresh")
+        self.assertFalse(report["criteria"]["balfrin_access"]["hard_live_run_blocker"])
+        self.assertEqual(report["ranked_actions"][0]["action_id"], "metrics_completion_rerun")
+        self.assertIn("annual frequency", report["recommended_next_action"]["boundary_that_prevents_claim_upgrade"])
         self.assertIn("metrics rerun", report["decision_summary"])
         self.assertIn("missing target-area metrics", report["recommended_next_action"]["summary"].lower())
         rendered = MODULE.render_text_report(report)
         self.assertIn("Balfrin Next Live-Run Decision Gate", rendered)
         self.assertIn("metrics_completion_rerun", rendered)
         self.assertIn("smallest_bounded_multi_zone_probe", rendered)
+        self.assertIn("second_site_public_context_progress", rendered)
+        self.assertIn("physical_evidence_acquisition", rendered)
+        self.assertIn("hazard_builder_accumulation_optimization", rendered)
         self.assertIn("defer_portability_or_physical_evidence", rendered)
+
+    def test_multi_zone_branch_lists_exact_blockers(self) -> None:
+        report = MODULE.build_report(self.load_fixture("default_bundle.json"))
+        multi_zone = report["option_assessments"]["smallest_bounded_multi_zone_probe"]
+
+        self.assertEqual(multi_zone["status"], "blocked")
+        self.assertEqual(multi_zone["path_state"], "blocked")
+        self.assertIn("missing_target_area_metrics", multi_zone["exact_evidence_blockers"])
+        self.assertIn("reducer_pressure:multi_zone_dry_run_blocked", multi_zone["exact_evidence_blockers"])
+        self.assertIn("multi_zone_package:mixed_provenance", multi_zone["exact_evidence_blockers"])
+        self.assertIn("output_pressure:no_go", multi_zone["exact_evidence_blockers"])
+        self.assertIn("live_multi_zone_measurement_unauthorized", multi_zone["exact_evidence_blockers"])
+        self.assertIn("distributed execution", multi_zone["boundary_that_prevents_claim_upgrade"])
 
     def test_missing_inputs_fixture_fails_closed(self) -> None:
         report = MODULE.build_report(self.load_fixture("blocked_bundle.json"))
 
         self.assertEqual(report["decision_status"], "blocked")
         self.assertEqual(report["recommended_next_action"]["classification"], "blocked")
-        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-206")
+        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-223")
         self.assertIn("missing", report["blocked_reason"])
         self.assertEqual(report["evidence_sources"]["probe_metrics_report"], None)
         self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["defer_portability_or_physical_evidence"]["status"], "blocked")
 
+    def test_balfrin_ssh_expired_fixture_fails_closed_for_live_paths(self) -> None:
+        bundle = self.load_fixture("default_bundle.json")
+        bundle["balfrin_access"] = {
+            "status": "ssh_access_expired",
+            "path_state": "ssh_access_expired",
+            "ssh_access_state": "expired",
+            "live_submission_authorized": False,
+            "blockers": ["ssh_authentication_expired"],
+            "summary": "Balfrin SSH access expired before this decision refresh could inspect remote artifacts.",
+        }
+
+        report = MODULE.build_report(bundle)
+
+        self.assertEqual(report["decision_status"], "blocked")
+        self.assertEqual(report["recommended_next_action"]["classification"], "ssh_access_expired")
+        self.assertEqual(report["recommended_next_action"]["path_state"], "ssh_access_expired")
+        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-223")
+        self.assertIn("Balfrin SSH access expired", report["blocked_reason"])
+        self.assertIn("balfrin_ssh_access:ssh_access_expired", report["option_assessments"]["metrics_completion_rerun"]["exact_evidence_blockers"])
+        self.assertIn(
+            "balfrin_ssh_access:ssh_access_expired",
+            report["option_assessments"]["smallest_bounded_multi_zone_probe"]["exact_evidence_blockers"],
+        )
+
     def test_defer_fixture_prefers_portability_or_physical_evidence_work(self) -> None:
         report = MODULE.build_report(self.load_fixture("defer_bundle.json"))
 
         self.assertEqual(report["decision_status"], "defer")
-        self.assertEqual(report["recommended_next_action"]["action_id"], "defer_portability_or_physical_evidence")
+        self.assertEqual(report["recommended_next_action"]["action_id"], "second_site_public_context_progress")
         self.assertEqual(report["recommended_next_action"]["classification"], "defer")
-        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-207")
+        self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-231")
         self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["defer_portability_or_physical_evidence"]["status"], "defer")
+        self.assertEqual(report["option_assessments"]["second_site_public_context_progress"]["status"], "defer")
+        self.assertEqual(report["option_assessments"]["physical_evidence_acquisition"]["status"], "defer")
         self.assertEqual(report["criteria"]["missing_target_area_metrics"]["status"], "complete")
         self.assertEqual(report["criteria"]["multi_zone_package_readiness"]["status"], "blocked")
-        self.assertIn("portability or physical-evidence", report["recommended_next_action"]["summary"])
+        self.assertIn("second-site public-context acquisition", report["recommended_next_action"]["summary"])
 
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

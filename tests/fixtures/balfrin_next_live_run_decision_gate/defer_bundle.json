@@ -78,5 +78,56 @@
   "portability_value": {
     "status": "high",
     "summary": "Portability and physical-evidence work now provide the better next package while the multi-zone path remains blocked."
+  },
+  "balfrin_access": {
+    "status": "not_checked_not_needed_for_decision_refresh",
+    "path_state": "not_required_for_refresh",
+    "ssh_access_state": "not_checked",
+    "live_submission_authorized": false,
+    "summary": "Remote Balfrin SSH access is not needed for the deterministic defer-branch fixture."
+  },
+  "second_site_progress": {
+    "status": "preferred",
+    "path_state": "unavailable",
+    "follow_up_task": "TB-231",
+    "blockers": [
+      "real_second_site_public_context_products_unstaged",
+      "second_site_ensemble_unauthorized"
+    ],
+    "summary": "With target-area metrics complete and the multi-zone path still no-go, the next package should defer to real second-site public-context acquisition."
+  },
+  "physical_evidence_acquisition": {
+    "status": "defer",
+    "path_state": "blocked",
+    "follow_up_task": "TB-233",
+    "blockers": [
+      "observed_runout_deposition_benchmark_missing",
+      "calibration_and_frequency_evidence_unstaged"
+    ],
+    "summary": "Physical-evidence acquisition remains valuable but blocked on independent observed/provenance inputs."
+  },
+  "hazard_builder_optimization": {
+    "status": "fixture_backed",
+    "path_state": "fixture_backed",
+    "follow_up_task": "TB-229",
+    "blockers": [
+      "optimization_target_fixture_backed",
+      "semantic_guardrails_required_before_throughput_change"
+    ],
+    "summary": "The hazard optimization target is fixture-backed and should wait behind portability or physical-evidence progress in this branch."
+  },
+  "post_tb_221_evidence": [
+    "TB-217 fixture-backed scalable command-plan output-profile enforcement.",
+    "TB-218 fixture-backed reducer manifest and file-family budget gate.",
+    "TB-219 measured fixture/scratch-root hazard throughput profile.",
+    "TB-220 fixture-backed physical-meaning firewall.",
+    "TB-221 fixture-backed observed runout/deposition acquisition blocker matrix."
+  ],
+  "source_paths": {
+    "balfrin_access": "docs/orchestration_strategy.md",
+    "second_site_progress": "docs/current_maturity_snapshot.md",
+    "physical_evidence_acquisition": "docs/target_area_physical_evidence_acquisition_pack.md",
+    "hazard_builder_optimization": "docs/hazard_throughput_bottleneck_report.md",
+    "post_tb_221_evidence": "docs/agent_work_log.md"
   }
 }

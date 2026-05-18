@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Decide the next authorized live Balfrin action from measured evidence.
 
-This helper compares three options:
+This helper compares five next-action families:
 
 - metrics-completion rerun
 - smallest bounded multi-zone probe
-- deferral in favor of portability or physical-evidence work
+- second-site public-context progress
+- physical-evidence acquisition
+- hazard-builder optimization
 
 It stays read-only, synthesizes the current evidence helpers and tracked
 fixtures into one deterministic decision report, and fails closed whenever the
-required measured inputs are missing.
+required measured inputs or Balfrin access prerequisites are missing.
 """
 
 from __future__ import annotations
@@ -48,6 +50,17 @@ REQUIRED_BUNDLE_KEYS = (
 OPTION_METRICS = "metrics_completion_rerun"
 OPTION_MULTI_ZONE = "smallest_bounded_multi_zone_probe"
 OPTION_DEFER = "defer_portability_or_physical_evidence"
+OPTION_SECOND_SITE = "second_site_public_context_progress"
+OPTION_PHYSICAL_EVIDENCE = "physical_evidence_acquisition"
+OPTION_HAZARD_OPTIMIZATION = "hazard_builder_accumulation_optimization"
+
+RANKED_ACTION_OPTIONS = (
+    OPTION_METRICS,
+    OPTION_MULTI_ZONE,
+    OPTION_SECOND_SITE,
+    OPTION_PHYSICAL_EVIDENCE,
+    OPTION_HAZARD_OPTIMIZATION,
+)
 
 
 class BalfrinNextLiveRunDecisionGateError(ValueError):
@@ -147,6 +160,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "next_follow_up_package_task": recommended["follow_up_task"],
         "criteria": criteria,
         "option_assessments": option_assessments,
+        "ranked_actions": build_ranked_actions(option_assessments),
         "evidence_sources": build_evidence_sources(bundle),
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -168,6 +182,11 @@ def normalize_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
         "sections": sections,
         "scientific_value": _copy_mapping(bundle.get("scientific_value")),
         "portability_value": _copy_mapping(bundle.get("portability_value")),
+        "balfrin_access": _copy_mapping(bundle.get("balfrin_access")),
+        "second_site_progress": _copy_mapping(bundle.get("second_site_progress")),
+        "physical_evidence_acquisition": _copy_mapping(bundle.get("physical_evidence_acquisition")),
+        "hazard_builder_optimization": _copy_mapping(bundle.get("hazard_builder_optimization")),
+        "post_tb_221_evidence": _safe_list(bundle.get("post_tb_221_evidence")),
         "source_paths": _copy_mapping(bundle.get("source_paths")),
     }
 
@@ -190,6 +209,11 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         "multi_zone_handoff_report": multi_zone_handoff.build_report(),
         "scientific_value": _copy_mapping(default_bundle.get("scientific_value")),
         "portability_value": _copy_mapping(default_bundle.get("portability_value")),
+        "balfrin_access": _copy_mapping(default_bundle.get("balfrin_access")),
+        "second_site_progress": _copy_mapping(default_bundle.get("second_site_progress")),
+        "physical_evidence_acquisition": _copy_mapping(default_bundle.get("physical_evidence_acquisition")),
+        "hazard_builder_optimization": _copy_mapping(default_bundle.get("hazard_builder_optimization")),
+        "post_tb_221_evidence": _safe_list(default_bundle.get("post_tb_221_evidence")),
         "source_paths": _copy_mapping(default_bundle.get("source_paths")),
     }
 
@@ -201,6 +225,10 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     package = bundle["sections"]["multi_zone_handoff_report"]
     scientific_value = bundle["scientific_value"]
     portability_value = bundle["portability_value"]
+    balfrin_access = bundle["balfrin_access"]
+    second_site = bundle["second_site_progress"]
+    physical_evidence = bundle["physical_evidence_acquisition"]
+    hazard_optimization = bundle["hazard_builder_optimization"]
 
     missing_metrics = _safe_list(metrics.get("metrics_contract_missing_metrics"))
     next_run_required = _safe_list(metrics.get("metrics_remediation", {}).get("next_run_required_metrics"))
@@ -267,6 +295,58 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
             "status": _status(portability_value.get("status"), "unknown"),
             "summary": portability_value.get("summary", ""),
         },
+        "balfrin_access": build_balfrin_access_criteria(balfrin_access),
+        "second_site_progress": {
+            "status": _status(second_site.get("status"), "blocked_missing_inputs"),
+            "path_state": _status(second_site.get("path_state"), "blocked"),
+            "blockers": _safe_list(second_site.get("blockers")),
+            "follow_up_task": str(second_site.get("follow_up_task") or "TB-231"),
+            "summary": str(second_site.get("summary") or ""),
+        },
+        "physical_evidence_acquisition": {
+            "status": _status(physical_evidence.get("status"), "blocked_missing_inputs"),
+            "path_state": _status(physical_evidence.get("path_state"), "blocked"),
+            "blockers": _safe_list(physical_evidence.get("blockers")),
+            "follow_up_task": str(physical_evidence.get("follow_up_task") or "TB-233"),
+            "summary": str(physical_evidence.get("summary") or ""),
+        },
+        "hazard_builder_optimization": {
+            "status": _status(hazard_optimization.get("status"), "fixture_backed"),
+            "path_state": _status(hazard_optimization.get("path_state"), "fixture_backed"),
+            "blockers": _safe_list(hazard_optimization.get("blockers")),
+            "follow_up_task": str(hazard_optimization.get("follow_up_task") or "TB-229"),
+            "summary": str(hazard_optimization.get("summary") or ""),
+        },
+        "post_tb_221_evidence": {
+            "status": "recorded",
+            "evidence_items": bundle["post_tb_221_evidence"],
+        },
+    }
+
+
+def build_balfrin_access_criteria(access: dict[str, Any]) -> dict[str, Any]:
+    status = _status(access.get("status"), "not_checked_not_needed_for_decision_refresh")
+    path_state = _status(access.get("path_state"), "not_required_for_refresh")
+    hard_blocked_statuses = {
+        "ssh_access_expired",
+        "authentication_failed",
+        "permission_denied",
+        "unavailable",
+        "blocked_unavailable",
+    }
+    if status in hard_blocked_statuses:
+        path_state = "ssh_access_expired" if status == "ssh_access_expired" else "unavailable"
+    return {
+        "status": status,
+        "path_state": path_state,
+        "ssh_access_state": _status(access.get("ssh_access_state"), status),
+        "hard_live_run_blocker": status in hard_blocked_statuses,
+        "live_submission_authorized": _bool(access.get("live_submission_authorized")),
+        "blockers": _safe_list(access.get("blockers")),
+        "summary": str(
+            access.get("summary")
+            or "Remote Balfrin SSH access was not checked because this helper is a deterministic local decision refresh."
+        ),
     }
 
 
@@ -278,6 +358,14 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     runtime_pressure = criteria["expected_runtime_output_pressure"]
     scientific = criteria["scientific_value"]
     portability = criteria["portability_or_physical_evidence_value"]
+    access = criteria["balfrin_access"]
+    second_site = criteria["second_site_progress"]
+    physical_evidence = criteria["physical_evidence_acquisition"]
+    hazard_optimization = criteria["hazard_builder_optimization"]
+
+    access_blockers = []
+    if access["hard_live_run_blocker"]:
+        access_blockers.append(f"balfrin_ssh_access:{access['status']}")
 
     metrics_blockers: list[str] = []
     if metrics["status"] == "missing":
@@ -285,6 +373,7 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
             metrics_blockers.append(f"preservation_gate:{preservation['gate_status']}")
     else:
         metrics_blockers.append("no_missing_target_area_metrics")
+    metrics_blockers.extend(access_blockers)
 
     multi_zone_blockers: list[str] = []
     if metrics["status"] == "missing":
@@ -299,6 +388,9 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         multi_zone_blockers.append(f"output_pressure:{runtime_pressure['output_pressure_status']}")
     if scientific["status"] not in {"high", "ready"}:
         multi_zone_blockers.append(f"scientific_value:{scientific['status']}")
+    if not access["live_submission_authorized"]:
+        multi_zone_blockers.append("live_multi_zone_measurement_unauthorized")
+    multi_zone_blockers.extend(access_blockers)
 
     defer_blockers: list[str] = []
     if metrics["status"] == "missing":
@@ -310,25 +402,54 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     if portability["status"] not in {"high", "preferred", "defer"} and scientific["status"] != "low":
         defer_blockers.append(f"portability_or_physical_evidence_value:{portability['status']}")
 
+    second_site_blockers = list(second_site["blockers"])
+    if metrics["status"] == "missing":
+        second_site_blockers.append("missing_target_area_metrics")
+    if second_site["status"] not in {"preferred", "defer", "ready"}:
+        second_site_blockers.append(f"second_site_progress:{second_site['status']}")
+
+    physical_evidence_blockers = list(physical_evidence["blockers"])
+    if metrics["status"] == "missing":
+        physical_evidence_blockers.append("missing_target_area_metrics")
+    if physical_evidence["status"] not in {"preferred", "defer", "ready"}:
+        physical_evidence_blockers.append(f"physical_evidence_acquisition:{physical_evidence['status']}")
+
+    hazard_optimization_blockers = list(hazard_optimization["blockers"])
+    if metrics["status"] == "missing":
+        hazard_optimization_blockers.append("missing_target_area_metrics")
+    if hazard_optimization["path_state"] == "fixture_backed":
+        hazard_optimization_blockers.append("hazard_hotspot_evidence:fixture_backed")
+    if hazard_optimization["status"] not in {"preferred", "defer", "ready", "fixture_backed"}:
+        hazard_optimization_blockers.append(f"hazard_builder_optimization:{hazard_optimization['status']}")
+
+    metrics_ready = metrics["status"] == "missing" and preservation["status"] == "ready" and not access_blockers
+    metrics_path_state = access["path_state"] if access_blockers else ("measured" if metrics_ready else "blocked")
+    multi_zone_path_state = access["path_state"] if access_blockers else ("measured" if not multi_zone_blockers else "blocked")
+
     assessments = {
         OPTION_METRICS: {
-            "status": "ready" if metrics["status"] == "missing" and preservation["status"] == "ready" else "blocked",
-            "follow_up_task": "TB-206",
+            "status": "ready" if metrics_ready else "blocked",
+            "path_state": metrics_path_state,
+            "follow_up_task": "TB-223",
+            "action_package_task": "TB-225",
             "summary": (
-                "Missing target-area metrics remain the clearest measured gap, so the metrics-completion rerun (metrics rerun) is the next ready action and the preservation gate is ready."
-                if metrics["status"] == "missing" and preservation["status"] == "ready"
+                "Missing target-area metrics remain the clearest measured gap, so the metrics-completion rerun (metrics rerun) path is the next ranked action after SSH/access preflight."
+                if metrics_ready
                 else "No current target-area metrics gap is open for a rerun to close."
             ),
             "exact_evidence_blockers": metrics_blockers,
+            "boundary_that_prevents_claim_upgrade": "A metrics-completion rerun would collect missing execution metrics only; it does not establish physical credibility, annual frequency, risk, or operational hazard-map status.",
             "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
         },
         OPTION_MULTI_ZONE: {
             "status": "ready" if not multi_zone_blockers else "blocked",
-            "follow_up_task": "TB-205",
+            "path_state": multi_zone_path_state,
+            "follow_up_task": "TB-226",
             "summary": (
                 "The smallest bounded multi-zone probe is ready only when the preservation gate, reducer pressure, package readiness, runtime/output pressure, and scientific value all align."
             ),
             "exact_evidence_blockers": multi_zone_blockers,
+            "boundary_that_prevents_claim_upgrade": "A smallest multi-zone measurement would remain a bounded conditional diagnostic and would not authorize distributed execution, scale-up, or operational use.",
             "criteria": [
                 "missing_target_area_metrics",
                 "preservation_gate_readiness",
@@ -340,11 +461,13 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         },
         OPTION_DEFER: {
             "status": "defer" if metrics["status"] == "complete" and multi_zone_blockers else "blocked",
-            "follow_up_task": "TB-207",
+            "path_state": "blocked" if defer_blockers else "measured",
+            "follow_up_task": "TB-231",
             "summary": (
                 "Deferral is justified once the target-area metrics gap is closed and the multi-zone path remains no-go, so portability or physical-evidence work can proceed first."
             ),
             "exact_evidence_blockers": defer_blockers,
+            "boundary_that_prevents_claim_upgrade": "Deferring to portability or physical-evidence work does not convert staged context, acquisition planning, or observed-data schemas into validation or calibration evidence.",
             "criteria": [
                 "missing_target_area_metrics",
                 "preservation_gate_readiness",
@@ -352,6 +475,33 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
                 "expected_runtime_output_pressure",
                 "portability_or_physical_evidence_value",
             ],
+        },
+        OPTION_SECOND_SITE: {
+            "status": "defer" if metrics["status"] == "complete" and second_site["status"] in {"preferred", "defer", "ready"} else "blocked",
+            "path_state": second_site["path_state"],
+            "follow_up_task": second_site["follow_up_task"],
+            "summary": second_site["summary"],
+            "exact_evidence_blockers": second_site_blockers,
+            "boundary_that_prevents_claim_upgrade": "Second-site public-context progress may improve portability only after real inputs are staged; it does not authorize a second-site ensemble or hazard build.",
+            "criteria": ["missing_target_area_metrics", "second_site_progress"],
+        },
+        OPTION_PHYSICAL_EVIDENCE: {
+            "status": "defer" if metrics["status"] == "complete" and physical_evidence["status"] in {"preferred", "defer", "ready"} else "blocked",
+            "path_state": physical_evidence["path_state"],
+            "follow_up_task": physical_evidence["follow_up_task"],
+            "summary": physical_evidence["summary"],
+            "exact_evidence_blockers": physical_evidence_blockers,
+            "boundary_that_prevents_claim_upgrade": "Physical-evidence acquisition can reduce evidence gaps only after independent observed/provenance inputs are staged; it does not authorize calibration, annual-frequency, risk, or operational claims.",
+            "criteria": ["missing_target_area_metrics", "physical_evidence_acquisition"],
+        },
+        OPTION_HAZARD_OPTIMIZATION: {
+            "status": "defer" if metrics["status"] == "complete" and hazard_optimization["status"] in {"preferred", "defer", "ready", "fixture_backed"} else "blocked",
+            "path_state": hazard_optimization["path_state"],
+            "follow_up_task": hazard_optimization["follow_up_task"],
+            "summary": hazard_optimization["summary"],
+            "exact_evidence_blockers": hazard_optimization_blockers,
+            "boundary_that_prevents_claim_upgrade": "A hazard-builder optimization may improve throughput only if semantic guardrails pass; it does not change hazard semantics, physics, probability meaning, or claim maturity.",
+            "criteria": ["missing_target_area_metrics", "hazard_builder_optimization"],
         },
     }
     return assessments
@@ -361,15 +511,20 @@ def choose_recommendation(option_assessments: dict[str, Any]) -> dict[str, Any]:
     metrics = option_assessments[OPTION_METRICS]
     multi_zone = option_assessments[OPTION_MULTI_ZONE]
     defer = option_assessments[OPTION_DEFER]
+    second_site = option_assessments[OPTION_SECOND_SITE]
+    physical_evidence = option_assessments[OPTION_PHYSICAL_EVIDENCE]
+    hazard_optimization = option_assessments[OPTION_HAZARD_OPTIMIZATION]
 
     if metrics["status"] == "ready":
         return {
             "action_id": OPTION_METRICS,
             "status": "ready",
             "classification": "ready",
+            "path_state": metrics["path_state"],
             "follow_up_task": metrics["follow_up_task"],
             "summary": metrics["summary"],
             "exact_evidence_blockers": metrics["exact_evidence_blockers"],
+            "boundary_that_prevents_claim_upgrade": metrics["boundary_that_prevents_claim_upgrade"],
             "blocked_reason": "none",
         }
     if multi_zone["status"] == "ready":
@@ -377,33 +532,114 @@ def choose_recommendation(option_assessments: dict[str, Any]) -> dict[str, Any]:
             "action_id": OPTION_MULTI_ZONE,
             "status": "ready",
             "classification": "ready",
+            "path_state": multi_zone["path_state"],
             "follow_up_task": multi_zone["follow_up_task"],
             "summary": multi_zone["summary"],
             "exact_evidence_blockers": multi_zone["exact_evidence_blockers"],
+            "boundary_that_prevents_claim_upgrade": multi_zone["boundary_that_prevents_claim_upgrade"],
             "blocked_reason": "none",
         }
-    if defer["status"] == "defer":
+    for action_id, option in (
+        (OPTION_SECOND_SITE, second_site),
+        (OPTION_PHYSICAL_EVIDENCE, physical_evidence),
+        (OPTION_HAZARD_OPTIMIZATION, hazard_optimization),
+        (OPTION_DEFER, defer),
+    ):
+        if option["status"] == "defer":
+            return {
+                "action_id": action_id,
+                "status": "defer",
+                "classification": "defer",
+                "path_state": option["path_state"],
+                "follow_up_task": option["follow_up_task"],
+                "summary": option["summary"],
+                "exact_evidence_blockers": option["exact_evidence_blockers"],
+                "boundary_that_prevents_claim_upgrade": option["boundary_that_prevents_claim_upgrade"],
+                "blocked_reason": "none",
+            }
+
+    blocked_path_states = {
+        str(option.get("path_state"))
+        for option in option_assessments.values()
+        if isinstance(option, dict) and option.get("status") == "blocked"
+    }
+    if "ssh_access_expired" in blocked_path_states:
         return {
-            "action_id": OPTION_DEFER,
-            "status": "defer",
-            "classification": "defer",
-            "follow_up_task": defer["follow_up_task"],
-            "summary": defer["summary"],
-            "exact_evidence_blockers": defer["exact_evidence_blockers"],
-            "blocked_reason": "none",
+            "action_id": OPTION_METRICS,
+            "status": "blocked",
+            "classification": "ssh_access_expired",
+            "path_state": "ssh_access_expired",
+            "follow_up_task": "TB-223",
+            "summary": "Balfrin SSH access is expired or unavailable, so live Balfrin measurement paths fail closed before any run request is prepared.",
+            "exact_evidence_blockers": sorted(
+                set(metrics["exact_evidence_blockers"] + multi_zone["exact_evidence_blockers"])
+            ),
+            "boundary_that_prevents_claim_upgrade": metrics["boundary_that_prevents_claim_upgrade"],
+            "blocked_reason": "Balfrin SSH access expired or unavailable",
         }
 
     return {
         "action_id": OPTION_DEFER,
         "status": "blocked",
         "classification": "blocked",
+        "path_state": "blocked",
         "follow_up_task": defer["follow_up_task"],
-        "summary": "The current evidence remains insufficient for any of the three options.",
+        "summary": "The current evidence remains insufficient for any ranked next-action path.",
         "exact_evidence_blockers": sorted(
-            set(metrics["exact_evidence_blockers"] + multi_zone["exact_evidence_blockers"] + defer["exact_evidence_blockers"])
+            set(
+                metrics["exact_evidence_blockers"]
+                + multi_zone["exact_evidence_blockers"]
+                + defer["exact_evidence_blockers"]
+                + second_site["exact_evidence_blockers"]
+                + physical_evidence["exact_evidence_blockers"]
+                + hazard_optimization["exact_evidence_blockers"]
+            )
         ),
+        "boundary_that_prevents_claim_upgrade": defer["boundary_that_prevents_claim_upgrade"],
         "blocked_reason": "required measured inputs are missing or unresolved",
     }
+
+
+def build_ranked_actions(option_assessments: dict[str, Any]) -> list[dict[str, Any]]:
+    status_score = {"ready": 100, "defer": 70, "blocked": 10}
+    path_score = {
+        "measured": 30,
+        "fixture_backed": 20,
+        "blocked": 0,
+        "unavailable": -10,
+        "unauthorized": -20,
+        "ssh_access_expired": -30,
+    }
+    priority_bias = {
+        OPTION_METRICS: 50,
+        OPTION_MULTI_ZONE: 40,
+        OPTION_SECOND_SITE: 30,
+        OPTION_PHYSICAL_EVIDENCE: 25,
+        OPTION_HAZARD_OPTIMIZATION: 20,
+    }
+    rows: list[dict[str, Any]] = []
+    for action_id in RANKED_ACTION_OPTIONS:
+        option = option_assessments[action_id]
+        score = (
+            status_score.get(str(option.get("status")), 0)
+            + path_score.get(str(option.get("path_state")), 0)
+            + priority_bias[action_id]
+        )
+        rows.append(
+            {
+                "action_id": action_id,
+                "rank_score": score,
+                "status": option.get("status", "unknown"),
+                "path_state": option.get("path_state", "unknown"),
+                "follow_up_task": option.get("follow_up_task", "unknown"),
+                "exact_evidence_blockers": option.get("exact_evidence_blockers", []),
+                "boundary_that_prevents_claim_upgrade": option.get("boundary_that_prevents_claim_upgrade", ""),
+            }
+        )
+    rows.sort(key=lambda row: (-int(row["rank_score"]), str(row["action_id"])))
+    for index, row in enumerate(rows, start=1):
+        row["rank"] = index
+    return rows
 
 
 def build_evidence_sources(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -414,6 +650,11 @@ def build_evidence_sources(bundle: dict[str, Any]) -> dict[str, Any]:
         "preservation_gate_report": source_paths.get("preservation_gate_report"),
         "multi_zone_reducer_pressure_report": source_paths.get("multi_zone_reducer_pressure_report"),
         "multi_zone_handoff_report": source_paths.get("multi_zone_handoff_report"),
+        "balfrin_access": source_paths.get("balfrin_access"),
+        "second_site_progress": source_paths.get("second_site_progress"),
+        "physical_evidence_acquisition": source_paths.get("physical_evidence_acquisition"),
+        "hazard_builder_optimization": source_paths.get("hazard_builder_optimization"),
+        "post_tb_221_evidence": source_paths.get("post_tb_221_evidence"),
     }
 
 
@@ -427,12 +668,13 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
             "action_id": OPTION_METRICS,
             "status": "blocked",
             "classification": "blocked",
-            "follow_up_task": "TB-206",
+            "follow_up_task": "TB-223",
             "summary": "Missing measured inputs prevent the gate from deciding whether a metrics rerun, multi-zone probe, or deferral should proceed.",
             "exact_evidence_blockers": missing,
+            "boundary_that_prevents_claim_upgrade": "Missing inputs prevent any claim upgrade; no physical, annual-frequency, risk, scale-up, distributed-execution, or operational claim is allowed.",
             "blocked_reason": "required measured inputs are missing",
         },
-        "next_follow_up_package_task": "TB-206",
+        "next_follow_up_package_task": "TB-223",
         "criteria": {
             "missing_target_area_metrics": {"status": "blocked_missing_inputs", "missing_mandatory_metrics": []},
             "preservation_gate_readiness": {"status": "blocked_missing_inputs"},
@@ -441,30 +683,69 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
             "expected_runtime_output_pressure": {"status": "blocked_missing_inputs"},
             "scientific_value": {"status": "blocked_missing_inputs"},
             "portability_or_physical_evidence_value": {"status": "blocked_missing_inputs"},
+            "balfrin_access": {"status": "blocked_missing_inputs", "path_state": "blocked"},
+            "second_site_progress": {"status": "blocked_missing_inputs", "path_state": "blocked"},
+            "physical_evidence_acquisition": {"status": "blocked_missing_inputs", "path_state": "blocked"},
+            "hazard_builder_optimization": {"status": "blocked_missing_inputs", "path_state": "blocked"},
+            "post_tb_221_evidence": {"status": "blocked_missing_inputs", "evidence_items": []},
         },
         "option_assessments": {
             OPTION_METRICS: {
                 "status": "blocked",
-                "follow_up_task": "TB-206",
+                "path_state": "blocked",
+                "follow_up_task": "TB-223",
                 "summary": "The metrics-completion rerun cannot be prioritized until the missing measured inputs are supplied.",
                 "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any claim upgrade.",
                 "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
             },
             OPTION_MULTI_ZONE: {
                 "status": "blocked",
-                "follow_up_task": "TB-205",
+                "path_state": "blocked",
+                "follow_up_task": "TB-226",
                 "summary": "The smallest bounded multi-zone probe is blocked because the evidence bundle is incomplete.",
                 "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any multi-zone or scale-up claim upgrade.",
                 "criteria": ["reducer_pressure", "multi_zone_package_readiness"],
             },
             OPTION_DEFER: {
                 "status": "blocked",
-                "follow_up_task": "TB-207",
+                "path_state": "blocked",
+                "follow_up_task": "TB-231",
                 "summary": "Deferral is blocked because the gate cannot establish whether a direct measured gap still needs closure.",
                 "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any portability or physical-evidence claim upgrade.",
                 "criteria": ["scientific_value", "portability_or_physical_evidence_value"],
             },
+            OPTION_SECOND_SITE: {
+                "status": "blocked",
+                "path_state": "blocked",
+                "follow_up_task": "TB-231",
+                "summary": "Second-site progress cannot be ranked until the missing measured inputs are supplied.",
+                "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "No second-site ensemble or hazard build is authorized.",
+                "criteria": ["second_site_progress"],
+            },
+            OPTION_PHYSICAL_EVIDENCE: {
+                "status": "blocked",
+                "path_state": "blocked",
+                "follow_up_task": "TB-233",
+                "summary": "Physical-evidence acquisition cannot be ranked until the missing measured inputs are supplied.",
+                "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "No calibration, annual-frequency, risk, or operational claim is allowed.",
+                "criteria": ["physical_evidence_acquisition"],
+            },
+            OPTION_HAZARD_OPTIMIZATION: {
+                "status": "blocked",
+                "path_state": "blocked",
+                "follow_up_task": "TB-229",
+                "summary": "Hazard-builder optimization cannot outrank missing measured evidence.",
+                "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "No hazard semantics or physics change is authorized.",
+                "criteria": ["hazard_builder_optimization"],
+            },
         },
+        "ranked_actions": [],
         "evidence_sources": {
             "schema_version": "balfrin_next_live_run_decision_gate_evidence_sources_v1",
             "probe_metrics_report": None,
@@ -522,6 +803,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         "expected_runtime_output_pressure",
         "scientific_value",
         "portability_or_physical_evidence_value",
+        "balfrin_access",
+        "second_site_progress",
+        "physical_evidence_acquisition",
+        "hazard_builder_optimization",
+        "post_tb_221_evidence",
     ):
         entry = criteria.get(key, {}) if isinstance(criteria, dict) else {}
         lines.append(f"  - {key}: {entry.get('status', 'unknown')}")
@@ -536,14 +822,38 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"    output_pressure_status: {entry.get('output_pressure_status', '')}")
         if key == "scientific_value":
             lines.append(f"    summary: {entry.get('summary', '')}")
+        if key == "balfrin_access":
+            lines.append(f"    path_state: {entry.get('path_state', '')}")
+            lines.append(f"    hard_live_run_blocker: {entry.get('hard_live_run_blocker', False)}")
+        if key in {"second_site_progress", "physical_evidence_acquisition", "hazard_builder_optimization"}:
+            lines.append(f"    path_state: {entry.get('path_state', '')}")
+            lines.append(f"    blockers: {entry.get('blockers', [])}")
+        if key == "post_tb_221_evidence":
+            lines.append(f"    evidence_items: {entry.get('evidence_items', [])}")
 
     lines.extend(["", "options:"])
-    for option_key in (OPTION_METRICS, OPTION_MULTI_ZONE, OPTION_DEFER):
+    for option_key in (
+        OPTION_METRICS,
+        OPTION_MULTI_ZONE,
+        OPTION_SECOND_SITE,
+        OPTION_PHYSICAL_EVIDENCE,
+        OPTION_HAZARD_OPTIMIZATION,
+        OPTION_DEFER,
+    ):
         option = report.get("option_assessments", {}).get(option_key, {})
         lines.append(f"  - {option_key}: {option.get('status', 'unknown')}")
+        lines.append(f"    path_state: {option.get('path_state', 'unknown')}")
         lines.append(f"    follow_up_task: {option.get('follow_up_task', 'unknown')}")
         lines.append(f"    blockers: {option.get('exact_evidence_blockers', [])}")
+        lines.append(f"    boundary: {option.get('boundary_that_prevents_claim_upgrade', '')}")
         lines.append(f"    summary: {option.get('summary', '')}")
+
+    lines.extend(["", "ranked_actions:"])
+    for row in report.get("ranked_actions", []):
+        lines.append(
+            f"  - rank {row.get('rank', '?')}: {row.get('action_id', 'unknown')} "
+            f"({row.get('status', 'unknown')}, {row.get('path_state', 'unknown')})"
+        )
 
     recommended = report.get("recommended_next_action", {})
     lines.extend(
@@ -552,8 +862,10 @@ def render_text_report(report: dict[str, Any]) -> str:
             "recommended_next_action:",
             f"  action_id: {recommended.get('action_id', 'unknown')}",
             f"  classification: {recommended.get('classification', 'unknown')}",
+            f"  path_state: {recommended.get('path_state', 'unknown')}",
             f"  follow_up_task: {recommended.get('follow_up_task', 'unknown')}",
             f"  exact_evidence_blockers: {recommended.get('exact_evidence_blockers', [])}",
+            f"  boundary_that_prevents_claim_upgrade: {recommended.get('boundary_that_prevents_claim_upgrade', '')}",
             f"  summary: {recommended.get('summary', '')}",
         ]
     )

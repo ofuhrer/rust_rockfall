@@ -95,5 +95,61 @@
   "portability_value": {
     "status": "deferred",
     "summary": "Portability and physical-evidence work remain important, but the current measured gap still closes faster with a metrics rerun."
+  },
+  "balfrin_access": {
+    "status": "not_checked_not_needed_for_decision_refresh",
+    "path_state": "not_required_for_refresh",
+    "ssh_access_state": "not_checked",
+    "live_submission_authorized": false,
+    "summary": "Remote Balfrin SSH access is not needed for the deterministic TB-222 refresh; TB-222 does not authorize or submit a live run."
+  },
+  "second_site_progress": {
+    "status": "blocked_missing_inputs",
+    "path_state": "unavailable",
+    "follow_up_task": "TB-231",
+    "blockers": [
+      "real_second_site_public_context_products_unstaged",
+      "second_site_ensemble_unauthorized"
+    ],
+    "summary": "Chant Sura / Fluelapass public-context progress remains blocked on real staged public inputs and is not an authorized second-site ensemble."
+  },
+  "physical_evidence_acquisition": {
+    "status": "blocked_missing_inputs",
+    "path_state": "blocked",
+    "follow_up_task": "TB-233",
+    "blockers": [
+      "observed_runout_deposition_benchmark_missing",
+      "release_zone_physical_provenance_incomplete",
+      "calibration_and_frequency_evidence_unstaged"
+    ],
+    "summary": "Physical-evidence work is acquisition planning only until independent observed runout/deposition and provenance inputs are staged."
+  },
+  "hazard_builder_optimization": {
+    "status": "fixture_backed",
+    "path_state": "fixture_backed",
+    "follow_up_task": "TB-229",
+    "blockers": [
+      "optimization_target_fixture_backed",
+      "semantic_guardrails_required_before_throughput_change"
+    ],
+    "summary": "TB-219 isolated trajectory-cell accumulation as the bounded optimization target on fixture-backed scratch profiles, but it should not outrank the current measured metrics gap."
+  },
+  "post_tb_221_evidence": [
+    "TB-217 fixture-backed scalable command-plan output-profile enforcement kept heavy-debug output as an explicit override.",
+    "TB-218 fixture-backed reducer manifest and file-family budget gate retained multi-zone dry-run blockers.",
+    "TB-219 measured fixture/scratch-root hazard throughput profile isolated trajectory-cell accumulation as the bounded optimization target.",
+    "TB-220 fixture-backed physical-meaning firewall kept workflow-generated release/scenario data from becoming field-supported probability evidence.",
+    "TB-221 fixture-backed observed runout/deposition acquisition matrix kept benchmark, calibration, validation, and holdout inputs blocked until real evidence is staged."
+  ],
+  "source_paths": {
+    "probe_metrics_report": "docs/balfrin_single_job_execution_sufficiency.md",
+    "preservation_gate_report": "docs/balfrin_single_job_execution_sufficiency.md",
+    "multi_zone_reducer_pressure_report": "docs/multi_zone_reducer_pressure_probe.md",
+    "multi_zone_handoff_report": "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+    "balfrin_access": "docs/orchestration_strategy.md",
+    "second_site_progress": "docs/current_maturity_snapshot.md",
+    "physical_evidence_acquisition": "docs/target_area_physical_evidence_acquisition_pack.md",
+    "hazard_builder_optimization": "docs/hazard_throughput_bottleneck_report.md",
+    "post_tb_221_evidence": "docs/agent_work_log.md"
   }
 }
