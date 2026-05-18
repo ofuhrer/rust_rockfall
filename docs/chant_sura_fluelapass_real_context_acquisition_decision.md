@@ -5,6 +5,12 @@ Status: deferred real public-context staging; current repo-root readiness is blo
 This decision pack is read-only. It does not download swisstopo products, run a
 second-site ensemble, or treat synthetic fixtures as evidence.
 
+The frozen machine-readable acquisition package now lives at
+`docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`. It keeps
+the required real inputs, the expected local roots, and the fixture-only paths
+separate, with explicit `real_staged`, `fixture_backed`, `missing`, and
+`deferred` classifications.
+
 ## Machine-Readable Decision
 
 ```yaml

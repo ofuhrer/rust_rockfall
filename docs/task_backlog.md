@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-231: Chant Sura Public-Context Acquisition Package Freeze
-
-Goal: Freeze a concrete real-input acquisition package for Chant Sura / Fluelapass that separates required swisstopo products, expected local roots, and fixture-only paths.
-
-Capability gap reduced: Second-site realism remains blocked because real public-context products are not staged and fixture-backed dry runs can be mistaken for portability evidence.
-
-Why this outranks alternatives: A second-site hazard build is premature until the real-input acquisition boundary is exact and fail-closed.
-
-Inspect first:
-
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/verify_public_geodata_cache.py`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-
-Deliverables:
-
-- A deterministic acquisition package or report that lists every required real product, path, metadata field, and current status.
-- Explicit `real_staged`, `fixture_backed`, `missing`, and `deferred` classifications.
-- Focused tests for clean-checkout blocked and fixture-backed fail-closed behavior.
-
-Definition of done:
-
-- A worker can tell exactly what must be acquired before any second-site prepared-pilot or hazard build can be called real.
-
-Boundaries: No downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical-validation claim.
-
 ### TB-232: Real-Input Prepared-Pilot Gate For Chant Sura
 
 Goal: Make the Chant Sura prepared-pilot dry run consume the real-context acquisition package and fail closed until required real inputs are staged.

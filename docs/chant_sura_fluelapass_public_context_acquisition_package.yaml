@@ -1,0 +1,258 @@
+schema_version: chant_sura_fluelapass_public_context_acquisition_package_v1
+source_manifest_path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml
+candidate_site_id: chant_sura_fluelapass_portability_example_v1
+candidate_site_name: Chant Sura / Fluelapass portability example
+freeze_status: blocked_missing_inputs
+classification_taxonomy:
+  - real_staged
+  - fixture_backed
+  - missing
+  - deferred
+required_acquisition_items:
+  - category: terrain_crop
+    kind: swisstopo_product
+    product: swissALTI3D
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+    metadata_fields:
+      - crs
+      - vertical_datum
+      - crop_provenance
+      - checksum
+    current_status: missing
+    classification: missing
+  - category: terrain_metadata
+    kind: supporting_metadata
+    product: swissALTI3D terrain metadata
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+    metadata_fields:
+      - crs
+      - vertical_datum
+      - crop_provenance
+      - checksum
+    current_status: missing
+    classification: missing
+  - category: aoi_tile_catalog
+    kind: supporting_metadata
+    product: AOI tile catalog for deterministic swisstopo discovery
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml
+    metadata_fields:
+      - tile_id
+      - source_product
+      - source_url
+      - extent_lv95_m
+    current_status: missing
+    classification: missing
+  - category: swissimage_context
+    kind: swisstopo_product
+    product: SWISSIMAGE
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+    metadata_fields:
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: swisstlm3d_context
+    kind: swisstopo_product
+    product: swissTLM3D
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    metadata_fields:
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: swisstlm3d_metadata
+    kind: supporting_metadata
+    product: swissTLM3D metadata
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json
+    metadata_fields:
+      - metadata.json
+      - source_product
+      - staged_asset_present
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: swisssurface3d_context
+    kind: swisstopo_product
+    product: swissSURFACE3D
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+    metadata_fields:
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: swisssurface3d_raster_context
+    kind: swisstopo_product
+    product: swissSURFACE3D Raster
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+    metadata_fields:
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: swissbuildings3d_context
+    kind: swisstopo_product
+    product: swissBUILDINGS3D
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+    metadata_fields:
+      - source_product_id
+      - source_product_name
+      - source_url_or_download_record
+      - product_version_or_date
+      - tile_id_or_delivery_identifier
+      - checksum_sha256
+      - crs
+      - resolution_m
+      - crop_extent_lv95_m
+      - license_or_terms_reference
+      - raw_checksum
+      - processed_checksum
+      - preprocessing_command_and_timestamp
+    current_status: deferred
+    classification: deferred
+  - category: source_zone_metadata
+    kind: site_contract_input
+    product: release / source-zone metadata
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml
+    metadata_fields:
+      - source_zone_id
+      - geometry
+      - release_points
+      - coordinate_reference_system.vertical_datum
+      - provenance.intended_use
+    current_status: missing
+    classification: missing
+  - category: scenario_table
+    kind: site_contract_input
+    product: block / scenario table
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv
+    metadata_fields:
+      - scenario_id
+      - source_zone_id
+      - block_family
+      - relative_weight
+      - probability_semantics
+      - release_point_id
+    current_status: missing
+    classification: missing
+  - category: source_scenario_policy
+    kind: site_contract_input
+    product: source-scenario policy record
+    expected_path: validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+    metadata_fields:
+      - policy_id
+      - site_id
+      - source_zone_id_pattern
+      - source_zone_geometry
+      - release_point_table
+      - block_scenario_table
+      - scenario_probability_semantics
+    current_status: missing
+    classification: missing
+expected_local_roots:
+  - category: processed_input_root
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+    current_status: missing
+    classification: missing
+  - category: processed_context_root
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context
+    current_status: missing
+    classification: missing
+  - category: validation_case_root
+    expected_path: validation/private/chant_sura_fluelapass_portability_example_v1
+    current_status: missing
+    classification: missing
+  - category: hazard_results_root
+    expected_path: hazard/results/chant_sura_fluelapass_portability_example_v1
+    current_status: missing
+    classification: missing
+fixture_only_paths:
+  - path: tests/fixtures/second_site_public_geodata_preflight/candidate_placeholder_site.yaml
+    classification: fixture_backed
+    purpose: blocked placeholder candidate config for clean-checkout tests
+  - path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml
+    classification: fixture_backed
+    purpose: concrete candidate config used for the read-only portability review
+  - path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml
+    classification: fixture_backed
+    purpose: frozen acquisition manifest that stages the package boundary
+  - path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging/
+    classification: fixture_backed
+    purpose: synthetic staging helper inputs only; not public-geodata evidence
+  - path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml
+    classification: fixture_backed
+    purpose: deterministic AOI tile catalog fixture for dry-run staging
+optional_paths:
+  - category: barrier_inventory
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers
+    current_status: optional
+    classification: deferred
+    metadata_fields:
+      - only if a site-specific workflow explicitly references barriers or nets
+  - category: release_observation_evidence
+    expected_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations
+    current_status: optional
+    classification: deferred
+    metadata_fields:
+      - site-specific QA source if available
+status_summary:
+  real_staged_count: 0
+  fixture_backed_count: 5
+  missing_count: 7
+  deferred_count: 5
+  optional_count: 2

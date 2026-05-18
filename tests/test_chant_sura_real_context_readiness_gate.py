@@ -32,6 +32,49 @@ post_run_gate = _load_module(POST_RUN_GATE_SCRIPT_PATH, "summarize_balfrin_post_
 
 
 class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
+    def test_acquisition_package_freeze_separates_required_roots_and_fixture_only_paths(self) -> None:
+        freeze_report = yaml.safe_load(self._freeze_package_path().read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            freeze_report["schema_version"],
+            "chant_sura_fluelapass_public_context_acquisition_package_v1",
+        )
+        self.assertEqual(freeze_report["freeze_status"], "blocked_missing_inputs")
+        self.assertEqual(
+            freeze_report["classification_taxonomy"],
+            ["real_staged", "fixture_backed", "missing", "deferred"],
+        )
+        self.assertEqual(freeze_report["status_summary"]["real_staged_count"], 0)
+        self.assertEqual(freeze_report["status_summary"]["fixture_backed_count"], 5)
+        self.assertEqual(freeze_report["status_summary"]["missing_count"], 7)
+        self.assertEqual(freeze_report["status_summary"]["deferred_count"], 5)
+
+        required_rows = {entry["category"]: entry for entry in freeze_report["required_acquisition_items"]}
+        self.assertEqual(required_rows["terrain_crop"]["classification"], "missing")
+        self.assertEqual(required_rows["terrain_metadata"]["classification"], "missing")
+        self.assertEqual(required_rows["aoi_tile_catalog"]["classification"], "missing")
+        self.assertEqual(required_rows["swissimage_context"]["classification"], "deferred")
+        self.assertEqual(required_rows["swisstlm3d_context"]["classification"], "deferred")
+        self.assertEqual(required_rows["swisstlm3d_metadata"]["classification"], "deferred")
+        self.assertEqual(required_rows["swisssurface3d_context"]["classification"], "deferred")
+        self.assertEqual(required_rows["swisssurface3d_raster_context"]["classification"], "deferred")
+        self.assertEqual(required_rows["swissbuildings3d_context"]["classification"], "deferred")
+        self.assertEqual(required_rows["source_zone_metadata"]["classification"], "missing")
+        self.assertEqual(required_rows["scenario_table"]["classification"], "missing")
+        self.assertEqual(required_rows["source_scenario_policy"]["classification"], "missing")
+        self.assertTrue(
+            all(entry["classification"] in {"missing", "deferred"} for entry in freeze_report["required_acquisition_items"])
+        )
+        self.assertEqual(
+            [entry["classification"] for entry in freeze_report["expected_local_roots"]],
+            ["missing", "missing", "missing", "missing"],
+        )
+        self.assertTrue(all(entry["classification"] == "fixture_backed" for entry in freeze_report["fixture_only_paths"]))
+        self.assertEqual(
+            [entry["classification"] for entry in freeze_report["optional_paths"]],
+            ["deferred", "deferred"],
+        )
+
     def test_clean_checkout_blocks_and_marks_public_context_deferred(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
@@ -319,6 +362,9 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
     def _site_config_path(self) -> Path:
         return ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+
+    def _freeze_package_path(self) -> Path:
+        return ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 
     def _write_real_context_cache_manifest(
         self,
