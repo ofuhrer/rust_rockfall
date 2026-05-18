@@ -1300,3 +1300,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no source-frequency implementation, no annual-frequency product, no calibration, no risk/exposure semantics, no operational claim, and no probability claim for conditional sampling weights.
 - Next task: `TB-237`
+
+### TB-237: Workflow-Shell Coupling Extraction Batch
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: extract one bounded batch of duplicated workflow-shell mechanics into shared helpers while preserving public CLI output contracts.
+- Files changed: `scripts/lib/workflow_validation.py`, `scripts/generate_pilot_command_plan.py`, `scripts/check_same_scale_artifact_readiness.py`, `scripts/inventory_workflow_shell_coupling.py`, `tests/test_workflow_shell_coupling_inventory.py`, `tests/test_pilot_command_plan.py`, `tests/test_same_scale_artifact_readiness.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a shared `load_repo_script_module` helper for repo-local dynamic script loading and replaced the duplicated loader implementations in the pilot command plan and same-scale readiness CLIs.
+  - Preserved inventory visibility for shared-helper dynamic imports so the coupling report still lists script dependencies after the extraction.
+  - Added focused compatibility coverage for affected JSON/text CLI surfaces, including schema keys and existing status labels.
+  - Updated the script inventory to record the shared workflow helper and removed TB-237 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_workflow_shell_coupling_inventory tests.test_pilot_command_plan tests.test_same_scale_artifact_readiness`
+  - `PYENV_VERSION=system uv run python scripts/inventory_workflow_shell_coupling.py --format json --json-output /tmp/tb237_workflow_shell_inventory.json > /tmp/tb237_workflow_shell_inventory.stdout`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json > /tmp/tb237_command_plan.json`
+  - `PYENV_VERSION=system uv run python scripts/check_same_scale_artifact_readiness.py --format json > /tmp/tb237_readiness.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no script deletion, no broad rewrite, no public status-label rename, no scientific claim change, no operational claim, and no unrelated validator churn.
+- Next task: `TB-238`

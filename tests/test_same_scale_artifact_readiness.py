@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -100,9 +102,51 @@ class SameScaleArtifactReadinessTests(unittest.TestCase):
             report = self._build_ready_report(Path(tmp), omit_target_hazard_manifest=True)
 
         text = readiness.render_text_report(report)
+        self.assertIn("readiness_status: blocked_missing_inputs", text)
         self.assertIn("target hazard: false", text)
         self.assertIn("missing_paths:", text)
         self.assertIn("regeneration_commands:", text)
+
+    def test_json_cli_output_preserves_schema_and_status_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._build_ready_report(Path(tmp))
+
+        buffer = io.StringIO()
+        with mock.patch.object(readiness, "build_readiness_report", return_value=report), redirect_stdout(buffer):
+            exit_code = readiness.main(["--format", "json"])
+
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(payload["readiness_status"], "ready")
+        self.assertEqual(payload["blocked_reason"], "")
+        self.assertEqual(payload["regeneration_commands"][0]["status"], "ready")
+        self.assertEqual(
+            set(payload.keys()),
+            {
+                "artifact_counts",
+                "blocked_reason",
+                "checked_paths",
+                "convergence_ready",
+                "context_ready",
+                "gate_hazard_ready",
+                "gate_validation_ready",
+                "hazard_context_overlap_ready",
+                "missing_paths",
+                "operational_claims_allowed",
+                "output_profile_ready",
+                "readiness_status",
+                "regeneration_commands",
+                "scale_up_authorized",
+                "swisstlm3d_ready",
+                "target_hazard_ready",
+                "target_rebuildable_reduced_case",
+                "target_rebuildable_reduced_manifest",
+                "target_rebuildable_reduced_ready",
+                "target_rebuildable_reduced_root",
+                "target_summary_only_ready",
+                "target_validation_ready",
+            },
+        )
 
     def _build_ready_report(
         self,

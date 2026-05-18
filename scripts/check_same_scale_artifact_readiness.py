@@ -11,7 +11,6 @@ an acceptance gate.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import shlex
 import sys
@@ -22,21 +21,16 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.lib.workflow_validation import load_repo_script_module
+
+
 SCHEMA_VERSION = "tschamut_same_scale_artifact_readiness_v1"
 
 
-def _load_module(module_name: str, filename: str):
-    path = ROOT / "scripts" / filename
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"unable to load module from {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-AUDIT = _load_module("audit_local_artifacts_for_readiness", "audit_local_artifacts.py")
+AUDIT = load_repo_script_module(ROOT, "audit_local_artifacts_for_readiness", "audit_local_artifacts.py")
 
 
 GATE_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/gate_v1"

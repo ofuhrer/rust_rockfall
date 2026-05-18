@@ -46,6 +46,8 @@ LOADED_SCRIPT_PATTERN = re.compile(
     r"""(?:
         _load(?:_script)?_module\(\s*["'][^"']+["']\s*,\s*["'](?P<loader_file>[^"']+\.py)["']
         |
+        load_repo_script_module\(\s*ROOT\s*,\s*["'][^"']+["']\s*,\s*["'](?P<shared_loader_file>[^"']+\.py)["']
+        |
         ROOT\s*/\s*["']scripts["']\s*/\s*["'](?P<root_file>[^"']+\.py)["']
     )""",
     re.VERBOSE,
@@ -210,9 +212,11 @@ def _collect_script_references(text: str) -> list[str]:
 def _collect_dynamic_imports(text: str) -> list[str]:
     dependencies: list[str] = []
     for match in LOADED_SCRIPT_PATTERN.finditer(text):
-        ref = match.group("loader_file") or match.group("root_file")
-        if ref and ref not in dependencies:
-            dependencies.append(f"scripts/{ref}" if not ref.startswith("scripts/") else ref)
+        ref = match.group("loader_file") or match.group("shared_loader_file") or match.group("root_file")
+        if ref:
+            dependency = f"scripts/{ref}" if not ref.startswith("scripts/") else ref
+            if dependency not in dependencies:
+                dependencies.append(dependency)
     return dependencies
 
 

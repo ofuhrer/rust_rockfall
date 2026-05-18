@@ -79,6 +79,12 @@ the calling CLIs.
 - `scripts/hazard_output_reports.py`
 - `scripts/hazard_output_writers.py`
 
+## Shared Workflow Helpers
+
+- `scripts/lib/workflow_validation.py` centralizes narrow validation and
+  workflow-shell helpers, including dynamic script loading used by compatibility
+  CLIs.
+
 ## Dataset, Benchmark, And Calibration Preparation
 
 These are operator-facing or research-preparation helpers. The dataset download

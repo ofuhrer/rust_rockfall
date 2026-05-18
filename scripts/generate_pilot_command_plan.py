@@ -10,7 +10,6 @@ reports.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import shlex
 import sys
@@ -22,29 +21,49 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+from scripts.lib.workflow_validation import load_repo_script_module
 
 
 SCHEMA_VERSION = "portable_pilot_command_plan_v1"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 
 
-def _load_module(module_name: str, filename: str):
-    path = ROOT / "scripts" / filename
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"unable to load helper module from {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-READINESS = _load_module("pilot_command_plan_same_scale_readiness", "check_same_scale_artifact_readiness.py")
-PORTABILITY = _load_module("pilot_command_plan_second_site_portability", "check_second_site_public_geodata_preflight.py")
-CASE_GENERATION = _load_module("pilot_command_plan_case_generation", "generate_tschamut_same_scale_cases.py")
-CONTRACT = _load_module("pilot_command_plan_contract_audit", "audit_multisite_source_scenario_contract.py")
-OUTPUT_PROFILE = _load_module("pilot_command_plan_output_profile", "check_hazard_rebuild_output_profile.py")
-REDUCED_PROFILE = _load_module("pilot_command_plan_reduced_profile", "derive_hazard_rebuild_reduced_profile.py")
+READINESS = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_same_scale_readiness",
+    "check_same_scale_artifact_readiness.py",
+    error_message="unable to load helper module from",
+)
+PORTABILITY = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_second_site_portability",
+    "check_second_site_public_geodata_preflight.py",
+    error_message="unable to load helper module from",
+)
+CASE_GENERATION = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_case_generation",
+    "generate_tschamut_same_scale_cases.py",
+    error_message="unable to load helper module from",
+)
+CONTRACT = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_contract_audit",
+    "audit_multisite_source_scenario_contract.py",
+    error_message="unable to load helper module from",
+)
+OUTPUT_PROFILE = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_output_profile",
+    "check_hazard_rebuild_output_profile.py",
+    error_message="unable to load helper module from",
+)
+REDUCED_PROFILE = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_reduced_profile",
+    "derive_hazard_rebuild_reduced_profile.py",
+    error_message="unable to load helper module from",
+)
 REDUCED_VALIDATION_CASE = ROOT / "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
 
 

@@ -29,36 +29,6 @@ Definition of done:
 
 Boundaries: Fixture-backed schema smoke only, no real evidence claim, no calibration, no parameter fitting, no validation upgrade, and no operational claim.
 
-### TB-237: Workflow-Shell Coupling Extraction Batch
-
-Goal: Extract one bounded batch of duplicated workflow-shell mechanics identified by the coupling inventory into shared helpers without changing public CLI outputs.
-
-Capability gap reduced: Python orchestration drift is now a dominant maintainability risk, especially around dynamic imports, ignored-root assumptions, and repeated status vocabulary.
-
-Why this outranks alternatives: Small consolidation lowers future workflow risk without adding another broad framework or validator family.
-
-Inspect first:
-
-- `scripts/inventory_workflow_shell_coupling.py`
-- `tests/test_workflow_shell_coupling_inventory.py`
-- `scripts/lib/workflow_validation.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/check_same_scale_artifact_readiness.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/script_inventory.md`
-
-Deliverables:
-
-- One focused helper extraction for dynamic script loading, ignored-root classification, or shared blocked/status rendering.
-- Compatibility tests proving affected CLI JSON/text outputs keep their existing schema and status labels.
-- Updated script inventory only if a helper or classification changes.
-
-Definition of done:
-
-- The extraction removes real duplication in at least two call sites and does not create a new orchestration framework.
-
-Boundaries: No script deletion, no broad rewrite, no public status-label rename, no scientific claim change, and no unrelated validator churn.
-
 ### TB-238: Command-Plan Manifest Contract Consolidation
 
 Goal: Consolidate repeated command-plan manifest, expected-input/output, ignored-root, and read-only/write semantics across the pilot and Balfrin handoff generators.

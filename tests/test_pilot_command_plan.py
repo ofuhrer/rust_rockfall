@@ -370,6 +370,20 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
         self.assertIn("tschamut_next_ensemble_feasibility_probe_template", output)
 
+    def test_json_cli_output_preserves_schema_and_status_labels(self) -> None:
+        report = self._fixture_report("tschamut_same_scale")
+        buffer = io.StringIO()
+        with patch.object(MODULE, "build_report", return_value=report), redirect_stdout(buffer):
+            exit_code = MODULE.main(["--site", "tschamut_same_scale", "--format", "json"])
+
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(payload["schema_version"], "portable_pilot_command_plan_v1")
+        self.assertEqual(payload["command_plan_status"], "ready")
+        self.assertEqual(payload["tschamut_readiness_status"], "ready")
+        self.assertEqual(payload["blocked_template_commands"], ["tschamut_next_ensemble_feasibility_probe_template"])
+        self.assertEqual(payload["command_groups"][0]["status"], "ready")
+
 
 if __name__ == "__main__":
     unittest.main()

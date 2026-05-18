@@ -58,6 +58,30 @@ class WorkflowShellCouplingInventoryTests(unittest.TestCase):
         self.assertEqual(ignored_root_family["summary"]["ignored_root_only_file_count"], 1)
         self.assertTrue(ignored_root_family["entries"][0]["ignored_root_only_dependency"])
 
+    def test_inventory_preserves_dynamic_import_visibility_after_shared_loader_extraction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            loader_path = root / "scripts" / "shared_loader_user.py"
+            loader_path.parent.mkdir(parents=True, exist_ok=True)
+            loader_path.write_text(
+                "from pathlib import Path\n"
+                "from scripts.lib.workflow_validation import load_repo_script_module\n"
+                "ROOT = Path(__file__).resolve().parents[1]\n"
+                "HELPER = load_repo_script_module(ROOT, \"fixture_helper\", \"check_same_scale_artifact_readiness.py\")\n",
+                encoding="utf-8",
+            )
+
+            inventory = MODULE.build_inventory([loader_path], root=root)
+
+        dynamic_import_family = next(
+            family for family in inventory["families"] if family["family"] == "dynamic_import_by_path"
+        )
+        self.assertEqual(dynamic_import_family["severity"], "needs_shared_helper")
+        self.assertEqual(
+            dynamic_import_family["entries"][0]["dynamic_imports"],
+            ["scripts/check_same_scale_artifact_readiness.py"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

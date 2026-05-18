@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
+import sys
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
@@ -47,6 +49,29 @@ RELEASE_CANDIDATE_PROVENANCE_STATES = (
     "blocked_missing_provenance",
 )
 DEFAULT_SKIP_KEYS = frozenset({"claim_boundary", "claim_boundaries", "does_not_verify", "does_not_support"})
+
+
+def load_repo_script_module(
+    root: Path,
+    module_name: str,
+    filename: str | Path,
+    *,
+    error_message: str = "unable to load module from",
+) -> Any:
+    raw_path = Path(filename)
+    if raw_path.is_absolute():
+        path = raw_path
+    elif raw_path.parts and raw_path.parts[0] == "scripts":
+        path = root / raw_path
+    else:
+        path = root / "scripts" / raw_path
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"{error_message} {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def read_yaml(
