@@ -234,6 +234,11 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "current_physical_credibility_status": gap_report.get("physical_credibility_status", "unknown"),
         "calibration_status": gap_report.get("calibration_status", "unknown"),
         "validation_status": gap_report.get("validation_status", "unknown"),
+        "release_zone_first_missing_input": category_first_missing_input(gap_report, "release_zone_evidence"),
+        "release_zone_blockers": category_acquisition_blockers(gap_report, "release_zone_evidence"),
+        "release_zone_future_gate_prerequisites": category_future_gate_prerequisites(
+            gap_report, "release_zone_evidence"
+        ),
         "block_population_first_missing_input": category_first_missing_input(
             gap_report, "block_size_and_block_population_evidence"
         ),
@@ -267,6 +272,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "intensity_frequency_status": "deferred_unsupported",
         "layer_credibility_boundaries": gap_report.get("product_layer_claim_boundaries", []),
         "evidence_acquisition_summary": evidence_acquisition_summary(acquisition_matrix),
+        "physical_evidence_triage": physical_evidence_triage(categories),
         "claim_boundaries": claim_boundaries(),
         "blocked_reason": None,
         "missing_inputs": [],
@@ -287,6 +293,9 @@ def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
             "current_physical_credibility_status": "blocked_missing_inputs",
             "calibration_status": "blocked_missing_inputs",
             "validation_status": "blocked_missing_inputs",
+            "release_zone_first_missing_input": None,
+            "release_zone_blockers": [],
+            "release_zone_future_gate_prerequisites": [],
             "block_population_first_missing_input": None,
             "block_population_blockers": [],
             "block_population_future_gate_prerequisites": [],
@@ -308,6 +317,7 @@ def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
                 "deferred_category": None,
                 "priority_order": [],
             },
+            "physical_evidence_triage": [],
             "claim_boundaries": claim_boundaries(),
             "current_evidence_summary": [],
         },
@@ -440,6 +450,12 @@ def build_evidence_requirement_categories(
         {
             "category": "release_zone_evidence",
             "current_repo_evidence_status": category_status(gap_report, "release_zone_evidence"),
+            "first_missing_input": category_first_missing_input(gap_report, "release_zone_evidence"),
+            "acquisition_classification": "candidate",
+            "next_action": (
+                "Acquire a field-supported site-specific release-zone geometry package distinct from the conditional "
+                "contract."
+            ),
             "current_repo_evidence_sources": [
                 {
                     "label": "AOI release-zone candidate metrics report",
@@ -517,6 +533,8 @@ def build_evidence_requirement_categories(
             "category": "block_size_and_block_population_evidence",
             "current_repo_evidence_status": category_status(gap_report, "block_size_and_block_population_evidence"),
             "first_missing_input": category_first_missing_input(gap_report, "block_size_and_block_population_evidence"),
+            "acquisition_classification": "candidate",
+            "next_action": "Acquire a block-size survey or photogrammetry census with survey-frame provenance.",
             "acquisition_blockers": category_acquisition_blockers(
                 gap_report, "block_size_and_block_population_evidence"
             ),
@@ -648,6 +666,11 @@ def build_evidence_requirement_categories(
             "category": "source_frequency_and_temporal_frequency_evidence",
             "current_repo_evidence_status": "missing",
             "first_missing_input": category_first_missing_input(gap_report, "source_frequency_and_temporal_frequency_evidence"),
+            "acquisition_classification": "defer",
+            "next_action": (
+                "Defer source-frequency records until a phase change explicitly authorizes frequency semantics; keep "
+                "conditional sampling weights out of frequency claims."
+            ),
             "acquisition_blockers": category_acquisition_blockers(
                 gap_report, "source_frequency_and_temporal_frequency_evidence"
             ),
@@ -946,6 +969,8 @@ def build_evidence_acquisition_matrix(categories: list[dict[str, Any]]) -> list[
                 "current_repo_gap": blueprint["current_repo_gap"],
                 "current_repo_evidence_status": category_entry.get("current_repo_evidence_status", "missing"),
                 "first_missing_input": category_entry.get("first_missing_input"),
+                "acquisition_classification": category_entry.get("acquisition_classification", "unknown"),
+                "next_action": str(category_entry.get("next_action") or ""),
                 "acquisition_blockers": list(category_entry.get("acquisition_blockers") or []),
                 "future_gate_prerequisites": list(category_entry.get("future_gate_prerequisites") or []),
                 "conditional_sampling_weights_are_not_frequency_evidence": bool(
@@ -974,6 +999,28 @@ def evidence_acquisition_summary(matrix: list[dict[str, Any]]) -> dict[str, Any]
         "deferred_category": deferred.get("category"),
         "priority_order": [entry.get("category") for entry in ordered],
     }
+
+
+def physical_evidence_triage(categories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    category_map = {str(entry.get("category") or ""): entry for entry in categories}
+    ordered_categories = (
+        "release_zone_evidence",
+        "block_size_and_block_population_evidence",
+        "source_frequency_and_temporal_frequency_evidence",
+    )
+    triage: list[dict[str, Any]] = []
+    for category_name in ordered_categories:
+        category_entry = category_map.get(category_name, {})
+        triage.append(
+            {
+                "category": category_name,
+                "classification": str(category_entry.get("acquisition_classification") or "unknown"),
+                "first_missing_input": category_entry.get("first_missing_input"),
+                "next_action": str(category_entry.get("next_action") or ""),
+                "why_it_matters": str(category_entry.get("why_it_matters") or ""),
+            }
+        )
+    return triage
 
 
 def summarize_current_repo_evidence(category_entry: dict[str, Any]) -> list[str]:
@@ -1081,8 +1128,9 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
     return [
         {
             "requirement": "Source occurrence or temporal frequency catalogue",
-            "status": "missing",
+            "status": "deferred",
             "first_missing_input": source_category.get("first_missing_input"),
+            "acquisition_classification": "defer",
             "acquisition_blockers": list(source_category.get("acquisition_blockers") or []),
             "future_gate_prerequisites": list(source_category.get("future_gate_prerequisites") or []),
             "conditional_sampling_weights_are_not_frequency_evidence": bool(
@@ -1096,9 +1144,10 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
             "required_artifact_class": "historical_rockfall_event_catalogue",
         },
         {
-            "requirement": "Block-population or block-size frequency semantics",
-            "status": "missing",
+            "requirement": "Block-population or block-size evidence boundary",
+            "status": "candidate",
             "first_missing_input": block_population_category.get("first_missing_input"),
+            "acquisition_classification": "candidate",
             "acquisition_blockers": list(block_population_category.get("acquisition_blockers") or []),
             "future_gate_prerequisites": list(block_population_category.get("future_gate_prerequisites") or []),
             "current_repo_evidence": [
@@ -1109,7 +1158,8 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
         },
         {
             "requirement": "Temporal window / censoring rules for frequency estimates",
-            "status": "missing",
+            "status": "deferred",
+            "acquisition_classification": "defer",
             "current_repo_evidence": [
                 "The current repository does not stage a temporal-frequency model.",
             ],
@@ -1117,7 +1167,8 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
         },
         {
             "requirement": "Propagation of source frequency into intensity-frequency products",
-            "status": "missing",
+            "status": "deferred",
+            "acquisition_classification": "defer",
             "current_repo_evidence": gap_report.get("claim_boundary_matrix", []),
             "required_artifact_class": "intensity_frequency_propagation_record",
         },
@@ -1140,6 +1191,14 @@ def current_evidence_summary(gap_report: dict[str, Any], holdout_report: dict[st
         {
             "summary": "Tschamut diagnostic validation remains reproducible but not physically credible.",
             "status": gap_report.get("physical_credibility_status", "unknown"),
+        },
+        {
+            "summary": "Release-zone provenance remains a candidate acquisition, not field-supported evidence.",
+            "status": "candidate",
+        },
+        {
+            "summary": "Block-population evidence remains a candidate acquisition path toward any later physical-probability bridge.",
+            "status": "candidate",
         },
         {
             "summary": "Chant Sura provides separated holdout validation evidence, not calibration evidence.",
@@ -1183,8 +1242,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- deferred_category: {report['evidence_acquisition_summary']['deferred_category']}",
         f"- priority_order: {', '.join(report['evidence_acquisition_summary']['priority_order'])}",
         "",
-        "claim_boundaries:",
+        "physical_evidence_triage:",
     ]
+    for entry in report.get("physical_evidence_triage", []):
+        lines.append(f"- {entry['category']}: {entry['classification']}")
+        lines.append(f"  first_missing_input: {entry.get('first_missing_input')}")
+        lines.append(f"  next_action: {entry.get('next_action')}")
+    lines.extend([
+        "",
+        "claim_boundaries:",
+    ])
     for key, value in report["claim_boundaries"].items():
         lines.append(f"- {key}: {str(value).lower()}")
 

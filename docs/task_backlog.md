@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-254: Release-Zone, Block-Population, And Source-Frequency Evidence Triage
-
-Goal: Triage the next real-evidence acquisition blockers for field-supported release zones, block-population evidence, and source-frequency records without implementing physical probability semantics.
-
-Capability gap reduced: Observed runout intake alone does not close the physical-credibility gap; release provenance, block-population, and source-frequency evidence remain separate missing inputs.
-
-Why this outranks alternatives: The repository has already built blocker fields for these categories, but it still lacks a concrete candidate acquisition path or defer decision for each.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_validation_calibration_evidence_gaps.py`
-- `tests/test_physical_credibility_evidence_requirements.py`
-
-Deliverables:
-
-- A triage report with separate candidate/defer classifications for field-supported release-zone provenance, block-population evidence, and source-frequency records.
-- Explicit first-missing-input fields for each category, preserving the distinction from conditional scenario weights.
-- Tests proving conditional sampling weights are not reported as source-frequency evidence and fixture-backed provenance is not promoted to field-supported evidence.
-
-Definition of done:
-
-- The physical-evidence roadmap has concrete next acquisition or deferral actions for release-zone, block-population, and source-frequency evidence without changing the scientific claim level.
-
-Boundaries: Acquisition triage only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no physical-probability claim, no risk/exposure semantics, and no operational claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

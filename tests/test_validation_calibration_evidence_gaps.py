@@ -105,6 +105,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_gap_categories"]}
         self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "partial")
+        self.assertEqual(
+            categories["release_zone_evidence"]["first_missing_input"],
+            "site_specific_release_zone_geometry_package",
+        )
         self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "partial")
         self.assertEqual(

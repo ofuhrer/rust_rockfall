@@ -59,10 +59,12 @@ projection, and a fixture-backed throughput profile. The physical-evidence
 path now has an explicit release/scenario physical-meaning firewall, an
 observed runout/deposition acquisition blocker matrix, a template-only
 operator acquisition package, fixture-backed intake acceptance smoke tests, a
-release-zone provenance intake bridge, and separate block-population and
-source-frequency acquisition blocker fields. Those reports keep measured,
-unavailable, blocked, dry-run, unauthorized, historical, template, and
-fixture-backed provenance separate. The target-area metrics-completion source
+release-zone provenance intake bridge, and a triage split where release-zone
+provenance and block-population evidence remain acquisition candidates while
+source-frequency records are deferred until a later phase change. Those
+reports keep measured, unavailable, blocked, dry-run, unauthorized,
+historical, template, fixture-backed, candidate, and deferred provenance
+separate. The target-area metrics-completion source
 label now distinguishes recovered existing run-root metrics from rerun or
 blocked branches. The TB-243 read-only spatial-artifact inventory recovered
 the run-root-referenced hazard manifest plus standard and pilot GIS package

@@ -417,6 +417,28 @@ def release_zone_gap(
     return {
         "category": "release_zone_evidence",
         "classification": "partial",
+        "first_missing_input": "site_specific_release_zone_geometry_package",
+        "acquisition_blockers": [
+            {
+                "blocker_id": "site_specific_release_zone_geometry_missing",
+                "first_missing_input": "site_specific_release_zone_geometry_package",
+                "missing_inputs": [
+                    "field_reconnaissance_release_geometry",
+                    "release_zone_geometry_provenance_uri",
+                    "release_zone_geometry_crs_and_vertical_datum",
+                ],
+                "blocked_claims": ["physical_probability", "annual_frequency"],
+            }
+        ],
+        "future_gate_prerequisites": [
+            {
+                "gate_id": "physical_release_zone_provenance_phase_gate",
+                "prerequisite_id": "accepted_site_specific_release_zone_geometry_package",
+                "summary": (
+                    "Field-supported release-zone provenance must be accepted before any physical-probability bridge is considered."
+                ),
+            }
+        ],
         "current_evidence": [
             dataset_summary(datasets, "tschamut2014"),
             tschamut_manifest.get("selected_domain", {}),
@@ -432,8 +454,8 @@ def release_zone_gap(
             "Independent field justification that can be tested against holdout data",
         ],
         "minimum_additional_evidence_needed": (
-            "A site-specific release-zone geometry with documented derivation rules and comparison data that can be "
-            "validated independently of the current pilot."
+            "A field-supported site-specific release-zone geometry package with documented derivation rules and "
+            "comparison data that can be validated independently of the current pilot."
         ),
         "support_role": "diagnostic_and_portability_only",
         "claim_boundary": "conditional_diagnostic_only",

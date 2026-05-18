@@ -23,6 +23,14 @@ boundaries:
 - `scripts/summarize_observed_runout_deposition_intake_contract.py`
 - `scripts/assess_validation_calibration_evidence_gaps.py`
 
+## Acquisition Triage
+
+| Evidence class | Triage | First missing input | Next action |
+| --- | --- | --- | --- |
+| Field-supported release-zone provenance | candidate | `site_specific_release_zone_geometry_package` | Acquire a field-supported site-specific release-zone geometry/provenance package distinct from the conditional contract. |
+| Block-population evidence | candidate | `block_size_survey_or_photogrammetry_census` | Acquire a block-size survey or photogrammetry census with survey-frame provenance. |
+| Source-frequency records | defer | `historical_rockfall_event_catalogue` | Defer source-frequency records until a phase change explicitly authorizes frequency semantics; keep conditional sampling weights out of frequency claims. |
+
 ## Target-Area Checklist
 
 ### 1. Independent observed runout/deposition benchmark intake
@@ -43,6 +51,7 @@ material for model selection or calibration.
 Acquire release-zone evidence that is distinct from the frozen conditional
 contract and can be traced back to field or reference-data provenance.
 
+- first missing input: `site_specific_release_zone_geometry_package`;
 - release-zone geometry package with stable geometry identifiers;
 - source polygon or equivalent release geometry role;
 - provenance for the field reconnaissance, mapping, or reference basis;
@@ -55,6 +64,7 @@ contract and can be traced back to field or reference-data provenance.
 Acquire the block-population evidence needed if the repository ever moves from
 conditional sampling toward physical-probability semantics.
 
+- first missing input: `block_size_survey_or_photogrammetry_census`;
 - survey footprint geometry or census footprint for the observation frame;
 - block-count or size-class record tied to a stable survey identifier;
 - method note for photogrammetry, field census, or another defensible survey
@@ -67,6 +77,7 @@ conditional sampling toward physical-probability semantics.
 Acquire the evidence needed to distinguish scenario sampling from source
 occurrence frequency.
 
+- first missing input: `historical_rockfall_event_catalogue`;
 - source-zone identifier and geometry version or hash;
 - event-class definition and frequency unit;
 - observation window, time window, or catalog period;
@@ -123,11 +134,11 @@ frequency evidence do not collapse into one label:
 
 1. Stage the independent observed runout/deposition benchmark manifest and
    geometry.
-2. Add site-specific release-zone provenance that is distinct from workflow
+2. Acquire site-specific release-zone provenance that is distinct from workflow
    heuristics.
 3. Acquire block-population or block-size survey evidence if a later phase
    needs physical-probability semantics.
-4. Acquire source-frequency evidence only if a later gate explicitly allows
+4. Defer source-frequency evidence until a later gate explicitly allows
    frequency semantics.
 5. Keep calibration records separate from the benchmark intake and from any
    future frequency evidence.

@@ -15,6 +15,9 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "current_physical_credibility_status",
             "calibration_status",
             "validation_status",
+            "release_zone_first_missing_input",
+            "release_zone_blockers",
+            "release_zone_future_gate_prerequisites",
             "evidence_requirement_categories",
             "evidence_acquisition_matrix",
             "candidate_data_sources",
@@ -31,6 +34,7 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "source_frequency_blockers",
             "source_frequency_future_gate_prerequisites",
             "source_frequency_sampling_weights_are_not_frequency_evidence",
+            "physical_evidence_triage",
             "evidence_acquisition_summary",
             "claim_boundaries",
             "blocked_reason",
@@ -43,6 +47,9 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertEqual(report["calibration_status"], "missing")
         self.assertEqual(report["validation_status"], "partial")
         self.assertEqual(report["intensity_frequency_status"], "deferred_unsupported")
+        self.assertEqual(report["release_zone_first_missing_input"], "site_specific_release_zone_geometry_package")
+        self.assertTrue(report["release_zone_blockers"])
+        self.assertTrue(report["release_zone_future_gate_prerequisites"])
         self.assertEqual(
             [entry["layer_key"] for entry in report["layer_credibility_boundaries"]],
             [
@@ -61,6 +68,18 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
         self.assertEqual(report["evidence_acquisition_summary"]["first_actionable_category"], "observed_runout_deposition")
         self.assertEqual(report["evidence_acquisition_summary"]["deferred_category"], "source_frequency_and_temporal_frequency_evidence")
+        self.assertEqual(
+            [entry["classification"] for entry in report["physical_evidence_triage"]],
+            ["candidate", "candidate", "defer"],
+        )
+        self.assertEqual(
+            [entry["first_missing_input"] for entry in report["physical_evidence_triage"]],
+            [
+                "site_specific_release_zone_geometry_package",
+                "block_size_survey_or_photogrammetry_census",
+                "historical_rockfall_event_catalogue",
+            ],
+        )
         self.assertEqual(
             report["evidence_acquisition_summary"]["priority_order"],
             [
@@ -102,9 +121,13 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             },
         )
         self.assertEqual(categories["observed_runout_deposition"]["current_repo_evidence_status"], "partial")
+        self.assertEqual(categories["release_zone_evidence"]["acquisition_classification"], "candidate")
+        self.assertEqual(categories["release_zone_evidence"]["first_missing_input"], "site_specific_release_zone_geometry_package")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["current_repo_evidence_status"], "missing")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(categories["block_size_and_block_population_evidence"]["acquisition_classification"], "candidate")
         self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "historical_rockfall_event_catalogue")
+        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["acquisition_classification"], "defer")
         self.assertTrue(categories["source_frequency_and_temporal_frequency_evidence"]["conditional_sampling_weights_are_not_frequency_evidence"])
         self.assertEqual(categories["independent_holdout_validation"]["current_repo_evidence_status"], "partial")
         self.assertEqual(matrix["observed_runout_deposition"]["priority"], 1)
@@ -112,8 +135,12 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertTrue(matrix["observed_runout_deposition"]["required_data"])
         self.assertTrue(matrix["observed_runout_deposition"]["current_repo_evidence"])
         self.assertTrue(matrix["observed_runout_deposition"]["future_field_or_reference_data_needs"])
+        self.assertEqual(matrix["release_zone_evidence"]["acquisition_classification"], "candidate")
+        self.assertEqual(matrix["release_zone_evidence"]["first_missing_input"], "site_specific_release_zone_geometry_package")
         self.assertEqual(matrix["block_size_and_block_population_evidence"]["first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(matrix["block_size_and_block_population_evidence"]["acquisition_classification"], "candidate")
         self.assertEqual(matrix["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "historical_rockfall_event_catalogue")
+        self.assertEqual(matrix["source_frequency_and_temporal_frequency_evidence"]["acquisition_classification"], "defer")
         self.assertTrue(matrix["source_frequency_and_temporal_frequency_evidence"]["conditional_sampling_weights_are_not_frequency_evidence"])
         self.assertTrue(categories["source_frequency_and_temporal_frequency_evidence"]["future_acquisition_classes"])
         self.assertIn(
@@ -164,6 +191,22 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "Release-zone provenance intake bridge",
             {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
         )
+        self.assertEqual(
+            next(
+                source
+                for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]
+                if source["label"] == "Chant Sura / Flüelapass candidate acquisition manifest"
+            )["status"],
+            "partial",
+        )
+        self.assertIn(
+            "deferred public-context bundle",
+            next(
+                source
+                for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]
+                if source["label"] == "Chant Sura / Flüelapass candidate acquisition manifest"
+            )["notes"].lower(),
+        )
         self.assertIn(
             "Release-candidate physical-meaning firewall",
             {source["label"] for source in categories["release_zone_evidence"]["current_repo_evidence_sources"]},
@@ -181,6 +224,12 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         self.assertIn(
             "AOI dry-run case skeleton bundle",
             {source["label"] for source in categories["calibration_data_and_objective_functions"]["current_repo_evidence_sources"]},
+        )
+        self.assertTrue(
+            any("conditional workflow outputs" in item.lower() for item in report["source_frequency_requirements"][0]["current_repo_evidence"])
+        )
+        self.assertTrue(
+            any("not a source-occurrence catalogue" in item.lower() for item in report["source_frequency_requirements"][0]["current_repo_evidence"])
         )
 
     def test_text_output_names_required_evidence_categories(self) -> None:
