@@ -24,6 +24,13 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "source_frequency_requirements",
             "intensity_frequency_status",
             "layer_credibility_boundaries",
+            "block_population_first_missing_input",
+            "block_population_blockers",
+            "block_population_future_gate_prerequisites",
+            "source_frequency_first_missing_input",
+            "source_frequency_blockers",
+            "source_frequency_future_gate_prerequisites",
+            "source_frequency_sampling_weights_are_not_frequency_evidence",
             "evidence_acquisition_summary",
             "claim_boundaries",
             "blocked_reason",
@@ -66,6 +73,11 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
                 "source_frequency_and_temporal_frequency_evidence",
             ],
         )
+        self.assertEqual(report["block_population_first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(report["source_frequency_first_missing_input"], "historical_rockfall_event_catalogue")
+        self.assertTrue(report["block_population_blockers"])
+        self.assertTrue(report["source_frequency_blockers"])
+        self.assertTrue(report["source_frequency_sampling_weights_are_not_frequency_evidence"])
 
     def test_requirement_categories_and_candidate_sources_are_distinct(self) -> None:
         report = helper.build_report()
@@ -91,18 +103,25 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
         )
         self.assertEqual(categories["observed_runout_deposition"]["current_repo_evidence_status"], "partial")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["current_repo_evidence_status"], "missing")
+        self.assertEqual(categories["block_size_and_block_population_evidence"]["first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "historical_rockfall_event_catalogue")
+        self.assertTrue(categories["source_frequency_and_temporal_frequency_evidence"]["conditional_sampling_weights_are_not_frequency_evidence"])
         self.assertEqual(categories["independent_holdout_validation"]["current_repo_evidence_status"], "partial")
         self.assertEqual(matrix["observed_runout_deposition"]["priority"], 1)
         self.assertEqual(matrix["observed_runout_deposition"]["current_repo_gap"], helper.EVIDENCE_ACQUISITION_PRIORITY_BLUEPRINTS[0]["current_repo_gap"])
         self.assertTrue(matrix["observed_runout_deposition"]["required_data"])
         self.assertTrue(matrix["observed_runout_deposition"]["current_repo_evidence"])
         self.assertTrue(matrix["observed_runout_deposition"]["future_field_or_reference_data_needs"])
+        self.assertEqual(matrix["block_size_and_block_population_evidence"]["first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(matrix["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "historical_rockfall_event_catalogue")
+        self.assertTrue(matrix["source_frequency_and_temporal_frequency_evidence"]["conditional_sampling_weights_are_not_frequency_evidence"])
         self.assertTrue(categories["source_frequency_and_temporal_frequency_evidence"]["future_acquisition_classes"])
         self.assertIn(
             "independent_holdout_field_deposition_runout_benchmark",
             report["missing_acquisition_classes"],
         )
-        self.assertIn("source_occurrence_temporal_frequency_catalogue", report["missing_acquisition_classes"])
+        self.assertIn("block_population_count_or_size_class_record", report["missing_acquisition_classes"])
+        self.assertIn("historical_rockfall_event_catalogue", report["missing_acquisition_classes"])
         self.assertTrue(
             any(
                 source["source_kind"] == "current_repo_evidence"
@@ -157,6 +176,8 @@ class PhysicalCredibilityEvidenceRequirementsTest(unittest.TestCase):
             "Candidate source-zone scenario stress report",
             {source["label"] for source in categories["source_frequency_and_temporal_frequency_evidence"]["current_repo_evidence_sources"]},
         )
+        self.assertEqual(report["block_population_blockers"][0]["first_missing_input"], "block_size_survey_or_photogrammetry_census")
+        self.assertEqual(report["source_frequency_blockers"][0]["first_missing_input"], "historical_rockfall_event_catalogue")
         self.assertIn(
             "AOI dry-run case skeleton bundle",
             {source["label"] for source in categories["calibration_data_and_objective_functions"]["current_repo_evidence_sources"]},

@@ -78,6 +78,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
                 "observed_deposition_runout_evidence",
                 "release_zone_evidence",
                 "block_size_and_block_population_evidence",
+                "source_frequency_and_temporal_frequency_evidence",
                 "terrain_and_context_evidence",
                 "calibration_evidence",
                 "holdout_and_validation_evidence",
@@ -106,6 +107,19 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "partial")
         self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "partial")
+        self.assertEqual(
+            categories["block_size_and_block_population_evidence"]["first_missing_input"],
+            "block_size_survey_or_photogrammetry_census",
+        )
+        self.assertEqual(
+            categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"],
+            "historical_rockfall_event_catalogue",
+        )
+        self.assertTrue(
+            categories["source_frequency_and_temporal_frequency_evidence"][
+                "conditional_sampling_weights_are_not_frequency_evidence"
+            ]
+        )
         self.assertTrue(
             any("calibration dataset" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
         )

@@ -35,6 +35,54 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "validation_calibration_evidence_gaps_v1"
 ALLOWED_CLASSIFICATIONS = {"present", "partial", "missing", "out_of_scope", "not_inferred"}
 
+BLOCK_POPULATION_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
+    {
+        "blocker_id": "block_population_survey_missing",
+        "first_missing_input": "block_size_survey_or_photogrammetry_census",
+        "missing_inputs": [
+            "survey_footprint_geometry",
+            "block_count_or_size_class_record",
+            "survey_provenance_uri",
+            "explicit_not_source_frequency_catalogue_note",
+        ],
+        "blocked_claims": ["physical_probability", "annual_frequency"],
+    },
+)
+
+BLOCK_POPULATION_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
+    {
+        "gate_id": "physical_probability_phase_gate",
+        "prerequisite_id": "accepted_block_population_evidence_contract",
+        "summary": "Block-population evidence must be accepted before any physical-probability bridge is considered.",
+    },
+)
+
+SOURCE_FREQUENCY_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
+    {
+        "blocker_id": "source_frequency_catalogue_missing",
+        "first_missing_input": "historical_rockfall_event_catalogue",
+        "missing_inputs": [
+            "repeat_source_zone_observations",
+            "rate_time_window_and_censoring_rules",
+            "rate_provenance",
+        ],
+        "blocked_claims": ["physical_probability", "annual_frequency"],
+    },
+)
+
+SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
+    {
+        "gate_id": "physical_source_frequency_design_gate",
+        "prerequisite_id": "accepted_source_frequency_evidence_contract",
+        "summary": "Accepted source-frequency evidence is required before the design gate can consider prototype authorization.",
+    },
+    {
+        "gate_id": "physical_frequency_reducer_preconditions",
+        "prerequisite_id": "accepted_overlap_adjusted_reducer_and_uncertainty_propagation_contract",
+        "summary": "Overlap-adjusted reducers and uncertainty propagation must be accepted before annual or physical products are contemplated.",
+    },
+)
+
 
 class ValidationCalibrationEvidenceGapsError(ValueError):
     """User-facing validation/calibration evidence gap error."""
@@ -79,6 +127,7 @@ def build_report() -> dict[str, Any]:
     observed_deposition = observed_deposition_gap(datasets, tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout)
     release_zone = release_zone_gap(datasets, tschamut_manifest, candidate_portability)
     block_population = block_population_gap(datasets, tschamut_gate, chant_model_selection)
+    source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection)
     terrain_context = terrain_context_gap(tschamut_manifest, tschamut_gate, tschamut_target, candidate_portability)
     calibration = calibration_gap(tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout, chant_model_selection)
     holdout = holdout_gap(tschamut_gate, tschamut_target, chant_contact_heldout, chant_split, balfrin_readiness, balfrin_reproduction)
@@ -153,6 +202,7 @@ def build_report() -> dict[str, Any]:
         observed_deposition,
         release_zone,
         block_population,
+        source_frequency,
         terrain_context,
         calibration,
         holdout,
@@ -400,6 +450,9 @@ def block_population_gap(
     return {
         "category": "block_size_and_block_population_evidence",
         "classification": "missing",
+        "first_missing_input": "block_size_survey_or_photogrammetry_census",
+        "acquisition_blockers": [dict(item) for item in BLOCK_POPULATION_ACQUISITION_BLOCKERS],
+        "future_gate_prerequisites": [dict(item) for item in BLOCK_POPULATION_FUTURE_GATE_PREREQUISITES],
         "current_evidence": [
             dataset_summary(datasets, "tschamut2014"),
             dataset_summary(datasets, "chant_sura_2020"),
@@ -409,15 +462,56 @@ def block_population_gap(
         "what_exists": [
             "Tschamut uses conditional sampling only",
             "Chant Sura contact fixtures carry block mass / radius and shape proxies for contact comparisons",
+            "Conditional scenario weights remain conditional only and are not frequency evidence",
         ],
         "what_is_missing": [
-            "Source occurrence rates or block-population frequencies",
-            "A physical-probability semantics for block size / frequency",
+            "A block-size survey or photogrammetry census with survey-frame provenance",
+            "A block-count or size-class record that is separate from source-frequency catalogues",
             "A benchmark that explicitly separates representative scenarios from population semantics",
         ],
         "minimum_additional_evidence_needed": (
-            "Observed block-population or source-frequency evidence, or a documented external model for frequency "
-            "semantics, before any physical probability claim."
+            "Observed block-population evidence with survey provenance, block counts or size classes, and an explicit "
+            "boundary showing the record is not a source-frequency catalogue before any physical probability claim."
+        ),
+        "support_role": "conditional_scenario_only",
+        "claim_boundary": "conditional_only",
+        "physical_probability_relevance": "missing",
+        "holdout_validation_relevance": "missing",
+    }
+
+
+def source_frequency_gap(
+    datasets: dict[str, dict[str, Any]],
+    tschamut_gate: dict[str, Any],
+    chant_model_selection: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "category": "source_frequency_and_temporal_frequency_evidence",
+        "classification": "missing",
+        "first_missing_input": "historical_rockfall_event_catalogue",
+        "acquisition_blockers": [dict(item) for item in SOURCE_FREQUENCY_ACQUISITION_BLOCKERS],
+        "future_gate_prerequisites": [dict(item) for item in SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES],
+        "conditional_sampling_weights_are_not_frequency_evidence": True,
+        "current_evidence": [
+            "Current scenario tables remain conditional and proxy-driven.",
+            "Sampling weights are conditional design weights only and are not source-occurrence rates.",
+            dataset_summary(datasets, "tschamut2014"),
+            dataset_summary(datasets, "chant_sura_2020"),
+            tschamut_gate.get("sampling_plan", {}),
+            chant_model_selection.get("shape_source", {}),
+        ],
+        "what_exists": [
+            "Conditional scenario rows exist, but they remain workflow outputs rather than occurrence catalogues",
+            "Current sampling weights are conditional design weights only and are not frequency evidence",
+        ],
+        "what_is_missing": [
+            "Historical rockfall event catalogue with provenance and observation windows",
+            "Repeat source-zone observations with censoring rules and a temporal window",
+            "A source-occurrence record that supports frequency semantics instead of conditional sampling",
+        ],
+        "minimum_additional_evidence_needed": (
+            "Observed source-occurrence evidence with explicit time windows, censoring rules, and provenance, kept "
+            "separate from conditional sampling weights before any physical probability claim."
         ),
         "support_role": "conditional_scenario_only",
         "claim_boundary": "conditional_only",

@@ -234,6 +234,29 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "current_physical_credibility_status": gap_report.get("physical_credibility_status", "unknown"),
         "calibration_status": gap_report.get("calibration_status", "unknown"),
         "validation_status": gap_report.get("validation_status", "unknown"),
+        "block_population_first_missing_input": category_first_missing_input(
+            gap_report, "block_size_and_block_population_evidence"
+        ),
+        "block_population_blockers": category_acquisition_blockers(
+            gap_report, "block_size_and_block_population_evidence"
+        ),
+        "block_population_future_gate_prerequisites": category_future_gate_prerequisites(
+            gap_report, "block_size_and_block_population_evidence"
+        ),
+        "source_frequency_first_missing_input": category_first_missing_input(
+            gap_report, "source_frequency_and_temporal_frequency_evidence"
+        ),
+        "source_frequency_blockers": category_acquisition_blockers(
+            gap_report, "source_frequency_and_temporal_frequency_evidence"
+        ),
+        "source_frequency_future_gate_prerequisites": category_future_gate_prerequisites(
+            gap_report, "source_frequency_and_temporal_frequency_evidence"
+        ),
+        "source_frequency_sampling_weights_are_not_frequency_evidence": category_flag(
+            gap_report,
+            "source_frequency_and_temporal_frequency_evidence",
+            "conditional_sampling_weights_are_not_frequency_evidence",
+        ),
         "evidence_requirement_categories": categories,
         "evidence_acquisition_matrix": acquisition_matrix,
         "candidate_data_sources": candidate_sources,
@@ -264,6 +287,13 @@ def blocked_report(missing_inputs: list[str]) -> dict[str, Any]:
             "current_physical_credibility_status": "blocked_missing_inputs",
             "calibration_status": "blocked_missing_inputs",
             "validation_status": "blocked_missing_inputs",
+            "block_population_first_missing_input": None,
+            "block_population_blockers": [],
+            "block_population_future_gate_prerequisites": [],
+            "source_frequency_first_missing_input": None,
+            "source_frequency_blockers": [],
+            "source_frequency_future_gate_prerequisites": [],
+            "source_frequency_sampling_weights_are_not_frequency_evidence": False,
             "evidence_requirement_categories": [],
             "evidence_acquisition_matrix": [],
             "candidate_data_sources": [],
@@ -486,6 +516,13 @@ def build_evidence_requirement_categories(
         {
             "category": "block_size_and_block_population_evidence",
             "current_repo_evidence_status": category_status(gap_report, "block_size_and_block_population_evidence"),
+            "first_missing_input": category_first_missing_input(gap_report, "block_size_and_block_population_evidence"),
+            "acquisition_blockers": category_acquisition_blockers(
+                gap_report, "block_size_and_block_population_evidence"
+            ),
+            "future_gate_prerequisites": category_future_gate_prerequisites(
+                gap_report, "block_size_and_block_population_evidence"
+            ),
             "current_repo_evidence_sources": [
                 {
                     "label": "Chant Sura internal model-selection fixture",
@@ -518,18 +555,18 @@ def build_evidence_requirement_categories(
                     "notes": "Would support block-size distributions and representative block-population semantics.",
                 },
                 {
-                    "class_name": "source_occurrence_temporal_frequency_catalogue",
-                    "label": "Source occurrence / temporal frequency catalogue",
+                    "class_name": "block_population_count_or_size_class_record",
+                    "label": "Block-population count or size-class record",
                     "status": "missing",
                     "role": "future physical-probability evidence",
-                    "notes": "Would help distinguish scenario sampling from physical occurrence frequency.",
+                    "notes": "Would keep block-population evidence separate from source-frequency catalogues.",
                 },
             ],
             "missing_acquisition_classes": [
                 "block_size_survey_or_photogrammetry_census",
-                "source_occurrence_temporal_frequency_catalogue",
+                "block_population_count_or_size_class_record",
             ],
-            "why_it_matters": "Block-population or source-frequency semantics are required before any physical-probability claim can be made.",
+            "why_it_matters": "Block-population semantics are required before any physical-probability claim can be made.",
         },
         {
             "category": "terrain_and_context_evidence",
@@ -610,6 +647,18 @@ def build_evidence_requirement_categories(
         {
             "category": "source_frequency_and_temporal_frequency_evidence",
             "current_repo_evidence_status": "missing",
+            "first_missing_input": category_first_missing_input(gap_report, "source_frequency_and_temporal_frequency_evidence"),
+            "acquisition_blockers": category_acquisition_blockers(
+                gap_report, "source_frequency_and_temporal_frequency_evidence"
+            ),
+            "future_gate_prerequisites": category_future_gate_prerequisites(
+                gap_report, "source_frequency_and_temporal_frequency_evidence"
+            ),
+            "conditional_sampling_weights_are_not_frequency_evidence": category_flag(
+                gap_report,
+                "source_frequency_and_temporal_frequency_evidence",
+                "conditional_sampling_weights_are_not_frequency_evidence",
+            ),
             "current_repo_evidence_sources": [
                 {
                     "label": "AOI scenario-table dry-run plan",
@@ -824,6 +873,32 @@ def category_status(gap_report: dict[str, Any], category_name: str) -> str:
     return "missing"
 
 
+def category_entry(gap_report: dict[str, Any], category_name: str) -> dict[str, Any]:
+    for entry in gap_report.get("evidence_gap_categories", []):
+        if entry.get("category") == category_name:
+            return entry
+    return {}
+
+
+def category_first_missing_input(gap_report: dict[str, Any], category_name: str) -> str | None:
+    value = category_entry(gap_report, category_name).get("first_missing_input")
+    return str(value) if isinstance(value, str) and value.strip() else None
+
+
+def category_acquisition_blockers(gap_report: dict[str, Any], category_name: str) -> list[dict[str, Any]]:
+    blockers = category_entry(gap_report, category_name).get("acquisition_blockers") or []
+    return [dict(item) for item in blockers if isinstance(item, dict)]
+
+
+def category_future_gate_prerequisites(gap_report: dict[str, Any], category_name: str) -> list[dict[str, Any]]:
+    prerequisites = category_entry(gap_report, category_name).get("future_gate_prerequisites") or []
+    return [dict(item) for item in prerequisites if isinstance(item, dict)]
+
+
+def category_flag(gap_report: dict[str, Any], category_name: str, flag_name: str) -> bool:
+    return bool(category_entry(gap_report, category_name).get(flag_name, False))
+
+
 def build_candidate_data_sources(categories: list[dict[str, Any]]) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     for category in categories:
@@ -870,6 +945,12 @@ def build_evidence_acquisition_matrix(categories: list[dict[str, Any]]) -> list[
                 "required_data": list(blueprint["required_data"]),
                 "current_repo_gap": blueprint["current_repo_gap"],
                 "current_repo_evidence_status": category_entry.get("current_repo_evidence_status", "missing"),
+                "first_missing_input": category_entry.get("first_missing_input"),
+                "acquisition_blockers": list(category_entry.get("acquisition_blockers") or []),
+                "future_gate_prerequisites": list(category_entry.get("future_gate_prerequisites") or []),
+                "conditional_sampling_weights_are_not_frequency_evidence": bool(
+                    category_entry.get("conditional_sampling_weights_are_not_frequency_evidence", False)
+                ),
                 "current_repo_evidence": summarize_current_repo_evidence(category_entry),
                 "future_field_or_reference_data_needs": summarize_future_acquisition_needs(category_entry),
                 "why_it_matters": str(category_entry.get("why_it_matters") or ""),
@@ -995,10 +1076,18 @@ def holdout_validation_requirements(holdout_report: dict[str, Any]) -> list[dict
 def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_report: dict[str, Any]) -> list[dict[str, Any]]:
     tschamut_name = dataset_label(datasets, "tschamut2014")
     chant_name = dataset_label(datasets, "chant_sura_2020")
+    source_category = category_entry(gap_report, "source_frequency_and_temporal_frequency_evidence")
+    block_population_category = category_entry(gap_report, "block_size_and_block_population_evidence")
     return [
         {
             "requirement": "Source occurrence or temporal frequency catalogue",
             "status": "missing",
+            "first_missing_input": source_category.get("first_missing_input"),
+            "acquisition_blockers": list(source_category.get("acquisition_blockers") or []),
+            "future_gate_prerequisites": list(source_category.get("future_gate_prerequisites") or []),
+            "conditional_sampling_weights_are_not_frequency_evidence": bool(
+                source_category.get("conditional_sampling_weights_are_not_frequency_evidence", False)
+            ),
             "current_repo_evidence": [
                 f"{tschamut_name} is a conditional deposition/runout benchmark, not a source-occurrence catalogue.",
                 f"{chant_name} is a trajectory/contact benchmark, not a source-occurrence catalogue.",
@@ -1009,6 +1098,9 @@ def source_frequency_requirements(datasets: dict[str, dict[str, Any]], gap_repor
         {
             "requirement": "Block-population or block-size frequency semantics",
             "status": "missing",
+            "first_missing_input": block_population_category.get("first_missing_input"),
+            "acquisition_blockers": list(block_population_category.get("acquisition_blockers") or []),
+            "future_gate_prerequisites": list(block_population_category.get("future_gate_prerequisites") or []),
             "current_repo_evidence": [
                 "Current scenarios are conditional and proxy-driven.",
                 "Shape and mass proxies do not provide population frequencies.",

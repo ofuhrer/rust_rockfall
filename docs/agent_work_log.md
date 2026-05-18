@@ -1279,3 +1279,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no release-zone validation claim, no threshold tuning, no source-frequency semantics, no annual-frequency claim, no operational claim, and no probability conversion for sampling weights.
 - Next task: `TB-236`
+
+### TB-236: Block-Population And Source-Frequency Acquisition Deferral Map
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: split the block-population and source-frequency rows in the physical-evidence matrix into explicit acquisition blockers and future-gate prerequisites, while keeping conditional scenario weights out of frequency language.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_validation_calibration_evidence_gaps.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit machine-readable blocker records for block-population evidence and source-frequency evidence in the validation/calibration gap helper, including `first_missing_input` fields and future-gate prerequisite records.
+  - Threaded those blocker records into the physical-credibility matrix so the top-level report now exposes separate block-population and source-frequency blocker lists, first-missing inputs, and the conditional-only sampling-weight boundary.
+  - Reworked the block-population and source-frequency evidence categories so the first missing inputs are named directly and conditional sampling weights are not reported as frequency evidence.
+  - Updated the regression tests to assert the new blocker fields, the first missing inputs, and the frequency/evidence boundary, then removed TB-236 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps tests.test_physical_credibility_evidence_requirements`
+  - `PYENV_VERSION=system uv run python scripts/map_physical_credibility_evidence_requirements.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no source-frequency implementation, no annual-frequency product, no calibration, no risk/exposure semantics, no operational claim, and no probability claim for conditional sampling weights.
+- Next task: `TB-237`

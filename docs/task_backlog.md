@@ -29,36 +29,6 @@ Definition of done:
 
 Boundaries: Fixture-backed schema smoke only, no real evidence claim, no calibration, no parameter fitting, no validation upgrade, and no operational claim.
 
-### TB-236: Block-Population And Source-Frequency Acquisition Deferral Map
-
-Goal: Convert block-population and source-frequency rows in the physical-evidence matrix into exact acquisition blockers and future-gate prerequisites.
-
-Capability gap reduced: The future physical-probability layer remains vague unless block-population and source-frequency evidence are explicitly separated from current conditional scenario weights.
-
-Why this outranks alternatives: This keeps the project scientifically honest while avoiding premature annual-frequency implementation.
-
-Inspect first:
-
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/physical_source_frequency_design_gate.md`
-- `docs/source_frequency_evidence_contract.md`
-- `docs/physical_frequency_reducer_preconditions.md`
-
-Deliverables:
-
-- Machine-readable blockers for block-population evidence and source-frequency evidence.
-- Tests proving conditional scenario weights are not reported as frequency evidence.
-- A short current-doc update only if needed to point to the new blocker fields.
-
-Definition of done:
-
-- The gap report names the first missing block-population and source-frequency inputs and leaves annual/physical probability unsupported.
-
-Boundaries: No source-frequency implementation, no annual-frequency product, no calibration, no risk/exposure semantics, and no operational claim.
-
 ### TB-237: Workflow-Shell Coupling Extraction Batch
 
 Goal: Extract one bounded batch of duplicated workflow-shell mechanics identified by the coupling inventory into shared helpers without changing public CLI outputs.
