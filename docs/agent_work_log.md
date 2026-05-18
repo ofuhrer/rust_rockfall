@@ -974,3 +974,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: acquisition planning and acceptance gate only; no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
 - Next task: backlog refill needed
+
+### TB-222: Balfrin Next Measured Action Decision Refresh
+
+- Date: 2026-05-18
+- Commit: `a1f5974`
+- Objective: refresh the Balfrin next-action decision matrix using post-TB-221 evidence before any live-run request or optimization task is prepared.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json`, `tests/fixtures/balfrin_next_live_run_decision_gate/defer_bundle.json`, `docs/task_backlog.md`
+- Implementation summary:
+  - Extended the deterministic decision helper from the prior three-way gate into a ranked five-action matrix covering metrics completion, smallest multi-zone measurement, second-site progress, physical-evidence acquisition, and hazard-builder optimization.
+  - Added explicit path states for measured, fixture-backed, blocked, unavailable, unauthorized, and SSH-access-expired cases, plus per-action claim-upgrade boundaries and exact evidence blockers.
+  - Refreshed the default and defer fixtures with TB-217 through TB-221 evidence rows, Balfrin access provenance, second-site blockers, physical-evidence blockers, and hazard optimization fixture-backed status.
+  - Added focused tests for the metrics-completion recommendation, multi-zone blockers, SSH-expired fail-closed behavior, and defer-to-portability/physical-evidence branch.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_next_live_run_decision_gate.py tests/test_balfrin_next_live_run_decision_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --evidence-json tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json --format json > /tmp/tb222_decision_gate.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_management_demo_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: deterministic decision refresh only; no live Balfrin submission, no SSH access claim, no authorization grant, no new maturity label, no fabricated metrics, no scale-up, no distributed-execution claim, no annual-frequency or physical-probability claim, and no operational hazard-map claim.
+- Next task: `TB-223`
