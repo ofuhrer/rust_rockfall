@@ -31,7 +31,7 @@ staging = _load_module(
 
 
 class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
-    def test_ready_fixture_path_is_ready_for_next_step_and_permission_gates_tiny_handoff(self) -> None:
+    def test_ready_real_package_is_ready_for_next_step_and_permission_gates_tiny_handoff(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             site_config = self._write_site_config(repo_root)
@@ -40,13 +40,23 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
                 site_config=site_config,
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
+            acquisition_package_path = self._write_acquisition_package(repo_root, classification="real_staged")
             self._write_real_context_cache_manifest(repo_root)
 
-            first = reporter.build_report(site_config, repo_root=repo_root)
-            repeat = reporter.build_report(site_config, repo_root=repo_root)
+            first = reporter.build_report(
+                site_config,
+                repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
+            )
+            repeat = reporter.build_report(
+                site_config,
+                repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
+            )
             second = reporter.build_report(
                 site_config,
                 repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
                 allow_tiny_ensemble_handoff=True,
                 tiny_ensemble_note="explicitly permitted for dry-run handoff coverage",
             )
@@ -55,8 +65,13 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(second["workflow_classification"], "ready_for_next_step")
         self.assertEqual(first, repeat)
         self.assertEqual(first["prepared_pilot_provenance"]["status"], "real_staged")
+        self.assertEqual(first["prepared_pilot_input_classification"], "ready_real")
+        self.assertEqual(first["first_missing_real_input_category"], "")
         self.assertEqual(first["blocked_fixture_backed_inputs"], [])
+        self.assertEqual(first["blocked_partial_real_inputs"], [])
         self.assertEqual(first["public_context_readiness"]["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
+        self.assertEqual(first["public_context_readiness"]["prepared_pilot_input_classification"], "ready_real")
+        self.assertEqual(first["public_context_readiness"]["first_missing_real_input_category"], "")
         self.assertEqual(first["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
         self.assertEqual(first["aoi_preparation"]["case_skeleton_status"], "ready")
         self.assertEqual(first["release_candidate_generation"]["candidate_metrics_status"], "ready")
@@ -87,6 +102,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         text_report = reporter.render_text_report(first)
         self.assertEqual(text_report, reporter.render_text_report(first))
         self.assertIn("workflow_classification: ready_for_next_step", text_report)
+        self.assertIn("prepared_pilot_input_classification: ready_real", text_report)
         self.assertIn("prepared_pilot_provenance:", text_report)
         self.assertIn("public_context_readiness:", text_report)
         self.assertIn("real_context_product_readiness_status: ready", text_report)
@@ -105,45 +121,120 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
                 site_config=site_config,
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
+            acquisition_package_path = self._write_acquisition_package(repo_root, classification="fixture_backed")
             self._write_real_context_cache_manifest(
                 repo_root,
             )
 
-            report = reporter.build_report(site_config, repo_root=repo_root)
+            report = reporter.build_report(
+                site_config,
+                repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
+            )
 
         self.assertEqual(report["workflow_classification"], "blocked_fixture_backed_inputs")
         self.assertEqual(report["prepared_pilot_provenance"]["status"], "fixture_backed")
+        self.assertEqual(report["prepared_pilot_input_classification"], "fixture_backed")
+        self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
         self.assertEqual(report["prepared_pilot_provenance"]["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
         self.assertEqual(report["blocked_missing_inputs"], [])
         self.assertTrue(report["blocked_fixture_backed_inputs"])
+        self.assertEqual(report["blocked_partial_real_inputs"], [])
         self.assertIn("synthetic fixture inputs are not public evidence", report["blocked_fixture_backed_inputs"][0])
         self.assertEqual(report["ready_for_next_step"]["status"], "blocked_fixture_backed_inputs")
         self.assertEqual(report["ready_for_next_step"]["next_step"], "none")
         self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_fixture_backed_inputs")
         self.assertIn("synthetic fixture inputs are not public evidence", report["tiny_bounded_ensemble_handoff"]["blocked_reason"])
+        self.assertEqual(report["public_context_readiness"]["prepared_pilot_input_classification"], "fixture_backed")
+        self.assertEqual(report["public_context_readiness"]["first_missing_real_input_category"], "terrain_crop")
 
         text_report = reporter.render_text_report(report)
         self.assertIn("workflow_classification: blocked_fixture_backed_inputs", text_report)
+        self.assertIn("prepared_pilot_input_classification: fixture_backed", text_report)
         self.assertIn("prepared_pilot_provenance:", text_report)
         self.assertIn("blocked_fixture_backed_inputs:", text_report)
         self.assertIn("synthetic fixture inputs are not public evidence", text_report)
+
+    def test_partial_real_inputs_fail_closed_with_machine_readable_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            site_config = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=site_config,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            acquisition_package_path = self._write_acquisition_package(
+                repo_root,
+                classification_map={
+                    "terrain_crop": "real_staged",
+                    "terrain_metadata": "real_staged",
+                    "aoi_tile_catalog": "real_staged",
+                    "source_zone_metadata": "fixture_backed",
+                    "scenario_table": "fixture_backed",
+                    "source_scenario_policy": "fixture_backed",
+                },
+            )
+            self._write_real_context_cache_manifest(repo_root)
+
+            report = reporter.build_report(
+                site_config,
+                repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
+            )
+
+        self.assertEqual(report["workflow_classification"], "blocked_partial_real_inputs")
+        self.assertEqual(report["prepared_pilot_provenance"]["status"], "partial_real")
+        self.assertEqual(report["prepared_pilot_input_classification"], "partial_real")
+        self.assertEqual(report["first_missing_real_input_category"], "swissimage_context")
+        self.assertEqual(report["public_context_readiness"]["real_context_readiness_gate_status"], "blocked_partial_real_inputs")
+        self.assertEqual(report["public_context_readiness"]["prepared_pilot_input_classification"], "partial_real")
+        self.assertEqual(report["blocked_missing_inputs"], [])
+        self.assertFalse(report["blocked_fixture_backed_inputs"])
+        self.assertTrue(report["blocked_partial_real_inputs"])
+        self.assertIn("partially real", report["blocked_partial_real_inputs"][0])
+        self.assertEqual(report["ready_for_next_step"]["status"], "blocked_partial_real_inputs")
+        self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_partial_real_inputs")
+        self.assertIn("partially real", report["tiny_bounded_ensemble_handoff"]["blocked_reason"])
+        text_report = reporter.render_text_report(report)
+        self.assertIn("workflow_classification: blocked_partial_real_inputs", text_report)
+        self.assertIn("prepared_pilot_input_classification: partial_real", text_report)
+        self.assertIn("blocked_partial_real_inputs:", text_report)
 
     def test_missing_fixture_inputs_fail_closed_as_blocked_missing_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             site_config = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=site_config,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            acquisition_package_path = self._write_acquisition_package(repo_root, classification="missing")
+            self._write_real_context_cache_manifest(repo_root)
 
-            report = reporter.build_report(site_config, repo_root=repo_root)
+            report = reporter.build_report(
+                site_config,
+                repo_root=repo_root,
+                acquisition_package_path=acquisition_package_path,
+            )
 
         self.assertEqual(report["workflow_classification"], "blocked_missing_inputs")
         self.assertEqual(report["public_context_readiness"]["real_context_readiness_gate_status"], "blocked_missing_inputs")
-        self.assertEqual(report["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "missing")
-        self.assertEqual(report["aoi_preparation"]["case_skeleton_status"], "blocked_missing_inputs")
-        self.assertEqual(report["release_candidate_generation"]["candidate_metrics_status"], "blocked_missing_inputs")
-        self.assertEqual(report["scenario_generation"]["scenario_plan_status"], "blocked_missing_inputs")
+        self.assertEqual(report["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
+        self.assertEqual(report["public_context_readiness"]["prepared_pilot_input_classification"], "missing")
+        self.assertEqual(report["public_context_readiness"]["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["prepared_pilot_input_classification"], "missing")
+        self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["aoi_preparation"]["case_skeleton_status"], "ready")
+        self.assertEqual(report["release_candidate_generation"]["candidate_metrics_status"], "ready")
+        self.assertEqual(report["scenario_generation"]["scenario_plan_status"], "ready")
+        self.assertEqual(report["command_planning"]["command_plan_status"], "ready")
         self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_missing_inputs")
         self.assertTrue(report["blocked_missing_inputs"])
-        self.assertIn("missing", report["aoi_preparation"]["blocked_reason"])
+        self.assertFalse(report["blocked_fixture_backed_inputs"])
+        self.assertFalse(report["blocked_partial_real_inputs"])
+        self.assertIn("missing real input category", report["blocked_missing_inputs"][0])
         self.assertIn("blocked_missing_inputs", report["ready_for_next_step"]["status"])
 
     def _write_site_config(self, repo_root: Path, *, config_source: Path | None = None) -> Path:
@@ -155,6 +246,31 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
+
+    def _write_acquisition_package(
+        self,
+        repo_root: Path,
+        *,
+        classification: str | None = None,
+        classification_map: dict[str, str] | None = None,
+    ) -> Path:
+        package_source = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
+        package = yaml.safe_load(package_source.read_text(encoding="utf-8"))
+        assert isinstance(package, dict)
+        for row in package.get("required_acquisition_items") or []:
+            if not isinstance(row, dict):
+                continue
+            category = str(row.get("category") or "")
+            row_classification = (classification_map or {}).get(
+                category,
+                classification or str(row.get("classification") or row.get("current_status") or "missing"),
+            )
+            row["classification"] = row_classification
+            row["current_status"] = row_classification
+        package_path = repo_root / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
+        package_path.parent.mkdir(parents=True, exist_ok=True)
+        package_path.write_text(yaml.safe_dump(package, sort_keys=False), encoding="utf-8")
+        return package_path
 
     def _write_real_context_cache_manifest(
         self,

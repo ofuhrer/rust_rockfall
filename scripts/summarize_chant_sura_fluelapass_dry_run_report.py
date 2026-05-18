@@ -24,6 +24,7 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_fluelapass_dry_run_report_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 DEFAULT_PERMISSION_NOTE = "no explicit tiny bounded ensemble permission recorded"
 DEFAULT_TINY_ENSEMBLE_ROOT = Path("/tmp/tb188_chant_sura_fluelapass_tiny_ensemble_handoff")
 
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--acquisition-package", type=Path, default=DEFAULT_ACQUISITION_PACKAGE)
     parser.add_argument(
         "--allow-tiny-ensemble-handoff",
         action="store_true",
@@ -97,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     report = build_report(
         args.site_config,
         repo_root=args.repo_root,
+        acquisition_package_path=args.acquisition_package,
         allow_tiny_ensemble_handoff=args.allow_tiny_ensemble_handoff,
         tiny_ensemble_note=args.tiny_ensemble_note,
     )
@@ -114,6 +117,7 @@ def build_report(
     site_config: Path,
     *,
     repo_root: Path | None = None,
+    acquisition_package_path: Path | None = None,
     allow_tiny_ensemble_handoff: bool = False,
     tiny_ensemble_note: str = DEFAULT_PERMISSION_NOTE,
 ) -> dict[str, Any]:
@@ -135,6 +139,7 @@ def build_report(
         readiness_report = READINESS_GATE.build_report(
             site_config,
             repo_root=repo_root,
+            acquisition_package_path=acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE,
         )
         paths = PREFLIGHT.build_paths(candidate_site_id, config)
 
@@ -159,6 +164,12 @@ def build_report(
         "site_config_path": str(site_config),
         "synthetic_config": bool(PREFLIGHT.text_value(config.get("fixture_profile"))),
     }
+    prepared_pilot_input_classification = str(
+        readiness_report.get("prepared_pilot_input_classification") or "missing"
+    )
+    first_missing_real_input_category = str(
+        readiness_report.get("first_missing_real_input_category") or ""
+    )
 
     blocked_missing_inputs = collect_blocked_missing_inputs(
         readiness_report=readiness_report,
@@ -169,14 +180,30 @@ def build_report(
         case_skeleton_report=case_skeleton_report,
     )
     prepared_pilot_provenance = build_prepared_pilot_provenance(preflight_report, prep_summary)
+    prepared_pilot_provenance["real_input_classification"] = prepared_pilot_input_classification
+    prepared_pilot_provenance["first_missing_real_input_category"] = first_missing_real_input_category
+    prepared_pilot_provenance["status"] = {
+        "ready_real": "real_staged",
+        "partial_real": "partial_real",
+        "fixture_backed": "fixture_backed",
+        "missing": "missing",
+    }.get(prepared_pilot_input_classification, "missing")
     blocked_fixture_backed_inputs = collect_blocked_fixture_backed_inputs(
         readiness_report=readiness_report,
         preflight_report=preflight_report,
         prepared_pilot_provenance=prepared_pilot_provenance,
     )
+    blocked_partial_real_inputs = collect_blocked_partial_real_inputs(
+        readiness_report=readiness_report,
+        prepared_pilot_provenance=prepared_pilot_provenance,
+    )
     prep_summary["prepared_pilot_provenance"] = prepared_pilot_provenance
 
-    workflow_classification = classify_workflow(blocked_missing_inputs, blocked_fixture_backed_inputs)
+    workflow_classification = classify_workflow(
+        blocked_missing_inputs,
+        blocked_fixture_backed_inputs,
+        blocked_partial_real_inputs,
+    )
     tiny_handoff_status = build_tiny_bounded_ensemble_handoff_status(
         workflow_classification=workflow_classification,
         allow_tiny_ensemble_handoff=allow_tiny_ensemble_handoff,
@@ -205,6 +232,8 @@ def build_report(
         "schema_version": SCHEMA_VERSION,
         "workflow_classification": workflow_classification,
         "readiness_status": workflow_classification,
+        "prepared_pilot_input_classification": prepared_pilot_input_classification,
+        "first_missing_real_input_category": first_missing_real_input_category,
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_extent": readiness_report.get("site_extent", preflight_report.get("site_extent_or_placeholder", {})),
@@ -217,6 +246,7 @@ def build_report(
         "workflow_steps": workflow_steps,
         "blocked_missing_inputs": blocked_missing_inputs,
         "blocked_fixture_backed_inputs": blocked_fixture_backed_inputs,
+        "blocked_partial_real_inputs": blocked_partial_real_inputs,
         "prepared_pilot_provenance": prepared_pilot_provenance,
         "ready_for_next_step": {
             "status": workflow_classification,
@@ -268,6 +298,8 @@ def blocked_report(
         "schema_version": SCHEMA_VERSION,
         "workflow_classification": "blocked_missing_inputs",
         "readiness_status": "blocked_missing_inputs",
+        "prepared_pilot_input_classification": "missing",
+        "first_missing_real_input_category": "",
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_extent": "placeholder_extent_missing",
@@ -278,6 +310,8 @@ def blocked_report(
             "candidate_site_name": candidate_site_name,
             "synthetic_fixture_readiness_status": "blocked_missing_inputs",
             "synthetic_fixture_profile": "none",
+            "real_input_classification": "missing",
+            "first_missing_real_input_category": "",
             "site_config_path": str(site_config),
             "synthetic_config": False,
             "source": "missing site config",
@@ -341,6 +375,7 @@ def blocked_report(
         ],
         "blocked_missing_inputs": [blocked_reason],
         "blocked_fixture_backed_inputs": [],
+        "blocked_partial_real_inputs": [],
         "ready_for_next_step": {
             "status": "blocked_missing_inputs",
             "next_step": "none",
@@ -486,6 +521,10 @@ def collect_blocked_missing_inputs(
     blocked.extend(str(item) for item in case_skeleton_report.get("blocked_reason", "").split("; ") if item and case_skeleton_report.get("case_skeleton_status") == "blocked_missing_inputs")
     if command_plan_report.get("second_site_portability_status") == "blocked_missing_inputs":
         blocked.extend(str(item) for item in command_plan_report.get("blocked_missing_inputs", []) if item)
+    if readiness_report.get("real_context_readiness_gate_status") == "blocked_missing_inputs":
+        first_missing = str(readiness_report.get("first_missing_real_input_category") or "")
+        if first_missing:
+            blocked.append(f"prepared pilot acquisition package is missing real input category: {first_missing}")
     return dedupe(blocked)
 
 
@@ -516,9 +555,7 @@ def collect_blocked_fixture_backed_inputs(
     preflight_report: dict[str, Any],
     prepared_pilot_provenance: dict[str, Any],
 ) -> list[str]:
-    if readiness_report.get("real_context_readiness_gate_status") == "blocked_missing_inputs":
-        return []
-    if prepared_pilot_provenance.get("status") != "fixture_backed":
+    if readiness_report.get("real_context_readiness_gate_status") != "blocked_fixture_backed_inputs":
         return []
     contract = preflight_report.get("public_geodata_workflow_contract", {})
     synthetic_fixture_profile = str(contract.get("synthetic_fixture_profile") or "unknown_fixture_profile")
@@ -533,14 +570,32 @@ def collect_blocked_fixture_backed_inputs(
     ]
 
 
+def collect_blocked_partial_real_inputs(
+    *,
+    readiness_report: dict[str, Any],
+    prepared_pilot_provenance: dict[str, Any],
+) -> list[str]:
+    if readiness_report.get("real_context_readiness_gate_status") != "blocked_partial_real_inputs":
+        return []
+    first_missing = str(prepared_pilot_provenance.get("first_missing_real_input_category") or "unknown")
+    candidate_site_id = str(prepared_pilot_provenance.get("candidate_site_id") or "unspecified_second_site")
+    return [
+        f"{candidate_site_id}: prepared-pilot inputs are only partially real",
+        f"{candidate_site_id}: first_missing_real_input_category={first_missing}",
+    ]
+
+
 def classify_workflow(
     blocked_missing_inputs: list[str],
     blocked_fixture_backed_inputs: list[str],
+    blocked_partial_real_inputs: list[str],
 ) -> str:
     if blocked_missing_inputs:
         return "blocked_missing_inputs"
     if blocked_fixture_backed_inputs:
         return "blocked_fixture_backed_inputs"
+    if blocked_partial_real_inputs:
+        return "blocked_partial_real_inputs"
     return "ready_for_next_step"
 
 
@@ -551,6 +606,8 @@ def build_tiny_bounded_ensemble_handoff_status(
 ) -> str:
     if workflow_classification == "blocked_fixture_backed_inputs":
         return "blocked_fixture_backed_inputs"
+    if workflow_classification == "blocked_partial_real_inputs":
+        return "blocked_partial_real_inputs"
     if workflow_classification != "ready_for_next_step":
         return "blocked_missing_inputs"
     return "ready" if allow_tiny_ensemble_handoff else "blocked_missing_permission"
@@ -581,6 +638,8 @@ def build_tiny_bounded_ensemble_handoff(
         "blocked_reason": (
             "synthetic fixture inputs are not public evidence"
             if tiny_handoff_status == "blocked_fixture_backed_inputs"
+            else "prepared-pilot inputs are only partially real"
+            if tiny_handoff_status == "blocked_partial_real_inputs"
             else
             "explicit permission not recorded"
             if tiny_handoff_status == "blocked_missing_permission"
@@ -665,6 +724,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"workflow_classification: {report['workflow_classification']}",
+        f"prepared_pilot_input_classification: {report.get('prepared_pilot_input_classification', '')}",
+        f"first_missing_real_input_category: {report.get('first_missing_real_input_category', '')}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
@@ -674,6 +735,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- status: {provenance.get('status', '')}",
         f"- synthetic_fixture_readiness_status: {provenance.get('synthetic_fixture_readiness_status', '')}",
         f"- synthetic_fixture_profile: {provenance.get('synthetic_fixture_profile', '')}",
+        f"- real_input_classification: {provenance.get('real_input_classification', '')}",
+        f"- first_missing_real_input_category: {provenance.get('first_missing_real_input_category', '')}",
         f"- synthetic_config: {provenance.get('synthetic_config', False)}",
         "",
         "public_context_readiness:",
@@ -718,6 +781,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     if report.get("blocked_fixture_backed_inputs"):
         lines.extend(["", "blocked_fixture_backed_inputs:"])
         lines.extend(f"- {item}" for item in report["blocked_fixture_backed_inputs"])
+    if report.get("blocked_partial_real_inputs"):
+        lines.extend(["", "blocked_partial_real_inputs:"])
+        lines.extend(f"- {item}" for item in report["blocked_partial_real_inputs"])
     lines.extend(["", "ready_for_next_step:"])
     ready = report.get("ready_for_next_step", {})
     lines.append(f"- status: {ready.get('status', '')}")

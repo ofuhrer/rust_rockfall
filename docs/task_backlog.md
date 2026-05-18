@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-232: Real-Input Prepared-Pilot Gate For Chant Sura
-
-Goal: Make the Chant Sura prepared-pilot dry run consume the real-context acquisition package and fail closed until required real inputs are staged.
-
-Capability gap reduced: The AOI-to-prepared-pilot path is useful, but portability remains partial while it can advance on fixture-backed roots.
-
-Why this outranks alternatives: This is the practical bridge from acquisition planning to a real second-site workflow without pretending fixtures are evidence.
-
-Inspect first:
-
-- `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Prepared-pilot gate output that requires real acquisition status before reporting second-site readiness.
-- Tests for missing, fixture-backed, partial-real, and ready-real input classifications.
-- A compact report field naming the first missing real input category.
-
-Definition of done:
-
-- The dry-run path cannot advertise second-site readiness from fixture-backed inputs, and the first real blocker is machine-readable.
-
-Boundaries: No downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
-
 ### TB-233: Observed Runout Acquisition Operator Package
 
 Goal: Materialize an operator-facing observed runout/deposition acquisition package that follows the blocker matrix without treating the package as evidence.

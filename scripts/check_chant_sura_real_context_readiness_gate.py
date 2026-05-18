@@ -36,8 +36,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
 REAL_CONTEXT_PRODUCT_READINESS_SCHEMA_VERSION = "chant_sura_real_context_product_readiness_v1"
 REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION = "chant_sura_real_context_staging_checklist_v1"
+PREPARED_PILOT_REAL_INPUT_READINESS_SCHEMA_VERSION = "chant_sura_prepared_pilot_real_input_readiness_v1"
 BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION = "chant_sura_real_context_trigger_matrix_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 DEFAULT_BALFRIN_EVIDENCE = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1/balfrin_evidence_bundle_v1.json"
 CHECKLIST_BOUNDARY_NOTE = (
     "Checklist only; it does not authorize downloads, create staged files, or claim "
@@ -75,6 +77,12 @@ BALFRIN_TRIGGER_PRODUCTS = [
 BALFRIN_PROCEED_STATUSES = {"measured_conditional_diagnostic"}
 BALFRIN_DEFER_STATUSES = {"inconclusive_conditional_diagnostic"}
 BALFRIN_BLOCKED_STATUSES = {"blocked_missing_inputs"}
+PREPARED_PILOT_REAL_INPUT_ROW_STATUSES = {
+    "real_staged",
+    "fixture_backed",
+    "missing",
+    "deferred",
+}
 
 CORE_PRODUCT_VALIDATION_RULES = {
     "aoi_tile_catalog": {
@@ -179,10 +187,69 @@ def _patched_repo_root(repo_root: Path) -> Iterator[None]:
         PREFLIGHT.ROOT = original_root
 
 
+def load_acquisition_package(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists():
+        return {}
+    data = PREFLIGHT.load_site_config(path)
+    return data if isinstance(data, dict) else {}
+
+
+def build_prepared_pilot_real_input_readiness(acquisition_package: dict[str, Any]) -> dict[str, Any]:
+    required_rows = [
+        row
+        for row in acquisition_package.get("required_acquisition_items") or []
+        if isinstance(row, dict)
+    ]
+    required_states: list[dict[str, Any]] = []
+    for row in required_rows:
+        classification = PREFLIGHT.text_value(row.get("classification")) or PREFLIGHT.text_value(row.get("current_status")) or "missing"
+        if classification not in PREPARED_PILOT_REAL_INPUT_ROW_STATUSES:
+            classification = "missing"
+        required_states.append(
+            {
+                "category": PREFLIGHT.text_value(row.get("category")) or "unknown",
+                "product": PREFLIGHT.text_value(row.get("product")) or PREFLIGHT.text_value(row.get("category")) or "unknown",
+                "classification": classification,
+                "expected_path": PREFLIGHT.text_value(row.get("expected_path")) or "",
+            }
+        )
+
+    real_staged_categories = [row["category"] for row in required_states if row["classification"] == "real_staged"]
+    fixture_backed_categories = [row["category"] for row in required_states if row["classification"] == "fixture_backed"]
+    missing_categories = [row["category"] for row in required_states if row["classification"] == "missing"]
+    deferred_categories = [row["category"] for row in required_states if row["classification"] == "deferred"]
+    first_missing_real_input_category = next(
+        (row["category"] for row in required_states if row["classification"] != "real_staged"),
+        "",
+    )
+
+    if required_states and len(real_staged_categories) == len(required_states):
+        classification = "ready_real"
+    elif real_staged_categories:
+        classification = "partial_real"
+    elif required_states and len(fixture_backed_categories) == len(required_states):
+        classification = "fixture_backed"
+    else:
+        classification = "missing"
+
+    return {
+        "schema_version": PREPARED_PILOT_REAL_INPUT_READINESS_SCHEMA_VERSION,
+        "required_real_input_count": len(required_states),
+        "real_staged_real_input_count": len(real_staged_categories),
+        "fixture_backed_real_input_count": len(fixture_backed_categories),
+        "missing_real_input_count": len(missing_categories),
+        "deferred_real_input_count": len(deferred_categories),
+        "input_classification": classification,
+        "first_missing_real_input_category": "" if classification == "ready_real" else first_missing_real_input_category,
+        "required_real_inputs": required_states,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--acquisition-package", type=Path, default=DEFAULT_ACQUISITION_PACKAGE)
     parser.add_argument(
         "--balfrin-evidence-json",
         type=Path,
@@ -193,7 +260,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report(args.site_config, repo_root=args.repo_root, balfrin_evidence_json=args.balfrin_evidence_json)
+    report = build_report(
+        args.site_config,
+        repo_root=args.repo_root,
+        acquisition_package_path=args.acquisition_package,
+        balfrin_evidence_json=args.balfrin_evidence_json,
+    )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -208,6 +280,7 @@ def build_report(
     site_config: Path | None,
     *,
     repo_root: Path | None = None,
+    acquisition_package_path: Path | None = None,
     balfrin_evidence_json: Path | None = None,
 ) -> dict[str, Any]:
     repo_root = repo_root or ROOT
@@ -222,6 +295,7 @@ def build_report(
         paths = PREFLIGHT.build_paths(candidate_site_id, config)
         requirements = PREFLIGHT.build_requirements(candidate_site_id, site_extent, paths)
         acquisition_plan = list(preflight_report.get("public_context_acquisition_plan") or [])
+        acquisition_package = load_acquisition_package(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)
         acquisition_manifest = PREFLIGHT.load_site_config(
             Path(preflight_report["acquisition_manifest_path"])
         ) if preflight_report.get("acquisition_manifest_status") == "ready" else {}
@@ -254,18 +328,23 @@ def build_report(
             real_context_product_readiness=real_context_product_readiness,
             cache_contract=cache_contract,
         )
+        prepared_pilot_real_input_readiness = build_prepared_pilot_real_input_readiness(acquisition_package)
 
         gate_status = determine_gate_status(
             core_input_status=preflight_report["core_input_status"],
             deferred_public_context_status=preflight_report["deferred_public_context_status"],
             deferred_public_context_products=deferred_public_context_products,
             real_context_product_readiness=real_context_product_readiness,
+            prepared_pilot_real_input_readiness=prepared_pilot_real_input_readiness,
         )
 
         report = {
             "schema_version": SCHEMA_VERSION,
             "real_context_readiness_gate_status": gate_status,
             "readiness_status": gate_status,
+            "prepared_pilot_real_input_readiness": prepared_pilot_real_input_readiness,
+            "prepared_pilot_input_classification": prepared_pilot_real_input_readiness["input_classification"],
+            "first_missing_real_input_category": prepared_pilot_real_input_readiness["first_missing_real_input_category"],
             "candidate_site_id": preflight_report["candidate_site_id"],
             "candidate_site_name": preflight_report["candidate_site_name"],
             "candidate_selection_rationale": preflight_report["candidate_selection_rationale"],
@@ -934,6 +1013,7 @@ def determine_gate_status(
     deferred_public_context_status: str,
     deferred_public_context_products: list[dict[str, Any]],
     real_context_product_readiness: dict[str, Any],
+    prepared_pilot_real_input_readiness: dict[str, Any],
 ) -> str:
     if core_input_status != "ready":
         return "blocked_missing_inputs"
@@ -941,6 +1021,13 @@ def determine_gate_status(
         return "blocked_missing_inputs"
     if not deferred_public_context_products:
         return "blocked_missing_deferred_public_context"
+    input_classification = str(prepared_pilot_real_input_readiness.get("input_classification") or "missing")
+    if input_classification == "fixture_backed":
+        return "blocked_fixture_backed_inputs"
+    if input_classification == "partial_real":
+        return "blocked_partial_real_inputs"
+    if input_classification != "ready_real":
+        return "blocked_missing_inputs"
     if (real_context_product_readiness.get("missing_product_count") or 0) > 0:
         return "blocked_missing_inputs"
     if (real_context_product_readiness.get("metadata_mismatch_product_count") or 0) > 0:
@@ -980,6 +1067,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"schema_version: {report['schema_version']}",
         f"real_context_readiness_gate_status: {report['real_context_readiness_gate_status']}",
         f"real_context_staging_checklist_state: {report['real_context_staging_checklist_state']}",
+        f"prepared_pilot_input_classification: {report.get('prepared_pilot_input_classification', '')}",
+        f"first_missing_real_input_category: {report.get('first_missing_real_input_category', '')}",
         f"core_input_status: {report['core_input_status']}",
         f"deferred_public_context_status: {report['deferred_public_context_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
@@ -1045,6 +1134,19 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(f"  - {field}" for field in checklist.get("verification_fields") or [])
     lines.append("- products:")
     lines.extend(render_checklist_rows((report.get("real_context_staging_checklist") or {}).get("products") or []))
+
+    lines.append("")
+    lines.append("prepared_pilot_real_input_readiness:")
+    prepared_pilot_real_input_readiness = report.get("prepared_pilot_real_input_readiness") or {}
+    lines.append(f"- schema_version: {prepared_pilot_real_input_readiness.get('schema_version', '')}")
+    lines.append(f"- input_classification: {prepared_pilot_real_input_readiness.get('input_classification', '')}")
+    lines.append(
+        f"- first_missing_real_input_category: {prepared_pilot_real_input_readiness.get('first_missing_real_input_category', '')}"
+    )
+    lines.append(f"- required_real_input_count: {prepared_pilot_real_input_readiness.get('required_real_input_count', '')}")
+    lines.append(f"- real_staged_real_input_count: {prepared_pilot_real_input_readiness.get('real_staged_real_input_count', '')}")
+    lines.append(f"- fixture_backed_real_input_count: {prepared_pilot_real_input_readiness.get('fixture_backed_real_input_count', '')}")
+    lines.append(f"- missing_real_input_count: {prepared_pilot_real_input_readiness.get('missing_real_input_count', '')}")
 
     lines.append("")
     lines.append("balfrin_trigger_summary:")

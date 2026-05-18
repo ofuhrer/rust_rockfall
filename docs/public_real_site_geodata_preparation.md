@@ -401,6 +401,13 @@ swissBUILDINGS3D, and records the blocked second-site command templates so the
 candidate stays honestly at `deferred_public_context_inputs` until real public
 context is staged.
 
+The Chant Sura prepared-pilot dry-run report now carries a separate
+`prepared_pilot_input_classification` plus a compact
+`first_missing_real_input_category` field. Those values come from the
+acquisition package, not from the mere presence of staged fixture files, so
+the second-site handoff cannot look ready while the real inputs are still
+fixture-backed or only partially real.
+
 A tiny staging helper,
 `scripts/prepare_chant_sura_fluelapass_minimal_preflight_inputs.py`, copies the
 synthetic core fixture set from

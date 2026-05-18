@@ -1200,3 +1200,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical-validation claim.
 - Next task: `TB-232`
+
+### TB-232: Real-Input Prepared-Pilot Gate For Chant Sura
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: make the Chant Sura prepared-pilot dry run consume the real-context acquisition package, surface the first missing real input category, and fail closed until required real inputs are staged.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a real-input acquisition-package classifier to the Chant Sura readiness gate so the report now distinguishes `missing`, `fixture_backed`, `partial_real`, and `ready_real` package states and exposes `first_missing_real_input_category`.
+  - Threaded the new classification into the prepared-pilot dry-run summary so second-site readiness is only advertised when the acquisition package is fully real staged, with explicit blocked states for fixture-backed and partial-real packages.
+  - Reworked the Chant Sura gate and workflow tests around temporary acquisition-package variants so the missing, fixture-backed, partial-real, and ready-real states are all exercised deterministically.
+  - Updated the public real-site geodata guidance to note the new machine-readable prepared-pilot classification fields.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_chant_sura_real_context_readiness_gate.py scripts/summarize_chant_sura_fluelapass_dry_run_report.py tests/test_chant_sura_real_context_readiness_gate.py tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_chant_sura_real_context_readiness_gate tests.test_chant_sura_fluelapass_workflow_dry_run_report`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-233`
