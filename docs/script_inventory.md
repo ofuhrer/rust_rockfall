@@ -57,6 +57,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/plan_release_zone_heuristic_dry_run.py`
 - `scripts/plan_swisstopo_aoi_acquisition.py`
 - `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
 - `scripts/submit_balfrin_probe.py`
 - `scripts/verify_public_geodata_cache.py`
 

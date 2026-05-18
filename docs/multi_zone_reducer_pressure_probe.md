@@ -91,3 +91,24 @@ PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_
 Its warning and blocked thresholds are themselves fixture-backed and are
 derived from deterministic 9-zone and 11-zone scratch profiles until real
 Balfrin roots are measured.
+
+## Smallest Authorization Preflight Shape
+
+The smallest bounded multi-zone authorization preflight consumes the reviewed
+handoff package, a live-run authorization record, and the Balfrin read-only
+access report before the submit path can reach `sbatch`:
+
+```bash
+PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py \
+  --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json \
+  --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml \
+  --balfrin-access-preflight-json /tmp/balfrin_remote_access_preflight_tb226.json \
+  --format json
+```
+
+For the reviewed smallest handoff, the reported run shape is `2` release
+zones, `2` scenarios, `2` trajectory workers, `2` reducer workers, `2` reducer
+chunks, summary-only conditional curves, no grid CSV export, GeoTIFF export,
+and pilot GIS packaging. This stays within the measured reducer constraints
+above while retaining the non-operational, no-scale-up, and no-distributed-run
+boundaries.

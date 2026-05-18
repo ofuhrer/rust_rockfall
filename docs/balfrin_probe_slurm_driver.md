@@ -99,6 +99,26 @@ For the multi-zone TB-211 path, the later submit command now uses
 `--authorization-record` arguments. The command will refuse to submit without
 both of those inputs.
 
+Before that submit path can call `sbatch`, it now runs the smallest multi-zone
+authorization preflight:
+
+```bash
+PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py \
+  --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json \
+  --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml \
+  --format json
+```
+
+The preflight is deterministic for a supplied package, authorization record,
+and Balfrin access report. It records the exact smallest run shape, reducer
+budget, reduced-output profile, and preservation checklist, but it does not
+grant authorization. The gate reports `ready_for_authorized_submission` only
+when the reviewed package, live-run authorization record, read-only Balfrin
+access preflight, and reducer-budget checks are all ready. Missing
+authorization, expired SSH, missing remote artifacts, scheduler-query blockers,
+or over-budget reducer settings return a blocked status before any submission
+artifacts are written.
+
 The frozen target-area demonstration contract is
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
 Its `balfrin_execution_boundary.command_plan_hook.command` is the read-only

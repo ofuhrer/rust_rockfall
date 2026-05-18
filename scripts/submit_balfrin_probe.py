@@ -141,6 +141,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Live-run authorization record YAML or JSON required for --authorized-submit.",
     )
+    parser.add_argument(
+        "--balfrin-access-preflight-json",
+        type=Path,
+        default=None,
+        help=(
+            "Optional JSON output from check_balfrin_remote_access_preflight.py. "
+            "When omitted with --authorized-submit, the read-only access preflight is run before any scheduler submit."
+        ),
+    )
 
     args = parser.parse_args(argv)
 
@@ -278,6 +287,19 @@ def _load_feasibility_probe() -> Any:
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("unable to load bounded next-ensemble feasibility helper module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
+def _load_authorization_preflight() -> Any:
+    preflight_path = ROOT / "scripts" / "preflight_balfrin_smallest_multi_zone_probe_authorization.py"
+    spec = importlib.util.spec_from_file_location(
+        "preflight_balfrin_smallest_multi_zone_probe_authorization",
+        preflight_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load smallest multi-zone authorization preflight helper module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[union-attr]
     return module
@@ -959,8 +981,13 @@ def _validate_authorized_submission(
         missing_inputs.append("reviewed handoff package is blocked_missing_inputs")
     if not package.get("live_execution_requires_new_human_authorization", False):
         missing_inputs.append("reviewed handoff package does not record live execution authorization requirements")
-    if authorized_task not in {"TB-211", "TB-211: Authorization-Gated Multi-Zone Balfrin Execution"}:
-        missing_inputs.append("authorization record does not target TB-211")
+    if authorized_task not in {
+        "TB-211",
+        "TB-211: Authorization-Gated Multi-Zone Balfrin Execution",
+        "TB-226",
+        "TB-226: Smallest Multi-Zone Probe Authorization Preflight",
+    }:
+        missing_inputs.append("authorization record does not target TB-211 or TB-226")
     if authorization_value != "authorized_for_one_bounded_probe":
         missing_inputs.append(
             f"authorization_status must be authorized_for_one_bounded_probe, got {authorization_value or 'missing'}"
@@ -1298,12 +1325,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"submission_report_path={report_path}", file=sys.stderr)
             return 2
 
-        authorization_report = _validate_authorized_submission(
+        preflight_module = _load_authorization_preflight()
+        balfrin_access_report, balfrin_access_source = preflight_module._load_access_report(
+            args.balfrin_access_preflight_json
+        )
+        authorization_report = preflight_module.build_report(
             reviewed_handoff_package=args.reviewed_handoff_package,
             authorization_record=args.authorization_record,
-            run_root=run_root,
+            balfrin_access_preflight=balfrin_access_report,
+            balfrin_access_preflight_source=balfrin_access_source,
         )
-        if authorization_report["status"] != "authorized":
+        if authorization_report["preflight_status"] != preflight_module.STATUS_READY:
             report = _build_blocked_authorized_submission_report(
                 run_root=run_root,
                 run_id=run_id,

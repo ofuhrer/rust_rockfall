@@ -23,40 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-226: Smallest Multi-Zone Probe Authorization Preflight
-
-Goal: Turn the smallest bounded multi-zone handoff into an authorization preflight that proves the reviewed package, reducer budget, Balfrin access state, and submission gate are mutually consistent.
-
-Capability gap reduced: Multi-zone execution remains dry-run or fixture-backed until the package, reducer constraints, and authorization-gated submit path agree on the exact minimal run shape.
-
-Why this outranks alternatives: Multi-zone measurement is valuable only if the first attempt is small, reproducible, preservation-safe, and delegated to a stronger Balfrin-capable worker.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_authorized_multi_zone_submit.py`
-- `tests/test_multi_zone_reducer_pressure_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- A deterministic preflight report for the smallest multi-zone package with release-zone count, scenario count, worker counts, reducer chunks, output profile, and preservation checklist.
-- Fail-closed validation that the reviewed handoff package, authorization record, and Balfrin access preflight are all required before submission.
-- Focused tests covering ready-package, missing-authorization, expired-access, and reducer-budget-blocked paths.
-
-Definition of done:
-
-- The package can be reviewed for possible authorization without implying that authorization has been granted.
-- The reported run shape stays within measured reducer and file-family constraints.
-
-Boundaries: No live Balfrin job, no distributed execution, no scale-up authorization, no operational claim, and no generated heavy outputs committed.
-
 ### TB-227: Balfrin Post-Run Evidence Collector Rehearsal
 
 Goal: Rehearse post-run evidence collection on complete, incomplete, missing, and access-blocked fixture roots for both metrics-completion and multi-zone paths so partial runs cannot be promoted.

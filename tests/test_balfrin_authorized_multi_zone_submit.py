@@ -34,6 +34,19 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
         path.write_text("run_id: tb211_authorized\ncommands: []\n", encoding="utf-8")
 
     def _write_reviewed_package(self, path: Path) -> str:
+        constraint = {
+            "status": "acceptable",
+            "summary": "acceptable: requested multi-zone settings stay below measured reducer constraints",
+            "requested_release_zone_batch_size": 2,
+            "requested_reducer_chunk_count": 2,
+            "requested_reducer_worker_count": 2,
+            "measured_constraints": {
+                "simultaneous_release_zone_batch_max": 8,
+                "reducer_chunk_count_max": 4,
+                "reducer_worker_count_max": 2,
+            },
+            "constraint_checks": [],
+        }
         payload = {
             "schema_version": "balfrin_multi_release_zone_demo_package_v1",
             "package_status": "mixed_provenance",
@@ -41,9 +54,40 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             "authorization_classification": "blocked_pending_authorization",
             "live_execution_requires_new_human_authorization": True,
             "package_mode": "generate-only",
+            "package_constraint_status": "acceptable",
+            "constraint_pressure": constraint,
+            "follow_up_recommendation": {
+                "minimum_measured_multi_zone_run": {
+                    "release_zone_count": 2,
+                    "scenario_count": 2,
+                    "trajectory_count_target": 1000,
+                    "trajectory_workers": 2,
+                    "reducer_workers": 2,
+                    "conditional_curve_export": "summary-only",
+                    "grid_csv_export": "none",
+                    "export_geotiff": True,
+                    "pilot_gis_package": True,
+                    "output_profile_policy": {"classification": "scalable_default"},
+                    "preservation_gate_checklist": [
+                        "Review the package JSON and Markdown together before any later authorization request."
+                    ],
+                    "reducer_pressure": constraint,
+                }
+            },
         }
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def _write_access_report(self, path: Path) -> None:
+        payload = {
+            "schema_version": "balfrin_remote_access_preflight_v1",
+            "status": "ready_for_read_only_collection",
+            "ready_for_read_only_collection": True,
+            "read_only": True,
+            "live_submission_authorized": False,
+            "checked_commands": [{"name": "ssh_availability", "status": "pass"}],
+        }
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     def _write_authorization_record(self, path: Path, package_path: Path, package_sha256: str) -> None:
         payload = {
@@ -64,6 +108,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             package_path = tmp / "reviewed_package.json"
             package_sha256 = self._write_reviewed_package(package_path)
             self._write_authorization_record(tmp / "authorization_record.yaml", package_path, package_sha256)
+            access_path = tmp / "balfrin_access.json"
+            self._write_access_report(access_path)
 
             with patch.object(
                 submit_driver,
@@ -94,6 +140,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
                             str(package_path),
                             "--authorization-record",
                             str(tmp / "missing_authorization_record.yaml"),
+                            "--balfrin-access-preflight-json",
+                            str(access_path),
                         ]
                     )
 
@@ -114,6 +162,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             package_sha256 = self._write_reviewed_package(package_path)
             auth_path = tmp / "authorization_record.yaml"
             self._write_authorization_record(auth_path, package_path, package_sha256)
+            access_path = tmp / "balfrin_access.json"
+            self._write_access_report(access_path)
 
             command_plan = {"run_id": "tb211_authorized", "commands": []}
             package_report = {
@@ -151,6 +201,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
                             str(package_path),
                             "--authorization-record",
                             str(auth_path),
+                            "--balfrin-access-preflight-json",
+                            str(access_path),
                         ]
                     )
 
@@ -167,6 +219,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             package_sha256 = self._write_reviewed_package(package_path)
             auth_path = tmp / "authorization_record.yaml"
             self._write_authorization_record(auth_path, package_path, package_sha256)
+            access_path = tmp / "balfrin_access.json"
+            self._write_access_report(access_path)
 
             with patch.object(
                 submit_driver,
@@ -203,6 +257,8 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
                             str(package_path),
                             "--authorization-record",
                             str(auth_path),
+                            "--balfrin-access-preflight-json",
+                            str(access_path),
                         ]
                     )
 

@@ -1067,3 +1067,31 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: authorization-request preflight only; no live Balfrin submission, no authorization grant, no new scientific interpretation, no fabricated metrics, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-226`
+
+### TB-226: Smallest Multi-Zone Probe Authorization Preflight
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: turn the smallest bounded multi-zone handoff into a fail-closed authorization preflight that ties reviewed package state, authorization record, Balfrin read-only access, reducer budget, and the submit gate to one exact minimal run shape.
+- Files changed: `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_balfrin_authorized_multi_zone_submit.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic smallest multi-zone authorization preflight report that records release-zone count, scenario count, trajectory/reducer workers, reducer chunks, reduced-output profile, estimates, preservation checklist, package hashes, authorization-record state, and Balfrin access status.
+  - Integrated the preflight into `scripts/submit_balfrin_probe.py --authorized-submit` so missing authorization, invalid package state, expired or unavailable Balfrin access, and reducer-budget blockers return a blocked report before submission artifacts are written or `sbatch` is called.
+  - Allowed the authorization record to target the TB-226 preflight path while preserving the older TB-211 authorized-submit compatibility, and documented the new preflight command in the Balfrin SLURM and reducer-pressure docs.
+  - Added focused tests for ready package, missing authorization, expired access, and reducer-budget-blocked paths, plus submit-driver coverage using a supplied read-only access preflight JSON.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/submit_balfrin_probe.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py tests/test_balfrin_authorized_multi_zone_submit.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorized_multi_zone_submit -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/balfrin_remote_access_preflight_tb226.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb226_smallest_multi_zone_handoff --format json > /tmp/tb226_smallest_multi_zone_handoff.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb226_smallest_multi_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb226_smallest_multi_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/balfrin_remote_access_preflight_tb226.json --format json > /tmp/tb226_smallest_multi_zone_authorization_preflight.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure_gate -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: authorization preflight and submit gate only; no live Balfrin job, no remote mutation, no authorization grant, no scale-up or distributed execution, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-227`
