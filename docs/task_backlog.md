@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-213: Evidence-Gated Balfrin Demonstration Closure Package
-
-Goal: Produce one coherent Balfrin demonstration closure package only after new measured evidence from a metrics-completion rerun or authorized multi-zone probe exists.
-
-Capability gap reduced: Reviewers currently have to reconcile many reports to decide whether Balfrin is plausibly extensible toward larger Swiss workflows.
-
-Why this outranks alternatives: A closure package is useful after new measured evidence, but premature synthesis would add process without reducing the current evidence gaps.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A reproducible closure report or package that consolidates runtime evidence, preservation status, restartability, reducer/output scaling, AOI/release/scenario automation, GIS readiness, second-site portability, and scientific claim boundaries.
-- Strict provenance labels distinguishing measured, fixture-backed, dry-run, blocked, unavailable, unauthorized, and historical evidence.
-- A direct reviewer-facing answer to whether the current Balfrin evidence is plausibly extensible toward larger Swiss workflows.
-- A fail-closed `blocked_no_new_measured_evidence` classification if neither a metrics-completion rerun nor an authorized multi-zone run has produced new preservation-checked evidence.
-- Focused tests for complete measured evidence, mixed-provenance warning, and blocked-no-new-evidence classifications.
-
-Definition of done:
-
-- The closure package can be regenerated deterministically, answers the demonstration-readiness question without requiring a repository reread, and refuses to upgrade maturity labels without new measured evidence.
-
-Boundaries: No new live execution, no operational claim, no annual-frequency or risk semantics, no physical-credibility upgrade without independent evidence, and no replacement of the authoritative backlog or work log.
-
 ### TB-214: Workflow-Shell Coupling Inventory
 
 Goal: Build an executable inventory of implicit coupling across Python scripts, command-plan strings, ignored artifact roots, generated reports, and validator-specific status semantics.

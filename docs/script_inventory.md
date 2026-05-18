@@ -110,6 +110,7 @@ operator-facing until they get smoke tests or a documented replacement.
 
 - `scripts/summarize_balfrin_bounded_probe_interpretation.py`
 - `scripts/summarize_balfrin_demonstration_replay_smoke.py`
+- `scripts/summarize_balfrin_demonstration_closure_package.py`
 - `scripts/summarize_balfrin_ensemble_frontier.py`
 - `scripts/summarize_balfrin_evidence_bundle.py`
 - `scripts/summarize_balfrin_failure_taxonomy.py`
