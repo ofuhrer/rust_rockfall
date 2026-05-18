@@ -22,6 +22,10 @@ if __package__ in {None, ""}:
 from scripts import audit_gis_cog_package_readiness as gis_cog
 from scripts import summarize_balfrin_demonstration_replay_smoke as replay_smoke
 from scripts import summarize_balfrin_evidence_bundle as bundle
+from scripts import generate_balfrin_multi_release_zone_demo_handoff as multi_zone_handoff
+from scripts import summarize_balfrin_next_live_run_decision_gate as next_live_decision
+from scripts import summarize_balfrin_output_tier_audit as output_tier
+from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate
 from scripts import summarize_balfrin_physical_credibility_evidence_gaps as physical_gaps
 from scripts import summarize_balfrin_post_run_interpretation_gate as post_run_gate
 from scripts import summarize_balfrin_target_area_evidence_bundle as target_bundle
@@ -30,11 +34,15 @@ from scripts import summarize_balfrin_single_job_execution as single_job
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_management_demo_package_v1"
+READINESS_MATRIX_SCHEMA_VERSION = "balfrin_full_scale_readiness_matrix_v1"
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_management_demo_package_v1"
 DEFAULT_REPLAY_RUN_ROOT = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
 DEFAULT_TARGET_AREA_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_evidence_bundle_v1"
 DEFAULT_PHYSICAL_CREDIBILITY_GAP_DIR = (
     ROOT / "validation/private/tschamut_public_pilot/balfrin_physical_credibility_evidence_gaps_v1"
+)
+DEFAULT_READINESS_MATRIX_CLEAN_CHECKOUT_RUN_ROOT = (
+    ROOT / "validation/private/tschamut_public_pilot/balfrin_full_scale_readiness_matrix_v1/clean_checkout_missing_run_root"
 )
 
 
@@ -167,7 +175,7 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
             }
         )
 
-    return assemble_package_report(
+    package_report = assemble_package_report(
         runtime_section=build_runtime_section(bundle_report),
         replay_section=build_replay_section(smoke_report),
         target_area_aoi_automation_section=build_target_area_aoi_automation_section(target_area_bundle_report),
@@ -197,6 +205,19 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
         package_artifact_dir=artifact_dir,
         run_root=run_root,
     )
+    multi_zone_handoff_artifact_dir = Path("/tmp/rust_rockfall") / "balfrin_full_scale_readiness_matrix_v1" / "multi_zone_handoff"
+    package_report["readiness_matrix"] = build_readiness_matrix(
+        run_root=run_root,
+        artifact_dir=artifact_dir,
+        package_report=package_report,
+        bundle_report=bundle_report,
+        replay_report=smoke_report,
+        output_tier_report=output_tier.build_report(dict(bundle_report.get("probe_metrics") or {})),
+        preservation_report=preservation_gate.build_report(run_root=run_root),
+        multi_zone_handoff_report=multi_zone_handoff.build_report(artifact_dir=multi_zone_handoff_artifact_dir),
+        next_live_decision_report=next_live_decision.build_report(),
+    )
+    return package_report
 
 
 def assemble_package_report(
@@ -393,6 +414,290 @@ def blocked_report(
         "evidence_sources": evidence_sources({"run_root": str(run_root)}),
         "missing_inputs": list(missing_inputs),
         "blocked_reason": reason,
+    }
+
+
+def build_readiness_matrix(
+    *,
+    run_root: Path,
+    artifact_dir: Path,
+    package_report: dict[str, Any],
+    bundle_report: dict[str, Any],
+    replay_report: dict[str, Any],
+    output_tier_report: dict[str, Any],
+    preservation_report: dict[str, Any],
+    multi_zone_handoff_report: dict[str, Any],
+    next_live_decision_report: dict[str, Any],
+) -> dict[str, Any]:
+    clean_checkout_report = preservation_gate.build_report(run_root=DEFAULT_READINESS_MATRIX_CLEAN_CHECKOUT_RUN_ROOT)
+    claim_boundaries = dict(package_report.get("claim_boundaries") or post_run_gate.claim_boundaries())
+    multi_zone_pressure = dict(multi_zone_handoff_report.get("multi_zone_pressure") or {})
+    follow_up_recommendation = dict(multi_zone_handoff_report.get("follow_up_recommendation") or {})
+    next_action = dict(next_live_decision_report.get("recommended_next_action") or {})
+
+    rows = [
+        matrix_row(
+            gate="measured_multi_zone_execution",
+            status="unavailable",
+            gate_status=str(follow_up_recommendation.get("authorization_classification") or "blocked_pending_authorization"),
+            evidence_status="dry_run",
+            summary=(
+                "The current multi-zone evidence is a deterministic dry-run handoff plus measured reducer-pressure evidence; "
+                "it does not yet provide a live full-scale measured execution."
+            ),
+            helper_sources=[
+                "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+                "scripts/summarize_multi_zone_reducer_pressure.py",
+            ],
+            current_evidence={
+                "package_status": multi_zone_handoff_report.get("package_status"),
+                "authorization_classification": follow_up_recommendation.get("authorization_classification"),
+                "pressure_status": multi_zone_pressure.get("status"),
+                "multi_zone_dry_run_blocked": multi_zone_handoff_report.get("multi_zone_dry_run_blocked"),
+            },
+        ),
+        matrix_row(
+            gate="preservation_gate",
+            status="fixture_backed",
+            gate_status=str(preservation_report.get("gate_status") or "blocked_missing_inputs"),
+            evidence_status=str(preservation_report.get("run_root_provenance") or "fixture_backed"),
+            summary=(
+                "The preservation gate is ready on the fixture-backed preserved run root and stays blocked when the run root is absent."
+            ),
+            helper_sources=["scripts/summarize_balfrin_probe_preservation_gate.py"],
+            current_evidence={
+                "run_root_status": preservation_report.get("run_root_status"),
+                "run_root_provenance": preservation_report.get("run_root_provenance"),
+                "required_run_root_entries_status": preservation_report.get("required_run_root_entries_status"),
+            },
+        ),
+        matrix_row(
+            gate="reducer_constraints",
+            status="measured",
+            gate_status=str((multi_zone_handoff_report.get("constraint_pressure") or {}).get("status") or "unknown"),
+            evidence_status="measured",
+            summary=(
+                "Measured scratch-root reducer pressure caps the next multi-zone probe at 8 simultaneous release zones, "
+                "4 reducer chunks, and 2 reducer workers."
+            ),
+            helper_sources=[
+                "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+                "scripts/summarize_multi_zone_reducer_pressure.py",
+            ],
+            current_evidence=dict(multi_zone_handoff_report.get("multi_zone_pressure") or {}),
+        ),
+        matrix_row(
+            gate="output_budget",
+            status="fixture_backed",
+            gate_status=str(output_tier_report.get("rebuildability_status") or "unknown"),
+            evidence_status=str(output_tier_report.get("evidence_provenance_status") or "fixture_backed"),
+            summary=(
+                "The output budget remains bounded by the replayable fixture-backed bundle and the measured reduced-output contract; "
+                "it is not yet a full-scale execution budget."
+            ),
+            helper_sources=[
+                "scripts/summarize_balfrin_output_tier_audit.py",
+                "scripts/summarize_balfrin_management_demo_package.py",
+            ],
+            current_evidence={
+                "rebuildability_status": output_tier_report.get("rebuildability_status"),
+                "metrics_contract_status": output_tier_report.get("metrics_contract_status"),
+                "measured_family_counts": output_tier_report.get("measured_family_counts", {}),
+            },
+        ),
+        matrix_row(
+            gate="restart_replay",
+            status="fixture_backed",
+            gate_status=str(replay_report.get("smoke_status") or "blocked_missing_inputs"),
+            evidence_status=str(replay_report.get("run_root_provenance") or "fixture_backed"),
+            summary=(
+                "Restart and replay are deterministic on the preserved fixture-backed run root, but they remain bounded by the current single-job evidence."
+            ),
+            helper_sources=[
+                "scripts/summarize_balfrin_demonstration_replay_smoke.py",
+                "scripts/summarize_balfrin_evidence_bundle.py",
+            ],
+            current_evidence={
+                "smoke_status": replay_report.get("smoke_status"),
+                "run_root_status": replay_report.get("run_root_status"),
+                "bundle_status": replay_report.get("bundle_status"),
+                "post_run_interpretation_status": replay_report.get("post_run_interpretation_status"),
+            },
+        ),
+        matrix_row(
+            gate="gis_package_scope",
+            status="measured",
+            gate_status=str((package_report.get("gis_scope_section") or {}).get("status") or "blocked_missing_inputs"),
+            evidence_status=str((package_report.get("gis_scope_section") or {}).get("evidence_type") or "measured"),
+            summary=(
+                "GIS package scope is measured and explicit, but it remains a conditional diagnostic scope rather than an operational hazard product."
+            ),
+            helper_sources=[
+                "scripts/audit_gis_cog_package_readiness.py",
+                "scripts/summarize_balfrin_management_demo_package.py",
+            ],
+            current_evidence=dict(package_report.get("gis_scope_section") or {}),
+            claim_boundaries=dict(claim_boundaries),
+        ),
+        matrix_row(
+            gate="command_plan_reproducibility",
+            status="dry_run",
+            gate_status=str(follow_up_recommendation.get("status") or "deferred_pending_authorization"),
+            evidence_status="dry_run",
+            summary=(
+                "The generated command plan is reproducible and reviewable, but it remains a dry-run handoff and not a live execution authorization."
+            ),
+            helper_sources=[
+                "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+                "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+            ],
+            current_evidence={
+                "authorization_review_command": follow_up_recommendation.get("authorization_review_command"),
+                "authorization_submit_command": follow_up_recommendation.get("authorization_submit_command"),
+                "command_plan_path": follow_up_recommendation.get("minimum_measured_multi_zone_run", {}).get("command_plan_path"),
+            },
+        ),
+        matrix_row(
+            gate="clean_checkout_behavior",
+            status="blocked",
+            gate_status=str(clean_checkout_report.get("gate_status") or "blocked_missing_run_root"),
+            evidence_status="blocked",
+            summary=(
+                "A clean checkout or missing mounted run root fails closed instead of fabricating full-scale readiness evidence."
+            ),
+            helper_sources=[
+                "scripts/summarize_balfrin_probe_preservation_gate.py",
+                "scripts/summarize_balfrin_management_demo_package.py",
+            ],
+            current_evidence={
+                "missing_run_root_reason": clean_checkout_report.get("missing_run_root_reason"),
+                "missing_run_root_entries": clean_checkout_report.get("missing_run_root_entries", []),
+            },
+        ),
+        matrix_row(
+            gate="scientific_claim_boundaries",
+            status="measured",
+            gate_status=str((package_report.get("claim_boundary_section") or {}).get("status") or "guarded"),
+            evidence_status="measured",
+            summary=(
+                "Full-scale readiness stays separate from operational, annual-frequency, physical-probability, and risk claims."
+            ),
+            helper_sources=[
+                "scripts/summarize_balfrin_post_run_interpretation_gate.py",
+                "docs/balfrin_single_job_execution_sufficiency.md",
+            ],
+            current_evidence=dict(claim_boundaries),
+            claim_boundaries=dict(claim_boundaries),
+        ),
+        matrix_row(
+            gate="live_execution_authorization",
+            status="unauthorized",
+            gate_status=str(follow_up_recommendation.get("authorization_classification") or "blocked_pending_authorization"),
+            evidence_status="unauthorized",
+            summary=(
+                "Live multi-zone Balfrin execution remains unauthorized until a new human authorization records the reviewed handoff package."
+            ),
+            helper_sources=[
+                "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+                "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+            ],
+            current_evidence={
+                "live_execution_requires_new_human_authorization": follow_up_recommendation.get(
+                    "live_execution_requires_new_human_authorization"
+                ),
+                "blocked_reason": follow_up_recommendation.get("blocked_reason"),
+            },
+        ),
+    ]
+
+    matrix_status = "blocked"
+    if any(row["status"] == "blocked" for row in rows):
+        matrix_status = "blocked"
+    elif any(row["status"] == "unauthorized" for row in rows):
+        matrix_status = "unauthorized"
+    elif any(row["status"] == "unavailable" for row in rows):
+        matrix_status = "unavailable"
+    elif any(row["status"] == "dry_run" for row in rows):
+        matrix_status = "dry_run"
+    elif any(row["status"] == "fixture_backed" for row in rows):
+        matrix_status = "fixture_backed"
+    else:
+        matrix_status = "measured"
+
+    return {
+        "schema_version": READINESS_MATRIX_SCHEMA_VERSION,
+        "status": matrix_status,
+        "summary": (
+            "Full-scale Balfrin demonstration readiness remains blocked by the absence of measured multi-zone execution and by the still-unauthorized live-run boundary."
+        ),
+        "rows": rows,
+        "recommended_next_milestone": build_next_milestone_recommendation(next_live_decision_report),
+        "claim_boundaries": dict(claim_boundaries),
+        "source_helpers": [
+            "scripts/summarize_balfrin_management_demo_package.py",
+            "scripts/summarize_balfrin_probe_preservation_gate.py",
+            "scripts/summarize_balfrin_output_tier_audit.py",
+            "scripts/summarize_balfrin_demonstration_replay_smoke.py",
+            "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+            "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+            "scripts/summarize_balfrin_post_run_interpretation_gate.py",
+            "docs/balfrin_single_job_execution_sufficiency.md",
+        ],
+        "clean_checkout_probe": {
+            "run_root": str(DEFAULT_READINESS_MATRIX_CLEAN_CHECKOUT_RUN_ROOT),
+            "status": clean_checkout_report.get("gate_status"),
+        },
+        "current_evidence": {
+            "preservation_gate_status": preservation_report.get("gate_status"),
+            "output_tier_status": output_tier_report.get("rebuildability_status"),
+            "replay_status": replay_report.get("smoke_status"),
+            "multi_zone_package_status": multi_zone_handoff_report.get("package_status"),
+            "next_action": next_action.get("action_id"),
+        },
+    }
+
+
+def matrix_row(
+    *,
+    gate: str,
+    status: str,
+    gate_status: str,
+    evidence_status: str,
+    summary: str,
+    helper_sources: list[str],
+    current_evidence: dict[str, Any],
+    claim_boundaries: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    row = {
+        "gate": gate,
+        "status": status,
+        "gate_status": gate_status,
+        "evidence_status": evidence_status,
+        "summary": summary,
+        "helper_sources": helper_sources,
+        "current_evidence": current_evidence,
+    }
+    if claim_boundaries is not None:
+        row["claim_boundaries"] = claim_boundaries
+    return row
+
+
+def build_next_milestone_recommendation(next_live_decision_report: dict[str, Any]) -> dict[str, Any]:
+    next_action = dict(next_live_decision_report.get("recommended_next_action") or {})
+    action_id = str(next_action.get("action_id") or "")
+    recommendation_map = {
+        "metrics_completion_rerun": "metrics completion",
+        "smallest_bounded_multi_zone_probe": "smallest multi-zone measurement",
+        "defer_portability_or_physical_evidence": "real second-site staging",
+    }
+    recommendation = recommendation_map.get(action_id, "physical-evidence intake")
+    return {
+        "status": recommendation.replace(" ", "_"),
+        "recommendation": recommendation,
+        "reason": str(next_action.get("summary") or next_live_decision_report.get("decision_summary") or ""),
+        "source_helper": "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+        "source_action_id": action_id,
+        "follow_up_task": str(next_action.get("follow_up_task") or ""),
     }
 
 
@@ -850,6 +1155,7 @@ def build_regeneration_commands(*, run_root: Path, package_artifact_dir: Path) -
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    readiness_matrix = dict(report.get("readiness_matrix") or {})
     lines = [
         "Balfrin Management Demonstration Package",
         f"schema_version: {report['schema_version']}",
@@ -926,6 +1232,20 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['next_decision_section'].get('status', 'unknown')}",
             f"  recommended_next_authorized_step: {report['next_decision_section'].get('recommended_next_authorized_step', 'unknown')}",
             f"  recommendation: {report['next_decision_section'].get('recommendation', 'unknown')}",
+            "readiness_matrix:",
+            f"  status: {readiness_matrix.get('status', 'unknown')}",
+            f"  summary: {readiness_matrix.get('summary', 'unknown')}",
+            f"  recommended_next_milestone: {readiness_matrix.get('recommended_next_milestone', {}).get('recommendation', 'unknown')}",
+            f"  recommended_next_milestone_reason: {readiness_matrix.get('recommended_next_milestone', {}).get('reason', 'unknown')}",
+            "  rows:",
+        ]
+    )
+    for row in readiness_matrix.get("rows", []):
+        lines.append(
+            f"    - {row.get('gate', 'unknown')}: {row.get('status', 'unknown')} | {row.get('gate_status', 'unknown')} | {row.get('evidence_status', 'unknown')}"
+        )
+    lines.extend(
+        [
             "section_provenance_profile:",
         ]
     )

@@ -68,6 +68,59 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("target_area_aoi_automation_section:", package.render_text_report(report))
         self.assertIn("swiss_wide_extension_section:", package.render_text_report(report))
 
+    def test_readiness_matrix_tracks_required_gates_and_claim_boundaries(self) -> None:
+        run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+
+        report = package.build_report(run_root=run_root, artifact_dir=Path("/tmp/balfrin_management_demo_package_v1"))
+        matrix = report["readiness_matrix"]
+
+        self.assertEqual(matrix["schema_version"], "balfrin_full_scale_readiness_matrix_v1")
+        self.assertEqual(matrix["status"], "blocked")
+        self.assertEqual(matrix["clean_checkout_probe"]["status"], "blocked_missing_run_root")
+        self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "metrics completion")
+        self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "metrics_completion_rerun")
+
+        gates = {row["gate"] for row in matrix["rows"]}
+        self.assertEqual(
+            gates,
+            {
+                "measured_multi_zone_execution",
+                "preservation_gate",
+                "reducer_constraints",
+                "output_budget",
+                "restart_replay",
+                "gis_package_scope",
+                "command_plan_reproducibility",
+                "clean_checkout_behavior",
+                "scientific_claim_boundaries",
+                "live_execution_authorization",
+            },
+        )
+        statuses = {row["status"] for row in matrix["rows"]}
+        self.assertIn("measured", statuses)
+        self.assertIn("fixture_backed", statuses)
+        self.assertIn("dry_run", statuses)
+        self.assertIn("blocked", statuses)
+        self.assertIn("unavailable", statuses)
+        self.assertIn("unauthorized", statuses)
+
+        command_plan_row = next(row for row in matrix["rows"] if row["gate"] == "command_plan_reproducibility")
+        self.assertEqual(command_plan_row["evidence_status"], "dry_run")
+        clean_checkout_row = next(row for row in matrix["rows"] if row["gate"] == "clean_checkout_behavior")
+        self.assertEqual(clean_checkout_row["evidence_status"], "blocked")
+        self.assertIn("does not exist", clean_checkout_row["current_evidence"]["missing_run_root_reason"])
+
+        self.assertFalse(matrix["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(matrix["claim_boundaries"]["annual_frequency_claims_allowed"])
+        self.assertFalse(matrix["claim_boundaries"]["physical_probability_claims_allowed"])
+        self.assertFalse(matrix["claim_boundaries"]["risk_exposure_vulnerability_claims_allowed"])
+        self.assertIn("Full-scale Balfrin demonstration readiness remains blocked", matrix["summary"])
+        self.assertNotIn("operational hazard map", matrix["summary"].lower())
+        self.assertNotIn("annual-frequency", matrix["summary"].lower())
+        self.assertNotIn("physical-probability", matrix["summary"].lower())
+        self.assertNotIn("risk map", matrix["summary"].lower())
+        self.assertIn("readiness_matrix:", package.render_text_report(report))
+
     def test_fixture_backed_override_stays_fixture_backed(self) -> None:
         report = package.build_report(
             run_root=ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root",

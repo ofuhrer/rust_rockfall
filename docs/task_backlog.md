@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-210: Full-Scale Balfrin Demonstration Readiness Matrix
-
-Goal: Define the evidence and execution gates that must be satisfied before the project can call a Balfrin run a full-scale demonstration.
-
-Capability gap reduced: Ambiguous use of "full-scale Balfrin demonstration" after multiple single-zone, target-area, dry-run, and fixture-backed evidence packages.
-
-Why this outranks alternatives: The phrase "full-scale" needs a concrete gate before management, execution, or scientific reports start using it as a maturity label.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- A readiness matrix covering measured multi-zone execution, preservation gate, reducer constraints, output budget, restart/replay, GIS package scope, command-plan reproducibility, clean-checkout behavior, and scientific claim boundaries.
-- Gate statuses that distinguish measured, fixture-backed, dry-run, blocked, unavailable, and unauthorized evidence.
-- A recommendation on whether the next milestone should be metrics completion, smallest multi-zone measurement, real second-site staging, or physical-evidence intake.
-- Focused tests or consistency checks for required matrix sections and disallowed claim language.
-
-Definition of done:
-
-- The readiness matrix is deterministic, cites the relevant evidence helpers, and keeps full-scale demonstration readiness separate from operational, annual-frequency, physical-probability, and risk claims.
-
-Boundaries: Gate definition only; no live execution, no claim upgrade, no new management package replacing existing evidence, and no operational or annual-frequency semantics.
-
 ### TB-211: Authorization-Gated Multi-Zone Balfrin Execution
 
 Goal: Execute, or explicitly block, the smallest bounded multi-zone Balfrin probe only after the current decision gate and package task select it and the user gives explicit live-run authorization.
