@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-207: Real Chant Sura Public-Context Staging Verification
-
-Goal: Verify real staged Chant Sura / Fluelapass public-context inputs when present, while preserving deterministic blocked reports when the clean checkout lacks those inputs.
-
-Capability gap reduced: Second-site portability remains fixture-backed and blocked on real public-context staging.
-
-Why this outranks alternatives: Tschamut coupling is still a major portability risk; a real-context verifier is the next useful step before any second-site ensemble or hazard build.
-
-Inspect first:
-
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A verifier or verifier mode that checks staged AOI catalog, terrain crop, terrain metadata, source-zone metadata, scenario table, source-scenario policy, and public context product metadata.
-- Product-by-product `ready`, `missing`, `deferred`, or `metadata_mismatch` classifications with exact paths and required fields.
-- Integration with the Chant Sura dry-run report so real staged context changes the classification without representing synthetic fixtures as public evidence.
-- Focused tests for clean-checkout blocked, fixture-backed, and staged-real-like metadata paths.
-
-Definition of done:
-
-- The verifier distinguishes real staged public-context readiness from synthetic fixtures and clean-checkout absence, and no second-site ensemble or hazard run is triggered.
-
-Boundaries: No downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical validation claim.
-
 ### TB-208: Independent Physical Evidence Intake Pilot
 
 Goal: Populate one independent observed runout/deposition evidence intake package if data are available, or emit an exact blocked acquisition report if they are not.

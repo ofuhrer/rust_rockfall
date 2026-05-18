@@ -32,19 +32,24 @@ post_run_gate = _load_module(POST_RUN_GATE_SCRIPT_PATH, "summarize_balfrin_post_
 
 
 class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
-    def test_missing_real_context_staging_checklist_state(self) -> None:
+    def test_clean_checkout_blocks_and_marks_public_context_deferred(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            self._stage_minimal_inputs(repo_root)
-            self._write_real_context_cache_manifest(repo_root, staged_categories=set())
-
             report = gate.build_report(self._site_config_path(), repo_root=repo_root)
 
+        readiness = report["real_context_product_readiness"]
         checklist = report["real_context_staging_checklist"]
-        self.assertEqual(report["real_context_staging_checklist_state"], "missing")
-        self.assertEqual(checklist["checklist_state"], "missing")
+        self.assertEqual(report["real_context_readiness_gate_status"], "blocked_missing_inputs")
+        self.assertEqual(readiness["readiness_status"], "missing")
+        self.assertEqual(readiness["ready_product_count"], 0)
+        self.assertEqual(readiness["missing_product_count"], 6)
+        self.assertEqual(readiness["deferred_product_count"], 5)
+        self.assertEqual(readiness["metadata_mismatch_product_count"], 0)
+        self.assertEqual(report["real_context_staging_checklist_state"], "deferred")
+        self.assertEqual(checklist["checklist_state"], "deferred")
         self.assertEqual(checklist["verified_product_count"], 0)
-        self.assertEqual(checklist["missing_product_count"], 5)
+        self.assertEqual(checklist["missing_product_count"], 0)
+        self.assertEqual(checklist["deferred_product_count"], 5)
         self.assertEqual(checklist["partially_staged_product_count"], 0)
         self.assertEqual(checklist["claim_boundary_note"], gate.CHECKLIST_BOUNDARY_NOTE)
         expected_manifest_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"
@@ -55,8 +60,45 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(checklist["cache_manifest_path"], str(expected_manifest_path))
         self.assertEqual(checklist["verifier_command"], expected_verifier_command)
         self.assertIn("verify_public_geodata_cache.py", checklist["verifier_command"])
-        self.assertTrue(all(entry["checklist_state"] == "missing" for entry in checklist["products"]))
+        self.assertTrue(all(entry["classification"] == "deferred" for entry in checklist["products"]))
+        self.assertTrue(all(entry["checklist_state"] == "deferred" for entry in checklist["products"]))
+        self.assertEqual([entry["classification"] for entry in readiness["products"][:6]], ["missing"] * 6)
+        self.assertEqual([entry["classification"] for entry in readiness["products"][6:]], ["deferred"] * 5)
         self.assertTrue(all(entry["readiness_impact"] for entry in checklist["products"]))
+
+    def test_fixture_backed_minimal_inputs_keep_public_context_deferred(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+
+            report = gate.build_report(self._site_config_path(), repo_root=repo_root)
+
+        readiness = report["real_context_product_readiness"]
+        checklist = report["real_context_staging_checklist"]
+        self.assertEqual(report["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
+        self.assertEqual(readiness["readiness_status"], "deferred")
+        self.assertEqual(readiness["ready_product_count"], 6)
+        self.assertEqual(readiness["missing_product_count"], 0)
+        self.assertEqual(readiness["deferred_product_count"], 5)
+        self.assertEqual(readiness["metadata_mismatch_product_count"], 0)
+        self.assertEqual(report["real_context_staging_checklist_state"], "deferred")
+        self.assertEqual(checklist["checklist_state"], "deferred")
+        self.assertEqual(checklist["verified_product_count"], 0)
+        self.assertEqual(checklist["missing_product_count"], 0)
+        self.assertEqual(checklist["deferred_product_count"], 5)
+        row_states = {entry["category"]: entry["classification"] for entry in readiness["products"]}
+        self.assertEqual(row_states["aoi_tile_catalog"], "ready")
+        self.assertEqual(row_states["terrain_crop"], "ready")
+        self.assertEqual(row_states["terrain_crs_vertical_datum"], "ready")
+        self.assertEqual(row_states["source_zone_metadata"], "ready")
+        self.assertEqual(row_states["scenario_table"], "ready")
+        self.assertEqual(row_states["source_scenario_policy"], "ready")
+        self.assertEqual(row_states["swissimage_context"], "deferred")
+        self.assertEqual(row_states["swisstlm3d_context"], "deferred")
+        self.assertEqual(row_states["swisssurface3d_context"], "deferred")
+        self.assertEqual(row_states["swisssurface3d_raster_context"], "deferred")
+        self.assertEqual(row_states["swissbuildings3d_context"], "deferred")
+        self.assertTrue(all(entry["checklist_state"] == "deferred" for entry in checklist["products"]))
 
     def test_partially_staged_real_context_checklist_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,16 +112,24 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
             report = gate.build_report(self._site_config_path(), repo_root=repo_root)
 
+        readiness = report["real_context_product_readiness"]
         checklist = report["real_context_staging_checklist"]
+        self.assertEqual(report["real_context_readiness_gate_status"], "blocked_missing_inputs")
+        self.assertEqual(readiness["readiness_status"], "metadata_mismatch")
+        self.assertEqual(readiness["ready_product_count"], 8)
+        self.assertEqual(readiness["missing_product_count"], 2)
+        self.assertEqual(readiness["deferred_product_count"], 0)
+        self.assertEqual(readiness["metadata_mismatch_product_count"], 1)
         self.assertEqual(report["real_context_staging_checklist_state"], "partially_staged")
         self.assertEqual(checklist["checklist_state"], "partially_staged")
         self.assertEqual(checklist["verified_product_count"], 2)
         self.assertEqual(checklist["missing_product_count"], 2)
+        self.assertEqual(checklist["deferred_product_count"], 0)
         self.assertEqual(checklist["partially_staged_product_count"], 1)
-        row_states = {entry["category"]: entry["checklist_state"] for entry in checklist["products"]}
-        self.assertEqual(row_states["swissimage_context"], "verifier_ready")
-        self.assertEqual(row_states["swisstlm3d_context"], "verifier_ready")
-        self.assertEqual(row_states["swisssurface3d_context"], "partially_staged")
+        row_states = {entry["category"]: entry["classification"] for entry in readiness["products"]}
+        self.assertEqual(row_states["swissimage_context"], "ready")
+        self.assertEqual(row_states["swisstlm3d_context"], "ready")
+        self.assertEqual(row_states["swisssurface3d_context"], "metadata_mismatch")
         self.assertEqual(row_states["swisssurface3d_raster_context"], "missing")
         self.assertEqual(row_states["swissbuildings3d_context"], "missing")
 
@@ -100,8 +150,14 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
 
             report = gate.build_report(self._site_config_path(), repo_root=repo_root)
 
+        readiness = report["real_context_product_readiness"]
         self.assertEqual(report["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
         self.assertEqual(report["readiness_status"], "ready_for_real_context_acquisition")
+        self.assertEqual(readiness["readiness_status"], "ready")
+        self.assertEqual(readiness["ready_product_count"], 11)
+        self.assertEqual(readiness["missing_product_count"], 0)
+        self.assertEqual(readiness["deferred_product_count"], 0)
+        self.assertEqual(readiness["metadata_mismatch_product_count"], 0)
         self.assertEqual(report["real_context_staging_checklist_state"], "verifier_ready")
         self.assertEqual(report["core_input_status"], "ready")
         self.assertEqual(report["deferred_public_context_status"], "deferred_public_context_inputs")
@@ -113,6 +169,7 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
             checklist["products"][0]["readiness_impact"],
             "staged files and metadata are ready for deterministic cache verification",
         )
+        self.assertTrue(all(entry["classification"] == "ready" for entry in readiness["products"]))
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_contract_readiness_status"], "ready")
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertIn("swissALTI3D", report["public_geodata_workflow_contract"]["swisstopo_product_classes"][0]["products"])
@@ -121,6 +178,7 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(
             set(ready_core_inputs),
             {
+                "aoi_tile_catalog",
                 "terrain_crop",
                 "terrain_crs_vertical_datum",
                 "source_zone_metadata",
@@ -167,7 +225,7 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
         self.assertEqual(report["gate_boundary_summary"]["deferred_public_context_product_count"], 5)
         self.assertFalse(report["gate_boundary_summary"]["synthetic_core_inputs_are_public_context_evidence"])
-        self.assertEqual(report["local_staged_summary"]["ready_core_input_count"], 5)
+        self.assertEqual(report["local_staged_summary"]["ready_core_input_count"], 6)
         self.assertEqual(report["local_staged_summary"]["ready_supporting_root_count"], 4)
         self.assertFalse(report["local_staged_summary"]["synthetic_core_inputs_are_public_context_evidence"])
 
@@ -194,9 +252,11 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("real_context_readiness_gate_status: ready_for_real_context_acquisition", text_report)
         self.assertIn("real_context_staging_checklist_state: verifier_ready", text_report)
         self.assertIn("local_core_inputs:", text_report)
+        self.assertIn("real_context_product_readiness:", text_report)
         self.assertIn("deterministic_acquisition_plan:", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("next_acquisition_decisions:", text_report)
+        self.assertIn("real_context_product_readiness:", text_report)
         self.assertIn("real_context_staging_checklist:", text_report)
         self.assertIn("claim_boundary_note: Checklist only; it does not authorize downloads", text_report)
         self.assertIn("synthetic_core_inputs_are_public_context_evidence: false", text_report)

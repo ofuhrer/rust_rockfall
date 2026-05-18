@@ -1088,7 +1088,11 @@ def build_candidate_persistence_metrics(
 
 
 def summarize_distribution(values: list[float]) -> dict[str, float | None]:
-    finite_values = [value for value in values if value is not None]
+    finite_values = [
+        value
+        for value in values
+        if value is not None and isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
     if not finite_values:
         return {"min": None, "max": None, "mean": None, "median": None}
     array = np.asarray(finite_values, dtype=float)
@@ -1290,9 +1294,14 @@ def emit_candidate_products(
 
 
 def summarize_distribution(values: list[float]) -> dict[str, float | None]:
-    if not values:
+    finite_values = [
+        value
+        for value in values
+        if value is not None and isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    if not finite_values:
         return {"min": None, "max": None, "mean": None, "median": None, "p95": None}
-    array = np.asarray(values, dtype=float)
+    array = np.asarray(finite_values, dtype=float)
     return {
         "min": float(np.min(array)),
         "max": float(np.max(array)),

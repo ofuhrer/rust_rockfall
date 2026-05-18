@@ -55,6 +55,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(second["workflow_classification"], "ready_for_next_step")
         self.assertEqual(first, repeat)
         self.assertEqual(first["public_context_readiness"]["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
+        self.assertEqual(first["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
         self.assertEqual(first["aoi_preparation"]["case_skeleton_status"], "ready")
         self.assertEqual(first["release_candidate_generation"]["candidate_metrics_status"], "ready")
         self.assertEqual(first["scenario_generation"]["scenario_plan_status"], "ready")
@@ -85,6 +86,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(text_report, reporter.render_text_report(first))
         self.assertIn("workflow_classification: ready_for_next_step", text_report)
         self.assertIn("public_context_readiness:", text_report)
+        self.assertIn("real_context_product_readiness_status: ready", text_report)
         self.assertIn("tiny_bounded_ensemble_handoff:", text_report)
         self.assertIn("ready_for_next_step:", text_report)
 
@@ -97,6 +99,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
 
         self.assertEqual(report["workflow_classification"], "blocked_missing_inputs")
         self.assertEqual(report["public_context_readiness"]["real_context_readiness_gate_status"], "blocked_missing_inputs")
+        self.assertEqual(report["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "missing")
         self.assertEqual(report["aoi_preparation"]["case_skeleton_status"], "blocked_missing_inputs")
         self.assertEqual(report["release_candidate_generation"]["candidate_metrics_status"], "blocked_missing_inputs")
         self.assertEqual(report["scenario_generation"]["scenario_plan_status"], "blocked_missing_inputs")

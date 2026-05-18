@@ -18,6 +18,7 @@ claim.
 from __future__ import annotations
 
 import argparse
+import csv
 import importlib.util
 import json
 import sys
@@ -33,6 +34,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
+REAL_CONTEXT_PRODUCT_READINESS_SCHEMA_VERSION = "chant_sura_real_context_product_readiness_v1"
 REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION = "chant_sura_real_context_staging_checklist_v1"
 BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION = "chant_sura_real_context_trigger_matrix_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
@@ -50,6 +52,7 @@ DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissbuildings3d_context",
 }
 CORE_INPUT_CATEGORIES = {
+    "aoi_tile_catalog",
     "terrain_crop",
     "terrain_crs_vertical_datum",
     "source_zone_metadata",
@@ -72,6 +75,70 @@ BALFRIN_TRIGGER_PRODUCTS = [
 BALFRIN_PROCEED_STATUSES = {"measured_conditional_diagnostic"}
 BALFRIN_DEFER_STATUSES = {"inconclusive_conditional_diagnostic"}
 BALFRIN_BLOCKED_STATUSES = {"blocked_missing_inputs"}
+
+CORE_PRODUCT_VALIDATION_RULES = {
+    "aoi_tile_catalog": {
+        "required_fields": [
+            "schema_version",
+            "catalog_status",
+            "source_product",
+            "product_id",
+            "crs",
+            "resolution_m",
+            "tiles",
+            "tiles[*].tile_id",
+            "tiles[*].source_product",
+            "tiles[*].source_url",
+            "tiles[*].extent_lv95_m",
+        ]
+    },
+    "terrain_crop": {
+        "required_fields": [
+            "file_present",
+            "non_empty",
+        ]
+    },
+    "terrain_crs_vertical_datum": {
+        "required_fields": [
+            "coordinate_reference_system.epsg",
+            "coordinate_reference_system.vertical_datum",
+            "preprocessing.crop_extent_lv95_m",
+            "preprocessing.status",
+            "provenance.intended_use",
+        ]
+    },
+    "source_zone_metadata": {
+        "required_fields": [
+            "zone_id",
+            "geometry.type",
+            "geometry.coordinates",
+            "release_points",
+            "coordinate_reference_system.vertical_datum",
+            "provenance.intended_use",
+        ]
+    },
+    "scenario_table": {
+        "required_fields": [
+            "scenario_id",
+            "source_zone_id",
+            "block_family",
+            "relative_weight",
+            "probability_semantics",
+            "release_point_id",
+        ]
+    },
+    "source_scenario_policy": {
+        "required_fields": [
+            "policy_id",
+            "site_id",
+            "source_zone_id_pattern",
+            "source_zone_geometry",
+            "release_point_table",
+            "block_scenario_table",
+            "scenario_probability_semantics",
+        ]
+    },
+}
 
 
 def _load_preflight_module():
@@ -172,20 +239,27 @@ def build_report(
         local_core_inputs = build_local_core_inputs(requirements)
         supporting_roots = build_supporting_roots(requirements)
         deferred_public_context_products = [entry for entry in acquisition_plan if entry["category"] in DEFERRED_PUBLIC_CONTEXT_CATEGORIES]
+        real_context_product_readiness = build_real_context_product_readiness(
+            acquisition_plan=acquisition_plan,
+            cache_contract=cache_contract,
+            cache_verification_report=cache_verification_report,
+            local_core_inputs=local_core_inputs,
+            preflight_report=preflight_report,
+        )
         next_acquisition_decisions = build_next_acquisition_decisions(
             deferred_public_context_products,
             balfrin_trigger_summary,
         )
         real_context_staging_checklist = build_real_context_staging_checklist(
-            deferred_public_context_products,
-            cache_contract,
-            cache_verification_report,
+            real_context_product_readiness=real_context_product_readiness,
+            cache_contract=cache_contract,
         )
 
         gate_status = determine_gate_status(
             core_input_status=preflight_report["core_input_status"],
             deferred_public_context_status=preflight_report["deferred_public_context_status"],
             deferred_public_context_products=deferred_public_context_products,
+            real_context_product_readiness=real_context_product_readiness,
         )
 
         report = {
@@ -205,6 +279,7 @@ def build_report(
             "local_core_inputs": local_core_inputs,
             "supporting_local_roots": supporting_roots,
             "deferred_public_context_products": deferred_public_context_products,
+            "real_context_product_readiness": real_context_product_readiness,
             "next_acquisition_decisions": next_acquisition_decisions,
             "real_context_staging_checklist": real_context_staging_checklist,
             "real_context_staging_checklist_state": real_context_staging_checklist["checklist_state"],
@@ -358,6 +433,308 @@ def balfrin_trigger_notes(trigger_state: str, product: str) -> list[str]:
     ]
 
 
+def build_real_context_product_readiness(
+    *,
+    acquisition_plan: list[dict[str, Any]],
+    cache_contract: dict[str, Any],
+    cache_verification_report: dict[str, Any] | None,
+    local_core_inputs: list[dict[str, Any]],
+    preflight_report: dict[str, Any],
+) -> dict[str, Any]:
+    cache_verification_rows = cache_verification_rows_by_category(cache_verification_report)
+    product_rows: list[dict[str, Any]] = []
+
+    local_core_lookup = {entry["category"]: entry for entry in local_core_inputs}
+    acquisition_lookup = {entry["category"]: entry for entry in acquisition_plan}
+    public_context_product_requirements = {
+        entry["category"]: entry for entry in preflight_report.get("public_context_product_requirements") or []
+    }
+
+    for category in (
+        "aoi_tile_catalog",
+        "terrain_crop",
+        "terrain_crs_vertical_datum",
+        "source_zone_metadata",
+        "scenario_table",
+        "source_scenario_policy",
+    ):
+        row = build_local_product_readiness_row(
+            category=category,
+            local_core_input=local_core_lookup.get(category),
+            expected_path=expected_path_for_local_category(category, local_core_inputs, preflight_report),
+            required_fields=list(CORE_PRODUCT_VALIDATION_RULES.get(category, {}).get("required_fields", [])),
+        )
+        product_rows.append(row)
+
+    for category in [row["category"] for row in BALFRIN_TRIGGER_PRODUCTS]:
+        acquisition_row = acquisition_lookup.get(category, {})
+        required_fields = list(cache_contract.get("verification_fields") or [])
+        product_rows.append(
+            build_public_context_product_readiness_row(
+                category=category,
+                acquisition_row=acquisition_row,
+                public_context_requirement=public_context_product_requirements.get(category, {}),
+                cache_verification_row=cache_verification_rows.get(category),
+                required_fields=required_fields,
+            )
+        )
+
+    ready_count = sum(1 for row in product_rows if row["classification"] == "ready")
+    missing_count = sum(1 for row in product_rows if row["classification"] == "missing")
+    deferred_count = sum(1 for row in product_rows if row["classification"] == "deferred")
+    metadata_mismatch_count = sum(1 for row in product_rows if row["classification"] == "metadata_mismatch")
+
+    if product_rows and ready_count == len(product_rows):
+        readiness_status = "ready"
+    elif metadata_mismatch_count:
+        readiness_status = "metadata_mismatch"
+    elif missing_count:
+        readiness_status = "missing"
+    elif deferred_count:
+        readiness_status = "deferred"
+    else:
+        readiness_status = "missing"
+
+    return {
+        "schema_version": REAL_CONTEXT_PRODUCT_READINESS_SCHEMA_VERSION,
+        "readiness_status": readiness_status,
+        "product_count": len(product_rows),
+        "ready_product_count": ready_count,
+        "missing_product_count": missing_count,
+        "deferred_product_count": deferred_count,
+        "metadata_mismatch_product_count": metadata_mismatch_count,
+        "products": product_rows,
+    }
+
+
+def build_local_product_readiness_row(
+    *,
+    category: str,
+    local_core_input: dict[str, Any] | None,
+    expected_path: str,
+    required_fields: list[str],
+) -> dict[str, Any]:
+    path = Path(expected_path) if expected_path else Path("")
+    if not expected_path or not path.exists():
+        return {
+            "category": category,
+            "product": (local_core_input or {}).get("product", category),
+            "classification": "missing",
+            "expected_staged_path": expected_path,
+            "required_fields": required_fields,
+            "missing_fields": required_fields,
+            "metadata_mismatches": [],
+            "verification_status": "missing",
+            "notes": "required local input is absent",
+        }
+
+    if category == "terrain_crop":
+        is_ready = path.is_file() and path.stat().st_size > 0
+        return {
+            "category": category,
+            "product": (local_core_input or {}).get("product", category),
+            "classification": "ready" if is_ready else "metadata_mismatch",
+            "expected_staged_path": expected_path,
+            "required_fields": required_fields,
+            "missing_fields": [] if is_ready else ["non_empty"],
+            "metadata_mismatches": [] if is_ready else ["non_empty"],
+            "verification_status": "ready" if is_ready else "metadata_mismatch",
+            "notes": "terrain crop must exist as a non-empty file",
+        }
+
+    if category == "aoi_tile_catalog":
+        return validate_aoi_tile_catalog(path, category, local_core_input, required_fields)
+
+    if category == "scenario_table":
+        return validate_scenario_table(path, category, local_core_input, required_fields)
+
+    metadata = PREFLIGHT.load_site_config(path)
+    if not isinstance(metadata, dict):
+        metadata = {}
+    missing_fields = missing_metadata_fields(metadata, required_fields)
+    classification = "ready" if not missing_fields else "metadata_mismatch"
+    return {
+        "category": category,
+        "product": (local_core_input or {}).get("product", category),
+        "classification": classification,
+        "expected_staged_path": expected_path,
+        "required_fields": required_fields,
+        "missing_fields": missing_fields,
+        "metadata_mismatches": missing_fields,
+        "verification_status": classification,
+        "notes": "metadata file must satisfy the required field contract",
+    }
+
+
+def build_public_context_product_readiness_row(
+    *,
+    category: str,
+    acquisition_row: dict[str, Any],
+    public_context_requirement: dict[str, Any],
+    cache_verification_row: dict[str, Any] | None,
+    required_fields: list[str],
+) -> dict[str, Any]:
+    expected_path = (
+        PREFLIGHT.text_value(acquisition_row.get("expected_staged_path"))
+        or PREFLIGHT.text_value(public_context_requirement.get("expected_staged_path"))
+        or PREFLIGHT.text_value(public_context_requirement.get("path_or_pattern"))
+    )
+    expected_staging_root = (
+        PREFLIGHT.text_value(acquisition_row.get("expected_staging_root"))
+        or PREFLIGHT.text_value(public_context_requirement.get("expected_staging_root"))
+        or (str(expected_staging_root_for_text(expected_path)) if expected_path else "")
+    )
+
+    if cache_verification_row is None:
+        return {
+            "category": category,
+            "product": PREFLIGHT.text_value(acquisition_row.get("product")) or PREFLIGHT.text_value(public_context_requirement.get("product")) or category,
+            "classification": "deferred",
+            "expected_staged_path": expected_path,
+            "expected_staging_root": expected_staging_root,
+            "required_fields": required_fields,
+            "verification_status": "deferred",
+            "missing_paths": [],
+            "metadata_mismatches": [],
+            "notes": "public-context products remain intentionally deferred until staged and verified",
+        }
+
+    verification_status = PREFLIGHT.text_value(cache_verification_row.get("verification_status"))
+    classification = "ready" if verification_status == "verified" else "missing" if verification_status == "missing" else "metadata_mismatch"
+    return {
+        "category": category,
+        "product": PREFLIGHT.text_value(acquisition_row.get("product")) or PREFLIGHT.text_value(public_context_requirement.get("product")) or category,
+        "classification": classification,
+        "expected_staged_path": expected_path,
+        "expected_staging_root": expected_staging_root,
+        "required_fields": required_fields,
+        "verification_status": verification_status or "missing",
+        "missing_paths": list(cache_verification_row.get("missing_paths") or []),
+        "metadata_mismatches": list(cache_verification_row.get("metadata_mismatches") or []),
+        "checksum_match": bool(cache_verification_row.get("checksum_match")),
+        "notes": "public-context rows are verified against the staged cache manifest",
+    }
+
+
+def cache_verification_rows_by_category(cache_verification_report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    rows: dict[str, dict[str, Any]] = {}
+    if not isinstance(cache_verification_report, dict):
+        return rows
+    for row in cache_verification_report.get("products") or []:
+        if isinstance(row, dict):
+            category = PREFLIGHT.text_value(row.get("product_id"))
+            if category:
+                rows[category] = row
+    return rows
+
+
+def expected_path_for_local_category(
+    category: str,
+    local_core_inputs: list[dict[str, Any]],
+    preflight_report: dict[str, Any],
+) -> str:
+    for row in local_core_inputs:
+        if isinstance(row, dict) and row.get("category") == category:
+            return PREFLIGHT.text_value(row.get("expected_path"))
+    if category == "aoi_tile_catalog":
+        return PREFLIGHT.text_value((preflight_report.get("expected_local_paths") or {}).get("aoi_tile_catalog"))
+    if category == "terrain_crop":
+        return PREFLIGHT.text_value((preflight_report.get("expected_local_paths") or {}).get("terrain_crop"))
+    if category == "terrain_crs_vertical_datum":
+        return PREFLIGHT.text_value((preflight_report.get("expected_local_paths") or {}).get("terrain_metadata"))
+    return PREFLIGHT.text_value((preflight_report.get("expected_local_paths") or {}).get(category))
+
+
+def missing_metadata_fields(payload: dict[str, Any], required_fields: list[str]) -> list[str]:
+    missing: list[str] = []
+    for field in required_fields:
+        if not metadata_field_present(payload, field):
+            missing.append(field)
+    return missing
+
+
+def metadata_field_present(payload: Any, field: str) -> bool:
+    if field == "tiles":
+        return bool(isinstance(payload, dict) and isinstance(payload.get("tiles"), list) and payload["tiles"])
+    if field.startswith("tiles[*]."):
+        if not isinstance(payload, dict):
+            return False
+        tiles = payload.get("tiles")
+        if not isinstance(tiles, list) or not tiles:
+            return False
+        subfield = field.split(".", 1)[1]
+        return all(metadata_field_present(tile, subfield) for tile in tiles if isinstance(tile, dict))
+    parts = field.split(".")
+    value: Any = payload
+    for part in parts:
+        if not isinstance(value, dict) or part not in value:
+            return False
+        value = value[part]
+    return value not in (None, "", [])
+
+
+def validate_aoi_tile_catalog(
+    path: Path,
+    category: str,
+    local_core_input: dict[str, Any] | None,
+    required_fields: list[str],
+) -> dict[str, Any]:
+    catalog = PREFLIGHT.load_site_config(path)
+    if not isinstance(catalog, dict):
+        catalog = {}
+    missing_fields = missing_metadata_fields(catalog, required_fields)
+    tile_records = catalog.get("tiles")
+    if not isinstance(tile_records, list) or not tile_records:
+        missing_fields.append("tiles")
+    else:
+        for tile_field in ("tile_id", "source_product", "source_url", "extent_lv95_m"):
+            if not all(metadata_field_present(tile, tile_field) for tile in tile_records if isinstance(tile, dict)):
+                missing_fields.append(f"tiles[*].{tile_field}")
+    missing_fields = list(dict.fromkeys(missing_fields))
+    classification = "ready" if not missing_fields else "metadata_mismatch"
+    return {
+        "category": category,
+        "product": (local_core_input or {}).get("product", category),
+        "classification": classification,
+        "expected_staged_path": str(path),
+        "required_fields": required_fields,
+        "missing_fields": missing_fields,
+        "metadata_mismatches": missing_fields,
+        "verification_status": classification,
+        "notes": "AOI tile catalog must enumerate tile records and discovery metadata",
+    }
+
+
+def validate_scenario_table(
+    path: Path,
+    category: str,
+    local_core_input: dict[str, Any] | None,
+    required_fields: list[str],
+) -> dict[str, Any]:
+    missing_fields: list[str] = []
+    try:
+        with path.open("r", encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            fieldnames = reader.fieldnames or []
+            missing_fields = [field for field in required_fields if field not in fieldnames]
+            if not missing_fields and not any(True for _ in reader):
+                missing_fields.append("rows")
+    except Exception:
+        missing_fields = list(required_fields)
+    classification = "ready" if not missing_fields else "metadata_mismatch"
+    return {
+        "category": category,
+        "product": (local_core_input or {}).get("product", category),
+        "classification": classification,
+        "expected_staged_path": str(path),
+        "required_fields": required_fields,
+        "missing_fields": missing_fields,
+        "metadata_mismatches": missing_fields,
+        "verification_status": classification,
+        "notes": "scenario table must expose the contract columns and at least one scenario row",
+    }
+
+
 def build_local_core_inputs(requirements: list[dict[str, Any]]) -> list[dict[str, Any]]:
     core_inputs: list[dict[str, Any]] = []
     for requirement in requirements:
@@ -432,9 +809,9 @@ def build_next_acquisition_decisions(
 
 
 def build_real_context_staging_checklist(
-    deferred_public_context_products: list[dict[str, Any]],
+    *,
+    real_context_product_readiness: dict[str, Any],
     cache_contract: dict[str, Any],
-    cache_verification_report: dict[str, Any] | None,
 ) -> dict[str, Any]:
     verification_fields = list(cache_contract.get("verification_fields") or [])
     verify_commands = cache_contract.get("verify_commands") or []
@@ -442,47 +819,35 @@ def build_real_context_staging_checklist(
     if verify_commands and isinstance(verify_commands[0], dict):
         verifier_command = str(verify_commands[0].get("command") or "")
 
-    verification_rows: dict[str, dict[str, Any]] = {}
-    if isinstance(cache_verification_report, dict):
-        for row in cache_verification_report.get("products") or []:
-            if isinstance(row, dict):
-                product_id = str(row.get("product_id") or "")
-                if product_id:
-                    verification_rows[product_id] = row
-
     rows: list[dict[str, Any]] = []
     verified_count = 0
     missing_count = 0
+    deferred_count = 0
     partially_staged_count = 0
 
-    for product in deferred_public_context_products:
+    for product in real_context_product_readiness.get("products") or []:
+        if not isinstance(product, dict) or product.get("category") not in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
+            continue
+        classification = str(product.get("classification") or "missing")
         expected_staged_path = str(product.get("expected_staged_path") or "")
-        expected_staging_root = str(
-            product.get("expected_staging_root")
-            or (PREFLIGHT.expected_staging_root_for_text(expected_staged_path) if expected_staged_path else "")
-        )
-        verification_row = verification_rows.get(str(product.get("category") or ""))
-        if verification_row is None:
-            checklist_state = "missing"
-            readiness_impact = "cache inputs are still missing, so this row stays fail-closed"
+        expected_staging_root = str(product.get("expected_staging_root") or (PREFLIGHT.expected_staging_root_for_text(expected_staged_path) if expected_staged_path else ""))
+        verification_status = str(product.get("verification_status") or classification)
+        if classification == "ready":
+            readiness_impact = "staged files and metadata are ready for deterministic cache verification"
+            verified_count += 1
+            checklist_state = "verifier_ready"
+        elif classification == "deferred":
+            readiness_impact = "public-context staging remains intentionally deferred until staged and verified"
+            deferred_count += 1
+            checklist_state = "deferred"
+        elif classification == "missing":
+            readiness_impact = "required staged files or metadata are still absent"
             missing_count += 1
-            cache_verification_status = "missing"
+            checklist_state = "missing"
         else:
-            cache_verification_status = str(verification_row.get("verification_status") or "missing")
-            if cache_verification_status == "verified":
-                checklist_state = "verifier_ready"
-                readiness_impact = "staged files and metadata are ready for deterministic cache verification"
-                verified_count += 1
-            elif cache_verification_status == "missing":
-                checklist_state = "missing"
-                readiness_impact = "required staged files or metadata are still absent"
-                missing_count += 1
-            else:
-                checklist_state = "partially_staged"
-                readiness_impact = (
-                    "some cache inputs are staged, but the verifier still fails closed until the row is complete"
-                )
-                partially_staged_count += 1
+            readiness_impact = "staged inputs exist but the cache verifier still fails closed"
+            partially_staged_count += 1
+            checklist_state = "partially_staged"
 
         rows.append(
             {
@@ -495,9 +860,11 @@ def build_real_context_staging_checklist(
                 "cache_manifest_fields": verification_fields,
                 "verifier_command": verifier_command,
                 "checklist_state": checklist_state,
-                "cache_verification_status": cache_verification_status,
-                "missing_paths": list(verification_row.get("missing_paths") or []) if verification_row else ["staged_path", "metadata_path"],
-                "metadata_mismatches": list(verification_row.get("metadata_mismatches") or []) if verification_row else [],
+                "cache_verification_status": verification_status,
+                "classification": classification,
+                "required_fields": list(product.get("required_fields") or []),
+                "missing_paths": list(product.get("missing_paths") or []),
+                "metadata_mismatches": list(product.get("metadata_mismatches") or []),
                 "readiness_impact": readiness_impact,
                 "claim_boundary_note": CHECKLIST_BOUNDARY_NOTE,
             }
@@ -505,9 +872,11 @@ def build_real_context_staging_checklist(
 
     if verified_count == len(rows) and rows:
         checklist_state = "verifier_ready"
+    elif deferred_count == len(rows) and rows:
+        checklist_state = "deferred"
     elif missing_count == len(rows) and rows:
         checklist_state = "missing"
-    elif rows:
+    elif partially_staged_count or (rows and verified_count and (missing_count or deferred_count)):
         checklist_state = "partially_staged"
     else:
         checklist_state = "missing"
@@ -518,6 +887,7 @@ def build_real_context_staging_checklist(
         "product_count": len(rows),
         "verified_product_count": verified_count,
         "missing_product_count": missing_count,
+        "deferred_product_count": deferred_count,
         "partially_staged_product_count": partially_staged_count,
         "cache_manifest_path": str(cache_contract.get("cache_layout", {}).get("cache_manifest_path") or ""),
         "verifier_command": verifier_command,
@@ -563,6 +933,7 @@ def determine_gate_status(
     core_input_status: str,
     deferred_public_context_status: str,
     deferred_public_context_products: list[dict[str, Any]],
+    real_context_product_readiness: dict[str, Any],
 ) -> str:
     if core_input_status != "ready":
         return "blocked_missing_inputs"
@@ -570,6 +941,10 @@ def determine_gate_status(
         return "blocked_missing_inputs"
     if not deferred_public_context_products:
         return "blocked_missing_deferred_public_context"
+    if (real_context_product_readiness.get("missing_product_count") or 0) > 0:
+        return "blocked_missing_inputs"
+    if (real_context_product_readiness.get("metadata_mismatch_product_count") or 0) > 0:
+        return "blocked_missing_inputs"
     return "ready_for_real_context_acquisition"
 
 
@@ -638,6 +1013,19 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(render_path_status_rows(report.get("supporting_local_roots") or []))
 
     lines.append("")
+    lines.append("real_context_product_readiness:")
+    readiness = report.get("real_context_product_readiness") or {}
+    lines.append(f"- schema_version: {readiness.get('schema_version', '')}")
+    lines.append(f"- readiness_status: {readiness.get('readiness_status', '')}")
+    lines.append(f"- product_count: {readiness.get('product_count', '')}")
+    lines.append(f"- ready_product_count: {readiness.get('ready_product_count', '')}")
+    lines.append(f"- missing_product_count: {readiness.get('missing_product_count', '')}")
+    lines.append(f"- deferred_product_count: {readiness.get('deferred_product_count', '')}")
+    lines.append(f"- metadata_mismatch_product_count: {readiness.get('metadata_mismatch_product_count', '')}")
+    lines.append("- products:")
+    lines.extend(render_product_readiness_rows(readiness.get("products") or []))
+
+    lines.append("")
     lines.append("deterministic_acquisition_plan:")
     lines.extend(render_plan_rows(report.get("deterministic_acquisition_plan") or []))
 
@@ -692,6 +1080,21 @@ def render_path_status_rows(rows: list[dict[str, Any]]) -> list[str]:
         rendered.append(
             f"- {row['category']}: status={row['status']}, expected_path={row['expected_path']}, "
             f"filesystem_state={row['filesystem_state']['kind']}"
+        )
+    if not rendered:
+        rendered.append("- []")
+    return rendered
+
+
+def render_product_readiness_rows(rows: list[dict[str, Any]]) -> list[str]:
+    rendered: list[str] = []
+    for row in rows:
+        rendered.append(
+            f"- {row.get('category', '')}: classification={row.get('classification', '')}, "
+            f"expected_staged_path={row.get('expected_staged_path', '')}, "
+            f"required_fields={', '.join(row.get('required_fields') or []) or 'none'}, "
+            f"missing_fields={', '.join(row.get('missing_fields') or []) or 'none'}, "
+            f"metadata_mismatches={', '.join(row.get('metadata_mismatches') or []) or 'none'}"
         )
     if not rendered:
         rendered.append("- []")
