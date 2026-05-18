@@ -84,7 +84,10 @@ than an afterthought.
 The fixture-backed multi-zone reducer-pressure gate in
 `scripts/validate_multi_zone_reducer_pressure_gate.py` is the current place
 where reducer-manifest bytes, sidecar counts, per-family counts, and merge
-order are regression-checked before any larger live root is considered.
+order are regression-checked before any larger live root is considered. The
+current TB-245 handoff recheck still reports
+`blocked_budget_reduction_needed`, so manifest reduction is still needed
+before the current handoff projection can be treated as budget-safe.
 
 ## Summary-Only Conditional Curves
 

@@ -96,6 +96,20 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertGreater(output_budget_projection["reducer_manifest_bytes"], 0)
         self.assertGreater(output_budget_projection["manifest_size_bytes"], 0)
         self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_blocked"], "manifest_size_bytes")
+        self.assertEqual(output_budget_projection["budget_recheck"]["status"], "blocked_budget_reduction_needed")
+        self.assertIn("manifest_size_bytes", output_budget_projection["budget_recheck"]["reason"])
+        self.assertEqual(
+            set(output_budget_projection["replay_critical_field_inventory"]),
+            {"command_plan", "projection", "thresholds", "constraints", "smallest_run"},
+        )
+        self.assertIn(
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].command",
+            output_budget_projection["replay_critical_field_inventory"]["command_plan"],
+        )
+        self.assertIn(
+            "constraint_pressure.measured_constraints.manifest_size_bytes_max",
+            output_budget_projection["replay_critical_field_inventory"]["constraints"],
+        )
         self.assertIn("manifest_size_bytes", [check["metric"] for check in output_budget_projection["budget_checks"]])
         self.assertIn(
             "trajectory_csv",
@@ -188,6 +202,39 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("preservation_gate_checklist", smallest_run)
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
+
+    def test_handoff_budget_projection_consumes_shared_command_plan_contract_without_mutating_semantics(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
+            call_count = 0
+            original_build_command_record = MODULE.COMMAND_PLAN.build_command_record
+
+            def tracking_build_command_record(*args, **kwargs):
+                nonlocal call_count
+                call_count += 1
+                return original_build_command_record(*args, **kwargs)
+
+            with patch.object(MODULE.COMMAND_PLAN, "build_command_record", side_effect=tracking_build_command_record):
+                report = MODULE.build_report(artifact_dir=artifact_dir)
+
+            self.assertGreater(call_count, 0)
+            command_plan = json.loads(Path(report["command_plan_path"]).read_text(encoding="utf-8"))
+            command_plan_snapshot = json.loads(json.dumps(command_plan, sort_keys=True))
+            projection = MODULE.build_handoff_output_budget_projection(
+                command_plan=command_plan,
+                pressure_artifact_dir=Path(report["multi_zone_pressure"]["pressure_artifact_dir"]),
+            )
+
+        self.assertEqual(command_plan, command_plan_snapshot)
+        self.assertEqual(projection["budget_recheck"]["status"], "blocked_budget_reduction_needed")
+        self.assertIn(
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].command",
+            projection["replay_critical_field_inventory"]["command_plan"],
+        )
+        self.assertIn(
+            "constraint_pressure.measured_constraints.reducer_worker_count_max",
+            projection["replay_critical_field_inventory"]["constraints"],
+        )
 
     def test_constraint_pressure_classification_covers_acceptable_warning_and_blocked_cases(self) -> None:
         pressure_report = {

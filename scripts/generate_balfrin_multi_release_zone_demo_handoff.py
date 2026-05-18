@@ -1417,6 +1417,10 @@ def build_handoff_output_budget_projection(
     primary_output_family_bytes = dict(target_profile.get("primary_output_family_bytes") or {})
     primary_output_file_count = sum(int(value) for value in primary_output_family_file_counts.values())
     primary_output_byte_count = sum(int(value) for value in primary_output_family_bytes.values())
+    budget_recheck = build_handoff_budget_recheck(
+        handoff_output_budget_projection=gate_report,
+        first_bottleneck_labels=first_bottleneck_labels,
+    )
     summary = (
         "Handoff command-plan output-budget projection is "
         f"{normalized_status}: {target_profile.get('output_file_count')} output files, "
@@ -1461,6 +1465,8 @@ def build_handoff_output_budget_projection(
         "output_byte_count": target_profile.get("output_byte_count", 0),
         "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
         "output_family_bytes": dict(target_profile.get("output_family_bytes") or {}),
+        "budget_recheck": budget_recheck,
+        "replay_critical_field_inventory": build_replay_critical_field_inventory(),
         "gate_report_path": str(gate_report_path),
         "gate_text_path": str(gate_text_path),
         "blocked_reason": summary if normalized_status == "blocked" else None,
@@ -1562,6 +1568,120 @@ def first_handoff_budget_bottleneck_labels(gate_report: dict[str, Any]) -> dict[
         "first_relevant": first_blocked or first_warning or "ready",
         "blocked": blocked,
         "warning": warning,
+    }
+
+
+def build_handoff_budget_recheck(
+    *,
+    handoff_output_budget_projection: dict[str, Any],
+    first_bottleneck_labels: dict[str, Any],
+) -> dict[str, Any]:
+    status = str(handoff_output_budget_projection.get("status") or "")
+    gate_status = str(handoff_output_budget_projection.get("gate_status") or "")
+    first_bottleneck = str(first_bottleneck_labels.get("first_relevant") or "")
+    if status == "blocked_missing_inputs" or gate_status == "blocked_missing_inputs":
+        return {
+            "status": "blocked_replay_contract_ambiguity",
+            "reason": "the projected replay contract is incomplete, so the current handoff budget cannot be rechecked",
+        }
+    if status in {"blocked", "warning"} or gate_status in {"blocked_fixture_backed", "fixture_backed_warning"}:
+        if not first_bottleneck or first_bottleneck == "ready":
+            return {
+                "status": "blocked_replay_contract_ambiguity",
+                "reason": "the projection is blocked, but the first replay bottleneck is not explicit",
+            }
+        return {
+            "status": "blocked_budget_reduction_needed",
+            "reason": f"current handoff projection remains {status or gate_status} at first bottleneck {first_bottleneck}",
+        }
+    if status in {"ready", "acceptable"} or gate_status == "fixture_backed_ready":
+        return {
+            "status": "budget_passes_no_reduction_needed",
+            "reason": "current handoff projection stays within the current budget thresholds",
+        }
+    return {
+        "status": "blocked_replay_contract_ambiguity",
+        "reason": "the projection status is not mapped to a stable budget decision",
+    }
+
+
+def build_replay_critical_field_inventory() -> dict[str, list[str]]:
+    return {
+        "command_plan": [
+            "command_plan.command_ids",
+            "command_plan.command_descriptions",
+            "command_plan.blocked_template_commands",
+            "command_plan.command_groups",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].group",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].id",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].command",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].expected_inputs",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].expected_outputs",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].read_only",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].may_produce_ignored_outputs",
+            "command_plan.commands[id=multi_zone_reducer_pressure_summary].ignored_output_paths",
+        ],
+        "projection": [
+            "handoff_output_budget_projection.status",
+            "handoff_output_budget_projection.gate_status",
+            "handoff_output_budget_projection.projection_provenance",
+            "handoff_output_budget_projection.command_id",
+            "handoff_output_budget_projection.source_command",
+            "handoff_output_budget_projection.planned_pressure_probe_root",
+            "handoff_output_budget_projection.release_zone_count",
+            "handoff_output_budget_projection.reducer_chunk_count",
+            "handoff_output_budget_projection.reducer_worker_count",
+            "handoff_output_budget_projection.output_family_mix",
+            "handoff_output_budget_projection.primary_output_file_count",
+            "handoff_output_budget_projection.primary_output_byte_count",
+            "handoff_output_budget_projection.sidecar_file_count",
+            "handoff_output_budget_projection.sidecar_byte_count",
+            "handoff_output_budget_projection.reducer_manifest_file_count",
+            "handoff_output_budget_projection.reducer_manifest_bytes",
+            "handoff_output_budget_projection.manifest_size_bytes",
+            "handoff_output_budget_projection.output_file_count",
+            "handoff_output_budget_projection.output_byte_count",
+            "handoff_output_budget_projection.first_bottleneck_labels.first_relevant",
+        ],
+        "thresholds": [
+            "handoff_output_budget_projection.threshold_provenance",
+            "handoff_output_budget_projection.budget_checks",
+            "handoff_output_budget_projection.family_count_checks",
+            "handoff_output_budget_projection.family_byte_checks",
+            "handoff_output_budget_projection.blocked_reasons",
+            "handoff_output_budget_projection.warning_reasons",
+        ],
+        "constraints": [
+            "constraint_pressure.status",
+            "constraint_pressure.summary",
+            "constraint_pressure.requested_release_zone_batch_size",
+            "constraint_pressure.requested_reducer_chunk_count",
+            "constraint_pressure.requested_reducer_worker_count",
+            "constraint_pressure.requested_constraint_status",
+            "constraint_pressure.constraint_source.source_document",
+            "constraint_pressure.constraint_source.source_script",
+            "constraint_pressure.constraint_source.probe_root",
+            "constraint_pressure.constraint_source.output_family_mix",
+            "constraint_pressure.measured_constraints.simultaneous_release_zone_batch_max",
+            "constraint_pressure.measured_constraints.reducer_chunk_count_max",
+            "constraint_pressure.measured_constraints.reducer_worker_count_max",
+            "constraint_pressure.measured_constraints.manifest_size_bytes_max",
+            "constraint_pressure.measured_constraints.output_file_count_max",
+            "constraint_pressure.measured_constraints.root_file_count_max",
+        ],
+        "smallest_run": [
+            "follow_up_recommendation.minimum_measured_multi_zone_run.release_zone_count",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.scenario_count",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.trajectory_count_target",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.trajectory_workers",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.reducer_workers",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.conditional_curve_export",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.grid_csv_export",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.export_geotiff",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.pilot_gis_package",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.output_profile_policy.classification",
+            "follow_up_recommendation.minimum_measured_multi_zone_run.preservation_gate_checklist",
+        ],
     }
 
 
@@ -2312,6 +2432,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reducer manifest files: `{output_budget_projection.get('reducer_manifest_file_count')}`",
         f"- Reducer manifest bytes: `{output_budget_projection.get('reducer_manifest_bytes')}`",
         f"- First bottleneck: `{first_bottleneck_labels.get('first_relevant')}`",
+        "",
+        "## Budget Recheck",
+        "",
+        f"- Recommendation: `{output_budget_projection.get('budget_recheck', {}).get('status')}`",
+        f"- Reason: {output_budget_projection.get('budget_recheck', {}).get('reason')}",
+        f"- Replay-critical inventory sections: `{', '.join(sorted((output_budget_projection.get('replay_critical_field_inventory') or {}).keys()))}`",
         "",
         "## Output Profile Policy",
         "",

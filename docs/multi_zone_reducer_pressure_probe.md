@@ -104,6 +104,20 @@ package. If the projected command-plan shape exceeds the current gate, the
 handoff package remains fail-closed even when the smaller requested submit
 shape is otherwise within measured reducer maxima.
 
+## TB-245 Current Handoff Projection
+
+The current TB-245 recheck stays `blocked_budget_reduction_needed` rather than
+`budget_passes_no_reduction_needed`. The current handoff projection records
+`12` release zones, `62` output files, `34944` output bytes, `24497` manifest
+bytes, `21` sidecar files, and `964` reducer-manifest bytes, while the
+measured reducer constraints remain capped at `8` simultaneous release zones,
+`4` reducer chunks, and `2` reducer workers.
+
+The replay-critical inventory for the handoff recheck keeps the command-plan
+record, the projected manifest and sidecar counts, the constraint thresholds,
+the budget-check lists, and the smallest-run replay fields explicit so the
+budget can be rechecked without mutating handoff semantics.
+
 ## Smallest Authorization Preflight Shape
 
 The smallest bounded multi-zone authorization preflight consumes the reviewed

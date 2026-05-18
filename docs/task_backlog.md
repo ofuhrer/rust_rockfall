@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-245: Current Multi-Zone Handoff Budget Recheck
-
-Goal: Recompute the smallest multi-zone handoff budget after command-plan contract consolidation before attempting manifest pruning.
-
-Capability gap reduced: The current multi-zone budget blocker may be stale after recent command-plan consolidation, and reducing manifests before remeasurement risks optimizing against outdated evidence.
-
-Why this outranks alternatives: A no-change recheck is cheaper and more scientifically honest than assuming reduction work is necessary.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/lib/command_plan_contract.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- A refreshed fixture-backed budget report for the current handoff projection, including manifest bytes, sidecar bytes, file counts, reducer constraints, and replay-critical field inventory.
-- A deterministic recommendation of `budget_passes_no_reduction_needed`, `blocked_budget_reduction_needed`, or `blocked_replay_contract_ambiguity`.
-- Tests proving the recheck consumes the shared command-plan contract and does not mutate handoff semantics.
-
-Definition of done:
-
-- The repo can say whether manifest reduction is still needed using current handoff semantics and current budget thresholds.
-
-Boundaries: Measurement/recheck only; no pruning, no live Balfrin job, no output-schema change, no distributed reducer, no scale-up claim, and no operational claim.
-
 ### TB-246: Multi-Zone Handoff Manifest Budget Reduction
 
 Goal: If TB-245 still reports budget pressure, reduce the smallest multi-zone handoff's projected manifest and sidecar pressure without losing replay-critical fields.
