@@ -548,3 +548,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: no work-log history changes, no weakening of full-history hygiene, no generated artifact commit, and no expansion of allowed output roots beyond documented scratch/ignored locations.
 - Next task: backlog refill needed
+
+### TB-203: Balfrin Next Live-Run Decision Gate
+
+- Date: 2026-05-18
+- Commit: `bd6f284`
+- Objective: add a deterministic decision gate that compares the metrics-completion rerun, smallest bounded multi-zone probe, and deferral options for the next authorized live Balfrin action.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json`, `tests/fixtures/balfrin_next_live_run_decision_gate/blocked_bundle.json`, `tests/fixtures/balfrin_next_live_run_decision_gate/defer_bundle.json`, `docs/script_inventory.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a deterministic Balfrin next-live-run decision helper that synthesizes the target-area metrics report, preservation gate, reducer-pressure probe, and multi-zone handoff evidence into a ready / blocked / defer recommendation.
+  - Encoded explicit criteria for missing target-area metrics, preservation-gate readiness, reducer pressure, multi-zone package readiness, expected runtime/output pressure, and scientific value, with exact evidence blockers preserved in the report.
+  - Added compact fixture-backed tests for the ready metrics-completion rerun path, a fail-closed missing-inputs path, and a defer-to-portability-or-physical-evidence path.
+  - Registered the new helper in the script inventory and removed TB-203 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_probe_metrics_report tests.test_balfrin_probe_preservation_gate tests.test_multi_zone_reducer_pressure tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_next_live_run_decision_gate.py tests/test_balfrin_next_live_run_decision_gate.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no fabricated metrics.
+- Next task: `TB-204`
