@@ -686,3 +686,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no calibration, no parameter fitting, no validation-status upgrade without real evidence, no annual-frequency or physical-probability claim, and no operational claim.
 - Next task: `TB-209`
+
+### TB-209: Multi-Zone Hazard Builder Throughput Profile
+
+- Date: 2026-05-18
+- Commit: `5e59c0e`
+- Objective: profile hazard-layer post-processing on a deterministic multi-zone scratch fixture and identify the first concrete throughput or output-pressure bottleneck.
+- Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/hazard_throughput_bottleneck_report.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated deterministic profiling helper that materializes a synthetic 12-zone hazard corpus, runs `scripts/build_hazard_layers.py` with explicit-grid and reduced-output controls, and records read, accumulation, reducer-merge, manifest, raster-write, and report-rendering timings.
+  - Captured output-pressure summaries by layer family, file family, manifest family, and a default not-applicable COG/GIS family so the profile stays explicit about what is and is not being measured.
+  - Added focused tests for fixture determinism, report schema/pressure shape, CLI JSON output, and blocked-missing-input behavior.
+  - Updated the hazard throughput report, script inventory, and active backlog to reflect the new helper and the measured accumulation-dominant bottleneck.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb209_multi_zone_profile --format json >/tmp/tb209_multi_zone_profile.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_hazard_throughput_profile.py tests/test_multi_zone_hazard_throughput_profile.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: profiling only; no hazard-value rewrite, no probability-semantics change, no GIS/COG claim upgrade, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-210`
