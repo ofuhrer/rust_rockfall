@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-241: Target-Area Metrics Completion Authorization Handoff
-
-Goal: If TB-240 cannot recover all required metrics, produce a minimal authorization-ready handoff for the target-area metrics-completion rerun.
-
-Capability gap reduced: The project needs a precise, reviewable path from unrecovered metrics to an explicitly authorized rerun without confusing dry-run packages with approval.
-
-Why this outranks alternatives: The decision gate ranks metrics completion ahead of multi-zone execution, physical evidence, and second-site work, but a live rerun must stay explicitly authorization-gated.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- An authorization handoff package that includes the exact run root, SBATCH command, collection command, preservation checklist, access-preflight status, and unrecovered-metric list from TB-240.
-- Fail-closed classifications for missing access, missing package, stale comparison basis, or missing explicit authorization.
-- Focused tests for ready-for-authorization-review, blocked-missing-access, blocked-no-unrecovered-metrics, and blocked-missing-package cases.
-
-Definition of done:
-
-- A human can review one deterministic package to decide whether to authorize the metrics-completion rerun, and the package cannot submit or imply authorization by itself.
-
-Boundaries: Authorization handoff only; no live submission without explicit user authorization, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
-
 ### TB-242: Preservation-Checked Metrics Completion Evidence Integration
 
 Goal: Integrate a recovered or newly authorized target-area metrics-completion result into the metrics report, preservation gate, evidence bundle, and next-action decision helper.

@@ -43,10 +43,24 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_target_area_metrics_completion_rerun_package_v1")
         self.assertEqual(report["preflight_status"], "ready_for_authorization_request")
         self.assertEqual(report["authorization_request_preflight_status"], "ready_for_authorization_request")
+        self.assertEqual(report["authorization_handoff_status"], "ready_for_authorization_review")
         self.assertEqual(report["package_status"], "complete_rerun_package")
         self.assertTrue(report["authorization_request_preflight"]["ready_for_authorization_request"])
         self.assertFalse(report["authorization_request_preflight"]["authorization_granted"])
         self.assertFalse(report["authorization_request_preflight"]["live_submission_authorized"])
+        handoff = report["authorization_handoff_package"]
+        self.assertTrue(handoff["ready_for_authorization_review"])
+        self.assertEqual(handoff["status"], "ready_for_authorization_review")
+        self.assertEqual(handoff["tb240_unrecovered_metrics"], MODULE.TB240_UNRECOVERED_METRICS)
+        self.assertIn("metrics_completion_v1/probe.sbatch", handoff["sbatch_command"])
+        self.assertIn("collect_balfrin_probe_metrics.py", handoff["collection_command"])
+        self.assertIn("summarize_balfrin_probe_preservation_gate.py", handoff["preservation_gate_command"])
+        self.assertEqual(handoff["access_preflight_status"], "ready_for_read_only_collection")
+        self.assertEqual(
+            handoff["fail_closed_classifications"]["missing_explicit_authorization"]["status"],
+            "blocked_missing_explicit_authorization",
+        )
+        self.assertFalse(handoff["live_submission_authorized"])
         self.assertEqual(
             report["balfrin_access_preflight_requirement"]["consumed_status"],
             "ready_for_read_only_collection",
@@ -77,7 +91,72 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         self.assertIn("--generate-only", report["rerun_command_plan"]["generate_only_command"])
         self.assertIn("no live submission is authorized", report["package_summary"]["summary"])
         self.assertIn("preflight_status: ready_for_authorization_request", MODULE.render_text_report(report))
+        self.assertIn("authorization_handoff_status: ready_for_authorization_review", MODULE.render_text_report(report))
         self.assertIn("Balfrin Target-Area Metrics Completion Rerun Package", MODULE.render_text_report(report))
+
+    def test_authorization_handoff_ready_for_authorization_review(self) -> None:
+        report = MODULE.build_report({"balfrin_access_preflight": self._ready_access()})
+        handoff = report["authorization_handoff_package"]
+
+        self.assertEqual(handoff["status"], "ready_for_authorization_review")
+        self.assertEqual(handoff["exact_run_root"], str(MODULE.DEFAULT_RERUN_RUN_ROOT.resolve()))
+        self.assertEqual(handoff["probe_manifest"], str(MODULE.DEFAULT_PROBE_MANIFEST.resolve()))
+        self.assertEqual(handoff["tb240_unrecovered_metrics"], MODULE.TB240_UNRECOVERED_METRICS)
+        self.assertEqual(handoff["fail_closed_classifications"]["missing_access"]["status"], "complete")
+        self.assertEqual(handoff["fail_closed_classifications"]["missing_package"]["status"], "complete")
+        self.assertEqual(handoff["fail_closed_classifications"]["stale_comparison_basis"]["status"], "complete")
+        self.assertEqual(handoff["fail_closed_classifications"]["no_unrecovered_metrics"]["status"], "complete")
+        self.assertEqual(handoff["reviewer_decision"]["status"], "blocked_missing_explicit_authorization")
+
+    def test_authorization_handoff_blocks_missing_access(self) -> None:
+        access = self._ready_access()
+        access["status"] = "blocked_ssh_unavailable"
+        access["ready_for_read_only_collection"] = False
+
+        report = MODULE.build_report({"balfrin_access_preflight": access})
+        handoff = report["authorization_handoff_package"]
+
+        self.assertEqual(handoff["status"], "blocked_missing_access")
+        self.assertFalse(handoff["ready_for_authorization_review"])
+        self.assertEqual(
+            handoff["fail_closed_classifications"]["missing_access"]["consumed_status"],
+            "blocked_ssh_unavailable",
+        )
+        self.assertIn("missing_access", handoff["blocked_reasons"])
+
+    def test_authorization_handoff_blocks_no_unrecovered_metrics(self) -> None:
+        report = MODULE.build_report(
+            {
+                "balfrin_access_preflight": self._ready_access(),
+                "tb240_unrecovered_metrics": [],
+            }
+        )
+        handoff = report["authorization_handoff_package"]
+
+        self.assertEqual(handoff["status"], "blocked_no_unrecovered_metrics")
+        self.assertFalse(handoff["ready_for_authorization_review"])
+        self.assertEqual(handoff["tb240_unrecovered_metrics"], [])
+        self.assertEqual(
+            handoff["fail_closed_classifications"]["no_unrecovered_metrics"]["status"],
+            "blocked_no_unrecovered_metrics",
+        )
+
+    def test_authorization_handoff_blocks_missing_package(self) -> None:
+        report = MODULE.build_report(
+            {
+                "balfrin_access_preflight": self._ready_access(),
+                "missing_inputs": ["existing_target_area_run"],
+            }
+        )
+        handoff = report["authorization_handoff_package"]
+
+        self.assertEqual(handoff["status"], "blocked_missing_package")
+        self.assertFalse(handoff["ready_for_authorization_review"])
+        self.assertEqual(
+            handoff["fail_closed_classifications"]["missing_package"]["status"],
+            "blocked_missing_package",
+        )
+        self.assertIn("missing_package", handoff["blocked_reasons"])
 
     def test_partial_package_blocks_when_required_declarations_are_missing(self) -> None:
         report = MODULE.build_report(
@@ -90,6 +169,7 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         )
 
         self.assertEqual(report["preflight_status"], "blocked_incomplete_package")
+        self.assertEqual(report["authorization_handoff_status"], "blocked_missing_package")
         self.assertFalse(report["authorization_request_preflight"]["ready_for_authorization_request"])
         self.assertEqual(report["package_status"], "partial_rerun_package")
         self.assertEqual(report["preservation_checklist"]["status"], "blocked_missing_inputs")
@@ -144,6 +224,7 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         )
 
         self.assertEqual(report["preflight_status"], "blocked_incomplete_package")
+        self.assertEqual(report["authorization_handoff_status"], "blocked_missing_package")
         self.assertEqual(report["package_status"], "missing_rerun_package")
         self.assertEqual(report["package_provenance_status"], "blocked_missing_inputs")
         self.assertEqual(report["rerun_command_plan"]["status"], "blocked_missing_inputs")

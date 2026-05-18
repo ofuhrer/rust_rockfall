@@ -36,8 +36,14 @@ ACCESS_PREFLIGHT_COMMAND = (
 )
 ACCESS_READY_STATUS = "ready_for_read_only_collection"
 STATUS_READY_FOR_AUTHORIZATION = "ready_for_authorization_request"
+STATUS_READY_FOR_AUTHORIZATION_REVIEW = "ready_for_authorization_review"
 STATUS_BLOCKED_INCOMPLETE_PACKAGE = "blocked_incomplete_package"
 STATUS_BLOCKED_ACCESS_NOT_CHECKED = "blocked_balfrin_access_not_checked"
+STATUS_BLOCKED_MISSING_ACCESS = "blocked_missing_access"
+STATUS_BLOCKED_MISSING_PACKAGE = "blocked_missing_package"
+STATUS_BLOCKED_STALE_COMPARISON_BASIS = "blocked_stale_comparison_basis"
+STATUS_BLOCKED_NO_UNRECOVERED_METRICS = "blocked_no_unrecovered_metrics"
+STATUS_BLOCKED_MISSING_EXPLICIT_AUTHORIZATION = "blocked_missing_explicit_authorization"
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_metrics_completion_rerun_package_v1"
 DEFAULT_PROBE_MANIFEST = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
 DEFAULT_RERUN_RUN_ROOT = Path(
@@ -62,6 +68,8 @@ REQUIRED_METRICS = [
     "hazard_output.file_count",
     "hazard_output.bytes",
 ]
+
+TB240_UNRECOVERED_METRICS = list(REQUIRED_METRICS)
 
 REQUIRED_REPLAY_METADATA = [
     "run_root",
@@ -617,6 +625,165 @@ def _build_expected_metrics_contract() -> dict[str, Any]:
     }
 
 
+def _resolve_tb240_unrecovered_metrics(
+    evidence_override: dict[str, Any],
+    existing_run_comparison: dict[str, Any],
+) -> list[str]:
+    for key in ("tb240_unrecovered_metrics", "unrecovered_metrics"):
+        if key in evidence_override:
+            return _safe_list(evidence_override.get(key))
+    comparison_missing = _safe_list(existing_run_comparison.get("missing_from_existing_run"))
+    return comparison_missing or list(TB240_UNRECOVERED_METRICS)
+
+
+def _build_comparison_basis_status(
+    *,
+    existing_run_comparison: dict[str, Any],
+    unrecovered_metrics: list[str],
+) -> dict[str, Any]:
+    comparison_status = str(existing_run_comparison.get("status") or "unknown")
+    closure_targets = _safe_list(existing_run_comparison.get("closure_targets"))
+    missing_from_existing_run = _safe_list(existing_run_comparison.get("missing_from_existing_run"))
+    expected_missing = sorted(unrecovered_metrics)
+    recorded_missing = sorted(missing_from_existing_run or closure_targets)
+    stale_reasons: list[str] = []
+    if comparison_status != "measured_existing_target_area_run":
+        stale_reasons.append(f"comparison_status:{comparison_status}")
+    if expected_missing and recorded_missing != expected_missing:
+        stale_reasons.append("tb240_unrecovered_metrics_do_not_match_comparison_basis")
+    if closure_targets and sorted(closure_targets) != sorted(TB240_UNRECOVERED_METRICS):
+        stale_reasons.append("closure_targets_changed_from_tb240_metrics_scope")
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_comparison_basis_status_v1",
+        "status": "complete" if not stale_reasons else STATUS_BLOCKED_STALE_COMPARISON_BASIS,
+        "source": existing_run_comparison.get("source", DEFAULT_EXISTING_TARGET_AREA_SOURCE),
+        "existing_target_area_run_root": _safe_mapping(
+            existing_run_comparison.get("existing_target_area_run")
+        ).get("run_root"),
+        "existing_target_area_job_id": _safe_mapping(
+            existing_run_comparison.get("existing_target_area_run")
+        ).get("job_id"),
+        "closure_targets": closure_targets,
+        "missing_from_existing_run": missing_from_existing_run,
+        "tb240_unrecovered_metrics": unrecovered_metrics,
+        "stale_reasons": stale_reasons,
+    }
+
+
+def _build_fail_closed_classifications(
+    *,
+    access_requirement: dict[str, Any],
+    package_status: str,
+    pre_authorization_inputs: dict[str, Any],
+    comparison_basis_status: dict[str, Any],
+    unrecovered_metrics: list[str],
+) -> dict[str, Any]:
+    access_ready = access_requirement.get("consumed_status") == ACCESS_READY_STATUS
+    package_ready = package_status == "complete_rerun_package" and pre_authorization_inputs.get("status") == "complete"
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_fail_closed_classifications_v1",
+        "missing_access": {
+            "status": "complete" if access_ready else STATUS_BLOCKED_MISSING_ACCESS,
+            "consumed_status": access_requirement.get("consumed_status"),
+            "required_status": ACCESS_READY_STATUS,
+        },
+        "missing_package": {
+            "status": "complete" if package_ready else STATUS_BLOCKED_MISSING_PACKAGE,
+            "package_status": package_status,
+            "pre_authorization_inputs_status": pre_authorization_inputs.get("status"),
+            "missing_or_blocked": pre_authorization_inputs.get("missing_or_blocked", []),
+        },
+        "stale_comparison_basis": {
+            "status": comparison_basis_status.get("status", STATUS_BLOCKED_STALE_COMPARISON_BASIS),
+            "stale_reasons": comparison_basis_status.get("stale_reasons", []),
+        },
+        "no_unrecovered_metrics": {
+            "status": "complete" if unrecovered_metrics else STATUS_BLOCKED_NO_UNRECOVERED_METRICS,
+            "unrecovered_metric_count": len(unrecovered_metrics),
+        },
+        "missing_explicit_authorization": {
+            "status": STATUS_BLOCKED_MISSING_EXPLICIT_AUTHORIZATION,
+            "required_before_submission": True,
+            "live_submission_authorized": False,
+        },
+    }
+
+
+def _build_authorization_handoff_package(
+    *,
+    run_root: Path,
+    probe_manifest: Path,
+    rerun_command_plan: dict[str, Any],
+    sbatch_package: dict[str, Any],
+    preservation_checklist: dict[str, Any],
+    access_requirement: dict[str, Any],
+    pre_authorization_inputs: dict[str, Any],
+    existing_run_comparison: dict[str, Any],
+    package_status: str,
+    unrecovered_metrics: list[str],
+) -> dict[str, Any]:
+    comparison_basis_status = _build_comparison_basis_status(
+        existing_run_comparison=existing_run_comparison,
+        unrecovered_metrics=unrecovered_metrics,
+    )
+    classifications = _build_fail_closed_classifications(
+        access_requirement=access_requirement,
+        package_status=package_status,
+        pre_authorization_inputs=pre_authorization_inputs,
+        comparison_basis_status=comparison_basis_status,
+        unrecovered_metrics=unrecovered_metrics,
+    )
+    blocked_reasons: list[str] = []
+    status = STATUS_READY_FOR_AUTHORIZATION_REVIEW
+    if classifications["missing_access"]["status"] != "complete":
+        status = STATUS_BLOCKED_MISSING_ACCESS
+        blocked_reasons.append("missing_access")
+    elif classifications["missing_package"]["status"] != "complete":
+        status = STATUS_BLOCKED_MISSING_PACKAGE
+        blocked_reasons.append("missing_package")
+    elif classifications["no_unrecovered_metrics"]["status"] != "complete":
+        status = STATUS_BLOCKED_NO_UNRECOVERED_METRICS
+        blocked_reasons.append("no_unrecovered_metrics")
+    elif classifications["stale_comparison_basis"]["status"] != "complete":
+        status = STATUS_BLOCKED_STALE_COMPARISON_BASIS
+        blocked_reasons.append("stale_comparison_basis")
+
+    sbatch_script_path = str(run_root / "probe.sbatch")
+    sbatch_command = _bash_command(["sbatch", "--parsable", sbatch_script_path])
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_authorization_handoff_v1",
+        "status": status,
+        "ready_for_authorization_review": status == STATUS_READY_FOR_AUTHORIZATION_REVIEW,
+        "authorization_granted": False,
+        "live_submission_authorized": False,
+        "explicit_authorization_required": True,
+        "exact_run_root": str(run_root),
+        "probe_manifest": str(probe_manifest),
+        "sbatch_command": sbatch_command,
+        "dry_run_command": rerun_command_plan.get("dry_run_command", ""),
+        "generate_only_command": rerun_command_plan.get("generate_only_command", ""),
+        "collection_command": sbatch_package.get("collection_command") or rerun_command_plan.get("collect_command", ""),
+        "preservation_gate_command": rerun_command_plan.get("preservation_gate_command", ""),
+        "preservation_checklist": preservation_checklist,
+        "access_preflight_status": access_requirement.get("consumed_status"),
+        "access_preflight_command": access_requirement.get("command"),
+        "tb240_unrecovered_metrics": list(unrecovered_metrics),
+        "comparison_basis_status": comparison_basis_status,
+        "fail_closed_classifications": classifications,
+        "blocked_reasons": blocked_reasons,
+        "reviewer_decision": {
+            "status": STATUS_BLOCKED_MISSING_EXPLICIT_AUTHORIZATION,
+            "required_before_submission": True,
+            "allowed_values": ["authorized_for_one_metrics_completion_rerun"],
+            "live_submission_authorized": False,
+        },
+        "boundary_note": (
+            "Authorization handoff only: this package is review input for one bounded "
+            "metrics-completion rerun and does not authorize running the SBATCH command."
+        ),
+    }
+
+
 def _build_access_preflight_requirement(access_report: dict[str, Any], source: str) -> dict[str, Any]:
     status = str(access_report.get("status") or STATUS_BLOCKED_ACCESS_NOT_CHECKED)
     return {
@@ -974,6 +1141,19 @@ def build_report(
     ]
     section_provenance_profile = _build_section_provenance_profile(sections)
     package_status = _package_status(section_provenance_profile, preservation_checklist.get("status", "unknown"))
+    unrecovered_metrics = _resolve_tb240_unrecovered_metrics(evidence_override, existing_run_comparison)
+    authorization_handoff_package = _build_authorization_handoff_package(
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        rerun_command_plan=rerun_command_plan,
+        sbatch_package=sbatch_package,
+        preservation_checklist=preservation_checklist,
+        access_requirement=access_requirement,
+        pre_authorization_inputs=pre_authorization_inputs,
+        existing_run_comparison=existing_run_comparison,
+        package_status=package_status,
+        unrecovered_metrics=unrecovered_metrics,
+    )
     authorization_request_preflight = _build_authorization_request_preflight(
         access_requirement=access_requirement,
         package_status=package_status,
@@ -1016,6 +1196,8 @@ def build_report(
             },
         },
         "authorization_request_preflight": authorization_request_preflight,
+        "authorization_handoff_status": authorization_handoff_package["status"],
+        "authorization_handoff_package": authorization_handoff_package,
         "balfrin_access_preflight_requirement": access_requirement,
         "pre_authorization_inputs": pre_authorization_inputs,
         "rerun_command_plan": rerun_command_plan,
@@ -1106,6 +1288,20 @@ def blocked_report(
         preservation_checklist=preservation_checklist,
         replay_metadata=replay_metadata,
     )
+    rerun_command_plan = {"status": "blocked_missing_inputs"}
+    sbatch_package = {"status": "blocked_missing_inputs", "launch_authorized": False}
+    authorization_handoff_package = _build_authorization_handoff_package(
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        rerun_command_plan=rerun_command_plan,
+        sbatch_package=sbatch_package,
+        preservation_checklist=preservation_checklist,
+        access_requirement=access_requirement,
+        pre_authorization_inputs=pre_authorization_inputs,
+        existing_run_comparison=existing_comparison,
+        package_status="missing_rerun_package",
+        unrecovered_metrics=list(TB240_UNRECOVERED_METRICS),
+    )
     authorization_request_preflight = _build_authorization_request_preflight(
         access_requirement=access_requirement,
         package_status="missing_rerun_package",
@@ -1165,10 +1361,12 @@ def blocked_report(
             },
         },
         "authorization_request_preflight": authorization_request_preflight,
+        "authorization_handoff_status": authorization_handoff_package["status"],
+        "authorization_handoff_package": authorization_handoff_package,
         "balfrin_access_preflight_requirement": access_requirement,
         "pre_authorization_inputs": pre_authorization_inputs,
-        "rerun_command_plan": {"status": "blocked_missing_inputs"},
-        "sbatch_package": {"status": "blocked_missing_inputs", "launch_authorized": False},
+        "rerun_command_plan": rerun_command_plan,
+        "sbatch_package": sbatch_package,
         "preservation_checklist": preservation_checklist,
         "existing_target_area_run_comparison": existing_comparison,
         "replay_metadata": replay_metadata,
@@ -1190,6 +1388,7 @@ def blocked_report(
 
 def render_text_report(report: dict[str, Any]) -> str:
     preflight = report.get("authorization_request_preflight", {}) if isinstance(report, dict) else {}
+    handoff = report.get("authorization_handoff_package", {}) if isinstance(report, dict) else {}
     access_requirement = report.get("balfrin_access_preflight_requirement", {}) if isinstance(report, dict) else {}
     pre_authorization_inputs = report.get("pre_authorization_inputs", {}) if isinstance(report, dict) else {}
     expected_metrics = preflight.get("expected_metrics", {}) if isinstance(preflight, dict) else {}
@@ -1198,6 +1397,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"schema_version: {report.get('schema_version', 'unknown')}",
         f"preflight_status: {report.get('preflight_status', 'unknown')}",
         f"authorization_request_preflight_status: {report.get('authorization_request_preflight_status', 'unknown')}",
+        f"authorization_handoff_status: {report.get('authorization_handoff_status', 'unknown')}",
         f"package_status: {report.get('package_status', 'unknown')}",
         f"package_provenance_status: {report.get('package_provenance_status', 'unknown')}",
         f"package_artifact_dir: {report.get('package_artifact_dir', 'unknown')}",
@@ -1214,6 +1414,18 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  live_submission_authorized: {preflight.get('live_submission_authorized', False)}",
         f"  blocked_reasons: {preflight.get('blocked_reasons', [])}",
         f"  summary: {preflight.get('summary', '')}",
+        "authorization_handoff_package:",
+        f"  status: {handoff.get('status', 'unknown')}",
+        f"  ready_for_authorization_review: {handoff.get('ready_for_authorization_review', False)}",
+        f"  exact_run_root: {handoff.get('exact_run_root', '')}",
+        f"  sbatch_command: {handoff.get('sbatch_command', '')}",
+        f"  collection_command: {handoff.get('collection_command', '')}",
+        f"  preservation_gate_command: {handoff.get('preservation_gate_command', '')}",
+        f"  access_preflight_status: {handoff.get('access_preflight_status', '')}",
+        f"  tb240_unrecovered_metrics: {handoff.get('tb240_unrecovered_metrics', [])}",
+        f"  explicit_authorization_required: {handoff.get('explicit_authorization_required', True)}",
+        f"  live_submission_authorized: {handoff.get('live_submission_authorized', False)}",
+        f"  blocked_reasons: {handoff.get('blocked_reasons', [])}",
         "balfrin_access_preflight_requirement:",
         f"  command: {access_requirement.get('command', '')}",
         f"  required_status: {access_requirement.get('required_status', '')}",

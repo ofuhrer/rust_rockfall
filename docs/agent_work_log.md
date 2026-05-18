@@ -1386,3 +1386,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only recovery only; no live Balfrin submission, no remote mutation, no authorization grant, no fabricated metrics, no claim upgrade, no scale-up claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-241`
+
+### TB-241: Target-Area Metrics Completion Authorization Handoff
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: produce a minimal authorization-ready handoff for the Balfrin target-area metrics-completion rerun while keeping live execution explicitly authorization-gated.
+- Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `authorization_handoff_package` to the metrics-completion rerun helper with the exact rerun root, SBATCH command, dry-run/generate-only commands, collection command, preservation gate command, preservation checklist, access-preflight status, and TB-240 unrecovered-metric list.
+  - Added fail-closed classifications for missing Balfrin access, missing package inputs, stale comparison basis, no unrecovered metrics, and missing explicit authorization; the handoff can be ready for review while still reporting live submission as unauthorized.
+  - Materialized a read-only `/tmp` handoff using the current Balfrin preflight; access status was `ready_for_read_only_collection`, and the handoff status was `ready_for_authorization_review` for the five TB-240 unrecovered metrics.
+  - Added focused fixture-backed tests for ready-for-authorization-review, blocked-missing-access, blocked-no-unrecovered-metrics, and blocked-missing-package cases, then removed TB-241 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_completion_rerun_package`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb241_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --balfrin-access-json /tmp/tb241_balfrin_access_preflight.json --format json --json-output /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.json --text-output /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.txt > /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.stdout`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: authorization handoff only; no live submission, no remote mutation beyond read-only preflight, no scientific interpretation, no fabricated metrics, no scale-up authorization, no operational claim, and no physical-probability/risk/exposure/vulnerability claim.
+- Next task: `TB-242`
