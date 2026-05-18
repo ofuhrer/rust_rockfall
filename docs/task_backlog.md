@@ -29,7 +29,7 @@ Goal: Refresh the Balfrin next-action decision matrix using post-TB-221 evidence
 
 Capability gap reduced: The project needs a current, evidence-ranked choice among target-area metrics completion, smallest multi-zone measurement, second-site progress, physical-evidence acquisition, and hazard-builder optimization.
 
-Why this outranks alternatives: A stale decision gate would let execution momentum choose the next Balfrin step instead of measured blockers and scientific value.
+Why this outranks alternatives: A stale decision gate would let execution momentum choose the next Balfrin step instead of measured blockers, SSH availability, and scientific value.
 
 Inspect first:
 
@@ -40,12 +40,13 @@ Inspect first:
 - `docs/multi_zone_reducer_pressure_probe.md`
 - `docs/hazard_throughput_bottleneck_report.md`
 - `docs/target_area_physical_evidence_acquisition_pack.md`
+- `docs/orchestration_strategy.md`
 
 Deliverables:
 
 - Updated deterministic decision helper or fixture data that includes TB-217 through TB-221 evidence.
-- A ranked recommendation that explicitly distinguishes measured, fixture-backed, blocked, unavailable, and unauthorized paths.
-- Focused tests for at least the metrics-completion, multi-zone, and defer-to-physical-or-portability branches.
+- A ranked recommendation that explicitly distinguishes measured, fixture-backed, blocked, unavailable, unauthorized, and SSH-access-expired paths.
+- Focused tests for metrics-completion, multi-zone, Balfrin-access-blocked, and defer-to-physical-or-portability branches.
 
 Definition of done:
 
@@ -54,9 +55,65 @@ Definition of done:
 
 Boundaries: No live Balfrin submission, no authorization grant, no new maturity label, no operational claim, and no fabricated metrics.
 
-### TB-223: Target-Area Metrics Completion Rerun Preflight
+### TB-223: Balfrin SSH And Remote Artifact Access Preflight
 
-Goal: Convert the existing target-area metrics-completion rerun package into a strict preflight that says whether the rerun is ready to request authorization.
+Goal: Add a read-only Balfrin access preflight that checks SSH availability, expected clone path, non-git run-root visibility, and scheduler query reachability without launching jobs.
+
+Capability gap reduced: Balfrin-capable workers need a fail-closed way to distinguish expired SSH access, missing remote artifacts, missing non-git data, and actual execution blockers.
+
+Why this outranks alternatives: Remote evidence and live-run tasks should not start until access and artifact availability are machine-readable.
+
+Inspect first:
+
+- `docs/balfrin_probe_slurm_driver.md`
+- `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/orchestration_strategy.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `tests/test_balfrin_probe_driver.py`
+
+Deliverables:
+
+- A read-only helper or preflight mode that reports `ready_for_read_only_collection`, `blocked_ssh_unavailable`, `blocked_missing_remote_clone`, `blocked_missing_run_root`, or `blocked_scheduler_unavailable`.
+- Exact remote paths and commands checked, with no secrets or private SSH material committed.
+- Tests using mocks/fixtures for available, expired-access, missing-run-root, and scheduler-unavailable paths.
+
+Definition of done:
+
+- A Balfrin-capable worker can run one command to decide whether read-only collection is possible, and expired access fails closed without modifying local evidence.
+
+Boundaries: Read-only SSH/preflight only, no live submission, no remote mutation, no generated remote artifact claim, no operational claim.
+
+### TB-224: Balfrin Worker Routing In Task Context
+
+Goal: Teach the task-context helper to mark Balfrin SSH/live-evidence tasks as requiring a stronger Balfrin-capable worker and the access preflight from TB-223.
+
+Capability gap reduced: Orchestrators currently have to remember when to switch from the default small worker to a stronger worker for remote Balfrin tasks.
+
+Why this outranks alternatives: The worker-routing rule should be machine-visible before live or read-only Balfrin tasks are delegated.
+
+Inspect first:
+
+- `scripts/print_agent_task_context.py`
+- `tests/test_agent_task_context.py`
+- `docs/orchestration_strategy.md`
+- `docs/task_backlog.md`
+
+Deliverables:
+
+- Compact task-context fields such as `balfrin_access_required`, `recommended_worker_model`, and `balfrin_access_preflight_command` for tasks that mention Balfrin SSH, live run, remote run root, or evidence collection.
+- Full-detail mode preserving existing broader helper output.
+- Tests for a Balfrin task and a non-Balfrin task.
+
+Definition of done:
+
+- The default compact task context clearly tells the orchestrator when to use a stronger worker and when Balfrin access may have expired.
+
+Boundaries: Helper/context routing only, no live SSH call, no worker launch automation change, no task-priority fields, and no claim upgrade.
+
+### TB-225: Target-Area Metrics Completion Rerun Preflight
+
+Goal: Convert the existing target-area metrics-completion rerun package into a strict authorization-request preflight that first consumes the Balfrin access status from TB-223.
 
 Capability gap reduced: Peak-memory and split validation/hazard output metrics remain incomplete for the preserved target-area run, which weakens the Balfrin demo evidence package.
 
@@ -70,27 +127,28 @@ Inspect first:
 - `scripts/summarize_balfrin_probe_metrics_report.py`
 - `docs/balfrin_probe_slurm_driver.md`
 - `docs/balfrin_single_job_execution_sufficiency.md`
+- `docs/orchestration_strategy.md`
 
 Deliverables:
 
 - A preflight classification such as `ready_for_authorization_request`, `blocked_missing_run_root`, or `blocked_incomplete_package`.
-- Exact expected metrics, preservation files, comparison basis, and post-run collection commands.
-- Focused tests for ready, partial, and missing-run-root paths.
+- Exact expected metrics, preservation files, comparison basis, access-preflight requirement, and post-run collection commands.
+- Focused tests for ready, partial, missing-run-root, and Balfrin-access-blocked paths.
 
 Definition of done:
 
 - The rerun package can be reviewed without reading the whole Balfrin doc stack, and it fails closed unless every pre-authorization input is present.
 - No live submission command is presented as authorized.
 
-Boundaries: No live Balfrin submission, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
+Boundaries: No live Balfrin submission, no authorization grant, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
 
-### TB-224: Smallest Multi-Zone Probe Authorization Preflight
+### TB-226: Smallest Multi-Zone Probe Authorization Preflight
 
-Goal: Turn the smallest bounded multi-zone handoff into an authorization preflight that proves the reviewed package, reducer budget, and submission gate are mutually consistent.
+Goal: Turn the smallest bounded multi-zone handoff into an authorization preflight that proves the reviewed package, reducer budget, Balfrin access state, and submission gate are mutually consistent.
 
 Capability gap reduced: Multi-zone execution remains dry-run or fixture-backed until the package, reducer constraints, and authorization-gated submit path agree on the exact minimal run shape.
 
-Why this outranks alternatives: Multi-zone measurement is valuable only if the first attempt is small, reproducible, and preservation-safe.
+Why this outranks alternatives: Multi-zone measurement is valuable only if the first attempt is small, reproducible, preservation-safe, and delegated to a stronger Balfrin-capable worker.
 
 Inspect first:
 
@@ -103,12 +161,13 @@ Inspect first:
 - `tests/test_multi_zone_reducer_pressure_gate.py`
 - `docs/balfrin_probe_slurm_driver.md`
 - `docs/multi_zone_reducer_pressure_probe.md`
+- `docs/orchestration_strategy.md`
 
 Deliverables:
 
 - A deterministic preflight report for the smallest multi-zone package with release-zone count, scenario count, worker counts, reducer chunks, output profile, and preservation checklist.
-- Fail-closed validation that the reviewed handoff package and authorization record are both required before submission.
-- Focused tests covering ready-package, missing-authorization, and reducer-budget-blocked paths.
+- Fail-closed validation that the reviewed handoff package, authorization record, and Balfrin access preflight are all required before submission.
+- Focused tests covering ready-package, missing-authorization, expired-access, and reducer-budget-blocked paths.
 
 Definition of done:
 
@@ -117,13 +176,13 @@ Definition of done:
 
 Boundaries: No live Balfrin job, no distributed execution, no scale-up authorization, no operational claim, and no generated heavy outputs committed.
 
-### TB-225: Balfrin Post-Run Evidence Collector Rehearsal
+### TB-227: Balfrin Post-Run Evidence Collector Rehearsal
 
-Goal: Rehearse post-run evidence collection on complete and incomplete fixture roots for both metrics-completion and multi-zone paths so partial runs cannot be promoted.
+Goal: Rehearse post-run evidence collection on complete, incomplete, missing, and access-blocked fixture roots for both metrics-completion and multi-zone paths so partial runs cannot be promoted.
 
 Capability gap reduced: The demo needs a reliable post-run classification before another live run can be treated as evidence rather than only execution.
 
-Why this outranks alternatives: A live run without a preservation-safe collector would increase ambiguity instead of reducing it.
+Why this outranks alternatives: A live run without a preservation-safe collector and access-aware failure mode would increase ambiguity instead of reducing it.
 
 Inspect first:
 
@@ -136,10 +195,11 @@ Inspect first:
 - `tests/test_balfrin_probe_preservation_gate.py`
 - `tests/test_balfrin_demonstration_closure_package.py`
 - `tests/fixtures/balfrin_probe_metrics_contract/complete_run_root/command_plan.json`
+- `docs/orchestration_strategy.md`
 
 Deliverables:
 
-- Fixture-backed collector rehearsal covering complete, incomplete, and missing-root classifications.
+- Fixture-backed collector rehearsal covering complete, incomplete, missing-root, SSH-unavailable, and non-git-artifact-unavailable classifications.
 - Closure-package input compatibility checks for the two plausible next live-run families.
 - Focused tests proving incomplete roots remain blocked.
 
@@ -150,7 +210,7 @@ Definition of done:
 
 Boundaries: Fixture-backed rehearsal only, no live run, no claim upgrade, no maturity upgrade, and no generated heavy outputs committed.
 
-### TB-226: Multi-Zone Handoff Output Budget Projection
+### TB-228: Multi-Zone Handoff Output Budget Projection
 
 Goal: Project reducer manifest, file-family, and output-byte pressure from the actual multi-zone handoff command plan rather than from a standalone scratch probe alone.
 
@@ -181,7 +241,7 @@ Definition of done:
 
 Boundaries: No live Balfrin job, no distributed reducer, no output-default change, no scale-up authorization, and no operational claim.
 
-### TB-227: Bounded Hazard Accumulator Optimization Spike
+### TB-229: Bounded Hazard Accumulator Optimization Spike
 
 Goal: Implement or reject one bounded trajectory-accumulation optimization inside the existing hazard builder based on the TB-219 hotspot evidence.
 
@@ -212,9 +272,9 @@ Definition of done:
 
 Boundaries: No physics change, no hazard semantics change, no output-schema change unless explicitly backward-compatible, no generated heavy outputs committed, and no operational claim.
 
-### TB-228: Post-Optimization Multi-Zone Throughput Reprofile
+### TB-230: Post-Optimization Multi-Zone Throughput Reprofile
 
-Goal: Reprofile the representative multi-zone hazard-builder fixture after TB-227 and update the throughput report with retained or rejected optimization evidence.
+Goal: Reprofile the representative multi-zone hazard-builder fixture after TB-229 and update the throughput report with retained or rejected optimization evidence.
 
 Capability gap reduced: A code optimization without a follow-up profile can hide noise, regress output pressure, or overstate scaling improvement.
 
@@ -237,9 +297,9 @@ Definition of done:
 
 - The report distinguishes real improvement, noise, and regressions, and records the next bounded target only if evidence supports one.
 
-Boundaries: Profiling only unless TB-227 retained code changes; no new physics, no distributed execution, no operational claim, and no heavy outputs committed.
+Boundaries: Profiling only unless TB-229 retained code changes; no new physics, no distributed execution, no operational claim, and no heavy outputs committed.
 
-### TB-229: Chant Sura Public-Context Acquisition Package Freeze
+### TB-231: Chant Sura Public-Context Acquisition Package Freeze
 
 Goal: Freeze a concrete real-input acquisition package for Chant Sura / Fluelapass that separates required swisstopo products, expected local roots, and fixture-only paths.
 
@@ -269,7 +329,7 @@ Definition of done:
 
 Boundaries: No downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical-validation claim.
 
-### TB-230: Real-Input Prepared-Pilot Gate For Chant Sura
+### TB-232: Real-Input Prepared-Pilot Gate For Chant Sura
 
 Goal: Make the Chant Sura prepared-pilot dry run consume the real-context acquisition package and fail closed until required real inputs are staged.
 
@@ -299,13 +359,13 @@ Definition of done:
 
 Boundaries: No downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
 
-### TB-231: Observed Runout Acquisition Operator Package
+### TB-233: Observed Runout Acquisition Operator Package
 
 Goal: Materialize an operator-facing observed runout/deposition acquisition package that follows the blocker matrix without treating the package as evidence.
 
 Capability gap reduced: Physical credibility remains weak because no independent observed benchmark package is staged, and the next acquisition action must be concrete.
 
-Why this outranks alternatives: More interpretation of existing conditional runs will not reduce the physical-evidence gap.
+Why this outranks alternatives: More interpretation of existing conditional runs will not reduce the physical-evidence gap; workers should be able to prepare the package while preserving the non-evidence boundary.
 
 Inspect first:
 
@@ -325,9 +385,9 @@ Definition of done:
 
 - The package is executable as a dry run and cannot be confused with an accepted observed benchmark dataset.
 
-Boundaries: No calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or physical-probability claim, no operational claim, and no generated acquisition files committed.
+Boundaries: Worker may generate templates in a caller-provided scratch root only; no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or physical-probability claim, no operational claim, and no generated acquisition files committed.
 
-### TB-232: Observed Benchmark Intake Acceptance Smoke
+### TB-234: Observed Benchmark Intake Acceptance Smoke
 
 Goal: Add a fixture-backed acceptance smoke path for a complete observed runout/deposition benchmark intake and explicit rejection paths for common schema failures.
 
@@ -354,7 +414,7 @@ Definition of done:
 
 Boundaries: Fixture-backed schema smoke only, no real evidence claim, no calibration, no parameter fitting, no validation upgrade, and no operational claim.
 
-### TB-233: Release-Zone Provenance Intake Bridge
+### TB-235: Release-Zone Provenance Intake Bridge
 
 Goal: Define a small intake path for field-supported release-zone provenance that remains separate from workflow-generated release candidates.
 
@@ -385,7 +445,7 @@ Definition of done:
 
 Boundaries: No release-zone validation claim, no threshold tuning, no source-frequency semantics, no annual-frequency claim, and no operational claim.
 
-### TB-234: Block-Population And Source-Frequency Acquisition Deferral Map
+### TB-236: Block-Population And Source-Frequency Acquisition Deferral Map
 
 Goal: Convert block-population and source-frequency rows in the physical-evidence matrix into exact acquisition blockers and future-gate prerequisites.
 
@@ -415,7 +475,7 @@ Definition of done:
 
 Boundaries: No source-frequency implementation, no annual-frequency product, no calibration, no risk/exposure semantics, and no operational claim.
 
-### TB-235: Workflow-Shell Coupling Extraction Batch
+### TB-237: Workflow-Shell Coupling Extraction Batch
 
 Goal: Extract one bounded batch of duplicated workflow-shell mechanics identified by the coupling inventory into shared helpers without changing public CLI outputs.
 
@@ -445,7 +505,7 @@ Definition of done:
 
 Boundaries: No script deletion, no broad rewrite, no public status-label rename, no scientific claim change, and no unrelated validator churn.
 
-### TB-236: Command-Plan Manifest Contract Consolidation
+### TB-238: Command-Plan Manifest Contract Consolidation
 
 Goal: Consolidate repeated command-plan manifest, expected-input/output, ignored-root, and read-only/write semantics across the pilot and Balfrin handoff generators.
 
