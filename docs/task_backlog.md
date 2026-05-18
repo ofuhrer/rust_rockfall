@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-218: Reducer Manifest And File-Family Budget Regression Gate
-
-Goal: Add a fixture-backed regression gate that measures reducer manifest bytes, output family counts, output bytes, sidecar counts, and deterministic merge order for realistic multi-zone scratch roots.
-
-Capability gap reduced: Reducer and filesystem pressure can regress without changing simulator correctness or high-level readiness labels.
-
-Why this outranks alternatives: The 12-zone probe already labels manifest, output-family, and reducer-runtime pressure as blockers; those budgets need a repeatable guard before authorizing larger probes.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- A deterministic regression fixture or fixture generator for multi-zone reducer roots with configurable zone count, chunk count, and output family mix.
-- Budget checks for manifest bytes, total files, per-family files, per-family bytes, reducer wall time, and merge-order determinism.
-- Warning and blocked thresholds that are explicitly labeled as fixture-backed until real Balfrin roots are measured.
-- Tests proving budget regressions fail closed without requiring live Balfrin artifacts.
-
-Definition of done:
-
-- Reducer and output-pressure regressions become visible in CI-scale fixtures before they can reach a live multi-zone Balfrin package.
-
-Boundaries: Fixture-backed gate only; no live Balfrin job, no Swiss-wide projection claim, no distributed reducer, and no generated heavy outputs committed.
-
 ### TB-219: Hazard Accumulation Throughput Hotspot Isolation
 
 Goal: Isolate the remaining Python hazard-accumulation hotspot after explicit-grid improvements and define one bounded optimization target.

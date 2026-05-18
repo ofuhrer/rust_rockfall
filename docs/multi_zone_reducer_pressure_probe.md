@@ -3,7 +3,8 @@
 Status: scratch-root probe, not a live Balfrin run.
 
 This probe materializes a deterministic multi-zone scratch root and summarizes
-the reducer/merge pressure without relying on ignored live artifacts.
+the reducer/merge pressure, reducer-manifest bytes, sidecar counts, and
+output-family bytes without relying on ignored live artifacts.
 
 Reproduce with:
 
@@ -15,7 +16,7 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
 
 ## Measured Summary
 
-- Probe root: `/tmp/rust_rockfall/tb187_multi_zone_probe`
+- Probe root: `/tmp/rust_rockfall/tb218_multi_zone_probe`
 - Release zones: `12`
 - Scenarios: `12`
 - Trajectory chunks: `12`
@@ -23,11 +24,19 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
 - Reducer chunks: `4`
 - Merge order: `sorted_chunk_id`
 - Merge-order independent: `true`
+- Merge-order deterministic: `true`
 - Reducer wall time: `2.99` s
-- Manifest size: `20101` bytes
+- Manifest size: `21312` bytes
 - Root file count: `66`
 - Output file count: `62`
-- Output bytes: `31042`
+- Output bytes: `31906`
+- Reducer manifest bytes: `964`
+- Reducer manifest files: `4`
+- Sidecar files: `21`
+- Sidecar bytes: `4123`
+- Primary output files: `36`
+- Primary output bytes: `7586`
+- Output family mix: `trajectory_csv, deposition_csv, impact_events_csv, trajectory_chunk_manifest, reducer_chunk_manifest, trajectory_execution_plan, trajectory_execution_index, trajectory_merge_state, reducer_execution_plan, reducer_execution_index, reducer_merge_state, diagnostics_json, map_package_manifest, pilot_gis_package_manifest`
 
 ## Output Families
 
@@ -68,3 +77,17 @@ Reducer pressure is a blocker for a multi-zone Balfrin dry run at this probe
 shape. The dominant signals are manifest pressure, output-family pressure, and
 reducer-runtime pressure, so TB-183 should keep the reducer constraints above
 in place before attempting a larger dry run.
+
+## Regression Gate
+
+The fixture-backed regression gate that enforces these budgets is:
+
+```bash
+PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py \
+  --materialize-root /tmp/rust_rockfall/tb218_multi_zone_gate_probe \
+  --format json
+```
+
+Its warning and blocked thresholds are themselves fixture-backed and are
+derived from deterministic 9-zone and 11-zone scratch profiles until real
+Balfrin roots are measured.

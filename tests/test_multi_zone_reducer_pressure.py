@@ -109,6 +109,38 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertIn("--release-zone-count", command)
             self.assertIn("8", command)
 
+    def test_materialized_probe_honors_output_family_mix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            probe_root = Path(tmpdir) / "probe"
+            family_mix = (
+                "trajectory_csv",
+                "reducer_chunk_manifest",
+                "reducer_execution_index",
+                "reducer_merge_state",
+            )
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=6,
+                reducer_worker_count=2,
+                reducer_chunk_count=2,
+                output_family_mix=family_mix,
+            )
+            report = MODULE.build_report(probe_root)
+
+            self.assertEqual(report["output_family_mix"], list(family_mix))
+            self.assertEqual(report["release_zone_count"], 6)
+            self.assertEqual(report["reducer_chunk_count"], 2)
+            self.assertEqual(report["output_family_file_counts"]["trajectory_csv"], 6)
+            self.assertEqual(report["output_family_file_counts"]["reducer_chunk_manifest"], 2)
+            self.assertNotIn("deposition_csv", report["output_family_file_counts"])
+            self.assertNotIn("impact_events_csv", report["output_family_file_counts"])
+            self.assertNotIn("trajectory_chunk_manifest", report["output_family_file_counts"])
+            self.assertEqual(report["primary_output_file_count"], 6)
+            self.assertEqual(report["sidecar_file_count"], 2)
+            self.assertGreater(report["reducer_manifest_bytes"], 0)
+            self.assertEqual(report["merge_order"], "sorted_chunk_id")
+            self.assertTrue(report["merge_order_deterministic"])
+
 
 if __name__ == "__main__":
     unittest.main()

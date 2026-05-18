@@ -886,3 +886,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: output-profile policy only, no live execution, no distributed reducer, no hazard-value changes, no COG/GIS claim upgrade, and no generated heavy outputs committed.
 - Next task: `TB-218`
+
+### TB-218: Reducer Manifest And File-Family Budget Regression Gate
+
+- Date: 2026-05-18
+- Commit: TBD
+- Objective: add a fixture-backed regression gate that measures reducer manifest bytes, output-family counts, output bytes, sidecar counts, and deterministic merge order for realistic multi-zone scratch roots.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the deterministic multi-zone reducer probe to accept a configurable output-family mix, record reducer-manifest bytes plus sidecar and primary-output budgets, and keep the measured merge-order data explicit in both the report and the command-plan provenance.
+  - Added a new fixture-backed regression gate that materializes ready, warning, and blocked scratch fixtures, derives its thresholds from deterministic 9-zone and 11-zone profiles, and fails closed on manifest, file-family, byte, sidecar, wall-time, or merge-order regressions.
+  - Surfaced the new pressure fields through the Balfrin multi-zone handoff summary, refreshed the reducer-pressure notes, and registered the new validator in the script inventory.
+  - Added focused regressions for configurable family mixes, gate-ready and gate-warning profiles, and merge-order corruption so the gate does not rely on live Balfrin artifacts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_reducer_pressure.py scripts/validate_multi_zone_reducer_pressure_gate.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_multi_zone_reducer_pressure.py tests/test_multi_zone_reducer_pressure_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: fixture-backed regression gate only, no live Balfrin job, no distributed reducer, no Swiss-wide projection claim, and no generated heavy outputs committed.
+- Next task: `TB-219`

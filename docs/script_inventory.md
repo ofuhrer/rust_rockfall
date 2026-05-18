@@ -165,6 +165,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/validate_conditional_convergence_protocol.py`
 - `scripts/validate_dem_input_conditioning_qa.py`
 - `scripts/validate_output_budget_reducer_gate.py`
+- `scripts/validate_multi_zone_reducer_pressure_gate.py`
 - `scripts/validate_physical_frequency_reducer_preconditions.py`
 - `scripts/validate_physical_source_frequency_design_gate.py`
 - `scripts/validate_pilot_ensemble_feasibility.py`

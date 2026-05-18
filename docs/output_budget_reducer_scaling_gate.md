@@ -81,6 +81,11 @@ The gate must record inode use and file-family pressure:
 The gate must treat inode/file-family growth as a real scaling limit rather
 than an afterthought.
 
+The fixture-backed multi-zone reducer-pressure gate in
+`scripts/validate_multi_zone_reducer_pressure_gate.py` is the current place
+where reducer-manifest bytes, sidecar counts, per-family counts, and merge
+order are regression-checked before any larger live root is considered.
+
 ## Summary-Only Conditional Curves
 
 Scalable runs must keep conditional curves summary-only.

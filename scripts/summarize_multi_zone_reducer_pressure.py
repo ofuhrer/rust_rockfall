@@ -28,6 +28,43 @@ DEFAULT_REDUCER_CHUNK_COUNT = 4
 DEFAULT_TRAJECTORY_ROWS_PER_ZONE = 6
 DEFAULT_IMPACT_ROWS_PER_ZONE = 2
 DEFAULT_DEPOSITION_ROWS_PER_ZONE = 1
+DEFAULT_OUTPUT_FAMILY_MIX = (
+    "trajectory_csv",
+    "deposition_csv",
+    "impact_events_csv",
+    "trajectory_chunk_manifest",
+    "reducer_chunk_manifest",
+    "trajectory_execution_plan",
+    "trajectory_execution_index",
+    "trajectory_merge_state",
+    "reducer_execution_plan",
+    "reducer_execution_index",
+    "reducer_merge_state",
+    "diagnostics_json",
+    "map_package_manifest",
+    "pilot_gis_package_manifest",
+)
+PRIMARY_OUTPUT_FAMILIES = (
+    "trajectory_csv",
+    "deposition_csv",
+    "impact_events_csv",
+)
+REDUCER_MANIFEST_FAMILY = "reducer_chunk_manifest"
+SIDECAR_OUTPUT_FAMILIES = (
+    "trajectory_chunk_manifest",
+    "trajectory_execution_plan",
+    "trajectory_execution_index",
+    "trajectory_merge_state",
+    "reducer_execution_plan",
+    "reducer_execution_index",
+    "reducer_merge_state",
+    "diagnostics_json",
+    "map_package_manifest",
+    "pilot_gis_package_manifest",
+)
+ALLOWED_OUTPUT_FAMILIES = tuple(
+    dict.fromkeys(DEFAULT_OUTPUT_FAMILY_MIX + PRIMARY_OUTPUT_FAMILIES + (REDUCER_MANIFEST_FAMILY,) + SIDECAR_OUTPUT_FAMILIES)
+)
 
 
 class MultiZoneReducerPressureError(ValueError):
@@ -40,6 +77,7 @@ class ProbeMaterialization:
     release_zone_count: int
     reducer_worker_count: int
     reducer_chunk_count: int
+    output_family_mix: tuple[str, ...]
     trajectory_chunk_count: int
     scenario_count: int
     command_plan_path: Path
@@ -59,6 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--release-zone-count", type=int, default=DEFAULT_RELEASE_ZONE_COUNT)
     parser.add_argument("--reducer-workers", type=int, default=DEFAULT_REDUCER_WORKERS)
     parser.add_argument("--reducer-chunk-count", type=int, default=DEFAULT_REDUCER_CHUNK_COUNT)
+    parser.add_argument(
+        "--output-family-mix",
+        default=None,
+        help="Comma-separated output families to materialize. Defaults to the deterministic probe mix.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
@@ -66,12 +109,14 @@ def main(argv: list[str] | None = None) -> int:
 
     probe_root = args.probe_root
     try:
+        output_family_mix = normalize_output_family_mix(args.output_family_mix)
         if args.materialize_root is not None:
             materialize_probe_root(
                 args.materialize_root,
                 release_zone_count=args.release_zone_count,
                 reducer_worker_count=args.reducer_workers,
                 reducer_chunk_count=args.reducer_chunk_count,
+                output_family_mix=output_family_mix,
             )
             probe_root = args.materialize_root
         if probe_root is None:
@@ -101,6 +146,7 @@ def materialize_probe_root(
     release_zone_count: int = DEFAULT_RELEASE_ZONE_COUNT,
     reducer_worker_count: int = DEFAULT_REDUCER_WORKERS,
     reducer_chunk_count: int = DEFAULT_REDUCER_CHUNK_COUNT,
+    output_family_mix: tuple[str, ...] | str | None = None,
 ) -> ProbeMaterialization:
     if release_zone_count <= 1:
         raise MultiZoneReducerPressureError("release_zone_count must be greater than 1")
@@ -111,6 +157,7 @@ def materialize_probe_root(
     if reducer_chunk_count > release_zone_count:
         raise MultiZoneReducerPressureError("reducer_chunk_count cannot exceed release_zone_count")
 
+    output_family_mix = normalize_output_family_mix(output_family_mix)
     probe_root = probe_root.resolve()
     if probe_root.exists():
         shutil.rmtree(probe_root)
@@ -138,12 +185,14 @@ def materialize_probe_root(
         scenario_rows=scenario_rows,
         trajectory_execution=trajectory_execution,
         reducer_execution=reducer_execution,
+        output_family_mix=output_family_mix,
     )
     command_plan = build_command_plan(
         probe_root=probe_root,
         release_zone_count=release_zone_count,
         reducer_worker_count=reducer_worker_count,
         reducer_chunk_count=reducer_chunk_count,
+        output_family_mix=output_family_mix,
     )
 
     probe_manifest_path = input_root / "multi_zone_reducer_pressure_probe_manifest.json"
@@ -163,6 +212,7 @@ def materialize_probe_root(
         release_zones=release_zones,
         trajectory_chunks=trajectory_chunks,
         reducer_chunks=reducer_chunks,
+        output_family_mix=output_family_mix,
     )
     output_manifest = build_output_manifest(
         probe_root=probe_root,
@@ -171,6 +221,7 @@ def materialize_probe_root(
         trajectory_execution=trajectory_execution,
         reducer_execution=reducer_execution,
         outputs=output_entries,
+        output_family_mix=output_family_mix,
     )
     write_json(output_manifest_path, output_manifest)
 
@@ -179,6 +230,7 @@ def materialize_probe_root(
         release_zone_count=release_zone_count,
         reducer_worker_count=reducer_worker_count,
         reducer_chunk_count=reducer_chunk_count,
+        output_family_mix=output_family_mix,
         trajectory_chunk_count=len(trajectory_chunks),
         scenario_count=len(scenario_rows),
         command_plan_path=command_plan_path,
@@ -204,6 +256,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     output_manifest = load_json(output_manifest_path)
 
     release_zones = ensure_list_of_strings(probe_manifest.get("release_zones"), "probe_manifest.release_zones")
+    output_family_mix = normalize_output_family_mix(probe_manifest.get("output_family_mix"))
     scenario_rows = load_csv_rows(probe_root / "input" / "scenario_table.csv")
     outputs = ensure_list_of_mappings(output_manifest.get("outputs"), "output_manifest.outputs")
     output_family_file_counts, output_family_bytes = aggregate_output_families(outputs)
@@ -222,12 +275,19 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     output_root = probe_root / "output"
     output_file_count = sum(1 for path in output_root.rglob("*") if path.is_file())
     output_byte_count = sum(path.stat().st_size for path in output_root.rglob("*") if path.is_file())
+    budget_totals = measure_output_budget(
+        output_family_file_counts=output_family_file_counts,
+        output_family_bytes=output_family_bytes,
+    )
 
     bottleneck_labels = classify_bottlenecks(
         manifest_size_bytes=manifest_size_bytes,
         manifest_file_count=len(manifest_size_by_path),
         output_file_count=output_file_count,
         output_byte_count=output_byte_count,
+        reducer_manifest_bytes=budget_totals["reducer_manifest_bytes"],
+        sidecar_file_count=budget_totals["sidecar_file_count"],
+        sidecar_byte_count=budget_totals["sidecar_byte_count"],
         reducer_wall_seconds=number_or_zero(output_manifest.get("performance", {}).get("total_wall_seconds")),
         merge_order=str(reducer_execution.get("merge_order") or ""),
         merge_order_independent=bool(reducer_execution.get("merge_order_independent")),
@@ -242,12 +302,15 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "probe_manifest_path": str(probe_manifest_path),
         "output_manifest_path": str(output_manifest_path),
         "release_zone_count": len(release_zones),
+        "output_family_mix": list(output_family_mix),
         "scenario_count": len(scenario_rows),
         "trajectory_chunk_count": number_or_zero(trajectory_execution.get("chunk_count")),
         "reducer_worker_count": number_or_zero(reducer_execution.get("worker_count")),
         "reducer_chunk_count": number_or_zero(reducer_execution.get("chunk_count")),
         "merge_order": reducer_execution.get("merge_order"),
         "merge_order_independent": bool(reducer_execution.get("merge_order_independent")),
+        "merge_order_deterministic": bool(reducer_execution.get("merge_order_independent"))
+        and str(reducer_execution.get("merge_order") or "") == "sorted_chunk_id",
         "reducer_wall_time_seconds": number_or_zero(output_manifest.get("performance", {}).get("total_wall_seconds")),
         "manifest_size_bytes": manifest_size_bytes,
         "manifest_size_by_path": manifest_size_by_path,
@@ -255,6 +318,16 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "root_byte_count": root_byte_count,
         "output_file_count": output_file_count,
         "output_byte_count": output_byte_count,
+        "reducer_manifest_bytes": budget_totals["reducer_manifest_bytes"],
+        "reducer_manifest_file_count": budget_totals["reducer_manifest_file_count"],
+        "sidecar_file_count": budget_totals["sidecar_file_count"],
+        "sidecar_byte_count": budget_totals["sidecar_byte_count"],
+        "sidecar_family_file_counts": budget_totals["sidecar_family_file_counts"],
+        "sidecar_family_bytes": budget_totals["sidecar_family_bytes"],
+        "primary_output_file_count": budget_totals["primary_output_file_count"],
+        "primary_output_byte_count": budget_totals["primary_output_byte_count"],
+        "primary_output_family_file_counts": budget_totals["primary_output_family_file_counts"],
+        "primary_output_family_bytes": budget_totals["primary_output_family_bytes"],
         "output_family_file_counts": output_family_file_counts,
         "output_family_bytes": output_family_bytes,
         "largest_output_families_by_bytes": largest_families(output_family_bytes, output_family_file_counts),
@@ -282,10 +355,11 @@ def build_report(probe_root: Path) -> dict[str, Any]:
             output_file_count=output_file_count,
             output_family_bytes=output_family_bytes,
             output_family_file_counts=output_family_file_counts,
+            output_family_mix=output_family_mix,
         ),
         "measurement_command": (
             "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
-            f"--materialize-root {probe_root} --format json"
+            f"--materialize-root {probe_root} --output-family-mix {','.join(output_family_mix)} --format json"
         ),
     }
     return report
@@ -388,6 +462,7 @@ def build_probe_manifest(
     scenario_rows: list[dict[str, Any]],
     trajectory_execution: dict[str, Any],
     reducer_execution: dict[str, Any],
+    output_family_mix: tuple[str, ...],
 ) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -400,6 +475,7 @@ def build_probe_manifest(
         "reducer_chunk_count": reducer_execution["chunk_count"],
         "merge_order": reducer_execution["merge_order"],
         "merge_order_independent": reducer_execution["merge_order_independent"],
+        "output_family_mix": list(output_family_mix),
     }
 
 
@@ -409,7 +485,9 @@ def build_command_plan(
     release_zone_count: int,
     reducer_worker_count: int,
     reducer_chunk_count: int,
+    output_family_mix: tuple[str, ...],
 ) -> dict[str, Any]:
+    output_family_mix = normalize_output_family_mix(output_family_mix)
     return {
         "schema_version": "multi_zone_reducer_pressure_command_plan_v1",
         "probe_root": str(probe_root),
@@ -430,6 +508,8 @@ def build_command_plan(
                     str(reducer_worker_count),
                     "--reducer-chunk-count",
                     str(reducer_chunk_count),
+                    "--output-family-mix",
+                    ",".join(output_family_mix),
                     "--format",
                     "json",
                 ],
@@ -468,54 +548,67 @@ def build_output_entries(
     release_zones: list[dict[str, Any]],
     trajectory_chunks: list[dict[str, Any]],
     reducer_chunks: list[dict[str, Any]],
+    output_family_mix: tuple[str, ...],
 ) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
+    output_family_mix_set = set(output_family_mix)
     for index, zone in enumerate(release_zones):
         trajectory_rows = build_trajectory_rows(zone, index)
         deposition_rows = build_deposition_rows(zone, index)
         impact_rows = build_impact_rows(zone, index)
 
-        trajectory_path = trajectory_root / f"{zone['source_zone_id']}_trajectory.csv"
-        deposition_path = deposition_root / f"{zone['source_zone_id']}_deposition.csv"
-        impact_path = impact_root / f"{zone['source_zone_id']}_impact_events.csv"
-        trajectory_chunk_path = trajectory_chunk_root / f"{zone['trajectory_chunk_id']}.json"
-
-        write_csv(trajectory_path, fieldnames=("step", "source_zone_id", "sample_id", "travel_time_s", "travel_distance_m"), rows=trajectory_rows)
-        write_csv(deposition_path, fieldnames=("source_zone_id", "deposition_x_m", "deposition_y_m", "deposition_mass_kg"), rows=deposition_rows)
-        write_csv(impact_path, fieldnames=("source_zone_id", "impact_id", "impact_energy_j"), rows=impact_rows)
-        write_json(
-            trajectory_chunk_path,
-            {
-                "schema_version": "trajectory_chunk_manifest_v1",
-                "chunk_id": zone["trajectory_chunk_id"],
-                "source_zone_id": zone["source_zone_id"],
-                "trajectory_row_count": len(trajectory_rows),
-                "merge_order": "sorted_chunk_id",
-            },
-        )
-
-        outputs.extend(
-            [
-                output_manifest_entry(trajectory_path, "trajectory_csv", "csv", len(trajectory_rows)),
-                output_manifest_entry(deposition_path, "deposition_csv", "csv", len(deposition_rows)),
-                output_manifest_entry(impact_path, "impact_events_csv", "csv", len(impact_rows)),
-                output_manifest_entry(trajectory_chunk_path, "trajectory_chunk_manifest", "json", 1),
-            ]
-        )
+        if "trajectory_csv" in output_family_mix_set:
+            trajectory_path = trajectory_root / f"{zone['source_zone_id']}_trajectory.csv"
+            write_csv(
+                trajectory_path,
+                fieldnames=("step", "source_zone_id", "sample_id", "travel_time_s", "travel_distance_m"),
+                rows=trajectory_rows,
+            )
+            outputs.append(output_manifest_entry(trajectory_path, "trajectory_csv", "csv", len(trajectory_rows)))
+        if "deposition_csv" in output_family_mix_set:
+            deposition_path = deposition_root / f"{zone['source_zone_id']}_deposition.csv"
+            write_csv(
+                deposition_path,
+                fieldnames=("source_zone_id", "deposition_x_m", "deposition_y_m", "deposition_mass_kg"),
+                rows=deposition_rows,
+            )
+            outputs.append(output_manifest_entry(deposition_path, "deposition_csv", "csv", len(deposition_rows)))
+        if "impact_events_csv" in output_family_mix_set:
+            impact_path = impact_root / f"{zone['source_zone_id']}_impact_events.csv"
+            write_csv(
+                impact_path,
+                fieldnames=("source_zone_id", "impact_id", "impact_energy_j"),
+                rows=impact_rows,
+            )
+            outputs.append(output_manifest_entry(impact_path, "impact_events_csv", "csv", len(impact_rows)))
+        if "trajectory_chunk_manifest" in output_family_mix_set:
+            trajectory_chunk_path = trajectory_chunk_root / f"{zone['trajectory_chunk_id']}.json"
+            write_json(
+                trajectory_chunk_path,
+                {
+                    "schema_version": "trajectory_chunk_manifest_v1",
+                    "chunk_id": zone["trajectory_chunk_id"],
+                    "source_zone_id": zone["source_zone_id"],
+                    "trajectory_row_count": len(trajectory_rows),
+                    "merge_order": "sorted_chunk_id",
+                },
+            )
+            outputs.append(output_manifest_entry(trajectory_chunk_path, "trajectory_chunk_manifest", "json", 1))
 
     for chunk in reducer_chunks:
-        chunk_path = reducer_chunk_root / f"{chunk['chunk_id']}.json"
-        write_json(
-            chunk_path,
-            {
-                "schema_version": "reducer_chunk_manifest_v1",
-                "chunk_id": chunk["chunk_id"],
-                "source_zone_ids": chunk["source_zone_ids"],
-                "source_zone_count": chunk["source_zone_count"],
-                "merge_order": "sorted_chunk_id",
-            },
-        )
-        outputs.append(output_manifest_entry(chunk_path, "reducer_chunk_manifest", "json", 1))
+        if "reducer_chunk_manifest" in output_family_mix_set:
+            chunk_path = reducer_chunk_root / f"{chunk['chunk_id']}.json"
+            write_json(
+                chunk_path,
+                {
+                    "schema_version": "reducer_chunk_manifest_v1",
+                    "chunk_id": chunk["chunk_id"],
+                    "source_zone_ids": chunk["source_zone_ids"],
+                    "source_zone_count": chunk["source_zone_count"],
+                    "merge_order": "sorted_chunk_id",
+                },
+            )
+            outputs.append(output_manifest_entry(chunk_path, "reducer_chunk_manifest", "json", 1))
 
     trajectory_plan_path = trajectory_chunk_root.parent / "trajectory_execution_plan.json"
     trajectory_index_path = trajectory_chunk_root.parent / "trajectory_execution_index.json"
@@ -527,74 +620,79 @@ def build_output_entries(
     map_manifest_path = trajectory_chunk_root.parent / "map_package_manifest.json"
     pilot_gis_manifest_path = trajectory_chunk_root.parent / "pilot_gis_package_manifest.json"
 
-    write_json(trajectory_plan_path, {"schema_version": "trajectory_execution_plan_v1", "chunk_count": len(trajectory_chunks)})
-    write_json(
-        trajectory_index_path,
-        {
-            "schema_version": "trajectory_execution_index_v1",
-            "chunk_count": len(trajectory_chunks),
-            "chunk_ids": [chunk["chunk_id"] for chunk in trajectory_chunks],
-        },
-    )
-    write_json(
-        trajectory_merge_state_path,
-        {
-            "schema_version": "trajectory_merge_state_v1",
-            "chunk_count": len(trajectory_chunks),
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        reducer_plan_path,
-        {"schema_version": "reducer_execution_plan_v1", "chunk_count": len(reducer_chunks)},
-    )
-    write_json(
-        reducer_index_path,
-        {
-            "schema_version": "reducer_execution_index_v1",
-            "chunk_count": len(reducer_chunks),
-            "chunk_ids": [chunk["chunk_id"] for chunk in reducer_chunks],
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        reducer_merge_state_path,
-        {
-            "schema_version": "reducer_merge_state_v1",
-            "chunk_count": len(reducer_chunks),
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        diagnostics_path,
-        {
-            "schema_version": "multi_zone_reducer_pressure_diagnostics_v1",
-            "note": "deterministic scratch-root probe",
-            "release_zone_count": len(release_zones),
-        },
-    )
-    write_json(
-        map_manifest_path,
-        {"schema_version": "map_package_manifest_v1", "output_family": "map_package_manifest"},
-    )
-    write_json(
-        pilot_gis_manifest_path,
-        {"schema_version": "pilot_gis_package_manifest_v1", "output_family": "pilot_gis_package_manifest"},
-    )
-
-    outputs.extend(
-        [
-            output_manifest_entry(trajectory_plan_path, "trajectory_execution_plan", "json", 1),
-            output_manifest_entry(trajectory_index_path, "trajectory_execution_index", "json", 1),
-            output_manifest_entry(trajectory_merge_state_path, "trajectory_merge_state", "json", 1),
-            output_manifest_entry(reducer_plan_path, "reducer_execution_plan", "json", 1),
-            output_manifest_entry(reducer_index_path, "reducer_execution_index", "json", 1),
-            output_manifest_entry(reducer_merge_state_path, "reducer_merge_state", "json", 1),
-            output_manifest_entry(diagnostics_path, "diagnostics_json", "json", 1),
-            output_manifest_entry(map_manifest_path, "map_package_manifest", "json", 1),
-            output_manifest_entry(pilot_gis_manifest_path, "pilot_gis_package_manifest", "json", 1),
-        ]
-    )
+    if "trajectory_execution_plan" in output_family_mix_set:
+        write_json(trajectory_plan_path, {"schema_version": "trajectory_execution_plan_v1", "chunk_count": len(trajectory_chunks)})
+        outputs.append(output_manifest_entry(trajectory_plan_path, "trajectory_execution_plan", "json", 1))
+    if "trajectory_execution_index" in output_family_mix_set:
+        write_json(
+            trajectory_index_path,
+            {
+                "schema_version": "trajectory_execution_index_v1",
+                "chunk_count": len(trajectory_chunks),
+                "chunk_ids": [chunk["chunk_id"] for chunk in trajectory_chunks],
+            },
+        )
+        outputs.append(output_manifest_entry(trajectory_index_path, "trajectory_execution_index", "json", 1))
+    if "trajectory_merge_state" in output_family_mix_set:
+        write_json(
+            trajectory_merge_state_path,
+            {
+                "schema_version": "trajectory_merge_state_v1",
+                "chunk_count": len(trajectory_chunks),
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(trajectory_merge_state_path, "trajectory_merge_state", "json", 1))
+    if "reducer_execution_plan" in output_family_mix_set:
+        write_json(
+            reducer_plan_path,
+            {"schema_version": "reducer_execution_plan_v1", "chunk_count": len(reducer_chunks)},
+        )
+        outputs.append(output_manifest_entry(reducer_plan_path, "reducer_execution_plan", "json", 1))
+    if "reducer_execution_index" in output_family_mix_set:
+        write_json(
+            reducer_index_path,
+            {
+                "schema_version": "reducer_execution_index_v1",
+                "chunk_count": len(reducer_chunks),
+                "chunk_ids": [chunk["chunk_id"] for chunk in reducer_chunks],
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(reducer_index_path, "reducer_execution_index", "json", 1))
+    if "reducer_merge_state" in output_family_mix_set:
+        write_json(
+            reducer_merge_state_path,
+            {
+                "schema_version": "reducer_merge_state_v1",
+                "chunk_count": len(reducer_chunks),
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(reducer_merge_state_path, "reducer_merge_state", "json", 1))
+    if "diagnostics_json" in output_family_mix_set:
+        write_json(
+            diagnostics_path,
+            {
+                "schema_version": "multi_zone_reducer_pressure_diagnostics_v1",
+                "note": "deterministic scratch-root probe",
+                "release_zone_count": len(release_zones),
+                "output_family_mix": list(output_family_mix),
+            },
+        )
+        outputs.append(output_manifest_entry(diagnostics_path, "diagnostics_json", "json", 1))
+    if "map_package_manifest" in output_family_mix_set:
+        write_json(
+            map_manifest_path,
+            {"schema_version": "map_package_manifest_v1", "output_family": "map_package_manifest"},
+        )
+        outputs.append(output_manifest_entry(map_manifest_path, "map_package_manifest", "json", 1))
+    if "pilot_gis_package_manifest" in output_family_mix_set:
+        write_json(
+            pilot_gis_manifest_path,
+            {"schema_version": "pilot_gis_package_manifest_v1", "output_family": "pilot_gis_package_manifest"},
+        )
+        outputs.append(output_manifest_entry(pilot_gis_manifest_path, "pilot_gis_package_manifest", "json", 1))
     return outputs
 
 
@@ -606,11 +704,13 @@ def build_output_manifest(
     trajectory_execution: dict[str, Any],
     reducer_execution: dict[str, Any],
     outputs: list[dict[str, Any]],
+    output_family_mix: tuple[str, ...],
 ) -> dict[str, Any]:
     total_file_count = sum(number_or_zero(output.get("file_count")) for output in outputs)
     total_bytes = sum(number_or_zero(output.get("total_bytes")) for output in outputs)
     reducer_wall_seconds = round(0.75 + 0.12 * len(release_zones) + 0.2 * len(reducer_execution.get("chunk_ids") or []), 2)
     output_write_seconds = round(0.05 * len(outputs) + 0.01 * len(release_zones), 2)
+    output_family_mix_set = set(output_family_mix)
     return {
         "schema_version": "run_manifest_v1",
         "case_id": "multi_zone_reducer_pressure_probe",
@@ -644,15 +744,26 @@ def build_output_manifest(
         "reducer_execution": reducer_execution,
         "outputs": outputs,
         "cellwise_layers": [
-            {"name": "reach_probability", "kind": "trajectory_csv"},
-            {"name": "impact_energy", "kind": "impact_events_csv"},
-            {"name": "deposition_mass", "kind": "deposition_csv"},
+            layer
+            for layer in (
+                {"name": "reach_probability", "kind": "trajectory_csv"}
+                if "trajectory_csv" in output_family_mix_set
+                else None,
+                {"name": "impact_energy", "kind": "impact_events_csv"}
+                if "impact_events_csv" in output_family_mix_set
+                else None,
+                {"name": "deposition_mass", "kind": "deposition_csv"}
+                if "deposition_csv" in output_family_mix_set
+                else None,
+            )
+            if layer is not None
         ],
         "source_zone_summary": {
             "release_zone_count": len(release_zones),
             "scenario_count": len(scenario_rows),
             "release_zone_ids": [zone["source_zone_id"] for zone in release_zones],
         },
+        "output_family_mix": list(output_family_mix),
     }
 
 
@@ -789,13 +900,16 @@ def classify_bottlenecks(
     manifest_file_count: int,
     output_file_count: int,
     output_byte_count: int,
+    reducer_manifest_bytes: int,
+    sidecar_file_count: int,
+    sidecar_byte_count: int,
     reducer_wall_seconds: float,
     merge_order: str,
     merge_order_independent: bool,
 ) -> dict[str, dict[str, Any]]:
     merge_ok = merge_order == "sorted_chunk_id" and merge_order_independent
-    manifest_pressure = manifest_size_bytes >= 12_000 or manifest_file_count >= 3
-    output_pressure = output_file_count >= 50 or output_byte_count >= 50_000
+    manifest_pressure = manifest_size_bytes >= 12_000 or reducer_manifest_bytes >= 4_000 or manifest_file_count >= 3
+    output_pressure = output_file_count >= 50 or output_byte_count >= 50_000 or sidecar_file_count >= 12 or sidecar_byte_count >= 20_000
     runtime_pressure = reducer_wall_seconds >= 2.0
     probe_blocker = "probe_ready"
     reason = "merge order deterministic and pressure remains bounded"
@@ -821,11 +935,14 @@ def classify_bottlenecks(
         },
         "manifest_size": {
             "label": "manifest_pressure" if manifest_pressure else "manifest_bounded",
-            "reason": f"manifest bundle size is {manifest_size_bytes} bytes",
+            "reason": f"manifest bundle size is {manifest_size_bytes} bytes and reducer manifest bytes are {reducer_manifest_bytes} bytes",
         },
         "output_pressure": {
             "label": "file_family_pressure" if output_pressure else "output_pressure_bounded",
-            "reason": f"output tree contains {output_file_count} files and {output_byte_count} bytes",
+            "reason": (
+                f"output tree contains {output_file_count} files, {output_byte_count} bytes, "
+                f"and {sidecar_file_count} sidecar files"
+            ),
         },
         "reducer_runtime": {
             "label": "reducer_runtime_pressure" if runtime_pressure else "reducer_runtime_bounded",
@@ -861,6 +978,7 @@ def measured_reducer_constraints(
     output_file_count: int,
     output_family_bytes: dict[str, int],
     output_family_file_counts: dict[str, int],
+    output_family_mix: tuple[str, ...],
 ) -> dict[str, Any]:
     return {
         "schema_version": "multi_zone_reducer_constraints_v1",
@@ -869,11 +987,12 @@ def measured_reducer_constraints(
             "source_script": "scripts/summarize_multi_zone_reducer_pressure.py",
             "source_command": (
                 "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
-                f"--materialize-root {probe_root} --format json"
+                f"--materialize-root {probe_root} --output-family-mix {','.join(output_family_mix)} --format json"
             ),
             "source_document": "docs/multi_zone_reducer_pressure_probe.md",
             "probe_root": str(probe_root),
             "probe_status": probe_status,
+            "output_family_mix": list(output_family_mix),
         },
         "simultaneous_release_zone_batch_max": recommended_constraints["simultaneous_release_zone_batch_max"],
         "reducer_chunk_count_max": recommended_constraints["reducer_chunk_count_max"],
@@ -901,54 +1020,67 @@ def build_output_entries(
     release_zones: list[dict[str, Any]],
     trajectory_chunks: list[dict[str, Any]],
     reducer_chunks: list[dict[str, Any]],
+    output_family_mix: tuple[str, ...],
 ) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
+    output_family_mix_set = set(output_family_mix)
     for index, zone in enumerate(release_zones):
         trajectory_rows = build_trajectory_rows(zone, index)
         deposition_rows = build_deposition_rows(zone, index)
         impact_rows = build_impact_rows(zone, index)
 
-        trajectory_path = trajectory_root / f"{zone['source_zone_id']}_trajectory.csv"
-        deposition_path = deposition_root / f"{zone['source_zone_id']}_deposition.csv"
-        impact_path = impact_root / f"{zone['source_zone_id']}_impact_events.csv"
-        trajectory_chunk_path = trajectory_chunk_root / f"{zone['trajectory_chunk_id']}.json"
-
-        write_csv(trajectory_path, fieldnames=("step", "source_zone_id", "sample_id", "travel_time_s", "travel_distance_m"), rows=trajectory_rows)
-        write_csv(deposition_path, fieldnames=("source_zone_id", "deposition_x_m", "deposition_y_m", "deposition_mass_kg"), rows=deposition_rows)
-        write_csv(impact_path, fieldnames=("source_zone_id", "impact_id", "impact_energy_j"), rows=impact_rows)
-        write_json(
-            trajectory_chunk_path,
-            {
-                "schema_version": "trajectory_chunk_manifest_v1",
-                "chunk_id": zone["trajectory_chunk_id"],
-                "source_zone_id": zone["source_zone_id"],
-                "trajectory_row_count": len(trajectory_rows),
-                "merge_order": "sorted_chunk_id",
-            },
-        )
-
-        outputs.extend(
-            [
-                output_manifest_entry(trajectory_path, "trajectory_csv", "csv", len(trajectory_rows)),
-                output_manifest_entry(deposition_path, "deposition_csv", "csv", len(deposition_rows)),
-                output_manifest_entry(impact_path, "impact_events_csv", "csv", len(impact_rows)),
-                output_manifest_entry(trajectory_chunk_path, "trajectory_chunk_manifest", "json", 1),
-            ]
-        )
+        if "trajectory_csv" in output_family_mix_set:
+            trajectory_path = trajectory_root / f"{zone['source_zone_id']}_trajectory.csv"
+            write_csv(
+                trajectory_path,
+                fieldnames=("step", "source_zone_id", "sample_id", "travel_time_s", "travel_distance_m"),
+                rows=trajectory_rows,
+            )
+            outputs.append(output_manifest_entry(trajectory_path, "trajectory_csv", "csv", len(trajectory_rows)))
+        if "deposition_csv" in output_family_mix_set:
+            deposition_path = deposition_root / f"{zone['source_zone_id']}_deposition.csv"
+            write_csv(
+                deposition_path,
+                fieldnames=("source_zone_id", "deposition_x_m", "deposition_y_m", "deposition_mass_kg"),
+                rows=deposition_rows,
+            )
+            outputs.append(output_manifest_entry(deposition_path, "deposition_csv", "csv", len(deposition_rows)))
+        if "impact_events_csv" in output_family_mix_set:
+            impact_path = impact_root / f"{zone['source_zone_id']}_impact_events.csv"
+            write_csv(
+                impact_path,
+                fieldnames=("source_zone_id", "impact_id", "impact_energy_j"),
+                rows=impact_rows,
+            )
+            outputs.append(output_manifest_entry(impact_path, "impact_events_csv", "csv", len(impact_rows)))
+        if "trajectory_chunk_manifest" in output_family_mix_set:
+            trajectory_chunk_path = trajectory_chunk_root / f"{zone['trajectory_chunk_id']}.json"
+            write_json(
+                trajectory_chunk_path,
+                {
+                    "schema_version": "trajectory_chunk_manifest_v1",
+                    "chunk_id": zone["trajectory_chunk_id"],
+                    "source_zone_id": zone["source_zone_id"],
+                    "trajectory_row_count": len(trajectory_rows),
+                    "merge_order": "sorted_chunk_id",
+                },
+            )
+            outputs.append(output_manifest_entry(trajectory_chunk_path, "trajectory_chunk_manifest", "json", 1))
 
     for chunk in reducer_chunks:
-        chunk_path = reducer_chunk_root / f"{chunk['chunk_id']}.json"
-        write_json(
-            chunk_path,
-            {
-                "schema_version": "reducer_chunk_manifest_v1",
-                "chunk_id": chunk["chunk_id"],
-                "source_zone_ids": chunk["source_zone_ids"],
-                "source_zone_count": chunk["source_zone_count"],
-                "merge_order": "sorted_chunk_id",
-            },
-        )
-        outputs.append(output_manifest_entry(chunk_path, "reducer_chunk_manifest", "json", 1))
+        if "reducer_chunk_manifest" in output_family_mix_set:
+            chunk_path = reducer_chunk_root / f"{chunk['chunk_id']}.json"
+            write_json(
+                chunk_path,
+                {
+                    "schema_version": "reducer_chunk_manifest_v1",
+                    "chunk_id": chunk["chunk_id"],
+                    "source_zone_ids": chunk["source_zone_ids"],
+                    "source_zone_count": chunk["source_zone_count"],
+                    "merge_order": "sorted_chunk_id",
+                },
+            )
+            outputs.append(output_manifest_entry(chunk_path, "reducer_chunk_manifest", "json", 1))
 
     trajectory_plan_path = trajectory_chunk_root.parent / "trajectory_execution_plan.json"
     trajectory_index_path = trajectory_chunk_root.parent / "trajectory_execution_index.json"
@@ -960,74 +1092,82 @@ def build_output_entries(
     map_manifest_path = trajectory_chunk_root.parent / "map_package_manifest.json"
     pilot_gis_manifest_path = trajectory_chunk_root.parent / "pilot_gis_package_manifest.json"
 
-    write_json(trajectory_plan_path, {"schema_version": "trajectory_execution_plan_v1", "chunk_count": len(trajectory_chunks)})
-    write_json(
-        trajectory_index_path,
-        {
-            "schema_version": "trajectory_execution_index_v1",
-            "chunk_count": len(trajectory_chunks),
-            "chunk_ids": [chunk["chunk_id"] for chunk in trajectory_chunks],
-        },
-    )
-    write_json(
-        trajectory_merge_state_path,
-        {
-            "schema_version": "trajectory_merge_state_v1",
-            "chunk_count": len(trajectory_chunks),
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        reducer_plan_path,
-        {"schema_version": "reducer_execution_plan_v1", "chunk_count": len(reducer_chunks)},
-    )
-    write_json(
-        reducer_index_path,
-        {
-            "schema_version": "reducer_execution_index_v1",
-            "chunk_count": len(reducer_chunks),
-            "chunk_ids": [chunk["chunk_id"] for chunk in reducer_chunks],
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        reducer_merge_state_path,
-        {
-            "schema_version": "reducer_merge_state_v1",
-            "chunk_count": len(reducer_chunks),
-            "merge_order": "sorted_chunk_id",
-        },
-    )
-    write_json(
-        diagnostics_path,
-        {
-            "schema_version": "multi_zone_reducer_pressure_diagnostics_v1",
-            "note": "deterministic scratch-root probe",
-            "release_zone_count": len(release_zones),
-        },
-    )
-    write_json(
-        map_manifest_path,
-        {"schema_version": "map_package_manifest_v1", "output_family": "map_package_manifest"},
-    )
-    write_json(
-        pilot_gis_manifest_path,
-        {"schema_version": "pilot_gis_package_manifest_v1", "output_family": "pilot_gis_package_manifest"},
-    )
-
-    outputs.extend(
-        [
-            output_manifest_entry(trajectory_plan_path, "trajectory_execution_plan", "json", 1),
-            output_manifest_entry(trajectory_index_path, "trajectory_execution_index", "json", 1),
-            output_manifest_entry(trajectory_merge_state_path, "trajectory_merge_state", "json", 1),
-            output_manifest_entry(reducer_plan_path, "reducer_execution_plan", "json", 1),
-            output_manifest_entry(reducer_index_path, "reducer_execution_index", "json", 1),
-            output_manifest_entry(reducer_merge_state_path, "reducer_merge_state", "json", 1),
-            output_manifest_entry(diagnostics_path, "diagnostics_json", "json", 1),
-            output_manifest_entry(map_manifest_path, "map_package_manifest", "json", 1),
-            output_manifest_entry(pilot_gis_manifest_path, "pilot_gis_package_manifest", "json", 1),
-        ]
-    )
+    if "trajectory_execution_plan" in output_family_mix_set:
+        write_json(
+            trajectory_plan_path,
+            {"schema_version": "trajectory_execution_plan_v1", "chunk_count": len(release_zones)},
+        )
+        outputs.append(output_manifest_entry(trajectory_plan_path, "trajectory_execution_plan", "json", 1))
+    if "trajectory_execution_index" in output_family_mix_set:
+        write_json(
+            trajectory_index_path,
+            {
+                "schema_version": "trajectory_execution_index_v1",
+                "chunk_count": len(trajectory_chunks),
+                "chunk_ids": [chunk["chunk_id"] for chunk in trajectory_chunks],
+            },
+        )
+        outputs.append(output_manifest_entry(trajectory_index_path, "trajectory_execution_index", "json", 1))
+    if "trajectory_merge_state" in output_family_mix_set:
+        write_json(
+            trajectory_merge_state_path,
+            {
+                "schema_version": "trajectory_merge_state_v1",
+                "chunk_count": len(trajectory_chunks),
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(trajectory_merge_state_path, "trajectory_merge_state", "json", 1))
+    if "reducer_execution_plan" in output_family_mix_set:
+        write_json(
+            reducer_plan_path,
+            {"schema_version": "reducer_execution_plan_v1", "chunk_count": len(reducer_chunks)},
+        )
+        outputs.append(output_manifest_entry(reducer_plan_path, "reducer_execution_plan", "json", 1))
+    if "reducer_execution_index" in output_family_mix_set:
+        write_json(
+            reducer_index_path,
+            {
+                "schema_version": "reducer_execution_index_v1",
+                "chunk_count": len(reducer_chunks),
+                "chunk_ids": [chunk["chunk_id"] for chunk in reducer_chunks],
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(reducer_index_path, "reducer_execution_index", "json", 1))
+    if "reducer_merge_state" in output_family_mix_set:
+        write_json(
+            reducer_merge_state_path,
+            {
+                "schema_version": "reducer_merge_state_v1",
+                "chunk_count": len(reducer_chunks),
+                "merge_order": "sorted_chunk_id",
+            },
+        )
+        outputs.append(output_manifest_entry(reducer_merge_state_path, "reducer_merge_state", "json", 1))
+    if "diagnostics_json" in output_family_mix_set:
+        write_json(
+            diagnostics_path,
+            {
+                "schema_version": "multi_zone_reducer_pressure_diagnostics_v1",
+                "note": "deterministic scratch-root probe",
+                "release_zone_count": len(release_zones),
+                "output_family_mix": list(output_family_mix),
+            },
+        )
+        outputs.append(output_manifest_entry(diagnostics_path, "diagnostics_json", "json", 1))
+    if "map_package_manifest" in output_family_mix_set:
+        write_json(
+            map_manifest_path,
+            {"schema_version": "map_package_manifest_v1", "output_family": "map_package_manifest"},
+        )
+        outputs.append(output_manifest_entry(map_manifest_path, "map_package_manifest", "json", 1))
+    if "pilot_gis_package_manifest" in output_family_mix_set:
+        write_json(
+            pilot_gis_manifest_path,
+            {"schema_version": "pilot_gis_package_manifest_v1", "output_family": "pilot_gis_package_manifest"},
+        )
+        outputs.append(output_manifest_entry(pilot_gis_manifest_path, "pilot_gis_package_manifest", "json", 1))
     return outputs
 
 
@@ -1050,6 +1190,73 @@ def aggregate_output_families(outputs: list[dict[str, Any]]) -> tuple[dict[str, 
         file_counts[kind] = file_counts.get(kind, 0) + number_or_zero(entry.get("file_count"))
         byte_counts[kind] = byte_counts.get(kind, 0) + number_or_zero(entry.get("total_bytes"))
     return file_counts, byte_counts
+
+
+def measure_output_budget(
+    *,
+    output_family_file_counts: dict[str, int],
+    output_family_bytes: dict[str, int],
+) -> dict[str, Any]:
+    primary_output_family_file_counts = {
+        family: output_family_file_counts.get(family, 0)
+        for family in PRIMARY_OUTPUT_FAMILIES
+        if output_family_file_counts.get(family, 0)
+    }
+    primary_output_family_bytes = {
+        family: output_family_bytes.get(family, 0)
+        for family in PRIMARY_OUTPUT_FAMILIES
+        if output_family_bytes.get(family, 0)
+    }
+    sidecar_family_file_counts = {
+        family: output_family_file_counts.get(family, 0)
+        for family in SIDECAR_OUTPUT_FAMILIES
+        if output_family_file_counts.get(family, 0)
+    }
+    sidecar_family_bytes = {
+        family: output_family_bytes.get(family, 0)
+        for family in SIDECAR_OUTPUT_FAMILIES
+        if output_family_bytes.get(family, 0)
+    }
+    reducer_manifest_file_count = output_family_file_counts.get(REDUCER_MANIFEST_FAMILY, 0)
+    reducer_manifest_bytes = output_family_bytes.get(REDUCER_MANIFEST_FAMILY, 0)
+    return {
+        "reducer_manifest_file_count": reducer_manifest_file_count,
+        "reducer_manifest_bytes": reducer_manifest_bytes,
+        "primary_output_file_count": sum(primary_output_family_file_counts.values()),
+        "primary_output_byte_count": sum(primary_output_family_bytes.values()),
+        "primary_output_family_file_counts": primary_output_family_file_counts,
+        "primary_output_family_bytes": primary_output_family_bytes,
+        "sidecar_file_count": sum(sidecar_family_file_counts.values()),
+        "sidecar_byte_count": sum(sidecar_family_bytes.values()),
+        "sidecar_family_file_counts": sidecar_family_file_counts,
+        "sidecar_family_bytes": sidecar_family_bytes,
+    }
+
+
+def normalize_output_family_mix(output_family_mix: Any) -> tuple[str, ...]:
+    if output_family_mix is None:
+        return DEFAULT_OUTPUT_FAMILY_MIX
+    if isinstance(output_family_mix, str):
+        raw_families = [family.strip() for family in output_family_mix.split(",")]
+    else:
+        try:
+            raw_families = [str(family).strip() for family in output_family_mix]
+        except TypeError as exc:  # noqa: BLE001 - user-facing validation.
+            raise MultiZoneReducerPressureError("output_family_mix must be a string or iterable of strings") from exc
+    families: list[str] = []
+    seen: set[str] = set()
+    for family in raw_families:
+        if not family:
+            continue
+        if family not in ALLOWED_OUTPUT_FAMILIES:
+            raise MultiZoneReducerPressureError(f"unsupported output family: {family}")
+        if family in seen:
+            raise MultiZoneReducerPressureError(f"duplicate output family: {family}")
+        seen.add(family)
+        families.append(family)
+    if not families:
+        raise MultiZoneReducerPressureError("output_family_mix must include at least one family")
+    return tuple(families)
 
 
 def largest_families(
@@ -1143,18 +1350,24 @@ def render_text(report: dict[str, Any]) -> str:
     lines = [
         f"probe_status: {report['probe_status']}",
         f"release_zone_count: {report['release_zone_count']}",
+        f"output_family_mix: {report['output_family_mix']}",
         f"scenario_count: {report['scenario_count']}",
         f"trajectory_chunk_count: {report['trajectory_chunk_count']}",
         f"reducer_worker_count: {report['reducer_worker_count']}",
         f"reducer_chunk_count: {report['reducer_chunk_count']}",
         f"merge_order: {report['merge_order']}",
         f"merge_order_independent: {str(report['merge_order_independent']).lower()}",
+        f"merge_order_deterministic: {str(report['merge_order_deterministic']).lower()}",
         f"reducer_wall_time_seconds: {report['reducer_wall_time_seconds']}",
         f"manifest_size_bytes: {report['manifest_size_bytes']}",
         f"root_file_count: {report['root_file_count']}",
         f"root_byte_count: {report['root_byte_count']}",
         f"output_file_count: {report['output_file_count']}",
         f"output_byte_count: {report['output_byte_count']}",
+        f"reducer_manifest_bytes: {report['reducer_manifest_bytes']}",
+        f"reducer_manifest_file_count: {report['reducer_manifest_file_count']}",
+        f"sidecar_file_count: {report['sidecar_file_count']}",
+        f"sidecar_byte_count: {report['sidecar_byte_count']}",
         f"bottleneck_classification: {report['bottleneck_classification']}",
         f"multi_zone_dry_run_blocked: {str(report['multi_zone_dry_run_blocked']).lower()}",
         f"blocked_reason: {report['blocked_reason']}",
@@ -1179,16 +1392,22 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             f"- probe_status: `{report['probe_status']}`",
             f"- release_zone_count: `{report['release_zone_count']}`",
+            f"- output_family_mix: `{report['output_family_mix']}`",
             f"- scenario_count: `{report['scenario_count']}`",
             f"- trajectory_chunk_count: `{report['trajectory_chunk_count']}`",
             f"- reducer_worker_count: `{report['reducer_worker_count']}`",
             f"- reducer_chunk_count: `{report['reducer_chunk_count']}`",
             f"- merge_order: `{report['merge_order']}`",
             f"- merge_order_independent: `{str(report['merge_order_independent']).lower()}`",
+            f"- merge_order_deterministic: `{str(report['merge_order_deterministic']).lower()}`",
             f"- reducer_wall_time_seconds: `{report['reducer_wall_time_seconds']}`",
             f"- manifest_size_bytes: `{report['manifest_size_bytes']}`",
             f"- root_file_count: `{report['root_file_count']}`",
             f"- output_file_count: `{report['output_file_count']}`",
+            f"- reducer_manifest_bytes: `{report['reducer_manifest_bytes']}`",
+            f"- reducer_manifest_file_count: `{report['reducer_manifest_file_count']}`",
+            f"- sidecar_file_count: `{report['sidecar_file_count']}`",
+            f"- sidecar_byte_count: `{report['sidecar_byte_count']}`",
             f"- multi_zone_dry_run_blocked: `{str(report['multi_zone_dry_run_blocked']).lower()}`",
             f"- blocked_reason: {report['blocked_reason']}",
             "",
