@@ -60,7 +60,7 @@ scan thousands of lines of completed history.
 - TB-121 through TB-180: Balfrin evidence-bundle, AOI automation,
   target-area demonstration, second-site dry-run, and physical-evidence
   boundary work. Full entries are in the archive.
-- TB-181 through TB-221: retained below as the active recent execution history.
+- TB-181 through TB-238: retained below as the active recent execution history.
 
 ### TB-181: Automated Release-Zone Candidate Sweep On Real Terrain
 
@@ -1046,7 +1046,7 @@ scan thousands of lines of completed history.
 ### TB-225: Target-Area Metrics Completion Rerun Preflight
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `fa8d9b2`
 - Objective: convert the target-area metrics-completion rerun package into a strict authorization-request preflight that consumes the TB-223 Balfrin access status before any authorization review.
 - Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1071,7 +1071,7 @@ scan thousands of lines of completed history.
 ### TB-226: Smallest Multi-Zone Probe Authorization Preflight
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `c26dd4d`
 - Objective: turn the smallest bounded multi-zone handoff into a fail-closed authorization preflight that ties reviewed package state, authorization record, Balfrin read-only access, reducer budget, and the submit gate to one exact minimal run shape.
 - Files changed: `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_balfrin_authorized_multi_zone_submit.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1099,7 +1099,7 @@ scan thousands of lines of completed history.
 ### TB-227: Balfrin Post-Run Evidence Collector Rehearsal
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `2b78d4b`
 - Objective: rehearse Balfrin post-run evidence collection across complete, incomplete, missing-root, SSH-unavailable, and non-git-artifact-unavailable fixture states before any future live run is treated as evidence.
 - Files changed: `scripts/rehearse_balfrin_post_run_evidence_collector.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_post_run_evidence_collector_rehearsal.py`, `tests/test_balfrin_demonstration_closure_package.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1118,7 +1118,7 @@ scan thousands of lines of completed history.
 ### TB-228: Multi-Zone Handoff Output Budget Projection
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `d0c91fc`
 - Objective: project reducer manifest, file-family, and output-byte pressure from the actual multi-zone Balfrin handoff command plan instead of relying only on the standalone scratch probe.
 - Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1165,7 +1165,7 @@ scan thousands of lines of completed history.
 ### TB-230: Post-Optimization Multi-Zone Throughput Reprofile
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `7cf9f76`
 - Objective: reprofile the representative multi-zone hazard-builder fixture after TB-229, compare it with the rejected accumulator spike, and tighten schema-stability coverage for the profiler report.
 - Files changed: `docs/hazard_throughput_bottleneck_report.md`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1204,7 +1204,7 @@ scan thousands of lines of completed history.
 ### TB-232: Real-Input Prepared-Pilot Gate For Chant Sura
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `bc0cbbd`
 - Objective: make the Chant Sura prepared-pilot dry run consume the real-context acquisition package, surface the first missing real input category, and fail closed until required real inputs are staged.
 - Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1225,7 +1225,7 @@ scan thousands of lines of completed history.
 
 ### TB-233: Observed Runout Acquisition Operator Package
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `c2cdad8`
 - Objective: materialize an operator-facing observed runout/deposition acquisition package that follows the blocker matrix while staying explicitly template/non-evidence.
 - Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1243,7 +1243,7 @@ scan thousands of lines of completed history.
 ### TB-234: Observed Benchmark Intake Acceptance Smoke
 
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `913dd9b`
 - Objective: add a fixture-backed acceptance smoke path for a complete observed runout/deposition benchmark intake and explicit schema rejections for common failure modes.
 - Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `tests/fixtures/observed_runout_deposition_intake_contract/accepted_fixture.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1259,7 +1259,7 @@ scan thousands of lines of completed history.
 
 ### TB-235: Release-Zone Provenance Intake Bridge
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `5c1ad39`
 - Objective: define a small intake path for field-supported release-zone provenance that stays separate from workflow-generated release candidates.
 - Files changed: `scripts/lib/workflow_validation.py`, `scripts/plan_terrain_release_zone_candidates.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1282,7 +1282,7 @@ scan thousands of lines of completed history.
 
 ### TB-236: Block-Population And Source-Frequency Acquisition Deferral Map
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `1219872`
 - Objective: split the block-population and source-frequency rows in the physical-evidence matrix into explicit acquisition blockers and future-gate prerequisites, while keeping conditional scenario weights out of frequency language.
 - Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `tests/test_validation_calibration_evidence_gaps.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1303,7 +1303,7 @@ scan thousands of lines of completed history.
 
 ### TB-237: Workflow-Shell Coupling Extraction Batch
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `2d8430d`
 - Objective: extract one bounded batch of duplicated workflow-shell mechanics into shared helpers while preserving public CLI output contracts.
 - Files changed: `scripts/lib/workflow_validation.py`, `scripts/generate_pilot_command_plan.py`, `scripts/check_same_scale_artifact_readiness.py`, `scripts/inventory_workflow_shell_coupling.py`, `tests/test_workflow_shell_coupling_inventory.py`, `tests/test_pilot_command_plan.py`, `tests/test_same_scale_artifact_readiness.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -1327,7 +1327,7 @@ scan thousands of lines of completed history.
 
 ### TB-238: Command-Plan Manifest Contract Consolidation
 - Date: 2026-05-18
-- Commit: recorded in final worker report after commit
+- Commit: `a4bfbbe`
 - Objective: consolidate command-plan manifest semantics across the portable pilot and Balfrin multi-release-zone handoff generators.
 - Files changed: `scripts/lib/command_plan_contract.py`, `scripts/generate_pilot_command_plan.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_pilot_command_plan.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
