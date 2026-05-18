@@ -1541,3 +1541,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: preflight only; no live Balfrin submission, no remote mutation beyond read-only access checks, no authorization grant, no scale-up claim, no distributed-execution claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-248`
+
+### TB-248: Authorization-Gated Smallest Multi-Zone Measurement Evidence Path
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: prepare a deterministic, authorization-gated path from the smallest multi-zone Balfrin preflight through post-run collection and closure-package input while preserving the current blocked branch.
+- Files changed: `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`, `tests/test_balfrin_authorization_gated_multi_zone_measurement_path.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only checklist helper that consumes the TB-247 authorization preflight record and binds the exact preflight output, reviewed handoff package, authorization record, documented `--authorized-submit` command, deterministic run root, collector commands, preservation gate, post-run evidence collector, and closure-package input path.
+  - Preserved the current blocked branch from TB-247: the default helper run over `validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml` reports `blocked_pre_authorization` with TB-247 status `blocked_reducer_budget`, the missing authorization record, and `submit_command_executed=false`.
+  - Added fixture-backed tests proving missing authorization, access loss, and incomplete run roots cannot be promoted to measured closure evidence.
+  - Documented the post-authorization checklist and post-run promotion conditions in the Balfrin SLURM driver, then removed TB-248 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py tests/test_balfrin_authorization_gated_multi_zone_measurement_path.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorization_gated_multi_zone_measurement_path -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py --format json --json-output /tmp/tb248_authorization_gated_multi_zone_path.json --text-output /tmp/tb248_authorization_gated_multi_zone_path.txt > /tmp/tb248_authorization_gated_multi_zone_path.stdout` (expected exit 2 with `blocked_reducer_budget`)
+- Result/status: implemented_blocked_report
+- Boundaries: read-only checklist and fixture-backed evidence gates only; no live Balfrin submission, no remote mutation, no authorization grant, no generated heavy output commit, no scale-up or distributed-execution claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-249`

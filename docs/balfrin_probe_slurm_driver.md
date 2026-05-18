@@ -121,6 +121,41 @@ SSH, missing remote artifacts, and scheduler-query blockers return
 over-budget reducer or compact handoff settings return `blocked_reducer_budget`
 before any submission artifacts are written.
 
+TB-248 adds the read-only checklist wrapper for the post-authorization path:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py \
+  --authorization-preflight validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml \
+  --format json
+```
+
+The wrapper does not submit jobs. It binds the exact authorization preflight
+output, reviewed handoff package, authorization record, documented
+`--authorized-submit` command, deterministic run root, post-run metrics
+collector, preservation gate, post-run evidence collector, and closure-package
+input path into one machine-readable checklist. If the TB-247 preflight remains
+`blocked_reducer_budget`, if the authorization record is absent, or if Balfrin
+access is lost, the wrapper emits a blocked report and leaves
+`submit_command_executed=false`.
+
+After a future explicitly authorized run completes, pass the preserved run root
+back to the same helper:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py \
+  --authorization-preflight validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml \
+  --run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 \
+  --balfrin-access-json /tmp/balfrin_access_preflight.json \
+  --format json
+```
+
+The post-run branch can promote evidence only when the collector reports
+`measured_complete`, the preservation gate reports
+`ready_for_demonstration_evidence`, and the closure-package input compatibility
+is `compatible`. Incomplete run roots, fixture-backed roots, missing
+authorization, access loss, or unavailable non-git artifacts remain blocked and
+cannot be treated as measured evidence.
+
 The frozen target-area demonstration contract is
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
 Its `balfrin_execution_boundary.command_plan_hook.command` is the read-only

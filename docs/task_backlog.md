@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-248: Authorization-Gated Smallest Multi-Zone Measurement Evidence Path
-
-Goal: Prepare the post-authorization execution and evidence-collection path for the smallest multi-zone Balfrin measurement if TB-247 reaches `ready_for_authorization_review`.
-
-Capability gap reduced: The project has dry-run multi-zone scaffolding but still lacks a measured many-release-zone Balfrin evidence record.
-
-Why this outranks alternatives: Once metrics completion and preflight blockers are addressed, the smallest measured multi-zone run is the next architectural step toward the full Balfrin demonstration.
-
-Inspect first:
-
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- An authorization-gated execution checklist that binds the exact preflight output, reviewed handoff package, authorization record, submit command, run root, collector command, and closure-package input.
-- Fixture-backed tests proving incomplete run roots, missing authorization, and access loss cannot be promoted to measured evidence.
-- A blocked report when TB-247 is not ready or when explicit live-run authorization is absent.
-
-Definition of done:
-
-- A future authorized multi-zone measurement has a deterministic path from authorization through collection and closure input, without allowing accidental submission or evidence promotion.
-
-Boundaries: No live execution unless explicitly authorized by the user, no distributed execution, no scale-up authorization, no physical-probability claim, no operational claim, and no generated heavy outputs committed.
-
 ### TB-249: Chant Sura Real Core-Input Staging Verification
 
 Goal: Convert the Chant Sura / Fluelapass real-context gate from fixture-ready scaffolding toward real-input readiness by verifying whether locally staged terrain metadata, AOI tile catalog, source-zone metadata, scenario table, and policy records exist and are non-synthetic.
