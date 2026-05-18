@@ -42,6 +42,13 @@ DEFAULT_PACKAGE_MD = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
 DEFAULT_COMMAND_PLAN_JSON = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_command_plan_v1.json"
 DEFAULT_SBATCH_PATH = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_handoff.sbatch"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT = 2
+SMALLEST_MULTI_ZONE_SCENARIO_COUNT = 2
+SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET = 1000
+SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
+    "/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
+)
+SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
 
 
 def _load_module(module_name: str, filename: str):
@@ -118,6 +125,252 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if report["package_status"] != "blocked_missing_inputs" and report["package_constraint_status"] not in {"blocked", "blocked_missing_inputs"} else 2
 
 
+def build_blocked_missing_inputs_report(
+    *,
+    missing_inputs: list[str],
+    artifact_dir: Path,
+    candidate_output_root: Path,
+    target_area_output_root: Path,
+    pressure_probe_root: Path,
+) -> dict[str, Any]:
+    command_plan_path = artifact_dir / DEFAULT_COMMAND_PLAN_JSON.name
+    sbatch_script_path = artifact_dir / DEFAULT_SBATCH_PATH.name
+    package_json_path = artifact_dir / DEFAULT_PACKAGE_JSON.name
+    package_md_path = artifact_dir / DEFAULT_PACKAGE_MD.name
+    review_command = build_authorization_review_command()
+    blocked_reason = "required inputs are missing: " + ", ".join(missing_inputs)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "package_status": "blocked_missing_inputs",
+        "package_provenance_status": "blocked_missing_inputs",
+        "submission_classification": "blocked_pending_new_human_authorization",
+        "authorization_classification": "blocked_missing_inputs",
+        "live_execution_requires_new_human_authorization": True,
+        "package_constraint_status": "blocked_missing_inputs",
+        "package_constraint_summary": {
+            "status": "blocked_missing_inputs",
+            "summary": blocked_reason,
+            "constraint_source": {},
+            "requested_release_zone_batch_size": None,
+            "requested_reducer_chunk_count": None,
+            "requested_reducer_worker_count": None,
+            "measured_constraints": {},
+            "constraint_checks": [],
+            "blocked_reason": blocked_reason,
+        },
+        "package_summary": {
+            "status": "blocked_missing_inputs",
+            "summary": blocked_reason,
+            "section_counts": {"measured": 0, "fixture_backed": 0, "blocked_missing_inputs": 0},
+        },
+        "artifact_dir": str(artifact_dir),
+        "candidate_output_root": str(candidate_output_root),
+        "target_area_output_root": str(target_area_output_root),
+        "command_plan_path": str(command_plan_path),
+        "sbatch_script_path": str(sbatch_script_path),
+        "package_json_path": str(package_json_path),
+        "package_md_path": str(package_md_path),
+        "missing_inputs": list(missing_inputs),
+        "blocked_reason": blocked_reason,
+        "candidate_release_candidates": {
+            "status": "blocked_missing_inputs",
+            "blocked_reason": blocked_reason,
+            "candidate_count": 0,
+            "candidate_component_count": 0,
+            "candidate_output_mode": None,
+            "candidate_output_status": None,
+            "candidate_output_root": None,
+            "candidate_sweep_summary": {},
+            "multi_zone_stress_test_readiness": {},
+        },
+        "deterministic_scenarios": {
+            "status": "blocked_missing_inputs",
+            "bundle_runnable_status": "blocked_missing_inputs",
+            "scenario_table_row_count": 0,
+            "scenario_probability_semantics": None,
+            "template_only_command_ids": [],
+            "runnable_command_ids": [],
+            "blocked_reason": blocked_reason,
+        },
+        "pressure_checkpoints": {
+            "estimated_runtime": {
+                "candidate_sweep_runtime_seconds": 0,
+                "current_gap_runtime_seconds": 0,
+                "reproduction_validation_wall_seconds": 0,
+                "reproduction_hazard_wall_seconds": 0,
+                "single_job_decision": "blocked_missing_inputs",
+                "single_job_sufficient_for_next_step": False,
+            },
+            "output_pressure": {
+                "status": "blocked_missing_inputs",
+                "validation_output_blocker_status": "blocked_missing_inputs",
+                "validation_output_mode": None,
+                "current_file_count": 0,
+                "current_total_bytes": 0,
+                "file_margin": 0,
+                "byte_margin": 0,
+                "validation_output_file_count": 0,
+                "validation_output_bytes": 0,
+                "hazard_output_file_count": 0,
+                "hazard_output_bytes": 0,
+                "reduced_output_family_counts": {},
+            },
+            "reducer_chunk_pressure": {
+                "status": "blocked_missing_inputs",
+                "bottleneck_classification": "blocked_missing_inputs",
+                "reducer_worker_counts": {},
+                "hazard_layer_counts": {},
+                "comparison_pairs": [],
+                "local_single_job_sufficient_for_next_step": False,
+            },
+            "restartability": {
+                "status": "blocked_missing_inputs",
+                "single_job_sufficient_for_next_step": False,
+                "driver_ready_for_selected_gate_use": False,
+                "repeat_reuse_classification": "blocked_missing_inputs",
+                "trajectory_plan_id_stable": False,
+                "reducer_plan_id_stable": False,
+                "numerical_artifact_classification": "blocked_missing_inputs",
+                "changed_artifact_count": 0,
+                "output_file_count_stable": False,
+                "reducer_state": {},
+            },
+        },
+        "multi_zone_pressure": {
+            "status": "blocked_missing_inputs",
+            "summary": blocked_reason,
+            "pressure_probe_root": str(pressure_probe_root),
+            "pressure_artifact_dir": str(artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name),
+            "pressure_probe_status": "blocked_missing_inputs",
+            "measurement_command": None,
+            "constraint_source": {},
+            "measured_reducer_constraints": {},
+            "recommended_reducer_constraints": {},
+            "bottleneck_classification": "blocked_missing_inputs",
+            "multi_zone_dry_run_blocked": True,
+            "blocked_reason": blocked_reason,
+            "release_zone_count": 0,
+            "scenario_count": 0,
+            "trajectory_chunk_count": 0,
+            "reducer_worker_count": 0,
+            "reducer_chunk_count": 0,
+            "merge_order": None,
+            "merge_order_independent": False,
+            "reducer_wall_time_seconds": 0,
+            "manifest_size_bytes": 0,
+            "manifest_size_by_path": {},
+            "root_file_count": 0,
+            "root_byte_count": 0,
+            "output_file_count": 0,
+            "output_byte_count": 0,
+            "output_family_file_counts": {},
+            "output_family_bytes": {},
+            "largest_output_families_by_bytes": [],
+            "bottleneck_labels": {},
+        },
+        "constraint_pressure": {
+            "status": "blocked_missing_inputs",
+            "summary": blocked_reason,
+            "constraint_source": {},
+            "requested_release_zone_batch_size": None,
+            "requested_reducer_chunk_count": None,
+            "requested_reducer_worker_count": None,
+            "measured_constraints": {},
+            "constraint_checks": [],
+            "blocked_reason": blocked_reason,
+        },
+        "uncertainty_post_processing": {
+            "status": "blocked_missing_inputs",
+            "claim_boundaries": {},
+            "uncertainty_reduced": [],
+            "remaining_uncertainty": [],
+            "measurement_commands": {},
+            "post_run_interpretation_gate_status": "blocked_missing_inputs",
+            "post_run_interpretation_summary": blocked_reason,
+            "minimum_useful_next_probe": {
+                "probe_id": "multi_zone_balfrin_next_measured_run",
+                "release_zone_count": SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
+                "trajectory_count_target": SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET,
+            },
+            "summary": blocked_reason,
+        },
+        "follow_up_recommendation": {
+            "status": "blocked_missing_inputs",
+            "live_execution_requires_new_human_authorization": True,
+            "authorization_classification": "blocked_missing_inputs",
+            "authorization_review_command": review_command,
+            "authorization_submit_command": None,
+            "minimum_measured_multi_zone_run": {
+                "release_zone_count": SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
+                "scenario_count": SMALLEST_MULTI_ZONE_SCENARIO_COUNT,
+                "trajectory_count_target": SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET,
+                "seed_policy": {},
+                "output_mode": None,
+                "conditional_curve_export": "summary-only",
+                "grid_csv_export": "none",
+                "export_geotiff": True,
+                "pilot_gis_package": True,
+                "trajectory_workers": 2,
+                "reducer_workers": 2,
+                "authorization_review_command": review_command,
+                "authorization_submit_command": "unavailable",
+                "command_plan_review_command": review_command,
+                "command_plan_submit_command": "unavailable",
+            },
+            "reason": blocked_reason,
+            "candidate_readiness": {},
+            "recommended_next_check": "Review the package, then seek a new human authorization before any live multi-zone Balfrin job.",
+            "blocked_reason": blocked_reason,
+        },
+        "smallest_measured_multi_zone_run": {
+            "release_zone_count": SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
+            "scenario_count": SMALLEST_MULTI_ZONE_SCENARIO_COUNT,
+            "trajectory_count_target": SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET,
+        },
+        "command_plan": {
+            "schema_version": COMMAND_PLAN_SCHEMA_VERSION,
+            "command_plan_status": "blocked_missing_inputs",
+            "site": "tschamut_same_scale",
+            "command_plan_source": "scripts/generate_pilot_command_plan.py",
+            "command_plan_source_command": (
+                "PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py "
+                "--site tschamut_same_scale --format json"
+            ),
+            "command_groups": [],
+            "commands": [],
+            "command_ids": [],
+            "command_descriptions": {},
+            "blocked_template_commands": [],
+            "ignored_output_paths": [str(artifact_dir), str(candidate_output_root), str(target_area_output_root)],
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+            "target_area_demo_non_operational": True,
+            "multi_zone_live_execution_authorized": False,
+            "target_area_demo_bundle_status": "template_only",
+        },
+        "ignored_output_roots": [
+            str(candidate_output_root),
+            str(target_area_output_root),
+            str(artifact_dir),
+            str(artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name),
+            str(pressure_probe_root),
+        ],
+        "generated_output_roots": [str(artifact_dir), str(candidate_output_root), str(target_area_output_root)],
+        "evidence_sources": [],
+        "blocked_reason": blocked_reason,
+        "pressure_artifact_dir": str(artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name),
+        "pressure_probe_root": str(pressure_probe_root),
+        "authorization_review_command": review_command,
+        "authorization_submit_command": "unavailable",
+    }
+
+
 def build_report(
     *,
     artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
@@ -146,12 +399,13 @@ def build_report(
             "candidate and target-area output roots must stay under /tmp or validation/private"
         )
 
+    pressure_artifact_dir = artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name
     command_plan = build_command_plan(
         artifact_dir=artifact_dir,
         candidate_output_root=candidate_output_root,
         target_area_output_root=target_area_output_root,
         pressure_probe_root=pressure_probe_root,
-        pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
+        pressure_artifact_dir=pressure_artifact_dir,
     )
     candidate_report = safe_build(
         "candidate_stability",
@@ -161,7 +415,39 @@ def build_report(
         ),
     )
     candidate_report = normalize_candidate_report(candidate_report)
+    if not DEFAULT_TARGET_AREA_CONTRACT.exists():
+        return build_blocked_missing_inputs_report(
+            missing_inputs=[display_path(DEFAULT_TARGET_AREA_CONTRACT)],
+            artifact_dir=artifact_dir,
+            candidate_output_root=candidate_output_root,
+            target_area_output_root=target_area_output_root,
+            pressure_probe_root=pressure_probe_root,
+        )
+
     target_area_contract = load_yaml(DEFAULT_TARGET_AREA_CONTRACT)
+    target_area_input_freeze = dict(target_area_contract.get("input_freeze") or {})
+    source_zone_metadata_path = resolve_repo_path(target_area_input_freeze.get("source_zone_metadata_path"))
+    source_scenario_policy_path = resolve_repo_path(target_area_input_freeze.get("source_scenario_policy_path"))
+    missing_required_inputs = [
+        display_path(path)
+        for path in (
+            DEFAULT_TARGET_AREA_CONTRACT,
+            source_zone_metadata_path,
+            source_scenario_policy_path,
+        )
+        if not path.exists()
+    ]
+    if missing_required_inputs:
+        return build_blocked_missing_inputs_report(
+            missing_inputs=missing_required_inputs,
+            artifact_dir=artifact_dir,
+            candidate_output_root=candidate_output_root,
+            target_area_output_root=target_area_output_root,
+            pressure_probe_root=pressure_probe_root,
+        )
+
+    source_zone_metadata = load_yaml(source_zone_metadata_path)
+    source_scenario_policy = load_yaml(source_scenario_policy_path)
     output_profile_report = safe_build("output_profile", OUTPUT_PROFILE.build_summary)
     reducer_scaling_report = safe_build(
         "reducer_scaling",
@@ -203,6 +489,16 @@ def build_report(
         candidate_report=candidate_report,
         single_job_report=single_job_report,
         output_profile_report=output_profile_report,
+        target_area_contract=target_area_contract,
+        source_zone_metadata=source_zone_metadata,
+        source_scenario_policy=source_scenario_policy,
+        pressure_report=pressure_report,
+        constraint_pressure_report=constraint_pressure_report,
+        artifact_dir=artifact_dir,
+        candidate_output_root=candidate_output_root,
+        target_area_output_root=target_area_output_root,
+        pressure_artifact_dir=pressure_artifact_dir,
+        pressure_probe_root=pressure_probe_root,
     )
 
     report = {
@@ -210,6 +506,7 @@ def build_report(
         "package_status": package_status,
         "package_provenance_status": package_status,
         "submission_classification": "blocked_pending_new_human_authorization",
+        "authorization_classification": "blocked_pending_authorization",
         "live_execution_requires_new_human_authorization": True,
         "package_constraint_status": constraint_pressure_report["status"],
         "package_constraint_summary": constraint_pressure_report,
@@ -260,6 +557,9 @@ def build_report(
             command_plan=command_plan,
         ),
         "follow_up_recommendation": follow_up_recommendation,
+        "authorization_review_command": follow_up_recommendation["authorization_review_command"],
+        "authorization_submit_command": follow_up_recommendation["authorization_submit_command"],
+        "smallest_measured_multi_zone_run": follow_up_recommendation["minimum_measured_multi_zone_run"],
         "command_plan": command_plan,
         "claim_boundaries": claim_boundaries(target_area_contract),
         "ignored_output_roots": [
@@ -554,6 +854,22 @@ def build_command_plan(
             may_produce_ignored_outputs=False,
         ),
         command_entry(
+            command_id="authorization_review_command",
+            group="authorization_review",
+            description="Review the exact later submit command for the smallest bounded multi-zone Balfrin probe.",
+            command=build_authorization_review_command(),
+            expected_inputs=[
+                "scripts/submit_balfrin_probe.py",
+                "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml",
+                "docs/balfrin_probe_slurm_driver.md",
+            ],
+            expected_outputs=[
+                "A deterministic later-review command for the smallest bounded multi-zone Balfrin probe.",
+            ],
+            read_only=True,
+            may_produce_ignored_outputs=False,
+        ),
+        command_entry(
             command_id="package_materialization",
             group="package_materialization",
             description="Materialize the multi-release-zone dry-run package into the ignored scratch-root handoff directory.",
@@ -622,6 +938,11 @@ def build_command_plan(
             {
                 "id": "uncertainty_post_processing",
                 "description": "Compose the uncertainty-aware post-processing and interpretation gate reports.",
+                "status": "ready",
+            },
+            {
+                "id": "authorization_review",
+                "description": "Stage the exact later review command for the smallest bounded multi-zone probe.",
                 "status": "ready",
             },
             {
@@ -933,6 +1254,22 @@ def build_multi_zone_pressure_report(
         "bottleneck_classification": report.get("bottleneck_classification"),
         "multi_zone_dry_run_blocked": report.get("multi_zone_dry_run_blocked"),
         "blocked_reason": report.get("blocked_reason"),
+        "release_zone_count": report.get("release_zone_count", 0),
+        "scenario_count": report.get("scenario_count", 0),
+        "trajectory_chunk_count": report.get("trajectory_chunk_count", 0),
+        "reducer_worker_count": report.get("reducer_worker_count", 0),
+        "reducer_chunk_count": report.get("reducer_chunk_count", 0),
+        "merge_order": report.get("merge_order"),
+        "merge_order_independent": report.get("merge_order_independent"),
+        "reducer_wall_time_seconds": report.get("reducer_wall_time_seconds", 0),
+        "manifest_size_bytes": report.get("manifest_size_bytes", 0),
+        "root_file_count": report.get("root_file_count", 0),
+        "output_file_count": report.get("output_file_count", 0),
+        "output_byte_count": report.get("output_byte_count", 0),
+        "output_family_file_counts": dict(report.get("output_family_file_counts") or {}),
+        "output_family_bytes": dict(report.get("output_family_bytes") or {}),
+        "largest_output_families_by_bytes": list(report.get("largest_output_families_by_bytes") or []),
+        "manifest_size_by_path": dict(report.get("manifest_size_by_path") or {}),
     }
 
 
@@ -1035,6 +1372,89 @@ def positive_int(value: Any, context: str) -> int:
     return value
 
 
+def _number_or_zero(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def build_authorization_review_command() -> str:
+    return command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
+            rel(DEFAULT_TARGET_AREA_CONTRACT),
+            "--run-root",
+            str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+            "--run-id",
+            SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+            "--partition",
+            "postproc",
+            "--time",
+            "00:30:00",
+            "--nodes",
+            "1",
+            "--ntasks",
+            "1",
+            "--cpus-per-task",
+            "16",
+            "--generate-only",
+        ]
+    )
+
+
+def build_smallest_multi_zone_run_estimates(pressure_report: dict[str, Any]) -> dict[str, Any]:
+    measured_release_zone_count = positive_int(
+        pressure_report.get("release_zone_count", 1), "measured multi-zone release zone count"
+    )
+    scale = SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT / measured_release_zone_count
+    estimated_runtime_seconds = round(_number_or_zero(pressure_report.get("reducer_wall_time_seconds")) * scale, 3)
+    estimated_storage_bytes = max(1, int(round(_number_or_zero(pressure_report.get("output_byte_count")) * scale)))
+    estimated_file_count = max(1, int(round(_number_or_zero(pressure_report.get("output_file_count")) * scale)))
+    estimated_manifest_pressure_bytes = max(
+        1, int(round(_number_or_zero(pressure_report.get("manifest_size_bytes")) * scale))
+    )
+    return {
+        "reference_release_zone_count": measured_release_zone_count,
+        "reference_scale_factor": round(scale, 6),
+        "estimated_runtime_seconds": estimated_runtime_seconds,
+        "estimated_storage_bytes": estimated_storage_bytes,
+        "estimated_file_count": estimated_file_count,
+        "estimated_manifest_pressure_bytes": estimated_manifest_pressure_bytes,
+    }
+
+
+def build_smallest_multi_zone_preservation_checklist(
+    *,
+    command_plan_path: Path,
+    sbatch_script_path: Path,
+    package_json_path: Path,
+    package_md_path: Path,
+    artifact_dir: Path,
+    candidate_output_root: Path,
+    target_area_output_root: Path,
+    pressure_artifact_dir: Path,
+    pressure_probe_root: Path,
+    review_command: str,
+) -> list[str]:
+    return [
+        "Review the package JSON and Markdown together before any later authorization request.",
+        f"Confirm the package remains blocked pending authorization and keep the review command unchanged: {review_command}",
+        f"Confirm the scratch handoff root stays under {artifact_dir} and is not committed.",
+        f"Keep the command plan at {command_plan_path} and the SBATCH script at {sbatch_script_path}.",
+        f"Keep the package outputs at {package_json_path} and {package_md_path}.",
+        f"Keep the ignored candidate and target-area roots separate: {candidate_output_root} and {target_area_output_root}.",
+        f"Keep the measured reducer-pressure scratch root separate: {pressure_probe_root} and {pressure_artifact_dir}.",
+        "Do not submit a live Balfrin job unless the conversation explicitly authorizes execution later.",
+        "If authorization is granted later, review the exact submit command again before launch.",
+        "Later preservation-gate verification command: PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root <run-root> --format json",
+    ]
+
+
 def build_uncertainty_post_processing(
     *,
     single_job_report: dict[str, Any],
@@ -1077,14 +1497,75 @@ def build_follow_up_recommendation(
     candidate_report: dict[str, Any],
     single_job_report: dict[str, Any],
     output_profile_report: dict[str, Any],
+    target_area_contract: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    source_scenario_policy: dict[str, Any],
+    pressure_report: dict[str, Any],
+    constraint_pressure_report: dict[str, Any],
+    artifact_dir: Path,
+    candidate_output_root: Path,
+    target_area_output_root: Path,
+    pressure_artifact_dir: Path,
+    pressure_probe_root: Path,
 ) -> dict[str, Any]:
     readiness = dict(candidate_report.get("candidate_sweep_summary", {}).get("multi_zone_stress_test_readiness") or {})
+    review_command = build_authorization_review_command()
+    review_submit_command = command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
+            rel(DEFAULT_TARGET_AREA_CONTRACT),
+            "--run-root",
+            str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+            "--run-id",
+            SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+            "--partition",
+            "postproc",
+            "--time",
+            "00:30:00",
+            "--nodes",
+            "1",
+            "--ntasks",
+            "1",
+            "--cpus-per-task",
+            "16",
+            "--submit",
+        ]
+    )
+    estimates = build_smallest_multi_zone_run_estimates(pressure_report)
+    source_release_sampling = dict(source_zone_metadata.get("release_sampling_policy") or {})
+    source_zone_policy = dict(source_scenario_policy.get("source_zone_policy") or {})
+    block_scenarios = list((source_scenario_policy.get("block_scenario_policy") or {}).get("scenarios") or [])
     return {
         "status": "deferred_pending_authorization",
         "live_execution_requires_new_human_authorization": True,
+        "authorization_classification": "blocked_pending_authorization",
+        "authorization_review_command": review_command,
+        "authorization_submit_command": review_submit_command,
         "minimum_measured_multi_zone_run": {
-            "release_zone_count": 2,
-            "trajectory_count_target": 1000,
+            "release_zone_count": SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
+            "scenario_count": SMALLEST_MULTI_ZONE_SCENARIO_COUNT,
+            "trajectory_count_target": SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET,
+            "release_cell_count": positive_int(
+                source_release_sampling.get("release_count", 1), "source-zone release cell count"
+            ),
+            "seed_policy": {
+                "mode": source_release_sampling.get("mode"),
+                "seed_policy": source_release_sampling.get("seed_policy"),
+                "seed": source_release_sampling.get("seed"),
+                "release_cell_id_policy": source_release_sampling.get("release_cell_id_policy"),
+                "release_cell_id_prefix": source_release_sampling.get("release_cell_id_prefix"),
+                "sampling_weight_semantics": source_zone_policy.get("release_sampling", {}).get(
+                    "sampling_weight_semantics"
+                ),
+                "annual_source_frequency_supported": source_release_sampling.get("annual_source_frequency_supported"),
+                "physical_release_probability_supported": source_release_sampling.get(
+                    "physical_release_probability_supported"
+                ),
+            },
             "output_mode": output_profile_report.get("validation_output_mode"),
             "conditional_curve_export": "summary-only",
             "grid_csv_export": "none",
@@ -1092,13 +1573,59 @@ def build_follow_up_recommendation(
             "pilot_gis_package": True,
             "trajectory_workers": 2,
             "reducer_workers": 2,
+            "block_scenario_count": len(block_scenarios),
+            "block_scenario_ids": [
+                str(block_scenario.get("block_scenario_id"))
+                for block_scenario in block_scenarios
+                if isinstance(block_scenario, dict) and block_scenario.get("block_scenario_id")
+            ],
+            "estimated_runtime_seconds": estimates["estimated_runtime_seconds"],
+            "estimated_storage_bytes": estimates["estimated_storage_bytes"],
+            "estimated_file_count": estimates["estimated_file_count"],
+            "estimated_manifest_pressure_bytes": estimates["estimated_manifest_pressure_bytes"],
+            "manifest_pressure_reference": {
+                "status": pressure_report.get("status"),
+                "manifest_size_bytes": pressure_report.get("manifest_size_bytes"),
+                "root_file_count": pressure_report.get("root_file_count"),
+                "output_file_count": pressure_report.get("output_file_count"),
+                "output_byte_count": pressure_report.get("output_byte_count"),
+            },
+            "reducer_pressure": dict(constraint_pressure_report),
+            "preservation_gate_checklist": build_smallest_multi_zone_preservation_checklist(
+                command_plan_path=artifact_dir / DEFAULT_COMMAND_PLAN_JSON.name,
+                sbatch_script_path=artifact_dir / DEFAULT_SBATCH_PATH.name,
+                package_json_path=artifact_dir / DEFAULT_PACKAGE_JSON.name,
+                package_md_path=artifact_dir / DEFAULT_PACKAGE_MD.name,
+                artifact_dir=artifact_dir,
+                candidate_output_root=candidate_output_root,
+                target_area_output_root=target_area_output_root,
+                pressure_artifact_dir=pressure_artifact_dir,
+                pressure_probe_root=pressure_probe_root,
+                review_command=review_command,
+            ),
+            "authorization_review_command": review_command,
+            "authorization_submit_command": review_submit_command,
+            "command_plan_review_command": review_command,
+            "command_plan_submit_command": review_submit_command,
+            "command_plan_path": str(artifact_dir / DEFAULT_COMMAND_PLAN_JSON.name),
+            "sbatch_script_path": str(artifact_dir / DEFAULT_SBATCH_PATH.name),
+            "output_roots": {
+                "artifact_dir": str(artifact_dir),
+                "candidate_output_root": str(candidate_output_root),
+                "target_area_output_root": str(target_area_output_root),
+                "pressure_artifact_dir": str(pressure_artifact_dir),
+                "pressure_probe_root": str(pressure_probe_root),
+            },
         },
         "reason": (
             "The deterministic candidate sweep is ready for multi-zone scenario-generation stress tests, but the "
             "next live step should remain the smallest extra zone count and still require renewed human authorization."
         ),
         "candidate_readiness": readiness,
-        "recommended_next_check": "Review the package, then seek a new human authorization before any live multi-zone Balfrin job.",
+        "recommended_next_check": (
+            "Review the package, then seek a new human authorization before any live multi-zone Balfrin job."
+        ),
+        "blocked_reason": "blocked_pending_authorization: review the exact later-submit command before any live run",
     }
 
 
@@ -1265,6 +1792,8 @@ def build_sbatch_script(report: dict[str, Any]) -> str:
     command_plan_path = Path(report["command_plan_path"])
     package_json_path = Path(report["package_json_path"])
     constraint_source = dict(report.get("constraint_pressure", {}).get("constraint_source") or {})
+    follow_up = dict(report.get("follow_up_recommendation") or {})
+    smallest_run = dict(follow_up.get("minimum_measured_multi_zone_run") or {})
     lines = [
         "#!/usr/bin/env bash",
         "#SBATCH --job-name=balfrin-multi-zone-demo",
@@ -1286,6 +1815,9 @@ def build_sbatch_script(report: dict[str, Any]) -> str:
         'echo "Live execution requires new human authorization."',
         'echo "Deterministic merge order: sorted_chunk_id"',
         'echo "Restart/replay checkpoints: trajectory_execution_index.json, trajectory_merge_state.json, reducer_execution_index.json, reducer_merge_state.json"',
+        f'echo "Blocked classification: {report.get("authorization_classification", report.get("submission_classification", "unknown"))}"',
+        f'echo "Later review command: {smallest_run.get("authorization_review_command") or report.get("authorization_review_command", "unavailable")}"',
+        f'echo "Later submit command: {smallest_run.get("command_plan_submit_command") or report.get("authorization_submit_command", "unavailable")}"',
         f'echo "Constraint source: {constraint_source.get("source_script", "scripts/summarize_multi_zone_reducer_pressure.py")}"',
         'echo "Command plan follows for review:"',
         'cat "${COMMAND_PLAN_PATH}"',
@@ -1335,6 +1867,23 @@ def materialize_artifacts(
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    if report.get("package_status") == "blocked_missing_inputs":
+        missing_inputs = report.get("missing_inputs", [])
+        lines = [
+            "Balfrin Multi-Release-Zone Demo Package",
+            "",
+            f"- Package status: `{report.get('package_status', 'unknown')}`",
+            f"- Authorization classification: `{report.get('authorization_classification', 'blocked_missing_inputs')}`",
+            f"- Blocked classification: `{report.get('authorization_classification', 'blocked_missing_inputs')}`",
+            f"- Blocked reason: {report.get('blocked_reason', '')}",
+            f"- Missing inputs: `{missing_inputs}`",
+            f"- Review command: `{report.get('authorization_review_command', 'unavailable')}`",
+            f"- Artifact dir: `{report.get('artifact_dir', 'unknown')}`",
+            f"- Candidate output root: `{report.get('candidate_output_root', 'unknown')}`",
+            f"- Target-area output root: `{report.get('target_area_output_root', 'unknown')}`",
+        ]
+        return "\n".join(lines)
+
     constraint_pressure = dict(report.get("constraint_pressure") or {})
     measured_constraints = dict(constraint_pressure.get("measured_constraints") or {})
     constraint_source = dict(constraint_pressure.get("constraint_source") or {})
@@ -1400,13 +1949,47 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Status: `{report['follow_up_recommendation']['status']}`",
         f"- Live execution requires new human authorization: `{report['follow_up_recommendation']['live_execution_requires_new_human_authorization']}`",
         f"- Recommended release-zone count: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run']['release_zone_count']}`",
+        f"- Recommended scenario count: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('scenario_count')}`",
+        f"- Recommended trajectory count target: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('trajectory_count_target')}`",
+        f"- Authorization classification: `{report.get('authorization_classification', 'unknown')}`",
+        f"- Blocked classification: `{report.get('authorization_classification', 'unknown')}`",
+        f"- Review command: `{report['follow_up_recommendation']['authorization_review_command']}`",
+        f"- Submit command: `{report['follow_up_recommendation']['authorization_submit_command']}`",
         f"- Recommended validation output mode: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run']['output_mode']}`",
         f"- Reason: {report['follow_up_recommendation']['reason']}",
         "",
-        "## Command Plan",
+        "## Smallest Run Estimates",
         "",
-        f"- Canonical ancestor: `{report['canonical_command_plan_reference']['source_script']}`",
+        f"- Release cell count: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('release_cell_count')}`",
+        f"- Seed policy: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('seed_policy')}`",
+        f"- Block scenario count: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('block_scenario_count')}`",
+        f"- Estimated runtime seconds: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('estimated_runtime_seconds')}`",
+        f"- Estimated storage bytes: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('estimated_storage_bytes')}`",
+        f"- Estimated file count: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('estimated_file_count')}`",
+        f"- Estimated manifest pressure bytes: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('estimated_manifest_pressure_bytes')}`",
+        "",
+        "## Preservation Checklist",
+        "",
     ]
+    for checklist_item in report["follow_up_recommendation"]["minimum_measured_multi_zone_run"].get("preservation_gate_checklist", []):
+        lines.append(f"- {checklist_item}")
+    lines.extend(
+        [
+            "",
+            "## Output Roots",
+            "",
+        ]
+    )
+    for key, value in report["follow_up_recommendation"]["minimum_measured_multi_zone_run"].get("output_roots", {}).items():
+        lines.append(f"- {key}: `{value}`")
+    lines.extend(
+        [
+            "",
+            "## Command Plan",
+            "",
+            f"- Canonical ancestor: `{report['canonical_command_plan_reference']['source_script']}`",
+        ]
+    )
     for command in report["command_plan"]["commands"]:
         lines.append(f"- `{command['id']}`: {command['description']}")
     lines.extend(

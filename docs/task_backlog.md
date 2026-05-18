@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-205: Smallest Bounded Multi-Zone Balfrin Probe Package
-
-Goal: Produce the smallest reviewable multi-zone Balfrin probe package that would be worth explicitly authorizing after the decision gate.
-
-Capability gap reduced: Missing execution-ready package for the first measured multi-release-zone Balfrin evidence step.
-
-Why this outranks alternatives: Full-scale Balfrin demonstration credibility depends on at least one measured multi-zone run, but the first candidate must be bounded by reducer and preservation constraints.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A scratch/ignored handoff package with exact release-zone count, scenario count, trajectory count, seed policy, command plan, SBATCH script, and output roots.
-- Estimated runtime, storage, file count, manifest pressure, reducer pressure, and preservation-gate checklist for that smallest run.
-- A blocked-pending-authorization classification that states the exact command to review if authorization is granted later.
-- Focused tests for package determinism, command-plan shape, and blocked-missing-input behavior.
-
-Definition of done:
-
-- The package is deterministic, reviewable from tracked inputs plus ignored scratch outputs, passes the preservation checklist in dry-run form, and remains unsubmitted unless the conversation explicitly authorizes execution.
-
-Boundaries: Package only by default; no live Balfrin job, no scale-up authorization, no distributed execution, no operational claim, and no generated heavy outputs committed.
-
 ### TB-206: Target-Area Metrics Completion Rerun Package
 
 Goal: Prepare a bounded Balfrin rerun package whose only purpose is closing missing target-area peak-memory and split validation/hazard output metrics.

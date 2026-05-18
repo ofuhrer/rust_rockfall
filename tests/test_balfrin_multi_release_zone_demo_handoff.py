@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["package_status"], "mixed_provenance")
         self.assertEqual(first["package_constraint_status"], "warning")
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")
+        self.assertEqual(first["authorization_classification"], "blocked_pending_authorization")
         self.assertTrue(first["live_execution_requires_new_human_authorization"])
         self.assertEqual(first["candidate_release_candidates"]["status"], "ready")
         self.assertEqual(first["candidate_release_candidates"]["multi_zone_stress_test_readiness"]["status"], "ready")
@@ -80,22 +82,48 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
-        self.assertEqual(first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["release_zone_count"], 2)
+        smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]
+        self.assertEqual(smallest_run["release_zone_count"], 2)
+        self.assertEqual(smallest_run["scenario_count"], 2)
+        self.assertEqual(smallest_run["trajectory_count_target"], 1000)
+        self.assertEqual(smallest_run["release_cell_count"], 10)
+        self.assertEqual(smallest_run["seed_policy"]["seed"], 34014)
+        self.assertEqual(smallest_run["seed_policy"]["mode"], "deterministic_grid")
+        self.assertEqual(smallest_run["estimated_runtime_seconds"], 0.498)
+        self.assertEqual(smallest_run["estimated_storage_bytes"], 5174)
+        self.assertEqual(smallest_run["estimated_file_count"], 10)
+        self.assertEqual(smallest_run["estimated_manifest_pressure_bytes"], 3350)
+        self.assertEqual(first["authorization_review_command"], smallest_run["authorization_review_command"])
+        self.assertEqual(first["authorization_submit_command"], smallest_run["authorization_submit_command"])
         self.assertIn("candidate_stability_sweep", [command["id"] for command in command_plan["commands"]])
         self.assertIn("target_area_handoff_bundle", [command["id"] for command in command_plan["commands"]])
         self.assertIn("multi_zone_reducer_pressure_summary", [command["id"] for command in command_plan["commands"]])
+        self.assertIn("authorization_review_command", [command["id"] for command in command_plan["commands"]])
         self.assertIn("scientific_delta_report", [command["id"] for command in command_plan["commands"]])
         self.assertIn("package_materialization", [command["id"] for command in command_plan["commands"]])
+        authorization_review_command = next(
+            command["command"] for command in command_plan["commands"] if command["id"] == "authorization_review_command"
+        )
+        self.assertIn("scripts/submit_balfrin_probe.py", authorization_review_command)
+        self.assertIn("--generate-only", authorization_review_command)
         self.assertIn("generate_balfrin_multi_release_zone_demo_handoff.py", command_plan["commands"][-1]["command"])
         self.assertIn("Live execution requires new human authorization", sbatch_script)
+        self.assertIn("Blocked classification: blocked_pending_authorization", sbatch_script)
+        self.assertIn("Later review command:", sbatch_script)
         self.assertIn("Deterministic merge order: sorted_chunk_id", sbatch_script)
         self.assertIn("Restart/replay checkpoints:", sbatch_script)
         self.assertIn("summarize_multi_zone_reducer_pressure.py", sbatch_script)
-        self.assertIn("Balfrin Multi-Release-Zone Demo Package", MODULE.render_text_report(package))
+        rendered = MODULE.render_text_report(package)
+        self.assertIn("Balfrin Multi-Release-Zone Demo Package", rendered)
+        self.assertIn("## Smallest Run Estimates", rendered)
+        self.assertIn("Blocked classification: `blocked_pending_authorization`", rendered)
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
+        self.assertEqual(package["authorization_classification"], "blocked_pending_authorization")
         self.assertEqual(package["constraint_pressure"]["status"], "warning")
-        self.assertEqual(package["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["trajectory_workers"], 2)
-        self.assertEqual(package["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["reducer_workers"], 2)
+        self.assertEqual(smallest_run["trajectory_workers"], 2)
+        self.assertEqual(smallest_run["reducer_workers"], 2)
+        self.assertEqual(Path(smallest_run["output_roots"]["artifact_dir"]), artifact_dir.resolve())
+        self.assertIn("preservation_gate_checklist", smallest_run)
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
 
@@ -179,6 +207,24 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(report["constraint_pressure"]["status"], "blocked")
         self.assertTrue(any(check["status"] == "blocked" for check in report["constraint_pressure"]["constraint_checks"]))
         self.assertEqual(report["submission_classification"], "blocked_pending_new_human_authorization")
+
+    def test_missing_required_inputs_fail_closed_with_a_blocked_report(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
+            missing_contract = Path(tmpdir) / "missing_target_area_contract.yaml"
+
+            with patch.object(MODULE, "DEFAULT_TARGET_AREA_CONTRACT", missing_contract):
+                report = MODULE.build_report(artifact_dir=artifact_dir)
+
+        self.assertEqual(report["package_status"], "blocked_missing_inputs")
+        self.assertEqual(report["authorization_classification"], "blocked_missing_inputs")
+        self.assertIn("missing_target_area_contract.yaml", " ".join(report["missing_inputs"]))
+        self.assertIn("review command", MODULE.render_text_report(report).lower())
+        self.assertEqual(report["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["release_zone_count"], 2)
+        self.assertEqual(
+            report["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["authorization_review_command"],
+            report["authorization_review_command"],
+        )
 
 
 if __name__ == "__main__":
