@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-228: Multi-Zone Handoff Output Budget Projection
-
-Goal: Project reducer manifest, file-family, and output-byte pressure from the actual multi-zone handoff command plan rather than from a standalone scratch probe alone.
-
-Capability gap reduced: Current multi-zone pressure evidence is useful but still partly detached from the concrete Balfrin handoff package that would be reviewed.
-
-Why this outranks alternatives: The first multi-zone measurement should be constrained by the package it would actually execute, not by a generic scratch shape.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-
-Deliverables:
-
-- A handoff-derived output-budget summary with primary outputs, sidecars, reducer manifests, manifest bytes, and first bottleneck labels.
-- Tests proving the handoff fails closed when projected budgets exceed the current gate.
-- Documentation update only if needed to clarify the handoff-versus-scratch distinction.
-
-Definition of done:
-
-- The multi-zone handoff exposes the same budget vocabulary as the reducer gate.
-- The task produces measured or fixture-backed budget evidence, not a new roadmap label.
-
-Boundaries: No live Balfrin job, no distributed reducer, no output-default change, no scale-up authorization, and no operational claim.
-
 ### TB-229: Bounded Hazard Accumulator Optimization Spike
 
 Goal: Implement or reject one bounded trajectory-accumulation optimization inside the existing hazard builder based on the TB-219 hotspot evidence.

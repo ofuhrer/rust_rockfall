@@ -49,7 +49,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "balfrin_multi_release_zone_demo_package_v1")
         self.assertEqual(first["package_status"], "mixed_provenance")
-        self.assertEqual(first["package_constraint_status"], "warning")
+        self.assertEqual(first["package_constraint_status"], "blocked")
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(first["authorization_classification"], "blocked_pending_authorization")
         self.assertTrue(first["live_execution_requires_new_human_authorization"])
@@ -73,10 +73,38 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_chunk_count_max"], 4)
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"], 21312)
-        self.assertEqual(first["constraint_pressure"]["status"], "warning")
+        self.assertEqual(first["constraint_pressure"]["status"], "blocked")
         self.assertEqual(first["constraint_pressure"]["constraint_checks"][0]["status"], "acceptable")
         self.assertEqual(first["constraint_pressure"]["constraint_checks"][1]["status"], "acceptable")
         self.assertEqual(first["constraint_pressure"]["constraint_checks"][2]["status"], "warning")
+        self.assertEqual(first["constraint_pressure"]["requested_constraint_status"], "warning")
+        self.assertIn("handoff output-budget projection blocked", first["constraint_pressure"]["summary"])
+        output_budget_projection = first["handoff_output_budget_projection"]
+        self.assertEqual(output_budget_projection["status"], "blocked")
+        self.assertEqual(output_budget_projection["gate_status"], "blocked_fixture_backed")
+        self.assertEqual(output_budget_projection["projection_provenance"], "handoff_command_plan")
+        self.assertEqual(output_budget_projection["release_zone_count"], 12)
+        self.assertEqual(output_budget_projection["reducer_chunk_count"], 4)
+        self.assertEqual(output_budget_projection["reducer_worker_count"], 2)
+        self.assertEqual(output_budget_projection["primary_output_file_count"], 36)
+        self.assertEqual(output_budget_projection["sidecar_file_count"], 21)
+        self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 4)
+        self.assertGreater(output_budget_projection["primary_output_byte_count"], 0)
+        self.assertGreater(output_budget_projection["sidecar_byte_count"], 0)
+        self.assertGreater(output_budget_projection["reducer_manifest_bytes"], 0)
+        self.assertGreater(output_budget_projection["manifest_size_bytes"], 0)
+        self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_blocked"], "manifest_size_bytes")
+        self.assertIn("manifest_size_bytes", [check["metric"] for check in output_budget_projection["budget_checks"]])
+        self.assertIn(
+            "trajectory_csv",
+            [check["kind"] for check in output_budget_projection["family_count_checks"]],
+        )
+        self.assertEqual(
+            first["constraint_pressure"]["handoff_output_budget_projection"]["first_bottleneck_labels"][
+                "first_blocked"
+            ],
+            "manifest_size_bytes",
+        )
         self.assertEqual(
             first["constraint_pressure"]["constraint_source"]["source_document"],
             "docs/multi_zone_reducer_pressure_probe.md",
@@ -107,6 +135,13 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         authorization_review_command = next(
             command["command"] for command in command_plan["commands"] if command["id"] == "authorization_review_command"
         )
+        pressure_command = next(
+            command["command"] for command in command_plan["commands"] if command["id"] == "multi_zone_reducer_pressure_summary"
+        )
+        self.assertIn("--release-zone-count 12", pressure_command)
+        self.assertIn("--reducer-workers 2", pressure_command)
+        self.assertIn("--reducer-chunk-count 4", pressure_command)
+        self.assertIn("--output-family-mix", pressure_command)
         self.assertIn("scripts/submit_balfrin_probe.py", authorization_review_command)
         self.assertIn("--generate-only", authorization_review_command)
         self.assertIn("generate_balfrin_multi_release_zone_demo_handoff.py", command_plan["commands"][-1]["command"])
@@ -125,7 +160,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("Blocked classification: `blocked_pending_authorization`", rendered)
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(package["authorization_classification"], "blocked_pending_authorization")
-        self.assertEqual(package["constraint_pressure"]["status"], "warning")
+        self.assertEqual(package["constraint_pressure"]["status"], "blocked")
         self.assertEqual(smallest_run["trajectory_workers"], 2)
         self.assertEqual(smallest_run["reducer_workers"], 2)
         self.assertEqual(Path(smallest_run["output_roots"]["artifact_dir"]), artifact_dir.resolve())

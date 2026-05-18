@@ -92,6 +92,18 @@ Its warning and blocked thresholds are themselves fixture-backed and are
 derived from deterministic 9-zone and 11-zone scratch profiles until real
 Balfrin roots are measured.
 
+## Handoff-Derived Projection
+
+The scratch probe remains the reducer-pressure measurement source, but the
+Balfrin multi-release-zone handoff now also projects the output budget from
+the concrete `multi_zone_reducer_pressure_summary` command in its command
+plan. That projection runs the fixture-backed gate against the command-plan
+shape and records primary outputs, reducer manifests, sidecars, manifest
+bytes, per-family budget checks, and first bottleneck labels in the handoff
+package. If the projected command-plan shape exceeds the current gate, the
+handoff package remains fail-closed even when the smaller requested submit
+shape is otherwise within measured reducer maxima.
+
 ## Smallest Authorization Preflight Shape
 
 The smallest bounded multi-zone authorization preflight consumes the reviewed

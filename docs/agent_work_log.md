@@ -1114,3 +1114,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: fixture-backed rehearsal and read-only access preflight only; no live Balfrin job, no remote mutation, no generated heavy output, no claim upgrade, no maturity upgrade, no scale-up or distributed execution, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-228`
+
+### TB-228: Multi-Zone Handoff Output Budget Projection
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: project reducer manifest, file-family, and output-byte pressure from the actual multi-zone Balfrin handoff command plan instead of relying only on the standalone scratch probe.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a handoff-derived output-budget projection that parses the `multi_zone_reducer_pressure_summary` command, runs the fixture-backed reducer-pressure gate against that command-plan shape, and writes projection JSON/text artifacts under the ignored handoff scratch directory.
+  - Exposed the reducer gate vocabulary in the handoff package, including budget checks, family count/byte checks, primary output totals, sidecar totals, reducer-manifest totals, manifest bytes, and first bottleneck labels.
+  - Made package constraint status fail closed when the handoff command-plan projection exceeds the current gate, while preserving the separate requested reducer max checks for the smallest submit shape.
+  - Documented the distinction between scratch measurement and handoff-derived projection, then removed TB-228 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb228_balfrin_preflight.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/summarize_multi_zone_reducer_pressure.py scripts/validate_multi_zone_reducer_pressure_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb228_probe_report --format json > /tmp/tb228_handoff_report.json` (expected fail-closed exit `2`)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: fixture-backed handoff budget projection only; no live Balfrin job, no remote mutation, no output-default change, no scale-up or distributed-execution authorization, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-229`

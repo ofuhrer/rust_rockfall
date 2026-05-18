@@ -88,6 +88,10 @@ MULTI_ZONE_PRESSURE = _load_module(
     "balfrin_multi_release_zone_pressure",
     "summarize_multi_zone_reducer_pressure.py",
 )
+MULTI_ZONE_PRESSURE_GATE = _load_module(
+    "balfrin_multi_release_zone_pressure_gate",
+    "validate_multi_zone_reducer_pressure_gate.py",
+)
 
 
 class BalfrinMultiReleaseZoneDemoHandoffError(ValueError):
@@ -286,6 +290,40 @@ def build_blocked_missing_inputs_report(
             "largest_output_families_by_bytes": [],
             "bottleneck_labels": {},
         },
+        "handoff_output_budget_projection": {
+            "status": "blocked_missing_inputs",
+            "summary": blocked_reason,
+            "projection_provenance": "blocked_missing_inputs",
+            "command_id": "multi_zone_reducer_pressure_summary",
+            "source_command": None,
+            "projected_profile": {},
+            "budget_checks": [],
+            "family_count_checks": [],
+            "family_byte_checks": [],
+            "first_bottleneck_labels": {
+                "first_blocked": "blocked_missing_inputs",
+                "first_warning": None,
+                "first_relevant": "blocked_missing_inputs",
+                "blocked": ["blocked_missing_inputs"],
+                "warning": [],
+            },
+            "primary_output_file_count": 0,
+            "primary_output_byte_count": 0,
+            "primary_output_family_file_counts": {},
+            "primary_output_family_bytes": {},
+            "sidecar_file_count": 0,
+            "sidecar_byte_count": 0,
+            "sidecar_family_file_counts": {},
+            "sidecar_family_bytes": {},
+            "reducer_manifest_file_count": 0,
+            "reducer_manifest_bytes": 0,
+            "manifest_size_bytes": 0,
+            "output_file_count": 0,
+            "output_byte_count": 0,
+            "gate_report_path": None,
+            "gate_text_path": None,
+            "blocked_reason": blocked_reason,
+        },
         "constraint_pressure": {
             "status": "blocked_missing_inputs",
             "summary": blocked_reason,
@@ -295,6 +333,16 @@ def build_blocked_missing_inputs_report(
             "requested_reducer_worker_count": None,
             "measured_constraints": {},
             "constraint_checks": [],
+            "handoff_output_budget_projection": {
+                "status": "blocked_missing_inputs",
+                "first_bottleneck_labels": {
+                    "first_blocked": "blocked_missing_inputs",
+                    "first_warning": None,
+                    "first_relevant": "blocked_missing_inputs",
+                    "blocked": ["blocked_missing_inputs"],
+                    "warning": [],
+                },
+            },
             "blocked_reason": blocked_reason,
         },
         "uncertainty_post_processing": {
@@ -482,11 +530,19 @@ def build_report(
             pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
         ),
     )
+    handoff_output_budget_projection = safe_build(
+        "handoff_output_budget_projection",
+        lambda: build_handoff_output_budget_projection(
+            command_plan=command_plan,
+            pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
+        ),
+    )
     constraint_pressure_report = build_constraint_pressure_report(
         pressure_report=pressure_report,
         requested_release_zone_batch_size=requested_release_zone_batch_size,
         requested_reducer_chunk_count=requested_reducer_chunk_count,
         requested_reducer_worker_count=requested_reducer_worker_count,
+        handoff_output_budget_projection=handoff_output_budget_projection,
     )
 
     current_target_profile = dict(output_profile_report.get("current_target_gate_profile") or {})
@@ -590,6 +646,7 @@ def build_report(
             single_job_report=single_job_report,
         ),
         "multi_zone_pressure": pressure_report,
+        "handoff_output_budget_projection": handoff_output_budget_projection,
         "constraint_pressure": constraint_pressure_report,
         "uncertainty_post_processing": build_uncertainty_post_processing(
             single_job_report=single_job_report,
@@ -731,6 +788,14 @@ def build_command_plan(
                     rel(ROOT / "scripts" / "summarize_multi_zone_reducer_pressure.py"),
                     "--materialize-root",
                     str(pressure_probe_root),
+                    "--release-zone-count",
+                    str(MULTI_ZONE_PRESSURE.DEFAULT_RELEASE_ZONE_COUNT),
+                    "--reducer-workers",
+                    str(MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_WORKERS),
+                    "--reducer-chunk-count",
+                    str(MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_CHUNK_COUNT),
+                    "--output-family-mix",
+                    ",".join(MULTI_ZONE_PRESSURE.DEFAULT_OUTPUT_FAMILY_MIX),
                     "--format",
                     "json",
                     "--json-output",
@@ -1326,15 +1391,199 @@ def build_multi_zone_pressure_report(
     }
 
 
+def build_handoff_output_budget_projection(
+    *,
+    command_plan: dict[str, Any],
+    pressure_artifact_dir: Path,
+) -> dict[str, Any]:
+    pressure_artifact_dir = resolve_output_root(pressure_artifact_dir)
+    if not is_allowed_output_root(pressure_artifact_dir):
+        raise BalfrinMultiReleaseZoneDemoHandoffError(
+            f"pressure artifact dir must stay under /tmp or validation/private: {pressure_artifact_dir}"
+        )
+
+    command_spec = parse_handoff_pressure_command(command_plan)
+    projection_root = pressure_artifact_dir / "handoff_output_budget_projection_root"
+    gate_report = MULTI_ZONE_PRESSURE_GATE.build_report(
+        materialize_root=projection_root,
+        release_zone_count=command_spec["release_zone_count"],
+        reducer_chunk_count=command_spec["reducer_chunk_count"],
+        reducer_workers=command_spec["reducer_worker_count"],
+        output_family_mix=command_spec["output_family_mix"],
+    )
+    target_profile = dict(gate_report.get("target_profile") or {})
+    first_bottleneck_labels = first_handoff_budget_bottleneck_labels(gate_report)
+    normalized_status = normalize_gate_status(gate_report.get("gate_status"))
+    pressure_artifact_dir.mkdir(parents=True, exist_ok=True)
+    gate_report_path = pressure_artifact_dir / "handoff_output_budget_projection_v1.json"
+    gate_text_path = pressure_artifact_dir / "handoff_output_budget_projection_v1.txt"
+    dump_json(gate_report_path, gate_report)
+    gate_text_path.write_text(MULTI_ZONE_PRESSURE_GATE.render_text_report(gate_report) + "\n", encoding="utf-8")
+
+    primary_output_family_file_counts = dict(target_profile.get("primary_output_family_file_counts") or {})
+    primary_output_family_bytes = dict(target_profile.get("primary_output_family_bytes") or {})
+    primary_output_file_count = sum(int(value) for value in primary_output_family_file_counts.values())
+    primary_output_byte_count = sum(int(value) for value in primary_output_family_bytes.values())
+    summary = (
+        "Handoff command-plan output-budget projection is "
+        f"{normalized_status}: {target_profile.get('output_file_count')} output files, "
+        f"{target_profile.get('output_byte_count')} output bytes, "
+        f"{target_profile.get('manifest_size_bytes')} manifest bytes, "
+        f"{target_profile.get('reducer_manifest_bytes')} reducer-manifest bytes."
+    )
+    return {
+        "status": normalized_status,
+        "gate_status": gate_report.get("gate_status"),
+        "summary": summary,
+        "projection_provenance": "handoff_command_plan",
+        "threshold_provenance": gate_report.get("threshold_provenance"),
+        "command_id": command_spec["command_id"],
+        "source_command": command_spec["source_command"],
+        "planned_pressure_probe_root": command_spec["planned_pressure_probe_root"],
+        "projection_root": str(projection_root),
+        "release_zone_count": command_spec["release_zone_count"],
+        "reducer_chunk_count": command_spec["reducer_chunk_count"],
+        "reducer_worker_count": command_spec["reducer_worker_count"],
+        "output_family_mix": list(command_spec["output_family_mix"]),
+        "projected_profile": target_profile,
+        "thresholds": dict(gate_report.get("thresholds") or {}),
+        "budget_checks": list(gate_report.get("budget_checks") or []),
+        "family_count_checks": list(gate_report.get("family_count_checks") or []),
+        "family_byte_checks": list(gate_report.get("family_byte_checks") or []),
+        "warning_reasons": list(gate_report.get("warning_reasons") or []),
+        "blocked_reasons": list(gate_report.get("blocked_reasons") or []),
+        "first_bottleneck_labels": first_bottleneck_labels,
+        "primary_output_file_count": primary_output_file_count,
+        "primary_output_byte_count": primary_output_byte_count,
+        "primary_output_family_file_counts": primary_output_family_file_counts,
+        "primary_output_family_bytes": primary_output_family_bytes,
+        "sidecar_file_count": target_profile.get("sidecar_file_count", 0),
+        "sidecar_byte_count": target_profile.get("sidecar_byte_count", 0),
+        "sidecar_family_file_counts": dict(target_profile.get("sidecar_family_file_counts") or {}),
+        "sidecar_family_bytes": dict(target_profile.get("sidecar_family_bytes") or {}),
+        "reducer_manifest_file_count": target_profile.get("reducer_manifest_file_count", 0),
+        "reducer_manifest_bytes": target_profile.get("reducer_manifest_bytes", 0),
+        "manifest_size_bytes": target_profile.get("manifest_size_bytes", 0),
+        "output_file_count": target_profile.get("output_file_count", 0),
+        "output_byte_count": target_profile.get("output_byte_count", 0),
+        "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
+        "output_family_bytes": dict(target_profile.get("output_family_bytes") or {}),
+        "gate_report_path": str(gate_report_path),
+        "gate_text_path": str(gate_text_path),
+        "blocked_reason": summary if normalized_status == "blocked" else None,
+        "warning_reason": summary if normalized_status == "warning" else None,
+    }
+
+
+def parse_handoff_pressure_command(command_plan: dict[str, Any]) -> dict[str, Any]:
+    command_entry = next(
+        (
+            command
+            for command in command_plan.get("commands", [])
+            if command.get("id") == "multi_zone_reducer_pressure_summary"
+        ),
+        None,
+    )
+    if not isinstance(command_entry, dict):
+        raise BalfrinMultiReleaseZoneDemoHandoffError("missing multi_zone_reducer_pressure_summary command")
+    source_command = str(command_entry.get("command") or "")
+    tokens = shlex.split(source_command)
+    output_family_mix = MULTI_ZONE_PRESSURE.normalize_output_family_mix(
+        command_option(tokens, "--output-family-mix") or MULTI_ZONE_PRESSURE.DEFAULT_OUTPUT_FAMILY_MIX
+    )
+    return {
+        "command_id": command_entry.get("id"),
+        "source_command": source_command,
+        "planned_pressure_probe_root": command_option(tokens, "--materialize-root"),
+        "release_zone_count": int_command_option(
+            tokens,
+            "--release-zone-count",
+            MULTI_ZONE_PRESSURE.DEFAULT_RELEASE_ZONE_COUNT,
+        ),
+        "reducer_worker_count": int_command_option(
+            tokens,
+            "--reducer-workers",
+            MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_WORKERS,
+        ),
+        "reducer_chunk_count": int_command_option(
+            tokens,
+            "--reducer-chunk-count",
+            MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_CHUNK_COUNT,
+        ),
+        "output_family_mix": output_family_mix,
+    }
+
+
+def command_option(tokens: list[str], option: str) -> str | None:
+    if option not in tokens:
+        return None
+    index = tokens.index(option)
+    if index + 1 >= len(tokens):
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"{option} requires a value")
+    return tokens[index + 1]
+
+
+def int_command_option(tokens: list[str], option: str, default: int) -> int:
+    value = command_option(tokens, option)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"{option} must be an integer") from exc
+    return positive_int(parsed, option.lstrip("-").replace("-", "_"))
+
+
+def normalize_gate_status(gate_status: Any) -> str:
+    if gate_status == "blocked_fixture_backed":
+        return "blocked"
+    if gate_status == "fixture_backed_warning":
+        return "warning"
+    if gate_status == "fixture_backed_ready":
+        return "acceptable"
+    if gate_status in {"blocked", "warning", "acceptable"}:
+        return str(gate_status)
+    return "blocked"
+
+
+def first_handoff_budget_bottleneck_labels(gate_report: dict[str, Any]) -> dict[str, Any]:
+    blocked: list[str] = []
+    warning: list[str] = []
+    for check in gate_report.get("budget_checks", []):
+        label = str(check.get("metric") or "unknown_budget_metric")
+        if check.get("status") == "blocked":
+            blocked.append(label)
+        elif check.get("status") == "warning":
+            warning.append(label)
+    for check in list(gate_report.get("family_count_checks") or []) + list(gate_report.get("family_byte_checks") or []):
+        label = f"{check.get('kind')}:{check.get('value_kind')}"
+        if check.get("status") == "blocked":
+            blocked.append(label)
+        elif check.get("status") == "warning":
+            warning.append(label)
+    first_blocked = blocked[0] if blocked else None
+    first_warning = warning[0] if warning else None
+    return {
+        "first_blocked": first_blocked,
+        "first_warning": first_warning,
+        "first_relevant": first_blocked or first_warning or "ready",
+        "blocked": blocked,
+        "warning": warning,
+    }
+
+
 def build_constraint_pressure_report(
     *,
     pressure_report: dict[str, Any],
     requested_release_zone_batch_size: int,
     requested_reducer_chunk_count: int,
     requested_reducer_worker_count: int,
+    handoff_output_budget_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     measured_constraints = dict(pressure_report.get("measured_reducer_constraints") or {})
     constraint_source = dict(measured_constraints.get("constraint_source") or {})
+    handoff_output_budget_projection = handoff_output_budget_projection or {}
+    projected_status = normalize_handoff_projection_status(handoff_output_budget_projection)
     if pressure_report.get("status") == "blocked_missing_inputs" or not measured_constraints:
         return {
             "status": "blocked_missing_inputs",
@@ -1345,6 +1594,7 @@ def build_constraint_pressure_report(
             "requested_reducer_worker_count": requested_reducer_worker_count,
             "measured_constraints": measured_constraints,
             "constraint_checks": [],
+            "handoff_output_budget_projection": handoff_output_budget_projection,
             "blocked_reason": pressure_report.get("blocked_reason", "missing measured reducer constraints"),
         }
 
@@ -1365,8 +1615,9 @@ def build_constraint_pressure_report(
             limit=positive_int(measured_constraints.get("reducer_worker_count_max"), "measured reducer worker count max"),
         ),
     ]
-    status = overall_constraint_status(checks)
-    summary = constraint_pressure_summary(status, checks)
+    requested_status = overall_constraint_status(checks)
+    status = combine_constraint_status(requested_status, projected_status)
+    summary = constraint_pressure_summary(status, checks, handoff_output_budget_projection=handoff_output_budget_projection)
     return {
         "status": status,
         "summary": summary,
@@ -1376,6 +1627,8 @@ def build_constraint_pressure_report(
         "requested_reducer_worker_count": requested_reducer_worker_count,
         "measured_constraints": measured_constraints,
         "constraint_checks": checks,
+        "requested_constraint_status": requested_status,
+        "handoff_output_budget_projection": handoff_output_budget_projection,
         "blocked_reason": summary if status == "blocked" else None,
         "warning_reason": summary if status == "warning" else None,
     }
@@ -1410,8 +1663,34 @@ def overall_constraint_status(checks: list[dict[str, Any]]) -> str:
     return "acceptable"
 
 
-def constraint_pressure_summary(status: str, checks: list[dict[str, Any]]) -> str:
+def normalize_handoff_projection_status(handoff_output_budget_projection: dict[str, Any]) -> str:
+    if not handoff_output_budget_projection:
+        return "acceptable"
+    status = handoff_output_budget_projection.get("status")
+    if status == "blocked_missing_inputs":
+        return "blocked"
+    if status in {"blocked", "warning", "acceptable"}:
+        return str(status)
+    return normalize_gate_status(handoff_output_budget_projection.get("gate_status"))
+
+
+def combine_constraint_status(requested_status: str, projected_status: str) -> str:
+    order = {"acceptable": 0, "warning": 1, "blocked": 2}
+    return requested_status if order.get(requested_status, 2) >= order.get(projected_status, 2) else projected_status
+
+
+def constraint_pressure_summary(
+    status: str,
+    checks: list[dict[str, Any]],
+    *,
+    handoff_output_budget_projection: dict[str, Any] | None = None,
+) -> str:
     reasons = [check["reason"] for check in checks if check["status"] != "acceptable"]
+    projection = handoff_output_budget_projection or {}
+    projection_status = normalize_handoff_projection_status(projection) if projection else "acceptable"
+    if projection_status != "acceptable":
+        bottleneck = dict(projection.get("first_bottleneck_labels") or {}).get("first_relevant")
+        reasons.append(f"handoff output-budget projection {projection_status}: first bottleneck {bottleneck}")
     if status == "blocked":
         return "blocked: " + "; ".join(reasons)
     if status == "warning":
@@ -1970,6 +2249,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     constraint_pressure = dict(report.get("constraint_pressure") or {})
     measured_constraints = dict(constraint_pressure.get("measured_constraints") or {})
     constraint_source = dict(constraint_pressure.get("constraint_source") or {})
+    output_budget_projection = dict(report.get("handoff_output_budget_projection") or {})
+    first_bottleneck_labels = dict(output_budget_projection.get("first_bottleneck_labels") or {})
     lines = [
         "Balfrin Multi-Release-Zone Demo Package",
         "",
@@ -2019,6 +2300,25 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Measured root file count max: `{measured_constraints.get('root_file_count_max')}`",
         f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
         f"- Constraint source: `{constraint_source.get('source_document')}`",
+        "",
+        "## Handoff Output-Budget Projection",
+        "",
+        f"- Projection status: `{output_budget_projection.get('status')}`",
+        f"- Projection provenance: `{output_budget_projection.get('projection_provenance')}`",
+        f"- Command id: `{output_budget_projection.get('command_id')}`",
+        f"- Release-zone count: `{output_budget_projection.get('release_zone_count')}`",
+        f"- Reducer chunk count: `{output_budget_projection.get('reducer_chunk_count')}`",
+        f"- Reducer worker count: `{output_budget_projection.get('reducer_worker_count')}`",
+        f"- Manifest size bytes: `{output_budget_projection.get('manifest_size_bytes')}`",
+        f"- Output file count: `{output_budget_projection.get('output_file_count')}`",
+        f"- Output byte count: `{output_budget_projection.get('output_byte_count')}`",
+        f"- Primary output files: `{output_budget_projection.get('primary_output_file_count')}`",
+        f"- Primary output bytes: `{output_budget_projection.get('primary_output_byte_count')}`",
+        f"- Sidecar files: `{output_budget_projection.get('sidecar_file_count')}`",
+        f"- Sidecar bytes: `{output_budget_projection.get('sidecar_byte_count')}`",
+        f"- Reducer manifest files: `{output_budget_projection.get('reducer_manifest_file_count')}`",
+        f"- Reducer manifest bytes: `{output_budget_projection.get('reducer_manifest_bytes')}`",
+        f"- First bottleneck: `{first_bottleneck_labels.get('first_relevant')}`",
         "",
         "## Output Profile Policy",
         "",
