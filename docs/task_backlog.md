@@ -23,33 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-224: Balfrin Worker Routing In Task Context
-
-Goal: Teach the task-context helper to mark Balfrin SSH/live-evidence tasks as requiring a stronger Balfrin-capable worker and the access preflight from TB-223.
-
-Capability gap reduced: Orchestrators currently have to remember when to switch from the default small worker to a stronger worker for remote Balfrin tasks.
-
-Why this outranks alternatives: The worker-routing rule should be machine-visible before live or read-only Balfrin tasks are delegated.
-
-Inspect first:
-
-- `scripts/print_agent_task_context.py`
-- `tests/test_agent_task_context.py`
-- `docs/orchestration_strategy.md`
-- `docs/task_backlog.md`
-
-Deliverables:
-
-- Compact task-context fields such as `balfrin_access_required`, `recommended_worker_model`, and `balfrin_access_preflight_command` for tasks that mention Balfrin SSH, live run, remote run root, or evidence collection.
-- Full-detail mode preserving existing broader helper output.
-- Tests for a Balfrin task and a non-Balfrin task.
-
-Definition of done:
-
-- The default compact task context clearly tells the orchestrator when to use a stronger worker and when Balfrin access may have expired.
-
-Boundaries: Helper/context routing only, no live SSH call, no worker launch automation change, no task-priority fields, and no claim upgrade.
-
 ### TB-225: Target-Area Metrics Completion Rerun Preflight
 
 Goal: Convert the existing target-area metrics-completion rerun package into a strict authorization-request preflight that first consumes the Balfrin access status from TB-223.

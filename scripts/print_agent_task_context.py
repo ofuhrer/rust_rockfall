@@ -25,6 +25,11 @@ CHANT_SURA_CONFIG = (
     "tests/fixtures/second_site_public_geodata_preflight/"
     "chant_sura_fluelapass_candidate.yaml"
 )
+BALFRIN_ACCESS_PREFLIGHT_COMMAND = (
+    f"{PYTHON_INVOCATION} scripts/check_balfrin_remote_access_preflight.py --format json"
+)
+BALFRIN_RECOMMENDED_WORKER_MODEL = "gpt-5.5"
+BALFRIN_ACCESS_NOTE = "Balfrin SSH access may have expired; rerun the preflight before delegating."
 CURRENT_EXECUTION_FOCUS = (
     "Backlog refill needed: run a scoped gap-analysis pass against the current "
     "maturity snapshot, Balfrin/Tschamut evidence, AOI/second-site portability "
@@ -68,16 +73,49 @@ class ActiveTask:
     inspect_first: list[str]
     text: str
 
-    def summary(self, *, include_details: bool = True) -> dict[str, Any]:
+    def summary(
+        self,
+        *,
+        include_details: bool = True,
+        include_routing: bool = True,
+    ) -> dict[str, Any]:
         summary: dict[str, Any] = {
             "task_id": self.task_id,
             "title": self.title,
         }
+        if include_routing:
+            routing = self.balfrin_routing()
+            if routing:
+                summary.update(routing)
         if self.priority:
             summary["priority"] = self.priority
         if include_details:
             summary["inspect_first"] = self.inspect_first
         return summary
+
+    def balfrin_routing(self) -> dict[str, Any] | None:
+        if not self.requires_balfrin_access():
+            return None
+        return {
+            "balfrin_access_required": True,
+            "recommended_worker_model": BALFRIN_RECOMMENDED_WORKER_MODEL,
+            "balfrin_access_preflight_command": BALFRIN_ACCESS_PREFLIGHT_COMMAND,
+            "balfrin_access_note": BALFRIN_ACCESS_NOTE,
+        }
+
+    def requires_balfrin_access(self) -> bool:
+        haystack = " ".join([self.title, self.text, *self.inspect_first]).lower()
+        terms = (
+            "balfrin",
+            "ssh",
+            "live run",
+            "live-run",
+            "remote run root",
+            "evidence collection",
+            "read-only collection",
+            "remote artifact access",
+        )
+        return any(term in haystack for term in terms)
 
 
 CANONICAL_HELPERS = [
@@ -133,6 +171,11 @@ CANONICAL_HELPERS = [
             f"{PYTHON_INVOCATION} scripts/check_second_site_public_geodata_preflight.py "
             f"--site-config {CHANT_SURA_CONFIG} --format json"
         ),
+    },
+    {
+        "name": "Balfrin access preflight",
+        "path": "scripts/check_balfrin_remote_access_preflight.py",
+        "command": BALFRIN_ACCESS_PREFLIGHT_COMMAND,
     },
     {
         "name": "multisite source/scenario audit",
@@ -329,6 +372,7 @@ def relevant_helpers(task: ActiveTask | None, *, detail: str) -> list[dict[str, 
         (("cog", "conversion", "package"), "scripts/convert_same_scale_package_to_cog.py"),
         (("runtime", "scaling", "ensemble feasibility"), "scripts/summarize_bounded_reducer_runtime_scaling.py"),
         (("chant sura", "second-site", "flüelapass", "aoi"), "scripts/check_second_site_public_geodata_preflight.py"),
+        (("balfrin", "ssh", "live run", "remote run root", "evidence collection"), "scripts/check_balfrin_remote_access_preflight.py"),
         (("source", "scenario", "multisite"), "scripts/audit_multisite_source_scenario_contract.py"),
         (("physical", "credibility", "calibration", "validation"), "scripts/assess_validation_calibration_evidence_gaps.py"),
     ]
@@ -359,9 +403,12 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
         "python_invocation": PYTHON_INVOCATION,
         "requested_task_id": task_id,
         "detail": detail,
-        "selected_task": task.summary(include_details=True) if task else None,
+        "selected_task": task.summary(include_details=True, include_routing=True) if task else None,
         "active_tasks": [
-            candidate.summary(include_details=(detail == "full" or candidate == task))
+            candidate.summary(
+                include_details=(detail == "full" or candidate == task),
+                include_routing=True,
+            )
             for candidate in active_tasks
         ],
         "backlog_refill_needed": backlog_refill_needed,
@@ -450,6 +497,17 @@ def scan_existing_placeholder_paths(root: Path = ROOT) -> list[str]:
 
 
 def render_text(report: dict[str, Any]) -> str:
+    def format_task(task: dict[str, Any]) -> str:
+        parts = [f"{task['task_id']}: {task['title']}"]
+        if task.get("balfrin_access_required"):
+            parts.append("balfrin_access_required=true")
+            parts.append(f"recommended_worker_model={task['recommended_worker_model']}")
+            parts.append(
+                f"balfrin_access_preflight_command={task['balfrin_access_preflight_command']}"
+            )
+            parts.append(f"balfrin_access_note={task['balfrin_access_note']}")
+        return "; ".join(parts)
+
     lines = [
         f"agent_task_context_status: {report['agent_task_context_status']}",
         f"repo_root: {report['repo_root']}",
@@ -460,13 +518,13 @@ def render_text(report: dict[str, Any]) -> str:
     ]
     selected = report.get("selected_task")
     if selected:
-        lines.append(f"selected_task: {selected['task_id']} {selected['title']}")
+        lines.append(f"selected_task: {format_task(selected)}")
         if selected["inspect_first"]:
             lines.append("inspect_first:")
             lines.extend(f"- {item}" for item in selected["inspect_first"])
     lines.append("active_tasks:")
     for task in report["active_tasks"]:
-        lines.append(f"- {task['task_id']}: {task['title']}")
+        lines.append(f"- {format_task(task)}")
     if report.get("backlog_note"):
         lines.append(f"backlog_note: {report['backlog_note']}")
     if report.get("current_execution_focus"):

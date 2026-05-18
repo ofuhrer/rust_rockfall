@@ -109,10 +109,47 @@ Inspect first:
         self.assertEqual(report["selected_task"]["task_id"], current_task_id)
         self.assertEqual(report["detail"], "compact")
         self.assertIn("inspect_first", report["selected_task"])
+        self.assertTrue(report["selected_task"]["balfrin_access_required"])
+        self.assertEqual(report["selected_task"]["recommended_worker_model"], "gpt-5.5")
+        self.assertIn("check_balfrin_remote_access_preflight.py", report["selected_task"]["balfrin_access_preflight_command"])
         other_tasks = [task for task in report["active_tasks"] if task["task_id"] != current_task_id]
         self.assertTrue(other_tasks)
         self.assertNotIn("inspect_first", other_tasks[0])
         self.assertLess(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
+
+    def test_balfrin_task_includes_worker_routing_fields(self) -> None:
+        task = agent_context.ActiveTask(
+            task_id="TB-999",
+            title="Example Balfrin Evidence Task",
+            priority=None,
+            inspect_first=["scripts/check_balfrin_remote_access_preflight.py"],
+            text="Balfrin SSH live run remote run root evidence collection",
+        )
+
+        summary = task.summary(include_details=False, include_routing=True)
+
+        self.assertTrue(summary["balfrin_access_required"])
+        self.assertEqual(summary["recommended_worker_model"], "gpt-5.5")
+        self.assertEqual(
+            summary["balfrin_access_preflight_command"],
+            "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json",
+        )
+        self.assertIn("may have expired", summary["balfrin_access_note"])
+
+    def test_non_balfrin_task_omits_worker_routing_fields(self) -> None:
+        task = agent_context.ActiveTask(
+            task_id="TB-998",
+            title="Compact Backlog Task",
+            priority=None,
+            inspect_first=["docs/example.md"],
+            text="ordinary backlog work",
+        )
+
+        summary = task.summary(include_details=False, include_routing=True)
+
+        self.assertNotIn("balfrin_access_required", summary)
+        self.assertNotIn("recommended_worker_model", summary)
+        self.assertNotIn("balfrin_access_preflight_command", summary)
 
     def test_full_detail_keeps_all_task_details_and_helpers(self) -> None:
         current_task_id = self.current_active_task_id()
@@ -122,6 +159,7 @@ Inspect first:
         self.assertEqual(report["detail"], "full")
         self.assertEqual(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
         self.assertTrue(all("inspect_first" in task for task in report["active_tasks"]))
+        self.assertTrue(report["selected_task"]["balfrin_access_required"])
 
     def test_rendered_report_includes_compact_worker_output_guidance(self) -> None:
         report = agent_context.build_report(run_checks=False)
@@ -131,6 +169,9 @@ Inspect first:
         self.assertIn("agent_worker_output_guidance_v1", text)
         self.assertIn("final_report_schema: TASK, STATUS, SUMMARY, FILES_CHANGED", text)
         self.assertIn("Preserve the final relevant error block", text)
+        self.assertIn("balfrin_access_required=true", text)
+        self.assertIn("recommended_worker_model=gpt-5.5", text)
+        self.assertIn("check_balfrin_remote_access_preflight.py", text)
 
     def test_missing_task_is_explicitly_blocked(self) -> None:
         report = agent_context.build_report("TB-000", run_checks=False)
