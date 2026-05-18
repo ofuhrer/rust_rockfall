@@ -84,7 +84,9 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         base=config_base,
     )
     acquisition_manifest = PREFLIGHT.load_site_config(acquisition_manifest_path) if acquisition_manifest_path.exists() else {}
-    paths = PREFLIGHT.build_paths(candidate_site_id, config)
+    path_layout = PREFLIGHT.text_value(config.get("path_layout"))
+    path_base = config_base if path_layout == "site_root_relative" else PREFLIGHT.ROOT
+    paths = PREFLIGHT.build_paths(candidate_site_id, config, base=path_base)
     acquisition_report = PREFLIGHT.build_report(site_config)
     public_context_acquisition_plan = PREFLIGHT.build_public_context_acquisition_plan(acquisition_manifest, [])
 

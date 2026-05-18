@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-256: AOI Manifest Bootstrap And Schema Contract
-
-Goal: Create a compact AOI manifest format and bootstrap command that turns a user-supplied polygon or LV95 bounds into a deterministic site configuration.
-
-Capability gap reduced: Users need a stable first artifact that names the AOI, CRS, datum, expected roots, target outputs, and public-geodata acquisition intent.
-
-Why this outranks alternatives: Every later workflow step depends on consistent AOI metadata; without a bootstrap contract, each helper continues to infer site rules from fixture-specific configs.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-- `tests/fixtures/second_site_public_geodata_preflight/minimal_synthetic_aoi.yaml`
-
-Deliverables:
-
-- An AOI manifest schema and bootstrap helper or front-door subcommand that accepts LV95 bounds or a GeoJSON polygon and writes a site config under a caller-provided ignored root.
-- Validation for CRS, vertical datum, AOI extent, site id, product policy, and output-root layout.
-- Fixture-backed tests for valid bounds, invalid CRS, missing AOI geometry, and deterministic manifest IDs.
-
-Definition of done:
-
-- A new user can create a valid AOI manifest that all existing preparation helpers can consume without hand-editing fixture files.
-
-Boundaries: Manifest/bootstrap only; no geodata download, no simulation, no hazard-map claim, no annual-frequency semantics, and no committed generated AOI roots.
-
 ### TB-257: AOI Swisstopo Product Resolver And Cache Manifest
 
 Goal: Resolve the required swisstopo products and tile ids for a bootstrapped AOI into a deterministic acquisition/cache manifest.

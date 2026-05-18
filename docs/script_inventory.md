@@ -34,6 +34,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/check_hazard_rebuild_output_profile.py`
 - `scripts/check_same_scale_artifact_readiness.py`
 - `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/bootstrap_aoi_manifest.py`
 - `scripts/collect_balfrin_probe_metrics.py`
 - `scripts/compare_hazard_map_convergence.py`
 - `scripts/convert_same_scale_package_to_cog.py`

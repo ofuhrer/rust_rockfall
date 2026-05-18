@@ -126,7 +126,9 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     )
     acquisition_manifest = load_site_config(acquisition_manifest_path) if acquisition_manifest_path.exists() else {}
 
-    paths = build_paths(candidate_site_id, config)
+    path_layout = text_value(config.get("path_layout"))
+    path_base = config_base if path_layout == "site_root_relative" else ROOT
+    paths = build_paths(candidate_site_id, config, base=path_base)
     requirements = build_requirements(candidate_site_id, site_extent, paths)
     missing_required = [
         req
@@ -1453,40 +1455,44 @@ def staged_context_status(path: Path, category: str) -> str:
     return "ready" if path.exists() else "blocked_missing_inputs"
 
 
-def build_paths(site_id: str, config: dict[str, Any]) -> dict[str, Path]:
+def build_paths(site_id: str, config: dict[str, Any], *, base: Path | None = None) -> dict[str, Path]:
     processed_root = resolve_repo_path(
         config.get("expected_processed_input_root"),
         ROOT / "data/processed/swisstopo" / site_id / "input",
+        base=base,
     )
     context_root = resolve_repo_path(
         config.get("expected_processed_context_root"),
         ROOT / "data/processed/swisstopo" / site_id / "context",
+        base=base,
     )
     validation_root = resolve_repo_path(
         config.get("expected_validation_private_root"),
         ROOT / "validation/private" / site_id,
+        base=base,
     )
     hazard_root = resolve_repo_path(
         config.get("expected_hazard_results_root"),
         ROOT / "hazard/results" / site_id,
+        base=base,
     )
     policy_root = ROOT / "validation/policies"
     input_root = processed_root
     return {
-        "terrain_crop": resolve_repo_path(config.get("expected_terrain_crop_path"), input_root / "terrain.asc"),
-        "terrain_metadata": resolve_repo_path(config.get("expected_terrain_metadata_path"), input_root / "terrain_metadata.yaml"),
-        "source_zone_metadata": resolve_repo_path(config.get("expected_source_zone_metadata_path"), input_root / "source_zone_metadata.yaml"),
-        "scenario_table": resolve_repo_path(config.get("expected_scenario_table_path"), input_root / "scenario_table.csv"),
-        "aoi_tile_catalog": resolve_repo_path(config.get("expected_aoi_tile_catalog_path"), input_root / "aoi_tile_catalog.yaml"),
-        "source_scenario_policy": resolve_repo_path(config.get("expected_source_scenario_policy_path"), policy_root / f"{site_id}_source_scenario_policy_v1.yaml"),
-        "swissimage_context": resolve_repo_path(config.get("expected_swissimage_context_root"), context_root / "swissimage"),
-        "swisstlm3d_context": resolve_repo_path(config.get("expected_swisstlm3d_context_root"), context_root / "swisstlm3d"),
-        "swisstlm3d_metadata": resolve_repo_path(config.get("expected_swisstlm3d_metadata_path"), context_root / "swisstlm3d" / "metadata.json"),
-        "swisssurface3d_context": resolve_repo_path(config.get("expected_swisssurface3d_context_root"), context_root / "swisssurface3d"),
-        "swisssurface3d_raster_context": resolve_repo_path(config.get("expected_swisssurface3d_raster_context_root"), context_root / "swisssurface3d_raster"),
-        "swissbuildings3d_context": resolve_repo_path(config.get("expected_swissbuildings3d_context_root"), context_root / "swissbuildings3d"),
-        "barrier_inventory": resolve_repo_path(config.get("expected_barrier_inventory_root"), context_root / "barriers"),
-        "validation_observations": resolve_repo_path(config.get("expected_validation_observations_root"), processed_root / "validation/observations"),
+        "terrain_crop": resolve_repo_path(config.get("expected_terrain_crop_path"), input_root / "terrain.asc", base=base),
+        "terrain_metadata": resolve_repo_path(config.get("expected_terrain_metadata_path"), input_root / "terrain_metadata.yaml", base=base),
+        "source_zone_metadata": resolve_repo_path(config.get("expected_source_zone_metadata_path"), input_root / "source_zone_metadata.yaml", base=base),
+        "scenario_table": resolve_repo_path(config.get("expected_scenario_table_path"), input_root / "scenario_table.csv", base=base),
+        "aoi_tile_catalog": resolve_repo_path(config.get("expected_aoi_tile_catalog_path"), input_root / "aoi_tile_catalog.yaml", base=base),
+        "source_scenario_policy": resolve_repo_path(config.get("expected_source_scenario_policy_path"), policy_root / f"{site_id}_source_scenario_policy_v1.yaml", base=base),
+        "swissimage_context": resolve_repo_path(config.get("expected_swissimage_context_root"), context_root / "swissimage", base=base),
+        "swisstlm3d_context": resolve_repo_path(config.get("expected_swisstlm3d_context_root"), context_root / "swisstlm3d", base=base),
+        "swisstlm3d_metadata": resolve_repo_path(config.get("expected_swisstlm3d_metadata_path"), context_root / "swisstlm3d" / "metadata.json", base=base),
+        "swisssurface3d_context": resolve_repo_path(config.get("expected_swisssurface3d_context_root"), context_root / "swisssurface3d", base=base),
+        "swisssurface3d_raster_context": resolve_repo_path(config.get("expected_swisssurface3d_raster_context_root"), context_root / "swisssurface3d_raster", base=base),
+        "swissbuildings3d_context": resolve_repo_path(config.get("expected_swissbuildings3d_context_root"), context_root / "swissbuildings3d", base=base),
+        "barrier_inventory": resolve_repo_path(config.get("expected_barrier_inventory_root"), context_root / "barriers", base=base),
+        "validation_observations": resolve_repo_path(config.get("expected_validation_observations_root"), processed_root / "validation/observations", base=base),
         "validation_case_root": validation_root,
         "hazard_results_root": hazard_root,
         "processed_input_root": processed_root,

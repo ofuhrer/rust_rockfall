@@ -1727,3 +1727,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: front-door orchestration only; no live Balfrin submission, no downloads, no physical-probability semantics, no operational claim, and no generated heavy outputs committed.
 - Next task: backlog refill needed
+
+### TB-256: AOI Manifest Bootstrap And Schema Contract
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a compact AOI manifest/bootstrap contract that turns user-supplied LV95 bounds or a GeoJSON polygon into a deterministic site config package for the existing second-site preparation helpers.
+- Files changed: `scripts/bootstrap_aoi_manifest.py`, `scripts/check_second_site_public_geodata_preflight.py`, `scripts/plan_swisstopo_aoi_acquisition.py`, `tests/test_bootstrap_aoi_manifest.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a metadata-only bootstrap helper that validates EPSG:2056/LN02 AOI input, computes a deterministic manifest id from canonicalized geometry, and writes a compact self-contained site package under the caller-provided ignored root.
+  - Generated the AOI tile catalog, acquisition manifest, and template source-scenario policy alongside the site config so the existing preflight and AOI acquisition planner can consume the bootstrap output without hand-editing fixture files.
+  - Updated shared preflight path resolution to respect the bootstrap package’s root-relative layout while preserving the older fixture-backed repo-relative behavior, then added focused tests for valid bounds, invalid CRS, missing geometry, deterministic ids, and downstream helper consumption.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bootstrap_aoi_manifest`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_swisstopo_aoi_acquisition_planner`
+- Result/status: implemented_fixture_backed
+- Boundaries: manifest/bootstrap only; no geodata download, no simulation, no hazard-map claim, no annual-frequency semantics, and no committed generated AOI roots.
+- Next task: backlog refill needed
