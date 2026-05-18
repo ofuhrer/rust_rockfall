@@ -279,6 +279,7 @@ def build_new_measured_evidence_section() -> dict[str, Any]:
         ),
         "source_paths": [],
     }
+    section["closure_input_compatibility"] = evaluate_new_measured_evidence_compatibility(section)
     return annotate_section(section, "blocked")
 
 
@@ -333,6 +334,53 @@ def apply_overrides(report: dict[str, Any], evidence_override: dict[str, Any]) -
         report["new_measured_evidence_section"].update(copy.deepcopy(evidence_override["new_measured_evidence"]))
     if isinstance(evidence_override.get("preservation_section"), dict):
         report["preservation_section"].update(copy.deepcopy(evidence_override["preservation_section"]))
+    enforce_new_measured_evidence_compatibility(report["new_measured_evidence_section"])
+
+
+def evaluate_new_measured_evidence_compatibility(section: dict[str, Any]) -> dict[str, Any]:
+    source_type = str(section.get("source_type") or "")
+    evidence_type = str(section.get("evidence_type") or "")
+    status = str(section.get("status") or "")
+    preservation_gate_status = str(section.get("preservation_gate_status") or "")
+    authorization_status = str(section.get("authorization_status") or "")
+    missing_fields: list[str] = []
+
+    if source_type not in ALLOWED_MEASURED_EVIDENCE_SOURCES:
+        missing_fields.append("new_measured_evidence.source_type")
+    if status != "measured":
+        missing_fields.append("new_measured_evidence.status=measured")
+    if evidence_type != "measured":
+        missing_fields.append("new_measured_evidence.evidence_type=measured")
+    if section.get("preservation_checked") is not True:
+        missing_fields.append("new_measured_evidence.preservation_checked=true")
+    if preservation_gate_status != "ready_for_demonstration_evidence":
+        missing_fields.append("new_measured_evidence.preservation_gate_status=ready_for_demonstration_evidence")
+    if authorization_status not in {"authorized", "authorized_for_one_bounded_probe"}:
+        missing_fields.append("new_measured_evidence.authorization_status")
+
+    return {
+        "schema_version": "balfrin_closure_new_measured_evidence_input_compatibility_v1",
+        "status": "compatible" if not missing_fields else "blocked_missing_inputs",
+        "allowed_source_types": sorted(ALLOWED_MEASURED_EVIDENCE_SOURCES),
+        "source_type": source_type or None,
+        "missing_fields": missing_fields,
+        "preserves_fixture_backed_boundary": evidence_type != "fixture_backed" or bool(missing_fields),
+        "summary": (
+            "New measured evidence input is compatible with closure-package semantics."
+            if not missing_fields
+            else "New measured evidence input is blocked; closure requires measured provenance, preservation gate readiness, and authorization."
+        ),
+    }
+
+
+def enforce_new_measured_evidence_compatibility(section: dict[str, Any]) -> None:
+    compatibility = evaluate_new_measured_evidence_compatibility(section)
+    section["closure_input_compatibility"] = compatibility
+    if compatibility["status"] == "compatible":
+        return
+    section["status"] = str(section.get("status") or "blocked_missing_inputs")
+    section["evidence_type"] = "blocked"
+    section["preservation_checked"] = bool(section.get("preservation_checked", False))
 
 
 def finalize_report(report: dict[str, Any]) -> None:

@@ -111,6 +111,7 @@ operator-facing until they get smoke tests or a documented replacement.
 
 ## Evidence Summarizers
 
+- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
 - `scripts/summarize_balfrin_bounded_probe_interpretation.py`
 - `scripts/summarize_balfrin_demonstration_replay_smoke.py`
 - `scripts/summarize_balfrin_demonstration_closure_package.py`

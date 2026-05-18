@@ -75,6 +75,52 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
         )
         self.assertIn("mixed provenance", report["reviewer_answer"])
         self.assertIn("useful for review", report["package_summary"]["summary"])
+        self.assertEqual(
+            report["new_measured_evidence_section"]["closure_input_compatibility"]["status"],
+            "compatible",
+        )
+
+    def test_authorized_multi_zone_probe_is_a_supported_new_measured_source_family(self) -> None:
+        report = MODULE.build_report(
+            {
+                "new_measured_evidence": {
+                    "status": "measured",
+                    "evidence_type": "measured",
+                    "source_type": "authorized_multi_zone_probe",
+                    "preservation_checked": True,
+                    "preservation_gate_status": "ready_for_demonstration_evidence",
+                    "authorization_status": "authorized_for_one_bounded_probe",
+                    "summary": "Measured authorized multi-zone probe with preservation-check evidence.",
+                }
+            }
+        )
+
+        self.assertEqual(report["closure_status"], "mixed_provenance_warning")
+        self.assertEqual(
+            report["new_measured_evidence_section"]["closure_input_compatibility"]["status"],
+            "compatible",
+        )
+
+    def test_fixture_backed_new_evidence_input_remains_blocked(self) -> None:
+        report = MODULE.build_report(
+            {
+                "new_measured_evidence": {
+                    "status": "fixture_backed_complete",
+                    "evidence_type": "fixture_backed",
+                    "source_type": "metrics_completion_rerun",
+                    "preservation_checked": True,
+                    "preservation_gate_status": "ready_for_demonstration_evidence",
+                    "authorization_status": "authorized",
+                    "summary": "Fixture-backed rehearsal only.",
+                }
+            }
+        )
+
+        self.assertEqual(report["closure_status"], "blocked_no_new_measured_evidence")
+        self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "blocked")
+        compatibility = report["new_measured_evidence_section"]["closure_input_compatibility"]
+        self.assertEqual(compatibility["status"], "blocked_missing_inputs")
+        self.assertIn("new_measured_evidence.evidence_type=measured", compatibility["missing_fields"])
 
     def test_complete_measured_report_allows_label_upgrade(self) -> None:
         report = MODULE.build_report(self.complete_measured_override())

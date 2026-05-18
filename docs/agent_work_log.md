@@ -1095,3 +1095,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: authorization preflight and submit gate only; no live Balfrin job, no remote mutation, no authorization grant, no scale-up or distributed execution, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-227`
+
+### TB-227: Balfrin Post-Run Evidence Collector Rehearsal
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: rehearse Balfrin post-run evidence collection across complete, incomplete, missing-root, SSH-unavailable, and non-git-artifact-unavailable fixture states before any future live run is treated as evidence.
+- Files changed: `scripts/rehearse_balfrin_post_run_evidence_collector.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_post_run_evidence_collector_rehearsal.py`, `tests/test_balfrin_demonstration_closure_package.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only post-run evidence collector rehearsal helper that runs the existing metrics report and preservation gate over fixture roots and classifies `fixture_backed_complete`, `blocked_incomplete_run_root`, `blocked_missing_run_root`, `blocked_ssh_unavailable`, and `blocked_non_git_artifact_unavailable`.
+  - Covered both closure source families, `metrics_completion_rerun` and `authorized_multi_zone_probe`, while keeping fixture-backed complete roots distinct from measured evidence and refusing promotion to closure evidence.
+  - Added closure-package input compatibility checks for new measured evidence, including source family, measured provenance, preservation-gate readiness, and authorization status.
+  - Added focused tests proving incomplete roots remain blocked and access/artifact blockers preserve exact statuses.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_post_run_evidence_collector_rehearsal tests.test_balfrin_demonstration_closure_package tests.test_balfrin_probe_metrics_report tests.test_balfrin_probe_preservation_gate tests.test_balfrin_authorized_multi_zone_submit`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_post_run_evidence_collector_rehearsal tests.test_balfrin_demonstration_closure_package`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb227_balfrin_preflight.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: fixture-backed rehearsal and read-only access preflight only; no live Balfrin job, no remote mutation, no generated heavy output, no claim upgrade, no maturity upgrade, no scale-up or distributed execution, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-228`

@@ -23,40 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-227: Balfrin Post-Run Evidence Collector Rehearsal
-
-Goal: Rehearse post-run evidence collection on complete, incomplete, missing, and access-blocked fixture roots for both metrics-completion and multi-zone paths so partial runs cannot be promoted.
-
-Capability gap reduced: The demo needs a reliable post-run classification before another live run can be treated as evidence rather than only execution.
-
-Why this outranks alternatives: A live run without a preservation-safe collector and access-aware failure mode would increase ambiguity instead of reducing it.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `tests/test_balfrin_authorized_multi_zone_submit.py`
-- `tests/test_balfrin_probe_metrics_report.py`
-- `tests/test_balfrin_probe_preservation_gate.py`
-- `tests/test_balfrin_demonstration_closure_package.py`
-- `tests/fixtures/balfrin_probe_metrics_contract/complete_run_root/command_plan.json`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Fixture-backed collector rehearsal covering complete, incomplete, missing-root, SSH-unavailable, and non-git-artifact-unavailable classifications.
-- Closure-package input compatibility checks for the two plausible next live-run families.
-- Focused tests proving incomplete roots remain blocked.
-
-Definition of done:
-
-- The collector and closure package agree on provenance and missing-field semantics for fixture roots.
-- The result preserves measured versus fixture-backed distinction.
-
-Boundaries: Fixture-backed rehearsal only, no live run, no claim upgrade, no maturity upgrade, and no generated heavy outputs committed.
-
 ### TB-228: Multi-Zone Handoff Output Budget Projection
 
 Goal: Project reducer manifest, file-family, and output-byte pressure from the actual multi-zone handoff command plan rather than from a standalone scratch probe alone.
