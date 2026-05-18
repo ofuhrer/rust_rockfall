@@ -797,3 +797,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no live execution, no operational claim, no annual-frequency or risk semantics, no maturity upgrade without new preservation-checked measured evidence, and no replacement of the authoritative backlog or work log.
 - Next task: `TB-214`
+
+### TB-214: Workflow-Shell Coupling Inventory
+
+- Date: 2026-05-18
+- Commit: `d7915d1`
+- Objective: build an executable inventory that classifies implicit workflow-shell coupling across tracked scripts, command-plan strings, ignored-root assumptions, generated report dependencies, and duplicated status vocabularies.
+- Files changed: `scripts/inventory_workflow_shell_coupling.py`, `tests/test_workflow_shell_coupling_inventory.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `scripts/inventory_workflow_shell_coupling.py` helper that scans tracked text files, surfaces dynamic import-by-path usage, command-plan script references, ignored-root assumptions, generated report dependencies, and duplicated status values, and ranks the resulting coupling families by severity.
+  - Encoded a prioritized extraction shortlist that keeps follow-up work bounded to shared loader, ignored-root, and status-vocabulary helpers rather than a broad rewrite.
+  - Added a fixture-backed regression that proves the inventory catches both a stale script reference and an ignored-root-only dependency without touching real ignored artifacts.
+  - Registered the new helper in `docs/script_inventory.md` and removed TB-214 from the active backlog before the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/inventory_workflow_shell_coupling.py tests/test_workflow_shell_coupling_inventory.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_workflow_shell_coupling_inventory tests.test_repo_consistency_claim_hygiene -v`
+  - `PYENV_VERSION=system uv run python scripts/inventory_workflow_shell_coupling.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: inventory and prioritization only, no broad script moves, no deletion campaign, no new evidence package, and no live command behavior changes.
+- Next task: `TB-215`
