@@ -1450,3 +1450,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only artifact inspection only; no live Balfrin submission, no remote mutation, no generated artifact commit, no new spatial interpretation claim, no physical-credibility upgrade, no scale-up claim, no physical-probability/risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-244`
+
+### TB-244: Post-Metrics Balfrin Demonstration Closure Refresh
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: refresh the Balfrin closure synthesis so execution-metrics closure states, spatial-artifact separation, and post-metrics next-action ranking stay explicit.
+- Files changed: `scripts/summarize_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_demonstration_closure_package.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Refreshed the closure helper to expose `metrics_complete`, `metrics_unrecoverable_deferred`, and `blocked_no_new_measured_evidence` as explicit states instead of only the old mixed-provenance/new-evidence gate.
+  - Added a separate target-area spatial-artifact classification section using the TB-243 separation vocabulary so spatial deferrals remain distinct from execution-metrics closure.
+  - Added a post-metrics next-action section that ranks smallest multi-zone measurement, physical-evidence acquisition, second-site staging, and deferral after the metrics gate is resolved.
+  - Updated the focused closure tests to prove the default path remains blocked when no new measured or recovered metrics are supplied and to exercise the complete and explicitly deferred branches.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_demonstration_closure_package.py tests/test_balfrin_demonstration_closure_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_demonstration_closure_package -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_closure_package.py --format json > /tmp/balfrin_demonstration_closure_package.stdout`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: synthesis only; no live execution, no physical-credibility upgrade, no annual-frequency semantics, no operational claim, and no replacement of source evidence reports.
+- Next task: `TB-245`

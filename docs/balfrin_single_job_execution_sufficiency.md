@@ -288,9 +288,11 @@ probability, scale-up, and distributed-execution boundaries explicit, and it
 includes an explicit management answer about Swiss-wide extensibility with
 the current blockers named rather than inferred.
 
-For the fail-closed closure package that only upgrades when new preservation-
-checked measured evidence exists from a metrics-completion rerun or an
-authorized multi-zone probe, use `scripts/summarize_balfrin_demonstration_closure_package.py`:
+For the fail-closed closure package that now distinguishes
+`metrics_complete`, `metrics_unrecoverable_deferred`, and
+`blocked_no_new_measured_evidence` while keeping the TB-243 target-area
+spatial-artifact classification separate from execution metrics, use
+`scripts/summarize_balfrin_demonstration_closure_package.py`:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_closure_package.py \
@@ -300,9 +302,10 @@ PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_closu
 The helper materializes `balfrin_demonstration_closure_package_v1.json` and
 `balfrin_demonstration_closure_package_v1.txt` in the chosen directory. It
 fails closed with `blocked_no_new_measured_evidence` until a new
-preservation-checked measured rerun or authorized multi-zone evidence record
-is supplied, and it keeps the mixed-provenance warning explicit when measured
-and non-measured sections are combined.
+measured or recovered target-area metrics record is supplied, but it can also
+surface `metrics_complete` or `metrics_unrecoverable_deferred` states and the
+ranked next measured action without collapsing the separate spatial-artifact
+classification into the execution-metrics result.
 
 ## Scientific Blockers
 

@@ -70,6 +70,11 @@ manifests from the preserved Balfrin root, but the target-area cellwise
 spatial layers and derived spatial uncertainty products remain explicit
 `unavailable_from_preserved_root` deferrals. Those spatial deferrals are not
 execution-metrics blockers and are not physical validation evidence.
+TB-244 then refreshed the closure synthesis so the demonstration package can
+distinguish `metrics_complete`, `metrics_unrecoverable_deferred`, and
+`blocked_no_new_measured_evidence` while keeping the TB-243 spatial-artifact
+classification separate from the execution-metrics result and preserving the
+post-metrics next-action ranking.
 
 These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic

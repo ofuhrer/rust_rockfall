@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-244: Post-Metrics Balfrin Demonstration Closure Refresh
-
-Goal: Recompute the Balfrin demonstration closure package after target-area metrics are complete or explicitly unrecoverable, and produce the next measured-action recommendation from that updated state.
-
-Capability gap reduced: The current closure package is blocked by no new measured evidence and cannot yet answer whether the target-area demonstration evidence is complete enough to move on.
-
-Why this outranks alternatives: A closure refresh should happen only after the metrics gap is resolved or formally deferred; otherwise it repeats known blocked synthesis.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_target_area_interpretation.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A refreshed closure report that distinguishes `metrics_complete`, `metrics_unrecoverable_deferred`, and `blocked_no_new_measured_evidence`.
-- A separate target-area spatial-artifact classification from TB-243 so missing spatial products do not masquerade as missing execution metrics.
-- A ranked next-action recommendation after metrics completion: smallest multi-zone measurement, physical-evidence acquisition, second-site staging, or deferral.
-- Tests proving closure remains blocked when no new measured or recovered metrics are supplied.
-
-Definition of done:
-
-- Reviewers can see whether the Balfrin target-area demonstration is evidence-complete at the execution-metrics level and which next action is justified.
-
-Boundaries: Synthesis only; no live execution, no physical-credibility upgrade, no annual-frequency semantics, no operational claim, and no replacement of source evidence reports.
-
 ### TB-245: Current Multi-Zone Handoff Budget Recheck
 
 Goal: Recompute the smallest multi-zone handoff budget after command-plan contract consolidation before attempting manifest pruning.

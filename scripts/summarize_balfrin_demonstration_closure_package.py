@@ -27,6 +27,7 @@ if __package__ in {None, ""}:
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as multi_zone_handoff
 from scripts import summarize_balfrin_management_demo_package as management
 from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate
+from scripts import summarize_balfrin_next_live_run_decision_gate as next_live_decision
 from scripts import summarize_balfrin_target_area_metrics_completion_rerun_package as metrics_rerun
 
 
@@ -40,6 +41,13 @@ DEFAULT_MANAGEMENT_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "management_demo_packag
 DEFAULT_METRICS_RERUN_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "metrics_completion_rerun_package_v1"
 DEFAULT_MULTI_ZONE_ARTIFACT_DIR = Path("/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1")
 
+METRICS_COMPLETE = "metrics_complete"
+METRICS_UNRECOVERABLE_DEFERRED = "metrics_unrecoverable_deferred"
+BLOCKED_NO_NEW_MEASURED_EVIDENCE = "blocked_no_new_measured_evidence"
+DEFAULT_METRICS_COMPLETION_SOURCE = "blocked_missing_metrics"
+DEFAULT_SPATIAL_ARTIFACT_STATUS = "not_evaluated_in_closure_refresh"
+DEFAULT_NEXT_ACTION_STATUS = "blocked"
+
 SECTION_NAMES = (
     "runtime_section",
     "replay_section",
@@ -51,6 +59,9 @@ SECTION_NAMES = (
     "second_site_portability_section",
     "scientific_claim_boundaries_section",
     "metrics_completion_rerun_section",
+    "metrics_closure_section",
+    "target_area_spatial_artifact_section",
+    "next_measured_action_section",
     "new_measured_evidence_section",
 )
 
@@ -147,18 +158,25 @@ def build_current_report(*, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> dict[s
     multi_zone_report = multi_zone_handoff.build_report(
         artifact_dir=DEFAULT_MULTI_ZONE_ARTIFACT_DIR,
     )
+    metrics_closure_section = build_metrics_closure_section(
+        status=BLOCKED_NO_NEW_MEASURED_EVIDENCE,
+        metrics_completion_source=DEFAULT_METRICS_COMPLETION_SOURCE,
+        metrics_contract_status=str(metrics_rerun_report.get("package_status") or "blocked_missing_inputs"),
+        summary=(
+            "No new measured or recovered target-area metrics were supplied, so the closure package remains blocked."
+        ),
+    )
 
     report = {
         "schema_version": SCHEMA_VERSION,
-        "closure_status": "blocked_no_new_measured_evidence",
-        "closure_provenance_status": "blocked_no_new_measured_evidence",
+        "closure_status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
+        "closure_provenance_status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
         "maturity_label_update_allowed": False,
-        "reviewer_answer": build_reviewer_answer("blocked_no_new_measured_evidence"),
+        "reviewer_answer": build_reviewer_answer(BLOCKED_NO_NEW_MEASURED_EVIDENCE),
         "package_summary": {
-            "status": "blocked_no_new_measured_evidence",
+            "status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
             "summary": (
-                "No new preservation-checked measured evidence from a metrics-completion rerun or authorized "
-                "multi-zone probe is present, so the closure package remains blocked."
+                "No new measured or recovered target-area metrics are present, so the closure package remains blocked."
             ),
             "section_counts": {},
         },
@@ -176,7 +194,10 @@ def build_current_report(*, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> dict[s
         "second_site_portability_section": build_second_site_portability_section(multi_zone_report),
         "scientific_claim_boundaries_section": build_scientific_claim_boundaries_section(management_report),
         "metrics_completion_rerun_section": build_metrics_completion_rerun_section(metrics_rerun_report),
-        "new_measured_evidence_section": build_new_measured_evidence_section(),
+        "metrics_closure_section": metrics_closure_section,
+        "target_area_spatial_artifact_section": build_target_area_spatial_artifact_section(),
+        "next_measured_action_section": build_next_measured_action_section(metrics_closure_section),
+        "new_measured_evidence_section": build_new_measured_evidence_section(metrics_closure_section),
         "claim_boundaries": dict(management_report.get("claim_boundaries") or {}),
         "source_artifacts": build_source_artifacts(artifact_dir),
         "regeneration_commands": build_regeneration_commands(artifact_dir),
@@ -266,21 +287,261 @@ def build_metrics_completion_rerun_section(metrics_rerun_report: dict[str, Any])
     return annotate_section(section, "dry_run")
 
 
-def build_new_measured_evidence_section() -> dict[str, Any]:
+def build_metrics_closure_section(
+    *,
+    status: str = BLOCKED_NO_NEW_MEASURED_EVIDENCE,
+    metrics_completion_source: str = DEFAULT_METRICS_COMPLETION_SOURCE,
+    metrics_contract_status: str = "blocked_missing_inputs",
+    summary: str | None = None,
+    source_paths: list[str] | None = None,
+) -> dict[str, Any]:
+    status = str(status or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
+    if summary is None:
+        if status == METRICS_COMPLETE:
+            summary = (
+                "Target-area metrics are complete and can support a closure refresh, while spatial artifacts stay separate."
+            )
+        elif status == METRICS_UNRECOVERABLE_DEFERRED:
+            summary = (
+                "Target-area metrics remain unrecovered but explicitly deferred, so the closure refresh can rank the next measured action without fabricating missing evidence."
+            )
+        else:
+            summary = (
+                "No new measured or recovered target-area metrics were supplied, so the closure package remains blocked."
+            )
     section = {
-        "status": "blocked_no_new_measured_evidence",
+        "status": status,
+        "metrics_completion_source": metrics_completion_source,
+        "metrics_contract_status": metrics_contract_status,
+        "summary": summary,
+        "source_paths": list(source_paths or []),
+    }
+    evidence_type = "measured" if status == METRICS_COMPLETE else "unavailable" if status == METRICS_UNRECOVERABLE_DEFERRED else "blocked"
+    return annotate_section(section, evidence_type)
+
+
+def build_target_area_spatial_artifact_section(spatial_artifact_report: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not isinstance(spatial_artifact_report, dict):
+        section = {
+            "status": DEFAULT_SPATIAL_ARTIFACT_STATUS,
+            "recovery_status": "not_supplied",
+            "spatial_artifact_classification": "not_required_for_execution_metrics_closure",
+            "summary": (
+                "TB-243 spatial-artifact classification is kept separate from execution-metrics closure; no spatial recovery report was supplied to this synthesis helper."
+            ),
+            "status_counts": {},
+            "recovered_artifacts": [],
+            "unrecovered_artifacts": [],
+            "execution_metrics_closure_separation": {
+                "status": "separated_from_spatial_artifacts",
+                "spatial_artifact_classification": "not_required_for_execution_metrics_closure",
+            },
+            "spatial_interpretation_evidence": {
+                "status": DEFAULT_SPATIAL_ARTIFACT_STATUS,
+                "usable_as_target_area_spatial_interpretation_evidence": False,
+                "unrecovered_artifacts": [],
+                "physical_validation_evidence_status": "not_established",
+                "usable_as_physical_validation_evidence": False,
+                "summary": "Spatial artifacts were not supplied to the closure refresh.",
+            },
+            "source_paths": [
+                "docs/balfrin_single_job_execution_sufficiency.md",
+                "scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py",
+            ],
+        }
+        return annotate_section(section, "unavailable")
+
+    recovery = dict(spatial_artifact_report.get("spatial_artifact_recovery") or spatial_artifact_report)
+    separation = dict(spatial_artifact_report.get("execution_metrics_closure_separation") or {})
+    interpretation = dict(spatial_artifact_report.get("spatial_interpretation_evidence") or {})
+    status = str(spatial_artifact_report.get("report_status") or recovery.get("status") or interpretation.get("status") or "unknown")
+    section = {
+        "status": status,
+        "recovery_status": str(recovery.get("status") or status),
+        "spatial_artifact_classification": str(
+            separation.get("spatial_artifact_classification") or "not_required_for_execution_metrics_closure"
+        ),
+        "summary": str(
+            spatial_artifact_report.get("summary")
+            or interpretation.get("summary")
+            or "Target-area spatial-artifact classification remains separate from execution-metrics closure."
+        ),
+        "status_counts": dict(recovery.get("status_counts") or {}),
+        "recovered_artifacts": list(recovery.get("recovered_artifacts") or []),
+        "unrecovered_artifacts": list(recovery.get("unrecovered_artifacts") or interpretation.get("unrecovered_artifacts") or []),
+        "execution_metrics_closure_separation": separation or {
+            "status": "separated_from_spatial_artifacts",
+            "spatial_artifact_classification": "not_required_for_execution_metrics_closure",
+        },
+        "spatial_interpretation_evidence": interpretation or {
+            "status": status,
+            "usable_as_target_area_spatial_interpretation_evidence": False,
+            "unrecovered_artifacts": list(recovery.get("unrecovered_artifacts") or []),
+            "physical_validation_evidence_status": "not_established",
+            "usable_as_physical_validation_evidence": False,
+            "summary": "Spatial artifacts remain explicit deferrals and are not physical validation evidence.",
+        },
+        "source_paths": collect_source_paths(spatial_artifact_report),
+    }
+    evidence_type = "measured" if status == "spatial_artifacts_recovered" else "unavailable"
+    return annotate_section(section, evidence_type)
+
+
+def build_next_measured_action_section(
+    metrics_closure_section: dict[str, Any],
+    decision_gate_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    closure_status = str(metrics_closure_section.get("status") or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
+    if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
+        section = {
+            "status": DEFAULT_NEXT_ACTION_STATUS,
+            "metrics_closure_status": closure_status,
+            "summary": (
+                "No next measured-action recommendation is available until target-area metrics are complete or explicitly deferred."
+            ),
+            "ranked_actions": [],
+            "recommended_next_action": {},
+            "selected_action_id": None,
+            "source_paths": [
+                "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+                "docs/balfrin_single_job_execution_sufficiency.md",
+            ],
+        }
+        return annotate_section(section, "blocked")
+
+    decision_gate_report = dict(decision_gate_report or {})
+    option_assessments = dict(decision_gate_report.get("option_assessments") or {})
+    ranked_actions = _build_closure_ranked_actions(option_assessments)
+    selected_action = next(
+        (action for action in ranked_actions if action.get("status") in {"ready", "defer"}),
+        ranked_actions[0] if ranked_actions else {},
+    )
+    selected_action_id = str(selected_action.get("action_id") or "") or None
+    selected_action_status = str(selected_action.get("status") or "blocked")
+    section = {
+        "status": "ready" if selected_action_id else "blocked",
+        "metrics_closure_status": closure_status,
+        "summary": _summarize_next_measured_action(closure_status, selected_action, ranked_actions),
+        "ranked_actions": ranked_actions,
+        "recommended_next_action": selected_action,
+        "selected_action_id": selected_action_id,
+        "decision_gate_status": str(decision_gate_report.get("decision_status") or "unknown"),
+        "source_paths": [
+            "scripts/summarize_balfrin_next_live_run_decision_gate.py",
+            "docs/balfrin_single_job_execution_sufficiency.md",
+        ],
+    }
+    return annotate_section(section, "dry_run", status=selected_action_status if selected_action_id else "blocked")
+
+
+def build_new_measured_evidence_section(metrics_closure_section: dict[str, Any]) -> dict[str, Any]:
+    closure_status = str(metrics_closure_section.get("status") or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
+    if closure_status == METRICS_COMPLETE:
+        metrics_completion_source = str(metrics_closure_section.get("metrics_completion_source") or DEFAULT_METRICS_COMPLETION_SOURCE)
+        source_type = (
+            metrics_completion_source
+            if metrics_completion_source in ALLOWED_MEASURED_EVIDENCE_SOURCES
+            else "metrics_completion_rerun"
+        )
+        section = {
+            "status": "measured",
+            "source_type": source_type,
+            "preservation_checked": True,
+            "preservation_gate_status": "ready_for_demonstration_evidence",
+            "authorization_status": "authorized",
+            "summary": (
+                "A preservation-checked measured metrics-completion record is present, so the closure refresh can proceed."
+            ),
+            "source_paths": [
+                "scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py",
+                "docs/balfrin_single_job_execution_sufficiency.md",
+            ],
+        }
+        section["closure_input_compatibility"] = evaluate_new_measured_evidence_compatibility(section)
+        return annotate_section(section, "measured")
+    if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
+        section = {
+            "status": "unavailable",
+            "source_type": None,
+            "preservation_checked": False,
+            "preservation_gate_status": "not_applicable",
+            "authorization_status": "not_applicable",
+            "summary": (
+                "Metrics are explicitly unrecoverable and deferred, so no preservation-checked measured evidence record is being claimed."
+            ),
+            "source_paths": [
+                "docs/current_maturity_snapshot.md",
+                "docs/balfrin_single_job_execution_sufficiency.md",
+            ],
+        }
+        section["closure_input_compatibility"] = evaluate_new_measured_evidence_compatibility(
+            {
+                **section,
+                "evidence_type": "unavailable",
+            }
+        )
+        return annotate_section(section, "unavailable")
+    section = {
+        "status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
         "source_type": None,
         "preservation_checked": False,
-        "preservation_gate_status": "blocked_no_new_measured_evidence",
-        "authorization_status": "blocked_no_new_measured_evidence",
+        "preservation_gate_status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
+        "authorization_status": BLOCKED_NO_NEW_MEASURED_EVIDENCE,
         "summary": (
-            "No new preservation-checked measured evidence from a metrics-completion rerun or authorized "
-            "multi-zone probe is present."
+            "No new preservation-checked measured evidence from a metrics-completion rerun or authorized multi-zone probe is present."
         ),
         "source_paths": [],
     }
     section["closure_input_compatibility"] = evaluate_new_measured_evidence_compatibility(section)
     return annotate_section(section, "blocked")
+
+
+def _build_closure_ranked_actions(option_assessments: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rank, action_id in enumerate(
+        (
+            next_live_decision.OPTION_MULTI_ZONE,
+            next_live_decision.OPTION_PHYSICAL_EVIDENCE,
+            next_live_decision.OPTION_SECOND_SITE,
+            next_live_decision.OPTION_DEFER,
+        ),
+        start=1,
+    ):
+        option = dict(option_assessments.get(action_id) or {})
+        rows.append(
+            {
+                "rank": rank,
+                "action_id": action_id,
+                "status": option.get("status", "blocked"),
+                "path_state": option.get("path_state", "blocked"),
+                "follow_up_task": option.get("follow_up_task", "unknown"),
+                "summary": option.get("summary", ""),
+                "exact_evidence_blockers": list(option.get("exact_evidence_blockers") or []),
+                "boundary_that_prevents_claim_upgrade": option.get("boundary_that_prevents_claim_upgrade", ""),
+            }
+        )
+    return rows
+
+
+def _summarize_next_measured_action(
+    closure_status: str,
+    selected_action: dict[str, Any],
+    ranked_actions: list[dict[str, Any]],
+) -> str:
+    if not selected_action:
+        return "No next measured-action recommendation is available."
+    action_label = str(selected_action.get("action_id") or "unknown").replace("_", " ")
+    if closure_status == METRICS_COMPLETE:
+        return (
+            f"Target-area metrics are complete, so the next ranked measured action is {action_label} "
+            f"(rank {selected_action.get('rank', '?')})."
+        )
+    if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
+        return (
+            f"Target-area metrics are explicitly deferred, so the next ranked measured action is {action_label} "
+            f"(rank {selected_action.get('rank', '?')})."
+        )
+    return "No next measured-action recommendation is available until metrics are complete or explicitly deferred."
 
 
 def collect_source_paths(value: Any) -> list[str]:
@@ -301,6 +562,8 @@ def build_source_artifacts(artifact_dir: Path) -> dict[str, Any]:
         "closure_artifact_dir": str(artifact_dir),
         "management_artifact_dir": str(artifact_dir / "management_demo_package_v1"),
         "metrics_completion_rerun_artifact_dir": str(artifact_dir / "metrics_completion_rerun_package_v1"),
+        "next_live_run_decision_gate_artifact_dir": str(artifact_dir / "next_live_run_decision_gate_v1"),
+        "target_area_spatial_artifact_recovery_artifact_dir": str(artifact_dir / "target_area_spatial_artifact_recovery_v1"),
         "multi_zone_handoff_artifact_dir": str(DEFAULT_MULTI_ZONE_ARTIFACT_DIR),
         "preservation_gate_run_root": str(DEFAULT_PRESERVATION_RUN_ROOT),
         "management_run_root": str(DEFAULT_MANAGEMENT_RUN_ROOT),
@@ -313,6 +576,10 @@ def build_regeneration_commands(artifact_dir: Path) -> list[str]:
         f"--run-root {DEFAULT_PRESERVATION_RUN_ROOT} --artifact-dir {artifact_dir / 'preservation_gate_v1'}",
         "PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py "
         f"--artifact-dir {artifact_dir / 'metrics_completion_rerun_package_v1'}",
+        "PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py "
+        f"--artifact-dir {artifact_dir / 'next_live_run_decision_gate_v1'}",
+        "PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py "
+        f"--balfrin-access-json /tmp/balfrin_access_preflight.json --format json --artifact-dir {artifact_dir / 'target_area_spatial_artifact_recovery_v1'}",
         "PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py "
         f"--artifact-dir {DEFAULT_MULTI_ZONE_ARTIFACT_DIR}",
         "PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py "
@@ -387,9 +654,9 @@ def finalize_report(report: dict[str, Any]) -> None:
     profile = build_section_provenance_profile(report)
     report["section_provenance_profile"] = profile
     report["package_summary"]["section_counts"] = section_provenance_counts(profile)
-    report["closure_status"] = derive_closure_status(profile)
+    report["closure_status"] = derive_closure_status(report)
     report["closure_provenance_status"] = report["closure_status"]
-    report["maturity_label_update_allowed"] = report["closure_status"] == "complete_measured_closure"
+    report["maturity_label_update_allowed"] = report["closure_status"] == METRICS_COMPLETE
     report["reviewer_answer"] = build_reviewer_answer(report["closure_status"])
     report["package_summary"]["status"] = report["closure_status"]
     report["package_summary"]["summary"] = summarize_package(report)
@@ -417,10 +684,16 @@ def classify_evidence_type(section: dict[str, Any]) -> str:
     status = str(section.get("status") or "").strip()
     if status.startswith("blocked") or status in {"missing", "blocked"}:
         return "blocked"
+    if status in {METRICS_UNRECOVERABLE_DEFERRED, DEFAULT_SPATIAL_ARTIFACT_STATUS, "deferred_missing_spatial_artifacts"}:
+        return "unavailable"
+    if status in {METRICS_COMPLETE, "complete_measured_closure"} or status.startswith("measured"):
+        return "measured"
     if "fixture" in status:
         return "fixture_backed"
-    if "unauthor" in status or "defer" in status:
+    if "unauthor" in status:
         return "unauthorized"
+    if "defer" in status:
+        return "unavailable"
     if "template_only" in status or "dry_run" in status or "rerun" in status:
         return "dry_run"
     if "historical" in status:
@@ -444,40 +717,26 @@ def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
-def derive_closure_status(profile: list[dict[str, Any]]) -> str:
-    new_evidence = next((entry for entry in profile if entry["section"] == "new_measured_evidence_section"), {})
-    if new_evidence.get("evidence_type") != "measured":
-        return "blocked_no_new_measured_evidence"
-    if not any(
-        entry["section"] == "new_measured_evidence_section"
-        for entry in profile
-    ):
-        return "blocked_missing_inputs"
-    non_measured_sections = [
-        entry for entry in profile if entry["section"] != "new_measured_evidence_section" and entry["evidence_type"] != "measured"
-    ]
-    if non_measured_sections:
-        return "mixed_provenance_warning"
-    return "complete_measured_closure"
+def derive_closure_status(report: dict[str, Any]) -> str:
+    metrics_section = dict(report.get("metrics_closure_section") or {})
+    status = str(metrics_section.get("status") or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
+    if status in {METRICS_COMPLETE, METRICS_UNRECOVERABLE_DEFERRED, BLOCKED_NO_NEW_MEASURED_EVIDENCE}:
+        return status
+    return BLOCKED_NO_NEW_MEASURED_EVIDENCE
 
 
 def build_reviewer_answer(closure_status: str) -> str:
-    if closure_status == "complete_measured_closure":
+    if closure_status == METRICS_COMPLETE:
         return (
-            "Yes. The Balfrin evidence is plausibly extensible toward larger Swiss workflows, and the package is "
-            "complete enough to support that read within the non-operational boundary recorded here."
+            "Yes. The target-area metrics are complete enough to support a closure refresh, and the package keeps spatial-artifact classification separate from execution-metrics closure."
         )
-    if closure_status == "mixed_provenance_warning":
+    if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
         return (
-            "Plausibly extensible in architecture, but the package still carries mixed provenance across measured, "
-            "fixture-backed, dry-run, unauthorized, blocked, unavailable, and historical evidence, so maturity "
-            "labels must not be upgraded."
+            "Not yet. The target-area metrics are explicitly unrecoverable and deferred, so the closure refresh can rank the next measured action but cannot upgrade maturity labels."
         )
-    if closure_status == "blocked_no_new_measured_evidence":
+    if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
         return (
-            "No. The package fails closed because there is no new preservation-checked measured evidence from a "
-            "metrics-completion rerun or authorized multi-zone probe, so I cannot upgrade the claim that it is "
-            "plausibly extensible toward larger Swiss workflows."
+            "No. The package fails closed because there is no new measured or recovered target-area metrics record, so it cannot claim a completion refresh."
         )
     return "No. Required closure-package inputs are missing."
 
@@ -487,20 +746,20 @@ def summarize_package(report: dict[str, Any]) -> str:
     counts = report.get("package_summary", {}).get("section_counts", {})
     measured = counts.get("measured", 0) if isinstance(counts, dict) else 0
     blocked = counts.get("blocked", 0) if isinstance(counts, dict) else 0
-    if closure_status == "complete_measured_closure":
+    metrics_section = dict(report.get("metrics_closure_section") or {})
+    spatial_section = dict(report.get("target_area_spatial_artifact_section") or {})
+    next_action = dict(report.get("next_measured_action_section") or {})
+    if closure_status == METRICS_COMPLETE:
         return (
-            f"Measured closure is complete across {measured} sections, so the evidence is plausibly extensible "
-            "toward larger Swiss workflows within the recorded boundary."
+            f"Target-area metrics are complete across {measured} measured sections; spatial artifacts stay separate ({spatial_section.get('status', 'unknown')}), and the next measured action is {next_action.get('selected_action_id', 'unknown')}."
         )
-    if closure_status == "mixed_provenance_warning":
+    if closure_status == METRICS_UNRECOVERABLE_DEFERRED:
         return (
-            f"The package carries mixed provenance across {measured} measured sections and {blocked} blocked "
-            "sections, so it is useful for review but not for a maturity upgrade."
+            f"Target-area metrics are explicitly unrecoverable and deferred; {measured} sections are measured, {blocked} remain blocked, spatial artifacts stay separate ({spatial_section.get('status', 'unknown')}), and the next measured action is {next_action.get('selected_action_id', 'unknown')}."
         )
-    if closure_status == "blocked_no_new_measured_evidence":
+    if closure_status == BLOCKED_NO_NEW_MEASURED_EVIDENCE:
         return (
-            "No new preservation-checked measured evidence has been supplied, so the closure package fails closed "
-            "and refuses to upgrade maturity labels."
+            "No new measured or recovered target-area metrics have been supplied, so the closure package fails closed."
         )
     return "The closure package is blocked because required inputs are missing."
 
@@ -527,6 +786,9 @@ def blocked_report(missing_inputs: list[str], *, reason: str, artifact_dir: Path
         "second_site_portability_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "scientific_claim_boundaries_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "metrics_completion_rerun_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "metrics_closure_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "target_area_spatial_artifact_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "next_measured_action_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "new_measured_evidence_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -591,6 +853,23 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(["", "claim_boundaries:"])
     for key, value in sorted((report.get("claim_boundaries") or {}).items()):
         lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "metrics_closure_section:",
+            f"  status: {report.get('metrics_closure_section', {}).get('status', 'unknown')}",
+            f"  metrics_completion_source: {report.get('metrics_closure_section', {}).get('metrics_completion_source', 'unknown')}",
+            f"  metrics_contract_status: {report.get('metrics_closure_section', {}).get('metrics_contract_status', 'unknown')}",
+            "target_area_spatial_artifact_section:",
+            f"  status: {report.get('target_area_spatial_artifact_section', {}).get('status', 'unknown')}",
+            f"  recovery_status: {report.get('target_area_spatial_artifact_section', {}).get('recovery_status', 'unknown')}",
+            f"  spatial_artifact_classification: {report.get('target_area_spatial_artifact_section', {}).get('spatial_artifact_classification', 'unknown')}",
+            "next_measured_action_section:",
+            f"  status: {report.get('next_measured_action_section', {}).get('status', 'unknown')}",
+            f"  selected_action_id: {report.get('next_measured_action_section', {}).get('selected_action_id', 'unknown')}",
+            f"  summary: {report.get('next_measured_action_section', {}).get('summary', '')}",
+        ]
+    )
     return "\n".join(lines)
 
 
