@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Summarize the Balfrin target-area metrics-completion rerun package.
+"""Summarize the Balfrin target-area metrics-completion rerun preflight.
 
-This helper is read-only. It packages a dry-run rerun plan, a bounded SBATCH
-handoff, a preservation checklist, and a comparison against the currently
-recorded target-area run so the next execution can be scoped strictly to the
-missing peak-memory and split validation/hazard output metrics.
+This helper is read-only. It packages a strict authorization-request preflight
+for a bounded metrics-completion rerun. The report first consumes the Balfrin
+read-only access status from the TB-223 preflight helper, then combines a
+dry-run rerun plan, a bounded SBATCH handoff, a preservation checklist, and a
+comparison against the currently recorded target-area run. It never grants or
+presents a live submission as authorized.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import submit_balfrin_probe as submit  # noqa: E402
+from scripts import check_balfrin_remote_access_preflight as access_preflight  # noqa: E402
 from scripts import summarize_balfrin_probe_metrics_report as probe_metrics_report  # noqa: E402
 from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate  # noqa: E402
 
@@ -28,6 +31,13 @@ from scripts import summarize_balfrin_probe_preservation_gate as preservation_ga
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_target_area_metrics_completion_rerun_package_v1"
 REPORT_BASENAME = "balfrin_target_area_metrics_completion_rerun_package_v1"
+ACCESS_PREFLIGHT_COMMAND = (
+    "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json"
+)
+ACCESS_READY_STATUS = "ready_for_read_only_collection"
+STATUS_READY_FOR_AUTHORIZATION = "ready_for_authorization_request"
+STATUS_BLOCKED_INCOMPLETE_PACKAGE = "blocked_incomplete_package"
+STATUS_BLOCKED_ACCESS_NOT_CHECKED = "blocked_balfrin_access_not_checked"
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_metrics_completion_rerun_package_v1"
 DEFAULT_PROBE_MANIFEST = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
 DEFAULT_RERUN_RUN_ROOT = Path(
@@ -145,6 +155,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Optional override JSON file for tests or alternate package snapshots.",
     )
+    parser.add_argument(
+        "--balfrin-access-json",
+        type=Path,
+        default=None,
+        help=(
+            "Optional TB-223 Balfrin access preflight JSON. If omitted and the evidence JSON "
+            "does not provide balfrin_access_preflight, the helper runs the read-only preflight."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -179,6 +198,33 @@ def _bash_command(tokens: list[str]) -> str:
 
 def _default_existing_target_area_run() -> dict[str, Any]:
     return dict(EXISTING_TARGET_AREA_RUN)
+
+
+def _blocked_access_not_checked_report() -> dict[str, Any]:
+    return {
+        "schema_version": access_preflight.SCHEMA_VERSION,
+        "status": STATUS_BLOCKED_ACCESS_NOT_CHECKED,
+        "ready_for_read_only_collection": False,
+        "read_only": True,
+        "live_submission_authorized": False,
+        "checked_commands": [],
+        "boundary_note": (
+            "Balfrin access status was not provided. Run the TB-223 read-only preflight first "
+            "and pass its JSON into this authorization-request preflight."
+        ),
+    }
+
+
+def _access_report_from_inputs(
+    evidence_override: dict[str, Any],
+    explicit_access_preflight: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if explicit_access_preflight is not None:
+        return dict(explicit_access_preflight)
+    embedded = evidence_override.get("balfrin_access_preflight")
+    if isinstance(embedded, dict):
+        return dict(embedded)
+    return _blocked_access_not_checked_report()
 
 
 def _build_dry_run_command_plan(
@@ -483,6 +529,235 @@ def _build_replay_metadata(
     }
 
 
+def _build_post_run_collection_commands(
+    *,
+    run_root: Path,
+    probe_manifest: Path,
+    artifact_dir: Path,
+    metrics_collection_command: str,
+    preservation_gate_command: str,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "name": "collect_probe_metrics",
+            "status": "required_after_authorized_completed_run",
+            "command": metrics_collection_command,
+        },
+        {
+            "name": "summarize_probe_metrics_report",
+            "status": "required_after_authorized_completed_run",
+            "command": _bash_command(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/summarize_balfrin_probe_metrics_report.py",
+                    "--run-root",
+                    str(run_root),
+                    "--format",
+                    "json",
+                    "--artifact-dir",
+                    str(artifact_dir / "balfrin_probe_metrics_report_v1"),
+                ]
+            ),
+        },
+        {
+            "name": "summarize_preservation_gate",
+            "status": "required_after_authorized_completed_run",
+            "command": preservation_gate_command,
+        },
+        {
+            "name": "collect_slurm_accounting",
+            "status": "required_after_authorized_completed_run",
+            "command": (
+                "sacct -j <job_id> --format=JobID,JobName,Partition,State,ExitCode,Elapsed,"
+                "AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir"
+            ),
+        },
+    ]
+
+
+def _build_expected_metrics_contract() -> dict[str, Any]:
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_expected_metrics_v1",
+        "status": "complete",
+        "required_metrics": [
+            {
+                "metric": "memory_peak_mb",
+                "basis": "mandatory metrics gap from the preserved target-area run",
+                "expected_source": "post-run collector plus SLURM accounting for the authorized completed rerun",
+            },
+            {
+                "metric": "validation_output.file_count",
+                "basis": "split validation/hazard output gap from the preserved target-area run",
+                "expected_source": "post-run collector over the rerun validation output root",
+            },
+            {
+                "metric": "validation_output.bytes",
+                "basis": "split validation/hazard output gap from the preserved target-area run",
+                "expected_source": "post-run collector over the rerun validation output root",
+            },
+            {
+                "metric": "hazard_output.file_count",
+                "basis": "split validation/hazard output gap from the preserved target-area run",
+                "expected_source": "post-run collector over the rerun hazard output root",
+            },
+            {
+                "metric": "hazard_output.bytes",
+                "basis": "split validation/hazard output gap from the preserved target-area run",
+                "expected_source": "post-run collector over the rerun hazard output root",
+            },
+        ],
+        "must_not_fabricate": True,
+        "summary": (
+            "The authorization request is scoped only to collecting the missing peak-memory "
+            "and split validation/hazard output metrics for the preserved target-area run."
+        ),
+    }
+
+
+def _build_access_preflight_requirement(access_report: dict[str, Any], source: str) -> dict[str, Any]:
+    status = str(access_report.get("status") or STATUS_BLOCKED_ACCESS_NOT_CHECKED)
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_access_requirement_v1",
+        "status": "complete" if status == ACCESS_READY_STATUS else status,
+        "required": True,
+        "required_status": ACCESS_READY_STATUS,
+        "consumed_status": status,
+        "source": source,
+        "command": ACCESS_PREFLIGHT_COMMAND,
+        "ready_for_read_only_collection": bool(access_report.get("ready_for_read_only_collection")),
+        "read_only": bool(access_report.get("read_only", True)),
+        "live_submission_authorized": bool(access_report.get("live_submission_authorized", False)),
+        "checked_commands": access_report.get("checked_commands", []),
+        "boundary_note": (
+            "The TB-223 preflight is an access/read-only artifact check only; it does not grant "
+            "Balfrin execution authorization."
+        ),
+    }
+
+
+def _build_pre_authorization_inputs(
+    *,
+    probe_manifest: Path,
+    access_requirement: dict[str, Any],
+    preservation_checklist: dict[str, Any],
+    replay_metadata: dict[str, Any],
+) -> dict[str, Any]:
+    checks = [
+        {
+            "name": "balfrin_access_preflight",
+            "status": str(access_requirement.get("consumed_status") or access_requirement.get("status") or "unknown"),
+            "required_status": ACCESS_READY_STATUS,
+            "path_or_command": ACCESS_PREFLIGHT_COMMAND,
+        },
+        {
+            "name": "probe_manifest",
+            "status": "complete" if probe_manifest.exists() else "blocked_missing_inputs",
+            "required_status": "complete",
+            "path_or_command": str(probe_manifest),
+        },
+        {
+            "name": "preservation_checklist",
+            "status": str(preservation_checklist.get("status") or "unknown"),
+            "required_status": "complete",
+            "path_or_command": "embedded preservation_checklist",
+        },
+        {
+            "name": "replay_metadata",
+            "status": str(replay_metadata.get("status") or "unknown"),
+            "required_status": "complete",
+            "path_or_command": "embedded replay_metadata",
+        },
+    ]
+    missing_or_blocked = [
+        check["name"]
+        for check in checks
+        if check["status"] != check["required_status"]
+    ]
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_pre_authorization_inputs_v1",
+        "status": "complete" if not missing_or_blocked else "blocked_missing_inputs",
+        "checks": checks,
+        "missing_or_blocked": missing_or_blocked,
+        "summary": (
+            "All pre-authorization inputs are present."
+            if not missing_or_blocked
+            else "Authorization request preflight fails closed until every pre-authorization input is present."
+        ),
+    }
+
+
+def _build_authorization_request_preflight(
+    *,
+    access_requirement: dict[str, Any],
+    package_status: str,
+    pre_authorization_inputs: dict[str, Any],
+    preservation_checklist: dict[str, Any],
+    existing_run_comparison: dict[str, Any],
+    run_root: Path,
+    probe_manifest: Path,
+    artifact_dir: Path,
+    metrics_collection_command: str,
+    preservation_gate_command: str,
+) -> dict[str, Any]:
+    access_status = str(access_requirement.get("consumed_status") or STATUS_BLOCKED_ACCESS_NOT_CHECKED)
+    blocked_reasons: list[str] = []
+    if access_status != ACCESS_READY_STATUS:
+        preflight_status = access_status
+        blocked_reasons.append(f"balfrin_access:{access_status}")
+    elif package_status != "complete_rerun_package" or pre_authorization_inputs.get("status") != "complete":
+        preflight_status = STATUS_BLOCKED_INCOMPLETE_PACKAGE
+        blocked_reasons.extend(str(item) for item in pre_authorization_inputs.get("missing_or_blocked", []))
+        if preservation_checklist.get("status") != "complete":
+            blocked_reasons.append("preservation_checklist")
+    else:
+        preflight_status = STATUS_READY_FOR_AUTHORIZATION
+
+    if access_status == access_preflight.STATUS_BLOCKED_RUN_ROOT:
+        preflight_status = access_preflight.STATUS_BLOCKED_RUN_ROOT
+
+    post_run_collection_commands = _build_post_run_collection_commands(
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        artifact_dir=artifact_dir,
+        metrics_collection_command=metrics_collection_command,
+        preservation_gate_command=preservation_gate_command,
+    )
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_authorization_preflight_v1",
+        "status": preflight_status,
+        "ready_for_authorization_request": preflight_status == STATUS_READY_FOR_AUTHORIZATION,
+        "authorization_granted": False,
+        "live_submission_authorized": False,
+        "balfrin_access_preflight_requirement": access_requirement,
+        "pre_authorization_inputs": pre_authorization_inputs,
+        "expected_metrics": _build_expected_metrics_contract(),
+        "preservation_files": {
+            "status": preservation_checklist.get("status", "unknown"),
+            "required_run_root_entries": preservation_checklist.get("required_run_root_entries", []),
+            "required_replay_metadata": preservation_checklist.get("required_replay_metadata", []),
+            "missing_run_root_entries": preservation_checklist.get("missing_run_root_entries", []),
+            "missing_replay_metadata": preservation_checklist.get("missing_replay_metadata", []),
+        },
+        "comparison_basis": {
+            "status": existing_run_comparison.get("status", "unknown"),
+            "source": existing_run_comparison.get("source"),
+            "measured_fields": existing_run_comparison.get("measured_fields", {}),
+            "closure_targets": existing_run_comparison.get("closure_targets", []),
+            "summary": existing_run_comparison.get("summary", ""),
+        },
+        "post_run_collection_commands": post_run_collection_commands,
+        "blocked_reasons": blocked_reasons,
+        "summary": (
+            "Ready to request explicit authorization for a bounded metrics-completion rerun; no live submission is authorized."
+            if preflight_status == STATUS_READY_FOR_AUTHORIZATION
+            else f"Authorization-request preflight fails closed with status {preflight_status}; no live submission is authorized."
+        ),
+    }
+
+
 def _build_hashes(
     *,
     command_plan: dict[str, Any],
@@ -537,6 +812,8 @@ def build_report(
     run_root: Path | None = None,
     probe_manifest: Path | None = None,
     artifact_dir: Path | None = None,
+    balfrin_access_preflight: dict[str, Any] | None = None,
+    balfrin_access_preflight_source: str = "embedded_or_missing",
 ) -> dict[str, Any]:
     run_root = (run_root or DEFAULT_RERUN_RUN_ROOT).resolve()
     probe_manifest = (probe_manifest or DEFAULT_PROBE_MANIFEST).resolve()
@@ -552,10 +829,16 @@ def build_report(
                 run_root=run_root,
                 probe_manifest=probe_manifest,
                 artifact_dir=artifact_dir,
+                balfrin_access_preflight=_access_report_from_inputs(
+                    evidence_override,
+                    balfrin_access_preflight,
+                ),
+                balfrin_access_preflight_source=balfrin_access_preflight_source,
             )
 
     if evidence_override is None:
         evidence_override = {}
+    access_report = _access_report_from_inputs(evidence_override, balfrin_access_preflight)
 
     declared_metrics = set(
         _safe_list(evidence_override.get("declared_metrics")) or REQUIRED_METRICS
@@ -643,6 +926,10 @@ def build_report(
 
     metrics_collection_command = sbatch_package.get("collection_command") or rerun_command_plan.get("collect_command")
     preservation_gate_command = rerun_command_plan.get("preservation_gate_command")
+    if not metrics_collection_command or not preservation_gate_command:
+        raise BalfrinTargetAreaMetricsCompletionRerunPackageError(
+            "metrics collection and preservation gate commands must be present"
+        )
     replay_metadata = _build_replay_metadata(
         run_root=run_root,
         probe_manifest=probe_manifest,
@@ -664,6 +951,17 @@ def build_report(
     if isinstance(evidence_override.get("hashes"), dict):
         hashes = dict(evidence_override["hashes"])
 
+    access_requirement = _build_access_preflight_requirement(
+        access_report,
+        balfrin_access_preflight_source,
+    )
+    pre_authorization_inputs = _build_pre_authorization_inputs(
+        probe_manifest=probe_manifest,
+        access_requirement=access_requirement,
+        preservation_checklist=preservation_checklist,
+        replay_metadata=replay_metadata,
+    )
+
     sections = [
         ("rerun_command_plan", rerun_command_plan),
         ("sbatch_package", sbatch_package),
@@ -671,15 +969,31 @@ def build_report(
         ("existing_target_area_run_comparison", existing_run_comparison),
         ("replay_metadata", replay_metadata),
         ("hashes", hashes),
+        ("balfrin_access_preflight_requirement", access_requirement),
+        ("pre_authorization_inputs", pre_authorization_inputs),
     ]
     section_provenance_profile = _build_section_provenance_profile(sections)
     package_status = _package_status(section_provenance_profile, preservation_checklist.get("status", "unknown"))
+    authorization_request_preflight = _build_authorization_request_preflight(
+        access_requirement=access_requirement,
+        package_status=package_status,
+        pre_authorization_inputs=pre_authorization_inputs,
+        preservation_checklist=preservation_checklist,
+        existing_run_comparison=existing_run_comparison,
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        artifact_dir=artifact_dir,
+        metrics_collection_command=str(metrics_collection_command),
+        preservation_gate_command=str(preservation_gate_command),
+    )
     measured_count = sum(1 for entry in section_provenance_profile if entry["evidence_type"] == "measured")
     template_count = sum(1 for entry in section_provenance_profile if entry["evidence_type"] == "template_only")
     blocked_count = sum(1 for entry in section_provenance_profile if entry["status"] == "blocked_missing_inputs")
 
     report = {
         "schema_version": SCHEMA_VERSION,
+        "preflight_status": authorization_request_preflight["status"],
+        "authorization_request_preflight_status": authorization_request_preflight["status"],
         "package_status": package_status,
         "package_provenance_status": "mixed_provenance" if measured_count and template_count else package_status,
         "package_artifact_dir": str(artifact_dir),
@@ -701,6 +1015,9 @@ def build_report(
                 "blocked_missing_inputs": blocked_count,
             },
         },
+        "authorization_request_preflight": authorization_request_preflight,
+        "balfrin_access_preflight_requirement": access_requirement,
+        "pre_authorization_inputs": pre_authorization_inputs,
         "rerun_command_plan": rerun_command_plan,
         "sbatch_package": sbatch_package,
         "preservation_checklist": preservation_checklist,
@@ -720,6 +1037,7 @@ def build_report(
             "artifact_dir": str(artifact_dir),
             "run_root": str(run_root),
             "probe_manifest": str(probe_manifest),
+            "balfrin_access_preflight": balfrin_access_preflight_source,
             "existing_target_area_run_root": str(DEFAULT_EXISTING_TARGET_AREA_RUN_ROOT),
             "existing_target_area_source": DEFAULT_EXISTING_TARGET_AREA_SOURCE,
         },
@@ -760,8 +1078,50 @@ def blocked_report(
     run_root: Path,
     probe_manifest: Path,
     artifact_dir: Path,
+    balfrin_access_preflight: dict[str, Any] | None = None,
+    balfrin_access_preflight_source: str = "embedded_or_missing",
 ) -> dict[str, Any]:
+    access_report = dict(balfrin_access_preflight or _blocked_access_not_checked_report())
+    access_requirement = _build_access_preflight_requirement(access_report, balfrin_access_preflight_source)
+    preservation_checklist = {
+        "status": "blocked_missing_inputs",
+        "missing_metrics": list(REQUIRED_METRICS),
+        "missing_run_root_entries": [entry["path"] for entry in REQUIRED_RUN_ROOT_ENTRIES],
+        "missing_replay_metadata": list(REQUIRED_REPLAY_METADATA),
+        "required_run_root_entries": [{**entry, "declared": False} for entry in REQUIRED_RUN_ROOT_ENTRIES],
+        "required_replay_metadata": [{"field": field, "declared": False} for field in REQUIRED_REPLAY_METADATA],
+    }
+    existing_comparison = {
+        "status": "blocked_missing_inputs",
+        "closure_targets": list(REQUIRED_METRICS),
+    }
+    replay_metadata = {
+        "status": "blocked_missing_inputs",
+        "run_root": str(run_root),
+        "probe_manifest": str(probe_manifest),
+    }
+    pre_authorization_inputs = _build_pre_authorization_inputs(
+        probe_manifest=probe_manifest,
+        access_requirement=access_requirement,
+        preservation_checklist=preservation_checklist,
+        replay_metadata=replay_metadata,
+    )
+    authorization_request_preflight = _build_authorization_request_preflight(
+        access_requirement=access_requirement,
+        package_status="missing_rerun_package",
+        pre_authorization_inputs=pre_authorization_inputs,
+        preservation_checklist=preservation_checklist,
+        existing_run_comparison=existing_comparison,
+        run_root=run_root,
+        probe_manifest=probe_manifest,
+        artifact_dir=artifact_dir,
+        metrics_collection_command="blocked_missing_inputs",
+        preservation_gate_command="blocked_missing_inputs",
+    )
     section_names = (
+        "authorization_request_preflight",
+        "balfrin_access_preflight_requirement",
+        "pre_authorization_inputs",
         "rerun_command_plan",
         "sbatch_package",
         "preservation_checklist",
@@ -788,6 +1148,8 @@ def blocked_report(
     }
     return {
         "schema_version": SCHEMA_VERSION,
+        "preflight_status": authorization_request_preflight["status"],
+        "authorization_request_preflight_status": authorization_request_preflight["status"],
         "package_status": "missing_rerun_package",
         "package_provenance_status": "blocked_missing_inputs",
         "package_artifact_dir": str(artifact_dir),
@@ -802,23 +1164,14 @@ def blocked_report(
                 "blocked_missing_inputs": len(section_names),
             },
         },
+        "authorization_request_preflight": authorization_request_preflight,
+        "balfrin_access_preflight_requirement": access_requirement,
+        "pre_authorization_inputs": pre_authorization_inputs,
         "rerun_command_plan": {"status": "blocked_missing_inputs"},
         "sbatch_package": {"status": "blocked_missing_inputs", "launch_authorized": False},
-        "preservation_checklist": {
-            "status": "blocked_missing_inputs",
-            "missing_metrics": list(REQUIRED_METRICS),
-            "missing_run_root_entries": [entry["path"] for entry in REQUIRED_RUN_ROOT_ENTRIES],
-            "missing_replay_metadata": list(REQUIRED_REPLAY_METADATA),
-        },
-        "existing_target_area_run_comparison": {
-            "status": "blocked_missing_inputs",
-            "closure_targets": list(REQUIRED_METRICS),
-        },
-        "replay_metadata": {
-            "status": "blocked_missing_inputs",
-            "run_root": str(run_root),
-            "probe_manifest": str(probe_manifest),
-        },
+        "preservation_checklist": preservation_checklist,
+        "existing_target_area_run_comparison": existing_comparison,
+        "replay_metadata": replay_metadata,
         "hashes": {"status": "blocked_missing_inputs"},
         "claim_boundaries": claim_boundaries,
         "section_provenance_profile": section_provenance_profile,
@@ -826,6 +1179,7 @@ def blocked_report(
             "artifact_dir": str(artifact_dir),
             "run_root": str(run_root),
             "probe_manifest": str(probe_manifest),
+            "balfrin_access_preflight": balfrin_access_preflight_source,
             "existing_target_area_run_root": str(DEFAULT_EXISTING_TARGET_AREA_RUN_ROOT),
             "existing_target_area_source": DEFAULT_EXISTING_TARGET_AREA_SOURCE,
         },
@@ -835,9 +1189,15 @@ def blocked_report(
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    preflight = report.get("authorization_request_preflight", {}) if isinstance(report, dict) else {}
+    access_requirement = report.get("balfrin_access_preflight_requirement", {}) if isinstance(report, dict) else {}
+    pre_authorization_inputs = report.get("pre_authorization_inputs", {}) if isinstance(report, dict) else {}
+    expected_metrics = preflight.get("expected_metrics", {}) if isinstance(preflight, dict) else {}
     lines = [
         "Balfrin Target-Area Metrics Completion Rerun Package",
         f"schema_version: {report.get('schema_version', 'unknown')}",
+        f"preflight_status: {report.get('preflight_status', 'unknown')}",
+        f"authorization_request_preflight_status: {report.get('authorization_request_preflight_status', 'unknown')}",
         f"package_status: {report.get('package_status', 'unknown')}",
         f"package_provenance_status: {report.get('package_provenance_status', 'unknown')}",
         f"package_artifact_dir: {report.get('package_artifact_dir', 'unknown')}",
@@ -847,6 +1207,29 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  status: {report.get('package_summary', {}).get('status', 'unknown')}",
         f"  summary: {report.get('package_summary', {}).get('summary', '')}",
         f"  section_counts: {report.get('package_summary', {}).get('section_counts', {})}",
+        "authorization_request_preflight:",
+        f"  status: {preflight.get('status', 'unknown')}",
+        f"  ready_for_authorization_request: {preflight.get('ready_for_authorization_request', False)}",
+        f"  authorization_granted: {preflight.get('authorization_granted', False)}",
+        f"  live_submission_authorized: {preflight.get('live_submission_authorized', False)}",
+        f"  blocked_reasons: {preflight.get('blocked_reasons', [])}",
+        f"  summary: {preflight.get('summary', '')}",
+        "balfrin_access_preflight_requirement:",
+        f"  command: {access_requirement.get('command', '')}",
+        f"  required_status: {access_requirement.get('required_status', '')}",
+        f"  consumed_status: {access_requirement.get('consumed_status', '')}",
+        f"  live_submission_authorized: {access_requirement.get('live_submission_authorized', False)}",
+        "pre_authorization_inputs:",
+        f"  status: {pre_authorization_inputs.get('status', 'unknown')}",
+        f"  missing_or_blocked: {pre_authorization_inputs.get('missing_or_blocked', [])}",
+        "expected_metrics:",
+        f"  status: {expected_metrics.get('status', 'unknown')}",
+    ]
+    for entry in expected_metrics.get("required_metrics", []):
+        lines.append(
+            f"  - {entry.get('metric')}: basis={entry.get('basis')} expected_source={entry.get('expected_source')}"
+        )
+    lines.extend([
         "rerun_command_plan:",
         f"  status: {report.get('rerun_command_plan', {}).get('status', 'unknown')}",
         f"  dry_run_command: {report.get('rerun_command_plan', {}).get('dry_run_command', '')}",
@@ -876,8 +1259,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  command_plan_sha256: {report.get('hashes', {}).get('command_plan_sha256', '')}",
         f"  sbatch_script_sha256: {report.get('hashes', {}).get('sbatch_script_sha256', '')}",
         f"  existing_target_area_run_sha256: {report.get('hashes', {}).get('existing_target_area_run_sha256', '')}",
+        "post_run_collection_commands:",
+    ])
+    for entry in preflight.get("post_run_collection_commands", []):
+        lines.append(f"  - {entry.get('name')}: {entry.get('command')}")
+    lines.extend([
         "claim_boundaries:",
-    ]
+    ])
     for key in (
         "operational_claims_allowed",
         "physical_probability_claims_allowed",
@@ -921,11 +1309,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         evidence_override = _load_json(args.evidence_json)
+        access_report = _load_json(args.balfrin_access_json)
+        access_source = str(args.balfrin_access_json) if args.balfrin_access_json is not None else "live_tb223_preflight_helper"
+        if access_report is None:
+            embedded = evidence_override.get("balfrin_access_preflight") if isinstance(evidence_override, dict) else None
+            if isinstance(embedded, dict):
+                access_report = dict(embedded)
+                access_source = "embedded_evidence_json"
+            else:
+                access_report = access_preflight.collect_preflight_report()
         report = build_report(
             evidence_override,
             run_root=args.run_root,
             probe_manifest=args.probe_manifest,
             artifact_dir=args.artifact_dir,
+            balfrin_access_preflight=access_report,
+            balfrin_access_preflight_source=access_source,
         )
     except (OSError, ValueError) as exc:
         print(f"balfrin target-area metrics completion rerun package error: {exc}", file=sys.stderr)
@@ -942,7 +1341,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(render_text_report(report))
-    return 0 if report["package_status"] == "complete_rerun_package" else 2
+    return 0 if report["preflight_status"] == STATUS_READY_FOR_AUTHORIZATION else 2
 
 
 if __name__ == "__main__":

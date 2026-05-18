@@ -1042,3 +1042,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: helper/context routing only; no live SSH call, no worker launch automation change, no task-priority fields, and no claim upgrade.
 - Next task: `TB-225`
+
+### TB-225: Target-Area Metrics Completion Rerun Preflight
+
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: convert the target-area metrics-completion rerun package into a strict authorization-request preflight that consumes the TB-223 Balfrin access status before any authorization review.
+- Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `preflight_status` / `authorization_request_preflight_status` classifications, including `ready_for_authorization_request`, `blocked_missing_run_root`, exact Balfrin access blocker statuses, and `blocked_incomplete_package`.
+  - Added a TB-223 access-preflight requirement section, pre-authorization input checks, exact expected metrics, preservation files, comparison basis, and post-run collection commands while keeping authorization and live submission false.
+  - Updated the CLI to consume a supplied Balfrin access JSON or run the read-only TB-223 helper, and added focused fixture-backed tests for ready, partial, missing-run-root, and Balfrin-access-blocked paths.
+  - Removed TB-225 from the active backlog after implementation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_completion_rerun_package -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/balfrin_remote_access_preflight_tb225.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --artifact-dir /tmp/tb225_metrics_completion_preflight --format json > /tmp/tb225_metrics_completion_preflight.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: authorization-request preflight only; no live Balfrin submission, no authorization grant, no new scientific interpretation, no fabricated metrics, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-226`

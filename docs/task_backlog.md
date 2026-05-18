@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-225: Target-Area Metrics Completion Rerun Preflight
-
-Goal: Convert the existing target-area metrics-completion rerun package into a strict authorization-request preflight that first consumes the Balfrin access status from TB-223.
-
-Capability gap reduced: Peak-memory and split validation/hazard output metrics remain incomplete for the preserved target-area run, which weakens the Balfrin demo evidence package.
-
-Why this outranks alternatives: Closing missing mandatory evidence is a smaller and more interpretable step than launching a multi-zone probe.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- A preflight classification such as `ready_for_authorization_request`, `blocked_missing_run_root`, or `blocked_incomplete_package`.
-- Exact expected metrics, preservation files, comparison basis, access-preflight requirement, and post-run collection commands.
-- Focused tests for ready, partial, missing-run-root, and Balfrin-access-blocked paths.
-
-Definition of done:
-
-- The rerun package can be reviewed without reading the whole Balfrin doc stack, and it fails closed unless every pre-authorization input is present.
-- No live submission command is presented as authorized.
-
-Boundaries: No live Balfrin submission, no authorization grant, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
-
 ### TB-226: Smallest Multi-Zone Probe Authorization Preflight
 
 Goal: Turn the smallest bounded multi-zone handoff into an authorization preflight that proves the reviewed package, reducer budget, Balfrin access state, and submission gate are mutually consistent.
