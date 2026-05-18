@@ -594,3 +594,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin job, no distributed reducer, no MPI/GPU, no physics change, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-205`
+
+### TB-205: Smallest Bounded Multi-Zone Balfrin Probe Package
+
+- Date: 2026-05-18
+- Commit: `68e6cc6`
+- Objective: produce the smallest reviewable multi-zone Balfrin probe package that stays bounded by measured reducer and preservation constraints and remains blocked pending later authorization.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added smallest-reviewable multi-zone follow-up metadata to the Balfrin handoff generator, including exact release-zone count, scenario count, trajectory target, deterministic seed policy, command-plan entries, SBATCH details, output roots, and preservation-gate checklist.
+  - Wired the package to emit a blocked-pending-authorization classification plus the exact later review command, and made the text renderer show the blocked classification explicitly.
+  - Added focused regressions for deterministic package shape, command-plan coverage, blocked missing-input handling, and the later review-command path.
+  - Removed TB-205 from the active backlog once the implementation was committed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-206`
