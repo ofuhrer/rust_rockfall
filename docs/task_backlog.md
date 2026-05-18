@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-259: Prepared Terrain And Context Builder For AOI
-
-Goal: Build the prepared terrain crop and context QA products from verified AOI cache inputs into a deterministic prepared-input root.
-
-Capability gap reduced: The region-to-map workflow still lacks an executable user-facing step that turns staged public geodata into simulator-ready terrain and context artifacts.
-
-Why this outranks alternatives: Hazard-map execution cannot start until terrain, metadata, hillshade/slope QA, and optional context layers are prepared from the verified AOI cache.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/measure_hazard_context_overlap.py`
-- `scripts/build_terrain_material_diagnostic_matrix.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `tests/test_aoi_terrain_preprocessing.py`
-- `tests/test_hazard_context_overlap.py`
-
-Deliverables:
-
-- A prepared-input builder mode that writes terrain, terrain metadata, slope/aspect/hillshade QA summaries, and context availability summaries under an ignored AOI root.
-- Explicit `ready`, `partial_context`, `blocked_missing_terrain`, and `blocked_metadata_mismatch` classifications.
-- Tests using fixture terrain and context manifests.
-
-Definition of done:
-
-- A verified AOI cache can be converted into simulator-ready terrain/context inputs or an exact blocker report with no manual path inference.
-
-Boundaries: Preparation only; no release-zone validation, no ensemble execution, no operational claim, and no heavy public geodata committed.
-
 ### TB-260: Release-Zone Candidate Review Package
 
 Goal: Generate a reviewable release-zone candidate package from prepared AOI terrain with stable candidate IDs, GIS outputs, sensitivity labels, and editable acceptance fields.
