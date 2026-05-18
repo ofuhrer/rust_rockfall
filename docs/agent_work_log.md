@@ -841,3 +841,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: bounded helper migration only, no domain-schema collapse, no broad packaging rewrite, no claim upgrade, and no unrelated validator churn.
 - Next task: `TB-216`
+
+### TB-216: Repository Consistency Checker Responsibility Split
+
+- Date: 2026-05-18
+- Commit: `673ae32`
+- Objective: split the backlog/work-log and claim hygiene responsibilities out of `scripts/check_repo_consistency.py` into importable modules while preserving the CLI contract.
+- Files changed: `scripts/check_repo_consistency.py`, `scripts/lib/repo_consistency_backlog.py`, `scripts/lib/repo_consistency_claims.py`, `tests/test_repo_consistency_claim_hygiene.py`, `tests/test_repo_consistency_module_split.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Moved the backlog/work-log hygiene family into `scripts/lib/repo_consistency_backlog.py`, including the inspect-first resolver, TB heading parsing, work-log commit checks, and shallow-history guard, then re-exported those helpers through the entrypoint.
+  - Moved the hazard claim/status hygiene family into `scripts/lib/repo_consistency_claims.py` so the CLI keeps the same pass/fail behavior while the claim-family scanner is importable and testable on its own.
+  - Added focused clean-failure fixture tests for both extracted families plus CLI-level exit-code smoke tests that patch the split checks through `main()`, and updated the existing shallow-history test to patch the extracted backlog module.
+  - Removed TB-216 from the active backlog before the implementation commit and kept the entrypoint focused on orchestration plus the remaining cross-document guards.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_repo_consistency.py scripts/lib/repo_consistency_backlog.py scripts/lib/repo_consistency_claims.py tests/test_repo_consistency_module_split.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene tests.test_repo_consistency_module_split -v`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: refactor only, no new broad policy checks, no backlog edits beyond task completion, no generated evidence claims, and no unrelated script cleanup.
+- Next task: `TB-217`
