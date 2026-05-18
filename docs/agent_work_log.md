@@ -1178,3 +1178,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: profiling and report updating only; no new physics, no distributed execution, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-231`
+
+### TB-231: Chant Sura Public-Context Acquisition Package Freeze
+
+- Date: 2026-05-18
+- Commit: `5f2a2b8`
+- Objective: freeze the Chant Sura / Fluelapass acquisition package so required real inputs, expected local roots, and fixture-only paths stay separated and fail closed.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`, `docs/task_backlog.md`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a frozen machine-readable acquisition package that enumerates required real inputs, expected local roots, fixture-only paths, metadata fields, and the current blocked state.
+  - Linked the package from the Chant Sura decision doc so the freeze artifact is easy to find alongside the human-readable decision record.
+  - Added a focused regression that checks the package taxonomy stays `real_staged`/`fixture_backed`/`missing`/`deferred` and keeps fixture-only paths separate from required acquisition rows.
+  - Removed TB-231 from the active backlog after the package and test coverage were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical-validation claim.
+- Next task: `TB-232`
