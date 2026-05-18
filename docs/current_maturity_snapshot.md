@@ -10,8 +10,12 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. The current execution focus is the Balfrin
-single-release-zone pilot track. That track now has a frozen minimal
+primarily swisstopo. The active backlog was refilled after TB-221 with a
+post-review queue that starts by refreshing the Balfrin next-measured-action
+decision, then tightens metrics-completion and multi-zone preflights before
+moving into hazard-builder throughput, second-site real-input gates,
+physical-evidence acquisition, and bounded workflow-shell consolidation. The
+Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
 evidence bundle, a replay smoke helper, a live interruption/resume proof, a
@@ -38,21 +42,31 @@ The authorized target-area probe is:
 
 The current target-area review state is now also wrapped into a deterministic
 target-area evidence bundle, metrics report, GIS/COG scope audit, scaling
-envelope, management package, and physical-evidence acquisition pack. Those
-reports keep measured, unavailable, blocked, and fixture-backed provenance
-separate. Peak-memory and split validation/hazard output metrics remain
-incomplete for the preserved target-area evidence, and local target-area
-spatial-uncertainty artifacts are still unavailable unless the Balfrin run root
-is mounted.
+envelope, management package, evidence-gated closure package, metrics
+completion rerun package, and physical-evidence acquisition pack. The
+multi-zone follow-up path now has a reviewed-package/authorization submission
+gate, scalable command-plan output-profile enforcement, reducer
+manifest/file-family budget regression coverage, and a fixture-backed
+throughput hotspot isolation record. The physical-evidence path now has an
+explicit release/scenario physical-meaning firewall and an observed
+runout/deposition acquisition blocker matrix. Those reports keep measured,
+unavailable, blocked, dry-run, unauthorized, historical, and fixture-backed
+provenance separate. Peak-memory and split validation/hazard output metrics
+remain incomplete for the preserved target-area evidence, and local
+target-area spatial-uncertainty artifacts are still unavailable unless the
+Balfrin run root is mounted.
 
 These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic
 demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
 The largest near-term gap has moved from "can the Balfrin demo execute?" and
-"can an AOI dry run be composed?" to "which next measured or automation task
-most reduces the remaining scientific, physical-credibility, portability, and
-scaling uncertainty without overclaiming the current demonstration?"
+"can an AOI dry run be composed?" to "which next measured action should be
+authorized or deferred?" The next backlog should choose between metrics
+completion, the smallest bounded multi-zone measurement, real second-site
+public-context progress, physical-evidence acquisition, or a bounded
+hazard-builder optimization, while avoiding any claim upgrade from the current
+demonstration.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -349,14 +363,21 @@ objective are:
     matrix, but no public context was downloaded and no second-site ensemble or
     hazard build was run.
 14. Backlog and worker-context hygiene have improved materially. TB-181 through
-    TB-202 completed the post-TB-179 queue: deterministic release-candidate
-    stress evidence, multi-zone reducer pressure, second-site dry-run realism,
-    shared validator helpers, dependency guidance, calibration failure
-    diagnostics, runtime-facing panic-path reduction, clean-checkout Python test
-    stabilization, ignored-artifact dependency auditing, and CI portability
-    guardrails. The active backlog is currently empty, so the next step is a
-    scoped gap-analysis/backlog-refill pass rather than inventing an
-    implementation task from stale queue text.
+    TB-221 completed the post-TB-179 execution queues: deterministic
+    release-candidate stress evidence, multi-zone reducer pressure,
+    second-site dry-run realism, shared validator helpers, dependency
+    guidance, calibration failure diagnostics, runtime-facing panic-path
+    reduction, clean-checkout Python test stabilization, ignored-artifact
+    dependency auditing, CI portability guardrails, Balfrin next-action
+    decision support, scalable output-profile enforcement, reducer
+    file-family regression coverage, hazard-accumulation hotspot isolation,
+    workflow-shell coupling inventory, physical-meaning firewalling for
+    release/scenario automation, and observed runout/deposition acquisition
+    blocker classification. The current TB-222 through TB-236 backlog is the
+    scoped refill from that evidence base; it is ordered from Balfrin
+    next-action selection through execution preflights, scaling/throughput,
+    second-site realism, physical-evidence intake, and workflow-shell
+    consolidation.
 
 ## Backlog Quality Assessment
 
@@ -376,16 +397,25 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-202:
+Current high-value work in the TB-222 through TB-236 queue:
 
-- refill the backlog from current evidence, not from the completed TB-181
-  through TB-202 queue;
-- decide whether the next Balfrin step is a metrics-completion rerun, a bounded
-  multi-zone probe, or deferral in favor of public-context-backed portability
-  work;
-- decide whether the next portability step is real Chant Sura public-context
-  acquisition, a measured second-site dry run after staging, or further
-  fixture-backed AOI automation;
+- refresh the Balfrin next-measured-action decision before asking for any live
+  run authorization;
+- make the target-area metrics-completion rerun and smallest multi-zone probe
+  reviewable as preflights, not as implicit authorization;
+- rehearse post-run evidence collection so incomplete run roots remain blocked;
+- connect multi-zone reducer/output budgets to the actual handoff command plan;
+- treat the trajectory-accumulation hotspot as a bounded engineering target
+  with before/after profiling rather than a broad performance rewrite;
+- freeze Chant Sura real-input acquisition and prepared-pilot gates before any
+  second-site execution claim;
+- use the observed runout/deposition blocker matrix to separate data
+  acquisition, schema repair, and scientific deferral instead of treating an
+  empty benchmark intake as evidence;
+- add release-zone provenance and block-population/source-frequency blocker
+  handling without implementing physical probability;
+- reduce workflow-shell coupling through bounded helper extraction and
+  command-plan manifest consolidation;
 - use the canonical evidence bundle and scientific delta report as the
   management-facing demonstration evidence, while keeping the closure status
   inconclusive and non-operational;

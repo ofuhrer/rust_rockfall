@@ -51,6 +51,31 @@ tail -n 20 /tmp/codex-worker-TB-XXX.log
 After exit, extract only the final structured block beginning at `TASK:`. If a
 worker fails, preserve the final relevant error block and stop.
 
+If a worker prints a complete final structured report, the reported commit is
+pushed, the worker log stops changing, and post-worker verification passes, but
+the `codex exec` wrapper process remains alive, treat that as a stuck wrapper
+after completion. Record the condition, terminate only the stale wrapper
+process, run the full post-worker verification, and continue only if the
+worktree is clean and the completed task is absent from the backlog.
+
+## Balfrin Access
+
+Workers may access Balfrin over SSH when the selected task explicitly requires
+Balfrin inspection, evidence collection, or a user-authorized Balfrin run.
+Balfrin-capable workers should use a stronger model than the default small
+implementation worker, for example `gpt-5.5` or the strongest available
+coding/research model, because these tasks combine remote state, scheduler
+semantics, ignored artifacts, and scientific claim boundaries.
+
+Balfrin SSH access is time-limited and may expire. If SSH authentication,
+permissions, or mounted non-git artifacts are unavailable, the worker must fail
+closed with a clear blocked status and the exact missing access/artifact class.
+Do not fabricate Balfrin evidence from local fixtures, and do not treat a
+fixture-backed report as a measured Balfrin result. Live Balfrin submission
+still requires explicit task-level or user authorization; read-only inspection
+and collection from already-authorized run roots may proceed when SSH access is
+available.
+
 ## Outcome Taxonomy
 
 Final worker reports must distinguish implementation status from capability
@@ -102,4 +127,3 @@ dependent synthesis work.
   tests unless the task explicitly concerns live local artifacts.
 - Do not silently convert an execution task into a documentation-only success.
 - Remove generated `placeholder_second_site_v1` artifacts before committing.
-

@@ -60,7 +60,7 @@ scan thousands of lines of completed history.
 - TB-121 through TB-180: Balfrin evidence-bundle, AOI automation,
   target-area demonstration, second-site dry-run, and physical-evidence
   boundary work. Full entries are in the archive.
-- TB-181 through TB-202: retained below as the active recent execution history.
+- TB-181 through TB-221: retained below as the active recent execution history.
 
 ### TB-181: Automated Release-Zone Candidate Sweep On Real Terrain
 
@@ -825,7 +825,7 @@ scan thousands of lines of completed history.
 ### TB-215: Workflow Utility Migration Batch For Status And Provenance
 
 - Date: 2026-05-18
-- Commit: TBD
+- Commit: `d742f64`
 - Objective: migrate a bounded set of high-churn validators and summarizers onto shared status, checksum, manifest, blocked-report, and claim-boundary helpers.
 - Files changed: `scripts/lib/workflow_validation.py`, `scripts/validate_output_budget_reducer_gate.py`, `scripts/validate_public_real_site_conditional_pilot_run.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `scripts/summarize_observed_runout_deposition_intake_contract.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_workflow_validation_helpers.py`, `docs/decision_log.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -890,7 +890,7 @@ scan thousands of lines of completed history.
 ### TB-218: Reducer Manifest And File-Family Budget Regression Gate
 
 - Date: 2026-05-18
-- Commit: TBD
+- Commit: `a824264`
 - Objective: add a fixture-backed regression gate that measures reducer manifest bytes, output-family counts, output bytes, sidecar counts, and deterministic merge order for realistic multi-zone scratch roots.
 - Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -908,7 +908,7 @@ scan thousands of lines of completed history.
 ### TB-219: Hazard Accumulation Throughput Hotspot Isolation
 
 - Date: 2026-05-18
-- Commit: TBD
+- Commit: `0007b37`
 - Objective: isolate the remaining Python hazard-accumulation hotspot after explicit-grid improvements and define one bounded optimization target.
 - Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/hazard_throughput_bottleneck_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -954,7 +954,7 @@ scan thousands of lines of completed history.
 ### TB-221: Observed Runout And Deposition Acquisition Blocker Matrix
 
 - Date: 2026-05-18
-- Commit: TBD
+- Commit: `98fa351`
 - Objective: convert the observed runout/deposition intake gap into a machine-readable blocker matrix that separates acquisition, schema repair, and scientific deferral without upgrading the physical-credibility boundary.
 - Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
