@@ -118,6 +118,31 @@ scan thousands of lines of completed history.
   - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
   - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
   - `git diff --check`
+
+### TB-261: Reviewed Source-Zone And Scenario Plan Freezer
+
+- Date: 2026-05-19
+- Commit: `8130a82`
+- Objective: convert reviewed release-zone candidates into frozen source-zone metadata, conditional scenario tables, and a source/scenario policy record for the AOI.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a freezer mode to the candidate scenario generator that consumes a review package plus accepted candidate IDs and emits frozen source-zone metadata, release rows, a conditional scenario table, and a source/scenario policy record under an ignored output root.
+  - Kept the conditional-only boundary explicit by carrying trajectory-count, seed-policy, block-family, and conditional-weight controls into the freezer outputs while leaving annual-frequency and probability fields empty.
+  - Added focused tests for deterministic freezer IDs, rejected-candidate exclusion, invalid conditional weights, and policy-boundary validation through the existing source-scenario policy validator.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py tests/test_candidate_source_zone_freezer.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_source_scenario_policy`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_deterministic_release_candidates_generate_a_large_manifest_rich_table tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_missing_inputs_fail_closed`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py`
+  - Freeze-mode CLI smoke against a tiny synthetic review package
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: conditional scenario planning only; no physical probability, no source-frequency evidence, no calibration, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-262`
   - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
   - `scripts/git-hooks/pre-commit`
   - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
