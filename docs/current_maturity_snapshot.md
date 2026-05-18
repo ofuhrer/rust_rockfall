@@ -16,8 +16,9 @@ metrics-completion and multi-zone authorization preflights, rehearsed post-run
 evidence collection, profiled and rejected one narrow hazard-accumulation
 optimization, froze the Chant Sura real-input gate, expanded physical-evidence
 intake blockers, and consolidated a bounded slice of workflow-shell mechanics.
-The active backlog is empty again, so the next step is a scoped
-gap-analysis/backlog-refill pass rather than inheriting stale queue text. The
+The active backlog now includes TB-239+ orchestration tasks, so the next step
+is to keep the maturity snapshot aligned with the live queue rather than an
+empty-backlog assumption. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -388,8 +389,9 @@ objective are:
     projection, real-input Chant Sura gates, observed-intake acceptance smoke,
     release-zone provenance intake, block-population/source-frequency blocker
     mapping, workflow-shell helper extraction, and command-plan manifest
-    consolidation. The active backlog is currently empty; the next work should
-    start with another scoped gap-analysis/backlog-refill pass.
+    consolidation. The active backlog now includes TB-239+ tasks; the next
+    work should continue from the live queue, with the maturity snapshot kept
+    synchronized as tasks complete.
 
 ## Backlog Quality Assessment
 

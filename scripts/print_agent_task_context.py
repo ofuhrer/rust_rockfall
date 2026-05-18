@@ -105,17 +105,21 @@ class ActiveTask:
 
     def requires_balfrin_access(self) -> bool:
         haystack = " ".join([self.title, self.text, *self.inspect_first]).lower()
-        terms = (
-            "balfrin",
+        balfrin_terms = ("balfrin",)
+        access_terms = (
             "ssh",
+            "slurm",
+            "run root",
+            "remote access",
+            "remote artifact",
+            "read-only collection",
             "live run",
             "live-run",
-            "remote run root",
             "evidence collection",
-            "read-only collection",
-            "remote artifact access",
         )
-        return any(term in haystack for term in terms)
+        return any(term in haystack for term in balfrin_terms) and any(
+            term in haystack for term in access_terms
+        )
 
 
 CANONICAL_HELPERS = [

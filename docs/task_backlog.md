@@ -23,33 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-239: Backlog, Maturity Snapshot, And Worker-Context Alignment
-
-Goal: Align the active backlog, maturity snapshot, and worker-context routing before delegating the new queue.
-
-Capability gap reduced: The repository currently has active TB-239+ tasks while the maturity snapshot still describes an empty backlog, and the worker-context helper can misroute local-only tasks when incidental text mentions remote-cluster evidence.
-
-Why this outranks alternatives: Stale orchestration cues create avoidable worker drift before any scientific or execution work starts.
-
-Inspect first:
-
-- `docs/task_backlog.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/print_agent_task_context.py`
-- `tests/test_agent_task_context.py`
-
-Deliverables:
-
-- A maturity-snapshot update that reflects the active TB-239+ queue without upgrading scientific claims.
-- A narrow worker-context routing fix or backlog-text correction so Chant Sura-only tasks do not require remote-cluster access unless they truly inspect or execute remote artifacts.
-- Focused tests or context-helper output showing the active queue and routing are consistent.
-
-Definition of done:
-
-- `scripts/print_agent_task_context.py --format json` reports the active queue without stale `backlog_refill_needed` language, and local-only second-site tasks do not receive remote-cluster access routing.
-
-Boundaries: Documentation/context hygiene only; no task execution, no remote-cluster access attempt, no scientific claim upgrade, no new validator family, and no broad maturity rewrite.
-
 ### TB-240: Read-Only Target-Area Metrics Recovery From Balfrin Run Root
 
 Goal: Attempt to recover the missing target-area peak-memory and split validation/hazard metrics from the existing authorized Balfrin target-area run root before requesting any rerun.

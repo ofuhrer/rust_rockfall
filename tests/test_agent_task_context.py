@@ -117,6 +117,14 @@ Inspect first:
         self.assertNotIn("inspect_first", other_tasks[0])
         self.assertLess(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
 
+    def test_active_queue_report_does_not_revert_to_backlog_refill_language(self) -> None:
+        report = agent_context.build_report(run_checks=False)
+
+        self.assertTrue(report["active_tasks"])
+        self.assertFalse(report["backlog_refill_needed"])
+        self.assertIsNone(report["backlog_note"])
+        self.assertIsNone(report["current_execution_focus"])
+
     def test_balfrin_task_includes_worker_routing_fields(self) -> None:
         task = agent_context.ActiveTask(
             task_id="TB-999",
@@ -135,6 +143,21 @@ Inspect first:
             "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json",
         )
         self.assertIn("may have expired", summary["balfrin_access_note"])
+
+    def test_chant_sura_task_omits_balfrin_routing_for_remote_cluster_mentions(self) -> None:
+        task = agent_context.ActiveTask(
+            task_id="TB-998",
+            title="Example Chant Sura Task",
+            priority=None,
+            inspect_first=["docs/example.md"],
+            text="Chant Sura notes mention remote-cluster evidence, but the work is local only.",
+        )
+
+        summary = task.summary(include_details=False, include_routing=True)
+
+        self.assertNotIn("balfrin_access_required", summary)
+        self.assertNotIn("recommended_worker_model", summary)
+        self.assertNotIn("balfrin_access_preflight_command", summary)
 
     def test_non_balfrin_task_omits_worker_routing_fields(self) -> None:
         task = agent_context.ActiveTask(
