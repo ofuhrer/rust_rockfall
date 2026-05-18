@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-263: Local Tiny AOI Hazard-Map Smoke Run
-
-Goal: Execute a tiny local fixture-backed AOI prepared-pilot run through trajectory generation and hazard-layer building to prove the front-door workflow produces actual map artifacts.
-
-Capability gap reduced: The AOI workflow needs an end-to-end executable smoke proof from prepared pilot to hazard rasters before larger Balfrin jobs are trusted.
-
-Why this outranks alternatives: User experience depends on seeing a complete tiny map pipeline, not only a sequence of ready/blocked preparation reports.
-
-Inspect first:
-
-- `scripts/validate_public_real_site_conditional_pilot_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/check_hazard_output_profile.py`
-- `tests/test_public_real_site_conditional_pilot_run.py`
-- `tests/test_hazard_layers.py`
-- `tests/fixtures/hazard/ensemble_case.yaml`
-
-Deliverables:
-
-- A local smoke mode or fixture that executes a tiny AOI command plan into an ignored or `/tmp` output root and produces reduced trajectory outputs plus hazard layers.
-- Output assertions for required rasters, manifests, claim-boundary metadata, and no-heavy-debug defaults.
-- Tests proving the smoke run is deterministic and clean-checkout safe.
-
-Definition of done:
-
-- The repository has a CI-scale end-to-end proof that an AOI prepared-pilot package can produce hazard-map artifacts.
-
-Boundaries: Tiny local fixture execution only; no live Balfrin submission, no physical validation claim, no operational claim, and no generated heavy outputs committed.
-
 ### TB-264: Balfrin Target-Area Metrics Completion Postproc Run
 
 Goal: Submit the exact bounded target-area metrics-completion rerun on Balfrin postprocessing nodes to close the missing execution-metrics gap.

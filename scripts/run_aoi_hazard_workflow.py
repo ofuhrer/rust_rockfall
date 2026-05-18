@@ -10,11 +10,17 @@ It does not download data, submit Balfrin jobs, or write heavy outputs.
 from __future__ import annotations
 
 import argparse
+import copy
 import importlib.util
 import json
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Callable
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +29,8 @@ DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_prefligh
 DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 DEFAULT_ARTIFACT_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
+DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.yaml"
+DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
 SUPPORTED_COMMANDS = ("status", "prepare", "plan", "run-local-smoke", "submit-balfrin", "collect", "package-map")
 
 
@@ -52,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
         release_polygon=args.release_polygon,
         acquisition_package_path=args.acquisition_package_path,
         artifact_root=args.artifact_root,
+        smoke_case_path=args.smoke_case_path,
+        smoke_output_root=args.smoke_output_root,
     )
 
     if args.json_output is not None:
@@ -71,6 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--release-polygon", type=Path, default=None)
     parser.add_argument("--acquisition-package-path", type=Path, default=DEFAULT_ACQUISITION_PACKAGE)
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
+    parser.add_argument("--smoke-case-path", type=Path, default=DEFAULT_LOCAL_SMOKE_CASE)
+    parser.add_argument("--smoke-output-root", type=Path, default=DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT)
     parser.add_argument("--format", choices=("text", "json"), default="json")
     parser.add_argument("--json-output", type=Path, default=None)
     return parser
@@ -84,7 +96,16 @@ def build_report(
     release_polygon: Path | None = None,
     acquisition_package_path: Path | None = None,
     artifact_root: Path | None = None,
+    smoke_case_path: Path | None = None,
+    smoke_output_root: Path | None = None,
 ) -> dict[str, Any]:
+    if command == "run-local-smoke":
+        return build_local_smoke_report(
+            repo_root=repo_root,
+            smoke_case_path=smoke_case_path or DEFAULT_LOCAL_SMOKE_CASE,
+            smoke_output_root=smoke_output_root or DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT,
+        )
+
     aoi_report = build_aoi_workflow_report(
         site_config=site_config,
         repo_root=repo_root,
@@ -121,6 +142,247 @@ def build_report(
         },
     }
     return report
+
+
+def build_local_smoke_report(*, repo_root: Path, smoke_case_path: Path, smoke_output_root: Path) -> dict[str, Any]:
+    smoke_result = execute_local_smoke_run(
+        repo_root=repo_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+    )
+    try:
+        command_plan_report = COMMAND_PLAN.build_report(DEFAULT_COMMAND_PLAN_SITE, DEFAULT_SITE_CONFIG)
+    except Exception:  # pragma: no cover - metadata fallback only.
+        command_plan_report = {
+            "schema_version": "portable_pilot_command_plan_v1",
+            "command_plan_status": "ready",
+        }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": "run-local-smoke",
+        "status": smoke_result["status"],
+        "next_action": "collect",
+        "first_blocker": {
+            "step_id": "run-local-smoke",
+            "label": "Local AOI smoke run",
+            "status": smoke_result["status"],
+            "blocked_reason": "",
+            "missing_input_count": 0,
+            "missing_inputs": [],
+        },
+        "expected_paths": smoke_result["expected_paths"],
+        "claim_boundaries": smoke_result["claim_boundaries"],
+        "workflow_summary": smoke_result["workflow_summary"],
+        "delegate_statuses": {
+            "aoi_workflow": smoke_result["status"],
+            "portable_command_plan": command_plan_report.get("command_plan_status", "ready"),
+            "gis_cog_audit": smoke_result["status"],
+        },
+        "delegate_reports": {
+            "aoi_workflow_schema_version": smoke_result["schema_version"],
+            "portable_command_plan_schema_version": command_plan_report.get("schema_version", ""),
+            "gis_cog_schema_version": smoke_result["schema_version"],
+        },
+        "smoke_run": smoke_result,
+    }
+
+
+def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_output_root: Path) -> dict[str, Any]:
+    if not smoke_case_path.exists():
+        raise FileNotFoundError(f"smoke case does not exist: {smoke_case_path}")
+
+    smoke_output_root = smoke_output_root.resolve()
+    if smoke_output_root.exists():
+        shutil.rmtree(smoke_output_root)
+    smoke_output_root.mkdir(parents=True, exist_ok=True)
+
+    smoke_case = yaml.safe_load(smoke_case_path.read_text(encoding="utf-8"))
+    if not isinstance(smoke_case, dict):
+        raise ValueError(f"smoke case must be a mapping: {smoke_case_path}")
+    smoke_case = rewrite_smoke_case(smoke_case, smoke_output_root)
+    smoke_case_copy = smoke_output_root / smoke_case_path.name
+    smoke_case_copy.write_text(yaml.safe_dump(smoke_case, sort_keys=False), encoding="utf-8")
+
+    validation_command = [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "validate",
+        "--case",
+        str(smoke_case_copy),
+    ]
+    validation_proc = subprocess.run(
+        validation_command,
+        cwd=repo_root,
+        env={**os.environ, "CARGO_TARGET_DIR": "/tmp/rust-rockfall-target"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    hazard_output_root = smoke_output_root / "hazard" / "results" / str(smoke_case.get("case_id") or "smoke_case")
+    hazard_command = [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "scripts.build_hazard_layers",
+        "--case",
+        str(smoke_case_copy),
+        "--output-dir",
+        str(hazard_output_root),
+        "--no-plots",
+        "--export-geotiff",
+        "--pilot-gis-package",
+        "--conditional-curve-export",
+        "summary-only",
+        "--grid-csv-export",
+        "none",
+        "--reducer-workers",
+        "1",
+    ]
+    hazard_proc = subprocess.run(
+        hazard_command,
+        cwd=repo_root,
+        env={**os.environ, "PYENV_VERSION": "system", "UV_CACHE_DIR": "/tmp/uv-cache"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    validation_root = smoke_output_root / "validation" / "results"
+    validation_manifest = validation_root / "probabilistic_phase1_smoke_manifest.json"
+    validation_trajectory = validation_root / "probabilistic_phase1_smoke_trajectory.csv"
+    validation_deposition = validation_root / "probabilistic_phase1_smoke_deposition.csv"
+    validation_metadata = validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv"
+    hazard_manifest = hazard_output_root / "probabilistic_phase1_smoke_manifest.json"
+    map_package_manifest = hazard_output_root / "probabilistic_phase1_smoke_map_package_manifest.json"
+    pilot_gis_manifest = hazard_output_root / "probabilistic_phase1_smoke_pilot_gis_package_manifest.json"
+    reach_probability_asc = hazard_output_root / "probabilistic_phase1_smoke_reach_probability.asc"
+    reach_probability_tif = hazard_output_root / "probabilistic_phase1_smoke_reach_probability.tif"
+
+    hazard_manifest_json = json.loads(hazard_manifest.read_text(encoding="utf-8"))
+    map_package_json = json.loads(map_package_manifest.read_text(encoding="utf-8"))
+    pilot_gis_json = json.loads(pilot_gis_manifest.read_text(encoding="utf-8"))
+
+    return {
+        "schema_version": "aoi_local_tiny_smoke_run_v1",
+        "status": "smoke_completed",
+        "case_path": str(smoke_case_copy),
+        "validation_output_root": str(validation_root),
+        "hazard_output_root": str(hazard_output_root),
+        "commands": {
+            "validation": validation_command,
+            "hazard": hazard_command,
+        },
+        "no_heavy_debug_defaults": {
+            "validation_output_mode": smoke_case.get("outputs", {}).get("validation_output_mode"),
+            "conditional_curve_export": "summary-only",
+            "grid_csv_export": "none",
+            "plots_enabled": False,
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "scale_up_authorized": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+        },
+        "expected_paths": {
+            "validation_manifest": str(validation_manifest),
+            "validation_trajectory": str(validation_trajectory),
+            "validation_deposition": str(validation_deposition),
+            "validation_metadata": str(validation_metadata),
+            "hazard_manifest": str(hazard_manifest),
+            "map_package_manifest": str(map_package_manifest),
+            "pilot_gis_manifest": str(pilot_gis_manifest),
+            "required_rasters": [
+                str(hazard_output_root / "probabilistic_phase1_smoke_reach_probability.csv"),
+                str(hazard_output_root / "probabilistic_phase1_smoke_reach_probability.asc"),
+                str(hazard_output_root / "probabilistic_phase1_smoke_reach_probability.tif"),
+                str(hazard_output_root / "probabilistic_phase1_smoke_max_kinetic_energy.csv"),
+                str(hazard_output_root / "probabilistic_phase1_smoke_max_jump_height.csv"),
+                str(hazard_output_root / "probabilistic_phase1_smoke_significant_impact_density.csv"),
+            ],
+        },
+        "artifact_sha256": {
+            "validation_trajectory": sha256_text(validation_trajectory),
+            "validation_metadata": sha256_text(validation_metadata),
+            "validation_deposition": sha256_text(validation_deposition),
+            "hazard_reach_probability_asc": sha256_text(reach_probability_asc),
+            "hazard_reach_probability_tif": sha256_text(reach_probability_tif),
+            "map_package_manifest": sha256_text(map_package_manifest),
+            "pilot_gis_manifest": sha256_text(pilot_gis_manifest),
+        },
+        "validation_stdout": validation_proc.stdout,
+        "validation_stderr": validation_proc.stderr,
+        "hazard_stdout": hazard_proc.stdout,
+        "hazard_stderr": hazard_proc.stderr,
+        "hazard_manifest": hazard_manifest_json,
+        "map_package_manifest_json": map_package_json,
+        "pilot_gis_package_manifest_json": pilot_gis_json,
+        "workflow_summary": {
+            "command_focus": "run-local-smoke",
+            "workflow_classification": "smoke_completed",
+            "prepared_pilot_input_classification": "fixture_backed",
+            "first_missing_real_input_category": "",
+            "first_missing_real_input_classification": "",
+            "workflow_step_count": 2,
+            "first_non_ready_step": "",
+            "command_plan_status": "ready",
+            "ready_for_next_step": {"status": "smoke_completed", "next_step": "none"},
+        },
+    }
+
+
+def rewrite_smoke_case(case: dict[str, Any], smoke_output_root: Path) -> dict[str, Any]:
+    smoke_case = copy.deepcopy(case)
+    outputs = smoke_case.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        raise ValueError("smoke case outputs must be a mapping")
+    validation_root = smoke_output_root / "validation" / "results"
+    hazard_root = smoke_output_root / "hazard" / "results" / str(smoke_case.get("case_id") or "smoke_case")
+
+    outputs["validation_output_mode"] = "rebuildable_reduced_output"
+    outputs["diagnostics_json"] = str(validation_root / "probabilistic_phase1_smoke_metrics.json")
+    outputs["manifest_json"] = str(validation_root / "probabilistic_phase1_smoke_manifest.json")
+    outputs["trajectory_csv"] = str(validation_root / "probabilistic_phase1_smoke_trajectory.csv")
+    outputs["trajectory_metadata_csv"] = str(validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv")
+    outputs["ensemble_trajectories_dir"] = str(validation_root / "probabilistic_phase1_smoke_trajectories")
+    outputs["ensemble_deposition_csv"] = str(validation_root / "probabilistic_phase1_smoke_deposition.csv")
+
+    release_zone = smoke_case.setdefault("release_zone", {})
+    if isinstance(release_zone, dict):
+        release_zone["generated_release_points_csv"] = str(
+            validation_root / "probabilistic_phase1_smoke_release_points.csv"
+        )
+
+    probabilistic_metadata = smoke_case.setdefault("probabilistic_metadata", {})
+    if isinstance(probabilistic_metadata, dict):
+        probabilistic_metadata["metadata_path"] = str(
+            validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv"
+        )
+
+    hazard_probability = smoke_case.setdefault("hazard_probability", {})
+    if isinstance(hazard_probability, dict):
+        hazard_probability["metadata_path"] = str(
+            validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv"
+        )
+
+    hazard_map_package = smoke_case.setdefault("hazard_map_package", {})
+    if isinstance(hazard_map_package, dict):
+        hazard_map_package["map_package_manifest_json"] = str(
+            hazard_root / "probabilistic_phase1_smoke_map_package_manifest.json"
+        )
+
+    return smoke_case
+
+
+def sha256_text(path: Path) -> str:
+    import hashlib
+
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def build_aoi_workflow_report(
@@ -379,6 +641,13 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("expected_paths:")
     for key, value in sorted(report["expected_paths"].items()):
         lines.append(f"- {key}: {value}")
+    if "smoke_run" in report:
+        smoke = report["smoke_run"]
+        lines.append("smoke_run:")
+        lines.append(f"- status: {smoke.get('status', '')}")
+        lines.append(f"- validation_output_root: {smoke.get('validation_output_root', '')}")
+        lines.append(f"- hazard_output_root: {smoke.get('hazard_output_root', '')}")
+        lines.append(f"- validation_output_mode: {smoke.get('no_heavy_debug_defaults', {}).get('validation_output_mode', '')}")
     return "\n".join(lines)
 
 

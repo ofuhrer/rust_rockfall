@@ -1858,3 +1858,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: compilation only; no live Balfrin submission, no ensemble execution, no annual-frequency semantics, no operational claim, and no heavy outputs committed.
 - Next task: `TB-263`
+
+### TB-263: Local Tiny AOI Hazard-Map Smoke Run
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: execute a tiny local fixture-backed AOI prepared-pilot smoke run through validation trajectory generation and hazard-layer building so the front-door workflow proves it can produce map artifacts under a temporary output root.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `run-local-smoke` execution path to the AOI front-door helper that rewrites the existing `probabilistic_phase1_smoke` case into a `/tmp` output root, runs `cargo run -- validate`, then rebuilds hazard layers with reduced-output controls and GIS packaging enabled.
+  - Kept the smoke path clean-checkout safe by directing validation and hazard outputs into a temporary root, and by hashing only the stable reduced artifacts for the determinism check.
+  - Added a regression test that runs the smoke path twice against the same temporary root and asserts required reduced trajectory outputs, hazard rasters, manifests, claim-boundary metadata, and no-heavy-debug defaults.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: tiny local fixture execution only; no live Balfrin submission, no operational claim, no physical-probability claim, no annual-frequency claim, no risk/exposure/vulnerability claim, and no generated heavy outputs committed.
+- Next task: `TB-264`

@@ -162,6 +162,100 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
         self.assertEqual(report["delegate_statuses"]["aoi_workflow"], report["workflow_summary"]["workflow_classification"])
 
+    def test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            smoke_root = Path(tmp) / "tb263_smoke"
+
+            with mock.patch.object(
+                workflow.COMMAND_PLAN,
+                "build_report",
+                return_value={
+                    "schema_version": "portable_pilot_command_plan_v1",
+                    "command_plan_status": "ready",
+                },
+            ):
+                first = workflow.build_report(
+                    command="run-local-smoke",
+                    site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                    repo_root=ROOT,
+                    acquisition_package_path=ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+                    artifact_root=ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
+                    smoke_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+                    smoke_output_root=smoke_root,
+                )
+                stable_keys = (
+                    "validation_trajectory",
+                    "validation_metadata",
+                    "validation_deposition",
+                    "hazard_reach_probability_asc",
+                    "hazard_reach_probability_tif",
+                    "map_package_manifest",
+                )
+                first_artifacts = {key: first["smoke_run"]["artifact_sha256"][key] for key in stable_keys}
+                first_map_package = first["smoke_run"]["map_package_manifest_json"]
+
+                second = workflow.build_report(
+                    command="run-local-smoke",
+                    site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                    repo_root=ROOT,
+                    acquisition_package_path=ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+                    artifact_root=ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
+                    smoke_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+                    smoke_output_root=smoke_root,
+                )
+
+                smoke = first["smoke_run"]
+                second_smoke = second["smoke_run"]
+                validation_root = Path(smoke["validation_output_root"])
+                hazard_root = Path(smoke["hazard_output_root"])
+
+                self.assertEqual(first["status"], "smoke_completed")
+                self.assertEqual(first["next_action"], "collect")
+                self.assertEqual(smoke["no_heavy_debug_defaults"]["validation_output_mode"], "rebuildable_reduced_output")
+                self.assertTrue(smoke["no_heavy_debug_defaults"]["plots_enabled"] is False)
+                self.assertEqual(smoke["no_heavy_debug_defaults"]["conditional_curve_export"], "summary-only")
+                self.assertEqual(smoke["no_heavy_debug_defaults"]["grid_csv_export"], "none")
+                self.assertFalse(smoke["claim_boundaries"]["operational_claims_allowed"])
+                self.assertFalse(smoke["claim_boundaries"]["scale_up_authorized"])
+                self.assertFalse(smoke["claim_boundaries"]["physical_probability_claims_allowed"])
+                self.assertTrue((validation_root / "probabilistic_phase1_smoke_trajectory.csv").exists())
+                self.assertTrue((validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv").exists())
+                self.assertTrue((validation_root / "probabilistic_phase1_smoke_deposition.csv").exists())
+                self.assertFalse((validation_root / "probabilistic_phase1_smoke_trajectories").exists())
+                self.assertTrue((hazard_root / "probabilistic_phase1_smoke_manifest.json").exists())
+                self.assertTrue((hazard_root / "probabilistic_phase1_smoke_map_package_manifest.json").exists())
+                self.assertTrue((hazard_root / "probabilistic_phase1_smoke_pilot_gis_package_manifest.json").exists())
+                self.assertTrue((hazard_root / "probabilistic_phase1_smoke_reach_probability.asc").exists())
+                self.assertTrue((hazard_root / "probabilistic_phase1_smoke_reach_probability.tif").exists())
+                self.assertFalse(list(hazard_root.glob("*.csv")))
+                self.assertEqual(
+                    smoke["hazard_manifest"]["conditional_execution"]["raster_exports"]["grid_csv_export"],
+                    "none",
+                )
+                self.assertFalse(
+                    smoke["hazard_manifest"]["conditional_execution"]["raster_exports"]["grid_csv_written"]
+                )
+                self.assertEqual(
+                    smoke["hazard_manifest"]["conditional_execution"]["conditional_curve_export"]["mode"],
+                    "summary-only",
+                )
+                self.assertFalse(smoke["hazard_manifest"]["performance"]["plots_enabled"])
+                self.assertEqual(
+                    smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["annualized"],
+                    False,
+                )
+                self.assertIn(
+                    "return_period",
+                    smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["future_unsupported_product_labels"],
+                )
+                second_artifacts = {key: second_smoke["artifact_sha256"][key] for key in stable_keys}
+                self.assertEqual(first_artifacts, second_artifacts)
+                self.assertEqual(first_map_package, second_smoke["map_package_manifest_json"])
+                self.assertEqual(
+                    smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["annualized"],
+                    second_smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["annualized"],
+                )
+
     def _write_candidate_config(
         self,
         repo_root: Path,
