@@ -92,6 +92,15 @@ Required controls:
 - a share-safe note if the current evidence still reflects a legacy or mixed
   output profile rather than a fully proven scalable profile.
 
+The command-plan policy vocabulary used by the Balfrin handoff helpers is:
+
+- `scalable_default` when summary-only curves, `--grid-csv-export none`, and
+  `--no-plots` are all explicit;
+- `blocked_unscalable_default` when the plan would otherwise keep full-grid or
+  full-curve outputs as the default;
+- `explicit_heavy_debug` only when a heavier profile is intentionally
+  overridden for debug use.
+
 ## Grid CSV Suppression
 
 Scalable runs must suppress grid CSV output.

@@ -17,8 +17,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+
+
 SCHEMA_VERSION = "portable_pilot_command_plan_v1"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 
@@ -97,6 +102,11 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
     blocked_template_commands = sorted(
         command["id"] for command in flattened_commands if command.get("blocked_reason")
     )
+    output_profile_policies = [
+        plan["output_profile_policy"]
+        for plan in site_plans.values()
+        if plan.get("output_profile_policy") is not None
+    ]
     ignored_output_paths = sorted(
         {
             *readiness_ignored_output_paths(),
@@ -126,6 +136,9 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
         "site_plans": site_plans,
+        "output_profile_policy": OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
+            output_profile_policies, label="pilot_command_plan"
+        ),
         "command_groups": flattened_groups,
         "commands": flattened_commands,
         "command_ids": [command["id"] for command in flattened_commands],
@@ -295,11 +308,17 @@ def build_tschamut_site_plan(
                 expected_outputs=[
                     "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json",
                     "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_conditional_intensity_exceedance_curves.csv",
-                ],
-                read_only=False,
-                may_produce_ignored_outputs=True,
-                ignored_output_paths=["hazard/results/tschamut_public_pilot/gate_v1"],
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=["hazard/results/tschamut_public_pilot/gate_v1"],
+            output_profile_policy=OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+                conditional_curve_export="summary-only",
+                grid_csv_export="none",
+                no_plots=True,
+                label="tschamut_gate_hazard_build",
             ),
+        ),
             command_entry(
                 site="tschamut_same_scale",
                 group="hazard_builds",
@@ -322,11 +341,17 @@ def build_tschamut_site_plan(
                 expected_outputs=[
                     "hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json",
                     "hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_conditional_intensity_exceedance_curves.csv",
-                ],
-                read_only=False,
-                may_produce_ignored_outputs=True,
-                ignored_output_paths=["hazard/results/tschamut_public_pilot/target_gate_v1"],
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=["hazard/results/tschamut_public_pilot/target_gate_v1"],
+            output_profile_policy=OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+                conditional_curve_export="summary-only",
+                grid_csv_export="none",
+                no_plots=True,
+                label="tschamut_target_hazard_build",
             ),
+        ),
         ]
     )
     commands.extend(
@@ -469,12 +494,20 @@ def build_tschamut_site_plan(
     )
 
     command_groups = group_summaries(commands, site="tschamut_same_scale", ignored_output_paths=ignored_output_paths)
+    output_profile_policies = [
+        command["output_profile_policy"]
+        for command in commands
+        if command.get("output_profile_policy") is not None
+    ]
     return {
         "site": "tschamut_same_scale",
         "read_only": all(command["read_only"] for command in commands),
         "command_groups": command_groups,
         "commands": commands,
         "ignored_output_paths": ignored_output_paths,
+        "output_profile_policy": OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
+            output_profile_policies, label="tschamut_same_scale_command_plan"
+        ),
         "readiness_status": readiness_report["readiness_status"],
         "hazard_rebuild_output_profile_status": output_profile_report["hazard_rebuild_output_profile_status"],
         "rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
@@ -569,6 +602,12 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             "none",
         ]
     )
+    rebuild_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export="summary-only",
+        grid_csv_export="none",
+        no_plots=True,
+        label="tschamut_reduced_profile_hazard_rebuild",
+    )
 
     return [
         command_entry(
@@ -634,6 +673,7 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             ],
             read_only=False,
             may_produce_ignored_outputs=False,
+            output_profile_policy=rebuild_policy,
         ),
         command_entry(
             site="tschamut_same_scale",
@@ -765,6 +805,12 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
         for layer_name in source_layer_names
         if layer_name in {"jump_height_exceedance_0p5m", "weighted_jump_height_exceedance_0p5m"}
     ]
+    coggable_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export="summary-only",
+        grid_csv_export="none",
+        no_plots=True,
+        label="tschamut_package_cog_export",
+    )
     commands = [
         command_entry(
             site="tschamut_same_scale",
@@ -891,6 +937,7 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[str(converted_root)],
+            output_profile_policy=coggable_policy,
         ),
         command_entry(
             site="tschamut_same_scale",
@@ -1361,8 +1408,9 @@ def command_entry(
     may_produce_ignored_outputs: bool,
     blocked_reason: str = "",
     ignored_output_paths: list[str] | None = None,
+    output_profile_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    command_record = {
         "site": site,
         "group": group,
         "id": command_id,
@@ -1376,6 +1424,9 @@ def command_entry(
         "may_produce_ignored_outputs": may_produce_ignored_outputs,
         "ignored_output_paths": ignored_output_paths or [],
     }
+    if output_profile_policy is not None:
+        command_record["output_profile_policy"] = output_profile_policy
+    return command_record
 
 
 def group_summaries(

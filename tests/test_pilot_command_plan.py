@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 
+from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "generate_pilot_command_plan.py"
@@ -149,6 +151,7 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "measured")
         self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertEqual(report["tschamut_native_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
+        self.assertEqual(report["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", report["ignored_output_paths"])
         self.assertIn(
@@ -184,6 +187,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             "--cog-package-output-root hazard/results/tschamut_public_pilot/gate_v1_cog_export",
             export_command["command"],
         )
+        self.assertEqual(export_command["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
         self.assertEqual(export_command["cog_scope_intent"]["status"], "full_scope")
         self.assertEqual(export_command["cog_scope_intent"]["reference_layer_count"], 22)
         self.assertIn("jump_height_exceedance_0p5m", export_command["cog_scope_intent"]["reference_layer_names"])
@@ -200,6 +204,25 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("scripts/audit_gis_cog_package_readiness.py", converted_audit_command["command"])
         self.assertIn("--converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export", converted_audit_command["command"])
         self.assertTrue(converted_audit_command["read_only"])
+
+    def test_output_profile_policy_explicit_debug_override_allows_heavy_controls(self) -> None:
+        policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+            conditional_curve_export="full",
+            grid_csv_export="full",
+            no_plots=False,
+            explicit_debug_override=True,
+            label="explicit_heavy_debug_fixture",
+        )
+
+        self.assertEqual(policy["classification"], OUTPUT_PROFILE_POLICY.EXPLICIT_HEAVY_DEBUG)
+        self.assertEqual(
+            policy["heavy_controls"],
+            [
+                "--conditional-curve-export full",
+                "--grid-csv-export full",
+                "--plots-enabled",
+            ],
+        )
 
     def test_tschamut_plan_remains_structured_when_readiness_is_blocked(self) -> None:
         with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_blocked()), patch.object(

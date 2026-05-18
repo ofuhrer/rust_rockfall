@@ -53,6 +53,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(first["authorization_classification"], "blocked_pending_authorization")
         self.assertTrue(first["live_execution_requires_new_human_authorization"])
+        self.assertEqual(first["output_profile_policy"]["classification"], "blocked_unscalable_default")
         self.assertEqual(first["candidate_release_candidates"]["status"], "ready")
         self.assertEqual(first["candidate_release_candidates"]["multi_zone_stress_test_readiness"]["status"], "ready")
         self.assertEqual(first["deterministic_scenarios"]["status"], "template_only")
@@ -80,9 +81,11 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             first["constraint_pressure"]["constraint_source"]["source_document"],
             "docs/multi_zone_reducer_pressure_probe.md",
         )
+        self.assertEqual(first["command_plan"]["output_profile_policy"]["classification"], "blocked_unscalable_default")
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]
+        self.assertEqual(smallest_run["output_profile_policy"]["classification"], "scalable_default")
         self.assertEqual(smallest_run["release_zone_count"], 2)
         self.assertEqual(smallest_run["scenario_count"], 2)
         self.assertEqual(smallest_run["trajectory_count_target"], 1000)

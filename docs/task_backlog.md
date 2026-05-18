@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-217: Scalable Command-Plan Output Profile Enforcement
-
-Goal: Enforce scalable output defaults in multi-zone and Balfrin command plans, including summary-only conditional curves and disabled full-grid CSV exports unless explicitly overridden.
-
-Capability gap reduced: Multi-zone execution can still be blocked by file-family, manifest, and validation-output pressure even when reduced-output modes exist.
-
-Why this outranks alternatives: The reviewer found output/reducer pressure is the most urgent execution risk; enforcing scalable defaults prevents command plans from selecting known non-scalable artifact families by accident.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- A command-plan policy check that classifies output profiles as `scalable_default`, `explicit_heavy_debug`, or `blocked_unscalable_default`.
-- Fail-closed handling for multi-zone or Balfrin plans that request full conditional-curve CSVs, full-grid CSV exports, or unbounded validation debug outputs by default.
-- Focused tests for scalable defaults, explicit debug override, and blocked unscalable multi-zone plans.
-- Documentation of the exact output-profile contract used by Balfrin handoff helpers.
-
-Definition of done:
-
-- Multi-zone and Balfrin command plans cannot silently choose known non-scalable output families as defaults.
-
-Boundaries: Output-profile policy only; no live execution, no distributed reducer, no hazard-value changes, no COG/GIS claim upgrade, and no generated heavy outputs committed.
-
 ### TB-218: Reducer Manifest And File-Family Budget Regression Gate
 
 Goal: Add a fixture-backed regression gate that measures reducer manifest bytes, output family counts, output bytes, sidecar counts, and deterministic merge order for realistic multi-zone scratch roots.

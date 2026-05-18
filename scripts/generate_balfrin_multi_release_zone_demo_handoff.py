@@ -22,8 +22,13 @@ from typing import Any, Callable
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+
+
 SCHEMA_VERSION = "balfrin_multi_release_zone_demo_package_v1"
 COMMAND_PLAN_SCHEMA_VERSION = "balfrin_multi_release_zone_demo_command_plan_v1"
 SBATCH_SCHEMA_VERSION = "balfrin_multi_release_zone_demo_handoff_v1"
@@ -140,6 +145,18 @@ def build_blocked_missing_inputs_report(
     package_md_path = artifact_dir / DEFAULT_PACKAGE_MD.name
     review_command = build_authorization_review_command()
     blocked_reason = "required inputs are missing: " + ", ".join(missing_inputs)
+    blocked_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export=None,
+        grid_csv_export=None,
+        no_plots=False,
+        label="blocked_missing_inputs",
+    )
+    minimum_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export="summary-only",
+        grid_csv_export="none",
+        no_plots=True,
+        label="minimum_measured_multi_zone_run",
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "package_status": "blocked_missing_inputs",
@@ -313,11 +330,12 @@ def build_blocked_missing_inputs_report(
                 "pilot_gis_package": True,
                 "trajectory_workers": 2,
                 "reducer_workers": 2,
-                "authorization_review_command": review_command,
-                "authorization_submit_command": "unavailable",
-                "command_plan_review_command": review_command,
-                "command_plan_submit_command": "unavailable",
-            },
+            "authorization_review_command": review_command,
+            "authorization_submit_command": "unavailable",
+            "output_profile_policy": minimum_output_profile_policy,
+            "command_plan_review_command": review_command,
+            "command_plan_submit_command": "unavailable",
+        },
             "reason": blocked_reason,
             "candidate_readiness": {},
             "recommended_next_check": "Review the package, then seek a new human authorization before any live multi-zone Balfrin job.",
@@ -342,6 +360,7 @@ def build_blocked_missing_inputs_report(
             "command_ids": [],
             "command_descriptions": {},
             "blocked_template_commands": [],
+            "output_profile_policy": blocked_output_profile_policy,
             "ignored_output_paths": [str(artifact_dir), str(candidate_output_root), str(target_area_output_root)],
         },
         "claim_boundaries": {
@@ -365,6 +384,7 @@ def build_blocked_missing_inputs_report(
         "generated_output_roots": [str(artifact_dir), str(candidate_output_root), str(target_area_output_root)],
         "evidence_sources": [],
         "blocked_reason": blocked_reason,
+        "output_profile_policy": blocked_output_profile_policy,
         "pressure_artifact_dir": str(artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name),
         "pressure_probe_root": str(pressure_probe_root),
         "authorization_review_command": review_command,
@@ -469,6 +489,25 @@ def build_report(
         requested_reducer_worker_count=requested_reducer_worker_count,
     )
 
+    current_target_profile = dict(output_profile_report.get("current_target_gate_profile") or {})
+    current_plots_enabled = current_target_profile.get("plots_enabled")
+    current_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export=current_target_profile.get("conditional_curve_export_mode"),
+        grid_csv_export=current_target_profile.get("grid_csv_export_mode"),
+        no_plots=False if current_plots_enabled is None else not bool(current_plots_enabled),
+        label="current_target_gate_profile",
+    )
+    minimum_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export="summary-only",
+        grid_csv_export="none",
+        no_plots=True,
+        label="minimum_measured_multi_zone_run",
+    )
+    command_plan["output_profile_policy"] = OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
+        [current_output_profile_policy, minimum_output_profile_policy],
+        label="balfrin_multi_release_zone_demo_command_plan",
+    )
+
     package_status = classify_package_status(
         candidate_report=candidate_report,
         output_profile_report=output_profile_report,
@@ -561,6 +600,7 @@ def build_report(
         "authorization_review_command": follow_up_recommendation["authorization_review_command"],
         "authorization_submit_command": follow_up_recommendation["authorization_submit_command"],
         "smallest_measured_multi_zone_run": follow_up_recommendation["minimum_measured_multi_zone_run"],
+        "output_profile_policy": command_plan.get("output_profile_policy", {}),
         "command_plan": command_plan,
         "claim_boundaries": claim_boundaries(target_area_contract),
         "ignored_output_roots": [
@@ -1587,6 +1627,12 @@ def build_follow_up_recommendation(
             "output_mode": output_profile_report.get("validation_output_mode"),
             "conditional_curve_export": "summary-only",
             "grid_csv_export": "none",
+            "output_profile_policy": OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+                conditional_curve_export="summary-only",
+                grid_csv_export="none",
+                no_plots=True,
+                label="minimum_measured_multi_zone_run",
+            ),
             "export_geotiff": True,
             "pilot_gis_package": True,
             "trajectory_workers": 2,
@@ -1900,6 +1946,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"- Authorization classification: `{report.get('authorization_classification', 'blocked_missing_inputs')}`",
             f"- Blocked classification: `{report.get('authorization_classification', 'blocked_missing_inputs')}`",
             f"- Blocked reason: {report.get('blocked_reason', '')}",
+            f"- Output profile policy: `{report.get('output_profile_policy', {}).get('classification')}`",
             f"- Missing inputs: `{missing_inputs}`",
             f"- Review command: `{report.get('authorization_review_command', 'unavailable')}`",
             f"- Artifact dir: `{report.get('artifact_dir', 'unknown')}`",
@@ -1961,6 +2008,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
         f"- Constraint source: `{constraint_source.get('source_document')}`",
         "",
+        "## Output Profile Policy",
+        "",
+        f"- Command-plan classification: `{report.get('output_profile_policy', {}).get('classification')}`",
+        f"- Blocked policy labels: `{report.get('output_profile_policy', {}).get('blocked_policy_labels', [])}`",
+        f"- Scalable policy labels: `{report.get('output_profile_policy', {}).get('scalable_policy_labels', [])}`",
+        "",
         "## Uncertainty Post-Processing",
         "",
         f"- Scientific delta status: `{report['uncertainty_post_processing']['status']}`",
@@ -1982,6 +2035,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reviewed handoff package: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('reviewed_handoff_package_path')}`",
         f"- Authorization record: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('authorization_record_path')}`",
         f"- Recommended validation output mode: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run']['output_mode']}`",
+        f"- Recommended output profile policy: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('output_profile_policy', {}).get('classification')}`",
         f"- Reason: {report['follow_up_recommendation']['reason']}",
         "",
         "## Smallest Run Estimates",

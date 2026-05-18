@@ -143,6 +143,33 @@ Recommended balfrin setting:
   - `--grid-csv-export none` (if not doing full forensics),
   - no visual plots.
 
+## Command-Plan Policy States
+
+The Balfrin handoff helpers now classify command-plan output intent with the
+shared `scripts/lib/output_profile_policy.py` policy states:
+
+- `scalable_default`
+  - summary-only conditional curves,
+  - `--grid-csv-export none`,
+  - `--no-plots`.
+- `explicit_heavy_debug`
+  - heavier output controls are present,
+  - the caller has supplied an explicit override for that heavier profile.
+- `blocked_unscalable_default`
+  - heavier output controls are present without an explicit override,
+  - this is the fail-closed state for default multi-zone and Balfrin plans.
+
+Balfrin handoff contract:
+
+- The current target-gate profile in `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`
+  remains `blocked_unscalable_default` until the recorded grid CSV mode is
+  explicitly suppressed.
+- The follow-up multi-zone recommendation uses `scalable_default` with
+  `--conditional-curve-export summary-only`, `--grid-csv-export none`, and
+  `--no-plots`.
+- The helpers surface these states in both machine-readable command-plan JSON
+  and the text reports written alongside the scratch-root package.
+
 ## Profile classification clarified (Tschamut gate)
 
 The same underlying Tschamut gate workload can be represented under multiple profiles:
