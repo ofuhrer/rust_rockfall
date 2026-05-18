@@ -9,6 +9,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.lib import command_plan_contract as COMMAND_PLAN
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"
@@ -145,6 +147,25 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("scripts/submit_balfrin_probe.py", authorization_review_command)
         self.assertIn("--generate-only", authorization_review_command)
         self.assertIn("generate_balfrin_multi_release_zone_demo_handoff.py", command_plan["commands"][-1]["command"])
+        self.assertEqual(command_plan["command_ids"], COMMAND_PLAN.command_ids(command_plan["commands"]))
+        self.assertEqual(command_plan["command_descriptions"], COMMAND_PLAN.command_descriptions(command_plan["commands"]))
+        self.assertEqual(command_plan["blocked_template_commands"], COMMAND_PLAN.blocked_command_ids(command_plan["commands"]))
+        for group in command_plan["command_groups"]:
+            self.assertEqual(set(group), {"id", "description", "command_ids", "status"})
+        for command in command_plan["commands"]:
+            self.assertIn("id", command)
+            self.assertIn("command", command)
+            self.assertIn("expected_inputs", command)
+            self.assertIn("expected_outputs", command)
+            self.assertIn("read_only", command)
+            self.assertIn("may_produce_ignored_outputs", command)
+            self.assertIn("ignored_output_paths", command)
+            self.assertIn("blocked_reason", command)
+            self.assertIsInstance(command["expected_inputs"], list)
+            self.assertIsInstance(command["expected_outputs"], list)
+            self.assertIsInstance(command["ignored_output_paths"], list)
+            self.assertIsInstance(command["read_only"], bool)
+            self.assertIsInstance(command["may_produce_ignored_outputs"], bool)
         self.assertIn("Live execution requires new human authorization", sbatch_script)
         self.assertIn("Blocked classification: blocked_pending_authorization", sbatch_script)
         self.assertIn("Later review command:", sbatch_script)

@@ -1324,3 +1324,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no script deletion, no broad rewrite, no public status-label rename, no scientific claim change, no operational claim, and no unrelated validator churn.
 - Next task: `TB-238`
+
+### TB-238: Command-Plan Manifest Contract Consolidation
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: consolidate command-plan manifest semantics across the portable pilot and Balfrin multi-release-zone handoff generators.
+- Files changed: `scripts/lib/command_plan_contract.py`, `scripts/generate_pilot_command_plan.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_pilot_command_plan.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a shared command-plan contract helper that owns command id, command text, expected-input/output lists, read-only/write flags, ignored output roots, blocked-template ids, command descriptions, repo-relative display paths, and output-profile policy passthrough.
+  - Routed the Tschamut/Chant Sura pilot plan and Balfrin handoff plan through the helper while preserving their domain-specific command strings and existing group-shape contracts.
+  - Added focused regression assertions that command ids, command descriptions, blocked-template ids, read/write fields, expected inputs/outputs, ignored roots, and Balfrin group shape remain stable under the shared contract.
+  - Removed TB-238 from the active backlog after the shared manifest semantics were verified.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/lib/command_plan_contract.py scripts/generate_pilot_command_plan.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_pilot_command_plan.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan tests.test_balfrin_multi_release_zone_demo_handoff`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no live execution, no Balfrin job submission, no generated output commit, no command behavior change, no scale-up claim, no operational claim, and no physical-probability/risk/exposure/vulnerability claim.
+- Next task: backlog refill needed

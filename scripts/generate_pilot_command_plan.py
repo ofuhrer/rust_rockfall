@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.lib import command_plan_contract as COMMAND_PLAN
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 from scripts.lib.workflow_validation import load_repo_script_module
 
@@ -160,8 +160,8 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         ),
         "command_groups": flattened_groups,
         "commands": flattened_commands,
-        "command_ids": [command["id"] for command in flattened_commands],
-        "command_descriptions": {command["id"]: command["description"] for command in flattened_commands},
+        "command_ids": COMMAND_PLAN.command_ids(flattened_commands),
+        "command_descriptions": COMMAND_PLAN.command_descriptions(flattened_commands),
         "blocked_template_commands": blocked_template_commands,
         "ignored_output_paths": ignored_output_paths,
         "command_group_ids": [group["id"] for group in flattened_groups],
@@ -1429,23 +1429,22 @@ def command_entry(
     ignored_output_paths: list[str] | None = None,
     output_profile_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    command_record = {
-        "site": site,
-        "group": group,
-        "id": command_id,
-        "description": description,
-        "command": command,
-        "expected_inputs": expected_inputs,
-        "expected_outputs": expected_outputs,
-        "cog_scope_intent": cog_scope_intent,
-        "blocked_reason": blocked_reason,
-        "read_only": read_only,
-        "may_produce_ignored_outputs": may_produce_ignored_outputs,
-        "ignored_output_paths": ignored_output_paths or [],
-    }
-    if output_profile_policy is not None:
-        command_record["output_profile_policy"] = output_profile_policy
-    return command_record
+    return COMMAND_PLAN.build_command_record(
+        site=site,
+        group=group,
+        command_id=command_id,
+        description=description,
+        command=command,
+        expected_inputs=expected_inputs,
+        expected_outputs=expected_outputs,
+        read_only=read_only,
+        may_produce_ignored_outputs=may_produce_ignored_outputs,
+        blocked_reason=blocked_reason,
+        ignored_output_paths=ignored_output_paths,
+        output_profile_policy=output_profile_policy,
+        extra_fields={"cog_scope_intent": cog_scope_intent},
+        include_none_extra_fields=("cog_scope_intent",),
+    )
 
 
 def group_summaries(
@@ -1454,24 +1453,13 @@ def group_summaries(
     site: str,
     ignored_output_paths: list[str],
 ) -> list[dict[str, Any]]:
-    summaries: list[dict[str, Any]] = []
-    for group_id in ordered_group_ids(site):
-        group_commands = [command for command in commands if command["group"] == group_id]
-        if not group_commands:
-            continue
-        summaries.append(
-            {
-                "site": site,
-                "id": group_id,
-                "description": GROUP_DESCRIPTIONS[group_id],
-                "command_ids": [command["id"] for command in group_commands],
-                "status": "blocked_template" if any(command["blocked_reason"] for command in group_commands) else "ready",
-                "read_only": all(command["read_only"] for command in group_commands),
-                "may_produce_ignored_outputs": any(command["may_produce_ignored_outputs"] for command in group_commands),
-                "ignored_output_paths": ignored_output_paths,
-            }
-        )
-    return summaries
+    return COMMAND_PLAN.summarize_command_groups(
+        commands,
+        group_order=ordered_group_ids(site),
+        group_descriptions=GROUP_DESCRIPTIONS,
+        ignored_output_paths=ignored_output_paths,
+        site=site,
+    )
 
 
 GROUP_DESCRIPTIONS = {
@@ -1532,14 +1520,11 @@ def readiness_ignored_output_paths() -> list[str]:
 
 
 def command_string(parts: list[str]) -> str:
-    return shlex.join(parts)
+    return COMMAND_PLAN.command_string(parts)
 
 
 def rel(path: Path) -> str:
-    try:
-        return str(path.relative_to(ROOT))
-    except ValueError:
-        return str(path)
+    return COMMAND_PLAN.relative_path(path, root=ROOT)
 
 
 def render_text_report(report: dict[str, Any]) -> str:

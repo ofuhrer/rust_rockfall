@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 
+from scripts.lib import command_plan_contract as COMMAND_PLAN
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
 
@@ -347,6 +348,33 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("chant_sura_fluelapass::second_site_release_plan", report["command_group_keys"])
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", report["command_group_keys"])
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", report["command_group_keys"])
+
+    def test_command_records_preserve_shared_manifest_contract_fields(self) -> None:
+        report = self._fixture_report("all")
+
+        self.assertEqual(report["command_ids"], COMMAND_PLAN.command_ids(report["commands"]))
+        self.assertEqual(report["command_descriptions"], COMMAND_PLAN.command_descriptions(report["commands"]))
+        self.assertEqual(report["blocked_template_commands"], COMMAND_PLAN.blocked_command_ids(report["commands"]))
+        for command in report["commands"]:
+            self.assertIn("id", command)
+            self.assertIn("command", command)
+            self.assertIn("expected_inputs", command)
+            self.assertIn("expected_outputs", command)
+            self.assertIn("read_only", command)
+            self.assertIn("may_produce_ignored_outputs", command)
+            self.assertIn("ignored_output_paths", command)
+            self.assertIn("blocked_reason", command)
+            self.assertIsInstance(command["expected_inputs"], list)
+            self.assertIsInstance(command["expected_outputs"], list)
+            self.assertIsInstance(command["ignored_output_paths"], list)
+            self.assertIsInstance(command["read_only"], bool)
+            self.assertIsInstance(command["may_produce_ignored_outputs"], bool)
+
+        hazard_command = next(command for command in report["commands"] if command["id"] == "tschamut_target_hazard_build")
+        self.assertEqual(
+            hazard_command["output_profile_policy"]["classification"],
+            OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT,
+        )
 
     def test_text_output_smoke(self) -> None:
         buffer = io.StringIO()

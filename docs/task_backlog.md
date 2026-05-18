@@ -29,36 +29,6 @@ Definition of done:
 
 Boundaries: Fixture-backed schema smoke only, no real evidence claim, no calibration, no parameter fitting, no validation upgrade, and no operational claim.
 
-### TB-238: Command-Plan Manifest Contract Consolidation
-
-Goal: Consolidate repeated command-plan manifest, expected-input/output, ignored-root, and read-only/write semantics across the pilot and Balfrin handoff generators.
-
-Capability gap reduced: Command-plan strings are a high-coupling surface where stale script references, hidden local-state assumptions, and output-root drift can break reproducibility.
-
-Why this outranks alternatives: The command plan is now the practical workflow contract for both local pilots and Balfrin handoffs, so reducing duplication here directly protects execution.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/lib/output_profile_policy.py`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/check_repo_consistency.py`
-- `docs/hazard_output_profile_contract.md`
-
-Deliverables:
-
-- A small shared command-plan helper or dataclass for command id, command text, read-only/write behavior, expected inputs/outputs, ignored output roots, and output-profile policy.
-- Tests proving the Tschamut and Balfrin command-plan shapes remain stable except for intentional shared-field normalization.
-- Consistency-check updates only if needed to preserve stale-reference protection.
-
-Definition of done:
-
-- The two main command-plan generators share mechanics for manifest semantics while preserving their domain-specific command content.
-
-Boundaries: No broad workflow framework, no command behavior change unless explicitly tested, no generated output commit, no live execution, and no claim upgrade.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

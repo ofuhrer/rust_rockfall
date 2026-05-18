@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.lib import command_plan_contract as COMMAND_PLAN
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
 
@@ -55,6 +56,22 @@ SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
     "/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
+BALFRIN_COMMAND_GROUP_ORDER = (
+    "candidate_release_candidates",
+    "deterministic_scenarios",
+    "pressure_checks",
+    "uncertainty_post_processing",
+    "authorization_review",
+    "package_materialization",
+)
+BALFRIN_COMMAND_GROUP_DESCRIPTIONS = {
+    "candidate_release_candidates": "Generate deterministic candidate release-zone outputs from the frozen target-area contract.",
+    "deterministic_scenarios": "Materialize the frozen target-area scenario handoff and deterministic scenario-generation bundle.",
+    "pressure_checks": "Record multi-zone reducer pressure, output pressure, reducer/chunk pressure, and restartability checkpoints.",
+    "uncertainty_post_processing": "Compose the uncertainty-aware post-processing and interpretation gate reports.",
+    "authorization_review": "Stage the exact later review command for the smallest bounded multi-zone probe.",
+    "package_materialization": "Write the scratch-root package and handoff script.",
+}
 
 
 def _load_module(module_name: str, filename: str):
@@ -405,9 +422,9 @@ def build_blocked_missing_inputs_report(
             ),
             "command_groups": [],
             "commands": [],
-            "command_ids": [],
-            "command_descriptions": {},
-            "blocked_template_commands": [],
+            "command_ids": COMMAND_PLAN.command_ids([]),
+            "command_descriptions": COMMAND_PLAN.command_descriptions([]),
+            "blocked_template_commands": COMMAND_PLAN.blocked_command_ids([]),
             "output_profile_policy": blocked_output_profile_policy,
             "ignored_output_paths": [str(artifact_dir), str(candidate_output_root), str(target_area_output_root)],
         },
@@ -1025,42 +1042,18 @@ def build_command_plan(
             "PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py "
             "--site tschamut_same_scale --format json"
         ),
-        "command_groups": [
-            {
-                "id": "candidate_release_candidates",
-                "description": "Generate deterministic candidate release-zone outputs from the frozen target-area contract.",
-                "status": "ready",
-            },
-            {
-                "id": "deterministic_scenarios",
-                "description": "Materialize the frozen target-area scenario handoff and deterministic scenario-generation bundle.",
-                "status": "ready",
-            },
-            {
-                "id": "pressure_checks",
-                "description": "Record multi-zone reducer pressure, output pressure, reducer/chunk pressure, and restartability checkpoints.",
-                "status": "ready",
-            },
-            {
-                "id": "uncertainty_post_processing",
-                "description": "Compose the uncertainty-aware post-processing and interpretation gate reports.",
-                "status": "ready",
-            },
-            {
-                "id": "authorization_review",
-                "description": "Stage the exact later review command for the smallest bounded multi-zone probe.",
-                "status": "ready",
-            },
-            {
-                "id": "package_materialization",
-                "description": "Write the scratch-root package and handoff script.",
-                "status": "ready",
-            },
-        ],
+        "command_groups": COMMAND_PLAN.summarize_command_groups(
+            commands,
+            group_order=BALFRIN_COMMAND_GROUP_ORDER,
+            group_descriptions=BALFRIN_COMMAND_GROUP_DESCRIPTIONS,
+            ignored_output_paths=[],
+            include_site=False,
+            include_manifest_semantics=False,
+        ),
         "commands": commands,
-        "command_ids": [command["id"] for command in commands],
-        "command_descriptions": {command["id"]: command["description"] for command in commands},
-        "blocked_template_commands": [],
+        "command_ids": COMMAND_PLAN.command_ids(commands),
+        "command_descriptions": COMMAND_PLAN.command_descriptions(commands),
+        "blocked_template_commands": COMMAND_PLAN.blocked_command_ids(commands),
         "ignored_output_paths": sorted(
             {
                 str(artifact_dir),
@@ -2132,18 +2125,18 @@ def command_entry(
     blocked_reason: str = "",
     ignored_output_paths: list[str] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "id": command_id,
-        "group": group,
-        "description": description,
-        "command": command,
-        "expected_inputs": expected_inputs,
-        "expected_outputs": expected_outputs,
-        "read_only": read_only,
-        "may_produce_ignored_outputs": may_produce_ignored_outputs,
-        "blocked_reason": blocked_reason,
-        "ignored_output_paths": ignored_output_paths or [],
-    }
+    return COMMAND_PLAN.build_command_record(
+        group=group,
+        command_id=command_id,
+        description=description,
+        command=command,
+        expected_inputs=expected_inputs,
+        expected_outputs=expected_outputs,
+        read_only=read_only,
+        may_produce_ignored_outputs=may_produce_ignored_outputs,
+        blocked_reason=blocked_reason,
+        ignored_output_paths=ignored_output_paths,
+    )
 
 
 def build_sbatch_script(report: dict[str, Any]) -> str:
@@ -2405,14 +2398,11 @@ def render_text_report(report: dict[str, Any]) -> str:
 
 
 def command_string(parts: list[str]) -> str:
-    return shlex.join(parts)
+    return COMMAND_PLAN.command_string(parts)
 
 
 def rel(path: Path) -> str:
-    try:
-        return str(path.relative_to(ROOT))
-    except ValueError:
-        return str(path)
+    return COMMAND_PLAN.relative_path(path, root=ROOT)
 
 
 def safe_build(label: str, builder: Callable[[], dict[str, Any]]) -> dict[str, Any]:
