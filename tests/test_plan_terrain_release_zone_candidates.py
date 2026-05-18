@@ -150,6 +150,20 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["mask"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
+            self.assertEqual(first["candidate_review_package"]["review_package_status"], "emitted")
+            self.assertEqual(first["candidate_review_package"]["review_decision_options"], ["accepted", "rejected", "needs_field_review"])
+            self.assertEqual(
+                [row["provenance_label"] for row in first["candidate_review_package"]["provenance_label_legend"]],
+                ["workflow_generated", "field_supported", "mixed_provenance", "blocked_missing_provenance"],
+            )
+            self.assertGreater(first["candidate_review_package"]["review_summary"]["candidate_count"], 0)
+            self.assertEqual(first["candidate_review_package"]["review_summary"]["default_review_decision"], "needs_field_review")
+            self.assertEqual(first["candidate_review_package"]["review_summary"]["review_decision_counts"]["needs_field_review"], first["candidate_review_package"]["review_summary"]["candidate_count"])
+            self.assertEqual(first["candidate_review_package"]["review_summary"]["provenance_label_counts"]["workflow_generated"], first["candidate_review_package"]["review_summary"]["candidate_count"])
+            self.assertTrue(Path(first["candidate_review_package"]["outputs"]["polygon"]).exists())
+            self.assertTrue(Path(first["candidate_review_package"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(first["candidate_review_package"]["outputs"]["csv"]).exists())
+            self.assertTrue(Path(first["candidate_review_package"]["outputs"]["manifest"]).exists())
 
             geojson = json.loads(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).read_text(encoding="utf-8"))
             self.assertEqual(geojson["schema_version"], "terrain_release_zone_candidate_products_v1")
@@ -161,6 +175,21 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertTrue(first_feature["properties"]["candidate_release_zone_id"].startswith("tschamut_public_lps_release_bbox_candidate_"))
             self.assertEqual(first_feature["geometry"]["type"], "MultiPolygon")
             self.assertTrue(first_feature["properties"]["comparison_to_frozen_footprint_excludes_source_zone"])
+            self.assertEqual(first_feature["properties"]["review_decision"], "needs_field_review")
+            self.assertFalse(first_feature["properties"]["accepted"])
+            self.assertFalse(first_feature["properties"]["rejected"])
+            self.assertTrue(first_feature["properties"]["needs_field_review"])
+            self.assertEqual(first_feature["properties"]["provenance_label"], "workflow_generated")
+            self.assertEqual(first_feature["properties"]["candidate_sensitivity_label"], "heuristic_sensitive_across_bounded_heuristics")
+            self.assertEqual(first_feature["properties"]["release_cell_count"], len(first_feature["properties"]["release_cell_ids"]))
+            self.assertTrue(first_feature["properties"]["release_cell_ids"][0].startswith(first_feature["properties"]["candidate_release_zone_id"]))
+
+            review_geojson = json.loads(Path(first["candidate_review_package"]["outputs"]["polygon"]).read_text(encoding="utf-8"))
+            self.assertEqual(review_geojson["schema_version"], "terrain_release_zone_candidate_review_package_v1")
+            self.assertEqual(review_geojson["review_decision_options"], ["accepted", "rejected", "needs_field_review"])
+            self.assertEqual(review_geojson["provenance_label_legend"][0]["provenance_label"], "workflow_generated")
+            self.assertEqual(review_geojson["features"][0]["properties"]["review_decision"], "needs_field_review")
+            self.assertEqual(review_geojson["features"][0]["properties"]["candidate_sensitivity_label"], "heuristic_sensitive_across_bounded_heuristics")
 
             manifest = json.loads(Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema_version"], "terrain_release_zone_candidate_products_v1")
@@ -172,6 +201,13 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first_mask_text, Path(first["candidate_release_zone_products"]["outputs"]["mask"]).read_text(encoding="utf-8"))
             self.assertEqual(first_manifest_text, Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
 
+            review_manifest = json.loads(Path(first["candidate_review_package"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
+            self.assertEqual(review_manifest["schema_version"], "terrain_release_zone_candidate_review_package_v1")
+            self.assertEqual(review_manifest["review_package_status"], "emitted")
+            self.assertEqual(review_manifest["review_summary"]["review_decision_counts"]["needs_field_review"], review_manifest["review_summary"]["candidate_count"])
+            self.assertEqual(review_manifest["review_summary"]["provenance_label_counts"]["workflow_generated"], review_manifest["review_summary"]["candidate_count"])
+            self.assertEqual(review_manifest["candidate_review_rows"][0]["review_decision"], "needs_field_review")
+
             text_report = planner.render_text_report(first)
             self.assertEqual(text_report, planner.render_text_report(second))
             self.assertIn("schema_version: terrain_release_zone_candidate_metrics_v1", text_report)
@@ -180,6 +216,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertIn("candidate_sensitivity_report:", text_report)
             self.assertIn("frozen_source_zone_footprint:", text_report)
             self.assertIn("candidate_release_zone_products:", text_report)
+            self.assertIn("candidate_review_package:", text_report)
 
     def test_missing_public_inputs_are_reported_as_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

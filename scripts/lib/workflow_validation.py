@@ -48,6 +48,11 @@ RELEASE_CANDIDATE_PROVENANCE_STATES = (
     "mixed_provenance",
     "blocked_missing_provenance",
 )
+RELEASE_CANDIDATE_REVIEW_DECISIONS = (
+    "accepted",
+    "rejected",
+    "needs_field_review",
+)
 DEFAULT_SKIP_KEYS = frozenset({"claim_boundary", "claim_boundaries", "does_not_verify", "does_not_support"})
 
 
@@ -270,6 +275,7 @@ def build_release_zone_provenance_intake(
     workflow_generated: bool | None = None,
     field_supported: bool | None = None,
     blocked_missing_provenance: bool | None = None,
+    review_decision: str | None = None,
     provenance_note: str | None = None,
     provenance_source: str | None = None,
 ) -> dict[str, Any]:
@@ -280,6 +286,10 @@ def build_release_zone_provenance_intake(
         field_supported = bool(raw_provenance.get("field_supported"))
     if blocked_missing_provenance is None and "blocked_missing_provenance" in raw_provenance:
         blocked_missing_provenance = bool(raw_provenance.get("blocked_missing_provenance"))
+    if review_decision is None and "review_decision" in raw_provenance:
+        review_decision = str(raw_provenance.get("review_decision") or "").strip()
+    if review_decision is None and "candidate_review_decision" in raw_provenance:
+        review_decision = str(raw_provenance.get("candidate_review_decision") or "").strip()
     provenance_state = raw_provenance.get("release_zone_provenance_state") or raw_provenance.get("release_candidate_provenance_state") or raw_provenance.get("provenance_state")
     if provenance_state is not None:
         provenance_state = str(provenance_state).strip()
@@ -290,6 +300,16 @@ def build_release_zone_provenance_intake(
         workflow_generated = provenance_state in {"workflow_generated", "mixed_provenance"}
         field_supported = provenance_state in {"field_supported", "mixed_provenance"}
         blocked_missing_provenance = provenance_state == "blocked_missing_provenance"
+
+    if review_decision:
+        review_decision = str(review_decision).strip()
+        if review_decision not in RELEASE_CANDIDATE_REVIEW_DECISIONS:
+            raise ValueError(f"review_decision must be one of {sorted(RELEASE_CANDIDATE_REVIEW_DECISIONS)}")
+        if review_decision != "accepted" and (field_supported or provenance_state in {"field_supported", "mixed_provenance"}):
+            blocked_missing_provenance = True
+            field_supported = False
+            if workflow_generated is None:
+                workflow_generated = False
 
     if workflow_generated is None and field_supported is None and blocked_missing_provenance is None:
         if raw_provenance:
@@ -323,6 +343,7 @@ def build_release_zone_provenance_intake(
         "workflow_generated": workflow_generated,
         "field_supported": field_supported,
         "blocked_missing_provenance": blocked_missing_provenance,
+        "review_decision": review_decision or "",
         "provenance_note": str(provenance_note or "").strip(),
         "provenance_source": str(provenance_source or raw_provenance.get("source") or "").strip(),
     }

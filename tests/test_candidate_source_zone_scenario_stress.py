@@ -245,6 +245,64 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
                 error_cls=MODULE.CandidateSourceZoneScenarioStressError,
             )
 
+    def test_review_decision_blocks_field_supported_overclaims_but_keeps_unreviewed_workflow_generated(self) -> None:
+        unreviewed_intake = build_release_zone_provenance_intake(
+            {
+                "review_decision": "needs_field_review",
+                "provenance_note": "candidate still under review",
+                "provenance_source": "terrain review package",
+            }
+        )
+        overclaimed_intake = build_release_zone_provenance_intake(
+            {
+                "review_decision": "needs_field_review",
+                "release_zone_provenance_state": "field_supported",
+                "provenance_note": "unreviewed candidate overclaimed as field-supported",
+                "provenance_source": "terrain review package",
+            }
+        )
+
+        self.assertEqual(unreviewed_intake["review_decision"], "needs_field_review")
+        self.assertEqual(unreviewed_intake["release_zone_provenance_state"], "workflow_generated")
+        self.assertFalse(unreviewed_intake["field_supported"])
+        self.assertEqual(overclaimed_intake["review_decision"], "needs_field_review")
+        self.assertEqual(overclaimed_intake["release_zone_provenance_state"], "blocked_missing_provenance")
+        self.assertFalse(overclaimed_intake["field_supported"])
+
+        policy = MODULE.load_yaml(POLICY_PATH)
+        candidate_records = MODULE.build_candidate_release_zone_records(
+            release_points=[
+                {
+                    "trajectory_id": "review_point_001",
+                    "mass_kg": "11.0",
+                    "radius_m": "0.3",
+                    "block_id": "review",
+                }
+            ],
+            release_points_path=RELEASE_POINTS_PATH,
+            candidate_repeat_count=1,
+            source_zone_id="reviewed_source_zone",
+            release_zone_provenance_intake=overclaimed_intake,
+        )
+        rows = MODULE.build_rows(
+            candidate_records=candidate_records,
+            block_scenarios=[
+                {
+                    "block_scenario_id": "review_block_small",
+                    "block_size_class": "review_small",
+                    "block_shape_class": "sphere",
+                    "block_radius_m": 0.12,
+                    "block_mass_kg": 18.0,
+                    "sampling_weight": 1.0,
+                }
+            ],
+            template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+            policy=policy,
+        )
+
+        self.assertEqual(candidate_records[0]["candidate_release_zone_record_kind"], "blocked_missing_provenance")
+        self.assertEqual(rows[0]["release_candidate_provenance_state"], "blocked_missing_provenance")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

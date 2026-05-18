@@ -13,6 +13,7 @@ work.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import importlib.util
 import json
@@ -33,10 +34,18 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "terrain_release_zone_candidate_metrics_v1"
 PRODUCT_SCHEMA_VERSION = "terrain_release_zone_candidate_products_v1"
+REVIEW_PACKAGE_SCHEMA_VERSION = "terrain_release_zone_candidate_review_package_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
 DEFAULT_OUTPUT_MODE = "both"
+REVIEW_DECISION_OPTIONS = ("accepted", "rejected", "needs_field_review")
+PROVENANCE_LABELS = (
+    "workflow_generated",
+    "field_supported",
+    "mixed_provenance",
+    "blocked_missing_provenance",
+)
 
 MIN_CANDIDATE_SLOPE_DEG = 30.0
 MAX_CANDIDATE_SLOPE_DEG = 55.0
@@ -163,6 +172,7 @@ def build_report(
     frozen_footprint_summary = build_frozen_footprint_summary(terrain, source_zone_metadata, terrain_masks)
     candidate_footprint_comparison = build_candidate_footprint_comparison(terrain, terrain_masks)
     provenance = build_provenance(terrain_crop_path, terrain_metadata_path, source_zone_metadata_path, terrain_metadata, source_zone_metadata)
+    candidate_review_package = candidate_review_package_stub(repo_root=repo_root)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -218,6 +228,7 @@ def build_report(
         "blocked_reason": "",
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
+        "candidate_review_package": candidate_review_package,
         "candidate_release_zone_products": {
             "output_status": "not_emitted",
             "output_mode": output_mode,
@@ -225,7 +236,7 @@ def build_report(
         },
     }
     if output_root is not None:
-        candidate_products = emit_candidate_products(
+        candidate_products, candidate_review_package = emit_candidate_products(
             report=report,
             terrain=terrain,
             terrain_masks=terrain_masks,
@@ -236,6 +247,7 @@ def build_report(
         )
         report["candidate_release_zone_set_status"] = "emitted"
         report["candidate_release_zone_products"] = candidate_products
+        report["candidate_review_package"] = candidate_review_package
     return report
 
 
@@ -326,6 +338,7 @@ def blocked_report(
             "output_mode": DEFAULT_OUTPUT_MODE,
             "output_root": None,
         },
+        "candidate_review_package": candidate_review_package_stub(repo_root=repo_root),
     }
 
 
@@ -1218,7 +1231,7 @@ def emit_candidate_products(
     repo_root: Path,
     output_root: Path,
     output_mode: str,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
     source_zone_id = source_zone_metadata.get("source_zone_id") or report["candidate_site_id"]
@@ -1239,6 +1252,7 @@ def emit_candidate_products(
                 report["terrain_inputs"]["terrain_metadata_path"],
                 report["source_zone_inputs"]["source_zone_metadata_path"],
             ],
+            candidate_sensitivity_label=report["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["region_class"],
         )
         for index, cells in enumerate(components)
     ]
@@ -1296,7 +1310,77 @@ def emit_candidate_products(
     ]
     manifest_path.write_text(json.dumps(product_bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     product_bundle["outputs"]["manifest"] = display_path(manifest_path, repo_root)
-    return product_bundle
+    candidate_review_package = build_candidate_review_package(
+        report=report,
+        terrain=terrain,
+        terrain_masks=terrain_masks,
+        source_zone_id=str(source_zone_id),
+        component_features=component_features,
+        repo_root=repo_root,
+        output_root=output_root,
+    )
+    return product_bundle, candidate_review_package
+
+
+def build_candidate_review_package(
+    *,
+    report: dict[str, Any],
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    source_zone_id: str,
+    component_features: list[dict[str, Any]],
+    repo_root: Path,
+    output_root: Path,
+) -> dict[str, Any]:
+    geojson_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.geojson"
+    csv_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.csv"
+    mask_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review_mask.asc"
+    manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review_manifest.json"
+
+    review_rows = [build_candidate_review_row(feature) for feature in component_features]
+    review_summary = build_candidate_review_summary(review_rows)
+    review_geojson = {
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "type": "FeatureCollection",
+        "candidate_site_id": report["candidate_site_id"],
+        "candidate_site_name": report["candidate_site_name"],
+        "source_zone_id": source_zone_id,
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "provenance_label_legend": provenance_label_legend(),
+        "features": component_features,
+    }
+    geojson_path.write_text(json.dumps(review_geojson, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_candidate_mask_ascii_grid(mask_path, terrain, terrain_masks["candidate_mask"])
+    write_candidate_review_csv(csv_path, review_rows)
+
+    review_package = {
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "review_package_status": "emitted",
+        "candidate_site_id": report["candidate_site_id"],
+        "candidate_site_name": report["candidate_site_name"],
+        "source_zone_id": source_zone_id,
+        "candidate_release_zone_set_status": "review_ready",
+        "candidate_release_zone_ids": [feature["properties"]["candidate_release_zone_id"] for feature in component_features],
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+        "provenance_label_legend": provenance_label_legend(),
+        "review_summary": review_summary,
+        "candidate_review_rows": review_rows,
+        "candidate_sensitivity_summary": candidate_review_sensitivity_summary(report["candidate_sensitivity_report"]),
+        "candidate_footprint_comparison": report["candidate_footprint_comparison"],
+        "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
+        "claim_boundaries": report["claim_boundaries"],
+        "outputs": {
+            "polygon": display_path(geojson_path, repo_root),
+            "mask": display_path(mask_path, repo_root),
+            "csv": display_path(csv_path, repo_root),
+            "manifest": display_path(manifest_path, repo_root),
+        },
+        "output_root": display_path(output_root, repo_root),
+    }
+    manifest_path.write_text(json.dumps(review_package, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return review_package
 
 
 def summarize_distribution(values: list[float]) -> dict[str, float | None]:
@@ -1315,6 +1399,169 @@ def summarize_distribution(values: list[float]) -> dict[str, float | None]:
         "median": float(np.median(array)),
         "p95": float(np.quantile(array, 0.95)),
     }
+
+
+def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
+    properties = feature["properties"]
+    return {
+        "candidate_release_zone_id": properties["candidate_release_zone_id"],
+        "candidate_generation_label": properties["candidate_generation_label"],
+        "review_decision": properties["review_decision"],
+        "accepted": properties["accepted"],
+        "rejected": properties["rejected"],
+        "needs_field_review": properties["needs_field_review"],
+        "provenance_label": properties["provenance_label"],
+        "candidate_sensitivity_label": properties["candidate_sensitivity_label"],
+        "release_cell_count": properties["release_cell_count"],
+        "release_cell_ids": ";".join(properties["release_cell_ids"]),
+        "component_cell_count": properties["component_cell_count"],
+        "component_area_m2": properties["component_area_m2"],
+        "component_slope_min_deg": properties["component_slope_min_deg"],
+        "component_slope_max_deg": properties["component_slope_max_deg"],
+        "component_slope_mean_deg": properties["component_slope_mean_deg"],
+        "component_slope_median_deg": properties["component_slope_median_deg"],
+    }
+
+
+def build_candidate_review_summary(review_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    decision_counts = {decision: 0 for decision in REVIEW_DECISION_OPTIONS}
+    provenance_counts = {label: 0 for label in PROVENANCE_LABELS}
+    for row in review_rows:
+        review_decision = str(row.get("review_decision") or "")
+        if review_decision in decision_counts:
+            decision_counts[review_decision] += 1
+        provenance_label = str(row.get("provenance_label") or "")
+        if provenance_label in provenance_counts:
+            provenance_counts[provenance_label] += 1
+    return {
+        "review_row_count": len(review_rows),
+        "candidate_count": len(review_rows),
+        "review_decision_counts": decision_counts,
+        "provenance_label_counts": provenance_counts,
+        "default_review_decision": "needs_field_review",
+    }
+
+
+def candidate_review_sensitivity_summary(candidate_sensitivity_report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sensitivity_status": candidate_sensitivity_report.get("sensitivity_status"),
+        "sensitivity_scope": candidate_sensitivity_report.get("sensitivity_scope"),
+        "stable_candidate_region_label": candidate_sensitivity_report.get("stable_candidate_region", {}).get("region_class"),
+        "unstable_candidate_region_label": candidate_sensitivity_report.get("unstable_candidate_region", {}).get("region_class"),
+        "heuristic_sensitive_candidate_region_label": candidate_sensitivity_report.get("heuristic_sensitive_candidate_region", {}).get("region_class"),
+        "candidate_region_classifications": [
+            {
+                "region_class": row.get("region_class"),
+                "cell_count": row.get("cell_count"),
+                "area_m2": row.get("area_m2"),
+            }
+            for row in candidate_sensitivity_report.get("candidate_region_classifications", [])
+        ],
+    }
+
+
+def provenance_label_legend() -> list[dict[str, str]]:
+    return [
+        {
+            "provenance_label": "workflow_generated",
+            "meaning": "Candidate generated from workflow terrain and context screening only.",
+        },
+        {
+            "provenance_label": "field_supported",
+            "meaning": "Candidate can only be treated as field-supported once review has explicitly accepted it.",
+        },
+        {
+            "provenance_label": "mixed_provenance",
+            "meaning": "Candidate combines workflow generation with accepted field support.",
+        },
+        {
+            "provenance_label": "blocked_missing_provenance",
+            "meaning": "Candidate cannot be treated as evidence because provenance is missing or overclaimed.",
+        },
+    ]
+
+
+def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
+    return {
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "review_package_status": "not_emitted",
+        "candidate_site_id": "tschamut_public_pilot",
+        "candidate_site_name": "Balfrin / Tschamut AOI",
+        "source_zone_id": None,
+        "candidate_release_zone_set_status": "not_emitted",
+        "candidate_release_zone_ids": [],
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+        "provenance_label_legend": provenance_label_legend(),
+        "review_summary": {
+            "review_row_count": 0,
+            "candidate_count": 0,
+            "review_decision_counts": {decision: 0 for decision in REVIEW_DECISION_OPTIONS},
+            "provenance_label_counts": {label: 0 for label in PROVENANCE_LABELS},
+            "default_review_decision": "needs_field_review",
+        },
+        "candidate_review_rows": [],
+        "candidate_sensitivity_summary": {},
+        "candidate_footprint_comparison": {},
+        "frozen_source_zone_footprint": {},
+        "claim_boundaries": {
+            "heuristic_workflow_input_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "notes": [
+                "candidate review rows remain workflow review inputs until the source zone is frozen",
+                "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
+            ],
+        },
+        "outputs": {
+            "polygon": None,
+            "mask": None,
+            "csv": None,
+            "manifest": None,
+        },
+        "output_root": None,
+        "repo_root": str(repo_root),
+    }
+
+
+def write_candidate_review_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    columns = [
+        "candidate_release_zone_id",
+        "candidate_generation_label",
+        "review_decision",
+        "accepted",
+        "rejected",
+        "needs_field_review",
+        "provenance_label",
+        "candidate_sensitivity_label",
+        "release_cell_count",
+        "release_cell_ids",
+        "component_cell_count",
+        "component_area_m2",
+        "component_slope_min_deg",
+        "component_slope_max_deg",
+        "component_slope_mean_deg",
+        "component_slope_median_deg",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({column: csv_safe_value(row.get(column)) for column in columns})
+
+
+def csv_safe_value(value: Any) -> Any:
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, list):
+        return ";".join(str(item) for item in value)
+    if value is None:
+        return ""
+    return value
 
 
 def connected_candidate_components(candidate_mask: np.ndarray) -> list[list[tuple[int, int]]]:
@@ -1377,19 +1624,23 @@ def build_candidate_component_feature(
     source_zone_id: str,
     candidate_site_id: str,
     source_inputs: list[str],
+    candidate_sensitivity_label: str,
 ) -> dict[str, Any]:
     component_mask = np.zeros_like(terrain_masks["candidate_mask"], dtype=bool)
     for row, col in component:
         component_mask[row, col] = True
     slope_deg = terrain_masks["slope_deg"][component_mask]
+    candidate_release_zone_id = report_candidate_id(source_zone_id, index, width)
     cell_area_m2 = terrain["cellsize"] ** 2
+    release_cell_ids = [release_cell_id(candidate_release_zone_id, row, col) for row, col in component]
     properties = {
-        "candidate_release_zone_id": report_candidate_id(source_zone_id, index, width),
+        "candidate_release_zone_id": candidate_release_zone_id,
         "candidate_generation_label": "heuristic_candidate_generation_only",
         "candidate_site_id": candidate_site_id,
         "source_zone_id": source_zone_id,
         "source_inputs": source_inputs,
         "provenance_ref": "terrain_and_source_zone_inputs",
+        "provenance_label": "workflow_generated",
         "component_index": index,
         "component_cell_count": len(component),
         "component_area_m2": len(component) * cell_area_m2,
@@ -1399,6 +1650,14 @@ def build_candidate_component_feature(
         "component_slope_median_deg": float(np.median(slope_deg)) if len(slope_deg) else None,
         "comparison_to_frozen_footprint_cell_count": int((component_mask & terrain_masks["footprint_mask"]).sum()),
         "comparison_to_frozen_footprint_excludes_source_zone": bool(not (component_mask & terrain_masks["footprint_mask"]).any()),
+        "release_cell_ids": release_cell_ids,
+        "release_cell_count": len(release_cell_ids),
+        "review_decision": "needs_field_review",
+        "accepted": False,
+        "rejected": False,
+        "needs_field_review": True,
+        "candidate_sensitivity_label": candidate_sensitivity_label,
+        "review_editable": True,
     }
     geometry = component_multipolygon_geometry(component, terrain)
     bbox = component_bbox(component, terrain)
@@ -1410,6 +1669,10 @@ def build_candidate_component_feature(
         "geometry": geometry,
         "properties": properties,
     }
+
+
+def release_cell_id(candidate_release_zone_id: str, row: int, col: int) -> str:
+    return f"{candidate_release_zone_id}__cell_r{row:03d}_c{col:03d}"
 
 
 def report_candidate_id(source_zone_id: str, index: int, width: int) -> str:
@@ -1705,6 +1968,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("candidate_release_zone_products:")
     lines.extend(render_mapping(report["candidate_release_zone_products"]))
+    lines.append("")
+    lines.append("candidate_review_package:")
+    lines.extend(render_mapping(report["candidate_review_package"]))
     lines.append("")
     lines.append("claim_boundaries:")
     lines.extend(render_mapping(report["claim_boundaries"]))

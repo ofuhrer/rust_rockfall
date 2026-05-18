@@ -1805,3 +1805,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: preparation only; no release-zone validation, no ensemble execution, no operational claim, and no heavy public geodata committed.
 - Next task: `TB-260`
+
+### TB-260: Release-Zone Candidate Review Package
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: generate a reviewable release-zone candidate package from prepared AOI terrain with stable candidate IDs, GIS outputs, sensitivity labels, and editable acceptance fields.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/lib/workflow_validation.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated candidate review package surface to the terrain planner with deterministic release-cell IDs, review-decision defaults, provenance-label legends, slope summaries, and GIS-readable GeoJSON, CSV, and mask outputs.
+  - Kept the candidate polygon bundle reviewable by threading `accepted`, `rejected`, and `needs_field_review` fields into the emitted feature properties while preserving the existing heuristic candidate generation contract.
+  - Extended the shared provenance intake so non-accepted review states cannot be upgraded to `field_supported`, and added regression coverage showing unreviewed or overclaimed candidates stay out of the field-supported scenario path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_candidate_source_zone_scenario_stress`
+- Result/status: implemented_fixture_backed
+- Boundaries: candidate generation and review packaging only; no release-zone validation claim, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-261`

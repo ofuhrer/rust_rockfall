@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-260: Release-Zone Candidate Review Package
-
-Goal: Generate a reviewable release-zone candidate package from prepared AOI terrain with stable candidate IDs, GIS outputs, sensitivity labels, and editable acceptance fields.
-
-Capability gap reduced: Users need to move from terrain to candidate release zones quickly while preserving the distinction between workflow-generated candidates and field-supported source evidence.
-
-Why this outranks alternatives: Release-zone selection is the first domain-specific user decision in an AOI-to-map workflow and must be reviewable before scenario generation or execution.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `docs/source_zone_block_scenario_policy_v1.md`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_release_zone_heuristic_dry_run.py`
-
-Deliverables:
-
-- A candidate review package with candidate polygons, release-cell IDs, slope/sensitivity summaries, GIS-readable outputs, and user-editable `accepted`, `rejected`, or `needs_field_review` decisions.
-- Machine-readable provenance labels for `workflow_generated`, `field_supported`, `mixed_provenance`, and `blocked_missing_provenance`.
-- Tests proving scenario generation cannot consume unreviewed or overclaimed candidates as field-supported evidence.
-
-Definition of done:
-
-- A user can review AOI release candidates as a first-class artifact before freezing source-zone metadata.
-
-Boundaries: Candidate generation and review packaging only; no release-zone validation claim, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
-
 ### TB-261: Reviewed Source-Zone And Scenario Plan Freezer
 
 Goal: Convert reviewed release-zone candidates into frozen source-zone metadata, conditional scenario tables, and a source/scenario policy record for the AOI.
