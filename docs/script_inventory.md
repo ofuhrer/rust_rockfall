@@ -114,6 +114,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_evidence_bundle.py`
 - `scripts/summarize_balfrin_failure_taxonomy.py`
 - `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
 - `scripts/summarize_balfrin_output_tier_audit.py`
 - `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
 - `scripts/summarize_balfrin_post_run_interpretation_gate.py`

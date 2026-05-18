@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-203: Balfrin Next Live-Run Decision Gate
-
-Goal: Decide whether the next authorized live Balfrin action should be a metrics-completion rerun, a smallest bounded multi-zone probe, or deferral in favor of portability or physical-evidence work.
-
-Capability gap reduced: Unclear next measured Balfrin action after single-zone, target-area, reducer-pressure, and preservation-gate work.
-
-Why this outranks alternatives: A live Balfrin run is expensive and hard to repeat, so the repo should choose the next measured question before preparing another submission package.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- A deterministic decision report comparing metrics-completion rerun, smallest bounded multi-zone probe, and deferral options.
-- Explicit criteria covering missing target-area metrics, preservation-gate readiness, reducer pressure, multi-zone package readiness, expected runtime/output pressure, and scientific value.
-- A recommended next action with `ready`, `blocked`, or `defer` classification and exact evidence blockers.
-- Focused tests for at least one ready, one blocked, and one defer fixture path.
-
-Definition of done:
-
-- The decision helper can be regenerated from tracked fixtures and current evidence helpers, fails closed on missing measured inputs, and states which follow-up package task should proceed next.
-
-Boundaries: Decision gate only; no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no fabricated metrics.
-
 ### TB-204: Enforce Multi-Zone Output And Reducer Constraints In Handoff
 
 Goal: Thread measured multi-zone reducer-pressure constraints into the Balfrin multi-release-zone handoff generator so oversized or unsafe dry-run packages fail closed.

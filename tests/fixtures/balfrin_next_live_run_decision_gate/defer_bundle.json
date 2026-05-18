@@ -1,0 +1,82 @@
+{
+  "schema_version": "balfrin_next_live_run_decision_gate_bundle_v1",
+  "probe_metrics_report": {
+    "report_status": "complete",
+    "run_root_status": "measured_run_root",
+    "metrics_contract_status": "complete",
+    "metrics_contract_missing_metrics": [],
+    "metrics_contract_ancillary_unavailable_metrics": [
+      "validation_output_mode",
+      "output_write_kind_seconds",
+      "output_write_kind_bytes"
+    ],
+    "metrics_remediation": {
+      "schema_version": "balfrin_probe_metrics_remediation_v1",
+      "status": "complete",
+      "missing_mandatory_metrics": [],
+      "unavailable_ancillary_metrics": [
+        "validation_output_mode",
+        "output_write_kind_seconds",
+        "output_write_kind_bytes"
+      ],
+      "next_run_required_metrics": [
+        "validation_output_mode",
+        "output_write_kind_seconds",
+        "output_write_kind_bytes"
+      ],
+      "next_run_collection_checklist": []
+    },
+    "summary": "Balfrin metrics completeness report for the measured run root: 11 mandatory metrics measured, 0 mandatory metrics blocked, 3 ancillary metrics unavailable, 3 next-run-required metrics."
+  },
+  "preservation_gate_report": {
+    "schema_version": "balfrin_probe_preservation_gate_v1",
+    "gate_status": "ready_for_demonstration_evidence",
+    "run_root_status": "measured_run_root",
+    "metrics_contract_status": "complete",
+    "required_run_root_entries_status": "complete",
+    "output_family_summaries": {
+      "status": "sufficient"
+    },
+    "spatial_gis_artifact_paths": {
+      "status": "declared"
+    },
+    "blocked_reasons": [],
+    "summary": "Balfrin preservation gate ready_for_demonstration_evidence: 0 missing run-root entries, 0 missing mandatory metrics, 0 missing output families, 4 declared GIS artifact paths preserved from the manifest, 8 required run-root entries checked."
+  },
+  "multi_zone_reducer_pressure_report": {
+    "schema_version": "multi_zone_reducer_pressure_probe_v1",
+    "probe_status": "measured_scratch_root",
+    "bottleneck_classification": "multi_zone_dry_run_blocked",
+    "multi_zone_dry_run_blocked": true,
+    "blocked_reason": "reducer pressure remains visible: manifest_pressure, output_family_pressure, reducer_runtime_pressure",
+    "reducer_wall_time_seconds": 2.99
+  },
+  "multi_zone_handoff_report": {
+    "schema_version": "balfrin_multi_release_zone_demo_package_v1",
+    "package_status": "mixed_provenance",
+    "pressure_checkpoints": {
+      "output_pressure": {
+        "status": "no_go",
+        "validation_output_blocker_status": "blocker_retained"
+      },
+      "reducer_chunk_pressure": {
+        "status": "measured_existing_artifacts"
+      }
+    },
+    "follow_up_recommendation": {
+      "status": "deferred_pending_authorization",
+      "reason": "The multi-zone handoff package remains mixed provenance and should defer to portability or physical-evidence work once the current metrics gap is closed.",
+      "minimum_measured_multi_zone_run": {
+        "release_zone_count": 2
+      }
+    }
+  },
+  "scientific_value": {
+    "status": "defer",
+    "summary": "The measured metrics gap is closed, but the multi-zone path remains no-go and the next live question should shift to portability or physical evidence."
+  },
+  "portability_value": {
+    "status": "high",
+    "summary": "Portability and physical-evidence work now provide the better next package while the multi-zone path remains blocked."
+  }
+}

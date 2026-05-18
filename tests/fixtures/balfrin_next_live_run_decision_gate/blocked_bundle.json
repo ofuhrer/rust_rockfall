@@ -1,0 +1,7 @@
+{
+  "schema_version": "balfrin_next_live_run_decision_gate_bundle_v1",
+  "missing_inputs": [
+    "probe_metrics_report",
+    "preservation_gate_report"
+  ]
+}
