@@ -863,3 +863,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: refactor only, no new broad policy checks, no backlog edits beyond task completion, no generated evidence claims, and no unrelated script cleanup.
 - Next task: `TB-217`
+
+### TB-217: Scalable Command-Plan Output Profile Enforcement
+
+- Date: 2026-05-18
+- Commit: `35bfeeb`
+- Objective: enforce scalable output defaults in the pilot and Balfrin command-plan helpers so summary-only conditional curves and `--grid-csv-export none` are the recorded default unless an explicit heavy-debug override is present.
+- Files changed: `scripts/lib/output_profile_policy.py`, `scripts/generate_pilot_command_plan.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_pilot_command_plan.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/hazard_output_profile_contract.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a shared three-state output-profile policy helper that classifies command plans as `scalable_default`, `explicit_heavy_debug`, or `blocked_unscalable_default` from the control triple only.
+  - Threaded the policy into the pilot command plan and Balfrin handoff generators so hazard-build and follow-up outputs record scalable defaults explicitly, while the Balfrin package surfaces the current target-gate profile as blocked until the recorded grid CSV mode is suppressed.
+  - Added focused tests for scalable defaults, explicit heavy-debug override, and the blocked multi-zone/Balfrin plan path, then documented the command-plan contract in the hazard output profile and output-budget gate notes.
+  - Removed TB-217 from the active backlog before the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/lib/output_profile_policy.py scripts/generate_pilot_command_plan.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_pilot_command_plan.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: output-profile policy only, no live execution, no distributed reducer, no hazard-value changes, no COG/GIS claim upgrade, and no generated heavy outputs committed.
+- Next task: `TB-218`
